@@ -16,6 +16,7 @@
 #include "WarFog.h"
 #include "Scripts/lua.hpp"
 #include "LuaScript.h"
+#include "LinuxBootstrap/formula_context.h"
 
 #include <cmath>
 #include <limits>
@@ -1580,7 +1581,17 @@ void PFBaseUnit::CheckAppliedApplicators() {}
 void PFBaseUnit::PlanToRestoreSceneObject(NDb::Ptr<NDb::DBSceneObject>& sObj) { pOriginalSceneObject = sObj; shouldRestoreSceneObject = true; }
 void PFBaseUnit::RestoreStatusEffects() { shouldRestoreStatusEffects = false; }
 void PFBaseUnit::RestoreSceneObject() { shouldRestoreSceneObject = false; }
-void PFBaseUnit::ApplyDamageReduction(float&, NDb::EApplicatorDamageType, DamageDesc const&) {}
+/** Use authored defence formulas; absent configuration retains identity reduction. */
+void PFBaseUnit::ApplyDamageReduction(float& damage, NDb::EApplicatorDamageType type, DamageDesc const& desc)
+{
+	if (type == NDb::APPLICATORDAMAGETYPE_PURE || type == NDb::APPLICATORDAMAGETYPE_MANA) return;
+	if (!GetWorld() || !GetWorld()->GetAIWorld()) return;
+	const auto& ai = GetWorld()->GetAIWorld()->GetAIParameters();
+	const auto& formula = type == NDb::APPLICATORDAMAGETYPE_ENERGY ? ai.energyDamageReduction : ai.physicalDamageReduction;
+	if (formula.sString.empty() && formula.compiledString.empty()) return;
+	const auto result = LinuxBootstrap::EvaluateDamageReductionNumericFormula(formula.sString.c_str(), desc.pSender, this, desc.pDealerApplicator);
+	damage = result.Succeeded() && result.value > 0 ? result.value : 0.0f;
+}
 void PFBaseUnit::ApplyDrains(const DamageDesc&, float) {}
 float PFBaseUnit::OnDamage(const DamageDesc& desc)
 {

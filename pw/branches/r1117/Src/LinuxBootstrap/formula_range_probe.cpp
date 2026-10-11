@@ -3,6 +3,8 @@
 #include "formula_context.h"
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFAbilityData.h"
+#include "../PF_GameLogic/PFAbilityInstance.h"
+#include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFBaseUnit.h"
 #include "../PF_GameLogic/PFUniTarget.h"
 #include "../PF_GameLogic/DBTalent.h"
@@ -221,6 +223,41 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 		if (!ok) { ++failures; std::printf("Formula range FAIL: %s\n", name); }
 	};
 	CheckNumericUnitProperties(check);
+	{
+		// Load the original expressions/constants through the DB cache, not copied formula text.
+		const auto ai = NDb::Get<NDb::AILogicParameters>(NDb::DBID("/GameLogic/AILogic.AILP.xdb"));
+		check(ai && ai->globalConstants && !ai->physicalDamageReduction.sString.empty(), "shipped defence DB loaded");
+		if (ai && ai->globalConstants)
+		{
+			struct ReductionApplicator : NWorld::PFApplDamage
+			{
+				explicit ReductionApplicator(const NWorld::PFApplCreatePars& p) : PFApplDamage(p) { damageDealed = 100; }
+			};
+			CObj<RangeUnit> sender = new RangeUnit, receiver = new RangeUnit;
+			for (bool automatic : {false, true})
+			for (bool energy : {false, true})
+			for (float defence : {-1.0f, 0.0f, .3f, 2.0f})
+			{
+				sender->GetVariableVWM("SpellPierce")->SetBaseValue(.1f);
+				receiver->GetVariableVWM("SpellDef")->SetBaseValue(defence);
+				NDb::Ability* rawAbility = new NDb::Ability; rawAbility->constants = ai->globalConstants;
+				NDb::Ptr<NDb::Ability> abilityDb = rawAbility;
+				CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(sender.GetPtr(), abilityDb,
+					automatic ? NDb::ABILITYTYPEID_BASEATTACK : NDb::ABILITYTYPEID_SPECIAL, false, false);
+				NDb::Ptr<NDb::DamageApplicator> damageDb = new NDb::DamageApplicator;
+				const NWorld::Target target(receiver.GetPtr()); NWorld::PFApplCreatePars pars(CObj<NWorld::PFAbilityInstance>(), target);
+				pars.pOwner = sender; pars.pDBAppl = damageDb; pars.pUpgraderAbilityData = ability;
+				CObj<ReductionApplicator> app = new ReductionApplicator(pars);
+				const float difference = (energy ? receiver->GetSpiritDefence() : receiver->GetBodyDefence())
+					+ (automatic ? 0 : defence) - sender->GetPenetrationTotal() - (automatic ? 0 : .1f);
+				const float decrease = energy ? receiver->GetEnergyDamageDecrease() : receiver->GetMaterialDamageDecrease();
+				const float expected = 100 * (1-decrease*.01f) * (1-(difference > 0 || automatic ? 1 : .75f)*Min(Max(difference,-.75f),.75f));
+				const auto& formula = energy ? ai->energyDamageReduction : ai->physicalDamageReduction;
+				const auto result = LinuxBootstrap::EvaluateDamageReductionNumericFormula(formula.sString.c_str(), sender, receiver, app);
+				check(result.Succeeded() && std::fabs(result.value-expected) < .0001f, "shipped defence and nested constants match scalar oracle");
+			}
+		}
+	}
 	{
 		NDb::Ptr<NDb::Talent> talent = NDb::Get<NDb::Talent>(NDb::DBID("/Items/Talents/Class/Plane/Ability_A1.TALENT.xdb"));
 		check(talent && talent->useRange.sString.find("sBaseStrength") != string::npos, "shipped native Plane A1 expression loaded");

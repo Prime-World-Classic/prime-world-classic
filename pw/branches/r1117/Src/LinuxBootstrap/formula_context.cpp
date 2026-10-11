@@ -249,4 +249,12 @@ NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& express
 	if (result.Succeeded() && world) *world->GetRndGen() = staged;
 	return result;
 }
+
+NumericFormulaResult EvaluateDamageReductionNumericFormula(const std::string& expression,
+	const IUnitFormulaPars* sender, const IUnitFormulaPars* receiver,
+	const NWorld::PFBaseApplicator* app)
+{
+	Context context{sender, receiver, app ? app->GetAbilityData() : nullptr, nullptr, app};
+	return context.Evaluate(expression);
+}
 }

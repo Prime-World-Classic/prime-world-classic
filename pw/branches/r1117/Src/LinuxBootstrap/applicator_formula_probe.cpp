@@ -516,6 +516,63 @@ static void CombatFormulaContext(Checks& check, PFWorld* world)
 	run("cCombat", .375f);
 }
 
+/** Exercise configured reduction through actual damage, including delegation's current receiver. */
+static void DefenceReduction(Checks& check, PFWorld* world, NDb::AILogicParameters* ai)
+{
+	const auto savedPhysical = ai->physicalDamageReduction, savedEnergy = ai->energyDamageReduction;
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	ai->energyDamageReduction.sString = "pMisc->GetVariable(\"damageDealed\")*.25";
+	const auto run = [&](const char* formula, NDb::EApplicatorDamageType kind, float expected, bool bypass = false) {
+		ai->physicalDamageReduction.sString = formula;
+		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+		raw->damage.sString = "100"; raw->damageType = kind;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Damage> app = new Damage(pars);
+		receiver->SetHealth(1000); receiver->SetEnergy(200);
+		check(app->Init(), "defence damage initialized");
+		PFBaseUnit::DamageDesc desc; desc.pSender = sender; desc.amount = 100; desc.damageType = kind;
+		desc.flags = 0; desc.damageMode = NDb::DAMAGEMODE_ZERO; desc.dontAttackBack = false;
+		desc.pDealerApplicator = app; desc.ignoreDefences = true;
+		if (bypass) app->SetDelegated(&desc);
+		check(app->Run(), "defence damage completes");
+		check(app->GetDamageDealed() == expected, formula);
+		check(receiver->GetHealth() == 1000 - (kind == NDb::APPLICATORDAMAGETYPE_MANA ? 0 : expected), "defence resource delta");
+	};
+	run("pMisc->GetVariable(\"damageDealed\")*.5", NDb::APPLICATORDAMAGETYPE_MATERIAL, 50);
+	run("pMisc->GetVariable(\"damageDealed\")*.5", NDb::APPLICATORDAMAGETYPE_NATIVE, 50);
+	run("pMisc->GetVariable(\"damageDealed\")*.5", NDb::APPLICATORDAMAGETYPE_ENERGY, 25);
+	run("missing", NDb::APPLICATORDAMAGETYPE_PURE, 100);
+	run("missing", NDb::APPLICATORDAMAGETYPE_MANA, 100);
+	run("missing", NDb::APPLICATORDAMAGETYPE_MATERIAL, 100, true);
+	run("rStrength+sStrength", NDb::APPLICATORDAMAGETYPE_MATERIAL, 60);
+	run("", NDb::APPLICATORDAMAGETYPE_MATERIAL, 100);
+	for (const char* invalid : {"missing", "1/0", "1e39", "-1", "0"})
+		run(invalid, NDb::APPLICATORDAMAGETYPE_MATERIAL, 0);
+	ai->physicalDamageReduction.compiledString = "unsupported-bytecode";
+	run("", NDb::APPLICATORDAMAGETYPE_MATERIAL, 0);
+	ai->physicalDamageReduction = savedPhysical; ai->energyDamageReduction = savedEnergy;
+	// The original dealer remains attached, but r getters belong to the redirected victim.
+	CObj<PFBaseUnit> redirected = Unit(world, NDb::FACTION_BURN, 70);
+	NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+	raw->damage.sString = "25"; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	NDb::Ptr<NDb::DamageApplicator> db = raw;
+	const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+	pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+	CObj<Damage> app = new Damage(pars); receiver->SetHealth(1000);
+	check(app->Init() && app->Run(), "redirected damage dealer initialized");
+	ai->physicalDamageReduction.sString = "rStrength+pMisc->GetVariable(\"damageDealed\")";
+	PFBaseUnit::DamageDesc desc; desc.pSender = sender; desc.amount = 100;
+	desc.damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL; desc.flags = 0;
+	desc.damageMode = NDb::DAMAGEMODE_ZERO; desc.dontAttackBack = false; desc.pDealerApplicator = app;
+	check(redirected->OnDamage(desc) == 95 && redirected->GetHealth() == 905, "reduction uses redirected recipient with original dealer");
+	check(!LinuxBootstrap::EvaluateDamageReductionNumericFormula("random(1,2)", sender, receiver, app).Succeeded(),
+		"defence evaluation cannot advance the world RNG");
+	ai->physicalDamageReduction = savedPhysical;
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -544,6 +601,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			PreDamage(check, world);
 			DamageNotifications(check, world);
 			CombatFormulaContext(check, world);
+			DefenceReduction(check, world, ai);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

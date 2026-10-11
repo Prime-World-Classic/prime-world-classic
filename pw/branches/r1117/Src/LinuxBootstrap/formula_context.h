@@ -30,4 +30,11 @@ NumericFormulaResult EvaluateUnitNumericFormula(const std::string& expression,
  */
 NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& expression,
 	const NWorld::PFBaseApplicator& applicator);
+
+/** Reduction uses the actual damage recipient, which can differ after delegation.
+ * Applicator constants/variables remain available, but reduction cannot consume RNG.
+ */
+NumericFormulaResult EvaluateDamageReductionNumericFormula(const std::string& expression,
+	const IUnitFormulaPars* sender, const IUnitFormulaPars* receiver,
+	const NWorld::PFBaseApplicator* applicator);
 }
