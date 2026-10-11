@@ -223,7 +223,9 @@ void PFAbilityData::ApplyPassivePart( bool bApply )
 
 CObj<PFAbilityInstance> PFAbilityData::ApplyToTarget( Target const& target )
 {
-  if ( !pDBDesc || !IsValid(pOwner) || !IsReady() || !IsEnoughMana() )
+	// Direct and external callers must satisfy the same live-context admission as orders.
+	if (!pDBDesc || !IsValid(pOwner) || pOwner->IsDead() || IsForbidded()
+		|| !IsTargetValid(target) || !IsReady() || !IsEnoughMana())
     return CObj<PFAbilityInstance>(0);
 
   if ( CheckCastLimitations( target ) )
@@ -559,12 +561,15 @@ void PFAbilityData::OnDispatchStarted() const
 bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const
 {
   if (target.IsPosition())
-    return true;
+	{
+		const CVec3& position = target.GetPosition();
+		return std::isfinite(position.x) && std::isfinite(position.y) && std::isfinite(position.z);
+	}
 
   if (target.IsUnit())
   {
     CPtr<PFBaseUnit> const& pUnit = target.GetUnit();
-    if (!IsValid(pUnit))
+		if (!IsValid(pUnit) || !IsValid(pOwner) || pUnit->GetWorld() != pOwner->GetWorld())
       return false;
     if (bAllowDead)
       return true;
@@ -572,7 +577,8 @@ bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const
   }
 
   if (target.IsObject())
-    return target.IsObjectValid();
+		return target.IsObjectValid() && IsValid(pOwner)
+			&& target.GetObject()->GetWorld() == pOwner->GetWorld();
 
   return false;
 }
