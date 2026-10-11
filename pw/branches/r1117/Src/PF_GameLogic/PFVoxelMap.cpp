@@ -6,6 +6,11 @@
 #include "PFVoxelMap.h"
 #include "PFBaseUnit.h"
 
+#if defined(__linux__)
+#include <cmath>
+#include <limits>
+#endif
+
 namespace NWorld
 {
 
@@ -114,10 +119,48 @@ void PFVoxelMap::OnUnitMove(PFBaseUnit &unit)
 
 bool PFVoxelMap::IsPointInRange(const CVec3 &pos, const Range &range)
 {
+#if defined(__linux__)
+	// Round each operation as before, but reject overflow before narrowing to float.
+	const double limit = std::numeric_limits<float>::max();
+	const double dx = static_cast<double>(pos.x) - range.center.x;
+	const double dy = static_cast<double>(pos.y) - range.center.y;
+	if (!std::isfinite(dx) || !std::isfinite(dy) || std::fabs(dx) > limit || std::fabs(dy) > limit)
+		return false;
+	const float xs = static_cast<float>(dx);
+	const float ys = static_cast<float>(dy);
+	const double xx = static_cast<double>(xs) * xs;
+	const double yy = static_cast<double>(ys) * ys;
+	if (xx > limit || yy > limit) return false;
+	const double sum = static_cast<double>(static_cast<float>(xx)) + static_cast<float>(yy);
+	return sum <= limit && static_cast<float>(sum) <= range.radiusSquared;
+#else
   float xs = pos.x - range.center.x;
   float ys = pos.y - range.center.y;
   return (xs * xs + ys * ys) <= range.radiusSquared;
+#endif
 }
+
+#if defined(__linux__)
+/** Height is deliberately ignored: this is an inclusive two-dimensional query. */
+bool PFVoxelMap::IsValidRange(const CVec3& center, float radius) const
+{
+	if (width <= 0 || height <= 0 || pVoxels.empty() ||
+		!std::isfinite(center.x) || !std::isfinite(center.y) ||
+		!std::isfinite(radius) || radius <= 0.0f)
+		return false;
+	const double square = static_cast<double>(radius) * radius;
+	return square <= std::numeric_limits<float>::max() && static_cast<float>(square) > 0.0f;
+}
+
+/** Preserve float voxel-boundary rounding, then clamp before any integer conversion. */
+void PFVoxelMap::CalcRangeVoxelIndices(float x, float y, int& i, int& j) const
+{
+	const double column = std::floor(x * s_LinuxVoxelSizeInv);
+	const double row = std::floor(y * s_LinuxVoxelSizeInv);
+	i = column <= 0.0 ? 0 : column >= width - 1 ? width - 1 : static_cast<int>(column);
+	j = row <= 0.0 ? 0 : row >= height - 1 ? height - 1 : static_cast<int>(row);
+}
+#endif
 
 void PFVoxelMap::CalcVoxelIndices(float x, float y, int &voxelI, int &voxelJ)
 {

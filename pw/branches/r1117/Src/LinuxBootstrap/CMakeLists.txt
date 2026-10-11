@@ -442,6 +442,7 @@ add_executable(
 	adventure_presentation.cpp
 	hero_presentation_probe.cpp
 	visibility_stealth_probe.cpp
+	voxel_range_probe.cpp
 	world_grid_probe.cpp
 	formula_range_probe.cpp
 	applicator_formula_probe.cpp
@@ -977,6 +978,8 @@ set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxVisibilityLifecycle COMMAND PrimeWorldLinuxClient --bootstrap-visibility-lifecycle-probe)
 add_test(NAME LinuxVisibilityQueries COMMAND PrimeWorldLinuxClient --bootstrap-visibility-query-probe)
 add_test(NAME LinuxVisibilityStealth COMMAND PrimeWorldLinuxClient --bootstrap-visibility-stealth-probe)
+add_test(NAME LinuxVoxelRange COMMAND PrimeWorldLinuxClient --bootstrap-voxel-range-probe)
+set_tests_properties(LinuxVoxelRange PROPERTIES TIMEOUT 30 ENVIRONMENT "LC_ALL=C")
 set_tests_properties(LinuxVisibilityStealth PROPERTIES TIMEOUT 30)
 set_tests_properties(LinuxVisibilityQueries PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxSchedulerDrain COMMAND PrimeWorldLinuxClient --bootstrap-scheduler-drain-probe)

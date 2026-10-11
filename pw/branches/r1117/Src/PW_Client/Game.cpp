@@ -168,6 +168,7 @@
 #include "LinuxBootstrap/text_runtime_probe.h"
 #include "LinuxBootstrap/hero_presentation_probe.h"
 #include "LinuxBootstrap/visibility_stealth_probe.h"
+#include "LinuxBootstrap/voxel_range_probe.h"
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
 #include "LinuxBootstrap/applicator_formula_probe.h"
@@ -71130,6 +71131,8 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxWorldGridProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-stealth-probe"))
 		return RunPrimeWorldLinuxVisibilityStealthProbe() ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-voxel-range-probe"))
+		return RunPrimeWorldLinuxVoxelRangeProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-fog-grid-probe"))
 		return RunPrimeWorldLinuxFogGridProbe() ? 0 : 1;
 

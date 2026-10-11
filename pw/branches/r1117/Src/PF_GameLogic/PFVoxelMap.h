@@ -150,8 +150,13 @@ private:
     NI_VERIFY( range.radiusSquared > 0.0f, "Zero distance!", return; );
 
     int startI, startJ, endI, endJ; // use no constructor to speedup!
+#if defined(__linux__) && defined(PW_LINUX_NULL_RENDER)
+		CalcRangeVoxelIndices(bbox.minx, bbox.miny, startI, startJ);
+		CalcRangeVoxelIndices(bbox.maxx, bbox.maxy, endI, endJ);
+#else
     CalcVoxelIndices(bbox.minx, bbox.miny, startI, startJ);
     CalcVoxelIndices(bbox.maxx, bbox.maxy, endI, endJ);
+#endif
     NI_ASSERT(startI <= endI && startJ <= endJ, "Bad indices for bboxes(1)");
     NI_ASSERT(0 <= startI && endI < width && 0 <= startJ && endJ < height, "Bad indices for bboxes(2)");
 
@@ -192,6 +197,12 @@ private:
   BBox2D  ConvertRangeToBBox(CVec3 const& vPos, float fRange) const;
   static void    CalcVoxelIndices(float x, float y, int &voxelI, int &voxelJ);
   static bool    IsPointInRange(const CVec3 &pos, const Range &range);
+#if defined(__linux__) && defined(PW_LINUX_NULL_RENDER)
+	/** Reject malformed/empty queries before constructing Range or converting coordinates. */
+	bool IsValidRange(const CVec3& center, float radius) const;
+	/** Clamp in floating point before integer conversion; never visit an unallocated voxel. */
+	void CalcRangeVoxelIndices(float x, float y, int& i, int& j) const;
+#endif
 
 public:
   void SetVoxelMapSizes(const TileMap *map);
@@ -221,6 +232,9 @@ public:
   template <typename TFunc, typename TPredicate>
   void ForAllUnitsInRange(CVec3 const& vPos, float dist, TFunc &func, TPredicate const &p) const 
   { 
+#if defined(__linux__) && defined(PW_LINUX_NULL_RENDER)
+		if (!IsValidRange(vPos, dist)) return;
+#endif
     Range range(vPos, dist);
     BBox2D bbox(ConvertRangeToBBox(vPos, dist));
     ForAllEntitiesInBBox<TFunc, SelectUnits, TPredicate>(bbox, range, func, p);
@@ -266,6 +280,9 @@ public:
   template <typename TFunc, typename TPredicate>
   void ForAllObjectsInRange(CVec3 const& vPos, float dist, TFunc &func, TPredicate const &p) const 
   { 
+#if defined(__linux__) && defined(PW_LINUX_NULL_RENDER)
+		if (!IsValidRange(vPos, dist)) return;
+#endif
 		Range range(vPos, dist);
 		BBox2D bbox(ConvertRangeToBBox(vPos, dist));
     ForAllEntitiesInBBox<TFunc, SelectObjects, TPredicate>(bbox, range, func, p);
@@ -296,6 +313,9 @@ public:
   template <typename TFunc, typename TPredicate>
   void ForAllInRange(CVec3 const& vPos, float dist, TFunc &func, TPredicate const &p) const 
   { 
+#if defined(__linux__) && defined(PW_LINUX_NULL_RENDER)
+		if (!IsValidRange(vPos, dist)) return;
+#endif
     Range range(vPos, dist);
     BBox2D bbox(ConvertRangeToBBox(vPos, dist));
 		if (p.TraverseObjects())
