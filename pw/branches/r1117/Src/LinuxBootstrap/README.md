@@ -29,8 +29,9 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" --output-on-failure
 ```
 
 Several maintained probes are compile-only object targets, not runnable programs.
-The client CTests include actual engine formula, resource, cooldown, world-grid
-and fog-observer fixtures. Passing them does not establish a complete match.
+The client CTests include actual engine formula, resource, cooldown, world-grid,
+fog/stealth, packed-command identity and scheduler-draining fixtures. Passing them
+does not establish a complete match.
 
 Run from the game Bin directory so asset paths resolve:
 
@@ -111,3 +112,28 @@ or duplicated final records; wait for the process to exit before validating logs
 	actions, online integration and a complete local match are not acceptance claims.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
+
+## Regression Coverage
+
+The focused checks run without a graphical session through CTest:
+
+```sh
+env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
+	-R 'Linux(NumericFormula|FormulaRange|Visibility.*|SchedulerDrain)$' \
+	--output-on-failure
+```
+
+- [Numeric parser](formula_numeric_probe.cpp): checked helpers, lazy callbacks,
+	malformed syntax, finite arithmetic, budgets and independent parser ownership.
+- [Formula context](formula_range_probe.cpp): real base/modified stats, resource
+	pools, constants, scaling parameters, range, costs and cooldowns.
+- [Visibility queries](visibility_query_probe.cpp) and
+	[stealth state](visibility_stealth_probe.cpp): rectangular maps, faction fog,
+	true sight, target loss, movement, death and one scheduled refresh per unit.
+- [Unit lifecycle](visibility_lifecycle_probe.cpp): observer lifecycle and exact
+	serialized command actors/targets, including missing and foreign-world objects.
+- [Scheduler drain](scheduler_drain_probe.cpp): preserve admitted commands and
+	statuses while closing finite smoke input and draining the replay boundary.
+
+Use the graphical acceptance driver above as well; these checks do not prove
+complete stealth abilities, damage applicator integration or visual parity.
