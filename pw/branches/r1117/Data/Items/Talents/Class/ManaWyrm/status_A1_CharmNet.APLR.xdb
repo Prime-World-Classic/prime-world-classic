@@ -19,7 +19,7 @@
 				<enabled>
 					<compiledString>FQYAAAABAAAAEAAAAEJvc3MzAFWL7GoAi0UQUGgAAAAAi00MixGLTQyLgpwBAAD/0DPJO0UQD5TBisFdww==</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>receiver.applBoss3(GLOBAL)==pMisc</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
