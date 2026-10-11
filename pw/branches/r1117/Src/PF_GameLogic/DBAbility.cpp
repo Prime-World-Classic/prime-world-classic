@@ -7548,7 +7548,8 @@ void DispatchLinear::Assign( const DispatchLinear& _dispatchLinear )
 NWorld::PFDispatch* DispatchLinear::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Reuse the original suspension, pursuit, distance-limit and arrival algorithm.
+	return NWorld::FCreateDispatch<NWorld::PFDispatchUniformLinearMove>( *this, cp );
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchUniformLinearMove>( *this, cp );
@@ -7620,7 +7621,8 @@ void DispatchLinearWithLink::Assign( const DispatchLinearWithLink& _dispatchLine
 NWorld::PFDispatch* DispatchLinearWithLink::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Linked dispatches share authored linear travel while retaining their actual subtype.
+	return NWorld::FCreateDispatch<NWorld::PFDispatchWithLink>( *this, cp );
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchWithLink>( *this, cp );
