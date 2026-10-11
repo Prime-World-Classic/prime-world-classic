@@ -1,5 +1,6 @@
 #include "../System/systemStdAfx.h"
 #include "formula_range_probe.h"
+#include "formula_context.h"
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFBaseUnit.h"
@@ -16,6 +17,7 @@
 #include <cstdio>
 #include <string>
 #include <limits>
+#include <vector>
 
 namespace
 {
@@ -38,6 +40,170 @@ public:
 		health = life; energy = mana;
 	}
 };
+
+/** Explicit mock values are independent of the resolver's name-to-getter table. */
+struct NumericPropertyStat
+{
+	const char* liveName;
+	const char* baseName;
+	NDb::EStat stat;
+	int senderBase;
+	int targetBase;
+};
+
+const NumericPropertyStat numericPropertyStats[] = {
+	{"MaxLife", "BaseLife", NDb::STAT_LIFE, 101, 1001},
+	{"MaxEnergy", "BaseEnergy", NDb::STAT_ENERGY, 103, 1003},
+	{"Range", "BaseRange", NDb::STAT_RANGE, 107, 1007},
+	{"MoveSpeed", "BaseMoveSpeed", NDb::STAT_MOVESPEED, 109, 1009},
+	{"AttackSpeed", "BaseAttackSpeed", NDb::STAT_ATTACKSPEED, 113, 1013},
+	{"CritMult", "BaseCriticalMultiplier", NDb::STAT_CRITICALMULTIPLIER, 127, 1027},
+	{"LifeDrain", "BaseLifeDrain", NDb::STAT_LIFEDRAIN, 131, 1031},
+	{"EnergyDrain", "BaseEnergyDrain", NDb::STAT_ENERGYDRAIN, 137, 1037},
+	{"Evasion", "BaseEvasion", NDb::STAT_EVASION, 139, 1039},
+	{"LifeRegen", "BaseLifeRegeneration", NDb::STAT_LIFEREGENERATION, 149, 1049},
+	{"LifeRegenAbs", "BaseLifeRegenerationAbsolute", NDb::STAT_LIFEREGENERATIONABSOLUTE, 151, 1051},
+	{"EnergyRegen", "BaseEnergyRegeneration", NDb::STAT_ENERGYREGENERATION, 157, 1057},
+	{"EnergyRegenAbs", "BaseEnergyRegenerationAbsolute", NDb::STAT_ENERGYREGENERATIONABSOLUTE, 163, 1063},
+	{"Strength", "BaseStrength", NDb::STAT_STRENGTH, 167, 1067},
+	{"Intellect", "BaseIntellect", NDb::STAT_INTELLECT, 173, 1073},
+	{"Dexterity", "BaseDexterity", NDb::STAT_DEXTERITY, 179, 1079},
+	{"BaseAttack", "BaseBaseAttack", NDb::STAT_BASEATTACK, 181, 1081},
+	{"Stamina", "BaseStamina", NDb::STAT_STAMINA, 191, 1091},
+	{"Will", "BaseWill", NDb::STAT_WILL, 193, 1093}
+};
+
+/** Load literal mock DB stats through the actual engine initializer, without getter overrides. */
+class NumericPropertyUnit : public NWorld::PFBaseUnit
+{
+public:
+	explicit NumericPropertyUnit(const NDb::Unit* db) : PFBaseUnit(nullptr, CVec3(0, 0, 0), db)
+	{
+		InitData data;
+		data.faction = NDb::FACTION_FREEZE;
+		data.type = NDb::UNITTYPE_BUILDING;
+		data.playerId = -1;
+		data.pObjectDesc = db;
+		Initialize(data);
+	}
+};
+
+/** Give each side a separate, owned DB; no world, asset or ability context is required. */
+NDb::Ptr<NDb::Unit> MakeNumericPropertyUnitDb(bool target)
+{
+	NDb::StatsContainer* stats = new NDb::StatsContainer;
+	for (const auto& entry : numericPropertyStats)
+	{
+		NDb::UnitStat stat;
+		stat.statId = entry.stat;
+		stat.value.sString = std::to_string(target ? entry.targetBase : entry.senderBase).c_str();
+		stat.increment.sString = "0";
+		stats->stats.push_back(stat);
+	}
+	NDb::Unit* unit = new NDb::Unit;
+	unit->stats = stats;
+	return unit;
+}
+
+/** Exercise real engine stats and modifiers, not another implementation of the getter mapping. */
+template<class Check>
+void CheckNumericUnitProperties(const Check& check)
+{
+	using LinuxBootstrap::EvaluateUnitNumericFormula;
+	using LinuxBootstrap::NumericFormulaError;
+	const NDb::Ptr<NDb::Unit> senderDb = MakeNumericPropertyUnitDb(false);
+	const NDb::Ptr<NDb::Unit> targetDb = MakeNumericPropertyUnitDb(true);
+	CObj<NumericPropertyUnit> sender = new NumericPropertyUnit(senderDb);
+	CObj<NumericPropertyUnit> target = new NumericPropertyUnit(targetDb);
+	std::vector<int> targetModifiers;
+	for (const auto& entry : numericPropertyStats)
+	{
+		sender->GetStat(entry.stat)->AddModifier(1.0f, 100.0f, 731);
+		targetModifiers.push_back(target->GetStat(entry.stat)->AddModifier(1.0f, 200.0f, 732));
+	}
+	sender->InitializeLifeEnergy();
+	target->InitializeLifeEnergy();
+	sender->SetHealth(31); sender->SetEnergy(37);
+	target->SetHealth(41); target->SetEnergy(43);
+
+	const auto expect = [&](const std::string& expression, float expected,
+		const IUnitFormulaPars* first, const IUnitFormulaPars* second) {
+		const auto result = EvaluateUnitNumericFormula(expression, first, second);
+		check(result.Succeeded() && result.value == expected, ("numeric property: " + expression).c_str());
+	};
+	const auto missing = [&](const std::string& expression,
+		const IUnitFormulaPars* first, const IUnitFormulaPars* second) {
+		const auto result = EvaluateUnitNumericFormula(expression, first, second);
+		check(result.error == NumericFormulaError::UnknownSymbol && std::isnan(result.value),
+			("numeric property missing/unknown: " + expression).c_str());
+	};
+	for (const auto& entry : numericPropertyStats)
+	{
+		const std::string liveSender = std::string("s") + entry.liveName;
+		const std::string liveTarget = std::string("t") + entry.liveName;
+		const std::string baseSender = std::string("s") + entry.baseName;
+		const std::string baseTarget = std::string("t") + entry.baseName;
+		expect(liveSender, entry.senderBase + 100, sender, target);
+		expect(liveTarget, entry.targetBase + 200, sender, target);
+		expect(baseSender, entry.senderBase, sender, target);
+		expect(baseTarget, entry.targetBase, sender, target);
+		expect(liveSender, entry.senderBase + 100, sender, nullptr);
+		expect(liveTarget, entry.targetBase + 200, nullptr, target);
+		missing(liveSender, nullptr, target);
+		missing(liveTarget, sender, nullptr);
+		missing(baseSender, nullptr, target);
+		missing(baseTarget, sender, nullptr);
+	}
+	expect("sLife", 31, sender, target); expect("tLife", 41, sender, target);
+	expect("sEnergy", 37, sender, target); expect("tEnergy", 43, sender, target);
+	missing("sLife", nullptr, target); missing("tLife", sender, nullptr);
+	missing("sEnergy", nullptr, target); missing("tEnergy", sender, nullptr);
+	expect("sMaxLife-sLife", 170, sender, target);
+	expect("tMaxEnergy-tEnergy", 1160, sender, target);
+	expect("sStrength-tBaseStrength", -800, sender, target);
+	expect("sBaseAttack-sBaseBaseAttack", 100, sender, target);
+
+	for (const char* name : {"sHealth", "sMana", "sMaxHealth", "tMaxMana", "sCriticalMultiplier",
+		"tBaseCritMult", "sLifeRegeneration", "sBaseLifeRegen", "sCoreLife", "sAttack", "tSpeed",
+		"sstrength", "sSTRENGTH", "rStrength", "sStrengthExtra", "tLifeDrainExtra", "s",
+		"sLifeRegenTotal", "sBaseVisibilityRange", "sBaseCriticalChance", "sCritChance",
+		"sNafta", "sObjectTarget", "sIsHero", "mRank"})
+		missing(name, sender, target);
+	expect("1 ? sStrength : tStrength", 267, sender, nullptr);
+	expect("0 ? sLife : tEnergy", 43, nullptr, target);
+	expect("1 ? sBaseBaseAttack : sMana", 181, sender, nullptr);
+	expect("0 ? tUnknown : 23", 23, nullptr, nullptr);
+	missing("0 ? sStrength : tStrength", sender, nullptr);
+	missing("1 ? sMana : sStrength", sender, target);
+
+	NDb::Ability* raw = new NDb::Ability;
+	raw->useRange.sString = "sBaseAttack+tBaseBaseAttack";
+	const NDb::Ptr<NDb::Ability> abilityDb = raw;
+	CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(sender.GetPtr(), abilityDb,
+		NDb::ABILITYTYPEID_SPECIAL, false, false);
+	check(ability->GetUseRange(target.GetPtr()) == 1362, "numeric property: real ability use-range consumes new bindings");
+
+	std::size_t index = 0;
+	for (const auto& entry : numericPropertyStats)
+	{
+		sender->GetStat(entry.stat)->SetCoreValue(entry.senderBase + 7);
+		target->GetStat(entry.stat)->UpdateModifierAdd(targetModifiers[index++], 209.0f);
+	}
+	sender->InitializeLifeEnergy();
+	target->InitializeLifeEnergy();
+	sender->SetHealth(47); sender->SetEnergy(53);
+	target->SetHealth(59); target->SetEnergy(61);
+	for (const auto& entry : numericPropertyStats)
+	{
+		expect(std::string("s") + entry.liveName, entry.senderBase + 107, sender, target);
+		expect(std::string("t") + entry.liveName, entry.targetBase + 209, sender, target);
+		expect(std::string("s") + entry.baseName, entry.senderBase + 7, sender, target);
+		expect(std::string("t") + entry.baseName, entry.targetBase, sender, target);
+	}
+	expect("sLife", 47, sender, target); expect("tLife", 59, sender, target);
+	expect("sEnergy", 53, sender, target); expect("tEnergy", 61, sender, target);
+	check(ability->GetUseRange(target.GetPtr()) == 1369, "numeric property: ability re-evaluates changed base and modified stats");
+}
 }
 
 bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
@@ -52,6 +218,7 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 		++checks;
 		if (!ok) { ++failures; std::printf("Formula range FAIL: %s\n", name); }
 	};
+	CheckNumericUnitProperties(check);
 	{
 		NDb::Ptr<NDb::Talent> talent = NDb::Get<NDb::Talent>(NDb::DBID("/Items/Talents/Class/Plane/Ability_A1.TALENT.xdb"));
 		check(talent && talent->useRange.sString.find("sBaseStrength") != string::npos, "shipped native Plane A1 expression loaded");

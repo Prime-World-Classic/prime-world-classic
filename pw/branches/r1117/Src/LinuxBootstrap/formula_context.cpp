@@ -11,6 +11,61 @@ namespace LinuxBootstrap
 namespace
 {
 
+/** Exact IUnitFormulaPars getter names after the s/t prefix; no aliases or inferred Base names.
+ * This fixed 40-property whitelist covers pools/maxima, direct combat/movement stats,
+ * regeneration/drain/evasion/critical multiplier and their corresponding base values.
+ * BaseAttack is a modified stat; BaseBaseAttack is its unmodified counterpart.
+ * Derived stats, economy, object/boolean/misc properties and functions remain unsupported.
+ */
+struct UnitNumericProperty
+{
+	const char* name;
+	float (IUnitFormulaPars::*getter)() const;
+};
+
+constexpr UnitNumericProperty unitNumericProperties[] = {
+	{"Life", &IUnitFormulaPars::GetLife},
+	{"Energy", &IUnitFormulaPars::GetEnergy},
+	{"MaxLife", &IUnitFormulaPars::GetMaxLife},
+	{"MaxEnergy", &IUnitFormulaPars::GetMaxEnergy},
+	{"Range", &IUnitFormulaPars::GetRange},
+	{"MoveSpeed", &IUnitFormulaPars::GetMoveSpeed},
+	{"AttackSpeed", &IUnitFormulaPars::GetAttackSpeed},
+	{"CritMult", &IUnitFormulaPars::GetCritMult},
+	{"LifeRegen", &IUnitFormulaPars::GetLifeRegen},
+	{"EnergyRegen", &IUnitFormulaPars::GetEnergyRegen},
+	{"LifeRegenAbs", &IUnitFormulaPars::GetLifeRegenAbs},
+	{"EnergyRegenAbs", &IUnitFormulaPars::GetEnergyRegenAbs},
+	{"Evasion", &IUnitFormulaPars::GetEvasion},
+	{"LifeDrain", &IUnitFormulaPars::GetLifeDrain},
+	{"EnergyDrain", &IUnitFormulaPars::GetEnergyDrain},
+	{"Strength", &IUnitFormulaPars::GetStrength},
+	{"Intellect", &IUnitFormulaPars::GetIntellect},
+	{"Dexterity", &IUnitFormulaPars::GetDexterity},
+	{"BaseAttack", &IUnitFormulaPars::GetBaseAttack},
+	{"Stamina", &IUnitFormulaPars::GetStamina},
+	{"Will", &IUnitFormulaPars::GetWill},
+	{"BaseLife", &IUnitFormulaPars::GetBaseLife},
+	{"BaseEnergy", &IUnitFormulaPars::GetBaseEnergy},
+	{"BaseRange", &IUnitFormulaPars::GetBaseRange},
+	{"BaseMoveSpeed", &IUnitFormulaPars::GetBaseMoveSpeed},
+	{"BaseAttackSpeed", &IUnitFormulaPars::GetBaseAttackSpeed},
+	{"BaseCriticalMultiplier", &IUnitFormulaPars::GetBaseCriticalMultiplier},
+	{"BaseLifeDrain", &IUnitFormulaPars::GetBaseLifeDrain},
+	{"BaseEnergyDrain", &IUnitFormulaPars::GetBaseEnergyDrain},
+	{"BaseEvasion", &IUnitFormulaPars::GetBaseEvasion},
+	{"BaseLifeRegeneration", &IUnitFormulaPars::GetBaseLifeRegeneration},
+	{"BaseLifeRegenerationAbsolute", &IUnitFormulaPars::GetBaseLifeRegenerationAbsolute},
+	{"BaseEnergyRegeneration", &IUnitFormulaPars::GetBaseEnergyRegeneration},
+	{"BaseEnergyRegenerationAbsolute", &IUnitFormulaPars::GetBaseEnergyRegenerationAbsolute},
+	{"BaseStrength", &IUnitFormulaPars::GetBaseStrength},
+	{"BaseIntellect", &IUnitFormulaPars::GetBaseIntellect},
+	{"BaseDexterity", &IUnitFormulaPars::GetBaseDexterity},
+	{"BaseBaseAttack", &IUnitFormulaPars::GetBaseBaseAttack},
+	{"BaseStamina", &IUnitFormulaPars::GetBaseStamina},
+	{"BaseWill", &IUnitFormulaPars::GetBaseWill}
+};
+
 /** Evaluation-local ownership bounds recursive constants without stale stat caches. */
 struct Context
 {
@@ -50,12 +105,13 @@ struct Context
 		const auto* unit = name[0] == 's' ? sender : target;
 		if (!unit) return false;
 		const auto property = name.substr(1);
-		if (property == "BaseStrength") value = unit->GetBaseStrength();
-		else if (property == "BaseIntellect") value = unit->GetBaseIntellect();
-		else if (property == "Range") value = unit->GetRange();
-		else if (property == "Intellect") value = unit->GetIntellect();
-		else return false;
-		return true;
+		for (const auto& binding : unitNumericProperties)
+			if (property == binding.name)
+			{
+				value = (unit->*binding.getter)();
+				return true;
+			}
+		return false;
 	}
 };
 }
