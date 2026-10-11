@@ -33,6 +33,12 @@ struct Damage : PFApplDamage
 	bool Run() { return Start(); }
 };
 
+struct Heal : PFApplHeal
+{
+	explicit Heal(const PFApplCreatePars& p) : PFApplHeal(p) {}
+	bool Run() { return Start(); }
+};
+
 /** Access the protected initializer without overriding gameplay or formula getters. */
 struct ProbeUnit : PFBaseUnit
 {
@@ -115,6 +121,40 @@ void DamageFormulas(Checks& check, PFWorld* world)
 }
 }
 
+/** Health and energy are independent pools; report actual capped restoration. */
+static void HealingFormulas(Checks& check, NWorld::PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_FREEZE, 20);
+	const auto run = [&](const char* expression, NDb::EHealTarget pool, float restored,
+		bool enabled = true, bool dead = false, bool forbidden = false) {
+		NDb::HealApplicator* raw = new NDb::HealApplicator;
+		raw->amount.sString = expression; raw->healTarget = pool; raw->enabled.sString = enabled ? "true" : "false";
+		NDb::Ptr<NDb::HealApplicator> db = raw;
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Heal> app = new Heal(pars);
+		receiver->SetHealth(400); receiver->SetEnergy(50);
+		if (dead) receiver->ChangeHealth(-1000);
+		if (forbidden) receiver->AddFlag(NDb::UNITFLAG_FORBIDLIFERESTORE | NDb::UNITFLAG_FORBIDENERGYRESTORE);
+		check(app->Init() && app->Run(), "heal initializes and completes");
+		check(receiver->GetHealth() == (dead ? 0 : 400) + (pool == NDb::HEALTARGET_HEALTH ? restored : 0), expression);
+		check(receiver->GetMana() == 50 + (pool == NDb::HEALTARGET_ENERGY ? restored : 0), "energy pool delta");
+		check(app->GetAmountRestored() == restored && app->GetVariable("amountRestored") == restored, "authored restoration variable reports actual delta");
+		if (forbidden) receiver->RemoveFlag(NDb::UNITFLAG_FORBIDLIFERESTORE | NDb::UNITFLAG_FORBIDENERGYRESTORE);
+	};
+	for (const auto pool : {NDb::HEALTARGET_HEALTH, NDb::HEALTARGET_ENERGY})
+	{
+		run("sStrength+tStrength", pool, 60);
+		run("999", pool, pool == NDb::HEALTARGET_HEALTH ? 600 : 150);
+		run("25", pool, 0, false); run("25", pool, 0, true, true); run("25", pool, 0, true, false, true);
+		for (const char* bad : {"", "0", "-1", "1/0", "1e39", "cMissing"}) run(bad, pool, 0);
+	}
+	run("(tMaxLife-tLife)*.25", NDb::HEALTARGET_HEALTH, 150);
+	run("tMaxEnergy-tEnergy", NDb::HEALTARGET_ENERGY, 150);
+	run("25", static_cast<NDb::EHealTarget>(99), 0);
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -134,7 +174,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		PFWorld* world = dynamic_cast<PFWorld*>(owner.GetPtr());
 		const bool loaded = world && world->LoadMap(db, 0, NCore::TPlayersStartInfo(), 0, false, PFResourcesCollection::TalentMap());
 		check(loaded, "applicator mock map loads");
-		if (loaded) DamageFormulas(check, world);
+		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); }
 	}
 	NDb::SessionRoot::InitRoot(saved);
 	std::printf("Applicator formulas: %d checks, %d failures\n", check.count, check.failed);

@@ -100,27 +100,22 @@ PFApplHeal::PFApplHeal(PFApplCreatePars const &cp)
 
 bool PFApplHeal::Start()
 {
-  PFBaseApplicator::Start();
-  amount = RetrieveParam(GetDB().amount, 0.0f);
-  if (IsValid(pReceiver))
-  {
-    amountRestored =
-      GetDB().healTarget == NDb::HEALTARGET_ENERGY
-        ? pReceiver->OnHealEnergy(GetAbilityOwner(), amount)
-        : pReceiver->OnHeal(GetAbilityOwner(), amount, GetDB().ignoreHealingMods);
-  }
-  else
-  {
-    amountRestored = 0.0f;
-  }
-  return true;
+	if (PFBaseApplicator::Start() || !IsUnitValid(pReceiver)) return true;
+	if (GetDB().healTarget != NDb::HEALTARGET_HEALTH && GetDB().healTarget != NDb::HEALTARGET_ENERGY)
+		return true;
+	amount = ReadLinuxApplicatorAmount(*this, GetDB().amount);
+	if (!std::isfinite(amount) || amount <= 0.0f) return true;
+	amountRestored = GetDB().healTarget == NDb::HEALTARGET_ENERGY
+		? pReceiver->OnHealEnergy(GetAbilityOwner(), amount)
+		: pReceiver->OnHeal(GetAbilityOwner(), amount, GetDB().ignoreHealingMods);
+	return true;
 }
 
 float PFApplHeal::GetVariable(const char* sVariableName) const
 {
   if (strcmp(sVariableName, "Amount") == 0)
     return amount;
-  if (strcmp(sVariableName, "AmountRestored") == 0)
+  if (strcmp(sVariableName, "AmountRestored") == 0 || strcmp(sVariableName, "amountRestored") == 0)
     return amountRestored;
   return PFBaseApplicator::GetVariable(sVariableName);
 }
