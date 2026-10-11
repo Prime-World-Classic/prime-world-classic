@@ -3,12 +3,14 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFState.h"
+#include "PFBaseMovingUnit.h"
 
 namespace NWorld
 {
 
 PFBaseUnitState::PFBaseUnitState(PFBaseUnit* unit) : TPFState<PFBaseUnit>(unit), PFWorldObjectBase(0, 0) {}
-PFBaseMovingUnitState::PFBaseMovingUnitState(PFBaseMovingUnit* unit) : TPFState<PFBaseMovingUnit>(unit), PFWorldObjectBase(0, 0) {}
+/** Nested production states resolve their world through this base object. */
+PFBaseMovingUnitState::PFBaseMovingUnitState(PFBaseMovingUnit* unit) : TPFState<PFBaseMovingUnit>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
 PFBaseHeroState::PFBaseHeroState(PFBaseHero* unit) : TPFState<PFBaseHero>(unit), PFWorldObjectBase(0, 0) {}
 PFMainBuildingState::PFMainBuildingState(PFMainBuilding* unit) : TPFState<PFMainBuilding>(unit), PFWorldObjectBase(0, 0) {}
 PFBasePetUnitState::PFBasePetUnitState(PFBasePetUnit* unit) : TPFState<PFBasePetUnit>(unit), PFWorldObjectBase(0, 0) {}

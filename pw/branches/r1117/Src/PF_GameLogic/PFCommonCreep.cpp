@@ -366,12 +366,24 @@ bool PFEvadeCreepBehaviour::OnStep(float dtInSeconds)
 		? !CanSelectTarget(pUnit->GetCurrentTarget())
 		: spawner && walkLimit >= 0 && fabs2(walkLimit)
 			< fabs2(pUnit->GetPosition().AsVec2D() - spawner->GetSpawnPosition().pos.AsVec2D());
-	if (!useEvade && outsideLeash && !pUnit->CheckFlag(NDb::UNITFLAG_FORBIDMOVE) && !IsCreepAtSpawner(2))
+	if (outsideLeash && !pUnit->CheckFlag(NDb::UNITFLAG_FORBIDMOVE))
 	{
-		pUnit->EnqueueState(new PFBaseUnitCombatMoveState(GetWorld(), pUnit,
-			initialPlacement.pos.AsVec2D(), pUnit->GetTileMap()->GetTileSize() * 2), true);
-		pUnit->SetNeedRotate(true);
+		if (useEvade)
+		{
+			pUnit->EnqueueState(new PFNeutralCreepEvadeState(GetWorld(), pUnit, initialPlacement), true);
+			return true;
+		}
+		if (!IsCreepAtSpawner(2))
+		{
+			pUnit->EnqueueState(new PFBaseUnitCombatMoveState(GetWorld(), pUnit,
+				initialPlacement.pos.AsVec2D(), pUnit->GetTileMap()->GetTileSize() * 2), true);
+			pUnit->SetNeedRotate(true);
+			return true;
+		}
 	}
+	if (useEvade && pUnit->IsIdle() && !pUnit->HasQueuedStates()
+		&& (!IsCreepAtSpawner(2) || pUnit->GetHealth() < pUnit->GetMaxHealth() || pUnit->GetEnergy() < pUnit->GetMaxEnergy()))
+		pUnit->PushState(new PFNeutralCreepWaitState(GetWorld(), pUnit, initialPlacement, evadeParams.waitForNextTargetTime));
 	return true;
 }
 /** Explicit orders retain original target strength and ignore the ordinary chase radius. */
@@ -383,7 +395,13 @@ void PFEvadeCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStro
 	PushAttackState(pUnit, pUnit, pTarget, bStrongTarget, false, true);
 	pUnit->SetNeedRotate(true);
 }
-void PFEvadeCreepBehaviour::OnDamage(const PFBaseUnitDamageDesc& desc) { (void)desc; }
+/** Damage starts the authored waiting period; target acquisition belongs to its state. */
+void PFEvadeCreepBehaviour::OnDamage(const PFBaseUnitDamageDesc& desc)
+{
+	(void)desc;
+	if (useEvade && IsUnitValid(pUnit) && !pUnit->GetCurrentState() && !pUnit->HasQueuedStates())
+		pUnit->PushState(new PFNeutralCreepWaitState(GetWorld(), pUnit, initialPlacement, evadeParams.waitForEvadeTime));
+}
 /** A stationary creep's leash is measured from its spawner, including attack reach. */
 bool PFEvadeCreepBehaviour::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) const
 {

@@ -32,6 +32,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 5/20 COMPLETE (`0.42.1`): stationary creeps automatically enqueue production attack orders and return through the existing combat-move state when displaced or beyond their leash, respecting movement forbids and queued orders. Home-state/arrival regressions reproduced. Correct automatic-target fixture to use an isolated world and one enemy (the earlier moving fixture retained its enemy seed, making exact target identity ambiguous). All 4,719 assertions, 28 CTests, six builds and Windows/shared byte checks pass. Evidence `/tmp/pw-b11-c5-{before,after,build,ctest}.log`. Authored evade wait/heal scheduling follows separately.
 
+- Chunk 6/20 COMPLETE (`0.42.2`): connect authored stationary-creep damage/idle/leash recovery to original PFNeutralCreepWaitState/PFNeutralCreepEvadeState, preserving existing healing and timeout algorithms. Tests exposed a deeper native PFBaseMovingUnitState constructor defect: it discarded owner-world context, so nested recovery transitioned with null world and completed immediately. Restore that context only on the Linux moving-unit base; original Windows bytes are unchanged. Six initial behavior failures and four isolated world-context/transition/healing failures reproduced; all 4,727 assertions, 28 CTests, six builds and thirteen-engine Windows/shared audits pass. Evidence `/tmp/pw-b11-c6-{before,world-before,after,build,ctest}.log`. Other base-state world constructors and full AI parity are not implied.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10
