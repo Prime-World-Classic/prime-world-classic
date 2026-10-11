@@ -170,6 +170,7 @@
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
 #include "LinuxBootstrap/visibility_lifecycle_probe.h"
+#include "LinuxBootstrap/visibility_query_probe.h"
 #include "LinuxBootstrap/scheduler_drain_probe.h"
 #include "LinuxBootstrap/ability_display.h"
 #include "LinuxBootstrap/fog_grid_probe.h"
@@ -71107,6 +71108,8 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-query-probe"))
+		return RunPrimeWorldLinuxVisibilityQueryProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-scheduler-drain-probe"))
 		return RunPrimeWorldLinuxSchedulerDrainProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))

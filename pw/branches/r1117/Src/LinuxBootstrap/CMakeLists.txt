@@ -444,6 +444,7 @@ add_executable(
 	world_grid_probe.cpp
 	formula_range_probe.cpp
 	visibility_lifecycle_probe.cpp
+	visibility_query_probe.cpp
 	scheduler_drain_probe.cpp
 	formula_context.cpp
 	fog_grid_probe.cpp
@@ -970,6 +971,8 @@ add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
 add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-grid-probe)
 add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 add_test(NAME LinuxVisibilityLifecycle COMMAND PrimeWorldLinuxClient --bootstrap-visibility-lifecycle-probe)
+add_test(NAME LinuxVisibilityQueries COMMAND PrimeWorldLinuxClient --bootstrap-visibility-query-probe)
+set_tests_properties(LinuxVisibilityQueries PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxSchedulerDrain COMMAND PrimeWorldLinuxClient --bootstrap-scheduler-drain-probe)
 set_tests_properties(LinuxSchedulerDrain PROPERTIES TIMEOUT 30)
 set_tests_properties(LinuxVisibilityLifecycle PROPERTIES TIMEOUT 30)

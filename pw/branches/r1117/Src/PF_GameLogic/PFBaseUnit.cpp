@@ -1916,14 +1916,103 @@ void PFBaseUnit::SetMurderContext(const MurderContext* const context) { murderCo
 int PFBaseUnit::GetAssistersCount() const { return murderContext ? murderContext->assisterCount : 0; }
 int PFBaseUnit::GetSpecCount() const { return murderContext ? murderContext->spectatorCount : 0; }
 int PFBaseUnit::GetPresentTeamActiveMembers() const { return murderContext ? murderContext->presentTeamActiveMembers : 0; }
-bool PFBaseUnit::CanSee(const CVec3&) const { return true; }
-bool PFBaseUnit::CanSee(const CVec2&) const { return true; }
-bool PFBaseUnit::CanSee(const SVector&) const { return true; }
-bool PFBaseUnit::CanSee(const PFLogicObject&) const { return true; }
-bool PFBaseUnit::IsPlacementVisible(int) const { return true; }
-bool PFBaseUnit::IsVisibleForEnemy(int) const { return visibleForEnemy; }
-bool PFBaseUnit::IsVisibleForFaction(int) const { return true; }
-bool PFBaseUnit::IsVisibleForFactionInternal(const NDb::EFaction) const { return true; }
+/** Windows personal sight is two-dimensional, independent of target height. */
+bool PFBaseUnit::CanSee(const CVec3& position) const
+{
+	return CanSee(position.AsVec2D());
+}
+
+/** Apply the Windows strict range gate, then query this unit's real fog observer.
+ * Team exploration or another unit's reveal cannot replace the personal cache.
+ * Invalid Linux context fails closed before narrowing coordinates or indexing slots.
+ */
+bool PFBaseUnit::CanSee(const CVec2& target) const
+{
+	const PFWorld* world = GetWorld();
+	const TileMap* tiles = GetTileMap();
+	const NDb::EFaction faction = GetWarfogFaction();
+	SVector tile, origin;
+	if (!world || !world->GetAIWorld() || !world->GetFogOfWar() ||
+		faction < 0 || faction >= visUnitData.size() ||
+		visUnitData[faction].warFogObjectID == WAR_FOG_BAD_ID ||
+		!LinuxWarFogTile(tiles, CVec3(target.x, target.y, 0), tile) ||
+		!LinuxWarFogTile(tiles, GetPosition(), origin))
+		return false;
+	const float range = GetVisibilityRange();
+	const float size = world->GetAIWorld()->GetMaxObjectSize();
+	const float paddedRange = range + size * 0.5f;
+	const float rangeSquared = paddedRange * paddedRange;
+	const float distanceSquared = fabs2(target - GetPosition().AsVec2D());
+	int radiusInTiles = 0;
+	if (!LinuxWarFogRadius(tiles, range, radiusInTiles) || !std::isfinite(size) || size < 0.0f ||
+		!std::isfinite(rangeSquared) || !std::isfinite(distanceSquared) || distanceSquared >= rangeSquared)
+		return false;
+	return world->GetFogOfWar()->CanObjectSeePosition(visUnitData[faction].warFogObjectID, tile);
+}
+
+/** Windows tile queries use the tile center for the personal distance gate. */
+bool PFBaseUnit::CanSee(const SVector& tile) const
+{
+	const TileMap* tiles = GetTileMap();
+	if (!tiles || tile.x < 0 || tile.y < 0 ||
+		tile.x >= tiles->GetSizeX() || tile.y >= tiles->GetSizeY())
+		return false;
+	return CanSee(tiles->GetPointByTile(tile));
+}
+
+/** Preserve self/allied shortcuts; enemy objects also require their visibility gate. */
+bool PFBaseUnit::CanSee(const PFLogicObject& object) const
+{
+	if (this == &object)
+		return true;
+	if (object.GetFaction() != GetFaction() && !object.IsVisibleForEnemy(GetFaction()))
+		return false;
+	return CanSee(object.GetPosition());
+}
+
+/** Current faction fog only; exploration and cached stealth are separate contracts. */
+bool PFBaseUnit::IsPlacementVisible(int faction) const
+{
+	const PFWorld* world = GetWorld();
+	SVector tile;
+	if (faction < 0 || faction >= NDb::KnownEnum<NDb::EFaction>::SizeOf() ||
+		!world || !world->GetFogOfWar() || !LinuxWarFogTile(GetTileMap(), GetPosition(), tile))
+		return false;
+	return world->GetFogOfWar()->IsTileVisible(tile, faction);
+}
+
+/** Consume cached stealth flags; all negative factions retain the Windows no-fog sentinel. */
+bool PFBaseUnit::IsVisibleForEnemy(int faction) const
+{
+	if (faction == NDb::FACTION_NEUTRAL)
+		return visibleForNeutral && IsPlacementVisible(faction);
+	if (faction < 0)
+		return visibleForEnemy;
+	return visibleForEnemy && IsPlacementVisible(faction);
+}
+
+/** Own-faction identity bypasses fog and stealth, as in the Windows implementation. */
+bool PFBaseUnit::IsVisibleForFaction(int faction) const
+{
+	return faction == GetFaction() || IsVisibleForEnemy(faction);
+}
+
+/** Internal visibility consumes only cached flags, deliberately excluding fog. */
+bool PFBaseUnit::IsVisibleForFactionInternal(const NDb::EFaction faction) const
+{
+	if (faction == GetFaction())
+		return true;
+	switch (faction)
+	{
+	case NDb::FACTION_NEUTRAL:
+		return visibleForNeutral;
+	case NDb::FACTION_FREEZE:
+	case NDb::FACTION_BURN:
+		return visibleForEnemy;
+	default:
+		return false;
+	}
+}
 void PFBaseUnit::SetVulnerable(bool vulnerable) { if (vulnerable) RemoveFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); else AddFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); }
 void PFBaseUnit::Hide(bool hide)
 {
