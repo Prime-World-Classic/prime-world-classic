@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "CTE_Controller.h"
 
 #include "PFBaseUnit.h"
@@ -77,7 +77,7 @@ namespace NGameX
 
     int damageIntensity = 0;
 
-    //получает дамаг
+    // 
     if (healthChange < 0)
     {
       for (int i = 0; i< damageAnimationTalbe.size(); i++)

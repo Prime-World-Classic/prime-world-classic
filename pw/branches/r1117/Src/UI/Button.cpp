@@ -2,7 +2,7 @@
 
 #include "../Scripts/lua.hpp"
 #include "Button.h"
-#include "../Render/materialspec.h"
+#include "../Render/MaterialSpec.h"
 
 namespace UI
 {

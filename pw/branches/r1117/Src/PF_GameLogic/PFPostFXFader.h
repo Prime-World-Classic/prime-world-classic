@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Render/FullscreenFX.h"
+#include "../Render/FullScreenFX.h"
 
 namespace PF_Render
 {

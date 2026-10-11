@@ -53,7 +53,7 @@ typedef unsigned long int         DiColor;
 //////////////////////////////////////////////////////////////////////////
 /// Some macroses from DiEngine
 //////////////////////////////////////////////////////////////////////////
-#include "..\System\Asserts.h"
+#include "../System/Asserts.h"
 #define diINLINE inline static
 
 #define DI_NEW(type) new type

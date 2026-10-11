@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollInstanceRemote )
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollInstanceRemote )

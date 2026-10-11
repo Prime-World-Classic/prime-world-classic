@@ -2,14 +2,13 @@
 #define SOCIALLOBBYREMOTEMM_H_INCLUDED
 
 #include "Network/TransportTypes.h"
+#include "Server/LiveMMaking/LiveMMakingTypes.h"
 #include <map>
 
 namespace mmaking
 {
   class ILiveMMaking;
   class ILiveMMakingClient;
-
-  namespace EServiceGameModes { enum Enum; }
 }
 
 

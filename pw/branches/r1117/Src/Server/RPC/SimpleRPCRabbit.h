@@ -33,11 +33,15 @@ public:
   bool isSnapshotRecieved;
   nstl::wstring sW;
   FixedVector<float, 20> ff;
+  int probeE;
+  unsigned long long probeV;
     
   SimpleRPCRabbit()
     :   is_processed(false),
   isSnapshotRecieved(false),
-  id(0xFFFFFFFF)
+  id(0xFFFFFFFF),
+  probeE(-999),
+  probeV(0)
     {
   }
 
@@ -48,22 +52,30 @@ public:
   cS(_cS),
   sS(_sS),
   vI(_vI),
-  data(_data)
+  data(_data),
+  probeE(-999),
+  probeV(0)
     {
   }
 
   SimpleRPCRabbit(int _id)
-    :   id(_id) 
+    :   id(_id), 
+    probeE(-999),
+    probeV(0)
     {
   }
 
   SimpleRPCRabbit(const nstl::wstring& _sW):  
-    sW(_sW)
+    sW(_sW),
+    probeE(-999),
+    probeV(0)
   {
   }
 
   SimpleRPCRabbit(const FixedVector<float, 20>& _ff, int dummy):  
-    ff(_ff)
+    ff(_ff),
+    probeE(-999),
+    probeV(0)
   {
   }
 
@@ -97,6 +109,14 @@ public:
     {
       _ack->Ack(456);
     }
+  }
+
+  // probe for the (enum, u64) argument marshalling bug (chat OnOpenSession case)
+  REMOTE void probeEnumU64(EGameFinishClientState::Enum _e, unsigned long long _v)
+  {
+    probeE = (int)_e;
+    probeV = _v;
+    is_processed = true;
   }
 };
 

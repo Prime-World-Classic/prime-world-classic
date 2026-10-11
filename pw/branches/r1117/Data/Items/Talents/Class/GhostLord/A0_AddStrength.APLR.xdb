@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatModApplicator>
+	<BackLink DBID="/Items/Talents/Class/GhostLord/A0_MakeGhost.SPLL" Count="2" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption></caption>
+	<constraint>None</constraint>
+	<dontUpdate>false</dontUpdate>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FToAAAADAAAARwAAAGEAAAB6AAAAR2hvc3RMb3JkQTRfRGVhdGhTcGVjdHJlMQAAAEdob3N0TG9yZF9BNHUAAABHaG9zdExvcmRfQTR1AFWL7IPsDGoBi0UQUGgAAAAAi00IixGLTQiLgpwBAAD/0DtFEHRYaBwAAACLTQiLEYtNCIuCqAEAAP/QhcB0KmgsAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+		<returnType>bool</returnType>
+		<sString>sender.applGhostLordA4_DeathSpectre1(UNIT) != pMisc  &amp;&amp; tal("GhostLord_A4u")</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<modifier>
+		<addValue>
+			<compiledString>FRAAAAABAAAAHAAAAEEwX0FkZEludGVsbGVjdABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+			<returnType>float</returnType>
+			<sString>cA0_AddIntellect</sString>
+		</addValue>
+		<multValue>
+			<compiledString></compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</multValue>
+		<stat>Strength</stat>
+		<topModifier>false</topModifier>
+		<variable></variable>
+	</modifier>
+	<providerName></providerName>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statModName></statModName>
+</StatModApplicator>

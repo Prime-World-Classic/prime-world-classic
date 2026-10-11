@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Texture>
+	<BackLink DBID="/Effects/Shots/Paint/_Purple_S5.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Shots/Paint/TrailPurple1_S5.TRSC" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/TrailPurple2_S5.TRSC" Count="1" />
+	<generatedFileName></generatedFileName>
+	<mipLevels>0</mipLevels>
+	<mipLevelUsage>AutoGenerate</mipLevelUsage>
+	<mipSharpenPasses></mipSharpenPasses>
+	<pixelFormat>DXT5</pixelFormat>
+	<size>
+		<height>128</height>
+		<width>512</width>
+	</size>
+	<srcFileName crc="0">/GFX_Textures/FlowBlue.png</srcFileName>
+	<startMipLevel>0</startMipLevel>
+	<textureFileName>/GFX_Textures/FlowBlue.dds</textureFileName>
+	<textureType>Color</textureType>
+</Texture>

@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A4.TALENT" Count="1" />
 	<name>A4u_Duration</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>9</sString>
+		<sString>10</sString>
 	</var>
 </UnitConstant>

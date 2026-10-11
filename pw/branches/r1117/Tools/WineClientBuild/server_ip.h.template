@@ -1,0 +1,36 @@
+#pragma once
+
+// Шаблон для Src/PW_Game/server_ip.h — он в .gitignore (per-deploy: IP бэкенда
+// и учётные значения). build_client_wine.sh генерирует файл из этого шаблона,
+// если его нет. Значения берутся из переменных окружения PW_* (см. --help)
+// либо из Tools/WineClientBuild/server_ip.env (тоже gitignored).
+
+#define SESSION_TOKEN "@SESSION_TOKEN@"
+#define API_KEY "@API_KEY@"
+// HTTP API back-end port (httpApi.js); the host comes from the service cfg.
+#define BACKEND_HTTP_PORT @BACKEND_HTTP_PORT@
+
+// Main server IP
+#define SERVER_IP_W L"@SERVER_IP@"
+#define SERVER_IP "@SERVER_IP@"
+
+// Proxy server IP
+#define SERVER_PROXY_IP_W SERVER_IP_W
+#define SERVER_PROXY_IP SERVER_IP
+
+// Radmin server IP
+#define MIRROR_SERVER_IP_W SERVER_IP_W
+#define MIRROR_SERVER_IP SERVER_IP
+
+#define SERVER_PORT "@SERVER_PORT@"
+#define LOGIN_PORT "@LOGIN_PORT@"
+
+#define SERVER_CLUSTER_PORT_FRONT @CLUSTER_PORT_FRONT@
+#define SERVER_CLUSTER_PORT_BACK @CLUSTER_PORT_BACK@
+
+#define SYNCHRONIZER_PORT @SYNCHRONIZER_PORT@
+
+
+extern int usedServer;
+static const char* SERVER_IP_ARRAY[] = {SERVER_IP, MIRROR_SERVER_IP, SERVER_PROXY_IP};
+static const wchar_t* SERVER_IP_W_ARRAY[] = {SERVER_IP_W, MIRROR_SERVER_IP_W, SERVER_PROXY_IP_W};

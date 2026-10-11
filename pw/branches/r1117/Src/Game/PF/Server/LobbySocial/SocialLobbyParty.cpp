@@ -263,7 +263,7 @@ void Party::RemoveRequestFromLine()
   NI_VERIFY( state == EPartyState::InLine, "", return );
   NI_ASSERT( mmReqId, "" );
 
-  Strong<RemoteMmLogic> logicStrong = logic;
+  Strong<RemoteMmLogic> logicStrong = logic.Get();
   
   if ( logicStrong )
     logicStrong->Interface()->RemoveMmRequest( mmReqId );
@@ -303,7 +303,7 @@ void Party::RemoveAllRequests( bool _logStatistics, UserContext * _exceptThis )
 
   for ( int mi = 0; mi < members.size(); ++mi )
   {
-    Strong<UserContext> memb = members[mi];
+    Strong<UserContext> memb = members[mi].Get();
     if ( !memb || ( memb == _exceptThis ) )
       continue;
     lockedControl->RemoveUserContext( memb, _logStatistics );

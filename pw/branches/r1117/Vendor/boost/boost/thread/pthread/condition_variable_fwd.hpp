@@ -12,6 +12,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/thread_time.hpp>
 #include <boost/thread/xtime.hpp>
+#include <boost/thread/xtime_helpers.hpp>
 
 #include <boost/config/abi_prefix.hpp>
 
@@ -59,7 +60,7 @@ namespace boost
                                boost::system_time const& wait_until);
         bool timed_wait(unique_lock<mutex>& m,xtime const& wait_until)
         {
-            return timed_wait(m,system_time(wait_until));
+            return timed_wait(m,xtime_to_system_time(wait_until));
         }
 
         template<typename duration_type>

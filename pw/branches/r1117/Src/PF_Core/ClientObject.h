@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IUpdateable.h"
+#include "ColorModificationChannel.h"
 
 #define CLIENT_OBJECT_WORLD( className, worldClassName )                                    \
 	public:																																										\
@@ -27,7 +28,8 @@ namespace PF_Core
   class WorldObjectBase;
   class ColorModificationChannel;
 	class BasicEffectAttached;
-  enum  ColorModificationPriority;
+  // ColorModificationPriority is defined in ColorModificationChannel.h
+  // forward declaration removed — include header directly when needed
 
   class PureClientObjectBase : public IUpdateable
   {

@@ -14,6 +14,8 @@
 	<BackLink DBID="/Effects/Shots/Spear/_Magic.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Test/Cast/_FXability2_2.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Buffs/Defence/_ShadowDef.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_ApplyCatBomb_2.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Burn/_Purple.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

@@ -54,6 +54,7 @@
 	<BackLink DBID="/Heroes/Witch/FXDeath.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Zealot/FXCatarh.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Zealot/FXCatarhDark.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_FireDoomPink.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

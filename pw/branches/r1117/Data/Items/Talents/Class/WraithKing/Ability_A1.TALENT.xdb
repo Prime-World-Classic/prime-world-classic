@@ -316,7 +316,7 @@
 																						<returnType>float</returnType>
 																						<sString>cA1_Damage</sString>
 																					</damage>
-																					<damageMode>12</damageMode>
+																					<damageMode>4</damageMode>
 																					<damageType>Material</damageType>
 																					<enabled>
 																						<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrwAAAD/0ItNCIsRi00Ii4K4AAAA3V34/9DcXfjf4PbEAXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>

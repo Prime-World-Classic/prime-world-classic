@@ -1,0 +1,724 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<MainBuilding parent="/Buildings/A/Main/_Parent.MBLD">
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
+	<abilities>
+		<Item href="/Buildings/DefaultStats/_Tower_SeeInvis.ABLT" />
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/AbilityToReduceCD.ABLT" />
+		<Item skip="1" />
+		<Item skip="1" />
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="5781BF24-1CD5-44F9-A496-D0394E079D4B">
+			<Ability>
+				<activeCustomTrigger>true</activeCustomTrigger>
+				<allowChase>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</allowChase>
+				<alternativeTargets />
+				<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+				<aoeHeight>0</aoeHeight>
+				<aoeMaterial href="" />
+				<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+				<aoeSize>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</aoeSize>
+				<aoeType>None</aoeType>
+				<applicators />
+				<autoTargetSelector href="" />
+				<caption></caption>
+				<castAllowRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</castAllowRange>
+				<castLimitations />
+				<commonDescription textref="" />
+				<compiledDescriptionA textref="" />
+				<compiledDescriptionB textref="" />
+				<conditionFormulas />
+				<constants href="" />
+				<cooldownTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTime>
+				<cooldownTimeSecondState>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTimeSecondState>
+				<description textref="" />
+				<dispatch href="" />
+				<flags>1</flags>
+				<image href="" />
+				<imageSecondState href="" />
+				<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+				<manaCost>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</manaCost>
+				<marker></marker>
+				<microAI href="" />
+				<minUseRangeCorrection>0</minUseRangeCorrection>
+				<name textref="" />
+				<node></node>
+				<passiveApplicators>
+					<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="147727D1-6C5A-49BD-8582-7D11818B232A">
+						<TriggerApplicator>
+							<actionsCount>
+								<compiledString></compiledString>
+								<returnType>int</returnType>
+								<sString>0</sString>
+							</actionsCount>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>0</behaviorFlags>
+							<caption>Cчитаем продолжительность игры</caption>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<playAck>false</playAck>
+							<processor href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="B649C5DF-20EF-4912-B095-E45345D1C1EE">
+								<EventProcessorCondition>
+									<applyTarget>AbilityTarget</applyTarget>
+									<condition>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</condition>
+									<events>8192</events>
+									<onlyParent>false</onlyParent>
+									<spell href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="0EAA3E29-9C92-4EA8-A96C-1A5BC5C2ECDB">
+										<Spell>
+											<applicators>
+												<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="9DBC8439-65B0-474E-B203-92838C2FC6CD">
+													<PermanentStatModApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>считаем продолжительность игры</caption>
+														<customApplyType>None</customApplyType>
+														<enabled>
+															<compiledString></compiledString>
+															<returnType>bool</returnType>
+															<sString>true</sString>
+														</enabled>
+														<formulaName>GameDurationAppl</formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<modifier>
+															<addValue>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+																<returnType>float</returnType>
+																<sString>0.1f</sString>
+															</addValue>
+															<multValue>
+																<compiledString></compiledString>
+																<returnType>float</returnType>
+																<sString>1.0f</sString>
+															</multValue>
+															<stat>Life</stat>
+															<topModifier>false</topModifier>
+															<variable>GameDuration</variable>
+														</modifier>
+														<providerName></providerName>
+													</PermanentStatModApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="07EC1759-A0C7-42B5-B3D6-F26A88BE7214">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</spell>
+								</EventProcessorCondition>
+							</processor>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<useAbilityCooldown>false</useAbilityCooldown>
+							<useAbilityOwnerMana>false</useAbilityOwnerMana>
+						</TriggerApplicator>
+					</Item>
+				</passiveApplicators>
+				<requireLineOfSight>true</requireLineOfSight>
+				<shortDescription textref="" />
+				<targetType>136258047</targetType>
+				<type>Passive</type>
+				<useRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</useRange>
+				<useRangeMaterial href="" />
+				<warFogRemoveRadius>0</warFogRemoveRadius>
+				<warFogRemoveTime>0</warFogRemoveTime>
+			</Ability>
+		</Item>
+	</abilities>
+	<aoeRadius>20</aoeRadius>
+	<aoeUnitsCount>5</aoeUnitsCount>
+	<attackAbility href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="9E0B738F-2C87-4E34-BF0E-7E4773C1F2D0">
+		<BaseAttack>
+			<activeCustomTrigger>true</activeCustomTrigger>
+			<allowChase>
+				<compiledString></compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</allowChase>
+			<alternativeTargets />
+			<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+			<aoeHeight>0</aoeHeight>
+			<aoeMaterial href="" />
+			<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+			<aoeSize>
+				<compiledString></compiledString>
+				<returnType>float</returnType>
+				<sString>0.0f</sString>
+			</aoeSize>
+			<aoeType>None</aoeType>
+			<applicators>
+				<Item href="/Buildings/DefaultStats/MainBuildingAutoAttack.APLR" />
+				<Item href="/Buildings/DefaultStats/MainBuildingAutoAttackEnergy.APLR" />
+				<Item href="/Buildings/DefaultStats/StackTowerDamage.APLR" />
+			</applicators>
+			<autoTargetSelector href="" />
+			<caption></caption>
+			<castAllowRange>
+				<compiledString></compiledString>
+				<returnType>float</returnType>
+				<sString>0.0f</sString>
+			</castAllowRange>
+			<castLimitations />
+			<commonDescription textref="" />
+			<compiledDescriptionA textref="" />
+			<compiledDescriptionB textref="" />
+			<conditionFormulas />
+			<constants href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="913B991E-0A07-40F4-8C80-4C8CDBA4DFA0">
+				<UnitConstantsContainer>
+					<vars>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="BAE48160-41AD-40DE-BF98-6CA2626B6058">
+							<UnitConstant>
+								<name>BonusDamagePercentPerAttack</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+									<returnType>float</returnType>
+									<sString>10</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="B631EEC8-1FBC-4C91-A420-46732A991CD1">
+							<UnitConstant>
+								<name>BonusDamagePercentCup</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+									<returnType>float</returnType>
+									<sString>50</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="B483F75A-E585-4FEE-9DD0-2D15DCB43F82">
+							<UnitConstant>
+								<name>BonusDamagePercent</name>
+								<var>
+									<compiledString>FUAAAAADAAAATwAAAG0AAAB/AAAAQm9udXNEYW1hZ2VQZXJjZW50Q3VwAAAAQm9udXNEYW1hZ2VQZXJjZW50UGVyQXR0YWNrAFRvd2VyVGFyZ2V0AFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SUdkcJItFDFCLTQhRaBgAAACLVRCLAotNEItQUP/SaDQAAACLRQiLEItNCIuCiAEAAN1d+P/Q3E342V302UX0UdkcJOgHAAAAg8QIi+Vdw1WL7FHZRQjZRQze2d/g9sRBdQjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
+									<returnType>float</returnType>
+									<sString>min((cBonusDamagePercentPerAttack * sender.vTowerTarget) , cBonusDamagePercentCup)</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="39C2D040-5EC1-4044-8164-69CD07C405FD">
+							<UnitConstant>
+								<name>Tower_AttackSpeed</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.5f</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="463FF95D-D7C7-47DB-82FD-E4DFBA59463F">
+							<UnitConstant>
+								<name>LowDmgVsSolders</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.6f*2</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Buildings/DefaultStats/const_ShieldAmount" />
+						<Item href="/Buildings/DefaultStats/const_FXShieldTrigger" />
+						<Item href="/Buildings/DefaultStats/const_ShieldRechargeTime" />
+						<Item href="/Buildings/DefaultStats/const_TECH_ShieldCheckPeriod" />
+						<Item href="/Buildings/DefaultStats/const_TT_ShieldCapacityCurrent" />
+					</vars>
+				</UnitConstantsContainer>
+			</constants>
+			<cooldownTime>
+				<compiledString></compiledString>
+				<returnType>float</returnType>
+				<sString>0.0f</sString>
+			</cooldownTime>
+			<cooldownTimeSecondState>
+				<compiledString></compiledString>
+				<returnType>float</returnType>
+				<sString>0.0f</sString>
+			</cooldownTimeSecondState>
+			<description textref="" />
+			<dispatch href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="24608047-0C4D-402D-9637-6F2F968AB0CE">
+				<DispatchLinear>
+					<aiming>Straight</aiming>
+					<alwaysApply>false</alwaysApply>
+					<applyEffect>
+						<Item href="/Effects/Shots/Lightning/_Hit.EFFT" />
+						<Item href="/Effects/Shots/Bird/_Hit.EFFT" />
+					</applyEffect>
+					<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+					<applyEffectOrientation>Default</applyEffectOrientation>
+					<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+					<dieAfterApply>true</dieAfterApply>
+					<dispatchEffect>
+						<Item href="/Effects/Shots/Lightning/_.EFFT" />
+						<Item href="/Effects/Shots/Bird/_.EFFT" />
+					</dispatchEffect>
+					<flags>2</flags>
+					<flyMode>Linear</flyMode>
+					<fromLocator>Attack</fromLocator>
+					<height>0</height>
+					<killEffect>true</killEffect>
+					<locatorOrient>false</locatorOrient>
+					<maxDeviation>180</maxDeviation>
+					<maxDistance>50</maxDistance>
+					<maxRise>0</maxRise>
+					<minRise>0</minRise>
+					<persistentApplicators />
+					<speed>15</speed>
+					<suspendTime>0</suspendTime>
+					<toLocator>Body</toLocator>
+				</DispatchLinear>
+			</dispatch>
+			<flags>1</flags>
+			<image href="" />
+			<imageSecondState href="" />
+			<isMelee>false</isMelee>
+			<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+			<manaCost>
+				<compiledString></compiledString>
+				<returnType>float</returnType>
+				<sString>0.0f</sString>
+			</manaCost>
+			<marker></marker>
+			<microAI href="" />
+			<minUseRangeCorrection>0</minUseRangeCorrection>
+			<name textref="" />
+			<node></node>
+			<passiveApplicators>
+				<Item href="/Buildings/DefaultStats/StackTowerRefresh.APLR" />
+				<Item href="/Buildings/DefaultStats/Tower_BaseAttackMod.APLR" />
+				<Item href="/Buildings/DefaultStats/Tower_FixAttackSpeed.APLR" />
+				<Item href="/Buildings/DefaultStats/status_Building_NoCrit.APLR" />
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="92519D7B-4CA1-4FEE-8014-6484F35FFE0F">
+					<TriggerApplicator>
+						<actionsCount>
+							<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+							<returnType>int</returnType>
+							<sString>0</sString>
+						</actionsCount>
+						<applyTarget>AbilityOwner</applyTarget>
+						<behaviorFlags>0</behaviorFlags>
+						<caption>Триггер на щит (если его нет)</caption>
+						<effect>
+							<Item href="" />
+							<Item href="" />
+						</effect>
+						<enabled>
+							<compiledString>FQoAAAABAAAAFAAAAENhbnREZWF0aABVi+xqAItFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9AzyTtFEA+UwYrBXcM=</compiledString>
+							<returnType>bool</returnType>
+							<sString>sender.applCantDeath(GLOBAL) == pMisc</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<lifeTime>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</lifeTime>
+						<LoggingEvent>-1</LoggingEvent>
+						<playAck>false</playAck>
+						<processor href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="13D71EF5-7F78-4D92-BA80-E26D4576DB52">
+							<EventProcessorCondition>
+								<applyTarget>AbilityOwner</applyTarget>
+								<condition>
+									<compiledString>FRMAAAACAAAAIAAAAEcAAABTaGllbGRSZWNoYXJnZVRpbWUAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SUdkcJItFCIsQi00Ii4KsAQAA/9DcHWkAAADf4PbEQXoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+									<returnType>bool</returnType>
+									<sString>sender.GetDamageTaken(cShieldRechargeTime) &lt;= 0</sString>
+								</condition>
+								<events>8192</events>
+								<onlyParent>false</onlyParent>
+								<spell href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="48FF0A46-363E-40C3-9748-EED557F68667">
+									<Spell>
+										<applicators>
+											<Item href="/Buildings/DefaultStats/status_Building_RechargableShield.APLR" />
+										</applicators>
+										<dispatch href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="1D6B7DFC-1C2A-458A-A4A0-B6746B2EE8F7">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+							</EventProcessorCondition>
+						</processor>
+						<providerName></providerName>
+						<startCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</startCondition>
+						<useAbilityCooldown>false</useAbilityCooldown>
+						<useAbilityOwnerMana>false</useAbilityOwnerMana>
+					</TriggerApplicator>
+				</Item>
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="364FAA78-3B76-42E8-9882-E0E10EF3EDE7">
+					<SpellPeriodicallyApplicator>
+						<applyTarget>AbilityOwner</applyTarget>
+						<behaviorFlags>0</behaviorFlags>
+						<caption>если щит есть</caption>
+						<effect>
+							<Item href="" />
+							<Item href="" />
+						</effect>
+						<enabled>
+							<compiledString>FQoAAAABAAAAFAAAAENhbnREZWF0aABVi+xqAItFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9AzyTtFEA+VwYrBXcM=</compiledString>
+							<returnType>bool</returnType>
+							<sString>sender.applCantDeath(GLOBAL) != pMisc</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<lifeTime>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</lifeTime>
+						<LoggingEvent>-1</LoggingEvent>
+						<period>
+							<compiledString>FRcAAAABAAAAIwAAAFRFQ0hfU2hpZWxkQ2hlY2tQZXJvaWQAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>cTECH_ShieldCheckPeroid</sString>
+						</period>
+						<providerName></providerName>
+						<scaleMode>ScaleIsCount</scaleMode>
+						<spell href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="BE39BF78-B7C9-4070-A938-4A41D07ACD90">
+							<Spell>
+								<applicators>
+									<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="83373AA1-E095-4BCF-8B39-AD33EEC8AE7B">
+										<SpellSwitchApplicator>
+											<activeSpellIndex>
+												<compiledString>FS8AAAADAAAAPAAAAFQAAABpAAAAQ2FudERlYXRoAAAAZGFtYWdlVG9BYnNvcmIAAEN1cnJlbnRTaGllbGRWYWx1ZQBVi+yD7BBqAYtFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9CJRfxoHAAAAItNCIsRi00Ii4KIAQAA/9BoDAAAAItN/IsRi038i0JU3V30/9DdRfTa6d/g9sREegnHRfAAAAAA6wfHRfABAAAAi0Xwi+Vdww==</compiledString>
+												<returnType>int</returnType>
+												<sString>sender.applCantDeath(UNIT)-&gt;GetVariable("damageToAbsorb") == sender.vCurrentShieldValue ? 0 : 1</sString>
+											</activeSpellIndex>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<caption>got shield damaged in TECH_period?</caption>
+											<dontUseDispatches>true</dontUseDispatches>
+											<enabled>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<spells>
+												<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="925E2A34-9C57-4893-94F0-480C841D292F">
+													<Spell>
+														<applicators>
+															<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="3ECCC8DC-6600-4159-B867-1279D3F706F6">
+																<SpellSwitchApplicator>
+																	<activeSpellIndex>
+																		<compiledString>FT8AAAADAAAARgAAAGMAAACAAAAAVEVDSF9TaGllbGRDb3VudGVyAABTaGllbGRSZWNoYXJnZVRpbWUAAFRFQ0hfU2hpZWxkQ2hlY2tQZXJvaWQAVYvsg+wUaAAAAACLRQiLEItNCIuCiAEAAP/Qi00MUYtVCFJoFAAAAItFEIsQi00Qi0JQ3V34/9CLTQxRi1UIUmgoAAAAi0UQixCLTRCLQlDdXfD/0Nx98Nxd+N/g9sRBegnHRewAAAAA6wfHRewBAAAAi0Xsi+Vdww==</compiledString>
+																		<returnType>int</returnType>
+																		<sString>sender.vTECH_ShieldCounter &gt;= (cShieldRechargeTime/cTECH_ShieldCheckPeroid) ? 0 : 1</sString>
+																	</activeSpellIndex>
+																	<applyTarget>ApplicatorTarget</applyTarget>
+																	<caption></caption>
+																	<dontUseDispatches>true</dontUseDispatches>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<providerName></providerName>
+																	<spells>
+																		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="8A2FA1C6-3215-4D90-B850-063EA2D8B0ED">
+																			<Spell>
+																				<applicators>
+																					<Item href="/Buildings/DefaultStats/status_Building_RechargableShield.APLR" />
+																				</applicators>
+																				<dispatch href="" />
+																			</Spell>
+																		</Item>
+																		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="BFA6DA9E-7591-4E45-A192-8464CB33F270">
+																			<Spell>
+																				<applicators>
+																					<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="032C113C-885F-4036-8DD0-3EAA175A3E2E">
+																						<PermanentStatModApplicator>
+																							<applyTarget>ApplicatorTarget</applyTarget>
+																							<caption>counter++</caption>
+																							<customApplyType>None</customApplyType>
+																							<enabled>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</enabled>
+																							<formulaName></formulaName>
+																							<LoggingEvent>-1</LoggingEvent>
+																							<modifier>
+																								<addValue>
+																									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+																									<returnType>float</returnType>
+																									<sString>1.0f</sString>
+																								</addValue>
+																								<multValue>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>1.0f</sString>
+																								</multValue>
+																								<stat>Life</stat>
+																								<topModifier>false</topModifier>
+																								<variable>TECH_ShieldCounter</variable>
+																							</modifier>
+																							<providerName></providerName>
+																						</PermanentStatModApplicator>
+																					</Item>
+																				</applicators>
+																				<dispatch href="" />
+																			</Spell>
+																		</Item>
+																	</spells>
+																</SpellSwitchApplicator>
+															</Item>
+														</applicators>
+														<dispatch href="" />
+													</Spell>
+												</Item>
+												<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="873C574B-F94E-436F-BA08-ACD5D671301E">
+													<Spell>
+														<applicators>
+															<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="EF3F7697-1218-4052-8197-EA592C54016B">
+																<PermanentStatModApplicator>
+																	<applyTarget>ApplicatorTarget</applyTarget>
+																	<caption>save old shield value</caption>
+																	<customApplyType>None</customApplyType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQQ==</compiledString>
+																			<returnType>float</returnType>
+																			<sString>12</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																			<returnType>float</returnType>
+																			<sString>0.0f</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>CurrentShieldValue</variable>
+																	</modifier>
+																	<providerName></providerName>
+																</PermanentStatModApplicator>
+															</Item>
+															<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="81877A3D-C085-42E7-BEB1-01A28A832C1A">
+																<PermanentStatModApplicator>
+																	<applyTarget>ApplicatorTarget</applyTarget>
+																	<caption>save new shield value</caption>
+																	<customApplyType>None</customApplyType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FRsAAAACAAAAJgAAAD4AAABDYW50RGVhdGgAAABkYW1hZ2VUb0Fic29yYgBVi+xRagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QiUX8aAwAAACLTfyLEYtN/ItCVP/Qi+Vdww==</compiledString>
+																			<returnType>float</returnType>
+																			<sString>sender.applCantDeath(UNIT)-&gt;GetVariable("damageToAbsorb")</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																			<returnType>float</returnType>
+																			<sString>0</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>CurrentShieldValue</variable>
+																	</modifier>
+																	<providerName></providerName>
+																</PermanentStatModApplicator>
+															</Item>
+															<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="F13455F7-0D3F-4D62-8EB5-B1050ABE4A9F">
+																<PermanentStatModApplicator>
+																	<applyTarget>ApplicatorTarget</applyTarget>
+																	<caption>reset counter</caption>
+																	<customApplyType>None</customApplyType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																			<returnType>float</returnType>
+																			<sString>0.0f</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																			<returnType>float</returnType>
+																			<sString>0.0f</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>TECH_ShieldCounter</variable>
+																	</modifier>
+																	<providerName></providerName>
+																</PermanentStatModApplicator>
+															</Item>
+														</applicators>
+														<dispatch href="" />
+													</Spell>
+												</Item>
+											</spells>
+										</SpellSwitchApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="41A942B7-1114-45B4-B786-9FE0C83DF3B2">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>false</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+						<startCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</startCondition>
+						<startOffset>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>0.0f</sString>
+						</startOffset>
+						<targetSelector href="" />
+					</SpellPeriodicallyApplicator>
+				</Item>
+			</passiveApplicators>
+			<requireLineOfSight>true</requireLineOfSight>
+			<shortDescription textref="" />
+			<targetType>6103551</targetType>
+			<type>Simple</type>
+			<useRange>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</useRange>
+			<useRangeMaterial href="" />
+			<warFogRemoveRadius>0</warFogRemoveRadius>
+			<warFogRemoveTime>0</warFogRemoveTime>
+		</BaseAttack>
+	</attackAbility>
+	<maxAOEDelay>180</maxAOEDelay>
+	<minAOEDelay>180</minAOEDelay>
+	<stats href="/Maps/Multiplayer/ARAM_SNOW/Mains/_A.MBLD" id="4210A27B-1504-4E47-88FA-B28D06CE6CA1">
+		<StatsContainer parent="/Buildings/DefaultStats/Main_MidOnly.STCN">
+			<stats>
+				<Item>
+					<value>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DALiIRg==</compiledString>
+						<returnType>float</returnType>
+						<sString>25000*0.7</sString>
+					</value>
+				</Item>
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+			</stats>
+		</StatsContainer>
+	</stats>
+	<targetingParams href="/GameLogic/Main_TargetingParams.UNTP" />
+</MainBuilding>

@@ -1,7 +1,7 @@
 #ifndef LOBBYSOCIALPROXY_H_INCLUDED
 #define LOBBYSOCIALPROXY_H_INCLUDED
 
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "Server/LobbySocial/SocialLobbyTypes.h"
 #include "LobbyConfig.h"
 #include <list>

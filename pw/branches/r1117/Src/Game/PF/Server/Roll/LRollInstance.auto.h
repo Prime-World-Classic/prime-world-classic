@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "roll::IInstance::Roll", 3, false, rpc::GetMethodCode(&roll::IInstance::Roll) },
-        { "roll::IInstance::ForgeRoll", 2, false, rpc::GetMethodCode(&roll::IInstance::ForgeRoll) },
+        { "roll::IInstance::Roll", 3, false, rpc::GetMethodCode(&roll::IInstance::Roll), 7 },
+        { "roll::IInstance::ForgeRoll", 2, false, rpc::GetMethodCode(&roll::IInstance::ForgeRoll), 3 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

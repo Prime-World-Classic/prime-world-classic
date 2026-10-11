@@ -1386,6 +1386,14 @@
 									>
 								</File>
 								<File
+									RelativePath="..\Game\PF\Server\LobbyPvx\LobbyFinishDelivery.cpp"
+									>
+								</File>
+								<File
+									RelativePath="..\Game\PF\Server\LobbyPvx\LobbyFinishDelivery.h"
+									>
+								</File>
+								<File
 									RelativePath="..\Game\PF\Server\LobbyPvx\LobbyIEntrance.h"
 									>
 								</File>

@@ -64,13 +64,35 @@ namespace Transport
     }
   }
 
+  // Note: NStr::IsDecNumber rejects strings with a leading zero
+  // (it treats "00" as a hex literal), so for the "class_NN" instance
+  // suffixes ("00", "01", ...) a plain all-digits check is used instead.
+  bool isDigitsSuffix( char const * s )
+  {
+    if ( !s || !*s )
+      return false;
+    for ( char const * p = s; *p; ++p )
+      if ( !NStr::IsDecDigit( *p ) )
+        return false;
+    return true;
+  }
+
   int getServiceIndexPos( TServiceId const & service, int& indexPos )
   {
     indexPos = -1;
 
     char* idx = NStr::FindLastChar(service.c_str(), '/');
     if ( !idx )
+    {
+      // Linux single-process deployment: instance ids are "class_NN".
+      char* uscore = NStr::FindLastChar( service.c_str(), '_' );
+      if ( uscore && isDigitsSuffix( uscore + 1 ) )
+      {
+        indexPos = uscore - service.c_str() + 1;
+        return NStr::ToInt( uscore + 1 );
+      }
       return -1;
+    }
 
     if (!NStr::IsDecNumber(idx + 1))
       return -1;
@@ -94,9 +116,16 @@ namespace Transport
     char const * lastslash = 0;
     findLastSlashes(service.c_str(), prevlastslash, lastslash);
     if (!prevlastslash && !lastslash)
-    //  no slashes - input is class name
+    //  no slashes - input is class name (possibly with an instance suffix)
     {
-      result->AssignN( service.c_str(), service.size() );
+      // The Linux single-process deployment names local service instances
+      // "class_NN" (see NivalServerBase::StartLocalServices). Strip the
+      // trailing numeric suffix so class-based lookups keep working.
+      char const * underscore = NStr::FindLastChar( service.c_str(), '_' );
+      if ( underscore && isDigitsSuffix( underscore + 1 ) )
+        result->AssignN( service.c_str(), underscore - service.c_str() );
+      else
+        result->AssignN( service.c_str(), service.size() );
     }
     else
     if (prevlastslash)

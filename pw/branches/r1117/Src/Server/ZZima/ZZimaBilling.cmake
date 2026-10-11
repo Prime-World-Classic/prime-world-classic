@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ZZima_ZZimaBilling SimpleBillingProcessor.cpp SimpleBillingProcessor.h ZZimaBillingProcessor.cpp ZZimaBillingProcessor.h BillingProcessor.h)
-set(LIBRARIES_Src_Server_ZZima_ZZimaBilling )

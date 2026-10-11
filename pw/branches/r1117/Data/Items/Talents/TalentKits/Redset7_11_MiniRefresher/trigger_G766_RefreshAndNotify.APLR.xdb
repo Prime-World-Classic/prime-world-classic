@@ -140,7 +140,7 @@
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
 	<actionsCount>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
 		<returnType>int</returnType>
 		<sString>0</sString>
 	</actionsCount>
@@ -158,7 +158,7 @@
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 		<returnType>float</returnType>
 		<sString>-1.0</sString>
 	</lifeTime>
@@ -179,7 +179,7 @@
 	</processor>
 	<providerName></providerName>
 	<startCondition>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 		<returnType>bool</returnType>
 		<sString>true</sString>
 	</startCondition>

@@ -6,6 +6,7 @@ namespace newLogin
 
 SERIALIZE_FACTORY( LoginHello );
 SERIALIZE_FACTORY( LoginReply );
+SERIALIZE_FACTORY( WebSessionData );
 SERIALIZE_FACTORY( ServiceRequest )
 SERIALIZE_FACTORY( ServiceReqReply );
 SERIALIZE_FACTORY( FrontendHello );

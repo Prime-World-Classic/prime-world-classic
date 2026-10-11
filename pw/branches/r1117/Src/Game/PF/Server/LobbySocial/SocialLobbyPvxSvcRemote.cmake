@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LobbySocial_SocialLobbyPvxSvcRemote ISocialLobbyPvxSvc.h)
-set(LIBRARIES_Src_Game_PF_Server_LobbySocial_SocialLobbyPvxSvcRemote )

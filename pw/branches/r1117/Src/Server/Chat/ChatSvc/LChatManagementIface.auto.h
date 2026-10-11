@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "chat::IOpenSessionCallback::OnOpenSession", 2, false, rpc::GetMethodCode(&chat::IOpenSessionCallback::OnOpenSession) },
+        { "chat::IOpenSessionCallback::OnOpenSession", 2, false, rpc::GetMethodCode(&chat::IOpenSessionCallback::OnOpenSession), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -113,7 +113,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "chat::IOpenChannelCallback::OnOpenChannel", 4, false, rpc::GetMethodCode(&chat::IOpenChannelCallback::OnOpenChannel) },
+        { "chat::IOpenChannelCallback::OnOpenChannel", 4, false, rpc::GetMethodCode(&chat::IOpenChannelCallback::OnOpenChannel), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -188,12 +188,12 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "chat::IChatManagement::OpenSession", 2, false, rpc::GetMethodCode(&chat::IChatManagement::OpenSession) },
-        { "chat::IChatManagement::CloseSession", 1, false, rpc::GetMethodCode(&chat::IChatManagement::CloseSession) },
-        { "chat::IChatManagement::OpenChannel", 4, false, rpc::GetMethodCode(&chat::IChatManagement::OpenChannel) },
-        { "chat::IChatManagement::CloseChannel", 2, false, rpc::GetMethodCode(&chat::IChatManagement::CloseChannel) },
-        { "chat::IChatManagement::AddUser2Channel", 4, false, rpc::GetMethodCode(&chat::IChatManagement::AddUser2Channel) },
-        { "chat::IChatManagement::RemoveUser", 3, false, rpc::GetMethodCode(&chat::IChatManagement::RemoveUser) },
+        { "chat::IChatManagement::OpenSession", 2, false, rpc::GetMethodCode(&chat::IChatManagement::OpenSession), 3 },
+        { "chat::IChatManagement::CloseSession", 1, false, rpc::GetMethodCode(&chat::IChatManagement::CloseSession), 0 },
+        { "chat::IChatManagement::OpenChannel", 4, false, rpc::GetMethodCode(&chat::IChatManagement::OpenChannel), 9 },
+        { "chat::IChatManagement::CloseChannel", 2, false, rpc::GetMethodCode(&chat::IChatManagement::CloseChannel), 0 },
+        { "chat::IChatManagement::AddUser2Channel", 4, false, rpc::GetMethodCode(&chat::IChatManagement::AddUser2Channel), 8 },
+        { "chat::IChatManagement::RemoveUser", 3, false, rpc::GetMethodCode(&chat::IChatManagement::RemoveUser), 4 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

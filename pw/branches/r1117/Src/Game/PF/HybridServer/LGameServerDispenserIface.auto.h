@@ -40,7 +40,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "HybridServer::IGameServerDispenser::AcquireNewServer", 3, false, rpc::GetMethodCode(&HybridServer::IGameServerDispenser::AcquireNewServer) },
+        { "HybridServer::IGameServerDispenser::AcquireNewServer", 3, false, rpc::GetMethodCode(&HybridServer::IGameServerDispenser::AcquireNewServer), 7 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -115,7 +115,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "HybridServer::IGameServerDispenserCallback::GameServerAllocated", 3, false, rpc::GetMethodCode(&HybridServer::IGameServerDispenserCallback::GameServerAllocated) },
+        { "HybridServer::IGameServerDispenserCallback::GameServerAllocated", 3, false, rpc::GetMethodCode(&HybridServer::IGameServerDispenserCallback::GameServerAllocated), 7 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

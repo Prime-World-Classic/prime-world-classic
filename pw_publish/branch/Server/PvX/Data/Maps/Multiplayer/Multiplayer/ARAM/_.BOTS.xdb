@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BotsSettings>
+	<BackLink DBID="/Maps/Multiplayer/ARAM/Mod1/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMPSTTN" Count="1" />
+	<doNotBuyMana>
+		<Item href="/Heroes/Vampire/_.HROB" />
+	</doNotBuyMana>
+	<enableBotsAI>true</enableBotsAI>
+	<escapeTowerDistance>20</escapeTowerDistance>
+	<forcedFollowRange>20</forcedFollowRange>
+	<healthFractionToMoveToFront>1</healthFractionToMoveToFront>
+	<healthFractionToRetreatToBase>0</healthFractionToRetreatToBase>
+	<healthToRetreatToBase>60</healthToRetreatToBase>
+	<healthUsePotionThreshold>0.7</healthUsePotionThreshold>
+	<manaUsePotionThreshold>0.5</manaUsePotionThreshold>
+	<maxHealthPotion>2</maxHealthPotion>
+	<maxManaPotion>1</maxManaPotion>
+	<midOnly>true</midOnly>
+	<minShoppingMoney>100</minShoppingMoney>
+	<timeToGo>1</timeToGo>
+	<timeToTeleport>180</timeToTeleport>
+</BotsSettings>

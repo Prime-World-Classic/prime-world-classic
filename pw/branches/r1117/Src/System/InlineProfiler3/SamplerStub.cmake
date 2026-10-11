@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_InlineProfiler3_SamplerStub InlineProfiler3.h)
-set(LIBRARIES_Src_System_InlineProfiler3_SamplerStub )

@@ -84,6 +84,13 @@ struct MethodInfo
   uint paramsCount;
   bool hasRecieveTime;
   uint methodCode;
+  // Bitmask over parameters (bit i = parameter i). Set for parameters that are
+  // pointers/references to plain structs in the C++ signature. Such parameters are
+  // marshalled on the wire as RawStruct (struct content), but the callee expects a
+  // POINTER to the content (the 32-bit legacy contract, see Stack::FillStack RawStruct
+  // case). Parameters taken by value (enums, small structs) must NOT have the bit set:
+  // the generated VCall value-copies them, so the stack must contain the content.
+  uint structPtrParams;
 };
 
 enum ParamTypes 

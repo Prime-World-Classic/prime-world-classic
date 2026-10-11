@@ -3,6 +3,7 @@
 	<BackLink DBID="/Heroes/Plane/S1/_.SOBJ" Count="4" />
 	<BackLink DBID="/Effects/Shots/Rocket/_S1.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Plane/S1/FXBomb.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Rocket/_S1_Pink_TRS.PRXY" Count="1" />
 	<caption>plane</caption>
 	<diffuseColor>
 		<A>1</A>

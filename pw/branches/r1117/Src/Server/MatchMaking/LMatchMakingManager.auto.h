@@ -39,8 +39,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "MatchMaking::Manager::RequestMatchMaking", 1, false, rpc::GetMethodCode(&MatchMaking::Manager::RequestMatchMaking) },
-        { "MatchMaking::Manager::CancelMatchMaking", 1, false, rpc::GetMethodCode(&MatchMaking::Manager::CancelMatchMaking) },
+        { "MatchMaking::Manager::RequestMatchMaking", 1, false, rpc::GetMethodCode(&MatchMaking::Manager::RequestMatchMaking), 1 },
+        { "MatchMaking::Manager::CancelMatchMaking", 1, false, rpc::GetMethodCode(&MatchMaking::Manager::CancelMatchMaking), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -67,9 +67,9 @@
 					<UnitConstant>
 						<name>A4_BaseDamage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADwQgAAYUQ=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADYQgCASkQ=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 120, 900)</sString>
+							<sString>damageScale(sIntellect, 108, 810)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -87,9 +87,9 @@
 					<UnitConstant>
 						<name>TT_A4_2u_Percent</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAMQg==</compiledString>
 							<returnType>float</returnType>
-							<sString>40</sString>
+							<sString>35</sString>
 						</var>
 					</UnitConstant>
 				</Item>

@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Class/Healer/Ability5_SUP.TALENT" Count="1" />
 	<name>CompensationPercent</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>50</sString>
+		<sString>30</sString>
 	</var>
 </UnitConstant>

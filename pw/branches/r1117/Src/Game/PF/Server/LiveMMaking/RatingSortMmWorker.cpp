@@ -77,7 +77,11 @@ activeJobNumber( 0 )
 
   completeEvents.resize( workerThreads.size() );
   for ( size_t i = 0; i < workerThreads.size(); ++i )
+#if defined(NV_WIN_PLATFORM)
     completeEvents[i] = workerThreads[i]->CompleteEvent().GetHandle();
+#else
+    completeEvents[i] = (void*)workerThreads[i].Get();
+#endif
 }
 
 
@@ -126,6 +130,7 @@ bool RatingSortWorker::WaitAll( unsigned timeout )
   NI_VERIFY( activeJobNumber > 0 && activeJobNumber <= completeEvents.size(), "", return false );
   mode = ModeWaiting;
 
+#if defined(NV_WIN_PLATFORM)
   DWORD waitResult = WaitForMultipleObjects( activeJobNumber, &completeEvents[0], TRUE, timeout );
   if ( ( waitResult >= WAIT_OBJECT_0 ) && ( waitResult < WAIT_OBJECT_0 + activeJobNumber ) )
   {
@@ -133,8 +138,21 @@ bool RatingSortWorker::WaitAll( unsigned timeout )
     mode = ModeIdle;
     return true;
   }
-
   return false;
+#else
+  // Linux: wait for each worker's complete event, honoring the total timeout
+  const double deadline = timer::Now() + (double)timeout * 0.001;
+  for ( size_t i = 0; i < activeJobNumber; ++i )
+  {
+    double remainMs = (double)( ( deadline - timer::Now() ) * 1000.0 );
+    unsigned waitMs = remainMs <= 0.0 ? 0 : (unsigned)remainMs;
+    if ( !workerThreads[i]->CompleteEvent().Wait( waitMs ) )
+      return false;
+  }
+  //Job's done
+  mode = ModeIdle;
+  return true;
+#endif
 }
 
 } //namespace mmaking

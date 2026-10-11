@@ -119,6 +119,20 @@ struct Test_RPC_Simple : public CxxTest::TestSuite, RPCMixin
         TS_ASSERT_EQUALS(true, server_object->is_processed);
     }
 
+    void test_ProbeEnumU64()
+    {
+        TwoNodesCase c;
+        StrongMT<test::RSimpleRPCRabbit> clientObject(c.cnode1->Create<test::RSimpleRPCRabbit>());
+        test::SimpleRPCRabbit* serverObject = waitForEntity<test::SimpleRPCRabbit>(c.cnode0, 0, c);
+
+        clientObject->probeEnumU64(EGameFinishClientState::FinishedGame, 12345);
+        TS_WAIT_FOR(serverObject->is_processed == true, 100);
+        printf("[probe] expected: e=%d v=12345 ; got: e=%d v=%llu\n",
+               (int)EGameFinishClientState::FinishedGame, (int)serverObject->probeE, serverObject->probeV);
+        TS_ASSERT_EQUALS((int)EGameFinishClientState::FinishedGame, (int)serverObject->probeE);
+        TS_ASSERT_EQUALS((unsigned long long)12345, serverObject->probeV);
+    }
+
     void test_ASynchronousReturnIntValue()
     {
         TwoNodesCase c;

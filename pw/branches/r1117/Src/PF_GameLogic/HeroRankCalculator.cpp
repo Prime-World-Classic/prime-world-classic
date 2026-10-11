@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "HeroRankCalculator.h"
 #include "DBHeroRanks.h"
 #include "DBServer.h"

@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SessionQuestsCollection>
+	<BackLink DBID="/Maps/Multiplayer/Tournament/_1.ADMPSTTN" Count="2" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMPSTTN" Count="1" />
+	<quests>
+		<Item>
+			<counter>1000</counter>
+			<id>Q_A</id>
+			<primary>true</primary>
+			<text textref="/Maps/Multiplayer/ARAM_SNOW/Quest_quests_0_text.txt" />
+		</Item>
+		<Item>
+			<counter>1000</counter>
+			<id>Q_B</id>
+			<primary>true</primary>
+			<text textref="/Maps/Multiplayer/ARAM_SNOW/Quest_quests_1_text.txt" />
+		</Item>
+		<Item>
+			<counter>5</counter>
+			<id>Q_A2</id>
+			<primary>false</primary>
+			<text textref="/Maps/Multiplayer/ARAM_SNOW/Quest_quests_2_text.txt" />
+		</Item>
+		<Item>
+			<counter>5</counter>
+			<id>Q_B2</id>
+			<primary>false</primary>
+			<text textref="/Maps/Multiplayer/ARAM_SNOW/Quest_quests_3_text.txt" />
+		</Item>
+	</quests>
+</SessionQuestsCollection>

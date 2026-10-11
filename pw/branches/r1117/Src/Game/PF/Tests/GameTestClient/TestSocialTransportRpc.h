@@ -2,7 +2,7 @@
 
 #include "TestSocialTransport.h"
 #include "Server/LobbySocial/RISocialLobby.auto.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 
 namespace rpc
 {

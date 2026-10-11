@@ -39,8 +39,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "MatchMaking::IClient::MatchMakingCompleted", 3, false, rpc::GetMethodCode(&MatchMaking::IClient::MatchMakingCompleted) },
-        { "MatchMaking::IClient::OnSessionStarted", 1, false, rpc::GetMethodCode(&MatchMaking::IClient::OnSessionStarted) },
+        { "MatchMaking::IClient::MatchMakingCompleted", 3, false, rpc::GetMethodCode(&MatchMaking::IClient::MatchMakingCompleted), 4 },
+        { "MatchMaking::IClient::OnSessionStarted", 1, false, rpc::GetMethodCode(&MatchMaking::IClient::OnSessionStarted), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

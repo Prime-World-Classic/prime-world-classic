@@ -39,6 +39,7 @@
 	<BackLink DBID="/Heroes/Trickster/S1/FXAbility4_Prime.PRXY" Count="1" />
 	<BackLink DBID="/MiniGames/Minigame02/Effects/Brighten/_.PRXY" Count="1" />
 	<BackLink DBID="/Terrain/Signs/_06BFX.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Cast_Blue.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

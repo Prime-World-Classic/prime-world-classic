@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MulticastTestSvcIface.h"
-#include <rpc/IfaceRequester.h>
+#include <RPC/IfaceRequester.h>
 #include "MulticastSession.h"
 
 namespace MulticastTest

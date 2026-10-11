@@ -4,9 +4,9 @@
 	<caption>+Int</caption>
 	<customApplyType>None</customApplyType>
 	<enabled>
-		<compiledString></compiledString>
+		<compiledString>FRoAAAABAAAAJAAAAEdob3N0TG9yZEE0X0RlYXRoU3BlY3RyZTEAVYvsagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QM8k7RRAPlcGKwV3D</compiledString>
 		<returnType>bool</returnType>
-		<sString>true</sString>
+		<sString>sender.applGhostLordA4_DeathSpectre1(UNIT) != pMisc</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<LoggingEvent>-1</LoggingEvent>

@@ -3,6 +3,12 @@
 #include "ThreadNames.h"
 #include "SyncPrimitives.h"
 
+#if defined( NV_LINUX_PLATFORM )
+#include <pthread.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
+
 namespace threading
 {
 
@@ -60,10 +66,22 @@ static void ThrowVcException( const char* threadName )
 
 void SetDebugThreadName( const char* threadName )
 {
-#ifndef _SHIPPING
   if ( !threadName )
     return;
 
+#if defined( NV_LINUX_PLATFORM )
+  // Make the name visible in /proc/PID/task/TID/comm (top, htop, perf, gdb):
+  // on Linux the old implementation was a no-op there, which hid thread roles
+  // during server profiling (REPORT_server_profiling.md, round 2).
+  // pthread_setname_np limits the name to 15 chars + NUL; long names are
+  // truncated (EPERM is ignored on purpose). The main thread is skipped on
+  // purpose: renaming it changes the process name shown by ps/top, which
+  // breaks operational tooling (pgrep -x UniServerApp).
+  if ( (int)syscall( SYS_gettid ) != getpid() )
+    pthread_setname_np( pthread_self(), threadName );
+#endif
+
+#ifndef _SHIPPING
   {
     SThreadNames & names = threadNames;
     MutexLock lock( names.mutex );

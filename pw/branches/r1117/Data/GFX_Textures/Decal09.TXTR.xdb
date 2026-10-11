@@ -4,6 +4,7 @@
 	<BackLink DBID="/Heroes/Rockman/S2/FXability1A.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Rockman/S2/FXability1B.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Rockman/S3/FXability1A.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_FireDoomPink.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

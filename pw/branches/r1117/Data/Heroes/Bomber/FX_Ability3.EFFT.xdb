@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectAttached>
-	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="2" />
 	<attachFlags>15</attachFlags>
 	<attachType>General</attachType>
 	<component href="/Heroes/Bomber/FX_Ability3.EFFT" id="2E644B7D-BDF3-4A16-B210-60B4644C2018">
@@ -24,4 +24,7 @@
 	<fadeOut>0</fadeOut>
 	<groupFlags>0</groupFlags>
 	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="bomber_S2" />
+	</__states>
 </BasicEffectAttached>

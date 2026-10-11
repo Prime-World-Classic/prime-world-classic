@@ -103,21 +103,36 @@
   }}} // apache::thrift::stdcxx
 
 #elif _THRIFT_USING_GNU_LIBSTDCXX
-  #include <tr1/functional>
-
-  namespace apache { namespace thrift { namespace stdcxx {
-    using ::std::tr1::function;
-    using ::std::tr1::bind;
-
-    namespace placeholders {
-      using ::std::tr1::placeholders::_1;
-      using ::std::tr1::placeholders::_2;
-      using ::std::tr1::placeholders::_3;
-      using ::std::tr1::placeholders::_4;
-      using ::std::tr1::placeholders::_5;
-      using ::std::tr1::placeholders::_6;
-    } // apache::thrift::stdcxx::placeholders
-  }}} // apache::thrift::stdcxx
+  // GCC 5+ has std::function/std::bind natively (C++11), no need for TR1
+  #if __GNUC__ >= 5
+    #include <functional>
+    namespace apache { namespace thrift { namespace stdcxx {
+      using ::std::function;
+      using ::std::bind;
+      namespace placeholders {
+        using ::std::placeholders::_1;
+        using ::std::placeholders::_2;
+        using ::std::placeholders::_3;
+        using ::std::placeholders::_4;
+        using ::std::placeholders::_5;
+        using ::std::placeholders::_6;
+      }
+    }}} // apache::thrift::stdcxx
+  #else
+    #include <tr1/functional>
+    namespace apache { namespace thrift { namespace stdcxx {
+      using ::std::tr1::function;
+      using ::std::tr1::bind;
+      namespace placeholders {
+        using ::std::tr1::placeholders::_1;
+        using ::std::tr1::placeholders::_2;
+        using ::std::tr1::placeholders::_3;
+        using ::std::tr1::placeholders::_4;
+        using ::std::tr1::placeholders::_5;
+        using ::std::tr1::placeholders::_6;
+      }
+    }}} // apache::thrift::stdcxx
+  #endif
 #endif
 
   // Alias for thrift c++ compatibility namespace

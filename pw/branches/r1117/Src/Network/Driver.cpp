@@ -116,6 +116,9 @@ namespace Network
   static ConnectionSettings extraLightTrafficSettings( 4 * 1024, 4 * 1024, 2, 1 );
   static ConnectionSettings lightTrafficSettings( 32 * 1024, 64 * 1024, 2, 1 );
   static ConnectionSettings heavyTrafficSettings( 256 * 1024, 512 * 1024, 2, 20 );
+  // C3 (REPORT_server_profiling.md): same buffers as Light, 5 ms poll instead
+  // of 2 ms for the sparse inter-service traffic of a local deployment.
+  static ConnectionSettings serverTrafficSettings( 32 * 1024, 64 * 1024, 5, 1 );
 
   void Driver::SetTrafficType( EDriverTrafficType::Enum value )
   {
@@ -129,6 +132,9 @@ namespace Network
         break;
     case EDriverTrafficType::Heavy:
       settings = heavyTrafficSettings; 
+      break;
+    case EDriverTrafficType::Server:
+      settings = serverTrafficSettings; 
       break;
     }
     settings.pAlloc = alloc;

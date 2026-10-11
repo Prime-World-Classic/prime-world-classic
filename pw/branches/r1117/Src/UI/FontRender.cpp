@@ -4,7 +4,7 @@
 #include "Resolution.h"
 
 #include "../Render/MaterialSpec.h"
-#include "../Render/UIRenderer.h"
+#include "../Render/uirenderer.h"
 #include "FontStyle.h"
 
 #include <shlobj.h>

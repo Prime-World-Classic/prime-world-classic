@@ -117,7 +117,9 @@
 #include "PlayerBehaviourTracking.h"
 #include "BadBehaviourComplaintCmd.hpp"
 #include "TargetSelectorHelper.hpp"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "SessionData.h"
+
+extern nstl::vector<std::pair<int, int>> playersKills;
 
 
 extern "C" INTERMODULE_EXPORT void TooSmartCompiler()
@@ -5477,6 +5479,15 @@ void AdventureScreen::FillSessionResults( StatisticService::RPC::SessionClientRe
     DebugTrace( "  player %d got %d score, %d special points, %d level, %d + %d / %d KD, ",
       plr.userid, plr.scoring.score, plr.scoring.specialPoints, plr.scoring.finalLevel, plr.scoring.kills, plr.scoring.assists, plr.scoring.deaths );
   }
+
+  // Kill pairs (killer, victim) collected locally by PFStatistics::AddKill.
+  // The lobby server merges the per-client lists (majority vote, the field
+  // is excluded from operator==) and posts the result to the synchronizer —
+  // the client makes no HTTP call for it. Sorted for a deterministic merge.
+  _info.playerKills.clear();
+  for ( int k = 0; k < playersKills.size(); ++k )
+    _info.playerKills.push_back( nstl::pair<int, int>( playersKills[k].first, playersKills[k].second ) );
+  nstl::sort( _info.playerKills.begin(), _info.playerKills.end() );
 }
 
 

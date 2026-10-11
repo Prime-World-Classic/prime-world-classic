@@ -1,0 +1,32 @@
+#ifndef CURL_CONFIG_H
+#define CURL_CONFIG_H
+#define BUILD_CF_HOST "Linux"
+#define SIZEOF_SHORT 2
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 8
+#define SIZEOF_CURL_OFF_T 8
+#define HAVE_ZLIB_H 1
+#define HAVE_ZLIB 1
+#define HAVE_OPENSSL 1
+#define HAVE_SSL 1
+#define HAVE_SYS_POLL_H 1
+#define HAVE_POLL 1
+#define HAVE_SELECT 1
+#define HAVE_SOCKET 1
+#define HAVE_CLOCK_GETTIME 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_FREEADDRINFO 1
+#define HAVE_STRTOLL 1
+#define HAVE_STRCASECMP 1
+#define HAVE_FCNTL_O_NONBLOCK 1
+#define HAVE_RECVFROM 1
+#define HAVE_IOCTL 1
+#define HAVE_IOCTLSOCKET 0
+#define HAVE_IOCTLSOCKET_CAMEL 0
+#define HAVE_GETHOSTBYNAME_R_3 0
+#define HAVE_GETHOSTBYNAME_R_5 0
+#define HAVE_GETHOSTBYNAME_R_6 0
+#define HAVE_GETHOSTBYNAME_R_8 0
+#define HAVE_GETHOSTBYNAME_R_14 1
+#define CURL_CA_BUNDLE "/etc/ssl/certs/ca-certificates.crt"
+#endif

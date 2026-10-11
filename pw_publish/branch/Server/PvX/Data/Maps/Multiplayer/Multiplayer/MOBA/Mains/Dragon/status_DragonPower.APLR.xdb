@@ -1,0 +1,399 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/Dragon/aura_NearDragon_1.APLR" Count="1" />
+	<applicators>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="14B58B60-C7C4-4915-926B-6662DB6BB00E">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>Увеличиваем Силу</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgrwAAAD/0ItNDIsRi00Mi4K4AAAA3V34/9DcXfjf4PbEAXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseIntellect&lt;=rBaseStrength</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQ8AAAABAAAAGwAAAEhlcm9CdWZmRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cHeroBuffDamage</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgrwAAAD/0ItNDIsRi00Mi4K4AAAA3V34/9DcXfjf4PbEAXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseIntellect&lt;=rBaseStrength</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="C0781734-95DD-4069-82F5-B1FFBB378782">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>Увеличиваем Разум</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgrwAAAD/0ItNDIsRi00Mi4K4AAAA3V34/9DcXfjf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseIntellect&gt;rBaseStrength</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQ8AAAABAAAAGwAAAEhlcm9CdWZmRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cHeroBuffDamage</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgrwAAAD/0ItNDIsRi00Mi4K4AAAA3V34/9DcXfjf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseIntellect&gt;rBaseStrength</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="230DD93B-51EF-42B5-904C-CD000ABF3745">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>Увеличиваем Реген Энергии</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CFwHQYi00MixGLTQyLQlD/0IP4AXQGxkX/AOsExkX/AYpF/4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>(rUnitKind == 0 || rUnitKind == 1)? true : false</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQ4AAAABAAAAGgAAAEhlcm9CdWZmUmVnZW4AVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cHeroBuffRegen</sString>
+					</multValue>
+					<stat>EnergyRegeneration</stat>
+					<topModifier>true</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="F54FDD9C-61E9-4D7C-B7F6-B7FF7ED5A99B">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>Увеличиваем Реген Здоровья</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CFwHQYi00MixGLTQyLQlD/0IP4AXQGxkX/AOsExkX/AYpF/4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>(rUnitKind == 0 || rUnitKind == 1)? true : false</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+						<returnType>float</returnType>
+						<sString>1.5</sString>
+					</multValue>
+					<stat>LifeRegeneration</stat>
+					<topModifier>true</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="921F59F7-C11E-4A1C-B259-37105596CBBF">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>ХП КРИПАМ</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CD+AN0GItNDIsRi00Mi0JQ/9CD+AR0BsZF/wDrBMZF/wGKRf+L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(rUnitKind == 3 || rUnitKind == 4)? true : false</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQwAAAABAAAAGAAAAENyZWVwQnVmZkhQAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cCreepBuffHP</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="D9819E1F-495D-4150-8BA4-465AA97424B2">
+			<FlagsApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Размер крипов</caption>
+				<consumables />
+				<effect>
+					<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="220AED75-713E-411E-B3F3-89A9B4E24A9D">
+						<ScaleColorEffect>
+							<blendMode>LerpByAlpha</blendMode>
+							<colorAdd>
+								<A>0</A>
+								<B>0</B>
+								<G>0</G>
+								<R>0</R>
+							</colorAdd>
+							<colorMul>
+								<A>1</A>
+								<B>1</B>
+								<G>1</G>
+								<R>1</R>
+							</colorMul>
+							<deathType>Manual</deathType>
+							<enableCondition href="" />
+							<fadeInTime>1</fadeInTime>
+							<fadeOutTime>1</fadeOutTime>
+							<fullRecolor>false</fullRecolor>
+							<lifeTime>0</lifeTime>
+							<scale>1.2</scale>
+							<scaleIn>1</scaleIn>
+							<scaleOut>1</scaleOut>
+						</ScaleColorEffect>
+					</Item>
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CD+AN0GItNDIsRi00Mi0JQ/9CD+AR0BsZF/wDrBMZF/wGKRf+L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(rUnitKind == 3 || rUnitKind == 4)? true : false</sString>
+				</enabled>
+				<flag>0</flag>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<talents />
+				<useListAs>ListAsRule</useListAs>
+			</FlagsApplicator>
+		</Item>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="6D5BEFDC-BF78-4B06-8093-A714C1BB6D0A">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>Увеличиваем Реген Здоровья</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CFwHQYi00MixGLTQyLQlD/0IP4AXQGxkX/AOsExkX/AYpF/4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>(rUnitKind == 0 || rUnitKind == 1)? true : false</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+						<returnType>float</returnType>
+						<sString>1.5</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>true</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>144</behaviorFlags>
+	<caption>Мощь дракона</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName>DragonPowerAura</formulaName>
+	<image href="/UI/Styles/Icons/Statuses/Neutral/dragon_buff.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQg==</compiledString>
+		<returnType>float</returnType>
+		<sString>120</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>-100</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" id="E94C234C-12BD-4BDD-93A0-F4F6DBE69DF5">
+		<ApplicatorsList>
+			<applicatorLists />
+			<applicators>
+				<Item href="/Heroes/DefaultStatus/status_DragonPower.APLR" />
+			</applicators>
+		</ApplicatorsList>
+	</unstackableWith>
+</StatusApplicator>

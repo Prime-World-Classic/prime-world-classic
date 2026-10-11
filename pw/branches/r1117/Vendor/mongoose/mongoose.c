@@ -4535,6 +4535,12 @@ static void worker_thread(struct mg_context *ctx) {
       conn->birth_time = time(NULL);
       conn->ctx = ctx;
 
+      // The conn struct (with its request buffer) is reused by this worker for
+      // every connection. A connection that closed with data still buffered
+      // leaves conn->data_len stale, and the next request would be parsed as
+      // [stale bytes][new request] -> 400/close. Reset it per connection.
+      conn->data_len = 0;
+
       // Fill in IP, port info early so even if SSL setup below fails,
       // error handler would have the corresponding info.
       // Thanks to Johannes Winkelmann for the patch.

@@ -38,14 +38,14 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Lobby::LobbyAccounting::BlockMoney", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BlockMoney) },
-        { "Lobby::LobbyAccounting::UnblockMoney", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::UnblockMoney) },
-        { "Lobby::LobbyAccounting::GetServicePrice", 1, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetServicePrice) },
-        { "Lobby::LobbyAccounting::BuyBlockedService", 3, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BuyBlockedService) },
-        { "Lobby::LobbyAccounting::BuyService", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BuyService) },
-        { "Lobby::LobbyAccounting::GetMoney", 1, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetMoney) },
-        { "Lobby::LobbyAccounting::GiveMoneyToUser", 3, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GiveMoneyToUser) },
-        { "Lobby::LobbyAccounting::GetServices", 0, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetServices) },
+        { "Lobby::LobbyAccounting::BlockMoney", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BlockMoney), 0 },
+        { "Lobby::LobbyAccounting::UnblockMoney", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::UnblockMoney), 0 },
+        { "Lobby::LobbyAccounting::GetServicePrice", 1, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetServicePrice), 0 },
+        { "Lobby::LobbyAccounting::BuyBlockedService", 3, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BuyBlockedService), 0 },
+        { "Lobby::LobbyAccounting::BuyService", 2, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::BuyService), 0 },
+        { "Lobby::LobbyAccounting::GetMoney", 1, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetMoney), 0 },
+        { "Lobby::LobbyAccounting::GiveMoneyToUser", 3, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GiveMoneyToUser), 0 },
+        { "Lobby::LobbyAccounting::GetServices", 0, false, rpc::GetMethodCode(&Lobby::LobbyAccounting::GetServices), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

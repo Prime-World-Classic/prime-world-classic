@@ -6,6 +6,7 @@
 #include <RPC/GateKeeper.h>
 #include <Coordinator/ServiceAppearanceNotifierIface.h>
 #include <Coordinator/RServiceAppearanceNotifierIface.auto.h>
+#include <System/HPTimer.h>
 
 namespace GameBalancer
 {
@@ -70,5 +71,17 @@ namespace GameBalancer
 
     StrongMT<rpc::IfaceRequester<Coordinator::RIServiceAppearancePublisher> > svcPublisherIface_;
     Coordinator::SubcriberIdT subscriberId_;
+
+    // Startup-race recovery (single-process deployment): the initial cluster
+    // snapshot (OnRegisterSubscriber) may be taken before the local services
+    // are announced to the coordinator, leaving no started gamesvc; the later
+    // OnStartService notifications can be lost as well (pipe still settling).
+    // While no service is registered, resubscribe periodically — the
+    // publisher resends the current cluster info on re-subscription.
+    bool resubscribePending_;
+    NHPTimer::FTime lastResubscribeTime_;
+    int resubscribeRetries_;
+    static constexpr NHPTimer::FTime kResubscribeInterval = 1.0; // seconds
+    static constexpr int kMaxResubscribeRetries = 60;
   };
 }

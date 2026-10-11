@@ -5,9 +5,9 @@
 #include "Root.h"
 #include "SkinStyles.h"
 
-#include "../Render/Renderer.h"
+#include "../Render/renderer.h"
 #include "../Render/TextureManager.h"
-#include "../Render/UIRenderer.h"
+#include "../Render/uirenderer.h"
 #include "../Render/MaterialSpec.h"
 
 #include "../System/InlineProfiler.h"

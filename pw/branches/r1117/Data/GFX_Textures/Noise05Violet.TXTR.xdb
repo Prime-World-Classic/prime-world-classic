@@ -22,6 +22,7 @@
 	<BackLink DBID="/Heroes/Witcher/FXAbility0.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Witcher/S1/FXAbility0.PRXY" Count="1" />
 	<BackLink DBID="/Terrain/Signs/_02BFX.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/FireBall/_FireBomberS2Hit.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

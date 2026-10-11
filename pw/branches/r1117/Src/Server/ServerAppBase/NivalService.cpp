@@ -67,7 +67,6 @@ now( timer::Now() )
   backendGateKeeper = new rpc::GateKeeper( svcParams.backendTransport, svcParams.serviceId, Transport::autoAssignClientId, this );
   Reset( backendRpcFactory, new rpc::LocalEntityFactory( backendGateKeeper->GetGate() ) );
 
-#if defined( NV_WIN_PLATFORM )
   if ( svcParams.frontendTransport )
   {
     frontendAgent = new rdp_transport::FrontendAgent( now );
@@ -79,7 +78,6 @@ now( timer::Now() )
     frontendGateKeeper = new rpc::GateKeeper( svcParams.frontendTransport, svcParams.serviceId, Transport::autoAssignClientId, this );
     Reset( frontendRpcFactory, new rpc::LocalEntityFactory( frontendGateKeeper->GetGate() ) );
   }
-#endif
 
   //  performance counter provider
   nstl::string tmp( svcParams.serviceId.c_str() );
@@ -223,13 +221,11 @@ void BaseService::PollInternal()
   if ( backendGateKeeper ) 
     backendGateKeeper->Poll();
 
-  if ( frontendGateKeeper ) 
+  if ( frontendGateKeeper )
     frontendGateKeeper->Poll();
 
-#if defined( NV_WIN_PLATFORM )
   if ( frontendAgent )
     frontendAgent->Poll( now );
-#endif
 
   PollPerfCounters();
 
@@ -287,12 +283,7 @@ bool BaseService::GetLoginForActiveFrontendUser( Transport::TClientId _uid, stri
   if ( !frontendAgent )
     return false;
 
-#if defined( NV_WIN_PLATFORM )
   return frontendAgent->GetActiveUserLogin( _uid, _login );
-#else
-  return false;
-#endif
-  
 }
 
 } //namespace Transport

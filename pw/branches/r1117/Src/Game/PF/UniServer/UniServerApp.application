@@ -4,11 +4,20 @@ sources = [
     'stdafx.h',    
 ]
 
-# Enable CrashRpt
-settings.enableCrashRpt = True
+# CrashRpt is Windows-only; disable on Linux
+if platform == 'win32':
+  settings.enableCrashRpt = True
+else:
+  settings.enableCrashRpt = False
 
-# Uncomment this to enable Inline Profiler
-settings.enableProfiler = True
+# Inline Profiler disabled on Linux (requires WTL - Windows only)
+settings.enableProfiler = False
+
+# Linux-specific linker dependencies
+if platform != 'win32':
+  if 'libs' not in locals():
+    libs = []
+  libs = libs + ['libcrypto.so']
 
 inlined = False
 
@@ -19,21 +28,21 @@ components = [
     'Server/LobbySocial/SocialLobbyService',
     'Server/LiveMMaking/LiveMMakingService',
     'HybridServer/HybridServer',
-    'Coordinator/LoginServerRunner',  
+    # 'Coordinator/LoginServerRunner',  -- requires WsdlPull, skipped on Linux
     'MemoryLib/NewDelete',
     'Relay/RelaySvc',
     'main.ace',
     'MatchMaking/MatchMakingSvc',
-    'ClusterAdmin/ClusterAdminSvc',
+    # 'ClusterAdmin/ClusterAdminSvc',  -- requires Thrift, skipped on Linux
     'Server/AppFramework/TimeSlicer',
     'Server/DebugVarUpdate/Request',
     'Server/DebugVarUpdate/Report',
     'Server/LiveMMaking/LiveMMakingService',
     'Server/HttpGateway',
     'System/CrashRptWrapper',
-    'Server/LobbyPvx/Remote', # only for PF.sln build success
+    'Server/LobbyPvx/Remote',
     'Client/LobbyPvx/LobbyClientLInterface',
-    'Monitoring/MonitoringSvc',
+    # 'Monitoring/MonitoringSvc',  -- requires Thrift, skipped on Linux
     'Server/GameSession/GameBalancerSvc',
     'System/InlineProfilerUI',
     'Relay/RelayBalancerSvc',
@@ -42,8 +51,15 @@ components = [
     'UserManager/UserManagerSvc',
     'UserManager/UserManagerAgent',
     'NewLogin',
+    'Network/LoginTypes',  # for Login::ELoginResult::ToString
     'ClientControl',
     'System/DarkSide',
+    # RUDP transport for client-facing services
+    'Network/RUDP/Rdp',
+    'Server/RdpTransport/RdpTransport',
+    'Server/RdpTransport/RdpFrontendAgent',
+    # Coordinator client for service registration
+    'Server/Coordinator/CoordinatorClient',
 ]
 
 globalCompilerKeys = [
@@ -53,7 +69,6 @@ globalCompilerKeys = [
   "/D LOG_THREAD_EXIT",
 ]
 
-
-libDependencies = [
-    'rpcrt4.lib' , 'shlwapi.lib'
-]
+# Release (shipping) configuration: disable debug logging / dev paths in game logic
+if configuration == "release":
+  globalCompilerKeys = globalCompilerKeys + [ "/D _SHIPPING" ]

@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "rdp_transport::IFrontendAgent::PrepareUser", 4, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgent::PrepareUser) },
-        { "rdp_transport::IFrontendAgent::KickUser", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgent::KickUser) },
+        { "rdp_transport::IFrontendAgent::PrepareUser", 4, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgent::PrepareUser), 14 },
+        { "rdp_transport::IFrontendAgent::KickUser", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgent::KickUser), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -219,7 +219,7 @@ bool RelayChannelManager::ResolveSvcAddress(Transport::TServiceId const & servic
 
 int RelayChannelManager::RegisterTrafficTrackerFactory(Transport::TServiceId const & svcls, StrongMT<ITrafficTrackerFactory> const & spttf)
 {
-  if (!trackerFactories_.insert(std::make_pair<Transport::TServiceId, StrongMT<ITrafficTrackerFactory> >(svcls, spttf)).second)
+  if (!trackerFactories_.insert(std::make_pair(svcls, spttf)).second)
     return -1;
 
   return 0;

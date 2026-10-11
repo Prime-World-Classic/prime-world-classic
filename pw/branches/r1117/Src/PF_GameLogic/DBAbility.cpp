@@ -202,7 +202,7 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 #include "PFApplFx.h"
 #include "PFApplHelper.h"
 #include "PFApplInstant.h"
-#include "PfApplMod.h"
+#include "PFApplMod.h"
 #include "PFApplMod.h"
 #include "PFApplMove.h"
 #include "PFApplSpecial.h"

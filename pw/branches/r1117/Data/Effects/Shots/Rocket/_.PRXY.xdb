@@ -4,7 +4,7 @@
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Rocket/_.PRXY" id="D826932F-E070-4A3E-8004-66CADE6D0FE9">
+			<component href="/Effects/Shots/Rocket/_.PRXY" id="E22F614E-4996-48EA-9F7E-6DA71C47E35B">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.2108999</maxX>
@@ -50,7 +50,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Rocket/_.PRXY" id="DEED845A-E98D-46CF-9391-D1B0983E40D5">
+			<timeController href="/Effects/Shots/Rocket/_.PRXY" id="2BBB48D8-2DE5-471D-8588-1263E4AFECA8">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>

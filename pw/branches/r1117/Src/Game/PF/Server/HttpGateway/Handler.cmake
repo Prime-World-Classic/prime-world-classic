@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_HttpGateway_Handler ProtoVersion.h GatewayPingContext.h GatewayPingContext.cpp GatewayJSonHandler.h GatewayJSonHandler.cpp ForgeRollRequest.h ForgeRollRequest.cpp)
-set(LIBRARIES_Src_Game_PF_Server_HttpGateway_Handler )

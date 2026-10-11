@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LiveMMaking_RatingSortMmLogic RatingSortMmLogic.cpp RatingSortMmLogic.h RatingSortMmJob.cpp RatingSortMmJob.h RatingSortMmWorker.h RatingSortMmWorker.cpp RatingSortMmStat.h RatingSortMmStat.cpp)
-set(LIBRARIES_Src_Game_PF_Server_LiveMMaking_RatingSortMmLogic )

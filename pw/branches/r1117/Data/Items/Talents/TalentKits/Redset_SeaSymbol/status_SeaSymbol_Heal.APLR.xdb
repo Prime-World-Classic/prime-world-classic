@@ -133,7 +133,7 @@
 							<onlySingleTarget>false</onlySingleTarget>
 						</abilityFilter>
 						<applyTarget>ApplicatorTarget</applyTarget>
-						<damageTypeFilter>15</damageTypeFilter>
+						<damageTypeFilter>31</damageTypeFilter>
 						<modifiedDamage>
 							<compiledString>FSwAAAAGAAAAMwAAAEwAAACCAAAAogAAAL4AAADUAAAARGFtYWdlAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABCb251c0RhbWFnZQBVi+yD7BRoCAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBgAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoIAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3waAAAAACLRRCLEItNEItCVP/Q2UXw3DXwAAAA2ejewd7J2V3s2UXsi+VdwwAAAAAAAPA/AAAAAAAAWUAAAAAA</compiledString>
 							<returnType>float</returnType>

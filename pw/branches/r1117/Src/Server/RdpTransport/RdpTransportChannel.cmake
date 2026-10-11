@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RdpTransport_RdpTransportChannel RdpTransportChannel.h RdpTransportChannel.cpp)
-set(LIBRARIES_Src_Server_RdpTransport_RdpTransportChannel )

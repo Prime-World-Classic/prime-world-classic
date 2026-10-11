@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_EloRating EloRating.h EloRating.cpp)
-set(LIBRARIES_Src_Game_PF_Server_Roll_EloRating )

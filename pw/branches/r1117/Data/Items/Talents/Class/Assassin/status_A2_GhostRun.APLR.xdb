@@ -294,6 +294,37 @@
 				</startCondition>
 			</ProgramApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" id="DFDFCD98-BCA0-4853-9ABF-B686B79F1397">
+			<GhostMoveApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>1</behaviorFlags>
+				<caption>Ghost mode сквозь деревья</caption>
+				<collisionFlags>1</collisionFlags>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<pushUnits>true</pushUnits>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</GhostMoveApplicator>
+		</Item>
 		<Item href="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" id="41C8057A-A5D3-4FE2-BF90-5F9F865E33E1">
 			<StatusApplicator parent="/Heroes/DefaultStatus/_HASTE_status.APLR">
 				<enabled>

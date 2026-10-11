@@ -39,11 +39,11 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "mmaking::ILiveMMaking::SetupLogic", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::SetupLogic) },
-        { "mmaking::ILiveMMaking::AddMmRequest", 4, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::AddMmRequest) },
-        { "mmaking::ILiveMMaking::RemoveMmRequest", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::RemoveMmRequest) },
-        { "mmaking::ILiveMMaking::AddGameForReconnect", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::AddGameForReconnect) },
-        { "mmaking::ILiveMMaking::RemoveGame", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::RemoveGame) },
+        { "mmaking::ILiveMMaking::SetupLogic", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::SetupLogic), 3 },
+        { "mmaking::ILiveMMaking::AddMmRequest", 4, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::AddMmRequest), 6 },
+        { "mmaking::ILiveMMaking::RemoveMmRequest", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::RemoveMmRequest), 0 },
+        { "mmaking::ILiveMMaking::AddGameForReconnect", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::AddGameForReconnect), 2 },
+        { "mmaking::ILiveMMaking::RemoveGame", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMaking::RemoveGame), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

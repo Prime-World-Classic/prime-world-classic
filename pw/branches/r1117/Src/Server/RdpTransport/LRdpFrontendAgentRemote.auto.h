@@ -38,11 +38,11 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "rdp_transport::IFrontendAgentRemote::UserPrepared", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserPrepared) },
-        { "rdp_transport::IFrontendAgentRemote::UserConnected", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserConnected) },
-        { "rdp_transport::IFrontendAgentRemote::UserTimedOut", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserTimedOut) },
-        { "rdp_transport::IFrontendAgentRemote::UserKicked", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserKicked) },
-        { "rdp_transport::IFrontendAgentRemote::UserDropped", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserDropped) },
+        { "rdp_transport::IFrontendAgentRemote::UserPrepared", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserPrepared), 0 },
+        { "rdp_transport::IFrontendAgentRemote::UserConnected", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserConnected), 0 },
+        { "rdp_transport::IFrontendAgentRemote::UserTimedOut", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserTimedOut), 0 },
+        { "rdp_transport::IFrontendAgentRemote::UserKicked", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserKicked), 0 },
+        { "rdp_transport::IFrontendAgentRemote::UserDropped", 1, false, rpc::GetMethodCode(&rdp_transport::IFrontendAgentRemote::UserDropped), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

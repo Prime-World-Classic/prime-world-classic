@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_Streams BitStreams.cpp FileSystem/FileStream.h FileSystem/FileStream_win.cpp FixedMemoryStream.h FixedMemoryStream.cpp MemoryStream.cpp MemoryStream.h ProtectedStream.cpp ProtectedStream.h DumpingStream.cpp DumpingStream.h FileSystem/FileWriteStream.cpp FileSystem/FileWriteStream.h FileSystem/WinFileUnbuffered.cpp FileSystem/WinFileUnbuffered.h FileSystem/FileStream_stdlib.cpp FileSystem/FileStream_stdlib.h FileSystem/FileWriteBufferedStream.cpp FileSystem/FileWriteBufferedStream.h FileSystem/FileWriteAsynchronousStream_win.cpp FileSystem/FileWriteAsynchronousStream.h)
-set(LIBRARIES_Src_System_Streams )

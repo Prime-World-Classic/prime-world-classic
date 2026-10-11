@@ -454,7 +454,7 @@ void CoordinatorServer::RegisterClient(Coordinator::ServerIdT _srvid, ICoordinat
     __FUNCTION__, _srvid, _serverdef.pid, _serverdef.machineInfo.machineName.c_str());
 
   StrongMT<ClientContext> ctx;
-  int rc = RegisterClient_(_srvid, StrongMT<RICoordinatorClientRemote>(reinterpret_cast<RICoordinatorClientRemote*>(_ccr)), _serverdef, ctx);
+  int rc = RegisterClient_(_srvid, StrongMT<ICoordinatorClientRemote>(_ccr), _serverdef, ctx);
   if (rc < 0)
   {
     _cb->OnRegisterClient(rc, INVALID_SERVER_ID);
@@ -478,7 +478,7 @@ void CoordinatorServer::RegisterClient(Coordinator::ServerIdT _srvid, ICoordinat
   }
 }
 
-int CoordinatorServer::RegisterClient_(Coordinator::ServerIdT _srvid, StrongMT<RICoordinatorClientRemote> const & _client, 
+int CoordinatorServer::RegisterClient_(Coordinator::ServerIdT _srvid, StrongMT<ICoordinatorClientRemote> const & _client, 
                                        ServerDef const & _serverdef,
                                        StrongMT<ClientContext> & _ctx)
 {
@@ -586,7 +586,7 @@ int CoordinatorServer::RegisterClient_(Coordinator::ServerIdT _srvid, StrongMT<R
   else
   {
     clientContexts.push_back( cctx );
-    routeMap.InitSlave( cctx->client() ); // обновляем клиенту данные, которые он действительно хочет (routes)
+    routeMap.InitSlave( cctx->client() ); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (routes)
 
     MessageTrace( "%s. New client completely registered(srvid=%d pid=%d machineName=%s)", 
       __FUNCTION__, cctx->srvid_, _serverdef.pid, _serverdef.machineInfo.machineName.c_str() );

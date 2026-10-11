@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "batch.h"
 #include "RenderComponent.h"
-#include "Material.h"
+#include "material.h"
 #include "sceneconstants.h"
 
 static bool  s_enableWaterLevel = false;

@@ -95,20 +95,8 @@ class atomic<unsigned> : public atomic_uint
 {
 };
 
-
-namespace std
-{
-    using ::memory_order;
-    using ::memory_order_relaxed;
-    using ::memory_order_consume;
-    using ::memory_order_acquire;
-    using ::memory_order_release;
-    using ::memory_order_acq_rel;
-    using ::memory_order_seq_cst;
-    using ::atomic_uint;
-    using ::atomic;
-};
-
+// Removed namespace std { using ... } — conflicts with C++11 std::memory_order
+// Use local memory_order_* directly
 
 
 template<typename T>
@@ -121,9 +109,9 @@ public:
     {
         assert((buffer_size >= 2) && ((buffer_size & (buffer_size - 1)) == 0));
         for (size_t i = 0; i != buffer_size; i += 1)
-            buffer_[i].sequence_.store(i, std::memory_order_relaxed);
-        enqueue_pos_.store(0, std::memory_order_relaxed);
-        dequeue_pos_.store(0, std::memory_order_relaxed);
+            buffer_[i].sequence_.store(i, memory_order_relaxed);
+        enqueue_pos_.store(0, memory_order_relaxed);
+        dequeue_pos_.store(0, memory_order_relaxed);
     }
 
     ~mpmc_bounded_queue()
@@ -134,25 +122,25 @@ public:
     bool enqueue(T const& data)
     {
         cell_t* cell;
-        unsigned int pos = enqueue_pos_.load(std::memory_order_relaxed);
+        unsigned int pos = enqueue_pos_.load(memory_order_relaxed);
         for (;;)
         {
             cell = &buffer_[pos & buffer_mask_];
-            size_t seq = cell->sequence_.load(std::memory_order_acquire);
+            size_t seq = cell->sequence_.load(memory_order_acquire);
             intptr_t dif = (intptr_t)seq - (intptr_t)pos;
             if (dif == 0)
             {
-                if (enqueue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+                if (enqueue_pos_.compare_exchange_weak(pos, pos + 1, memory_order_relaxed))
                     break;
             }
             else if (dif < 0)
                 return false;
             else
-                pos = enqueue_pos_.load(std::memory_order_relaxed);
+                pos = enqueue_pos_.load(memory_order_relaxed);
         }
 
         cell->data_ = data;
-        cell->sequence_.store(pos + 1, std::memory_order_release);
+        cell->sequence_.store(pos + 1, memory_order_release);
 
         return true;
     }
@@ -160,25 +148,25 @@ public:
     bool dequeue(T& data)
     {
         cell_t* cell;
-        unsigned int pos = dequeue_pos_.load(std::memory_order_relaxed);
+        unsigned int pos = dequeue_pos_.load(memory_order_relaxed);
         for (;;)
         {
             cell = &buffer_[pos & buffer_mask_];
-            size_t seq = cell->sequence_.load(std::memory_order_acquire);
+            size_t seq = cell->sequence_.load(memory_order_acquire);
             intptr_t dif = (intptr_t)seq - (intptr_t)(pos + 1);
             if (dif == 0)
             {
-                if (dequeue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
+                if (dequeue_pos_.compare_exchange_weak(pos, pos + 1, memory_order_relaxed))
                     break;
             }
             else if (dif < 0)
                 return false;
             else
-                pos = dequeue_pos_.load(std::memory_order_relaxed);
+                pos = dequeue_pos_.load(memory_order_relaxed);
         }
 
         data = cell->data_;
-        cell->sequence_.store(pos + buffer_mask_ + 1, std::memory_order_release);
+        cell->sequence_.store(pos + buffer_mask_ + 1, memory_order_release);
 
         return true;
     }

@@ -1,0 +1,7 @@
+# Dynamic server-address registry (Shared/ServerIps.h).
+# Compiled into both builds: the MSVC client (Shared.vcproj) and the Linux
+# server (via Network/ClusterConfiguration, which calls GetServerIpA()).
+sources = [
+    'ServerIps.h',
+    'ServerIps.cpp',
+]

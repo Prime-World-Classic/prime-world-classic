@@ -173,6 +173,11 @@ private:
   timer::Time                     now;
   timer::Time                     statusTimeLimit;
 
+  // Pending web-session join (see ClientBase::PollWebJoin()).
+  string                          webJoinToken;
+  timer::Time                     webJoinDeadline;
+  int                             webJoinRetriesLeft;
+
   TDevGamesList                   gamesList;
 
   TGameId                         gameSessionId;
@@ -197,6 +202,7 @@ private:
   void ChangeStatus( EClientStatus::Enum newStatus );
   void SetError( EClientError::Enum code );
   void EnableStatusTimeout( float _to = 0 );
+  void PollWebJoin();
 };
 
 } //namespace lobby

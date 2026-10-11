@@ -13,6 +13,7 @@
   #include <string>
 	#include <assert.h>
 	#include <syslog.h>
+	#include <time.h>
 
 	inline void OutputDebugString( char const * lpOutputString )
 	{

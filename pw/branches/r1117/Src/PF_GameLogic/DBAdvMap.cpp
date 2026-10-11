@@ -18,7 +18,7 @@
 #include "../PF_GameLogic/DBGameLogic.h"
 #include "../UI/DBVotingForSurrender.h"
 #include "../PF_GameLogic/DBTalent.h"
-#include "../libdb/DB.h"
+#include "../libdb/Db.h"
 #include "DBAdvMap.h"
 namespace
 {

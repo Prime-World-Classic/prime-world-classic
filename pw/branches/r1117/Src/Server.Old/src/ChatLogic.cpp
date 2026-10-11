@@ -12,7 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include "ClientThread.h"
-#include "../../System/basic.h"
+#include "../../System/Basic.h"
 #include "../../System/nlist.h"
 #include "../../System/nstring.h"
 #include "../../System/nvector.h"

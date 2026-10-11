@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Shop parent="/Buildings/B/Shop/_Parent.SHOP">
+	<shop href="/Buildings/DefaultStats/MidOnly_ShopList.CNSH" />
+	<stats href="/Buildings/DefaultStats/Shop.STCN" />
+</Shop>

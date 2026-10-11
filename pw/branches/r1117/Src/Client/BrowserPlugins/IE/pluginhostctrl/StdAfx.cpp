@@ -34,7 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #ifdef _ATL_STATIC_REGISTRY
 #include <statreg.h>

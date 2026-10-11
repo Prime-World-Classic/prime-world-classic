@@ -2,6 +2,8 @@
 <Texture>
 	<BackLink DBID="/Effects/Debuffs/DoT/_Enemy.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_Purple.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_ApplyCatBomb_2.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Burn/_Purple.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

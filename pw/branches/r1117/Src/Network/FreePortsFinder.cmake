@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Network_FreePortsFinder FreePortsFinder.cpp FreePortsFinder.h)
-set(LIBRARIES_Src_Network_FreePortsFinder ws2_32)

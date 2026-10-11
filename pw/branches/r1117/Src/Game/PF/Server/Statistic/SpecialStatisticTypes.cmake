@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Statistic_SpecialStatisticTypes SpecialStatisticTypes.h SpecialStatisticTypes.cpp)
-set(LIBRARIES_Src_Game_PF_Server_Statistic_SpecialStatisticTypes )

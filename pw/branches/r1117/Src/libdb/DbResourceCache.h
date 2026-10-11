@@ -91,6 +91,13 @@ private:
 
   bool assertionLoadingFiles;
 
+  // true после завершения ~DbResourceCache(): статические
+  // Ptr<DbResource> из других TU могут вызвать методы кэша уже после его
+  // разрушения (порядок статических деструкторов зависит от порядка линковки);
+  // mutex к этому моменту уничтожен и любая блокировка даёт AV. Подробности
+  // в ~DbResourceCache().
+  bool destroyed;
+
   OBJECT_BASIC_METHODS( DbResourceCache )
 };
 

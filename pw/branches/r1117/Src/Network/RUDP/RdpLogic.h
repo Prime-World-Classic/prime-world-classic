@@ -6,6 +6,7 @@
 #include "RdpHandshake.h"
 #include "RdpListenContext.h"
 #include "RdpEphMux.h"
+#include "RdpProto.h"
 #include "System/JobThread.h"
 #include "System/Histogram.h"
 #include <map>
@@ -14,12 +15,6 @@
 
 namespace ni_udp
 {
-
-namespace proto
-{
-  namespace EPktType { enum Enum; }
-}
-
 
 class RdpOptionsObject;
 class IRdpPacketAllocator;
@@ -86,6 +81,8 @@ private:
 
   threading::Mutex                mutex;
   timer::Time                     now;
+  unsigned                        activeConns; // live connections count for adaptive sleep in ParallelPoll
+  timer::Time                     lastDataTime; // last real (non Ping/Pong) packet, for adaptive sleep (B1+C2)
   RdpCommonCtx                    ctx;
   Connections                     connections;
   ListenContexts                  listenContexts;

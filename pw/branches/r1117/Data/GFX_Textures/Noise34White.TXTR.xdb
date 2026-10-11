@@ -14,6 +14,9 @@
 	<BackLink DBID="/Effects/Shots/Paint/_BlotHit_S4.PRXY" Count="1" />
 	<BackLink DBID="/Effects/General/Puff/_Cycle_S4.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/Paint/_Purple_S4.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_Green_S5.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_Purple_S5.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

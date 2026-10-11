@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ConditionTargetSelector>
-	<BackLink DBID="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" Count="1" />
 	<condition>
 		<compiledString>FRAAAAACAAAAFQAAACsAAABJZ25vcmFibGVUYXJnZXQAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdTQAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
 		<returnType>bool</returnType>
@@ -51,7 +51,7 @@
 					<traceMode>0</traceMode>
 				</PointTargetSelector>
 			</segmentEndTargetSelector>
-			<targetFilter>547094591</targetFilter>
+			<targetFilter>566231043</targetFilter>
 		</CapsuleTargetSelector>
 	</targetSelector>
 </ConditionTargetSelector>

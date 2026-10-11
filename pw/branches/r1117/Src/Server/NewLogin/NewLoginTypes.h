@@ -45,6 +45,11 @@ typedef nstl::fixed_string<char, 32> SessionKeyString;
 typedef nstl::fixed_string<char, 64> WelcomeString;
 typedef nstl::fixed_string<char, 32> KeyString;
 typedef nstl::fixed_string<char, 64> AddressString;
+// Web-session player key: sha256(str(user_id) + sessionToken + api_key) hex, 64 chars
+typedef nstl::fixed_string<char, 64> PlayerKeyString;
+typedef nstl::fixed_string<char, 64> NicknameString;
+typedef nstl::fixed_string<char, 32> FlagIdString;
+typedef nstl::fixed_string<char, 96> MapIdString;
 
 
 
@@ -59,8 +64,9 @@ struct LoginHello : public rpc::Data
   LoginString login;
   PasswordString password;
   SessionKeyString sessionkey;
+  PlayerKeyString playerKey;   // 7 — web-session player key (empty = legacy login by nickname)
 
-  ZEND int operator&( IBinSaver &f ) { f.Add(2,&clientRevision); f.Add(3,&protocolVersion); f.Add(4,&login); f.Add(5,&password); f.Add(6,&sessionkey); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(2,&clientRevision); f.Add(3,&protocolVersion); f.Add(4,&login); f.Add(5,&password); f.Add(6,&sessionkey); f.Add(7,&playerKey); return 0; }
 
   LoginHello()
     : clientRevision( 0 )
@@ -75,6 +81,7 @@ struct LoginHello : public rpc::Data
     , login(other.login)
     , password(other.password)
     , sessionkey(other.sessionkey)
+    , playerKey(other.playerKey)
   {
   }
 
@@ -86,7 +93,45 @@ struct LoginHello : public rpc::Data
     login = other.login;
     password = other.password;
     sessionkey = other.sessionkey;
+    playerKey = other.playerKey;
     return *this;
+  }
+};
+
+
+// Web session metadata carried by LoginReply (synchronizer 'connectToWebSession'
+// response). 'valid' = the session was found and the player key was accepted.
+//
+// Only the match metadata is delivered here (which map to create, how many
+// slots). Per-player data -- hero, skin, talents, ratings, flag, league,
+// recommended stats -- is NOT sent over the login channel: the lobby parses the
+// synchronizer record once (Shared/WebSessionParse.h) and delivers it to every
+// client as NCore::PlayerInfo (Peered::ClientInfo -> gamesvc -> MapStartInfo),
+// so the client keeps no second copy of it.
+struct WebSessionData : public rpc::Data
+{
+  SERIALIZE_ID();
+
+  ZDATA
+  ZNOPARENT(rpc::Data)
+  bool  valid;
+  MapIdString mapId;
+  int  playersCount;
+
+  ZEND int operator&( IBinSaver &f )
+  {
+    f.Add( 2, &valid );
+    if ( valid )
+    {
+      f.Add( 3, &mapId );
+      f.Add( 4, &playersCount );
+    }
+    return 0;
+  }
+
+  WebSessionData()
+    : valid( false ), playersCount( 0 )
+  {
   }
 };
 
@@ -101,8 +146,9 @@ struct LoginReply : public rpc::Data
   Login::ELoginResult::Enum   code;
   Transport::TClientId        uid;
   WelcomeString               welcomingSvcId;
+  WebSessionData              webSession;    // 5 — web session data (empty when not a web login)
 
-  ZEND int operator&( IBinSaver &f ) { f.Add(2,&code); f.Add(3,&uid); f.Add(4,&welcomingSvcId); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(2,&code); f.Add(3,&uid); f.Add(4,&welcomingSvcId); f.Add(5,&webSession); return 0; }
 
   LoginReply()
     : code( Login::ELoginResult::NoResult )
@@ -115,6 +161,7 @@ struct LoginReply : public rpc::Data
     , code(other.code)
     , uid(other.uid)
     , welcomingSvcId(other.welcomingSvcId)
+    , webSession(other.webSession)
   {
   }
 
@@ -124,6 +171,7 @@ struct LoginReply : public rpc::Data
     code = other.code;
     uid = other.uid;
     welcomingSvcId = other.welcomingSvcId;
+    webSession = other.webSession;
     return *this;
   }
 };

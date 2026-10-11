@@ -29,7 +29,9 @@
 # define ACE_IOCTL_TYPE_ARG2 int
 # endif
 
+#if !defined (ACE_LACKS_STROPTS_H)
 #include "ace/os_include/os_stropts.h"
+#endif
 #include "ace/os_include/os_stdio.h"
 #include /**/ "ace/ACE_export.h"
 
@@ -67,6 +69,7 @@ typedef unsigned long ACE_SOCK_GROUP;
 #endif /* (ACE_HAS_WINSOCK2) && (ACE_HAS_WINSOCK2 != 0) */
 
 // @todo: move this to it's own file... dhinton
+#if !defined (ACE_LACKS_STROPTS_H)
 /**
  * @class ACE_Str_Buf
  *
@@ -84,9 +87,21 @@ public:
 };
 
 class ACE_QoS;
+#else
+// Stub ACE_Str_Buf for platforms without STREAMS support
+struct ACE_Str_Buf
+{
+  ACE_Str_Buf (void *b = 0, int l = 0, int max = 0)
+    : buf(reinterpret_cast<char *>(b)), len(l), maxlen(max) {}
+  char *buf;
+  int len;
+  int maxlen;
+};
+#endif /* !ACE_LACKS_STROPTS_H */
 
 namespace ACE_OS {
 
+#if !defined (ACE_LACKS_STROPTS_H)
   ACE_NAMESPACE_INLINE_FUNCTION
   int getmsg (ACE_HANDLE handle,
               struct strbuf *ctl,
@@ -107,12 +122,6 @@ namespace ACE_OS {
 
   ACE_NAMESPACE_INLINE_FUNCTION
   int fdetach (const char *file);
-
-  /// UNIX-style @c ioctl
-  ACE_NAMESPACE_INLINE_FUNCTION
-  int ioctl (ACE_HANDLE handle,
-             ACE_IOCTL_TYPE_ARG2 cmd,
-             void * = 0);
 
   /// QoS-enabled @c ioctl
   extern ACE_Export
@@ -153,6 +162,19 @@ namespace ACE_OS {
                const struct strbuf *data,
                int band,
                int flags);
+#endif /* !ACE_LACKS_STROPTS_H */
+
+#if defined (ACE_LACKS_STROPTS_H)
+  // Stub for isastream on Linux
+  ACE_NAMESPACE_INLINE_FUNCTION
+  int isastream (ACE_HANDLE);
+#endif
+
+  /// UNIX-style @c ioctl
+  ACE_NAMESPACE_INLINE_FUNCTION
+  int ioctl (ACE_HANDLE handle,
+             ACE_IOCTL_TYPE_ARG2 cmd,
+             void * = 0);
 
 } /* namespace ACE_OS */
 

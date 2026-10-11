@@ -12,7 +12,7 @@
 
 #include "../Scene/RenderableScene.h"
 #include "../Render/RenderInterface.h"
-#include "../Render/Renderer.h"
+#include "../Render/renderer.h"
 #include "../Render/batch.h"
 #include "../Render/texture.h"
 

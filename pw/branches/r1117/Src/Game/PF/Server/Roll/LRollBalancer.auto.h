@@ -39,8 +39,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "roll::IBalancer::LoadNotify", 3, false, rpc::GetMethodCode(&roll::IBalancer::LoadNotify) },
-        { "roll::IBalancer::AllocateInstance", 0, false, rpc::GetMethodCode(&roll::IBalancer::AllocateInstance) },
+        { "roll::IBalancer::LoadNotify", 3, false, rpc::GetMethodCode(&roll::IBalancer::LoadNotify), 3 },
+        { "roll::IBalancer::AllocateInstance", 0, false, rpc::GetMethodCode(&roll::IBalancer::AllocateInstance), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_UserManager_UserManagerAgent UserManagerAgent/UserManagerAgent.cpp UserManagerAgent/UserManagerAgent.h UserManagerAgent/IUserManagerAgent.h UserManagerAgent/specific.h UserManagerAgent/stdafx.cpp UserManagerAgent/stdafx.h)
-set(LIBRARIES_Src_Server_UserManager_UserManagerAgent )

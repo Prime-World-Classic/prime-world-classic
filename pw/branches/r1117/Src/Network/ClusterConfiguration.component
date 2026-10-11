@@ -5,5 +5,6 @@ sources = [
 
 components = [
     'System/Commands',
+    'Shared/ServerIps',
     'Vendor/Libc'
 ]

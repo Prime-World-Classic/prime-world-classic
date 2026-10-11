@@ -3,7 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A4u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Chronicle_Mighty.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Chronicle.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Chronicle.TALENTSET" Count="2" />
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
@@ -57,6 +57,26 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Chronicle/const_A4_2u_SlowPercentage" />
+				<Item href="/Items/Talents/Class/Chronicle/Ability_A4_2u.TALENT" id="C7223A2B-F16E-4FE8-B949-9114171F745B">
+					<UnitConstant>
+						<name>A4_2u_SlowPercentageBonus</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>20</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Chronicle/Ability_A4_2u.TALENT" id="B981AB85-B605-4C14-84C0-8DDC2D161AC5">
+					<UnitConstant>
+						<name>A4_2u_DurationBonus</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -1,6 +1,6 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ConfigManager.h"
-#include "ConfigDatabase.h"
+#include "configdatabase.h"
 
 
 static bool s_readableDepth = true;

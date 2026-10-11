@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "stdafx.h"
 #include "Utility.h"
 #include "CompositeTransformController.h"
 
@@ -134,10 +134,10 @@ void CompositeTransformController::Scale::set( Vector3^ value )
 	  controller->Scale = gcnew Vector3(ComponentProduct( ComponentInvProduct( controller->Scale->Native, tempScale->Native ), value->Native ));
   }
 
-  //включен режим глобального скейла
+  //   
   if( controllers->Length > 1 && IsCommonCenter )
   {   
-    //ищем центр объектов
+    //  
     CVec3 center = CVec3( 0, 0, 0 );
 
     for each ( IObjectTransformController^ controller in controllers )
@@ -155,7 +155,7 @@ void CompositeTransformController::Scale::set( Vector3^ value )
       CVec3 move = CVec3(
         (controller->Location->X - center.x) * value->X / tempScale->X,
         (controller->Location->Y - center.y) * value->Y / tempScale->Y,
-         controller->Location->Z - center.z //не меняем высоту объектов
+         controller->Location->Z - center.z //   
         );
 
       controller->Location = gcnew Vector3( move + center );

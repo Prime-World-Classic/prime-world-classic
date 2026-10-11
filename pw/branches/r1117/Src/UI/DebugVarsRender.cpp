@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "DebugVarsRender.h"
 #include "../System/LogFileName.h"
-#include "../Render/Renderer.h"
-#include "../Render/UIRenderer.h"
+#include "../Render/renderer.h"
+#include "../Render/uirenderer.h"
 #include "../Render/debugrenderer.h"
 
 #include "FontRender.h"

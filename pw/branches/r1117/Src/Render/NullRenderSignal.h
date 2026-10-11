@@ -1,5 +1,5 @@
 #pragma once
-#include "..\System\SimpleSignalST.h"
+#include "../System/SimpleSignalST.h"
 
 struct NullRenderTag {};
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 
 class NativeCl
 {

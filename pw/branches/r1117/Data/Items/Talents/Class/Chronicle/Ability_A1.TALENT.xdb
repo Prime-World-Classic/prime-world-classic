@@ -829,9 +829,9 @@
 	<isUltimateTalent>false</isUltimateTalent>
 	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
 	<manaCost>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAD6Qg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>125</sString>
+		<sString>100</sString>
 	</manaCost>
 	<marker></marker>
 	<microAI href="/Items/Talents/Class/Chronicle/Ability_A1.TALENT" id="1BFC0E8E-7819-4693-8232-B07751DCD444">

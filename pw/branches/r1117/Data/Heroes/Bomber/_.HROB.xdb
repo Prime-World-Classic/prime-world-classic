@@ -1233,6 +1233,7 @@
 				<sceneObject href="/Heroes/Bomber/S1/_.SOBJ" />
 			</HeroSkin>
 		</Item>
+		<Item href="/Heroes/Bomber/S2/_A.HEROSKIN" />
 	</heroSkins>
 	<id>bomber</id>
 	<image href="" />

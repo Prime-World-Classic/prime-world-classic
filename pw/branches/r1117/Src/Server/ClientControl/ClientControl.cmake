@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ClientControl_ClientControl ClientControlService.h ClientControlService.cpp ClientControlLog.h ClientControlInterface.h ClientControlLogic.h ClientControlLogic.cpp ClientControlUser.h ClientControlUser.cpp ClientControlLoginSvc.h ClientControlLoginSvc.cpp)
-set(LIBRARIES_Src_Server_ClientControl_ClientControl )

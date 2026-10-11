@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_FileSystem_FileSystem FileSystem.h FileSystem.cpp CombinerFileSystem.h CombinerFileSystem.cpp WinFileSystem.h WinFileSystem.cpp WinFileSystemWatcher.h WinFileSystemWatcher.cpp FileSystemDebugMonitor.h FileExtensionStatisticsMonitor.h FileExtensionStatisticsMonitor.cpp FileActivitySimpleMonitor.h FileActivitySimpleMonitor.cpp TinyFileWriteStream.cpp TinyFileWriteStream.h)
-set(LIBRARIES_Src_System_FileSystem_FileSystem )

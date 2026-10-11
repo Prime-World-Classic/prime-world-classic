@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollBalancer RollBalancer.h RollServiceBalancer.cpp RollServiceBalancer.h RollServiceBalancerRunner.cpp RollServiceBalancerRunner.h)
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollBalancer )

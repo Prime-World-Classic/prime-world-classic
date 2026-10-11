@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollLogic RollLogic.cpp RollLogic.h RollLog.h TalentRollDataCache.cpp TalentRollDataCache.h)
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollLogic )

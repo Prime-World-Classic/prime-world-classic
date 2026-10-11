@@ -14,4 +14,12 @@
 	<parentType>General</parentType>
 	<visibilityLimited>false</visibilityLimited>
 	<visibleTime>0</visibleTime>
+	<__states>
+		<state name="bomber_S2">
+			<component href="/Effects/Debuffs/Explosion/_FireDoomPink.PRXY" />
+		</state>
+		<state name="Bomber_S1">
+			<component href="/Effects/Debuffs/Explosion/_FireDoom.PRXY" />
+		</state>
+	</__states>
 </BasicEffectStandalone>

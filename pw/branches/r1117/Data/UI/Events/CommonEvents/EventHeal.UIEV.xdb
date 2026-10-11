@@ -38,7 +38,7 @@
 	<BackLink DBID="/Items/Talents/Class/Bard/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/appl_A4_2_Damage.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/status_A0_AddMastery.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Brewer/appl_Honey_Heal.APLR" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Brewer/Honey_HealMSG.APLR" Count="1" />

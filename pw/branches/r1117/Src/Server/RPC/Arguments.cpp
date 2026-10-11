@@ -289,7 +289,7 @@ const uint maxVectorContentSize = 64*1024;
 
 uint GetVectorContentSize(uint elementsCount, uint elementSize)
 {
-  if (elementSize == 0 ) //видимо получили какой-то левый тип данных
+  if (elementSize == 0 ) //пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     return 0;
 
   uint desiredElementsCount = maxVectorContentSize/elementSize;
@@ -654,7 +654,49 @@ xvector* ArgReader::_PopVector(int expectedElementSize, bool& result, DataFactor
 void* ArgReader::_AllocateBuffer(int size)
 {
   int old_size = bytes.size();
-  NI_VERIFY(old_size+size <= bytes.capacity(), "Reallocations are prohibited because of possible heap corruption after memory reallocation", return 0);
+  if (old_size+size > (int)bytes.capacity())
+  {
+    // The preAllocatedSize hint in the packet header is computed by the
+    // SENDER with its own platform's object sizes (e.g. a 32-bit Windows
+    // client accounts ~12-28 bytes per string), while the receiver places
+    // its own objects into `bytes` (on Linux sizeof(nstl::string)==40).
+    // The reservation can therefore be too small and the buffer has to be
+    // grown here instead of failing the whole packet.
+    //
+    // Growing is safe: the objects placed into `bytes` (xstring, xvector,
+    // rpc::Data, MemoryBlock) only store pointers into the packet payload
+    // (or into static data), except that an xvector produced by
+    // _PopVectorOfSerializedStructs points into `bytes` itself. After the
+    // move, the raw object pointers cached in strings/vectors/datas and the
+    // internal pointers of the xvector objects are re-based to the new
+    // buffer location.
+    byte* oldBase = bytes.empty() ? 0 : &bytes[0];
+    const size_t oldLen = bytes.size();
+    bytes.reserve(bytes.capacity() + bytes.capacity()/2 + size + 1);
+    byte* newBase = bytes.empty() ? 0 : &bytes[0];
+    if (oldBase && (newBase != oldBase))
+    {
+      ptrdiff_t shift = (ptrdiff_t)(size_t)newBase - (ptrdiff_t)(size_t)oldBase;
+      const byte* oldEnd = oldBase + oldLen;
+      for (int i=0;i<strings.size();++i)
+        strings[i] = (xstring*)((const byte*)strings[i] + shift);
+      for (int i=0;i<vectors.size();++i)
+      {
+        xvector* v = (xvector*)((const byte*)vectors[i] + shift);
+        // nstl::vector layout: three consecutive pointers
+        byte** members = (byte**)(void*)v;
+        for (int m=0;m<3;++m)
+        {
+          byte* p = members[m];
+          if (p >= oldBase && p < oldEnd)
+            members[m] = (byte*)p + shift;
+        }
+        vectors[i] = v;
+      }
+      for (int i=0;i<datas.size();++i)
+        datas[i] = (rpc::Data*)((const byte*)datas[i] + shift);
+    }
+  }
   bytes.resize(old_size+size);
   return &bytes[old_size];
 }
@@ -1225,12 +1267,23 @@ xstring* ArgReader::_PopStringContent(void* buffer, uint size, bool& result, boo
 #if defined( NV_WIN_PLATFORM )
     return _CreateString(buffer, value, size, isWide);
 #elif defined( NV_LINUX_PLATFORM )
-    nstl::wstring * wstr = new nstl::wstring;
-    wstr -> resize( size );
-    const UInt16T * p = ( const UInt16T * ) ( value );
-    std::copy( p, p + size, wstr -> begin() );
-    heapStrings.push_back( wstr );
-    return (xstring*) wstr;
+    if ( isWide )
+    {
+      // Wide strings are stored 2 bytes per char on the wire (see
+      // ArgWriter::_PushStringContent). Rebuild the wstring from the
+      // UInt16 values.
+      nstl::wstring * wstr = new nstl::wstring;
+      wstr -> resize( size );
+      const UInt16T * p = ( const UInt16T * ) ( value );
+      std::copy( p, p + size, wstr -> begin() );
+      heapStrings.push_back( wstr );
+      return (xstring*) wstr;
+    }
+    // Narrow strings: plain bytes, same as the Windows path. (Unconditionally
+    // rebuilding them as wide strings here reinterpreted every char pair as
+    // a wchar, inserting NULs that truncated the string to its first few
+    // characters on the reader side.)
+    return _CreateString(buffer, value, size, isWide);
 #endif
   }
   return _CreateString(buffer, emptyString, 0, isWide);

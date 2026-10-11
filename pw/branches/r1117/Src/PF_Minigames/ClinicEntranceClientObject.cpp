@@ -3,7 +3,7 @@
 #include "ClinicEntranceClientObject.h"
 
 #include "Clinic.h"
-#include "clinicEntrance.h"
+#include "ClinicEntrance.h"
 #include "../UI/ImageLabel.h"
 
 

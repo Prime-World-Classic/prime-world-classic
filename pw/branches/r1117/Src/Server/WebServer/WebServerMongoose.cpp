@@ -131,7 +131,7 @@ void MongooseServer::StopImpl()
 
 
 
-void * __cdecl MongooseServer::MgCallback( mg_event event, mg_connection * conn )
+void * MongooseServer::MgCallback( mg_event event, mg_connection * conn )
 {
   switch ( event )
   {
@@ -226,7 +226,7 @@ void MongooseServer::ProcessRequest( mg_connection * conn, const mg_request_info
         }
         else {
           NI_PROFILE_HEAVY_BLOCK( "Sleep" );
-          Sleep( 1 );
+          threading::Sleep( 1 );
         }
       }
     }

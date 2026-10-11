@@ -1,7 +1,7 @@
 #pragma once
 
 #include "texture.h"
-#include "SceneConstants.h"
+#include "sceneconstants.h"
 #include "Bloom.h"
 
 namespace Render {

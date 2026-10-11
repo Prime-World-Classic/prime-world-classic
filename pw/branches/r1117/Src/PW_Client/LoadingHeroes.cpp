@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "LoadingHeroes.h"
 
 #include "LoadingFlashInterface.h"
@@ -10,9 +10,8 @@
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "PF_GameLogic/HeroSpawn.h"
 #include "LoadingScreenLogic.h"
-#include "PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 
-map<int, WebLauncherPostRequest::PlayerMetaInfo> userIdToMetaMap;
 
 namespace Game
 {
@@ -45,7 +44,7 @@ void LoadingHeroes::AddUser( int userId, const wstring & playerName,
   char * iconPath = "";
 	char * classIcon = "";
 
-  // ѕытаемс€ ипользовать heroId из PlayerInfo. http://SITE
+  //   heroId  PlayerInfo. http://SITE
   
   //int newHeroId = heroInfo.heroId != 0 ? heroInfo.heroId : Crc32Checksum().AddString(heroId).Get();
   NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( heroDb, advMapDescription,  heroInfo.heroId);

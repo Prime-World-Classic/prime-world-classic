@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LiveMMaking_ProdMMLogicBase ProdMmLogicBase.cpp ProdMmLogicBase.h MMakingUniStat.h MMakingUniStat.cpp MmQueueIterator.h MmQueueIterator.cpp)
-set(LIBRARIES_Src_Game_PF_Server_LiveMMaking_ProdMMLogicBase )

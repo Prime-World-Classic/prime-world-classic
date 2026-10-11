@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "BindsController.h"
 #include "NivalInput/Binds.h"
 #include "AdventureScreen.h"

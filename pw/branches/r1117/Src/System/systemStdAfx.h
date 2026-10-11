@@ -3,6 +3,32 @@
 
 #include "System/config.h"
 
+// Linux-port helpers. They MUST stay out of the Windows PCH chain: several
+// projects of the MSVC solution are built with ExceptionHandling="0" (no /EHsc)
+// and /WX, so pulling <stdexcept> into their precompiled header turns
+// C4530 ("C++ exception handler used, but unwind semantics are not enabled")
+// into a hard error (verified on the ShippingSingleExe|Win32 build of Core and
+// Client). MSVC provides sprintf_s natively, so none of this is needed there.
+#if defined( NV_LINUX_PLATFORM )
+  #include <stdexcept>  // std::runtime_error
+  #include <cstdlib>    // wcstol, atoi
+  #include <cerrno>     // errno, ERANGE
+#endif
+
+// sprintf_s is Windows-only. On Linux the port lives in one place
+// (the header itself is empty on Windows):
+#include "safeSprintf.h"
+
+// Windows atomic operations compatibility on Linux (single definition point).
+// NOTE: use *_and_fetch variants — Windows returns the NEW value
+// (InterlockedExchange/Add return the PREVIOUS value on Windows).
+#ifdef NV_LINUX_PLATFORM
+  #define InterlockedIncrement(x) __sync_add_and_fetch((x), 1)
+  #define InterlockedDecrement(x) __sync_sub_and_fetch((x), 1)
+  #define InterlockedExchangeAdd(x, v) __sync_fetch_and_add((x), (v))
+  #define InterlockedExchange(x, v) __sync_lock_test_and_set((x), (v))
+#endif
+
 #ifdef STATIC_LIB
   #define DO_NOT_USE_DLLMAIN
   #define INTERMODULE_EXPORT
@@ -125,7 +151,7 @@ using namespace nstl;
 
 #include "DefaultTypes.h"
 #ifndef NI_PLATF_LINUX
-  #include "../MemoryLib/newdelete.h"
+  #include "../MemoryLib/NewDelete.h"
 #endif
 
 #define for if(false); else for					// to achive standard variable scope resolving, declared inside 'for'

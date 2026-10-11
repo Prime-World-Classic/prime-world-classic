@@ -3,6 +3,19 @@
 #include "System/LogFileName.h"
 #include "System/FileSystem/FileUtils.h"
 
+#if defined( NV_LINUX_PLATFORM )
+#include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
+typedef FILE* HANDLE;
+#define INVALID_HANDLE_VALUE ((FILE*)NULL)
+#define CloseHandle(fp) fclose(fp)
+inline DWORD WriteFile(HANDLE h, const char* buf, DWORD len, DWORD* written, void*) { *written = fwrite(buf, 1, len, h); return ferror(h) == 0; }
+inline void OutputDebugString(const char* s) { fprintf(stderr, "DEBUG: %s\n", s); }
+inline DWORD GetCurrentProcessId() { return getpid(); }
+// sprintf_s / vsprintf_s: provided by System/safeSprintf.h (via stdafx.h)
+#endif
+
 
 NI_DEFINE_REFCOUNT( mmaking::Loger );
 
@@ -70,7 +83,7 @@ void Loger::Log( ELogLevel::Enum level, const char * fmt, ... )
   va_list args;
   va_start( args, fmt );
   char buf[8192];
-  vsprintf_s( buf, fmt, args );
+  vsprintf_s( buf, sizeof( buf ), fmt, args );
   va_end( args);
   Write( buf );
 }

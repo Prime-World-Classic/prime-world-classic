@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "LoadingStatusHandler.h"
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "Network/LoginTypes.h"

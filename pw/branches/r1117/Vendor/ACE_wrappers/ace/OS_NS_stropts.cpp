@@ -10,6 +10,8 @@ ACE_RCSID(ace, OS_NS_stropts, "$Id: OS_NS_stropts.cpp 85460 2009-05-29 13:38:50Z
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
+#if !defined (ACE_LACKS_STROPTS_H)
+
 int
 ACE_OS::ioctl (ACE_HANDLE socket,
                unsigned long io_control_code,
@@ -86,7 +88,6 @@ ACE_OS::ioctl (ACE_HANDLE socket,
     {
       unsigned long dwBufferLen = 0;
 
-      // Query for the buffer size.
       int result = ::WSAIoctl ((ACE_SOCKET) socket,
                                 io_control_code,
                                 0,
@@ -120,13 +121,13 @@ ACE_OS::ioctl (ACE_HANDLE socket,
                     char [dwBufferLen],
                     -1);
 
-    QOS *qos = reinterpret_cast<QOS*> (qos_buf);
+    QOS *qos_ptr = reinterpret_cast<QOS*> (qos_buf);
 
     result = ::WSAIoctl ((ACE_SOCKET) socket,
                        io_control_code,
                        0,
                        0,
-                       qos,
+                       qos_ptr,
                        dwBufferLen,
                        bytes_returned,
                        0,
@@ -135,15 +136,15 @@ ACE_OS::ioctl (ACE_HANDLE socket,
     if (result == SOCKET_ERROR)
       return result;
 
-    ACE_Flow_Spec sending_flowspec (qos->SendingFlowspec.TokenRate,
-                                    qos->SendingFlowspec.TokenBucketSize,
-                                    qos->SendingFlowspec.PeakBandwidth,
-                                    qos->SendingFlowspec.Latency,
-                                    qos->SendingFlowspec.DelayVariation,
+    ACE_Flow_Spec sending_flowspec (qos_ptr->SendingFlowspec.TokenRate,
+                                    qos_ptr->SendingFlowspec.TokenBucketSize,
+                                    qos_ptr->SendingFlowspec.PeakBandwidth,
+                                    qos_ptr->SendingFlowspec.Latency,
+                                    qos_ptr->SendingFlowspec.DelayVariation,
 #  if defined(ACE_HAS_WINSOCK2_GQOS)
-                                    qos->SendingFlowspec.ServiceType,
-                                    qos->SendingFlowspec.MaxSduSize,
-                                    qos->SendingFlowspec.MinimumPolicedSize,
+                                    qos_ptr->SendingFlowspec.ServiceType,
+                                    qos_ptr->SendingFlowspec.MaxSduSize,
+                                    qos_ptr->SendingFlowspec.MinimumPolicedSize,
 #  else /* ACE_HAS_WINSOCK2_GQOS */
                                     0,
                                     0,
@@ -152,15 +153,15 @@ ACE_OS::ioctl (ACE_HANDLE socket,
                                     0,
                                     0);
 
-    ACE_Flow_Spec receiving_flowspec (qos->ReceivingFlowspec.TokenRate,
-                                      qos->ReceivingFlowspec.TokenBucketSize,
-                                      qos->ReceivingFlowspec.PeakBandwidth,
-                                      qos->ReceivingFlowspec.Latency,
-                                      qos->ReceivingFlowspec.DelayVariation,
+    ACE_Flow_Spec receiving_flowspec (qos_ptr->ReceivingFlowspec.TokenRate,
+                                      qos_ptr->ReceivingFlowspec.TokenBucketSize,
+                                      qos_ptr->ReceivingFlowspec.PeakBandwidth,
+                                      qos_ptr->ReceivingFlowspec.Latency,
+                                      qos_ptr->ReceivingFlowspec.DelayVariation,
 #  if defined(ACE_HAS_WINSOCK2_GQOS)
-                                      qos->ReceivingFlowspec.ServiceType,
-                                      qos->ReceivingFlowspec.MaxSduSize,
-                                      qos->ReceivingFlowspec.MinimumPolicedSize,
+                                      qos_ptr->ReceivingFlowspec.ServiceType,
+                                      qos_ptr->ReceivingFlowspec.MaxSduSize,
+                                      qos_ptr->ReceivingFlowspec.MinimumPolicedSize,
 #  else /* ACE_HAS_WINSOCK2_GQOS */
                                       0,
                                       0,
@@ -171,7 +172,7 @@ ACE_OS::ioctl (ACE_HANDLE socket,
 
        ace_qos.sending_flowspec (&sending_flowspec);
        ace_qos.receiving_flowspec (&receiving_flowspec);
-       ace_qos.provider_specific (*((struct iovec *) (&qos->ProviderSpecific)));
+       ace_qos.provider_specific (*((struct iovec *) (&qos_ptr->ProviderSpecific)));
 
 
       return result;
@@ -189,5 +190,7 @@ ACE_OS::ioctl (ACE_HANDLE socket,
   ACE_NOTSUP_RETURN (-1);
 # endif /* ACE_HAS_WINSOCK2 */
 }
+
+#endif /* !ACE_LACKS_STROPTS_H */
 
 ACE_END_VERSIONED_NAMESPACE_DECL

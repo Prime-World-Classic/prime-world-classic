@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneComponent>
-	<BackLink DBID="/Effects/Debuffs/Bomb/_.EFFT" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_Bomb.EFFT" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_Standalone.EFFT" Count="1" />
 	<attached>

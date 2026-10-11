@@ -39,15 +39,15 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "lobby::ILobbyUser::AddGameInfo", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::AddGameInfo) },
-        { "lobby::ILobbyUser::JoinCustomSession", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::JoinCustomSession) },
-        { "lobby::ILobbyUser::UpdateClientStatus", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateClientStatus) },
-        { "lobby::ILobbyUser::AddCustomGameMember", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::AddCustomGameMember) },
-        { "lobby::ILobbyUser::RemoveCustomGameMember", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::RemoveCustomGameMember) },
-        { "lobby::ILobbyUser::UpdateCustomGameMember", 2, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateCustomGameMember) },
-        { "lobby::ILobbyUser::UpdateCustomGameMemberReadiness", 2, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateCustomGameMemberReadiness) },
-        { "lobby::ILobbyUser::StartSession", 6, false, rpc::GetMethodCode(&lobby::ILobbyUser::StartSession) },
-        { "lobby::ILobbyUser::Award", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::Award) },
+        { "lobby::ILobbyUser::AddGameInfo", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::AddGameInfo), 1 },
+        { "lobby::ILobbyUser::JoinCustomSession", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::JoinCustomSession), 1 },
+        { "lobby::ILobbyUser::UpdateClientStatus", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateClientStatus), 0 },
+        { "lobby::ILobbyUser::AddCustomGameMember", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::AddCustomGameMember), 1 },
+        { "lobby::ILobbyUser::RemoveCustomGameMember", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::RemoveCustomGameMember), 0 },
+        { "lobby::ILobbyUser::UpdateCustomGameMember", 2, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateCustomGameMember), 2 },
+        { "lobby::ILobbyUser::UpdateCustomGameMemberReadiness", 2, false, rpc::GetMethodCode(&lobby::ILobbyUser::UpdateCustomGameMemberReadiness), 0 },
+        { "lobby::ILobbyUser::StartSession", 6, false, rpc::GetMethodCode(&lobby::ILobbyUser::StartSession), 30 },
+        { "lobby::ILobbyUser::Award", 1, false, rpc::GetMethodCode(&lobby::ILobbyUser::Award), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

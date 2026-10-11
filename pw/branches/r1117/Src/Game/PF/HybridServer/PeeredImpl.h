@@ -74,6 +74,7 @@ private:
 class CommandsScheduler : public IGameServer, public IWorld, public BaseObjectMT, public AppFramework::ITimedInstance
 {
   NI_DECLARE_REFCOUNT_CLASS_3( CommandsScheduler, IGameServer, BaseObjectMT, AppFramework::ITimedInstance );
+  friend struct HealthStepGuard;   // tick-health measurement (PeeredImpl.cpp, PLAN_server_pick_ping.md)
 public:
   CommandsScheduler(
     const SchedulerData& _data,
@@ -104,7 +105,7 @@ public:
   virtual void AddClientFast(int clientId, int clientIndex, NI_LPTR Peered::IGameClient* _client, int fromStep);
   virtual void SendCommand(int clientIndex, const rpc::MemoryBlock& info, bool isPlayerCommand);
   virtual void OnClientReady(int clientIndex);
-  virtual SHybridPongResult& Ping( SHybridPongResult& time_step ) { return time_step; } // возвращаем ровно то же время, которое нам присылают; чтобы на стороне клиента не возиться с запоминанием.
+  virtual SHybridPongResult& Ping( SHybridPongResult& time_step ) { return time_step; } // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ; пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 
   virtual void OnFinishStep(int clientIndex, uint step, uint worldCrc);
   virtual void SetTimeScale(int clientIndex, float _scale);
@@ -152,6 +153,10 @@ private:
   void UpdateLagsStatistics(int delta);
   bool CheckFinishGameTimeout();
   bool UpdateGameFinishing(bool timeOut);
+  // Tick-health accumulation (Shared/GameHealthSnapshot.h, PLAN_server_pick_ping.md);
+  // called from the Step RAII guard (work = Step wall time, lateDelta = the
+  // Step delta parameter вЂ” ms the slicer ran past the scheduled tick time).
+  void AccumulateHealth( double workMs, int lateDeltaMs );
 
   void StepPlaySameTeamTimer();
   bool CheckPlaySameTeamTimer() const;
@@ -196,6 +201,14 @@ private:
   StrongMT<lobby::ISessionHybridLink> statsLink;
   StrongMT<Peered::GameServerReconnect> gameServerReconnect;
   AppFramework::InstanceStatistics stats;
+  // Tick-health self-measurement (Shared/GameHealthSnapshot.h,
+  // PLAN_server_pick_ping.md): per-tick sums, reported to the process
+  // snapshot once per second (AccumulateHealth).
+  double healthWorkSumMs;
+  double healthLateSumMs;
+  int healthTickCount;
+  double healthPeriodMs;
+  NHPTimer::STime healthLastFlush;
   NLogg::CChannelLogger* logStream;
   threading::Mutex clientsLock;
   nstl::vector<Peered::ClientInfo> clientInfos;

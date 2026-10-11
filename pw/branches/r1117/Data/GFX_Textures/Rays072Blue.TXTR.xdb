@@ -11,6 +11,7 @@
 	<BackLink DBID="/Heroes/Crusader/S2/FXAttackTRS4.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Crusader/S2/FXAttackTRS6.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Witch/FXDeath.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_Green_S5.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

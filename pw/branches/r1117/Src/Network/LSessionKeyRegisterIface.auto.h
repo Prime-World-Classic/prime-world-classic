@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Login::IAddSessionKeyCallback::OnAddSessionKey", 3, false, rpc::GetMethodCode(&Login::IAddSessionKeyCallback::OnAddSessionKey) },
+        { "Login::IAddSessionKeyCallback::OnAddSessionKey", 3, false, rpc::GetMethodCode(&Login::IAddSessionKeyCallback::OnAddSessionKey), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -113,7 +113,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Login::ISessionKeyRegister::AddSessionKey", 6, false, rpc::GetMethodCode(&Login::ISessionKeyRegister::AddSessionKey) },
+        { "Login::ISessionKeyRegister::AddSessionKey", 6, false, rpc::GetMethodCode(&Login::ISessionKeyRegister::AddSessionKey), 39 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

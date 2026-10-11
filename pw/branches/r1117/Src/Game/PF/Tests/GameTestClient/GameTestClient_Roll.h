@@ -4,7 +4,7 @@
 #include "Server/Roll/RRollBalancer.auto.h"
 #include "Server/Roll/RRollInstance.auto.h"
 #include "Server/Roll/RollClient.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 
 #include <list>
 

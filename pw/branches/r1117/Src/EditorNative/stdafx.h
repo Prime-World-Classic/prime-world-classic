@@ -45,8 +45,8 @@ struct FMOD_EVENTSYSTEM{};      // define structure from fmod.h to prevent C4339
 
 #include "../Render/stdafx.h"
 #include "../Render/RenderInterface.h"
-#include "../Render/UiRenderer.h"
-#include "../Render/DebugRenderer.h"
+#include "../Render/uirenderer.h"
+#include "../Render/debugrenderer.h"
 #include "../Render/MaterialResourceInterface.h"
 #include "../Render/renderresourcemanager.h"
 #include "../Render/SkeletalMesh.h"

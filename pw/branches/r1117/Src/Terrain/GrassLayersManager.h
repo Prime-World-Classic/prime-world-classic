@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../System/noncopyable.h"
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "SpeedGrass.h"
 #include "GrassRenderManager.h"
 #include "DBTerrain.h"

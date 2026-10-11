@@ -32,7 +32,7 @@ void SeClientWorker::AddMessage( SeMessageBase * _msg )
 void SeClientWorker::PacketWorker()
 {
     if ( line.empty()){
-        Sleep( 10 );
+        threading::Sleep( 10 );
         return;
     }
     int packetCount = 0; 
@@ -42,7 +42,7 @@ void SeClientWorker::PacketWorker()
         StrongMT<SeMessageBase> msg = Pop();
 
         if ( !msg ) {
-            Sleep( 10 );
+            threading::Sleep( 10 );
             continue;
         }
         pack.push_back(msg);
@@ -156,7 +156,7 @@ void SeClientWorker::SingleWorker()
     StrongMT<SeMessageBase> msg = Pop();
 
     if ( !msg ) {
-        Sleep( 10 );
+        threading::Sleep( 10 );
         return;
     }
 

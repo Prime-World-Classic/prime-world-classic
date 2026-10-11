@@ -3,7 +3,7 @@
 
 #include "PFMinigameCommon.h"
 #include "PFStatisticsStuff.h"
-#include "System\StarForce\HiddenVars.h"
+#include "System/StarForce/HiddenVars.h"
 
 namespace NGameX
 {
@@ -175,8 +175,8 @@ private:
 
   int numDeaths;
   int numBossKillsAssist;
-  int numCatKillAssist; // - засчитывает только убийства\ассисты босса кота Баюна
-  int numDragonKillAssist; // - засчитывает только убийства\ассисты босса Горыныча
+  int numCatKillAssist; // -   \   
+  int numDragonKillAssist; // -   \  
   int numKillsTotal;
   int numCreepsKilled;
   int numNeutralCreepsKilled;
@@ -228,7 +228,7 @@ private:
 
   int quartersDestroyed;
 
-  int specialPoints; // Для режима "Испытания". Если нужны дополнительные счётчики, то стоит заводить контейнер с соответствиями имя-счётчик.
+  int specialPoints; //   "".    ,       -.
 
   float distanceTraveled;
 public:

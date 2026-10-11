@@ -48,9 +48,13 @@ namespace Monitoring
         StrongMT<PerfCounterCtx> const & pc = *cit;
         if (!pc->val().empty())
         {
+#ifdef WIN32
           int v = ::_wtoi(pc->val().c_str());
           if (errno != ERANGE)
             result += v;
+#else
+          result += static_cast<int>(wcstol(pc->val().c_str(), NULL, 10));
+#endif
         }
 
         if (pc->time() > t)

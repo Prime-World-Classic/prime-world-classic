@@ -15,7 +15,11 @@ namespace GameBalancer
     :softlimit_(_softlimit),
     hardlimit_(_hardlimit),
     gk(_gk),
-    addrResolver_(_addrResolver)
+    addrResolver_(_addrResolver),
+    subscriberId_(Coordinator::INVALID_SUBSCRIBER_ID),
+    resubscribePending_(false),
+    lastResubscribeTime_(0.0),
+    resubscribeRetries_(0)
   {
     svcPublisherIface_ = new rpc::IfaceRequester<Coordinator::RIServiceAppearancePublisher>;
     int rc = svcPublisherIface_->init(gk, Transport::ENetInterface::Coordinator, Coordinator::SvcAppearancePublisherIfaceId, 
@@ -220,6 +224,38 @@ namespace GameBalancer
   {
     svcPublisherIface_->step();
 
+    // Startup-race recovery: resubscribe while no gamesvc is registered
+    // (the publisher resends the current cluster info on re-subscription).
+    if (resubscribePending_)
+    {
+      if (!registeredSvcCtxs.empty())
+      {
+        resubscribePending_ = false; // services appeared
+      }
+      else
+      if (svcPublisherIface_->isopen())
+      {
+        NHPTimer::FTime now = NHPTimer::GetScalarTime();
+        if (now >= lastResubscribeTime_ + kResubscribeInterval)
+        {
+          lastResubscribeTime_ = now;
+          if (resubscribeRetries_ >= kMaxResubscribeRetries)
+          {
+            resubscribePending_ = false; // give up until the next (re)subscription
+          }
+          else
+          {
+            ++resubscribeRetries_;
+            if (resubscribeRetries_ == 1 || (resubscribeRetries_ % 10) == 0)
+            {
+              LOG_W(GBALANCER).Trace("No gamesvc registered — resubscribing to the coordinator publisher (retry %d)", resubscribeRetries_);
+            }
+            svcPublisherIface_->iface()->RegisterSubscriber(this);
+          }
+        }
+      }
+    }
+
     for(SvcContextListT::iterator it = initSvcCtxs.begin(); it != initSvcCtxs.end();)
     {
       StrongMT<SvcContext> svctx = *it;
@@ -361,6 +397,7 @@ namespace GameBalancer
       return;
     }
 
+    bool isResubscribe = (_id >= 0 && _id == subscriberId_);
     subscriberId_ = _id;
 
     LOG_M(GBALANCER).Trace("Cluster services:");
@@ -380,6 +417,25 @@ namespace GameBalancer
           AddService(si.svcid);
         }
       }
+    }
+
+    if (registeredSvcCtxs.empty())
+    {
+      // The snapshot contains no started gamesvc (startup race: it was taken
+      // before the local services were announced to the coordinator). Arm the
+      // periodic resubscription in Step() until services appear — the
+      // publisher resends the current cluster info on re-subscription.
+      if (!isResubscribe)
+      {
+        resubscribeRetries_ = 0;
+        lastResubscribeTime_ = NHPTimer::GetScalarTime() - kResubscribeInterval;
+        LOG_W(GBALANCER).Trace("No started gamesvc in the cluster snapshot — will resubscribe until services appear");
+      }
+      resubscribePending_ = true;
+    }
+    else
+    {
+      resubscribePending_ = false;
     }
 
     LOG_M(GBALANCER).Trace("Registered as subscriber successfully(id=%d)", _id);

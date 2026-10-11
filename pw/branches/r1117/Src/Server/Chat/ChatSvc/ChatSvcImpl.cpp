@@ -3,7 +3,7 @@
 #include "ChatSvc/ChatUserContext.h"
 #include "ChatSvc/ChatSessionContext.h"
 #include "ChatSvc/ChatSvcCfg.h"
-#include <../PF_GameLogic/WebLauncher.h>
+#include <Shared/WebSessionParse.h>
 
 namespace chat
 {
@@ -165,7 +165,7 @@ namespace chat
 
   int ChatSvcImpl::RegisterUser(CustomId _sidGlobal, CustomId _useridGlobal, NickName const & _nickname, IChatClientCallback* _cb)
   {
-    LOG_M(CHATLOG).Trace("%s(sidG=%016x useridG=%d nickname=%s)", __FUNCTION__, _sidGlobal, _useridGlobal, Fix1251Encoding(WideCharToMultiByteString(_nickname.c_str())).c_str());
+    LOG_M(CHATLOG).Trace("%s(sidG=%016x useridG=%d nickname=%s)", __FUNCTION__, _sidGlobal, _useridGlobal, WebSession::WideToCp1251(_nickname.c_str()).c_str());
 
     if (!_cb)
     {
@@ -315,7 +315,7 @@ namespace chat
 
   void ChatSvcImpl::SendMsg(SessionId _sid, ChannelName const & _chnlname, UserId _from, wstring const & _msg)
   {
-    LOG_M(CHATLOG).Trace("%s(sidL=%d chnlname=%s useridL=%d msg=%s)", __FUNCTION__, _sid, _chnlname.c_str(), _from, Fix1251Encoding(WideCharToMultiByteString(_msg.c_str())).c_str());
+    LOG_M(CHATLOG).Trace("%s(sidL=%d chnlname=%s useridL=%d msg=%s)", __FUNCTION__, _sid, _chnlname.c_str(), _from, WebSession::WideToCp1251(_msg.c_str()).c_str());
 
     SessionsT::const_iterator sit = sessions_.find(_sid);
     if (sessions_.end() == sit)

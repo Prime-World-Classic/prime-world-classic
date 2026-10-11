@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "GameBalancer::IBalancerCallback::OnGameSvcAllocated", 3, false, rpc::GetMethodCode(&GameBalancer::IBalancerCallback::OnGameSvcAllocated) },
+        { "GameBalancer::IBalancerCallback::OnGameSvcAllocated", 3, false, rpc::GetMethodCode(&GameBalancer::IBalancerCallback::OnGameSvcAllocated), 4 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -113,7 +113,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "GameBalancer::IBalancer::AllocateGameSvc", 3, false, rpc::GetMethodCode(&GameBalancer::IBalancer::AllocateGameSvc) },
+        { "GameBalancer::IBalancer::AllocateGameSvc", 3, false, rpc::GetMethodCode(&GameBalancer::IBalancer::AllocateGameSvc), 5 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

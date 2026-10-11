@@ -39,9 +39,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "roll::IClient::RollResults", 1, false, rpc::GetMethodCode(&roll::IClient::RollResults) },
-        { "roll::IClient::ForgeRollAck", 0, false, rpc::GetMethodCode(&roll::IClient::ForgeRollAck) },
-        { "roll::IClient::RollFailed", 0, false, rpc::GetMethodCode(&roll::IClient::RollFailed) },
+        { "roll::IClient::RollResults", 1, false, rpc::GetMethodCode(&roll::IClient::RollResults), 1 },
+        { "roll::IClient::ForgeRollAck", 0, false, rpc::GetMethodCode(&roll::IClient::ForgeRollAck), 0 },
+        { "roll::IClient::RollFailed", 0, false, rpc::GetMethodCode(&roll::IClient::RollFailed), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

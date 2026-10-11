@@ -18,7 +18,7 @@ using namespace nstl;
 #include <ctype.h>
 #include <typeinfo>
 #include <math.h>
-#include "../System/basic.h"
+#include "../System/Basic.h"
 #include "../System/nalgoritm.h"
 #include "LCStartQuickGame.h"
 

@@ -36,7 +36,8 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-#if !defined (__cpu_set_t_defined) || !defined (ACE_HAS_CPU_SET_T)
+// Patched: Don't redefine cpu_set_t when already defined by glibc
+#if !defined (__cpu_set_t_defined) && !defined (__linux_cpu_set_t_defined) && !defined (ACE_HAS_CPU_SET_T)
 #if defined (ACE_HAS_CPUSET_T)
    typedef cpuset_t cpu_set_t;
 #else
@@ -46,7 +47,7 @@ extern "C"
      ACE_UINT32 bit_array_[ACE_CPU_SETSIZE / (8 * sizeof (ACE_UINT32))];
    } cpu_set_t;
 #endif
-#endif /* !ACE_HAS_CPU_SET_T || !__cpu_set_t_defined */
+#endif /* !ACE_HAS_CPU_SET_T && !__cpu_set_t_defined */
 
 #ifdef __cplusplus
 }

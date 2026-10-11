@@ -7,7 +7,7 @@
 
 #include "../System/HPTimer.h"
 #include "TSList.h"
-#include "../System/win32helper.h"
+#include "../System/Win32Helper.h"
 #include "../System/BitStreams.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

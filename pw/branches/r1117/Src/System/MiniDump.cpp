@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "MiniDump.h"
+#if defined( NV_WIN_PLATFORM )
 
 #include "LogFileName.h"
 #include "FileSystem/FileUtils.h"
@@ -41,3 +42,4 @@ void CreateMiniDump( const struct tm &tim, EXCEPTION_POINTERS* ExceptionInfo, Mi
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 REGISTER_DEV_VAR( "full_dump", g_fullDump, STORAGE_NONE );
+#endif // NV_WIN_PLATFORM

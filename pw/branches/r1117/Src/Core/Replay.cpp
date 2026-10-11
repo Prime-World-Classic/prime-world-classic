@@ -4,7 +4,7 @@
 #include "WorldCommand.h"
 #include "System/LogFileName.h"
 #include "System/BSUtil.h"
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 #include "System/BinChunkSerializer.h"
 
 

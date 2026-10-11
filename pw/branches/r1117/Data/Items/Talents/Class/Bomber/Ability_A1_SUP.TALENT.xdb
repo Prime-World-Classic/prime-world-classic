@@ -98,8 +98,8 @@
 	<passiveApplicators />
 	<persistentId>Bomber_A1_SUP</persistentId>
 	<prerequisiteTalents>
-		<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" />
 		<Item href="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" />
+		<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" />
 	</prerequisiteTalents>
 	<rarity>Class</rarity>
 	<requireLineOfSight>false</requireLineOfSight>

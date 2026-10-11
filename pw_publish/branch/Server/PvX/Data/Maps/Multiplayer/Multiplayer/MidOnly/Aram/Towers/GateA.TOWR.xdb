@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Tower parent="/Buildings/A/Tower/_Parent.TOWR">
+	<routeID>Center</routeID>
+	<routeLevel>1</routeLevel>
+	<stats href="/Maps/Multiplayer/MidOnly/Towers/Gate.STCN" />
+	<targetingParams href="/Maps/Multiplayer/MidOnly/Aram/Towers/GateA.TOWR" id="597D5D87-EFF1-4D00-B311-40BD6BC8FA18">
+		<UnitTargetingParameters parent="/GameLogic/Tower.UNTP">
+			<nearbyRange>16</nearbyRange>
+		</UnitTargetingParameters>
+	</targetingParams>
+</Tower>

@@ -38,10 +38,36 @@ bool FillStack(Arguments& args, Stack& w, uint paramsCount, const rpc::MethodInf
       case rpc::VectorOfStrings: w.Push(&args.PopVectorOfStrings<nstl::string>(result)); break;
       case rpc::RawStruct: 
         {
-          const byte* data = args.PopRawStruct(result);
+          int structSize=0;
+          const byte* data = args.PopRawStruct(result, &structSize);
           if (result)
           {
-            w.Push(data); // push pointer
+            if (data) // just in case, paranoid check
+            {
+              if (i < 32 && (minfo.structPtrParams & (1u << i)))
+              {
+                // C++ parameter is a pointer/reference to a plain struct (the
+                // generated VCall pops T* and the callee dereferences it). Pass a
+                // POINTER to the struct content living in the packet buffer — the
+                // legacy 32-bit contract. (Pushing the content here would make the
+                // pop read the first 8 content bytes as a pointer and shift every
+                // following argument: IGameServer::AddClient got a garbage
+                // IGameClient* and crashed on 64-bit after the 2026-09-05 fix.)
+                w.Push(data); // pointer to the content
+              }
+              else
+              {
+                // C++ parameter is taken by value (enum / small struct): the
+                // generated VCall code value-copies each argument
+                // (P0 p0 = _mng_va_arg(...)), so the stack must contain the
+                // struct CONTENT, not a pointer. Pushing a pointer only
+                // "worked" on 32-bit for by-value params (the callee received the
+                // pointer value itself as a garbage-but-tolerated value); on
+                // 64-bit it corrupted the argument and every following one, e.g.
+                // IOpenSessionCallback::OnOpenSession(Result::Enum rc, u64 sid).
+                w.Push(data, structSize); // here we just fill the stack with struct content, hack !
+              }
+            }
           }
           break;
         } 

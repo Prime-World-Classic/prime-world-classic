@@ -17,5 +17,8 @@
 		<state name="artist_S4">
 			<component href="/Summons/Squirrel/_Enlarge_S4TRS.PRXY" />
 		</state>
+		<state name="artist_S5">
+			<component href="/Summons/Squirrel/_Enlarge_S5TRS.PRXY" />
+		</state>
 	</__states>
 </BasicEffectStandalone>

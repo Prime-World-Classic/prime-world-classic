@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../System/Noncopyable.h"
+#include "../System/noncopyable.h"
 #include "../System/Geom.h"
 #include "GlobalMasks.h"
 #include "material.h"

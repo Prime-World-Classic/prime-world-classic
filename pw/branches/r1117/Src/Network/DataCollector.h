@@ -1,5 +1,5 @@
 #pragma once
-#include "../System/NonCopyable.h"
+#include "../System/noncopyable.h"
 #include "../System/nalgobase.h"
 
 #ifdef min

@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Tower parent="/Buildings/B/Tower/_Parent.TOWR">
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
+	<attackAbility href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="79CF3361-1590-4168-92CE-340446BFECF0">
+		<BaseAttack parent="/Buildings/DefaultStats/ability_BParent_AttackAbility.ATCK">
+			<applicators>
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="0B719208-5F4E-4966-A383-B64A2084BFBA">
+					<DamageApplicator>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<cancelInvisibility>false</cancelInvisibility>
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FSQAAAAEAAAAlwAAAMcAAADdAAAA7QAAAEJvbnVzRGFtYWdlUGVyY2VudAAATG93RG1nVnNTb2xkZXJzAFWL7IPsFItFCIsQi00Ii0Jg/9CFwHQVi00IixGLTQiLgjQBAAD/0Nld/OsTi00IixGLTQiLgjABAAD/0Nld/ItNDIsRi00Mi0JQ/9CD+AN0GYtNDIsRi00Mi0JQ/9CD+AR0B9no2V346x2LTQxRi1UIUmgUAAAAi0UQixCLTRCLQlD/0Nld+ItNCIsRi00Ii4I8AQAA/9DYTfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfD/0Nw1CwEAANno3sHcTfDYTfjcDfsAAADZXezZReyL5V3DMzMzMzMz4z8AAAAAAADwPwAAAAAAAFlAAACAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * (1 + cBonusDamagePercent / 100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1)) * 0.6</sString>
+						</damage>
+						<damageMode>4</damageMode>
+						<damageType>Material</damageType>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<timeLimiter>-1</timeLimiter>
+						<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+					</DamageApplicator>
+				</Item>
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="E7BADBB6-32B1-42CD-9BA4-5D9D96884673">
+					<DamageApplicator>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<cancelInvisibility>false</cancelInvisibility>
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FTgAAAAFAAAAqwAAANsAAAD7AAAAEQEAACEBAABBdGtEYW1hZ2VEaXNwX1Rvd2VyAEJvbnVzRGFtYWdlUGVyY2VudAAATG93RG1nVnNTb2xkZXJzAFWL7IPsHItFCIsQi00Ii0Jg/9CFwHQVi00IixGLTQiLgjQBAAD/0Nld/OsTi00IixGLTQiLgjABAAD/0Nld/ItNDIsRi00Mi0JQ/9CD+AN0GYtNDIsRi00Mi0JQ/9CD+AR0B9no2V346x2LTQxRi1UIUmgoAAAAi0UQixCLTRCLQlD/0Nld+ItNCIsRi00Ii4I8AQAA/9DYTfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfD/0NxN8ItNDFGLVQhSaBQAAACLRRCLEItNEItCUN1d6P/Q3DU/AQAA2ejewdxN6NhN+NwNLwEAANld5NlF5IvlXcMzMzMzMzPjPwAAAAAAAPA/AAAAAAAAWUAAAIA/</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * cAtkDamageDisp_Tower * (1.0 + cBonusDamagePercent/100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1))*0.6</sString>
+						</damage>
+						<damageMode>4</damageMode>
+						<damageType>Energy</damageType>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<timeLimiter>-1</timeLimiter>
+						<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+					</DamageApplicator>
+				</Item>
+				<Item skip="1" />
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="AA19F750-64E5-475C-9F56-682A167258E2">
+					<DamageApplicator>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<cancelInvisibility>false</cancelInvisibility>
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FSQAAAAFAAAAlwAAAMcAAADdAAAA7QAAAAMBAABCb251c0RhbWFnZVBlcmNlbnQAAExvd0RtZ1ZzU29sZGVycwBVi+yD7ByLRQiLEItNCItCYP/QhcB0FYtNCIsRi00Ii4I0AQAA/9DZXfzrE4tNCIsRi00Ii4IwAQAA/9DZXfyLTQyLEYtNDItCUP/Qg/gDdBmLTQyLEYtNDItCUP/Qg/gEdAfZ6Nld+Osdi00MUYtVCFJoFAAAAItFEIsQi00Qi0JQ/9DZXfiLTQiLEYtNCIuCPAEAAP/Q2E38i00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V3w/9DcNSwBAADZ6N7B3E3w2E343A0cAQAAi00MixGLTQyLQgzdXej/0NwNFAEAANxF6Nld5NlF5IvlXcO4HoXrUbiePzMzMzMzM+M/AAAAAAAA8D8AAAAAAABZQAAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * (1 + cBonusDamagePercent / 100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1)) * 0.6 + (rMaxLife * 0.03)</sString>
+						</damage>
+						<damageMode>4</damageMode>
+						<damageType>Pure</damageType>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<timeLimiter>-1</timeLimiter>
+						<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed.UIEV" />
+					</DamageApplicator>
+				</Item>
+			</applicators>
+			<constants href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="6E5261E8-D3D3-4DAF-8378-0344ADBA7F14">
+				<UnitConstantsContainer parent="/Buildings/DefaultStats/StackTowerDamage_const.UCCN">
+					<vars>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="CBB0710F-531A-402A-9F53-A51B34288E01">
+							<UnitConstant>
+								<name>Tower_AttackSpeed</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>1.5</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+					</vars>
+				</UnitConstantsContainer>
+			</constants>
+		</BaseAttack>
+	</attackAbility>
+	<routeID>Center</routeID>
+	<routeLevel>1</routeLevel>
+	<stats href="/Maps/Multiplayer/ARAM_SNOW/Towers/Gate.STCN" />
+	<targetingParams href="/Maps/Multiplayer/ARAM_SNOW/Towers/GateB.TOWR" id="41238B71-C6DB-4BB7-BBA0-F0F9D67B3189">
+		<UnitTargetingParameters parent="/GameLogic/Tower.UNTP">
+			<nearbyRange>16</nearbyRange>
+		</UnitTargetingParameters>
+	</targetingParams>
+</Tower>

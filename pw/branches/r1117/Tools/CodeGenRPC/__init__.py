@@ -472,7 +472,18 @@ class CodeGenRPC:
                 if index in self.parser.recieve_time_func_indices:
                     recieve = 'true'
                 full_function_name = '%s::%s::%s' % (self.parser.classnamespace, self.parser.classname, func.funcname)
-                rpc_stack += '        { "%s", %d, %s, rpc::GetMethodCode(&%s) },\n' % (full_function_name, len(func.funcparams), recieve, full_function_name)
+                # Bitmask over parameters: bit i set if parameter i is a pointer/reference
+                # to a plain struct. The wire always carries the struct CONTENT (RawStruct),
+                # but the receiver must put a POINTER to the content on the stack for such
+                # parameters (the callee dereferences it), and the CONTENT for by-value
+                # parameters (enums / small structs); see rpc::MethodInfo::structPtrParams
+                # and the RawStruct case in Stack::FillStack (Src/Server/RPC/CppWrapper.cpp).
+                ptr_bits = 0
+                for pi, (ptype, pname) in enumerate(func.funcparams):
+                    ptype_str = ' '.join(ptype) if isinstance(ptype, (list, tuple)) else str(ptype)
+                    if ('*' in ptype_str) or ('&' in ptype_str):
+                        ptr_bits |= (1 << pi)
+                rpc_stack += '        { "%s", %d, %s, rpc::GetMethodCode(&%s), %d },\n' % (full_function_name, len(func.funcparams), recieve, full_function_name, ptr_bits)
 
             rpc_stack += '''    };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)

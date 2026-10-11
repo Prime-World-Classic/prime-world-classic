@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <Render/MeshResource.h>
 #include <Render/primitive.h>
 #include <Render/MaterialSpec.h>

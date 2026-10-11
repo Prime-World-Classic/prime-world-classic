@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_HybridServer_AwardsRoll AwardsRoll.h AwardsRoll.cpp)
-set(LIBRARIES_Src_Game_PF_HybridServer_AwardsRoll )

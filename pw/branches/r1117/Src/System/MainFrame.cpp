@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "MainFrame.h"
 #include "Thread.h"
 #include "FileSystem/FileUtils.h"
@@ -313,7 +313,7 @@ static void SetClipCursorRect( HWND _hWnd )
 	
   if ( !s_fullscreen && !s_borderless )
 	{
-    //NUM_TASK Сессия в оконном режиме - курсор не должен покидать пределы окна
+    //NUM_TASK     -      
     if (s_clipCursorInWindowedMode && !cursorClipDisabled)
     {
       r.top += wndCaptionSize;
@@ -465,11 +465,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
           {
              SetClipCursorRect( hWnd );
               
-              //Мак, при закрытии модального окна, не присылает WM_ACTIVATEAPP и
-              //поэтому, например, после ассерта приложение игнорирует 
-              //клавиатуру и мышь.
-              //Не очень понятно почему здесь не вызывается SetActive, но,
-              //на всякий случай, будем делать это только под Mac
+              //,    ,   WM_ACTIVATEAPP 
+              //, ,     
+              //  .
+              //       SetActive, ,
+              //  ,      Mac
               if( Compatibility::IsRunnedUnderWine() )
                 SetActive( true );  
           }
@@ -592,7 +592,7 @@ bool NMainFrame::InitApplication( HINSTANCE hInstance, const char *pszAppName, c
 //     ::hWnd = hUseWindow;
 // 
 //     s_OldWindowProc = (WNDPROC)GetWindowLong( hWnd, GWL_WNDPROC );
-//     // Устанавливаем наш PW'шный
+//     //   PW'
 //     SetWindowLong( hWnd, GWL_WNDPROC, (LONG)WndProc );
 // 
 //     hCursor = LoadCursor( hInstance, IDC_ARROW );
@@ -689,7 +689,7 @@ void AddMsgCursor()
 {
   NI_PROFILE_FUNCTION
 
-  //@iA@TODO: сделать отправку сообщения только при изменении координат
+  //@iA@TODO:       
 	int x,y;
 
   const NMainFrame::SWindowsMsg::EMsg msg = GetLocalCursorPos( x, y );
@@ -738,7 +738,7 @@ static RECT GetVirtualScreenRect()
 
 static RECT GetMonitorRect( const RECT &windowRect )
 {
-  //Находим координаты и размер монитора на котором находится окно
+  //        
   HMONITOR hMon = ::MonitorFromRect( &windowRect, MONITOR_DEFAULTTOPRIMARY );
 
   if( hMon == NULL )
@@ -750,9 +750,9 @@ static RECT GetMonitorRect( const RECT &windowRect )
   if( !::GetMonitorInfo(hMon, &monInfo) )
     return GetVirtualScreenRect();  
     
-  //Монитор может находиться в полноэкранном режиме и тогда его разрешение не соответствуют
-  //разрешению оконного режима. В этом случае находим разрешение монитора в реестре и  
-  //корректируем значения
+  //           
+  //  .           
+  // 
   DEVMODE devMode;
   
   devMode.dmSize = sizeof(devMode);
@@ -761,8 +761,8 @@ static RECT GetMonitorRect( const RECT &windowRect )
   if( !::EnumDisplaySettings(monInfo.szDevice, ENUM_REGISTRY_SETTINGS, &devMode) )
     return monInfo.rcWork;
   
-  //Увеличиваем размер рабочей области монитора на разницу между оригинальным 
-  //разрешением монитора и текущем разрешением
+  //         
+  //    
   RECT res = { 
     monInfo.rcWork.left, monInfo.rcWork.top, 
     monInfo.rcWork.right + (devMode.dmPelsWidth - Width(monInfo.rcMonitor)), 
@@ -798,7 +798,7 @@ void NMainFrame::ResizeWindow( unsigned long width, unsigned long height, bool i
   }
   else
   {
-    //Центр окна должен остаться в той же позиции
+    //       
     POINT newPos;
 
     newPos.x = g_windowCenterPos.x - (int)width / 2;
@@ -827,7 +827,7 @@ void NMainFrame::ResizeWindow( unsigned long width, unsigned long height, bool i
       ::GetWindowLong(hWindow, GWL_EXSTYLE) 
     );
         
-    //Нужно добиться того чтобы окно всегда влезало в монитор на котором оно находится
+    //            
     AlignRect( GetMonitorRect(rect), rect );
   }
      

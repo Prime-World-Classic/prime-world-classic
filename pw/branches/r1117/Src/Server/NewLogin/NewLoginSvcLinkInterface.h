@@ -3,7 +3,7 @@
 
 //#include "RdpTransport/RRdpFrontendAgentInterface.auto.h"
 //#include <RPC/RPC.h>
-#include "rpc/base.h"
+#include "RPC/Base.h"
 #include "Network/Address.h"
 
 namespace rdp_transport

@@ -5,11 +5,13 @@
 
 extern "C"
 {
-  struct mg_context;
-  struct mg_connection;
-  struct mg_request_info;
-  enum mg_event;
+  #include "mongoose.h"
 }
+
+// Forward declarations for types used but not in mongoose.h directly
+struct mg_context;
+struct mg_connection;
+struct mg_request_info;
 
 namespace webServer
 {
@@ -33,7 +35,7 @@ private:
   volatile LONG               criticalErrorCounter;
 
   void StopImpl();
-  static void * __cdecl MgCallback( mg_event event, mg_connection * conn );
+  static void * MgCallback( mg_event event, mg_connection * conn );
   void ProcessRequest( mg_connection * conn, const mg_request_info * request_info );
 };
 

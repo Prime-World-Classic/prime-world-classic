@@ -7,6 +7,7 @@
 #include "Coordinator/CoordinatorServer.h"
 #include "ServerAppBase/ServerRunner.h"
 #include "System/JobThread.h"
+#include "System/SyncPrimitives.h"
 
 namespace Coordinator
 {
@@ -21,11 +22,24 @@ public:
 
   Coordinator::CoordinatorServer * GetServer() const { return coordinatorServer; }
 
+  // Local (single-process) deployment: a one-shot task executed on the
+  // coordinator job thread (the same thread running Step() and the RPC
+  // dispatch), so the coordinator state is touched only from its owning
+  // thread. Ownership of the task transfers to the job.
+  struct LocalAnnounceTask
+  {
+    virtual ~LocalAnnounceTask() {}
+    virtual void Run( CoordinatorServer * _server ) = 0;
+  };
+  void PostLocalAnnounceTask( LocalAnnounceTask * _task );
+
 private:
   virtual void Work( volatile bool & isRunning );
 
 private:
   StrongMT<rpc::GateKeeper>                 gateKeeper;
   StrongMT<Coordinator::CoordinatorServer>  coordinatorServer;
+  threading::Mutex                          announceTaskMutex;
+  LocalAnnounceTask *                       pendingAnnounceTask;
 };
 }

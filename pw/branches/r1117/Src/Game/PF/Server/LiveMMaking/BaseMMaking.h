@@ -4,6 +4,7 @@
 #include "IMMakingLogic.h"
 #include "MMakingRequest.h"
 #include "LiveMMakingConfigVars.h"
+#include "MMakingLog.h"  // for ELogLevel::Enum definition
 #include <list>
 #include <map>
 

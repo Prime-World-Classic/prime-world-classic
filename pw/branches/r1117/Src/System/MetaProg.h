@@ -1,5 +1,14 @@
 #pragma once
 
+// The VS2008 reference build of the Windows client (ShippingSingleExe|Win32)
+// has no <type_traits>; the traits used below are mapped onto the pre-C++11
+// Conversion-based implementations in this file. Keep both branches in sync.
+#if defined(_MSC_VER) && _MSC_VER < 1700
+  #define META_NO_CPP11_TYPE_TRAITS
+#else
+  #include <type_traits>
+#endif
+
 namespace Meta
 {
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,11 +115,11 @@ namespace Meta
     template <class T, class U>
     struct Conversion
     {
+#if defined(META_NO_CPP11_TYPE_TRAITS)
         typedef Private::ConversionHelper<T, U> H;
-#ifndef __MWERKS__
         enum { exists = sizeof(typename H::Small) == sizeof((H::Test(H::MakeT()))) };
 #else
-        enum { exists = false };
+        enum { exists = std::is_convertible<T, U>::value };
 #endif
         enum { exists2Way = exists && Conversion<U, T>::exists };
         enum { sameType = false };
@@ -142,6 +151,57 @@ namespace Meta
     };
 
 ////////////////////////////////////////////////////////////////////////////////
+// Trait helpers: one definition per toolchain (C++11 <type_traits> vs the
+// Conversion-based implementation above). The legacy branch is kept
+// bug-compatible with the pre-Linux-port code on purpose - SuperSubclass<>
+// feeds BinSaver chunk type ids, so changing its value would change the
+// serialization format.
+////////////////////////////////////////////////////////////////////////////////
+
+    template <class T, class U>
+    struct IsSame
+    {
+#if defined(META_NO_CPP11_TYPE_TRAITS)
+        enum { value = ::Meta::Conversion<T, U>::sameType };
+#else
+        enum { value = std::is_same<T, U>::value };
+#endif
+    };
+
+    template <class T, class U>
+    struct BaseOfNotSameVoid
+    {
+#if defined(META_NO_CPP11_TYPE_TRAITS)
+        enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
+                        !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+#else
+        enum { value = std::is_base_of<T, U>::value && !std::is_same<T, void>::value };
+#endif
+    };
+
+    template <class T, class U>
+    struct BaseOfNotSame
+    {
+#if defined(META_NO_CPP11_TYPE_TRAITS)
+        enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
+                        !::Meta::Conversion<const volatile T*, const volatile void*>::sameType &&
+                        !::Meta::Conversion<const volatile T*, const volatile U*>::sameType) };
+#else
+        enum { value = std::is_base_of<T, U>::value && !std::is_same<T, void>::value && !std::is_same<T, U>::value };
+#endif
+    };
+
+    template <class T, class U>
+    struct ConvertiblePtr
+    {
+#if defined(META_NO_CPP11_TYPE_TRAITS)
+        enum { value = ::Meta::Conversion<const volatile T*, const volatile U*>::exists };
+#else
+        enum { value = std::is_convertible<T*, U*>::value };
+#endif
+    };
+
+////////////////////////////////////////////////////////////////////////////////
 // class template SuperSubclass
 // Invocation: SuperSubclass<B, D>::value where B and D are types. 
 // Returns true if B is a public base of D, or if B and D are aliases of the 
@@ -153,8 +213,7 @@ namespace Meta
 template <class T, class U>
 struct SuperSubclass
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
-                  !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = ::Meta::BaseOfNotSameVoid<T, U>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == sizeof (U) ) };
@@ -169,8 +228,7 @@ struct SuperSubclass<void, void>
 template <class U>
 struct SuperSubclass<void, U> 
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile void*>::exists &&
-                  !::Meta::Conversion<const volatile void*, const volatile void*>::sameType) };
+    enum { value = ::Meta::ConvertiblePtr<U, void>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( 0 == sizeof (U) ) };
@@ -179,8 +237,7 @@ struct SuperSubclass<void, U>
 template <class T>
 struct SuperSubclass<T, void> 
 {
-    enum { value = (::Meta::Conversion<const volatile void*, const volatile T*>::exists &&
-                  !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = ::Meta::ConvertiblePtr<void, T>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == 0 ) };
@@ -197,9 +254,7 @@ struct SuperSubclass<T, void>
 template<class T,class U>
 struct SuperSubclassStrict
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile T*, const volatile U*>::sameType) };
+    enum { value = ::Meta::BaseOfNotSame<T, U>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == sizeof (U) ) };
@@ -214,9 +269,7 @@ struct SuperSubclassStrict<void, void>
 template<class U>
 struct SuperSubclassStrict<void, U> 
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile void*>::exists &&
-                 !::Meta::Conversion<const volatile void*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile void*, const volatile U*>::sameType) };
+    enum { value = ::Meta::ConvertiblePtr<U, void>::value && !::Meta::IsSame<void, U>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( 0 == sizeof (U) ) };
@@ -225,9 +278,7 @@ struct SuperSubclassStrict<void, U>
 template<class T>
 struct SuperSubclassStrict<T, void> 
 {
-    enum { value = (::Meta::Conversion<const volatile void*, const volatile T*>::exists &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = ::Meta::ConvertiblePtr<void, T>::value && !::Meta::IsSame<T, void>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == 0 ) };

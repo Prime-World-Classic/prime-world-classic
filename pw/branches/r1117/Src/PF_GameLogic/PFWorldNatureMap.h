@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include "../PF_Core/WorldObject.h"
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "PFWorldObjectBase.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
@@ -60,7 +60,7 @@ public:
 	void Reset();
 private:
   NDb::Ptr<NDb::Terrain> pDBTerrain;
-  //Ќет ZDATA, т.к. используетс€ пр€ма€ сериализаци€ pMap
+  // ZDATA, ..    pMap
   Terrain::NatureMap *pMap;
   CVec2 customNaturePercents; //m[0] for Freeze, m[1] for Burn
 public:

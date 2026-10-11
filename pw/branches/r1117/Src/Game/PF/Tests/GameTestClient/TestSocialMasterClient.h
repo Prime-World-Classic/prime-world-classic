@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game/PF/Tests/GTCBase/GTCBase.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "Server/LobbySocial/RISocialLobby.auto.h"
 #include "TestSocialTransport.h"
 #include "System/RandomGenerator.h"

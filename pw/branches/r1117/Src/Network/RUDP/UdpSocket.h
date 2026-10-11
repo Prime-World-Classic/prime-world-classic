@@ -3,6 +3,11 @@
 
 #include "UdpAddr.h"
 
+#if defined( NV_LINUX_PLATFORM )
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#endif
+
 namespace ni_udp
 {
 

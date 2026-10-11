@@ -449,6 +449,7 @@ int CFilePath::operator&( IBinSaver &saver )
 
 void SetModuleCurrentDir()
 {
+#ifdef WIN32
     TCHAR szFileName[MAX_PATH];
     GetModuleFileName( NULL, szFileName, MAX_PATH );
 
@@ -457,6 +458,10 @@ void SetModuleCurrentDir()
     std::string szDirName = path.substr(0, n);
 
     SetCurrentDirectory(szDirName.c_str());
+#elif defined( NV_LINUX_PLATFORM )
+    // No-op: only the Windows game client (PW_Client) calls this function;
+    // the Linux server build never does. If ever needed: readlink("/proc/self/exe") + chdir.
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

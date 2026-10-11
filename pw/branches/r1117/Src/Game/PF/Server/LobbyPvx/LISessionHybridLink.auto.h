@@ -38,9 +38,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "lobby::ISessionHybridLink::OnGameFinish", 4, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnGameFinish) },
-        { "lobby::ISessionHybridLink::OnGameCheated", 4, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnGameCheated) },
-        { "lobby::ISessionHybridLink::OnChangeClientStatus", 2, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnChangeClientStatus) },
+        { "lobby::ISessionHybridLink::OnGameFinish", 4, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnGameFinish), 12 },
+        { "lobby::ISessionHybridLink::OnGameCheated", 4, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnGameCheated), 8 },
+        { "lobby::ISessionHybridLink::OnChangeClientStatus", 2, false, rpc::GetMethodCode(&lobby::ISessionHybridLink::OnChangeClientStatus), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

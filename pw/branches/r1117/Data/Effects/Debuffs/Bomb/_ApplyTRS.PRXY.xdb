@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneComponent>
-	<BackLink DBID="/Effects/Debuffs/Bomb/_Apply.EFFT" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_Apply.EFFT" Count="2" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

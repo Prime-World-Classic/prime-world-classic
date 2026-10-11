@@ -3,6 +3,7 @@
 
 namespace TransportLayer
 {
+  // 0 = auto: one thread per processor/core (naio::Driver: if (0 == threads) threads = ACE_OS::num_processors())
   static int s_Threads = 0;
   REGISTER_VAR("tl_threads", TransportLayer::s_Threads, STORAGE_GLOBAL);
   static int s_ReadBlockSize = 512*1024;

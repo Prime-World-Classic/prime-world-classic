@@ -11,6 +11,7 @@
 	<BackLink DBID="/MiniGames/Minigame02/Effects/LevelEnd/_.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/FireBall/_TricksterTRS.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/FireBall/_FireFoxTRS_1.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/FireBall/_FireBomberS2Hit.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RdpTransport_RdpTransportUtils RdpTransportUtils.h RdpTransportUtils.cpp RdpTransportMsg.h RdpTransportMsg.cpp RdpSocketFactory.h)
-set(LIBRARIES_Src_Server_RdpTransport_RdpTransportUtils )

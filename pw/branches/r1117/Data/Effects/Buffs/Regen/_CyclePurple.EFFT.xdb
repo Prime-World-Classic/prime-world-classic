@@ -13,4 +13,9 @@
 	<fadeOut>0.5</fadeOut>
 	<groupFlags>0</groupFlags>
 	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="artist_S5">
+			<component href="/Effects/Buffs/Regen/_CyclePurple_S5.PRXY" />
+		</state>
+	</__states>
 </BasicEffectAttached>

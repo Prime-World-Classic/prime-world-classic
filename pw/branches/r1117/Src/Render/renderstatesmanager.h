@@ -1,7 +1,7 @@
 #pragma once
 
 #include "renderstates.h"
-#include "SmartRenderer.h"
+#include "smartrenderer.h"
 #include "material.h"
 
 namespace Render

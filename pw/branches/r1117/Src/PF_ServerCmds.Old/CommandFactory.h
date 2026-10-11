@@ -12,7 +12,7 @@
 #include "../System/nvector.h"
 #include "../System/nstring.h"
 #include "../System/nlist.h"
-#include "../System/basic.h"
+#include "../System/Basic.h"
 
 
 #define REG_COMMAND_H_FACTORY(clName)                                                       \

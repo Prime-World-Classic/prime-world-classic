@@ -30,12 +30,11 @@
 #include "AdventureScreen.h"
 
 #include "MapLoadingUtility.hpp"
-#include "TalentsMap.h"
+
 #include <curl/curl.h>
 #include <PF_GameLogic/PFTalent.h>
-#include "WebLauncher.h"
+#include "SessionData.h"
 #include "../PW_Game/server_ip.h"
-#include "Shared/shared_data.h"
 
 namespace 
 {
@@ -439,29 +438,7 @@ namespace NWorld
 	//create internet post reader
 
 
-    std::vector<std::wstring> nickNames;
-    std::vector<std::string> heroNames;
 
-    for( TSpawnInfo::const_iterator team_it = pSpawnInfo->begin(), team_end = pSpawnInfo->end(); team_it != team_end; ++team_it )
-    {
-      //int inTeamId = 1; // yes, I know :( it`s pretty bad, but I need count heroes starting from 1
-      for( TTeamSpawnInfo::const_iterator it = team_it->begin(), end = team_it->end(); it != end; ++it )
-      {
-        if( -1 == it->playerId )
-          break; // spawned all heroes for this team
-
-        if (players[it->playerId].playerType == NCore::EPlayerType::Human) {
-          const NDb::Hero * hero = FindHero( pHeroes, advMapDescription, it->playerInfo.heroId );
-          
-          std::wstring tmpNickname = players[it->playerId].nickname.c_str() + 1;
-          nickNames.push_back(tmpNickname);
-          heroNames.push_back(hero->persistentId.c_str());
-        }
-      }
-    }
-    WebLauncherPostRequest prequest;
-
-    std::map<nstl::wstring, WebLauncherPostRequest::WebUserData>& usersData = g_usersData;
 
     // process spawn
     int heroesSpawned = 0;
@@ -512,126 +489,95 @@ namespace NWorld
 
 		//get tallent set by NickName and HeroID
 
-    WebLauncherPostRequest::WebUserData userData;
-    userData.userId = -1;
-		if (players[it->playerId].playerType == NCore::EPlayerType::Human) {
+		// Hero, skin, talents, ratings, flag, league and the recommended stats are
+		// delivered by the server in NCore::PlayerInfo (Shared/WebSessionParse.h):
+		// the client keeps no copy of the web-session data. What is left here only
+		// enriches the received talent set with data that lives in the local talent
+		// DB (refine rate, instant cast) and validates it for this hero.
 
-      if (!players[it->playerId].nickname.empty()) {
-        nstl::wstring nick = players[it->playerId].nickname.c_str() + 1;
-        userData = usersData[nick];
-
-        WebLauncherPostRequest::PlayerInfoByUserId pInfo;
+		const bool isHumanPlayer = players[it->playerId].playerType == NCore::EPlayerType::Human;
+		if (isHumanPlayer)
+		{
+      if (!players[it->playerId].nickname.empty())
+      {
+        PlayerSpawnInfo pInfo;
         pInfo.nickname = players[it->playerId].nickname.c_str() + 1;
         pInfo.teamId = (int)players[it->playerId].teamID;
         pInfo.isLeaver = false;
-        pInfo.userId = userData.userId;
 
         userIdToNicknameMap[players[it->playerId].userID] = pInfo;
- 
-         heroSpawnDesc.playerInfo.heroRating = (int)userData.currentRating;
-         heroSpawnDesc.playerInfo.ratingDeltaPrediction.onVictory = userData.victoryRating - userData.currentRating;
-         heroSpawnDesc.playerInfo.ratingDeltaPrediction.onDefeat = userData.lossRating - userData.currentRating;
-         std::vector<WebLauncherPostRequest::TalentWebData>& talentSet = userData.talents;
-
-         int heroSkinId = userData.heroSkinID;
-         if(heroSkinId > 0){
-           heroSpawnDesc.playerInfo.heroSkin = GetSkinByHeroPersistentId(hero->persistentId.c_str(), heroSkinId - 1).c_str();
-         }
-
-         if (userIdToMetaMap.find(pInfo.userId) != userIdToMetaMap.end()){
-           heroSpawnDesc.playerInfo.leagueIndex = userIdToMetaMap[pInfo.userId].leagueIdx;
-           heroSpawnDesc.playerInfo.flagId = userIdToMetaMap[pInfo.userId].flagId;
-         }
-   			
- 			  if(talentSet.empty()) {
- 				  heroSpawnDesc.usePlayerInfoTalentSet = false;
- 			  } else {
- 				  int actionBarIdx = 0;
- 				  int numUltimates = 0;
-           int num5lineUpgrades = 0;
-           bool useUserSlots = false;
-           for (int i = 0; i < 36; ++i) {
-             if (talentSet[i].activeSlot != -1) {
-               useUserSlots = true;
-               break;
-             }
-           }
- 
- 				  for (int level = 0; level < 6; ++level)
- 				  {
- 					  for (int slot = 0; slot < 6; ++slot)
- 					  {
- 
- 						  uint tIndex = uint(level * NWorld::PFTalentsSet::SLOTS_COUNT + slot + 1);
- 						  uint tIndex2 = uint((5-level) * NWorld::PFTalentsSet::SLOTS_COUNT + slot);
- 
- 						  int talentId = talentSet[tIndex2].webTalentId-1;
-               int activeSlot = talentSet[tIndex2].activeSlot;
-               int isSmartCast = talentSet[tIndex2].isSmartCast;
- 
- 						  NCore::TalentInfo talentInfo;
-   					
- 						  if(talentId >= 0)
- 						  {
- 							  const char* talentName = talentsMap[talentId];
- 							  talentInfo.id = Crc32Checksum().AddString(talentName).Get();
- 						  }
- 						  else
- 						  {
-                 if(level == 4) {
- 								  num5lineUpgrades++;
-                 }
- 
- 							  std::string className = ConvertFromClassID(-talentId);
- 							  //std::string className = prequest.ConvertFromClassID(-1);
- 							  talentInfo.id = Crc32Checksum().AddString(className.c_str()).Get();
- 						  }
- 
- 						  NWorld::PFResourcesCollection::TalentMap::iterator it = talents.find(talentInfo.id);
- 						  if (it != talents.end())
- 						  {
- 							  NDb::Ptr<NDb::Talent> talentPtr = it->second;
- 							  NDb::EAbilityType abilityType = talentPtr->type;			  
- 							  if (talentPtr->naftaCost == 0) { // default class talent
- 								  heroSpawnDesc.usePlayerInfoTalentSet = true;
- 							  }
- 							  bool isTalentActive =
- 								  abilityType == NDb::ABILITYTYPE_ACTIVE || 
- 								  abilityType == NDb::ABILITYTYPE_MULTIACTIVE || 
- 								  abilityType == NDb::ABILITYTYPE_CHANNELLING || 
- 								  abilityType == NDb::ABILITYTYPE_SWITCHABLE;
- 
- 							  if (isTalentActive) {
-                   talentInfo.actionBarIdx = useUserSlots ? activeSlot : actionBarIdx++;
- 				          talentInfo.isInstaCast = isSmartCast || (!useUserSlots && talentPtr->flags & NDb::ABILITYFLAGS_INSTACAST);
- 							  } else {
- 								  talentInfo.actionBarIdx = -1;
- 							  }
- 
-                 talentInfo.refineRate = TalentRarityToRefineRemap[talentPtr->rarity];
-   				
-                 if(talentPtr->isUltimateTalent && talentPtr->rarity == NDb::TALENTRARITY_CLASS) {
- 								  numUltimates++;
-                 }
- 						  }
- 
- 						  heroSpawnDesc.playerInfo.talents.insert(nstl::pair<const uint, NCore::TalentInfo>(tIndex, talentInfo));
- 					  }
- 				  }
- 
-           if(numUltimates > 1 || num5lineUpgrades > 1) {
- 					  heroSpawnDesc.usePlayerInfoTalentSet = false;
- 			    }
- 			  }
-		  }
-
-
       }
 
-        PFBaseHero* spawnedHero = CreateHero( pWorld, heroSpawnDesc );
-        if (userData.userId != -1) {
-          spawnedHero->SetRecommendedStats(userData.profileStats);
+      NCore::PlayerTalentSet & panelTalents = heroSpawnDesc.playerInfo.talents;
+      // Web-сет талантов применяется безусловно: сервер собирает его из профиля
+      // игрока (WebSession::BuildTalentSet) и допускает «дырки» (пустые и
+      // неизвестные таланты) — PrepareCustomSet/LoadSet пропускает отсутствующие
+      // слоты, как у ботов.
+      heroSpawnDesc.usePlayerInfoTalentSet = !panelTalents.empty();
+
+      if (!panelTalents.empty())
+      {
+        // The server places panel abilities from the web action bar; when nothing
+        // is placed, abilities are packed sequentially and the instant-cast flag
+        // comes from the talent itself.
+        bool useUserSlots = false;
+        for (NCore::PlayerTalentSet::const_iterator t = panelTalents.begin(); t != panelTalents.end(); ++t)
+        {
+          if (t->second.actionBarIdx != -1)
+          {
+            useUserSlots = true;
+            break;
+          }
         }
+
+        int actionBarIdx = 0;
+        // TEMP talent-delivery probe (removed after the VPS check).
+        {
+          char talentIds[512] = "";
+          int shown = 0;
+          for (NCore::PlayerTalentSet::const_iterator t = panelTalents.begin(); t != panelTalents.end() && shown < 8; ++t, ++shown)
+            sprintf(talentIds + strlen(talentIds), "%s%u", shown ? "," : "", t->second.id);
+          DebugTrace("TALENTS-APPLY: player=%d count=%d useUserSlots=%d first=[%s]", heroSpawnDesc.playerId, (int)panelTalents.size(), (int)useUserSlots, talentIds);
+        }
+
+
+        for (NCore::PlayerTalentSet::iterator t = panelTalents.begin(); t != panelTalents.end(); ++t)
+        {
+          NWorld::PFResourcesCollection::TalentMap::iterator talentIt = talents.find( t->second.id );
+          if (talentIt == talents.end())
+            continue;   // unknown to the local DB: keep the talent as delivered
+
+          const NDb::Ptr<NDb::Talent> & talentPtr = talentIt->second;
+
+          const bool isTalentActive =
+              talentPtr->type == NDb::ABILITYTYPE_ACTIVE ||
+              talentPtr->type == NDb::ABILITYTYPE_MULTIACTIVE ||
+              talentPtr->type == NDb::ABILITYTYPE_CHANNELLING ||
+              talentPtr->type == NDb::ABILITYTYPE_SWITCHABLE;
+
+          if (isTalentActive)
+          {
+            t->second.actionBarIdx = useUserSlots ? t->second.actionBarIdx : actionBarIdx++;
+            t->second.isInstaCast = t->second.isInstaCast || (!useUserSlots && (talentPtr->flags & NDb::ABILITYFLAGS_INSTACAST));
+          }
+          else
+            t->second.actionBarIdx = -1;
+
+          // The server delivers the final refine rate (backend DB -> session
+          // push -> buildRefine); the local rarity remap is a fallback for
+          // servers that deliver 0 (unknown).
+          if ( t->second.refineRate == 0 )
+            t->second.refineRate = TalentRarityToRefineRemap[talentPtr->rarity];
+        }
+      }
+    }
+
+
+        PFBaseHero* spawnedHero = CreateHero( pWorld, heroSpawnDesc );
+        // Recommended stats (the "stat build to follow" hints) come from the
+        // server too; bots have no recommendation (the vector stays empty).
+        if (isHumanPlayer && heroSpawnDesc.playerInfo.profileStats.size() >= 9)
+          spawnedHero->SetRecommendedStats( &heroSpawnDesc.playerInfo.profileStats[0] );
         DebugTrace( "SpawnHeroes:CreateHero:%d: %2.3f", heroSpawnDesc.playerId, NHPTimer::GetTimePassedAndUpdateTime( time ) );
 
         if ( players.size() )

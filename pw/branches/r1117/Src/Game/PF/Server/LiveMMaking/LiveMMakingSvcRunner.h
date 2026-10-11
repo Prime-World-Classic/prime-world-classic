@@ -2,6 +2,7 @@
 #define LIVEMMAKINGSVCRUNNER_H_INCLUDED
 
 #include "ServerAppBase/NivalService.h"
+#include "LiveMMakingTypes.h"
 
 namespace socialLobby
 {
@@ -10,8 +11,6 @@ namespace socialLobby
 
 namespace mmaking
 {
-
-namespace EServiceGameModes { enum Enum; }
 
 class LiveMMaking;
 

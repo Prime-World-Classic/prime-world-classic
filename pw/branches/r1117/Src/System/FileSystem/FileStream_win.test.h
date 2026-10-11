@@ -8,7 +8,7 @@
 #include "../Stream.h"
 #include "FileStream.h"
 #include "FileStream_stdlib.h"
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 
 #include <iostream>
 #include <stdlib.h>

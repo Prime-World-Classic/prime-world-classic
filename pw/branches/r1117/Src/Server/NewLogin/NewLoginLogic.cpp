@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "NewLoginLogic.h"
+#if defined( NV_WIN_PLATFORM )
 #include "Network/RUDP/SockSrvWinsockBlocking.h"
+#elif defined( NV_LINUX_PLATFORM )
+#include "Network/RUDP/SockSrvPosix.h"
+#endif
 #include "RdpTransport/RdpSocketFactory.h"
 #include "RdpTransport/RdpTransportUtils.h"
 #include "NewLoginUserCtx.h"
@@ -24,7 +28,11 @@ clientControl( _clientCtl ),
 svcLinkDict( _svcLinks ),
 nextUserSid( 1 )
 {
+#if defined( NV_WIN_PLATFORM )
   sockSrv = new ni_udp::BlockingUdpSocketServer( config->Cfg()->threadPriority, config->Cfg()->udpSockBufferSize );
+#elif defined( NV_LINUX_PLATFORM )
+  sockSrv = new ni_udp::BlockingUdpSocketServerPosix( config->Cfg()->threadPriority, config->Cfg()->udpSockBufferSize );
+#endif
 
   StrongMT<rdp_transport::SocketFactory> sockFact = new rdp_transport::SocketFactory( sockSrv, _listenAddr, 128, 0 );
 

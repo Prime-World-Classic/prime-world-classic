@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "FlashWindow.h"
 #include "MainFrame.h"
 #include <limits.h>

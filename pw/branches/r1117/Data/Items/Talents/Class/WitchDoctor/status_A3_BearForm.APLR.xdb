@@ -44,6 +44,100 @@
 				<useListAs>ListAsRule</useListAs>
 			</AbilityUpgradeApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/WitchDoctor/status_A3_BearForm.APLR" id="2041B1DE-AA37-4C74-BBC1-75493D73CC50">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>AddWill</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQwAAAABAAAAGAAAAEJlYXJEZWZlbmNlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cBearDefence</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Will</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/WitchDoctor/status_A3_BearForm.APLR" id="99E8B9FC-AF2B-4BCA-9C21-D171742FDDC4">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>AddStamina</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQwAAAABAAAAGAAAAEJlYXJEZWZlbmNlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cBearDefence</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
 		<Item href="/Items/Talents/Class/WitchDoctor/status_A3_BearForm.APLR" id="9D167A39-7208-4A73-9325-1EE6D01F72A5">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
@@ -261,10 +355,11 @@
 					<sString>true</sString>
 				</startCondition>
 				<talents>
-					<Item href="/Items/Talents/Class/WitchDoctor/Ability1.TALENT" />
-					<Item href="/Items/Talents/Class/WitchDoctor/Ability2.TALENT" />
+					<Item href="/Items/Talents/Class/WitchDoctor/Ability4.TALENT" />
+					<Item href="/Items/Talents/Class/WitchDoctor/Ability4_2.TALENT" />
+					<Item href="/Items/Talents/Class/WitchDoctor/Ability3.TALENT" />
 				</talents>
-				<useListAs>ListAsException</useListAs>
+				<useListAs>ListAsRule</useListAs>
 			</FlagsApplicator>
 		</Item>
 		<Item href="/Items/Talents/Class/WitchDoctor/status_A3_BearForm.APLR" id="0965387D-2D8A-4A5C-B64B-5EF21C99AB91">

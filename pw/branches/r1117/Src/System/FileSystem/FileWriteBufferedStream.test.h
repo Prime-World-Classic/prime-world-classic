@@ -7,7 +7,7 @@
 
 #include "../Stream.h"
 #include "FileWriteBufferedStream.h"
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 
 #include <iostream>
 #include <stdlib.h>

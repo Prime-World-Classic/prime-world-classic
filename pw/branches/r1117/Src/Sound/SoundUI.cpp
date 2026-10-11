@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "soundui.h"
+#include "SoundUI.h"
 
 namespace 
 {

@@ -1,6 +1,6 @@
 #pragma once
 #include "PerfCounterProvider/RPerfCounterProviderIface.auto.h"
-#include <rpc/IfaceRequester.h>
+#include <RPC/IfaceRequester.h>
 #include "MonitoringSvc/MonitoringSet.h"
 
 namespace Monitoring

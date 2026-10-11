@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ServerAppBase_ServerAppBase ServerAppBase.h ServerAppBase.cpp)
-set(LIBRARIES_Src_Server_ServerAppBase_ServerAppBase rpcrt4 shlwapi)

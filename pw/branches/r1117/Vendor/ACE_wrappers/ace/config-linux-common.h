@@ -362,12 +362,11 @@
 
 #define ACE_HAS_DIRENT
 
-// Starting with FC9 rawhide this file is not available anymore but
-// this define is set
-#if defined _XOPEN_STREAMS && _XOPEN_STREAMS == -1
-# define ACE_LACKS_STROPTS_H
-# define ACE_LACKS_STRRECVFD
-#endif
+// Linux doesn't support STREAMS pipes
+#define ACE_LACKS_STROPTS_H
+#define ACE_LACKS_STRRECVFD
+// Linux doesn't have sysctl (FreeBSD/macOS specific)
+#define ACE_LACKS_SYS_SYSCTL_H
 
 #if !defined (ACE_LACKS_STROPTS_H)
 # define ACE_HAS_STRBUF_T

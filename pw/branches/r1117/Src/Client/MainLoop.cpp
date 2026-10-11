@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "MainLoop.h"
 #include "ScreenBase.h"
@@ -66,7 +66,7 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
   // step game state machine
   NCore::GetGlobalGameFSM()->Step(NMainLoop::GetTimeDelta() * 1000.0f); // @BVS@TIME
 
-  //обработка команд на добавление/удаление и прочее про интерфейсы, позвать методы OnBefore*
+  //   /    ,   OnBefore*
   NScreenCommands::AnalizeScreenCmds();
 
   UI::NewFrame( GetTime() * 1000.0f ); //IREF //@BVS@TIME
@@ -85,9 +85,9 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
         continue;
       }
 
-      //TODO: Ѕыло бы куда удобнее, если бы все окна от всех экранов складывались под единым родительским окном.
-      //“огда обработка сообщений, mouseCapture, mouseMove & mouseOver, drag&drop была бы заметно очевидней,
-      //и не надо было бы протаскивать все эти механизмы через NMainLoop и IScreenBase
+      //TODO:    ,            .
+      //  , mouseCapture, mouseMove & mouseOver, drag&drop    ,
+      //          NMainLoop  IScreenBase
 
       UI::GetUser()->StartEvent( event );
       if ( !ProcessScreensEvents( true, event ) )
@@ -136,15 +136,15 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
       (*it)->CommonStep( bAppActive );
   }
 
-	//здесь собственно выполнение команд
+	//   
   NScreenCommands::ProcessScreenCmds();
 
-  //@iA@FIXME: ¬нимание! DrawScreens складывает геометрию UI и _обычные_ указатели на материалы во внутренние буферы UIRenderer-а
-  //≈сли между DrawScreens() и собственно отправкой геометрии в DX вызвать Window::Step() или NScreenCommands::ProcessScreenCmds(),
-  //то там вместе с окнами/экранами могут быть удалены материалы, указатели на которые остались в UIRenderer-е..
-  //—о всеми вытекающими при попытке отрендерить эту геометрию
+  //@iA@FIXME: ! DrawScreens   UI  __       UIRenderer-
+  //  DrawScreens()      DX  Window::Step()  NScreenCommands::ProcessScreenCmds(),
+  //    /    ,      UIRenderer-..
+  //       
 
-  //ќтправка UI-геометрии в очередь рендера
+  // UI-   
   if ( !Render::GetRenderer()->DeviceIsLost() )
   {
     Render::GetUIRenderer()->BeginQueue();

@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "MatchMaking::ISession::PlayerReady", 1, false, rpc::GetMethodCode(&MatchMaking::ISession::PlayerReady) },
+        { "MatchMaking::ISession::PlayerReady", 1, false, rpc::GetMethodCode(&MatchMaking::ISession::PlayerReady), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

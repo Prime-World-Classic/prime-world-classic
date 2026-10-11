@@ -3,21 +3,15 @@
 #include "RpcGate.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// BOOST_CURRENT_FUNCTION Используется для получения максимально близкой по 
-// формату сигнатуры функции на как MSVC так и на GCC
+// BOOST_CURRENT_FUNCTION пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ MSVC пїЅпїЅпїЅ пїЅ пїЅпїЅ GCC
 /////////////////////////////////////////////////////////////////////////////// 
 #include <System/current_function.hpp>
 
 namespace rpc
 {
 
-enum IdType
-{
-  OriginalType,
-  RemoteType,
-  GeneratedType,
-  BaseRemoteType,
-};
+// IdType enum is forward-declared in RpcGate.h вЂ” don't redefine here
 
 uint _GetId(const char* className, IdType idType);
 
@@ -40,8 +34,8 @@ uint GetId(T* value, IdType _idType=OriginalType)
     idType = OriginalType;    
   }
   
-  //GetTypeIdName используется вместо typeid(T).name() в связи с тем, что в реализации msvcr90.dll
-  //от Wine метод type_info::name не реализован
+  //GetTypeIdName пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ typeid(T).name() пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ msvcr90.dll
+  //пїЅпїЅ Wine пїЅпїЅпїЅпїЅпїЅ type_info::name пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   return _GetId( GetTypeIdName(Meta::Type2Type<typename Meta::UnConst<T>::Result>() ), idType);
 }
 

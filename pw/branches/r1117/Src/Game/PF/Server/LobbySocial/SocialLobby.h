@@ -124,7 +124,7 @@ private:
 
   WeakMT<Transport::IPerfCounters> perfCounters;
 
-  const string SocialLobby::GetModeKey(const int i);
+  const string GetModeKey(const int i);
   void ProcessConfiguration();
 
   bool CheckRequestDuplication( UserContext * _newCtx );

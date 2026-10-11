@@ -24,6 +24,8 @@ sources = [
   'LobbyLog.h',
   'LobbyConfig.h',
   'LobbyConfig.cpp',
+  'LobbyFinishDelivery.h',
+  'LobbyFinishDelivery.cpp',
 ]
 
 

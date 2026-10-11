@@ -340,6 +340,13 @@ public:
 
 #endif // BOOST_NO_AUTO_PTR
 
+// Explicit copy constructor — required when BOOST_HAS_RVALUE_REFS is defined,
+// because GCC 15+C++17 does not treat the templated shared_ptr<Y> const&
+// constructor as a copy constructor, so the implicit copy ctor is deleted.
+    shared_ptr( shared_ptr const & r ): px( r.px ), pn( r.pn ) // never throws
+    {
+    }
+
 // Move support
 
 #if defined( BOOST_HAS_RVALUE_REFS )

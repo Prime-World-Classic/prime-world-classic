@@ -39,7 +39,7 @@ class LoginClient : public BaseObjectMT, public ni_udp::IRdpConnectionCallback
   NI_DECLARE_REFCOUNT_CLASS_2( LoginClient, BaseObjectMT, ni_udp::IRdpConnectionCallback );
 
 public:
-  LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey );
+  LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, const nstl::string & _playerKey = nstl::string() );
 
   void ParallelPoll( timer::Time _now );
   ELoginClientState::Enum State();
@@ -56,7 +56,7 @@ protected:
 private:
   typedef std::map<int, StrongMT<ClientChannel> > TChannelsByReqId;
 
-  const string                login, password, sessionKey;
+  const string                login, password, sessionKey, playerKey;
   const ni_udp::NetAddr       loginSvcAddr;
 
   ELoginClientState::Enum     state;

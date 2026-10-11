@@ -963,9 +963,9 @@
 					<UnitConstant>
 						<name>A1Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABwQgAA4UM=</compiledString>
+							<compiledString>FQAAAAAFAAAALgAAADgAAABmAAAAdAAAAH4AAABVi+yD7AyLRQyLEItNDItCUP/QhcB0WItNDIsRi00Mi0JQ/9CD+AF0RmoBUdkFxgAAANkcJFHZBcIAAADZHCRqAItNCIsRi00Ii4I0AQAA/9BR2RwkagGLTRCLEYtNEItCYP/Q3A26AAAA3V346z5qAVHZBcYAAADZHCRR2QXCAAAA2RwkagCLTQiLEYtNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d+N1F+Nld9NlF9IvlXcPNzMzMzMz0PwAAcEIAAOFD</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 60, 450) </sString>
+							<sString>(rUnitKind == 0 || rUnitKind == 1)? damageScale(sIntellect, 60, 450) :damageScale(sIntellect, 60, 450) * 1.3</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -973,9 +973,9 @@
 					<UnitConstant>
 						<name>A1RicochetDamage</name>
 						<var>
-							<compiledString>FQoAAAADAAAAFQAAAB8AAABUAAAAVEVSUkJPTlVTAFWL7IPsDGoBUdkFeQAAANkcJFHZBXUAAADZHCRqAItFCIsQi00Ii4I0AQAA/9BR2RwkagGLTRCLEYtNEItCYP/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V34/9DcTfjZXfTZRfSL5V3DAABUQgAAyEM=</compiledString>
+							<compiledString>FRYAAAAHAAAARAAAAE4AAACDAAAAnAAAAKoAAAC0AAAA6QAAAFRFUlJCT05VUwAAAFRFUlJCT05VUwBVi+yD7ByLRQyLEItNDItCUP/QhcB0eItNDIsRi00Mi0JQ/9CD+AF0ZmoBUdkFHAEAANkcJFHZBRgBAADZHCRqAItNCIsRi00Ii4I0AQAA/9BR2RwkagGLTRCLEYtNEItCYP/Qi00MUYtVCFJoDAAAAItFEIsQi00Qi0JQ3V34/9DcTfjcDRABAADdXfDrXmoBUdkFHAEAANkcJFHZBRgBAADZHCRqAItNCIsRi00Ii4I0AQAA/9BR2RwkagGLTRCLEYtNEItCYP/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V3o/9DcTejdXfDdRfDZXeTZReSL5V3DzczMzMzM9D8AAFRCAADIQw==</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 53, 400)*cTERRBONUS</sString>
+							<sString>(rUnitKind == 0 || rUnitKind == 1) ? (damageScale(sIntellect, 53, 400)*cTERRBONUS ) : (damageScale(sIntellect, 53, 400)*cTERRBONUS *1.3) </sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1021,6 +1021,17 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Faceless/Ability1.TALENT" id="6EE46249-ADFF-4C1C-B7D6-91DAE2917DC7">
+					<UnitConstant>
+						<name>A1_CreepBonusDamage</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>30.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Faceless/const_A1_SUP_RefreshCD" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -117,7 +117,7 @@ void ClientTransport::GetNewAcceptedChannels(vector<StrongMT<Transport::IChannel
 
 
 
-void ClientTransport::Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, Login::LoginType::Enum _loginType )
+void ClientTransport::Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, const nstl::string & _playerKey, Login::LoginType::Enum _loginType )
 {
   threading::MutexLock lock( initShutdownMutex );
   thread = 0;
@@ -147,7 +147,7 @@ void ClientTransport::Login( const Network::NetAddress & _loginServerAddress, co
   if ( !rdp->Init( sockFact, opts, rndFact->Produce( (unsigned)timer::GetTicks() ), new timer::RealTimer ) )
     return;
 
-  loginClient = new LoginClient( rdp, loginSvcAddr, loginSvcMux, _login, _password, _sessionKey );
+  loginClient = new LoginClient( rdp, loginSvcAddr, loginSvcMux, _login, _password, _sessionKey, _playerKey );
 
   thread = new threading::JobThread( new Worker( this ), "ClientTransport" );
 }
@@ -177,6 +177,17 @@ Login::ELoginResult::Enum ClientTransport::GetLoginResult() const
   }
 
   return Login::ELoginResult::NoResult;
+}
+
+
+newLogin::LoginReply ClientTransport::GetLoginReply() const
+{
+  threading::MutexLock lock( mutex );
+
+  if ( loginClient )
+    return loginClient->LoginSvcReply();
+
+  return newLogin::LoginReply();
 }
 
 

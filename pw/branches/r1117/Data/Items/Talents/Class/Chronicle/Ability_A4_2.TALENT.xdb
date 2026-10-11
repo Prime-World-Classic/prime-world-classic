@@ -5,7 +5,7 @@
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Chronicle_Mighty.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Chronicle.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Chronicle.TALENTSET" Count="2" />
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
@@ -314,9 +314,9 @@
 					<UnitConstant>
 						<name>A4_2_Duration</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+							<compiledString>FSAAAAACAAAAJwAAAEAAAABDaHJvbmljbGVfQTRfMnUAQ2hyb25pY2xlX0E0XzJ1AFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8n32YPBBIlN9NtF9IvlXcM=</compiledString>
 							<returnType>float</returnType>
-							<sString>4</sString>
+							<sString>tal("Chronicle_A4_2u")? 5 : 4</sString>
 						</var>
 					</UnitConstant>
 				</Item>

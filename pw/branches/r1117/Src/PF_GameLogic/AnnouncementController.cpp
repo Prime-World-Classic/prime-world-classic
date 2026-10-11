@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "AnnouncementController.h"
 #include "AdventureFlashInterface.h"
 #include "AnnouncementParams.h"

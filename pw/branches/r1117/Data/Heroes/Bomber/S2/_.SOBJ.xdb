@@ -1,0 +1,1522 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneObject>
+	<BackLink DBID="/Heroes/Bomber/S2/_A.HEROSKIN" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Bomber/S2/_.SOBJ" id="82FC4002-154A-4528-9FA7-682DF69ED97F">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>1.2</maxX>
+						<maxY>1.2</maxY>
+						<maxZ>3.75</maxZ>
+						<minX>-1.2</minX>
+						<minY>-1.2</minY>
+						<minZ>0</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/channeling.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/channeling.mayaAnim</mayaFileName>
+							<name>channeling</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/channeling.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/death.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/death.mayaAnim</mayaFileName>
+							<name>death</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/death.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/idle1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/idle1.mayaAnim</mayaFileName>
+							<name>idle1</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/idle1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/idle2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/idle2.mayaAnim</mayaFileName>
+							<name>idle2</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/idle2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/idle3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/idle3.mayaAnim</mayaFileName>
+							<name>idle3</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/idle3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/move1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/move1.mayaAnim</mayaFileName>
+							<name>move1</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/move1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/move2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/move2.mayaAnim</mayaFileName>
+							<name>move2</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/move2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/stun.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/stun.mayaAnim</mayaFileName>
+							<name>stun</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/stun.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/blocked.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/blocked.mayaAnim</mayaFileName>
+							<name>blocked</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/blocked.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/happy.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/happy.mayaAnim</mayaFileName>
+							<name>happy</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/happy.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/revive.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/revive.mayaAnim</mayaFileName>
+							<name>revive</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/revive.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/attack1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/attack1.mayaAnim</mayaFileName>
+							<name>attack1</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/attack1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/attack2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/attack2.mayaAnim</mayaFileName>
+							<name>attack2</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/attack2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/attack3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/attack3.mayaAnim</mayaFileName>
+							<name>attack3</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/attack3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/ability1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/ability1.mayaAnim</mayaFileName>
+							<name>ability1</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/ability1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/ability2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/ability2.mayaAnim</mayaFileName>
+							<name>ability2</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/ability2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/ability3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/ability3.mayaAnim</mayaFileName>
+							<name>ability3</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/ability3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/ability4.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/ability4.mayaAnim</mayaFileName>
+							<name>ability4</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/ability4.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/revive.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/revive.mayaAnim</mayaFileName>
+							<name>summon</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/revive.ma</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="/Heroes/Alchemist/_.ANGR" />
+					<anims />
+					<attached>
+						<Item>
+							<attachFlags>3</attachFlags>
+							<component href="/Heroes/Alchemist/Traces.TGSC" />
+							<events href="/Heroes/Alchemist/Traces.EDEV" />
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Summon/_BlueTRS.PRXY" />
+							<events href="/Effects/General/Summon/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Unsummon/_TRS.PRXY" />
+							<events href="/Effects/General/Unsummon/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Revival/_TRS.PRXY" />
+							<events href="/Effects/General/Revival/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Effects/General/Death/_FemaleBodyPink.PRXY" />
+							<events href="/Effects/General/Death/_Female.EDEV" />
+							<id></id>
+							<locatorName>Back</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Effects/Debuffs/Bomb/_CBombBig.PRXY" />
+							<events href="/Heroes/Alchemist/FXAbility2.EDEV" />
+							<id></id>
+							<locatorName>Hit</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale Animated="True">
+									<Tracks>
+										<Item>
+											<Item>
+												<Key>0</Key>
+												<Value>0.25</Value>
+											</Item>
+											<Item>
+												<Key>45</Key>
+												<Value>2</Value>
+											</Item>
+										</Item>
+										<Item>
+											<Item>
+												<Key>0</Key>
+												<Value>0.25</Value>
+											</Item>
+											<Item>
+												<Key>45</Key>
+												<Value>2</Value>
+											</Item>
+										</Item>
+										<Item>
+											<Item>
+												<Key>0</Key>
+												<Value>0.25</Value>
+											</Item>
+											<Item>
+												<Key>45</Key>
+												<Value>2</Value>
+											</Item>
+										</Item>
+									</Tracks>
+									<Type>Clamp</Type>
+									<Values>
+										<Item>
+											<Key>0</Key>
+											<Value>
+												<x>0.25</x>
+												<y>0.25</y>
+												<z>0.25</z>
+											</Value>
+										</Item>
+										<Item>
+											<Key>45</Key>
+											<Value>
+												<x>2</x>
+												<y>2</y>
+												<z>2</z>
+											</Value>
+										</Item>
+									</Values>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Effects/Debuffs/Bomb/_CBombBig.PRXY" />
+							<events href="/Heroes/Alchemist/FXAbility1.EDEV" />
+							<id></id>
+							<locatorName>Hit</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>0.25</x>
+									<y>0.25</y>
+									<z>0.25</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Effects/Debuffs/Bomb/_CatBombOriginal.PRXY" />
+							<events href="/Heroes/Alchemist/FXAttack.EDEV" />
+							<id></id>
+							<locatorName>Hit</locatorName>
+							<placement>
+								<pos>
+									<x>0.01613256</x>
+									<y>0.01613256</y>
+									<z>-0.02536821</z>
+								</pos>
+								<rot>
+									<w>0.3490924</w>
+									<x>-0.2067921</x>
+									<y>0.5072699</y>
+									<z>0.7602951</z>
+								</rot>
+								<scale>
+									<x>0.68</x>
+									<y>0.68</y>
+									<z>0.68</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="129EAD8D-08AF-4EAA-8454-7D1A767C783C">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack1</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="889903DF-B01D-4051-909F-896424844967">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="A152F4C8-0696-4ED5-BF2D-A51C1A4DA4BA">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="FA9E98DA-CC9C-4675-B901-ACF7D8E1A32B">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack2</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="FDE517F6-C1CB-4855-92BE-3535A59D66D1">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="B2664286-7846-4540-BE7E-16745CBAEB84">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="34E22768-BE41-47BF-8DAA-F0E74EA80830">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack1</caption>
+									<desc>
+										<eventName>AttackWhoosh</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="A3B97F14-13E6-46E4-A3AF-AE3B886E0429">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="3C890407-AB02-4859-84ED-5FE490909636">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="64A20F85-98B1-4DBC-B56A-62A9D43ECD4D">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack2</caption>
+									<desc>
+										<eventName>AttackWhoosh</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="970A410C-2E95-4903-A6AF-9A2FCA75F72F">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="B0E1F109-3390-4EEA-AB19-6DD1CAD06BCC">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="B1DC16FC-B5AC-4C32-B7BB-A747FD4458AA">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack3</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="1723CBCB-7B25-4D26-9BE9-B1486D4D99EA">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="039F18E9-F4E3-41D6-8CAD-F7512CB89ED2">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="68D03219-2DCD-47FA-9DD9-A7275A6216A7">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack3</caption>
+									<desc>
+										<eventName>AttackWhoosh</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="EE697137-8242-4154-A93B-B2499ABABFF5">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="8FBD4E3B-11C7-4466-ABD6-353329AEB62B">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="CD98D39F-0763-46F1-A05F-17DA45BBB9AF">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability1</caption>
+									<desc>
+										<eventName>Crusader_arm_whoosh</eventName>
+										<groupName>Heroes/Crusader/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="293B5F94-FD55-4558-906F-3F1641EA73F4">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="BEE7F5C7-B4E3-4796-9C76-617CB8E87DB7">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="AFB7643A-C833-4958-98F9-E9B5AC5DDD06">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability2</caption>
+									<desc>
+										<eventName>Crusader_arm_whoosh</eventName>
+										<groupName>Heroes/Crusader/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="505FE106-47C9-42E1-85F5-F724FE8BCACF">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="5F5619C3-CED1-4B1B-8E5D-60367F43A931">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="042C17D0-B7CF-444C-A87F-BC1C7DD0FC84">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>  Ability1</eventName>
+										<groupName>Heroes/Plane/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="443ECD9D-012A-4D9B-BC0A-780802B525AC">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="8C61F497-BCE2-42A5-9E3A-1CE63FE1BDFE">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="65A0E929-DE72-4312-B677-396A6BD53791">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability1</caption>
+									<desc>
+										<eventName>AttackWhoosh</eventName>
+										<groupName>Heroes/Alchemy/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="6B8875EB-1F02-47EF-8997-71350C98645C">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="2813BFF5-8995-40C4-AFF4-280F2216123C">
+											<AnimationSCEvent>
+												<animParam>0.05</animParam>
+												<name>ability1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="FDB8D974-7354-469C-934F-C8B09A7E7462">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="95754DFC-0744-4EC0-BA57-064A39BCC0D7">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="C7C2C8E4-663A-4162-A74D-6ADD96FD786B">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="657F64FD-9BEA-41C6-B991-DA723E461262">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="ED6F7135-C1A4-473F-88FC-03ABAEED43A9">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="8D626D36-95B5-4A61-BA3C-E8419A76B5E0">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="A8BCB1AB-B036-4F88-AEB3-4F040BC06C7B">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="BFB5A875-BCE8-4190-888D-A3C5E73AD74D">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="B526875B-8B60-4FC9-A281-68418A130FC2">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="CCA2C22F-15A7-4EE0-8905-2840EB78E2AC">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="FB1A6A92-B67B-4C16-A5DC-6634BAFC5E18">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="7D373ECE-9980-4F85-8E89-0D6724B380DE">
+											<AnimationSCEvent>
+												<animParam>0.16</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="9FD098F0-6069-42A0-8D45-A33D96ECD6CC">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="5FB5A592-6347-42AE-85D4-8362413BFFEB">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="13458116-2A70-4D30-AE14-6EAE33D20B18">
+											<AnimationSCEvent>
+												<animParam>0.32</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="10E4140C-762F-4EB5-BD25-D7DECD10EC67">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="6EB83957-2A04-4249-8D63-2A789634EA2B">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="553D2E0C-9B22-44AA-BFA4-90F29E9F95A4">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="ABC87672-B63D-4327-A1FC-CF08493D7174">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="402434C4-2D3C-4551-A5E2-AEB069969164">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="DEDCB305-0EFF-48F3-B78C-FA3C5CC034EA">
+											<AnimationSCEvent>
+												<animParam>0.66</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/_.SOBJ" id="371D3665-C51D-4E0E-A7A7-1BF569AAE69F">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/SnowQueen/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Bomber/S2/_.SOBJ" id="3110998E-4CF4-4A65-9198-05213531F876">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Bomber/S2/_.SOBJ" id="346EEA7F-E00F-4DA0-8C80-0A9DD3BCEAFD">
+											<AnimationSCEvent>
+												<animParam>0.83</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Bomber/S2/FX/FXAbility5WingsPurpleTRS.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>Ability3</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0.3173829</y>
+									<z>0.03083384</z>
+								</pos>
+								<rot>
+									<w>3.286493E-08</w>
+									<x>-8.08116E-08</x>
+									<y>0.6128983</y>
+									<z>-0.7901618</z>
+								</rot>
+								<scale>
+									<x>0.1344776</x>
+									<y>0.1291045</y>
+									<z>0.09865671</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+					</attached>
+					<caption></caption>
+					<faceFXAnims />
+					<groupFlags>4</groupFlags>
+					<keys />
+					<locatorList href="/Heroes/Bomber/S2/_.LOLS" />
+					<mayaFileName>/Heroes/Bomber/S2/_.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection></selection>
+					<skeletonFileName>/Heroes/Bomber/S2/_.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Bomber/S2/_.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Bomber/S2/_.MTRL" />
+							</materialsReferences>
+							<mayaFileName>/Heroes/Bomber/S2/_.mayaSkin</mayaFileName>
+							<selection></selection>
+							<skinPartName></skinPartName>
+							<srcFileName crc="0">/Heroes/Bomber/S2/_.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Heroes/Bomber/S2/_.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1.1025</x>
+					<y>1.1025</y>
+					<z>1.1025</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<collisionGeometry href="" />
+	<ignoreAttachesToNonDefaultLocators>false</ignoreAttachesToNonDefaultLocators>
+	<tracksList href="" />
+</DBSceneObject>

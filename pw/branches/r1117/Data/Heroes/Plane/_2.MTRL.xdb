@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicMaterial>
-	<BackLink DBID="/Effects/Shots/Rocket/_.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Rocket/_.PRXY" Count="2" />
 	<BackLink DBID="/Heroes/Plane/_.SOBJ" Count="4" />
 	<BackLink DBID="/Effects/Shots/Rocket/_Bomber.PRXY" Count="1" />
 	<caption>plane</caption>

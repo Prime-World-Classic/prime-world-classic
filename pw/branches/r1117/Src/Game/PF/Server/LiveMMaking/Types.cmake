@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LiveMMaking_Types LiveMMakingTypes.h LiveMMakingTypes.cpp)
-set(LIBRARIES_Src_Game_PF_Server_LiveMMaking_Types )

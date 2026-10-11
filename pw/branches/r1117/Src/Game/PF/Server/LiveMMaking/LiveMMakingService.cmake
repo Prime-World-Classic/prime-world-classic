@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LiveMMaking_LiveMMakingService LiveMMakingSvcRunner.cpp LiveMMakingSvcRunner.h LiveMMakingSvc.cpp LiveMMakingSvc.h ILiveMMaking.h)
-set(LIBRARIES_Src_Game_PF_Server_LiveMMaking_LiveMMakingService )

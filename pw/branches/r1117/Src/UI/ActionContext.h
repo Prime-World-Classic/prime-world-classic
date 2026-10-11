@@ -1,7 +1,7 @@
 #pragma once
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "UIBase.h"
-#include "../libdb/db.h"
+#include "../libdb/Db.h"
 #include "../Scripts/Script.h"
 #include "../Scripts/ScriptMacroses.h"
 #include "../Scripts/TypeWrapper.h"

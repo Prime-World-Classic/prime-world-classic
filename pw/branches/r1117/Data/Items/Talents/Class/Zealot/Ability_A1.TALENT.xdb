@@ -71,6 +71,16 @@
 			<vars>
 				<Item href="/Items/Talents/Class/Zealot/const_A1_Width" />
 				<Item href="/Items/Talents/Class/Zealot/const_A1_Range" />
+				<Item href="/Items/Talents/Class/Zealot/Ability_A1.TALENT" id="FBFFAF5D-4B1A-408D-B9BE-97157E915C8A">
+					<UnitConstant>
+						<name>A1_DamageHero</name>
+						<var>
+							<compiledString>FRcAAAACAAAAJgAAAEAAAABBMV9EYW1hZ2UAAABBMV9UYXJnZXRzAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoDAAAAItVEIsCi00Qi1BQ3V34/9LcffjZXfTZRfSL5V3D</compiledString>
+							<returnType>float</returnType>
+							<sString>cA1_Damage/cA1_Targets</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/Class/Zealot/const_A1_Damage" />
 				<Item href="/Items/Talents/Class/Zealot/const_A1_Targets" />
 				<Item href="/Items/Talents/Class/Zealot/const_A1u_Silence_StartCondition" />

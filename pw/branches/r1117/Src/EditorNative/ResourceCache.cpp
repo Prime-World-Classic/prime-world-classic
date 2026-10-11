@@ -2,7 +2,7 @@
 #include "Utility.h"
 #include "ResourceCache.h"
 #include "../System/BSUtil.h"
-#include "../libdb/DBResourceCache.h"
+#include "../libdb/DbResourceCache.h"
 #include "../System/ConfigFiles.h"
 
 using namespace System;

@@ -1,9 +1,9 @@
 #pragma once
 #include "ClusterAdmin/ClusterAdminSvc/ClusterAdminSvcIntf.h"
 #include "ClusterAdminClientIntf.h"
-#include <rpc/GateKeeper.h>
+#include <RPC/GateKeeper.h>
 #include <Network/AddressTranslator.h>
-#include <rpc/P2PNode.h>
+#include <RPC/P2PNode.h>
 
 #include "ClusterAdmin/ClusterAdminSvc/RClusterAdminSvcIntf.auto.h"
 

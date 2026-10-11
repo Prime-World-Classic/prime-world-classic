@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Fountain parent="/Buildings/B/Temple/_Parent.FNTN">
+	<attackAbility href="/Maps/Multiplayer/MidOnly/Aram/Temples/_B.FNTN" id="F24EB822-5926-481B-A235-CE7F7CA34035">
+		<BaseAttack parent="/Buildings/DefaultStats/_Temple_Default_Attack.ATCK">
+			<applicators>
+				<Item href="/Maps/Multiplayer/MidOnly/Aram/Temples/_B.FNTN" id="89BA1283-1A6F-47CA-A83F-07F8BC75A226">
+					<SpellApplicator parent="/Buildings/B/Temple/DeafultAttack.APLR">
+						<targetSelector href="/Maps/Multiplayer/MidOnly/Aram/Temples/_B.FNTN" id="F3E2E952-FC41-4DA2-8DA7-2DDE06EA1C63">
+							<AreaTargetSelector>
+								<absolutePosition>
+									<x>226.2203</x>
+									<y>147.6721</y>
+								</absolutePosition>
+								<flags>0</flags>
+								<mode>Normal</mode>
+								<range>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACQQQ==</compiledString>
+									<returnType>float</returnType>
+									<sString>18</sString>
+								</range>
+								<targetFilter>538771519</targetFilter>
+								<targetSelector href="" />
+							</AreaTargetSelector>
+						</targetSelector>
+					</SpellApplicator>
+				</Item>
+			</applicators>
+			<passiveApplicators>
+				<Item href="/Maps/Multiplayer/MidOnly/Aram/Temples/_B.FNTN" id="820AABB8-7705-4947-9C27-94479262866B">
+					<AuraApplicator parent="/Buildings/DefaultStats/Regen.APLR">
+						<targetSelector href="/Maps/Multiplayer/MidOnly/Aram/Temples/_B.FNTN" id="059EF53D-7881-427B-B8B7-C1D1986D9E96">
+							<AreaTargetSelector>
+								<absolutePosition>
+									<x>226.2203</x>
+									<y>147.6721</y>
+								</absolutePosition>
+								<flags>0</flags>
+								<mode>Normal</mode>
+								<range>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+									<returnType>float</returnType>
+									<sString>10</sString>
+								</range>
+								<targetFilter>339738631</targetFilter>
+								<targetSelector href="" />
+							</AreaTargetSelector>
+						</targetSelector>
+					</AuraApplicator>
+				</Item>
+			</passiveApplicators>
+		</BaseAttack>
+	</attackAbility>
+	<minimapIconOffset>
+		<x>-12</x>
+		<y>-15</y>
+	</minimapIconOffset>
+	<stats href="/Buildings/DefaultStats/Fountain.STCN" />
+</Fountain>

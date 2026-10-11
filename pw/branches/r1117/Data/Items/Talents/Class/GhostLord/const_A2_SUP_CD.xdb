@@ -2,6 +2,7 @@
 <UnitConstant>
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A2_SUP.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A4_2.TALENT" Count="1" />
 	<name>A2_SUP_CoolDown</name>
 	<var>
 		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>

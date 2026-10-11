@@ -27,6 +27,10 @@ private:
   unsigned                    prevReportedCcu;
 };
 
+// NB: remote-factory link forcing for the callback interfaces lives in
+// ClientControlService.cpp (static object ctor; the FORCE_INIT_FACTORY macro
+// is unreliable on GCC — the unused static gets optimized away).
+
 } //namespace clientCtl
 
 #endif //CLIENTCONTROLSERVICE_H_INCLUDED

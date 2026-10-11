@@ -76,6 +76,12 @@
  *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **********************************************************************/
+// Windows-only implementation. The guard must be written as "not Linux":
+// this file is compiled without the project PCH and does not include
+// System/config.h, so NV_WIN_PLATFORM is never defined here and a
+// "#if defined( NV_WIN_PLATFORM )" guard would silently compile the file away
+// (LNK2019 on StackWalker::ShowCallstack from StackWalk.obj).
+#if !defined( NV_LINUX_PLATFORM )
 #include <windows.h>
 #include <tchar.h>
 #include <stdio.h>
@@ -656,7 +662,7 @@ private:
     pGMI = (tGMI) GetProcAddress( hPsapi, "GetModuleInformation" );
     if ( (pEPM == NULL) || (pGMFNE == NULL) || (pGMBN == NULL) || (pGMI == NULL) )
     {
-      // we couldn´t find all functions
+      // we couldnï¿½t find all functions
       FreeLibrary(hPsapi);
       return FALSE;
     }
@@ -1350,3 +1356,4 @@ void StackWalker::OnOutput(LPCSTR buffer)
 {
   OutputDebugStringA(buffer);
 }
+#endif // !NV_LINUX_PLATFORM

@@ -1,7 +1,7 @@
 #include "GameChatController/stdafx.h"
 #include "GameChatController/GameChatController.h"
 #include <ChatSvc/ChatSvcNaming.h>
-#include <chatsvc/LChatManagementIface.auto.h>
+#include <ChatSvc/LChatManagementIface.auto.h>
 
 namespace gamechat
 {

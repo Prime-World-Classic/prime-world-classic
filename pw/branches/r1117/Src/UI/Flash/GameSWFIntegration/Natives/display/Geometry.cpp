@@ -2,7 +2,7 @@
 
 #include <GLU.h>
 
-#include "geometry.h"
+#include "Geometry.h"
 
 // void GeomShape::SetStyles(const std::list<FILLSTYLE>* styles)
 // {
