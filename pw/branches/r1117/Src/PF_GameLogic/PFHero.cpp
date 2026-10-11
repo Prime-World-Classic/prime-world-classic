@@ -153,8 +153,27 @@ bool PFHeroBehaviour::OnStep( float dtInSeconds ) { (void)dtInSeconds; return fa
 void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget ) { (void)pTarget; (void)bStrongTarget; }
 
 bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; return true; }
-float PFBaseHero::OnBeforeDamage(const DamageDesc &desc) { return PFCreature::OnBeforeDamage(desc); }
-float PFBaseHero::OnDamage(const DamageDesc &desc) { return PFCreature::OnDamage(desc); }
+/** Apply the authored attacker mask without dereferencing a missing sender. */
+float PFBaseHero::OnBeforeDamage(const DamageDesc &desc)
+{
+	if (IsValid(desc.pSender) && UnitMaskingPredicate(this, takeTypeUnit)(*desc.pSender))
+		return desc.amount * takeModDmg;
+	return PFCreature::OnBeforeDamage(desc);
+}
+float PFBaseHero::OnDamage(const DamageDesc &desc)
+{
+	if (isolated)
+		return 0.0f;
+	if (IsValid(desc.pSender) && UnitMaskingPredicate(this, takeTypeUnit)(*desc.pSender))
+	{
+		DamageDesc scaled(desc);
+		scaled.amount *= takeModDmg;
+		const float damage = PFCreature::OnDamage(scaled);
+		desc.delegatedDamage = scaled.delegatedDamage;
+		return damage;
+	}
+	return PFCreature::OnDamage(desc);
+}
 void PFBaseHero::OnAddGold(CPtr<PFBaseUnit> pSender, float amount, bool showGold) { PFBaseUnit::OnAddGold(pSender, amount, showGold); }
 /** Restore the real resource pool before reporting the capped result to hero statistics. */
 float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods)

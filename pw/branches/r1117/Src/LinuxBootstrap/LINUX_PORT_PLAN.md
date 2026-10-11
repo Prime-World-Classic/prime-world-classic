@@ -17,9 +17,17 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Ten-chunk batch B6 COMPLETE after `34649d42b` / `0.23.9`, final checkpoint `0.25.5`. Each chunk has its own commit, annotated tag and push. STOP at 10/10; do not start more work without a new request. This batch restores critical/outgoing/pre-damage/notification paths, authored defence, healing modifiers and drains, and guards direct combat callbacks. Windows implementation bytes and native Linux/OpenGL remain intact. The scratch helper is closed; parent integrated, tested and published its drafts. All build/client/probe sessions are finished. Main build is Ruffle OFF; separate opt-in binary refreshed. No complete playable match or Windows runtime parity is claimed.
+- Batch B7 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `f3d58268f` / `0.25.5`. Progress 1/10; combat lifecycle and production attack orders are the current scope. Parent owns integration and publication; bounded event-dispatch helper works only in scratch. Windows branches remain preserved. No full playable-match claim.
 
 ### Current Batch
+
+- Chunk 1/10 COMPLETE (`0.26.0`): restore hero-specific attacker-mask scaling in OnBeforeDamage and OnDamage, plus isolated-hero damage rejection. Reuse UnitMaskingPredicate and existing modifier setter; missing senders bypass masking safely. Incoming scaling preserves caller amount and forwards delegated totals. Tests reproduce 18 failures before correction; 3,397 actual-engine assertions and 28 CTests pass, including nonmatching/missing senders, zero/negative/nonfinite scales and isolation exit. PFHero Windows suffix is byte-identical to B7 baseline. Clone construction remains a separate unported path; no new damage UI/statistics parity is claimed.
+
+### Previous Combat Pipeline Batch
+
+- Ten-chunk batch B6 COMPLETE after `34649d42b` / `0.23.9`, final checkpoint `0.25.5`. Each chunk has its own commit, annotated tag and push. STOP at 10/10; do not start more work without a new request. This batch restores critical/outgoing/pre-damage/notification paths, authored defence, healing modifiers and drains, and guards direct combat callbacks. Windows implementation bytes and native Linux/OpenGL remain intact. The scratch helper is closed; parent integrated, tested and published its drafts. All build/client/probe sessions are finished. Main build is Ruffle OFF; separate opt-in binary refreshed. No complete playable match or Windows runtime parity is claimed.
+
+### B6 Chunks
 
 - Chunk 1/10 COMPLETE (`0.24.0`): restore critical rolls through the existing seeded world RNG, critical multipliers and descriptor metadata for ordinary health and mana applicators. Disabled critical mode does not roll; both probability endpoints retain engine stream advancement. Invalid critical inputs fail closed. Regression reproduced 132/1,334 failures before implementation; all 1,334 checks and 28 CTests now pass. PFApplInstant Windows bytes match B6 baseline. This does not make an invalid downstream spell tree transactional.
 

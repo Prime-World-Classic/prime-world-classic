@@ -691,6 +691,14 @@ static void HealingModifiers(Checks& check, PFWorld* world)
 	}
 }
 
+/** Expose serialized isolation state without overriding hero combat callbacks. */
+struct ProbeHero : PFBaseHero
+{
+	ProbeHero(PFWorld* world, const SpawnInfo& spawn, NDb::EFaction faction)
+		: PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, faction, faction) {}
+	void Isolate(bool value) { isolated = value; }
+};
+
 /** Build actual creep or hero objects; neither drain stat getter is overridden. */
 static CObj<PFBaseUnit> DrainParticipant(PFWorld* world, NDb::EFaction faction, bool hero)
 {
@@ -705,7 +713,7 @@ static CObj<PFBaseUnit> DrainParticipant(PFWorld* world, NDb::EFaction faction, 
 	NDb::Hero* raw = new NDb::Hero; raw->stats = seed->DbUnitDesc()->stats;
 	NDb::Ptr<NDb::Hero> db = raw;
 	PFBaseHero::SpawnInfo spawn; spawn.pHero = db; spawn.placement = placement;
-	return new PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, faction, faction);
+	return new ProbeHero(world, spawn, faction);
 }
 
 /** Exercise private ApplyDrains through real OnDamage/applicator dispatch. */
@@ -931,6 +939,40 @@ static void EnergyBoundaries(Checks& check, PFWorld* world)
 	}
 }
 
+/** Hero damage masks use the existing predicate and both pre/incoming callbacks. */
+static void HeroDamageModifiers(Checks& check, PFWorld* world)
+{
+	for (bool matching : {false, true})
+	for (bool missingSender : {false, true})
+	for (float scale : {0.0f, 0.5f, 2.0f, -1.0f,
+		std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+	{
+		CObj<PFBaseUnit> sender = DrainParticipant(world, NDb::FACTION_FREEZE, false);
+		CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, true);
+		PFBaseHero* hero = dynamic_cast<PFBaseHero*>(receiver.GetPtr());
+		hero->SetAdditionalDamageParam(scale, NDb::ESpellTarget(NDb::SPELLTARGET_ENEMY |
+			(matching ? NDb::SPELLTARGET_CREEP : NDb::SPELLTARGET_HEROMALE)));
+		PFBaseUnitDamageDesc desc; desc.pSender = missingSender ? nullptr : sender.GetPtr();
+		desc.amount = 20; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+		const bool applies = matching && !missingSender;
+		const float expectedBefore = applies ? 20 * scale : 20;
+		const float before = hero->OnBeforeDamage(desc);
+		check(std::isnan(expectedBefore) ? std::isnan(before) : before == expectedBefore,
+			"hero pre-damage applies only the authored sender mask");
+		const float expected = std::isfinite(expectedBefore) ? Max(0.0f, expectedBefore) : 0;
+		check(hero->OnDamage(desc) == expected, "hero incoming modifier produces finite actual damage");
+		check(hero->GetHealth() == 1000 - expected, "hero incoming modifier changes actual health");
+		check(desc.amount == 20, "hero scaling does not mutate caller damage amount");
+	}
+	CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, true);
+	ProbeHero* hero = static_cast<ProbeHero*>(receiver.GetPtr());
+	PFBaseUnitDamageDesc desc; desc.amount = 25; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	hero->Isolate(true);
+	check(hero->OnDamage(desc) == 0 && hero->GetHealth() == 1000, "isolated hero cannot receive damage");
+	hero->Isolate(false);
+	check(hero->OnDamage(desc) == 25 && hero->GetHealth() == 975, "isolation removal restores damage");
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -963,6 +1005,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HealingModifiers(check, world);
 			DamageDrains(check, world); HealingDrainComposition(check, world);
 			IncomingBoundaries(check, world, ai); EnergyBoundaries(check, world);
+			HeroDamageModifiers(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
