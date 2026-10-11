@@ -1235,6 +1235,8 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 	}
 }
 
+#include "behaviour_tests/cleanup_tests.inc"
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -1275,6 +1277,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			EventReentrancyB7Regression(check, world);
 			UnitStateScheduling(check, world);
 			BaseAttackExecution(check, world);
+			BehaviourCleanupB8A(check, world); BehaviourAllyB8A(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

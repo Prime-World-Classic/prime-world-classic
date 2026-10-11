@@ -26,10 +26,26 @@ PFBaseBehaviour::PFBaseBehaviour(PFBaseMovingUnit* pUnit_)
 }
 
 void PFBaseBehaviour::Enable() { isEnabled = true; }
-void PFBaseBehaviour::Disable() { isEnabled = false; }
+/** Drop active orders and combat memory before another behavior takes ownership. */
+void PFBaseBehaviour::Disable()
+{
+	isEnabled = false;
+	if (!IsValid(pUnit))
+		return;
+	pUnit->DropStates();
+	pUnit->DropTarget();
+	pUnit->ClearScreamTargets();
+	pUnit->RemoveLastAttackData();
+	pUnit->RemoveLastHeroAttackData();
+}
 bool PFBaseBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
 void PFBaseBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
-bool PFBaseBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const { (void)pAttacked; (void)originalAttackedFaction; return false; }
+/** Preserve both current-faction and original-faction ally classification. */
+bool PFBaseBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const
+{
+	return IsValid(pUnit) && IsValid(pAttacked)
+		&& pUnit->IsAttackedUnitAlly(pAttacked, originalAttackedFaction);
+}
 
 struct Screamer : public NonCopyable
 {

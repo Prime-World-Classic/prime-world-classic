@@ -17,7 +17,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 5/10 at `0.29.4`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; bounded behavior helper has completed scratch drafts and is closed. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
+- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 6/10 at `0.30.0`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; bounded behavior helper has completed scratch drafts and is closed. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
 
 ### Current Batch
 
@@ -30,6 +30,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Chunk 4/10 COMPLETE (`0.29.3`): standalone chase states honor movement prohibition, weak-target/hold policy, configured chase/approach ranges, behavior selection and requested visibility/sight. Invisible or dead targets retain only last-seen position, rather than continuing live hidden tracking; ordinary movement stops on exit. Live attack-range mode now uses that same effective range for approach, avoiding a stop-short loop. Normalize mock target radius explicitly, then reproduce 84 baseline failures and pass all 2,880 lifecycle checks plus 28 CTests. Windows bytes unchanged. Attack-sector formation and full path/LOS presentation are not restored here; the Windows VNULL2 last-position sentinel is retained.
 
 - Chunk 5/10 COMPLETE (`0.29.4`): restore the Windows nearest-forward route-section algorithm without consuming the authored waypoint list. Routes restart ordinary interrupted movement, reject forbidden/malformed goals, stop at the final point and stop ordinary motion on cleanup while retaining special/mounted interruption policy. Reproduce 36 failures, then pass all 2,922 lifecycle assertions and 28 CTests; all six maintained targets build. Windows bytes unchanged. The sustained 60-second native gate passes at world step 653 with all 91 replay commands consumed (`/tmp/pw-b8-mid-default.log`, inspected `.png`, `Bin/logs/2026.10.11-10.51.20/linux-client-shell.log`). The capture confirms simplified map/units/HUD rendering, not visual parity or full pathfinding/match completion.
+
+- Chunk 6/10 COMPLETE (`0.30.0`): integrate reviewed behavior cleanup/ally draft with actual engine fixtures. Disable drops active and queued states, target/strength, screams and both attack-memory victim slots in Windows order; repeated disable is safe and enable never resurrects them. Ally classification forwards current and original faction metadata, retaining Windows dead/foreign metadata semantics while guarding absent inputs. Reproduce 18 failures, then pass all 3,724 applicator assertions and 28 CTests; six targets build and Windows bytes match baseline. Paused delayed FSM queues and full attack-history reset are not expanded beyond existing Cleanup/Clear contracts. Retaliation follows in the next checkpoints.
 
 ### Previous Orders And Lifecycle Batch
 
