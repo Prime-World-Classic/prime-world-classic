@@ -45,6 +45,13 @@ public:
   // 0 = ок; иначе код ошибки времени выполнения (0-й деление, null-self и т.п.)
   int          GetRuntimeError() const { return m_nRuntimeErr; }
 
+  // Коды времени выполнения (см. Run): 1..3 — деление/остаток на ноль, для
+  // контента это легально (x86-blob тоже даёт inf/0). Начиная с FM_ERR_HARD —
+  // жёсткие ошибки (null-self, структурные, стек): результат считается нулём,
+  // ровно как у x86-blob'а, у которого такой случай перехватывает __except в
+  // DataExecutor::Execute и возвращает T(0).
+  enum { FM_ERR_HARD = 4 };
+
   // Тип результата задаёт вызывающая сторона (как ExecutableString::Execute<T>):
   // значение конвертируется по правилам C++ (float->int — усечение и т.д.).
   float ExecuteFloat(void const * pFirst, void const * pSecond, void const * pMisc) const;

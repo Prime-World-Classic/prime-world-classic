@@ -1477,6 +1477,8 @@ FormulaVM::Val const * FormulaVM::Run(void const * pFirst, void const * pSecond,
   Op const * pOp = m_pOps;
   int      nGuard = 0;
 
+  m_nRuntimeErr = 0;  // ошибка относится к одному вызову, а не к формуле
+
   while (pOp)
   {
     if (++nGuard > 1000000) { m_nRuntimeErr = 10; break; }   // защита от петлевых ошибок компиляции
@@ -1788,17 +1790,22 @@ FormulaVM::Val const * FormulaVM::Run(void const * pFirst, void const * pSecond,
 float FormulaVM::ExecuteFloat(void const * pFirst, void const * pSecond, void const * pMisc) const
 {
   Val const * v = Run(pFirst, pSecond, pMisc);
+  // жёсткая ошибка (null-self, структурная) — у x86-blob'а её перехватывает
+  // __except в DataExecutor::Execute и возвращает T(0); повторяем это и здесь
+  if (m_nRuntimeErr >= FM_ERR_HARD) return 0.0f;
   return v ? V2F(*v) : 0.0f;
 }
 
 int FormulaVM::ExecuteInt(void const * pFirst, void const * pSecond, void const * pMisc) const
 {
   Val const * v = Run(pFirst, pSecond, pMisc);
+  if (m_nRuntimeErr >= FM_ERR_HARD) return 0;
   return v ? V2I(*v) : 0;
 }
 
 bool FormulaVM::ExecuteBool(void const * pFirst, void const * pSecond, void const * pMisc) const
 {
   Val const * v = Run(pFirst, pSecond, pMisc);
+  if (m_nRuntimeErr >= FM_ERR_HARD) return false;
   return v ? V2B(*v) : false;
 }

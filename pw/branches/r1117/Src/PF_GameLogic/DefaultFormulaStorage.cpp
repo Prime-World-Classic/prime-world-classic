@@ -41,7 +41,12 @@ FormulaExecutor *DefaultFormulaStorage::ConstructFormulaCached(char const *cpStr
       return formula->second;
     }
 
+#ifdef FORMULA_USE_VM
+		// x64: the x86 blob cannot be executed - build the VM from sString (cpKey)
+		return new FormulaExecutor(cpStr, cpKey);
+#else
 		return new FormulaExecutor(cpStr);
+#endif
   }
 	else
 	{
@@ -61,7 +66,11 @@ template <typename T> void DefaultFormulaStorage::StoreVectorToCache(vector<T> c
   {
     NI_DATA_VERIFY(it->compiledString.length() > 0, "Compiled string is empty!", continue;);
     NI_DATA_VERIFY(altHash.find(it->sString.c_str()) == altHash.end(), "Already exists in cache!", continue;);
+#ifdef FORMULA_USE_VM
+    CObj<FormulaExecutor> executor(new FormulaExecutor(it->compiledString.c_str(), it->sString.c_str()));
+#else
     CObj<FormulaExecutor> executor(new FormulaExecutor(it->compiledString.c_str()));
+#endif
     if (formulaHash.find(it->compiledString.c_str()) == formulaHash.end())
     {
       bool ret = formulaHash.insertUnique(it->compiledString.c_str(), executor);

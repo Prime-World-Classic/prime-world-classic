@@ -86,6 +86,13 @@ def q(p):
 # x86-ной либой: zlib, jpeglib, JsonCpp, ACE_wrappers, Terabit.
 # Ещё не собрано: Tamarin, freetype, OpenSSL, libcurl, CrashRpt (нужен VC.ATL),
 # CensorDll — см. PLAN_client_modern.md, этап 3.
+# x64: .cpp, отсутствующие в vcproj (добавляются только при PW_MACHINE=X64)
+X64_EXTRA_SRC = {
+    # FormulaVM — парсер DSL формул + байткод-машина (этап 3 плана
+    # PLAN_client_modern.md); в vcproj его нет, чтобы x86-клиент не менялся
+    "Foundation": ["System/FormulaVM.cpp"],
+}
+
 X64_LIB_RENAME = {
     "fmodex_vc": "fmodex64_vc",
     "fmodexl_vc": "fmodexl64_vc",
@@ -362,6 +369,15 @@ class Proj:
                 key = ("wrapper", wrel) if (self.srcs and self.srcs[-1][0] == "wrapper"
                                             and self.srcs[-1][1] == wrel) else ("src", rel)
                 self.per_file[key] = (o, d)
+
+        # x64: источники, которых нет в vcproj (общий ствол про порт не знает).
+        # Добавляем только под X64 — x86-сборка остаётся байт-в-байт прежней.
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            for rel in X64_EXTRA_SRC.get(name, []):
+                if os.path.isfile(os.path.join(SRC, rel)):
+                    self.srcs.append(("src", rel))
+                else:
+                    print(f"  !! {name}: нет x64-источника {rel}", file=sys.stderr)
 
         self.rc_incs_prefixed = ["/i${PW_SRC}/" + x for x in self.rc_includes]
 
