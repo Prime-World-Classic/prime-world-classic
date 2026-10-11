@@ -192,13 +192,14 @@ static void ChaseLifecycle(Checks& checks)
 			}
 			if (reason == 5) target->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
 			for (int i = 0; i < 120 && !owner->IsIdle(); ++i) owner->Step(0.1f);
-			const float expected = reason == 4 || reason == 5 ? 22.0f : (reason == 8 ? 23.0f : 21.0f);
-			if (!owner->IsIdle() || owner->IsMoving() || fabs(owner->GetPosition().x - expected) >= 0.02f)
+			const float radius = reason == 4 || reason == 5 ? 6.0f : (reason == 8 ? 5.0f : 7.0f);
+			const float remaining = fabs(owner->GetPosition().AsVec2D() - CVec2(28, 20));
+			if (!owner->IsIdle() || owner->IsMoving() || remaining > radius || remaining < radius - 0.1f)
 				std::printf("Chase context: reason=%d idle=%d moving=%d x=%.5f targetAlive=%d targetVisible=%d\n",
 					reason, owner->IsIdle(), owner->IsMoving(), owner->GetPosition().x,
 					!target->IsDead(), target->IsVisibleForFaction(Ally));
 			checks.Check(owner->IsIdle() && !owner->IsMoving(), "completed chase stops ordinary movement");
-			checks.Check(fabs(owner->GetPosition().x - expected) < 0.02f,
+			checks.Check(remaining <= radius && remaining >= radius - 0.1f,
 				"chase uses configured or live attack range and retained last position");
 		}
 		owner->Cleanup(); owner->Stop(false);

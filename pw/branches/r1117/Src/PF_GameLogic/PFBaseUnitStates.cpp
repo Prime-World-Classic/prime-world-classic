@@ -259,23 +259,50 @@ bool PFBaseUnitChaseState::OnStep( float dt )
 		}
 		const float approach = halfTargetSize + (requireLineOfSight ? pOwner->GetObjectSize() * 0.5f : effectiveRange);
 		if (!std::isfinite(approach) || approach < 0) return true;
-		pOwner->MoveTo(targetUnit.GetPtr(), approach);
+		if (g_useAttackSectors && !pOwner->IsTrueHero()
+			&& dynamic_cast<PFBaseMovingUnit*>(targetUnit.GetPtr()))
+		{
+			if (attackSector < 0) attackSector = targetUnit->OccupyAttackSector(pOwner);
+			if (attackSector < 0) return true;
+			CVec2 offset = targetUnit->GetAttackSectorOffset(pOwner, attackSector);
+			const float radius = Max(0.0f, approach - 0.01f);
+			const float offsetLength = fabs(offset);
+			if (!std::isfinite(offsetLength)) return true;
+			if (offsetLength > radius && offsetLength > EPS_VALUE) offset *= radius / offsetLength;
+			const CVec2 goal = lastPos + offset;
+			CVec2 direction = goal - pOwner->GetPosition().AsVec2D();
+			const float distance = fabs(direction);
+			if (distance > EPS_VALUE) direction /= distance;
+			else direction = CVec2(1, 0);
+			// Intersect the formation ray with attack range, not a second offset range.
+			const float projection = offset * direction;
+			const float stopping = Max(0.0f, projection + sqrt(Max(0.0f,
+				projection * projection + radius * radius - fabs2(offset))));
+			if (!std::isfinite(stopping) || !pOwner->MoveTo(goal, stopping)) return true;
+		}
+		else if (!pOwner->MoveTo(targetUnit.GetPtr(), approach)) return true;
 		return false;
 	}
+	if (IsValid(targetUnit)) targetUnit->ReleaseAttackSector(attackSector);
+	attackSector = -1;
 	const float distance = pOwner->IsTrueHero() ? 0.0f : attackRange;
 	if (pOwner->IsPositionInRange(lastPos, distance)) return true;
-	pOwner->MoveTo(lastPos, distance);
+	pOwner->MoveTo(lastPos, Max(0.0f, distance - 0.01f));
 	return !pOwner->IsMoving();
 }
 
 void PFBaseUnitChaseState::OnLeave()
 {
+	if (IsValid(targetUnit)) targetUnit->ReleaseAttackSector(attackSector);
+	attackSector = -1;
 	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial())
 		pOwner->Stop(false);
 }
 
 void PFBaseUnitChaseState::OnDestroyContents()
 {
+	if (IsValid(targetUnit)) targetUnit->ReleaseAttackSector(attackSector);
+	attackSector = -1;
   targetUnit = 0;
   PFBaseMovingUnitState::OnDestroyContents();
 }
@@ -304,6 +331,7 @@ void PFBaseUnitAttackState::OnEnter()
 
 void PFBaseUnitAttackState::OnLeave()
 {
+	Cleanup();
   if ( IsUnitValid( pOwner ) )
   {
     pOwner->Stop(false);
@@ -353,9 +381,13 @@ bool PFBaseUnitAttackState::OnStep(float dt)
 			if (authored > 0.0f) range = authored;
 		}
 		if (!std::isfinite(range) || range < 0) return true;
-		pOwner->MoveTo(pTarget.GetPtr(), range * 0.9f);
+		if (!GetCurrentState())
+			PushState(new PFBaseUnitChaseState(pOwner, false, range, chaseRange, pTarget,
+				strongTarget, ignoreVisibility, pOwner->IsTrueHero()));
+		FSMStep(dt);
     return false;
   }
+	Cleanup();
 	pOwner->Stop(false);
 	if (strongTarget && ignoreVisibility && pOwner->GetCurrentTarget() != pTarget)
 		pOwner->AssignTarget(pTarget, true);
