@@ -1941,21 +1941,34 @@ const bool PFBaseUnit::ChangeMana(float delta) { energy = Min(Max(energy + delta
 void PFBaseUnit::TakeMana(const float value) { ChangeMana(-value); }
 void PFBaseUnit::TakeHealth(const float value) { ChangeHealth(-value); }
 
-int PFBaseUnit::OccupyAttackSector(CPtr<PFBaseMovingUnit> const&)
+/** Prefer the attacker's angular sector, then use the Windows alternating-neighbor search. */
+int PFBaseUnit::OccupyAttackSector(CPtr<PFBaseMovingUnit> const& attacker)
 {
-  if (attackSectors.empty())
-    InitAttackSectors(attackSectorsCount > 0 ? attackSectorsCount : 3);
-
-  if (attackSectors.empty())
-    return -1;
-
-  int bestSector = 0;
-  for (int i = 1; i < attackSectors.size(); ++i)
-    if (attackSectors[i].attackers < attackSectors[bestSector].attackers)
-      bestSector = i;
-
-  ++attackSectors[bestSector].attackers;
-  return bestSector;
+	if (!IsUnitValid(attacker) || IsDead() || attacker->GetWorld() != GetWorld()
+		|| attackSectorsCount <= 0 || attackSectors.size() != attackSectorsCount
+		|| !std::isfinite(attackSectorsAngle) || attackSectorsAngle <= 0) return -1;
+	CVec2 direction = attacker->GetPosition().AsVec2D() - GetPosition().AsVec2D();
+	if (!std::isfinite(direction.x) || !std::isfinite(direction.y)) return -1;
+	if (fabs2(direction) <= EPS_VALUE) direction = CVec2(1, 0);
+	else Normalize(&direction);
+	float angle = acos(Clamp(direction.x, -1.0f, 1.0f));
+	if (direction.y < 0) angle = FP_2PI - angle;
+	const int preferred = floor(0.5f + angle / attackSectorsAngle);
+	const auto index = [this](int value) { return (value % attackSectorsCount + attackSectorsCount) % attackSectorsCount; };
+	int best = index(preferred);
+	int shift = angle - preferred * attackSectorsAngle > 0 ? 1 : -1;
+	for (int i = 0; i <= attackSectorsCount / 2; ++i, shift *= -1)
+	{
+		const int sector = index(preferred + ((i + 1) / 2) * shift);
+		if (attackSectors[sector].attackers == 0)
+		{
+			++attackSectors[sector].attackers;
+			return sector;
+		}
+		if (attackSectors[sector].attackers < attackSectors[best].attackers) best = sector;
+	}
+	++attackSectors[best].attackers;
+	return best;
 }
 
 void PFBaseUnit::ReleaseAttackSector(int sector)
@@ -1977,10 +1990,10 @@ CVec2 PFBaseUnit::GetAttackSectorDir(int sector) const
   return VNULL2;
 }
 
-CVec2 PFBaseUnit::GetAttackSectorOffset(CPtr<PFBaseMovingUnit> const&, int sector) const
+CVec2 PFBaseUnit::GetAttackSectorOffset(CPtr<PFBaseMovingUnit> const& attacker, int sector) const
 {
-  if (0 <= sector && sector < attackSectors.size())
-    return attackSectors[sector].direction * (GetObjectSize() * 0.5f);
+	if (0 <= sector && sector < attackSectors.size() && IsValid(attacker))
+		return attackSectors[sector].direction * ((GetObjectSize() + attacker->GetObjectSize()) * 0.5f);
   return VNULL2;
 }
 
