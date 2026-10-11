@@ -1458,7 +1458,62 @@ bool PFBaseUnit::Step(float dtInSeconds)
   return PFLogicObject::Step(dtInSeconds);
 }
 
-void PFBaseUnit::StepInvisibility() {}
+/** Produce the Windows simulation reveal caches without client visibility callbacks.
+ * True sight uses opposing registered units, an inclusive global search radius and
+ * a strict detector visibility radius. It does not depend on fog or detector stealth.
+ */
+void PFBaseUnit::StepInvisibility()
+{
+	const bool oldVisibleForEnemy = visibleForEnemy;
+	visibleForEnemy = !CheckFlagType(NDb::UNITFLAGTYPE_INVISIBLE) || CheckFlagType(NDb::UNITFLAGTYPE_IGNOREINVISIBLE);
+	visibleForNeutral = visibleForEnemy;
+	if (!visibleForEnemy)
+	{
+		PFWorld* world = GetWorld();
+		PFAIWorld* ai = world ? world->GetAIWorld() : 0;
+		if (ai && !CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME))
+		{
+			const float radius = ai->GetAIParameters().maxTrueSightRange;
+			const float radiusSquared = radius * radius;
+			const CVec2 origin = GetPosition().AsVec2D();
+			if (std::isfinite(radius) && radius > 0.0f && std::isfinite(radiusSquared) && radiusSquared > 0.0f &&
+				std::isfinite(origin.x) && std::isfinite(origin.y))
+			{
+				/** One traversal computes the independent enemy and neutral detector results. */
+				struct TrueSight
+				{
+					CVec2 origin;
+					float radiusSquared;
+					bool enemy;
+					bool neutral;
+					TrueSight(const CVec2& position, float radius)
+						: origin(position), radiusSquared(radius), enemy(false), neutral(false) {}
+					void operator()(PFBaseUnit& detector)
+					{
+						if ((enemy && neutral) || !detector.CheckFlag(NDb::UNITFLAG_CANSEEINVISIBLE))
+							return;
+						const float distanceSquared = fabs2(detector.GetPosition().AsVec2D() - origin);
+						const float range = detector.GetVisibilityRange();
+						const float detectorRadiusSquared = range * range;
+						if (!std::isfinite(distanceSquared) || distanceSquared > radiusSquared ||
+							!std::isfinite(range) || range <= 0.0f || !std::isfinite(detectorRadiusSquared) ||
+							distanceSquared >= detectorRadiusSquared)
+							return;
+						if (detector.GetFaction() == NDb::FACTION_NEUTRAL) neutral = true;
+						else enemy = true;
+					}
+				} sight(origin, radiusSquared);
+				const int targets = NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_AFFECTMOUNTED | NDb::SPELLTARGET_FLYING;
+				// Linux's range walker does not clamp voxel bounds; filter the existing full traversal instead.
+				ai->ForAllUnits(sight, UnitMaskingPredicate(GetOppositeFactionFlags(), targets));
+				visibleForEnemy = sight.enemy;
+				visibleForNeutral = sight.neutral;
+			}
+		}
+		if (!visibleForEnemy && oldVisibleForEnemy)
+			StopAttackingMe(false);
+	}
+}
 
 void PFBaseUnit::UpdateLinuxWarFogPosition()
 {
@@ -1517,6 +1572,10 @@ void PFBaseUnit::StepWarFog(float dtInSeconds)
 	}
 }
 
+/** Own scheduled fog and reveal updates for both stationary and moving units.
+ * PFBaseUnit::Step and PFBaseMovingUnit::Step must not duplicate this world phase.
+ * Explicit UpdateInvisibility calls remain immediate, including between world ticks.
+ */
 void PFBaseUnit::StepLinuxWarFog(PFWorld* world, float dtInSeconds)
 {
 	if (!world || !world->GetFogOfWar())
@@ -1526,7 +1585,10 @@ void PFBaseUnit::StepLinuxWarFog(PFWorld* world, float dtInSeconds)
 	GetLinuxBootstrapUnits(units);
 	for (int i = 0; i < units.size(); ++i)
 		if (IsValid(units[i]) && units[i]->GetWorld() == world)
+		{
 			units[i]->StepWarFog(dt);
+			units[i]->StepInvisibility();
+		}
 	world->GetFogOfWar()->StepVisibility(dt);
 }
 

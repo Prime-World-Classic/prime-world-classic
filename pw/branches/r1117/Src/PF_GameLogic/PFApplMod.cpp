@@ -862,17 +862,25 @@ unsigned int PFApplInvisibility::OnEvent(const PFBaseUnitEvent* pEvent)
 
   return 0;
 }
+/** Refresh simulation reveal state immediately after the invisibility flag changes. */
 void PFApplInvisibility::becomeVisible()
 {
   if (IsValid(pReceiver))
-    pReceiver->RemoveFlag(NDb::UNITFLAG_INVISIBLE);
+	{
+		pReceiver->RemoveFlag(NDb::UNITFLAG_INVISIBLE);
+		pReceiver->UpdateInvisibility();
+	}
   invisible = false;
   state = CANCEL;
 }
+/** Match the Windows immediate reveal refresh without invoking client effects. */
 void PFApplInvisibility::becomeInvisible()
 {
   if (IsValid(pReceiver))
-    pReceiver->AddFlag(NDb::UNITFLAG_INVISIBLE);
+	{
+		pReceiver->AddFlag(NDb::UNITFLAG_INVISIBLE);
+		pReceiver->UpdateInvisibility();
+	}
   invisible = true;
   state = INVISIBLE;
 }

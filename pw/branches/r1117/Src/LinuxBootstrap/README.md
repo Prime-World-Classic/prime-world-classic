@@ -102,8 +102,9 @@ or duplicated final records; wait for the process to exit before validating logs
 - Rendering uses real assets but still has simplified materials and presentation.
 - Numeric formulas support a bounded arithmetic/conditional subset and four live
 	unit properties. Unsupported abilities remain unavailable, not silently free.
-- Fog observers and unit visibility queries consume current simulation visibility.
-	Stealth/true-sight state updates and rendered fog remain incomplete.
+- Fog observers, visibility queries and stealth/true-sight caches use simulation
+	state. Rendered fog, complete stealth ability events/effects and spatial-scan
+	performance parity remain incomplete.
 - Production damage formulas, complete casting/movement behavior, remaining HUD
 	actions, online integration and a complete local match are not acceptance claims.
 - Linux source guards preserve the Windows path, but an actual Windows build and
