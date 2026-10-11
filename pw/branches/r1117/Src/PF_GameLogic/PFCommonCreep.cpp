@@ -4,6 +4,7 @@
 
 #include "PFCommonCreep.h"
 #include "PFAIWorld.h"
+#include "PFBaseUnitStates.h"
 
 namespace
 {
@@ -274,32 +275,21 @@ void PFCommonCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDam
 }
 void PFCommonCreep::OnDestroyContents() { if (creepsRingPart.isLinked()) CreepsRing::remove(this); PFBaseCreep::OnDestroyContents(); }
 
+/** Let the production attack state own approach, cooldown and attack execution. */
 bool PFCommonCreepBehaviour::OnStep(float dtInSeconds)
 {
   (void)dtInSeconds;
   if (!pUnit || pUnit->IsDead())
     return true;
 
-  CPtr<PFBaseUnit> currentTarget = pUnit->GetCurrentTarget();
-  if (IsValid(currentTarget))
-  {
-    if (!pUnit->IsTargetInRange(currentTarget, pUnit->GetAttackRange()))
-    {
-      if (!pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
-        pUnit->MoveTo(currentTarget.GetPtr(), pUnit->GetAttackRange(), 0);
-    }
-    else
-    {
-      pUnit->Stop(false);
-      pUnit->DoAttack();
-    }
-    return true;
-  }
+	if (IsUnitValid(pUnit->GetCurrentTarget()))
+		return true;
 
   CPtr<PFBaseUnit> target = pUnit->FindTarget(pUnit->GetTargetingRange());
-  if (IsValid(target))
+  if (IsUnitValid(target))
   {
     OnTarget(target, false);
+		pUnit->DoScream(target, ScreamTarget::ScreamAlert);
     return true;
   }
 
@@ -316,14 +306,13 @@ bool PFCommonCreepBehaviour::OnStep(float dtInSeconds)
 
 void PFCommonCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
 {
-  if (!pUnit || !IsValid(pTarget) || !pTarget->IsVulnerable())
+  if (!IsUnitValid(pUnit) || !IsUnitValid(pTarget) || !pTarget->IsVulnerable())
     return;
   if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
     return;
 
-  pUnit->AssignTarget(pTarget, bStrongTarget);
-  if (!pUnit->IsTargetInRange(pTarget, pUnit->GetAttackRange()) && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
-    pUnit->MoveTo(pTarget.GetPtr(), pUnit->GetAttackRange(), 0);
+	pUnit->DropStates();
+	pUnit->PushState(new PFBaseUnitAttackState(pUnit->GetWorld(), pUnit, pTarget, bStrongTarget));
 }
 
 PFEvadeCreepBehaviour::PFEvadeCreepBehaviour(PFCommonCreep* pCreep, const Placement& placement)

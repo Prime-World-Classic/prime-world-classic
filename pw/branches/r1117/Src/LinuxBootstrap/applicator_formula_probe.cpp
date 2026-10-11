@@ -9,6 +9,7 @@
 #include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFCreep.h"
+#include "../PF_GameLogic/PFCommonCreep.h"
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
 #include "../PF_GameLogic/DBHeroesList.h"
 #include "../PF_GameLogic/PFWorld.h"
@@ -1262,6 +1263,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ability_lifecycle_b10_05_delayed_tests.inc"
 #include "ability_lifecycle_b10_06_dispatch_tests.inc"
 #include "ability_lifecycle_b10_07_channel_tests.inc"
+#include "creep_combat_b11_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1344,6 +1346,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityDelayedAdmissionB10(check, world);
 			AbilityWaitingDispatchB10(check, world);
 			AbilityChannelCompletionB10(check, world);
+			CommonCreepCombatB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

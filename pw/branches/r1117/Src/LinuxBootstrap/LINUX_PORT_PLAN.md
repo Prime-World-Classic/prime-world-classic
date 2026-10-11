@@ -1,6 +1,6 @@
 # Linux Native Port Plan
 
-Updated: 2026-10-11
+Updated: 2026-10-12
 
 ## Goal
 
@@ -16,6 +16,17 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Version native-port checkpoints through `LinuxBootstrap/VERSION` and matching annotated `linux-native-v<version>` tags. Both Linux CMake projects consume that version. Keep shared `Src/Version.h` network/replay values, pinned third-party versions, and the C ABI protocol version independent; bumping them merely to label port work would change compatibility contracts. The native UI/runtime checkpoint is `0.1.0`; the isolated Ruffle adapter adds features in `0.2.0`.
 
 ## Current Verified State
+
+### Batch B11
+
+- New authorized batch: exactly 20 chunks, commit/tag/push after each verified chunk. Baseline `c033dbea7` / `0.40.7`. Continue this batch on subsequent `continue` messages; do not reset its count. Parent owns creep behavior/live combat and remaining hero inventory/commands; one bounded helper prepares original dispatch subtype/lifecycle checkpoints in `/tmp/pw-b11-dispatch`. Preserve Windows, native calls and strict gameplay/HUD validators. Leave the three pre-existing untracked Bin/core dumps untouched.
+- Chunk 1/20 (`0.41.0`): common creep target callbacks install the original PFBaseUnitAttackState; behavior ticks no longer directly move/attack an assigned target. State ownership supplies attack execution and target/movement cleanup. Four baseline state/cleanup failures reproduced. Correct the fixture to respect deferred OnEnter and provide explicit enemy visibility; all 4,687 applicator assertions pass. Probe compilation now uses the existing bootstrap header configuration needed by real common-creep fixtures. Evidence `/tmp/pw-b11-c1-{before,after,build,ctest}.log`; initial compile failure and `old-binary-invalid.log` are NOT regression evidence. Retained Windows implementations and shared HeroActions/network version are unchanged. Lane route ownership and the live duel diagnostic still need their own checkpoints; full match completion is not claimed.
+
+- Chunk 1 final gates: six maintained targets build at `0.41.0`, 28/28 CTests pass, twelve retained engine Windows branches plus shared HeroActions.cpp and Version.h pass the byte audit. Main build remains Ruffle OFF. Original-HUD opt-in artifact still belongs to B10 until refreshed for this batch.
+
+<!-- B11 next checkpoint -->
+
+### Previous Batch B10
 
 - Batch B10 COMPLETE, 20/20, final checkpoint `0.40.7`, baseline `5668ac70d` / `0.36.3`. Each verified chunk has an atomic commit, annotated native version tag and push. STOP here; do not start chunk 21 or another batch without a new request. Native consumable/talent/portal commands use real queued cast states, bounded inventory/shared cooldown ownership and simulation-owned applicator/ability lifecycles. The bounded helper is closed; all seven reviewed checkpoints are independently integrated and tested in the maintained client. Main build is Ruffle OFF and the separate original-HUD executable is refreshed. Shared Windows/network/replay/vendor/C ABI versions remain unchanged. No completed match, full visual parity or Windows build result is implied.
 
