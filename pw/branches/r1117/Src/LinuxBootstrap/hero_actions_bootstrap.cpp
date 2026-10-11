@@ -398,6 +398,9 @@ namespace NWorld
 	protected:
 		bool OnStep(float dt) override
 		{
+			if (!pAbilityInstance && (!IsUnitValid(hero) || !IsValid(commandTalent) ||
+				!CanUseLinuxAuthoredTalentTarget(hero, commandTalent, target)))
+				return true;
 			const bool hadInstance = IsValid(pAbilityInstance);
 			const bool sample = !hadInstance && IsUnitValid(hero) && IsValid(commandTalent);
 			const bool life = sample && commandTalent->DoesSpendLifeInsteadEnergy();

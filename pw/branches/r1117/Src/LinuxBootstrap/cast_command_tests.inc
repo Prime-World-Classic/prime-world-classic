@@ -302,3 +302,36 @@ static void TalentCommandTargetMasksB10(Checks& check, PFWorld* world)
 		hero->DoStop();
 	}
 }
+
+/** Pending state entry rechecks authored target facts that can change after command admission. */
+static void QueuedTalentTargetChangesB10(Checks& check, PFWorld* world)
+{
+	B8BehaviourReveal reveal(world, NDb::FACTION_FREEZE);
+	for (bool portal : {false, true})
+	for (int policy = 0; policy < 3; ++policy)
+	{
+		CObj<B10CommandHero> hero = CommandHeroB10(world);
+		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET); hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
+		CObj<PFBaseUnit> target = Unit(world, NDb::FACTION_BURN, 20);
+		NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->targetType = static_cast<NDb::ESpellTarget>((1u << target->GetUnitKind()) | NDb::SPELLTARGET_ENEMY);
+		raw->useRange.sString = "100"; raw->manaCost.sString = "70"; raw->naftaCost = 0;
+		raw->requireLineOfSight = false; raw->cooldownTime.sString = "0";
+		NDb::Ptr<NDb::Talent> db = raw;
+		if (portal) hero->InstallPortal(db); else hero->InstallTalent(db);
+		CObj<NCore::WorldCommand> command = portal ? CreateCmdUsePortal(hero.GetPtr(), Target(target.GetPtr()), true) :
+			CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(target.GetPtr()), true);
+		check(command->CanExecute(), "queued target-change fixture admits its authored enemy target");
+		command->Execute(world);
+		if (policy == 1) target->ChangeFaction(NDb::FACTION_FREEZE);
+		if (policy == 2) target->SetInvalidAbilityTarget(true);
+		ResetLinuxHeroGameplayCommandDiagnostics();
+		hero->Simulate(0);
+		const auto diagnostic = GetLinuxHeroGameplayCommandDiagnostics();
+		check(hero->GetMana() == (policy == 0 ? 130.f : 200.f) &&
+			(portal ? diagnostic.usePortalActionAccepted : diagnostic.useTalentActionAccepted) == (policy == 0 ? 1 : 0),
+			"queued talent/portal rechecks faction and invalid-target policy before payment");
+		hero->DoStop();
+		if (policy == 2) target->SetInvalidAbilityTarget(false);
+	}
+}
