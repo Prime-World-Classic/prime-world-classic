@@ -17,13 +17,15 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B7 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `f3d58268f` / `0.25.5`. Progress 1/10; combat lifecycle and production attack orders are the current scope. Parent owns integration and publication; bounded event-dispatch helper works only in scratch. Windows branches remain preserved. No full playable-match claim.
+- Batch B7 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `f3d58268f` / `0.25.5`. Progress 3/10; combat lifecycle and production attack orders are the current scope. Parent owns integration and publication; bounded event-dispatch helper works only in scratch. Windows branches remain preserved. No full playable-match claim.
 
 ### Current Batch
 
 - Chunk 1/10 COMPLETE (`0.26.0`): restore hero-specific attacker-mask scaling in OnBeforeDamage and OnDamage, plus isolated-hero damage rejection. Reuse UnitMaskingPredicate and existing modifier setter; missing senders bypass masking safely. Incoming scaling preserves caller amount and forwards delegated totals. Tests reproduce 18 failures before correction; 3,397 actual-engine assertions and 28 CTests pass, including nonmatching/missing senders, zero/negative/nonfinite scales and isolation exit. PFHero Windows suffix is byte-identical to B7 baseline. Clone construction remains a separate unported path; no new damage UI/statistics parity is claimed.
 
 - Chunk 2/10 COMPLETE (`0.26.1`): enabled unit behaviors receive damage after health mutation and before death events, unless targeting parameters require automatic-only targeting. Finite zero damage retains the Windows notification boundary; already-dead and invalid callbacks remain inert. Nine failures reproduced; all 3,439 actual-engine checks and 28 CTests pass. Tests observe callback pool values, original metadata, enable/disable and automatic-only policy, including lethal damage. Missing bootstrap targeting configuration is handled safely. Windows PFBaseUnit suffix unchanged; hero retaliation itself follows later with production attack orders.
+
+- Chunk 3/10 COMPLETE (`0.26.2`): restore survival health before last-hit events; a listener can rescue a normally lethal hit. LIVEAFTERDEATH performs deferred combat/death notification without zeroing health, removing behaviors or starting hero respawn. Final death now stops/releases the behavior stack instead of leaving the Linux RemoveBehaviour stub. Initial 33 failures and six residual teardown failures fixed; all 3,532 assertions and 28 CTests pass, including final death after deferral and actual hero/creep callbacks. PFBaseUnit Windows suffix unchanged. Creature corpse/animation timing and full death reward/notification parity remain incomplete. `/tmp/pw-b7-death-native.log` is a preliminary run started before the final behavior cleanup fix; final-binary sustained acceptance will follow.
 
 ### Previous Combat Pipeline Batch
 

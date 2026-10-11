@@ -976,7 +976,7 @@ static void HeroDamageModifiers(Checks& check, PFWorld* world)
 /** Observe the actual behavior hook, including its post-health/pre-death timing. */
 struct DamageBehaviour : PFBaseBehaviour
 {
-	int calls = 0, deaths = 0;
+	int calls = 0, deaths = 0, stops = 0;
 	float observedHealth = -1;
 	PFBaseUnitDamageDesc observed;
 	explicit DamageBehaviour(PFBaseMovingUnit* unit) : PFBaseBehaviour(unit) {}
@@ -985,6 +985,7 @@ struct DamageBehaviour : PFBaseBehaviour
 		++calls; observed = desc; observedHealth = pUnit->GetHealth();
 	}
 	void OnUnitDie(CPtr<PFBaseUnit>) override { ++deaths; }
+	void OnStop() override { ++stops; }
 };
 
 static void BehaviourDamage(Checks& check, PFWorld* world)
@@ -1013,6 +1014,63 @@ static void BehaviourDamage(Checks& check, PFWorld* world)
 				&& behavior->observed.dontAttackBack, "behavior retains original combat metadata");
 		}
 		check(behavior->deaths == (amount >= 1000 ? 1 : 0), "death behavior remains after damage callback");
+	}
+}
+
+/** Last-hit listeners observe any death-prevention restoration before cleanup. */
+struct LastHitObserver : CObjectBase, PFBaseUnitEventListener
+{
+	OBJECT_BASIC_METHODS(LastHitObserver);
+public:
+	PFBaseUnit* unit = nullptr;
+	int calls = 0;
+	float observedHealth = -1;
+	bool rescue = false;
+	unsigned int OnEvent(const PFBaseUnitEvent* event) override
+	{
+		if (event->GetType() == NDb::BASEUNITEVENT_LASTHIT)
+		{
+			++calls; observedHealth = unit->GetHealth();
+			if (rescue) unit->OnHeal(nullptr, 25, true);
+		}
+		return 0;
+	}
+};
+
+static void DeferredDeath(Checks& check, PFWorld* world)
+{
+	for (bool hero : {false, true})
+	for (int flag : {0, int(NDb::UNITFLAG_FORBIDDEATH), int(NDb::UNITFLAG_LIVEAFTERDEATH)})
+	for (bool rescue : {false, true})
+	{
+		CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 20);
+		CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, hero);
+		receiver->AddFlag(NDb::UNITFLAG_FORBIDREWARDS);
+		if (flag) receiver->AddFlag(NDb::EUnitFlag(flag));
+		receiver->SetHealth(50); receiver->AssignTarget(sender.GetPtr(), true);
+		CObj<DamageBehaviour> behavior = new DamageBehaviour(static_cast<PFBaseMovingUnit*>(receiver.GetPtr()));
+		receiver->AddBehaviourOnTop(behavior.GetPtr());
+		CObj<LastHitObserver> listener = new LastHitObserver; listener->unit = receiver.GetPtr(); listener->rescue = rescue;
+		receiver->AddEventListener(listener.GetPtr());
+		PFBaseUnitDamageDesc desc; desc.pSender = sender; desc.amount = 100;
+		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+		check(receiver->OnDamage(desc) == 50, "lethal damage retains the original health cap");
+		check(listener->calls == 1 && listener->observedHealth == (flag ? 1 : 0), "last-hit observes restored survival health");
+		const bool dies = !flag && !rescue, deferred = flag == NDb::UNITFLAG_LIVEAFTERDEATH;
+		check(receiver->GetHealth() == (dies ? 0 : (flag ? 1 : 0) + (rescue ? 25 : 0)), "last-hit rescue and deferred death retain live pools");
+		check(behavior->deaths == (dies || deferred ? 1 : 0), "only real and deferred death notify death behavior");
+		check(receiver->HasBehaviour() == !dies, "deferred death retains behavior ownership");
+		check(behavior->stops == (dies ? 1 : 0), "final death stops behavior but deferred death does not");
+		check(bool(receiver->GetCurrentTarget()) == !(dies || deferred), "deferred death cancels combat target");
+		if (hero && !dies)
+			check(static_cast<PFBaseHero*>(receiver.GetPtr())->GetTimeToRespawn() < 0, "surviving hero does not start respawn");
+		receiver->RemoveEventListener(listener.GetPtr());
+		if (deferred)
+		{
+			receiver->RemoveFlag(NDb::UNITFLAG_LIVEAFTERDEATH);
+			receiver->KillUnit(sender.GetPtr(), PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+			check(receiver->IsDead() && !receiver->HasBehaviour(), "deferred unit can finish normal death later");
+		}
 	}
 }
 
@@ -1050,6 +1108,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			IncomingBoundaries(check, world, ai); EnergyBoundaries(check, world);
 			HeroDamageModifiers(check, world);
 			BehaviourDamage(check, world);
+			DeferredDeath(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

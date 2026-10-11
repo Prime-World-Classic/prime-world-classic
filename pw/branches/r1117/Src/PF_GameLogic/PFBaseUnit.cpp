@@ -1664,23 +1664,27 @@ float PFBaseUnit::OnDamage(const DamageDesc& desc)
 	if ((!targeting || !targeting->onlyAutoTargeting) && HasBehaviour() && Behaviour()->IsEnabled())
 		Behaviour()->OnDamage(normalizedDesc);
 
-  if (IsDead())
-  {
-    PFBaseUnitLastHitEvent lastHitEvent(normalizedDesc.pSender);
-    EventHappened(lastHitEvent);
-
-    if (CheckFlag(NDb::UNITFLAG_FORBIDDEATH) || CheckFlag(NDb::UNITFLAG_LIVEAFTERDEATH))
-    {
-      health = 1.0f;
-    }
-    else
-    {
-      int flags = UNITDIEFLAGS_NONE;
-      if (CheckFlag(NDb::UNITFLAG_FORBIDREWARDS))
-        flags |= UNITDIEFLAGS_FORBIDREWARDS;
-      OnUnitDie(normalizedDesc.pSender, flags, &normalizedDesc);
-    }
-  }
+	bool deathDeferred = false;
+	if (IsDead())
+	{
+		const bool liveAfterDeath = CheckFlag(NDb::UNITFLAG_LIVEAFTERDEATH);
+		if (CheckFlag(NDb::UNITFLAG_FORBIDDEATH) || liveAfterDeath)
+		{
+			health = 1.0f;
+			deathDeferred = liveAfterDeath;
+		}
+		PFBaseUnitLastHitEvent lastHitEvent(normalizedDesc.pSender);
+		EventHappened(lastHitEvent);
+	}
+	if (deathDeferred)
+		OnUnitDie(normalizedDesc.pSender, UNITDIEFLAGS_DEFERREDDEATH, &normalizedDesc);
+	else if (IsDead())
+	{
+		int flags = UNITDIEFLAGS_NONE;
+		if (CheckFlag(NDb::UNITFLAG_FORBIDREWARDS))
+			flags |= UNITDIEFLAGS_FORBIDREWARDS;
+		OnUnitDie(normalizedDesc.pSender, flags, &normalizedDesc);
+	}
 
   return damage;
 }
@@ -1772,7 +1776,9 @@ void PFBaseUnit::CancelAllDispatchFromUnit(const PFBaseUnit*) {}
 void PFBaseUnit::KillUnit(const CPtr<PFBaseUnit>& pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { OnUnitDie(pKiller, flags, pDamageDesc); }
 void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
 {
-  health = 0.0f;
+	// Deferred death performs combat cleanup while the restored unit remains alive.
+	if ((flags & UNITDIEFLAGS_DEFERREDDEATH) == 0)
+		health = 0.0f;
 
   DropTarget();
   StopAttackingMe();
@@ -2306,7 +2312,16 @@ int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType typ
 
   return count;
 }
-void PFBaseUnit::RemoveBehaviour() {}
+/** Stop and release the complete behavior stack on final, nondeferred death. */
+void PFBaseUnit::RemoveBehaviour()
+{
+	while (!behaviourList.empty())
+	{
+		CObj<PFBaseBehaviour> behavior = behaviourList.first();
+		behavior->OnStop();
+		PFBaseBehaviour::UnitRing::safeRemove(behavior.GetPtr());
+	}
+}
 void PFBaseUnit::Reset() { health = maxHealth; energy = maxEnergy; ResetWarFog(); }
 void PFBaseUnit::OnAfterReset() {}
 void PFBaseUnit::CountAuraApplicators(int& allyAuraCount, int& enemyAuraCount) { allyAuraCount = 0; enemyAuraCount = 0; }
