@@ -16,7 +16,7 @@ namespace
 {
 
 /** Exact IUnitFormulaPars getter names after the s/t prefix; no aliases or inferred Base names.
- * This fixed 42-property whitelist covers pools/maxima, direct combat/movement stats,
+ * This fixed whitelist covers pools/maxima, direct combat/movement stats,
  * regeneration/drain/evasion/critical multiplier and their corresponding base values.
  * BaseAttack is a modified stat; BaseBaseAttack is its unmodified counterpart.
  * Only the existing DamageMin/Max derived getters are exposed; other derived,
@@ -52,6 +52,11 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"Will", &IUnitFormulaPars::GetWill},
 	{"DamageMin", &IUnitFormulaPars::GetDamageMin},
 	{"DamageMax", &IUnitFormulaPars::GetDamageMax},
+	{"BodyDefence", &IUnitFormulaPars::GetBodyDefence},
+	{"SpiritDefence", &IUnitFormulaPars::GetSpiritDefence},
+	{"PenetrationTotal", &IUnitFormulaPars::GetPenetrationTotal},
+	{"MaterialDamageDecrease", &IUnitFormulaPars::GetMaterialDamageDecrease},
+	{"EnergyDamageDecrease", &IUnitFormulaPars::GetEnergyDamageDecrease},
 	{"BaseLife", &IUnitFormulaPars::GetBaseLife},
 	{"BaseEnergy", &IUnitFormulaPars::GetBaseEnergy},
 	{"BaseRange", &IUnitFormulaPars::GetBaseRange},
@@ -73,6 +78,45 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"BaseWill", &IUnitFormulaPars::GetBaseWill}
 };
 
+/** Adapt four exact shipped accessors to scalar bindings, without executing object syntax.
+ * Only complete identifiers match. Everything else still reaches muParser's bounded
+ * numeric lexer, including malformed adjacent tokens. No general member/string API.
+ */
+bool BindCombatAccessors(const std::string& source, std::string& result)
+{
+	if (source.size() > NumericFormulaMaxLength) return false;
+	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
+	for (std::size_t pos = 0; pos < source.size();)
+	{
+		if (!nameChar(source[pos])) { result += source[pos++]; continue; }
+		const std::size_t start = pos;
+		while (pos < source.size() && nameChar(source[pos])) ++pos;
+		const std::string name = source.substr(start, pos - start);
+		if (name.compare(0, 8, "__combat") == 0) return false;
+		if (name == "pMisc")
+		{
+			bool found = false;
+			for (const char* variable : {"damageDealed", "isAutoAttack"})
+			{
+				const std::string suffix = std::string("->GetVariable(\"") + variable + "\")";
+				if (source.compare(pos, suffix.size(), suffix) != 0) continue;
+				result += std::string(" __combat_") + variable + " "; pos += suffix.size(); found = true; break;
+			}
+			if (!found) return false;
+		}
+		else if (name == "sender" || name == "receiver")
+		{
+			const std::string suffix = name == "sender" ? ".vSpellPierce" : ".vSpellDef";
+			if (source.compare(pos, suffix.size(), suffix) != 0) return false;
+			pos += suffix.size();
+			if (pos < source.size() && nameChar(source[pos])) return false;
+			result += name == "sender" ? " __combat_SpellPierce " : " __combat_SpellDef ";
+		}
+		else result += name;
+	}
+	return true;
+}
+
 /** Evaluation-local ownership bounds recursive constants without stale stat caches. */
 struct Context
 {
@@ -80,6 +124,7 @@ struct Context
 	const IUnitFormulaPars* target;
 	const NWorld::PFAbilityData* ability;
 	NRandom::RandomGenerator* random = nullptr;
+	const NWorld::PFBaseApplicator* applicator = nullptr;
 	unsigned expressions = 0;
 	std::vector<std::string> active;
 	std::map<std::string, float> constants;
@@ -87,7 +132,9 @@ struct Context
 	NumericFormulaResult Evaluate(const std::string& expression)
 	{
 		if (++expressions > 128) return {NumericFormulaError::LimitExceeded};
-		return EvaluateNumericFormula(expression, [&](const std::string& name, double& value) {
+		std::string bound;
+		if (!BindCombatAccessors(expression, bound)) return {NumericFormulaError::UnsupportedSyntax};
+		return EvaluateNumericFormula(bound, [&](const std::string& name, double& value) {
 			return Resolve(name, value);
 		}, [&](const std::string& name, const double* args, std::size_t count, double& value) {
 			return Scale(name, args, count, value);
@@ -141,6 +188,17 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name == "__combat_damageDealed" || name == "__combat_isAutoAttack")
+		{
+			if (!applicator) return false;
+			value = applicator->GetVariable(name.c_str() + 9); return true;
+		}
+		if (name == "__combat_SpellPierce" || name == "__combat_SpellDef")
+		{
+			const auto* unit = name == "__combat_SpellPierce" ? sender : target;
+			if (!unit) return false;
+			value = unit->GetVariable(name.c_str() + 9); return true;
+		}
 		if (name.size() > 1 && name[0] == 'c')
 		{
 			if (!ability || active.size() >= 16 || std::find(active.begin(), active.end(), name) != active.end()) return false;
@@ -156,7 +214,7 @@ struct Context
 			value = result.value;
 			return true;
 		}
-		if (name.size() < 2 || (name[0] != 's' && name[0] != 't')) return false;
+		if (name.size() < 2 || (name[0] != 's' && name[0] != 't' && name[0] != 'r')) return false;
 		const auto* unit = name[0] == 's' ? sender : target;
 		if (!unit) return false;
 		const auto property = name.substr(1);
@@ -186,7 +244,7 @@ NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& express
 	NWorld::PFWorld* world = IsValid(owner) ? owner->GetWorld() : nullptr;
 	if (world != app.GetWorld()) world = nullptr;
 	NRandom::RandomGenerator staged = world ? *world->GetRndGen() : NRandom::RandomGenerator();
-	Context context{owner, app.GetReceiver(), app.GetAbilityData(), world ? &staged : nullptr};
+	Context context{owner, app.GetReceiver(), app.GetAbilityData(), world ? &staged : nullptr, &app};
 	const auto result = context.Evaluate(expression);
 	if (result.Succeeded() && world) *world->GetRndGen() = staged;
 	return result;

@@ -1,6 +1,7 @@
 #include "../System/systemStdAfx.h"
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "applicator_formula_probe.h"
+#include "formula_context.h"
 #include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
@@ -461,6 +462,60 @@ static void DamageNotifications(Checks& check, PFWorld* world)
 	sender->RemoveEventListener(listener.GetPtr());
 }
 
+/** Bind only the authored combat accessors; the existing numeric parser owns grammar. */
+static void CombatFormulaContext(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	sender->GetVariableVWM("SpellPierce")->SetBaseValue(.125f);
+	receiver->GetVariableVWM("SpellDef")->SetBaseValue(.25f);
+	receiver->GetStat(NDb::STAT_MATERIALDAMAGEDECREASE)->SetCoreValue(10);
+	receiver->GetStat(NDb::STAT_ENERGYDAMAGEDECREASE)->SetCoreValue(20);
+	NDb::Ability* rawAbility = new NDb::Ability;
+	NDb::UnitConstantsContainer* constants = new NDb::UnitConstantsContainer;
+	for (const auto& pair : {nstl::pair<const char*, const char*>("SpellPierce", "pMisc->GetVariable(\"isAutoAttack\") ? 0.0f : sender.vSpellPierce"),
+		nstl::pair<const char*, const char*>("SpellDef", "pMisc->GetVariable(\"isAutoAttack\") ? 0.0f : receiver.vSpellDef"),
+		nstl::pair<const char*, const char*>("Combat", "cSpellDef-cSpellPierce")})
+	{
+		NDb::UnitConstant* value = new NDb::UnitConstant; value->name = pair.first; value->var.sString = pair.second;
+		constants->vars.push_back(value);
+	}
+	rawAbility->constants = constants;
+	NDb::Ptr<NDb::Ability> abilityDb = rawAbility;
+	CObj<PFAbilityData> ability = new PFAbilityData(sender.GetPtr(), abilityDb, NDb::ABILITYTYPEID_SPECIAL, false, false);
+	NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+	raw->damage.sString = "25"; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	NDb::Ptr<NDb::DamageApplicator> db = raw;
+	const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+	pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+	pars.pUpgraderAbilityData = ability;
+	CObj<Damage> app = new Damage(pars); check(app->Init() && app->Run(), "combat context actual applicator");
+	const auto run = [&](const char* expression, float expected) {
+		const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(expression, *app);
+		check(result.Succeeded() && std::fabs(result.value - expected) < .00001f, expression);
+	};
+	run("rStrength+tStrength", 40);
+	run("rMaterialDamageDecrease", 10); run("rEnergyDamageDecrease", 20);
+	run("rBodyDefence", receiver->GetBodyDefence()); run("rSpiritDefence", receiver->GetSpiritDefence());
+	run("sPenetrationTotal", sender->GetPenetrationTotal());
+	run("pMisc->GetVariable(\"damageDealed\")", 25);
+	run("pMisc->GetVariable(\"isAutoAttack\")", 0);
+	run("sender.vSpellPierce+receiver.vSpellDef", .375f);
+	run("cCombat", .125f);
+	run("pMisc->GetVariable(\"isAutoAttack\") ? 0 : receiver.vSpellDef", .25f);
+	run("max(pMisc->GetVariable(\"damageDealed\"),0)*(1-rMaterialDamageDecrease*.01f)", 22.5f);
+	run("1 ? 3 : pMisc->GetVariable(\"damageDealed\")", 3);
+	for (const char* bad : {"pMisc->GetVariable(\"unknown\")", "pMisc->GetVariable(\"damageDealed\",1)",
+		"xpMisc->GetVariable(\"damageDealed\")", "sender.vSpellPierceOther", "receiver.vSpellPierce",
+		"sender.vOther", "receiver.vSpellDef()", "sender.vSpellPierce=1", "1 ? 3 : sender.vOther", "__combat_damageDealed"})
+		check(!LinuxBootstrap::EvaluateApplicatorNumericFormula(bad, *app).Succeeded(), "unsupported combat access fails closed");
+	check(!LinuxBootstrap::EvaluateUnitNumericFormula("pMisc->GetVariable(\"damageDealed\")", sender, receiver).Succeeded(),
+		"ordinary formula has no applicator variables");
+	receiver->GetVariableVWM("SpellDef")->SetBaseValue(.5f);
+	run("receiver.vSpellDef", .5f);
+	run("cCombat", .375f);
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -488,6 +543,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			OutgoingDamage(check, world);
 			PreDamage(check, world);
 			DamageNotifications(check, world);
+			CombatFormulaContext(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

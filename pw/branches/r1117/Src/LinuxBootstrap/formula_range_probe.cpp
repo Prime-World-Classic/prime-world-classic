@@ -145,12 +145,14 @@ void CheckNumericUnitProperties(const Check& check)
 		const std::string baseTarget = std::string("t") + entry.baseName;
 		expect(liveSender, entry.senderBase + 100, sender, target);
 		expect(liveTarget, entry.targetBase + 200, sender, target);
+		expect(std::string("r") + entry.liveName, entry.targetBase + 200, sender, target);
 		expect(baseSender, entry.senderBase, sender, target);
 		expect(baseTarget, entry.targetBase, sender, target);
 		expect(liveSender, entry.senderBase + 100, sender, nullptr);
 		expect(liveTarget, entry.targetBase + 200, nullptr, target);
 		missing(liveSender, nullptr, target);
 		missing(liveTarget, sender, nullptr);
+		missing(std::string("r") + entry.liveName, sender, nullptr);
 		missing(baseSender, nullptr, target);
 		missing(baseTarget, sender, nullptr);
 	}
@@ -165,7 +167,7 @@ void CheckNumericUnitProperties(const Check& check)
 
 	for (const char* name : {"sHealth", "sMana", "sMaxHealth", "tMaxMana", "sCriticalMultiplier",
 		"tBaseCritMult", "sLifeRegeneration", "sBaseLifeRegen", "sCoreLife", "sAttack", "tSpeed",
-		"sstrength", "sSTRENGTH", "rStrength", "sStrengthExtra", "tLifeDrainExtra", "s",
+		"sstrength", "sSTRENGTH", "rUnknown", "sStrengthExtra", "tLifeDrainExtra", "s",
 		"sLifeRegenTotal", "sBaseVisibilityRange", "sBaseCriticalChance", "sCritChance",
 		"sNafta", "sObjectTarget", "sIsHero", "mRank"})
 		missing(name, sender, target);

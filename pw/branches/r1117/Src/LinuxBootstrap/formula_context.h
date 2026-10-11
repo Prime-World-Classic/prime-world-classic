@@ -7,7 +7,11 @@ namespace NWorld { class PFAbilityData; class PFBaseApplicator; }
 
 namespace LinuxBootstrap
 {
-/** Resolve the supported s/t unit properties through existing live engine getters.
+/** Resolve the supported s/t/r unit properties through existing live engine getters.
+ * r is the authored receiver prefix; t remains a compatibility alias.
+ * Four exact combat accessors bind scalars: pMisc->GetVariable("damageDealed"),
+ * pMisc->GetVariable("isAutoAttack"), sender.vSpellPierce and receiver.vSpellDef.
+ * The two pMisc accessors require an applicator; no general object/string API.
  * Unknown properties or selected missing units fail, never silently substitute zero.
  * Constants use the existing local/global ability lookup. Recursion is limited
  * to 16 active names and 128 expressions; cycles and missing constants fail.
