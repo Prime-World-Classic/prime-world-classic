@@ -19,8 +19,8 @@ namespace
  * This fixed whitelist covers pools/maxima, direct combat/movement stats,
  * regeneration/drain/evasion/critical multiplier and their corresponding base values.
  * BaseAttack is a modified stat; BaseBaseAttack is its unmodified counterpart.
- * Only the existing DamageMin/Max derived getters are exposed; other derived,
- * economy and object/boolean/misc properties are not inferred.
+ * Derived getters are explicitly listed; other economy, object and boolean
+ * properties are not inferred. Combat accessors below have a separate whitelist.
  */
 struct UnitNumericProperty
 {

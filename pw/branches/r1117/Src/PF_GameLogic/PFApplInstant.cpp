@@ -113,7 +113,6 @@ bool PFApplDamage::Start()
 		PFOutgoingDamageEvent event(pReceiver, desc, damage);
 		desc.pSender->EventHappened(event);
 		if (!std::isfinite(event.damage)) { damageDealed = 0; return true; }
-		if (event.damage <= 0) { damageDealed = 0; notifyDamage(); return true; }
 		desc.amount = event.damage;
 	}
 	// Defence formulas inspect this applicator during the synchronous receiver hooks.

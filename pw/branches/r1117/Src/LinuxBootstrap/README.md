@@ -102,9 +102,11 @@ or duplicated final records; wait for the process to exit before validating logs
 
 - Rendering uses real assets but still has simplified materials and presentation.
 - Numeric formulas support bounded arithmetic/conditionals, checked helpers,
-	abilityScale/damageScale contexts and 42 exact unit properties through s/t
-	prefixes. Damage, healing and cooldown-refresh applicators use checked live
-	contexts; applicator-only random uses the seeded world stream with failed
+	abilityScale/damageScale contexts and 47 exact unit properties through s/t/r
+	prefixes. Four exact combat accessors support the shipped defence constants;
+	general member access and strings remain unsupported. Damage, healing and
+	cooldown-refresh applicators use checked live contexts; applicator-only random
+	uses the seeded world stream with failed
 	evaluation rollback. Unsupported expressions fail closed. Generic RetrieveParam,
 	full formula-language coverage and atomic downstream cast refunds remain unfinished.
 - Fog observers, visibility queries and stealth/true-sight caches use simulation
@@ -114,8 +116,13 @@ or duplicated final records; wait for the process to exit before validating logs
 - Manual attacks check visibility and legality before replacing an order. The
 	bootstrap script visibility/priming bypass is not Windows combat parity; player
 	authorization, mounted routing and full attack/chase states still need work.
-- Critical rolls/outgoing combat events, complete casting/movement behavior, remaining HUD
-	actions, online integration and a complete local match are not acceptance claims.
+- Combat now includes seeded critical rolls, outgoing/pre-damage hooks, authored
+	physical/energy defence, attack/cancel notifications, healing modifiers and
+	life/energy drains. Direct callbacks reject nonfinite resource amounts and
+	incoming damage results. These guards do not roll back prior callback effects.
+- Hero-specific damage modifiers, listener priorities, time limiters, deferred
+	death, complete casting/movement, remaining HUD actions, online integration
+	and a complete local match are still outstanding.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
 
@@ -132,9 +139,12 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 - [Numeric parser](formula_numeric_probe.cpp): checked helpers, lazy callbacks,
 	malformed syntax, finite arithmetic, budgets and independent parser ownership.
 - [Formula context](formula_range_probe.cpp): real base/modified stats, resource
-	pools, constants, scaling parameters, range, costs and cooldowns.
+	pools, constants, scaling parameters, range, costs and cooldowns; original
+	defence formulas/constants loaded through the game DB and checked against a scalar oracle.
 - [Applicators](applicator_formula_probe.cpp): actual damage/heal/refresh consumers,
-	seeded random, disabled/invalid/dead guards, mana routing, delegation and hero healing.
+	seeded random/critical hits, posthumous senders, outgoing/incoming events,
+	pre-damage and delegation, defence routing, hero/creep healing modifiers,
+	drains, fatal healing cleanup and direct numeric resource boundaries.
 - [Voxel queries](voxel_range_probe.cpp): bounded numeric admission, rectangular
 	geometry, inclusive circles, ordering and retained live callback semantics.
 - [Visibility queries](visibility_query_probe.cpp) and

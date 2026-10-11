@@ -889,6 +889,16 @@ static void IncomingBoundaries(Checks& check, PFWorld* world, NDb::AILogicParame
 	CObj<Damage> app = new Damage(pars);
 	check(app->Init() && app->Run(), "incoming metadata actual applicator completes");
 	check(app->GetDamageDealed() == 7 && app->GetVariable("damageDealed") == 10, "applicator reports listener delegated total");
+	CObj<OutgoingListener> outgoing = new OutgoingListener; sender->AddEventListener(outgoing.GetPtr());
+	for (float amount : {0.0f, -5.0f})
+	{
+		outgoing->replacement = amount; listener->calls = 0; receiver->SetHealth(1000);
+		app = new Damage(pars);
+		check(app->Init() && app->Run(), "finite outgoing cancellation completes");
+		check(listener->calls == 1 && listener->initial == amount, "finite outgoing result reaches incoming hooks");
+		check(app->GetDamageDealed() == 7 && receiver->GetHealth() == 993, "incoming modifier can adjust finite outgoing zero");
+	}
+	sender->RemoveEventListener(outgoing.GetPtr());
 	const auto saved = ai->physicalDamageReduction;
 	ai->physicalDamageReduction.sString = "missing";
 	raw->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
