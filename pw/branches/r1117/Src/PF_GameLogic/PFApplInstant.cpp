@@ -16,12 +16,21 @@
 #include "PFMainBuilding.h"
 #include "PFTargetSelector.h"
 #include "PFWorld.h"
+#include "LinuxBootstrap/formula_context.h"
 
 namespace NWorld
 {
 
 namespace
 {
+/** Empty fields retain zero; nonempty or compiled-only unsupported formulas fail closed. */
+float ReadLinuxApplicatorAmount(const PFBaseApplicator& app, const ExecutableFloatString& formula)
+{
+	if (formula.sString.empty() && formula.compiledString.empty()) return 0.0f;
+	return LinuxBootstrap::EvaluateUnitNumericFormula(formula.sString.c_str(),
+		app.GetAbilityOwner(), app.GetReceiver(), app.GetAbilityData()).value;
+}
+
 float GetLinuxBaseAttackDamageFallback(
   const ExecutableFloatString& formula,
   const CPtr<PFBaseUnit>& sender)
@@ -29,9 +38,12 @@ float GetLinuxBaseAttackDamageFallback(
   if (!IsValid(sender))
     return 0.0f;
 
-  const char* text = formula.sString.c_str();
-  if (!text || !strstr(text, "sDamageMin") || !strstr(text, "sDamageMax"))
-    return 0.0f;
+	// Temporary compatibility for the single authored base-attack expression only.
+	std::string text;
+	for (const char ch : formula.sString)
+		if (ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n') text += ch;
+	if (text != "random(f2l(sDamageMin),f2l(sDamageMax))")
+		return std::numeric_limits<float>::quiet_NaN();
 
   const float damageMin = sender->GetDamageMin();
   const float damageMax = sender->GetDamageMax();
@@ -55,12 +67,13 @@ PFApplDamage::PFApplDamage(PFApplCreatePars const &cp)
 
 bool PFApplDamage::Start()
 {
-  PFBaseApplicator::Start();
+	if (PFBaseApplicator::Start()) return true;
   if (IsValid(pReceiver))
   {
-    damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : RetrieveParam(GetDB().damage, 0.0f);
-    if (damage <= 0.0f && !IsDelegated())
+	damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : ReadLinuxApplicatorAmount(*this, GetDB().damage);
+	if (!std::isfinite(damage) && !IsDelegated())
       damage = GetLinuxBaseAttackDamageFallback(GetDB().damage, GetAbilityOwner());
+	if (!std::isfinite(damage) || damage <= 0.0f) return true;
     PFBaseUnit::DamageDesc desc;
     desc.pSender = GetAbilityOwner();
     desc.amount = damage;

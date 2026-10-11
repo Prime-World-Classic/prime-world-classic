@@ -444,6 +444,7 @@ add_executable(
 	visibility_stealth_probe.cpp
 	world_grid_probe.cpp
 	formula_range_probe.cpp
+	applicator_formula_probe.cpp
 	visibility_lifecycle_probe.cpp
 	visibility_query_probe.cpp
 	scheduler_drain_probe.cpp
@@ -971,6 +972,8 @@ target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
 add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-grid-probe)
 add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+add_test(NAME LinuxApplicatorFormula COMMAND PrimeWorldLinuxClient --bootstrap-applicator-formula-probe)
+set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxVisibilityLifecycle COMMAND PrimeWorldLinuxClient --bootstrap-visibility-lifecycle-probe)
 add_test(NAME LinuxVisibilityQueries COMMAND PrimeWorldLinuxClient --bootstrap-visibility-query-probe)
 add_test(NAME LinuxVisibilityStealth COMMAND PrimeWorldLinuxClient --bootstrap-visibility-stealth-probe)

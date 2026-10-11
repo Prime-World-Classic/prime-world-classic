@@ -170,6 +170,7 @@
 #include "LinuxBootstrap/visibility_stealth_probe.h"
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
+#include "LinuxBootstrap/applicator_formula_probe.h"
 #include "LinuxBootstrap/visibility_lifecycle_probe.h"
 #include "LinuxBootstrap/visibility_query_probe.h"
 #include "LinuxBootstrap/scheduler_drain_probe.h"
@@ -71113,6 +71114,8 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxVisibilityQueryProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-scheduler-drain-probe"))
 		return RunPrimeWorldLinuxSchedulerDrainProbe() ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-applicator-formula-probe"))
+		return RunPrimeWorldLinuxApplicatorFormulaProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))
