@@ -5,6 +5,7 @@
 #include "PFCommonCreep.h"
 #include "PFAIWorld.h"
 #include "PFBaseUnitStates.h"
+#include "TileMap.h"
 
 namespace
 {
@@ -320,14 +321,49 @@ PFEvadeCreepBehaviour::PFEvadeCreepBehaviour(PFCommonCreep* pCreep, const Placem
   , targetingRange(0.0f)
   , useEvade(false)
 {
+	if (!IsValid(pCreep)) return;
+	targetingRange = pCreep->GetTargetingRange();
+	const PFCreepSpawner* spawner = pCreep->GetSpawner();
+	const NDb::AdvMapCreepSpawner* db = spawner ? spawner->GetDBDesc() : nullptr;
+	if (db)
+	{
+		useEvade = db->useEvade;
+		if (useEvade) evadeParams.SetData(db->evadeParams);
+	}
 }
 
 bool PFEvadeCreepBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
-void PFEvadeCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { (void)pTarget; (void)bStrongTarget; }
+/** Explicit orders retain original target strength and ignore the ordinary chase radius. */
+void PFEvadeCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
+{
+	if (!IsUnitValid(pUnit) || !IsUnitValid(pTarget) || !pTarget->IsVulnerable()
+		|| pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK)) return;
+	pUnit->DropStates();
+	PushAttackState(pUnit, pUnit, pTarget, bStrongTarget, false, true);
+	pUnit->SetNeedRotate(true);
+}
 void PFEvadeCreepBehaviour::OnDamage(const PFBaseUnitDamageDesc& desc) { (void)desc; }
-bool PFEvadeCreepBehaviour::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) const { (void)pTarget; (void)mustSeeTarget; return false; }
-bool PFEvadeCreepBehaviour::IsCreepAtSpawner(float distInTiles) const { (void)distInTiles; return true; }
-bool PFEvadeCreepBehaviour::IsInDefaultState() const { return true; }
+/** A stationary creep's leash is measured from its spawner, including attack reach. */
+bool PFEvadeCreepBehaviour::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) const
+{
+	(void)mustSeeTarget;
+	if (!IsUnitValid(pUnit) || !IsUnitValid(pTarget)) return false;
+	const PFCommonCreep* creep = GetUnit();
+	const float walkLimit = creep->GetWalkLimit();
+	if (!std::isfinite(walkLimit)) return false;
+	if (walkLimit < 0) return true;
+	const PFCreepSpawner* spawner = creep->GetSpawner();
+	if (!spawner) return false;
+	return fabs2(pTarget->GetPosition().AsVec2D() - spawner->GetSpawnPosition().pos.AsVec2D())
+		<= fabs2(walkLimit + creep->GetAttackRange());
+}
+
+bool PFEvadeCreepBehaviour::IsCreepAtSpawner(float distInTiles) const
+{
+	return IsValid(pUnit) && pUnit->GetTileMap() && std::isfinite(distInTiles) && distInTiles >= 0
+		&& pUnit->IsPositionInRange(initialPlacement.pos.AsVec2D(), pUnit->GetTileMap()->GetTileSize() * distInTiles);
+}
+bool PFEvadeCreepBehaviour::IsInDefaultState() const { return IsValid(pUnit) && pUnit->IsIdle() && IsCreepAtSpawner(4); }
 bool PFEvadeCreepBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const { (void)pAttacked; (void)originalAttackedFaction; return false; }
 void PFEvadeCreepBehaviour::Resume() { PFBaseBehaviour::Resume(); }
 

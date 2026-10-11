@@ -28,6 +28,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 3/20 COMPLETE (`0.41.2`): common-creep population removal follows live AI-world registration, not the optional spawner ring. Deferred death retains both population and spawner ownership; repeated final notifications do not decrement twice, including lethal damage that zeroes health before OnUnitDie. Three initial failures reproduced, and repeated-death failures caught during the first fix. All 4,701 assertions and 28 CTests pass; six targets build, Windows/shared bytes unchanged. Evidence `/tmp/pw-b11-c3-{before,after,build,ctest}.log`. Full saved-world registration restoration remains unproven.
 
+- Chunk 4/20 COMPLETE (`0.42.0`): restore stationary/spawner-creep behavior configuration, inclusive spawner leash geometry, tile-scaled home/default-state queries and production attack-state admission with original strength/chase policy. Missing/nonfinite geometry fails safely. Four baseline failures reproduced with real spawner/creep fixtures; all 4,710 assertions, 28 CTests, six builds and Windows/shared byte checks pass. Evidence `/tmp/pw-b11-c4-{before,after,build,ctest}.log`. Automatic return/evade scheduling follows separately; no full stationary AI claim.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

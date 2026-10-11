@@ -1,5 +1,5 @@
 /** Authored creep data and real engine objects, with no replacement combat model. */
-static CObj<PFCommonCreep> CommonCreepB11(PFWorld* world, const vector<CVec2>& route = vector<CVec2>())
+static CObj<PFCommonCreep> CommonCreepB11(PFWorld* world, const vector<CVec2>& route = vector<CVec2>(), PFCreepSpawner* spawner = nullptr)
 {
 	NDb::Ptr<NDb::Creature> seed = B8BehaviourCreatureDb(world, NDb::FACTION_FREEZE);
 	NDb::AdvMapCreep* raw = new NDb::AdvMapCreep;
@@ -8,7 +8,7 @@ static CObj<PFCommonCreep> CommonCreepB11(PFWorld* world, const vector<CVec2>& r
 	raw->creepType = NDb::CREEPTYPE_FACTIONALNORMAL;
 	NDb::Ptr<NDb::AdvMapCreep> db = raw;
 	CObj<PFCommonCreep> creep = new PFCommonCreep(world, *db, NDb::FACTION_FREEZE,
-		Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1)), route);
+		Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1)), route, 0, 0, spawner);
 	NDb::DamageApplicator* damage = new NDb::DamageApplicator;
 	damage->damage.sString = "13";
 	damage->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
