@@ -101,8 +101,9 @@ or duplicated final records; wait for the process to exit before validating logs
 
 - Rendering uses real assets but still has simplified materials and presentation.
 - Numeric formulas support bounded arithmetic/conditionals, nine checked numeric
-	helpers and 40 exact unit properties through s/t prefixes. Unsupported abilities
-	remain unavailable, not silently free.
+	helpers, checked abilityScale/damageScale STAT contexts and 40 exact unit
+	properties through s/t prefixes. Unsupported abilities remain unavailable,
+	not silently free. Damage applicators still use the legacy executor.
 - Fog observers, visibility queries and stealth/true-sight caches use simulation
 	state. Rendered fog, complete stealth ability events/effects and spatial-scan
 	performance parity remain incomplete.

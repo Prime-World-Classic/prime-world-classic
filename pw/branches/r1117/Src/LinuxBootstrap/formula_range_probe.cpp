@@ -434,6 +434,67 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 		CObj<NWorld::PFAbilityData> shadowAbility = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
 		check(shadowAbility->GetUseRange() == 16, "local shadows global");
 		check(ability->GetUseRange() == 23, "ability constant maps remain isolated");
+		// Explicit endpoints distinguish ability/damage contexts and live parameter refresh.
+		auto& scaling = ai->abilityAndDamageScalingParams;
+		scaling.abilityScaleStatLeft = 50; scaling.abilityScaleStatRight = 160;
+		scaling.damageScaleStatLeft = 60; scaling.damageScaleStatRight = 170;
+		const auto scale = [&](const char* expression) {
+			return LinuxBootstrap::EvaluateUnitNumericFormula(expression, unit.GetPtr(), unit.GetPtr(), ability.GetPtr());
+		};
+		const auto expectScale = [&](const char* expression, float expected) {
+			const auto value = scale(expression);
+			check(value.Succeeded() && fabs(value.value - expected) < .0001f, expression);
+		};
+		for (const auto& entry : std::vector<std::pair<const char*, float>>{
+			{"abilityScale(50,4,30)", 4}, {"abilityScale(160,4,30)", 30},
+			{"abilityScale(0,4,30)", 4}, {"abilityScale(270,4,30)", 56},
+			{"abilityScale(105,4,31,false)", 17.5f}, {"abilityScale(105,4,31)", 18},
+			{"abilityScale(105,-30,-5)", -18}, {"abilityScale(105,30,4,false)", 30},
+			{"damageScale(115,10,21,false)", 15.5f}, {"damageScale(115,10,21,true)", 16},
+			{"abilityScale(max(sBaseStrength,sBaseIntellect),5,26.5)", 6},
+			{"abilityScale(105,4,30)+damageScale(115,4,30)", 34},
+			{"abilityScale(105,4,damageScale(115,10,22),false)", 10}})
+			expectScale(entry.first, entry.second);
+		NDb::Ptr<NDb::UnitConstant> authored = NDb::Get<NDb::UnitConstant>(
+			NDb::DBID("/Items/Talents/Class/Plane/const_A4_BaseDamage.xdb"));
+		check(authored && authored->var.sString.find("damageScale") != string::npos, "shipped scaling constant loaded");
+		unit->intellect = 115;
+		if (authored) expectScale(authored->var.sString.c_str(), 784);
+		raw->useRange.sString = "abilityScale(sIntellect,4,26,false)";
+		check(ability->GetUseRange() == 17, "actual range consumes checked scaling");
+		scaling.abilityScaleStatRight = 180;
+		check(ability->GetUseRange() == 15, "scaling parameters refresh between evaluations");
+		scaling.abilityScaleStatRight = 160;
+		for (const char* expression : {"abilityScale()", "abilityScale(1,2)", "abilityScale(1,2,3,4,5)",
+			"1 ? 2 : damageScale(1,2)", "abilityScaleLife(1,2)", "abilityScale((1,2),3,4)",
+			"abilityScale(1e39,4,30)", "damageScale(115,1e38,1e38)",
+			"abilityScale(1e38,-1e38,1e38,false)", "abilityScale(105,4,30,1/0)"})
+			check(!scale(expression).Succeeded(), expression);
+		for (float invalid : {50.f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()})
+		{
+			scaling.abilityScaleStatRight = invalid;
+			check(!scale("abilityScale(105,4,30)").Succeeded(), "invalid scaling endpoints fail closed");
+			expectScale("0 ? abilityScale(105,4,30) : 7", 7);
+		}
+		scaling.abilityScaleStatRight = 160;
+		check(!LinuxBootstrap::EvaluateUnitNumericFormula("abilityScale(105,4,30)", unit, unit).Succeeded(), "scaling requires ability context");
+		CObj<RangeUnit> detached = new RangeUnit;
+		CObj<NWorld::PFAbilityData> detachedAbility = new NWorld::PFAbilityData(detached.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+		check(!LinuxBootstrap::EvaluateUnitNumericFormula("abilityScale(105,4,30)", detached, detached, detachedAbility).Succeeded(), "scaling requires owner world");
+		check(LinuxBootstrap::EvaluateUnitNumericFormula("1 ? 9 : abilityScale(105,4,30)", nullptr, nullptr).value == 9, "unselected scaling needs no context");
+		global->var.sString = "abilityScale(105,4,31,false)";
+		check(ability->CalcParam("Global", unit, unit, nullptr) == 17.5f, "nested constant retains scaling context");
+		raw->manaCost.sString = "abilityScale(105,4,30)";
+		raw->cooldownTime.sString = "damageScale(115,2,4)";
+		CObj<NWorld::PFAbilityData> resources = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+		check(resources->GetManaCost() == 17, "mana cost consumes scaling");
+		resources->RestartCooldown();
+		check(resources->GetCurrentCooldown() == 3, "cooldown consumes scaling");
+		expectScale("abilityScale(105,2147483520,2147483520)", 2147483520.f);
+		check(!scale("abilityScale(105,2147483648,2147483648)").Succeeded(), "integer round upper bound rejected");
+		expectScale("abilityScale(105,2147483648,2147483648,false)", 2147483648.f);
+		expectScale("abilityScale(105,-2147483648,-2147483648)", -2147483648.f);
+		check(!scale("abilityScale(105,-2147483904,-2147483904)").Succeeded(), "integer round lower bound rejected");
 	}
 	NDb::SessionRoot::InitRoot(nullptr);
 	NDb::SetResourceCache(nullptr);

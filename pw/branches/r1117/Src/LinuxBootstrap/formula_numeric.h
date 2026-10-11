@@ -10,6 +10,12 @@ namespace LinuxBootstrap
 /** Independent scalar bindings; false means unknown symbol or unavailable context. */
 using NumericSymbolResolver = std::function<bool(const std::string&, double&)>;
 
+/** Only abilityScale/damageScale use this callback, with three or four finite arguments.
+ * Arguments and names are borrowed for the call; false means unavailable context.
+ * Selected calls are not cached. The callback must write a finite result on success.
+ */
+using NumericFunctionResolver = std::function<bool(const std::string&, const double*, std::size_t, double&)>;
+
 /** Checked failures, never an implicit numeric zero or a parser exception. */
 enum class NumericFormulaError
 {
@@ -56,6 +62,8 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * floor and ceil. The first five use FormulaPars float argument semantics;
  * round follows its float +/-0.5 then floor/ceil rule. Other helpers use double.
  * Boolean literals true/false are numeric 1/0. Commas are argument separators only.
+ * abilityScale/damageScale additionally accept three or four arguments through
+ * the optional context callback. Arity is checked even in unselected branches.
  * No other functions, assignment, strings, lists, logical/bitwise/power operators,
  * comments, casts, hex/octal literals, or ambient built-in constants. Whitespace
  * is ASCII space, tab, CR and LF. Repeated unary signs require parentheses:
@@ -76,5 +84,5 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * the unmodified vendored sources with MUPARSER_STATIC and without OpenMP.
  */
 NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
-	const NumericSymbolResolver& resolver = {}) noexcept;
+	const NumericSymbolResolver& resolver = {}, const NumericFunctionResolver& functions = {}) noexcept;
 }

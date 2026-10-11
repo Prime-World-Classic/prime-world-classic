@@ -224,6 +224,56 @@ void NumericFunctions()
 	ExpectError("abs(" + nested + ")", Error::LimitExceeded);
 }
 
+/** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
+void ContextFunctions()
+{
+	int calls = 0;
+	const NumericFunctionResolver resolver = [&](const std::string& name, const double* args,
+		std::size_t count, double& value) {
+		++calls;
+		Check((name == "abilityScale" || name == "damageScale") && (count == 3 || count == 4), "only whitelisted callback shapes");
+		value = args[0] + 10 * args[1] + 100 * args[2] + (count == 4 ? 1000 * args[3] : 0);
+		return true;
+	};
+	const auto expect = [&](const char* expression, float value) {
+		const auto result = EvaluateNumericFormula(expression, {}, resolver);
+		Check(result.Succeeded() && result.value == value, expression);
+	};
+	expect("abilityScale(1,2,3)", 321);
+	expect("damageScale(1,2,3,true)", 1321);
+	expect("abilityScale(damageScale(1,2,3),2,3,false)", 641);
+	const int before = calls;
+	expect("0 ? abilityScale(1,2,3) : 7", 7);
+	Check(calls == before, "unselected context functions are lazy");
+	for (const char* expression : {"abilityScale(1,2)", "1 ? 2 : damageScale(1,2)",
+		"abilityScale(1,2,3,4,5)", "abilityScale(1,,3)", "abilityScale(1,2,3),4",
+		"damageScale((1,2),3,4)", "abilityScale(1,2,3)+", "unknown(1,2,3)"})
+	{
+		Check(!EvaluateNumericFormula(expression, {}, resolver).Succeeded(), expression);
+		Check(calls == before, "invalid call syntax invokes no resolver");
+	}
+	ExpectError("abilityScale(1,2,3)", Error::MissingResolver);
+	ExpectValue("1 ? 4 : abilityScale(1,2,3)", 4);
+	Check(EvaluateNumericFormula("abilityScale(1,2,3)", {},
+		[](const std::string&, const double*, std::size_t, double&) { return false; }).error == Error::UnknownSymbol, "missing function context");
+	Check(EvaluateNumericFormula("abilityScale(1,2,3)", {},
+		[](const std::string&, const double*, std::size_t, double&) { return true; }).error == Error::NonFiniteValue, "unwritten callback output");
+	const NumericFunctionResolver throwing = [](const std::string&, const double*, std::size_t, double&) -> bool {
+		throw std::runtime_error("unavailable scaling context");
+	};
+	Check(EvaluateNumericFormula("abilityScale(1,2,3)", {}, throwing).error == Error::ResolverFailure, "callback exceptions contained");
+	Check(EvaluateNumericFormula("0 ? abilityScale(1,2,3) : 4", {}, throwing).value == 4, "unselected throwing callback");
+	Check(EvaluateNumericFormula("abilityScale(1/0,2,3)", {}, resolver).error == Error::NonFiniteValue, "invalid argument stops callback");
+	Check(calls == before, "failed argument does not reach context");
+	expect("abilityScale(1,2,3)+abilityScale(1,2,3)", 642);
+	Check(calls == before + 2, "each selected call executes separately");
+	const auto recursive = EvaluateNumericFormula("abilityScale(1,2,3)", {},
+		[](const std::string&, const double*, std::size_t, double& value) {
+			const auto nested = EvaluateNumericFormula("max(4,7)"); value = nested.value; return nested.Succeeded();
+		});
+	Check(recursive.Succeeded() && recursive.value == 7, "recursive callback owns independent parser state");
+}
+
 /** Unsupported C++/muParser surfaces must fail instead of acquiring new semantics. */
 void RejectedSyntax()
 {
@@ -381,6 +431,7 @@ int main()
 	PlaneRange();
 	LazySymbols();
 	NumericFunctions();
+	ContextFunctions();
 	RejectedSyntax();
 	NumericFailures();
 	Bounds();

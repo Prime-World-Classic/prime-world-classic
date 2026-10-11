@@ -131,6 +131,44 @@ double Resolve(void* data)
 	return binding.value;
 }
 
+/** Stable per-call userdata never escapes this evaluation; callbacks remain lazy. */
+struct FunctionBinding
+{
+	const NumericFunctionResolver* resolver;
+	std::string name;
+	std::string token;
+};
+
+double ResolveFunction(FunctionBinding& binding, const double* args, std::size_t count)
+{
+	if (!*binding.resolver) throw Error::MissingResolver;
+	for (std::size_t i = 0; i < count; ++i) Finite(args[i]);
+	double value = std::numeric_limits<double>::quiet_NaN();
+	bool found = false;
+	try { found = (*binding.resolver)(binding.name, args, count, value); }
+	catch (...) { throw Error::ResolverFailure; }
+	if (!found) throw Error::UnknownSymbol;
+	return Finite(value);
+}
+double ResolveThree(void* data, double a, double b, double c)
+{
+	const double args[] = {a, b, c};
+	return ResolveFunction(*static_cast<FunctionBinding*>(data), args, 3);
+}
+double ResolveFour(void* data, double a, double b, double c, double d)
+{
+	const double args[] = {a, b, c, d};
+	return ResolveFunction(*static_cast<FunctionBinding*>(data), args, 4);
+}
+
+/** Track separators only, leaving expression grammar and fixed arity to muParser. */
+struct Parenthesis
+{
+	bool function;
+	FunctionBinding* context;
+	std::size_t arguments = 1;
+};
+
 /** Remove all ambient functionality; muParser still owns grammar and lazy branching. */
 void Configure(mu::Parser& parser)
 {
@@ -174,7 +212,8 @@ void Configure(mu::Parser& parser)
  * inside their argument parentheses, never as muParser expression-list operators.
  */
 std::string BindTokens(const std::string& expression, const NumericSymbolResolver& resolver,
-	mu::Parser& parser, std::map<std::string, Binding>& bindings)
+	const NumericFunctionResolver& functions, mu::Parser& parser,
+	std::map<std::string, Binding>& bindings, std::map<std::string, FunctionBinding>& calls)
 {
 	if (expression.size() > NumericFormulaMaxLength) throw Error::LimitExceeded;
 	std::string translated;
@@ -182,8 +221,9 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 	std::size_t depth = 0;
 	std::size_t conditionals = 0;
 	std::size_t signs = 0;
-	std::vector<bool> functionParentheses;
+	std::vector<Parenthesis> functionParentheses;
 	bool pendingFunction = false;
+	FunctionBinding* pendingContext = nullptr;
 	for (std::size_t pos = 0; pos < expression.size();)
 	{
 		const char ch = expression[pos];
@@ -228,9 +268,18 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
 			if (next < expression.size() && expression[next] == '(')
 			{
-				if (!IsNumericFunction(name)) throw Error::UnsupportedSyntax;
-				// muParser requires the opening parenthesis adjacent to a function name.
-				translated += name;
+				if (name == "abilityScale" || name == "damageScale")
+				{
+					const std::string token = "pw_call_" + std::to_string(calls.size());
+					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
+					translated += token;
+				}
+				else
+				{
+					if (!IsNumericFunction(name)) throw Error::UnsupportedSyntax;
+					// muParser requires the opening parenthesis adjacent to a function name.
+					translated += name;
+				}
 				pendingFunction = true;
 				continue;
 			}
@@ -266,18 +315,29 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		if (ch == '(')
 		{
 			if (++depth > NumericFormulaMaxNesting) throw Error::LimitExceeded;
-			functionParentheses.push_back(pendingFunction);
+			functionParentheses.push_back({pendingFunction, pendingContext});
 			pendingFunction = false;
+			pendingContext = nullptr;
 		}
 		else if (ch == ')')
 		{
 			if (depth == 0) throw Error::InvalidExpression;
 			--depth;
+			const auto& frame = functionParentheses.back();
+			if (frame.context)
+			{
+				if (frame.arguments == 3)
+					parser.DefineFunUserData(frame.context->token, ResolveThree, frame.context, false);
+				else if (frame.arguments == 4)
+					parser.DefineFunUserData(frame.context->token, ResolveFour, frame.context, false);
+				else throw Error::InvalidExpression;
+			}
 			functionParentheses.pop_back();
 		}
 		else if (ch == ',')
 		{
-			if (functionParentheses.empty() || !functionParentheses.back()) throw Error::UnsupportedSyntax;
+			if (functionParentheses.empty() || !functionParentheses.back().function) throw Error::UnsupportedSyntax;
+			++functionParentheses.back().arguments;
 		}
 		else if (ch == '?')
 		{
@@ -296,15 +356,16 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 }
 
 NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
-	const NumericSymbolResolver& resolver) noexcept
+	const NumericSymbolResolver& resolver, const NumericFunctionResolver& functions) noexcept
 {
 	try
 	{
 		// Bindings outlive the parser and never escape this evaluation.
 		std::map<std::string, Binding> bindings;
+		std::map<std::string, FunctionBinding> calls;
 		mu::Parser parser;
 		Configure(parser);
-		parser.SetExpr(BindTokens(expression, resolver, parser, bindings));
+		parser.SetExpr(BindTokens(expression, resolver, functions, parser, bindings, calls));
 		const float value = Narrow(parser.Eval());
 		return {Error::None, value};
 	}
