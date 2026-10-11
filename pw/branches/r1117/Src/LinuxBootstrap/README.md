@@ -87,6 +87,10 @@ The [native controls driver](ruffle_eval/native_controls_probe.py) requires
 `xdotool`, the foreground 1280x720 client window and fresh output paths. Do not
 interact with the window during this automated test. It sends window-addressed
 events, checks focus and never installs a global held key.
+The driver restores only its PID's window before scripted purchase and again
+before delayed controls. A focus change still fails closed. Shared desktops can
+use an isolated Xvfb display with an EWMH window manager; software GLX evidence
+does not replace a desktop/GPU performance check.
 
 ```sh
 python3 -B "$PORT/ruffle_eval/native_controls_probe.py" \
@@ -190,6 +194,24 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	selection across wide/portrait maps and three voxel densities. Malformed goals
 	and prohibited motion fail before movement; ordinary interruption cleanup is
 	separate from special/mounted movement policy.
+- [Building orders](building_order_tests.inc), [combat movement](combat_move_tests.inc),
+	[attack sectors](attack_sector_tests.inc) and [attachments](attachment_tests.inc):
+	production region checks, nested combat/approach cleanup, angular slot ownership,
+	actual formation arrival and bounded acyclic attachment admission. These do not
+	replace full pathfinding or prove complete mounted gameplay.
+- [Base ability use](base_use_tests.inc), [hero casting](hero_cast_tests.inc) and
+	[consumables](consumable_state_tests.inc): authored range/flag policies, approach
+	before payment, real inventory and unit-owned cast/channel completion without
+	double stepping. Mock only descriptor inputs and nonzero work duration;
+	bootstrap talent/consumable commands still need production state routing and
+	authored animation timing.
+- Hero orders cover [follow movement](hero_follow_lifecycle_tests.inc),
+	[assisted combat](hero_follow_combat_tests.inc), [hold](hero_hold_tests.inc),
+	[suspend](hero_suspend_tests.inc), [interaction approaches](hero_interaction_approach_tests.inc),
+	[action lifetime](hero_interaction_action_tests.inc), [unit use](hero_use_unit_tests.inc)
+	and [authored pickup/flag actions](hero_flag_pickup_tests.inc). Real engine states,
+	personal fog, mana and event identities are exercised; empty-dispatch fixtures
+	do not establish complete live-map channel/applicator effects.
 - [Scheduler drain](scheduler_drain_probe.cpp): preserve admitted commands and
 	statuses while closing finite smoke input and draining the replay boundary,
 	including closed barriers with unbounded interactive step budgets.

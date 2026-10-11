@@ -115,6 +115,20 @@ def owned_window(process, deadline):
 	return window
 
 
+def wait_for_window(process, deadline):
+	'''Activate the owned window before setup; retry only a not-yet-created PID window.'''
+	while time.monotonic() < deadline:
+		if process.poll() is not None:
+			raise EvidenceError('Client exited before window setup')
+		try:
+			return owned_window(process, deadline)
+		except subprocess.CalledProcessError as error:
+			if error.returncode != 1 or error.cmd[1:3] != ['search', '--pid']:
+				raise
+		pause(0.1, deadline)
+	raise EvidenceError('Timed out waiting for the owned client window')
+
+
 def probe_alias_keys(window, deadline=None):
 	'''Former VK/XK collisions must neither submit gameplay actions nor move the camera.'''
 	for key in ('F4', 'F5', 'F6', 'KP_1', 'KP_3', 'Delete', 'Insert', 'F2', 'F9'):
@@ -137,6 +151,7 @@ def run(binary, library, bin_dir, output, seconds=60, control_delay=0, min_cast_
 			stdout=stream, stderr=subprocess.STDOUT)
 		try:
 			wait = lambda needle, count: wait_for(process, output, needle, count, deadline)
+			wait_for_window(process, deadline)
 			wait('Ruffle talent command: buy row=0 column=0', 1)
 			pause(4, deadline)  # The final setup click closes the authored talent window.
 			pause(control_delay, deadline)

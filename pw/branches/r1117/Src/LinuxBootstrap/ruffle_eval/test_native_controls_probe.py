@@ -122,6 +122,38 @@ class NativeControlsTests(unittest.TestCase):
 				probe.run(Path('/mock-client'), Path('/mock-library'), Path(directory), Path(directory) / 'out')
 			tool.assert_not_called()
 
+	def test_owned_window_activated_before_purchase_setup(self):
+		'''Setup commands also require focus, before the late controls restore it again.'''
+		with tempfile.TemporaryDirectory() as directory, \
+			patch.object(probe.subprocess, 'Popen') as start, \
+			patch.object(probe, 'wait_for_window', create=True, return_value='42') as window, \
+			patch.object(probe, 'wait_for', side_effect=probe.EvidenceError('stop at setup')) as wait:
+			start.return_value.poll.return_value = None
+			events = Mock(); events.attach_mock(window, 'window'); events.attach_mock(wait, 'wait')
+			with self.assertRaisesRegex(probe.EvidenceError, 'stop at setup'):
+				probe.run(Path('/mock-client'), Path('/mock-library'), Path(directory), Path(directory) / 'out')
+			self.assertEqual([name for name, _, _ in events.mock_calls], ['window', 'wait'])
+
+	def test_window_creation_wait_retries_only_missing_pid(self):
+		'''A short native startup delay is not permission to address another window.'''
+		process = Mock(pid=123); process.poll.return_value = None
+		missing = probe.subprocess.CalledProcessError(1, ['xdotool', 'search', '--pid', '123'])
+		with patch.object(probe.time, 'monotonic', return_value=1), \
+			patch.object(probe, 'owned_window', side_effect=[missing, '42']) as window, \
+			patch.object(probe, 'pause') as pause:
+			self.assertEqual(probe.wait_for_window(process, 100), '42')
+			self.assertEqual(window.call_count, 2); pause.assert_called_once_with(0.1, 100)
+
+	def test_window_activation_failure_is_not_retried(self):
+		process = Mock(pid=123); process.poll.return_value = None
+		failure = probe.subprocess.CalledProcessError(1, ['xdotool', 'windowactivate', '--sync', '42'])
+		with patch.object(probe.time, 'monotonic', return_value=1), \
+			patch.object(probe, 'owned_window', side_effect=failure) as window, \
+			patch.object(probe, 'pause') as pause:
+			with self.assertRaises(probe.subprocess.CalledProcessError):
+				probe.wait_for_window(process, 100)
+			self.assertEqual(window.call_count, 1); pause.assert_not_called()
+
 	def test_focus_loss_never_sends_input(self):
 		with patch.object(probe, 'tool', return_value='99') as tool:
 			with self.assertRaises(probe.EvidenceError):

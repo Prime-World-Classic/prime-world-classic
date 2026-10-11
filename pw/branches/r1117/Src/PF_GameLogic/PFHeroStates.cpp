@@ -26,6 +26,7 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 #include "PathChecker.h"
 #include "RegionPointChecker.h"
 #include "PFBaseUnitEvent.h"
+#include "PFAbilityData.h"
 
 namespace NWorld
 {
@@ -493,34 +494,66 @@ PFCreatureRaiseFlagState::PFCreatureRaiseFlagState( PFBaseHero* pOwner, PFFlagpo
   : PFInteractObjectState( pOwner, Target( static_cast<PFBaseUnit*>( _pFlagpole ) ) )
   , pFlagpole( _pFlagpole )
 {
+	range = -1.f;
+	if (IsUnitValid(pOwner) && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld() &&
+		IsUnitValid(pFlagpole) && pOwner->GetWorld() == pFlagpole->GetWorld())
+	{
+		NDb::Ptr<NDb::Ability> db = pOwner->GetAIParameters().raiseFlagAbility;
+		if (db)
+		{
+			CObj<PFAbilityData> ability = new PFAbilityData(pOwner, db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			range = ability->GetUseRange(pFlagpole);
+		}
+	}
 }
 
 void PFCreatureRaiseFlagState::DoAction()
 {
-  if ( IsUnitValid( pOwner ) &&
-       IsUnitValid( pFlagpole ) &&
-       pFlagpole->CanRaise( pOwner->GetFaction() ) &&
-       !pOwner->CheckFlag( NDb::UNITFLAG_FORBIDINTERACT ) )
-  {
-    pFlagpole->OnStartRaise( 0, 0.0f );
-    pFlagpole->OnRaise( pOwner->GetFaction(), pOwner );
-  }
+	if (!IsUnitValid(pOwner) || !pOwner->GetWorld() || !pOwner->GetWorld()->GetAIWorld() || !IsUnitValid(pFlagpole) ||
+		pOwner->GetWorld() != pFlagpole->GetWorld() || !pFlagpole->IsNeutral() ||
+		!pFlagpole->CanRaise(pOwner->GetFaction()) || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT))
+		return;
+	NDb::Ptr<NDb::Ability> db = pOwner->GetAIParameters().raiseFlagAbility;
+	if (!db)
+		return;
+	pActionInstance = pOwner->UseExternalAbility(db, target);
+	if (pActionInstance)
+		pOwner->EventHappened(PFBaseUnitAbilityStartEvent(pActionInstance.GetPtr()));
 }
 
 PFHeroPickupObjectState::PFHeroPickupObjectState( PFBaseHero* pOwner, PFPickupableObjectBase* _pPickupable )
   : PFInteractObjectState( pOwner, Target( static_cast<PFLogicObject*>( _pPickupable ) ) )
   , pPickupable( _pPickupable )
 {
+	range = -1.f;
+	if (IsUnitValid(pOwner) && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld() &&
+		IsObjectValid(pPickupable) && pOwner->GetWorld() == pPickupable->GetWorld())
+	{
+		if (const NDb::Ability* db = pPickupable->GetPickupAbility())
+		{
+			CObj<PFAbilityData> ability = new PFAbilityData(pOwner, db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			// Pickupables are logic objects, not units: keep their actual formula endpoint.
+			range = LinuxBootstrap::EvaluateUnitNumericFormula(db->useRange.sString.c_str(),
+				pOwner, pPickupable, ability.GetPtr()).value;
+		}
+		else
+			range = pOwner->GetAIParameters().pickupItemRange;
+	}
 }
 
 void PFHeroPickupObjectState::DoAction()
 {
-  if ( IsUnitValid( pOwner ) &&
-       IsValid( pPickupable ) &&
-       pPickupable->CanBePickedUpBy( pOwner ) )
-  {
-    pPickupable->PickUp( pOwner );
-  }
+	if (!IsUnitValid(pOwner) || !IsObjectValid(pPickupable) ||
+		pOwner->GetWorld() != pPickupable->GetWorld() || !pPickupable->CanBePickedUpBy(pOwner))
+		return;
+	if (const NDb::Ability* db = pPickupable->GetPickupAbility())
+	{
+		pActionInstance = pOwner->UseExternalAbility(db, Target(pPickupable));
+		if (pActionInstance)
+			pOwner->EventHappened(PFBaseUnitAbilityStartEvent(pActionInstance.GetPtr()));
+	}
+	else
+		pPickupable->PickUp(pOwner);
 }
 
 PFHeroSuspendState::PFHeroSuspendState( CPtr<PFBaseHero> const& pOwner, bool isLongSuspend )
