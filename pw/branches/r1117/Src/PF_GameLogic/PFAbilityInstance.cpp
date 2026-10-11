@@ -91,7 +91,10 @@ void PFAbilityInstance::Activate()
 	// Update may already have crossed zero; mark activation before any reentrant callback.
 	activateDelay = -1.0f;
 
-  if ( IsValid( pAbilityData ) && pAbilityData->IsTargetValid( target ) )
+	// Admission can change between dispatch construction and its activation deadline.
+	if (IsValid(pAbilityData) && pAbilityData->GetDBDesc() && IsValid(pOwner) && !pOwner->IsDead()
+		&& pAbilityData->IsTargetValid(target) && !pAbilityData->IsForbidded()
+		&& pAbilityData->IsReady() && pAbilityData->IsEnoughMana() && !pAbilityData->CheckCastLimitations(target))
   {
     if ( pAbilityData->IsMultiState() )
       pAbilityData->SwitchOn();
@@ -121,7 +124,8 @@ void PFAbilityInstance::Activate()
   }
   else
   {
-    NotifyAbilityEnd();
+		Cancel();
+		return;
   }
 
   activateDelay = -1.0f;
@@ -132,7 +136,9 @@ bool PFAbilityInstance::ApplyToTarget()
 {
 	// One instance owns one dispatch; passive and already-submitted instances cannot recast.
 	if (passive || IsActivated() || IsValid(dispatch.Get())
-		|| !IsValid(pAbilityData) || !IsValid(pOwner) || !pAbilityData->GetDBDesc())
+		|| !IsValid(pAbilityData) || !IsValid(pOwner) || !pAbilityData->GetDBDesc()
+		|| pOwner->IsDead() || !pAbilityData->IsTargetValid(target) || pAbilityData->IsForbidded()
+		|| !pAbilityData->IsReady() || !pAbilityData->IsEnoughMana() || pAbilityData->CheckCastLimitations(target))
     return false;
 
   Target const source( pOwner );
