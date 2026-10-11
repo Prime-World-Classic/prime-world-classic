@@ -18,6 +18,7 @@
 #include "LuaScript.h"
 
 #include <cmath>
+#include <limits>
 
 bool bUseOldUpdateHistoryMethod = false;
 
@@ -1474,11 +1475,14 @@ void PFBaseUnit::StepInvisibility()
 		if (ai && !CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME))
 		{
 			const float radius = ai->GetAIParameters().maxTrueSightRange;
-			const float radiusSquared = radius * radius;
+			// Validate the square before narrowing: malformed radii must not overflow float.
+			const double radiusSquaredWide = static_cast<double>(radius) * radius;
 			const CVec2 origin = GetPosition().AsVec2D();
-			if (std::isfinite(radius) && radius > 0.0f && std::isfinite(radiusSquared) && radiusSquared > 0.0f &&
+			if (std::isfinite(radius) && radius > 0.0f && radiusSquaredWide <= std::numeric_limits<float>::max() &&
+				static_cast<float>(radiusSquaredWide) > 0.0f &&
 				std::isfinite(origin.x) && std::isfinite(origin.y))
 			{
+				const float radiusSquared = static_cast<float>(radiusSquaredWide);
 				/** One traversal computes the independent enemy and neutral detector results. */
 				struct TrueSight
 				{
@@ -1504,8 +1508,8 @@ void PFBaseUnit::StepInvisibility()
 					}
 				} sight(origin, radiusSquared);
 				const int targets = NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_AFFECTMOUNTED | NDb::SPELLTARGET_FLYING;
-				// Linux's range walker does not clamp voxel bounds; filter the existing full traversal instead.
-				ai->ForAllUnits(sight, UnitMaskingPredicate(GetOppositeFactionFlags(), targets));
+				// The corrected walker bounds voxel work; retain the detector's strict range gate.
+				ai->ForAllUnitsInRange(GetPosition(), radius, sight, UnitMaskingPredicate(GetOppositeFactionFlags(), targets));
 				visibleForEnemy = sight.enemy;
 				visibleForNeutral = sight.neutral;
 			}

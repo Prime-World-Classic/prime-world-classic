@@ -19,6 +19,8 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include <cstdio>
 #include <initializer_list>
 #include <limits>
+#include <cmath>
+#include <vector>
 
 #if !defined(PW_LINUX_NULL_RENDER)
 #error The stealth probe requires PW_LINUX_NULL_RENDER.
@@ -104,6 +106,7 @@ public:
 	int gameplay = 0;
 	int drops = 0;
 	bool mounted = false;
+	mutable int flightChecks = 0;
 	Stationary(PFWorld* world, const NDb::Unit* db, NDb::EFaction faction, const CVec3& pos = CVec3(20, 20, 0))
 		: PFBaseUnit(world, pos, db)
 	{
@@ -119,6 +122,10 @@ public:
 	bool Step(float dt) override { ++gameplay; return PFBaseUnit::Step(dt); }
 	void OnTargetDropped() override { ++drops; }
 	bool IsMounted() const override { return mounted; }
+	/** The real UnitMaskingPredicate calls IsFlying before checking faction/type. */
+	bool IsFlying() const override { ++flightChecks; return PFBaseUnit::IsFlying(); }
+	/** Invalid query origins must not pass through the separate movement-ingestion path. */
+	void QueryPosition(const CVec3& value) { position = value; }
 	void Radius(float value) { GetStat(NDb::STAT_VISIBILITYRANGE)->SetCoreValue(value); }
 	void Relocate(const CVec3& value)
 	{
@@ -343,6 +350,106 @@ void TargetLossAndApplicator(Checks& checks)
 	neutral->CloseWarFog(true);
 }
 
+/** Frozen full-scan oracle for finite, ordinary inputs: independent of the voxel range walker. */
+struct FullScanSight
+{
+	CVec2 origin;
+	float radiusSquared;
+	bool enemy = false;
+	bool neutral = false;
+	FullScanSight(const CVec3& center, float radius) : origin(center.AsVec2D()), radiusSquared(radius * radius) {}
+	void operator()(PFBaseUnit& detector)
+	{
+		if ((enemy && neutral) || !detector.CheckFlag(NDb::UNITFLAG_CANSEEINVISIBLE)) return;
+		const float distance = fabs2(detector.GetPosition().AsVec2D() - origin);
+		const float range = detector.GetVisibilityRange();
+		const float square = range * range;
+		if (!std::isfinite(distance) || distance > radiusSquared || !std::isfinite(range) ||
+			range <= 0 || !std::isfinite(square) || distance >= square) return;
+		if (detector.GetFaction() == Neutral) neutral = true; else enemy = true;
+	}
+};
+
+/** Compare final caches to the previous algorithm across edges, radii and changing membership. */
+void BoundedTrueSight(Checks& checks)
+{
+	Fixture f(checks);
+	if (!f.loaded) return;
+	CObj<Stationary> subject = new Stationary(f.world, f.unitDb, Ally);
+	subject->AddFlag(NDb::UNITFLAG_INVISIBLE);
+	subject->CloseWarFog(true);
+	const float width = f.world->GetTileMap()->GetSizeX() * f.world->GetTileMap()->GetTileSize();
+	const float height = f.world->GetTileMap()->GetSizeY() * f.world->GetTileMap()->GetTileSize();
+	std::vector<CObj<Stationary> > population;
+	for (float x = 1; x < width; x += 19)
+		for (float y = 1; y < height; y += 17)
+		{
+			const int index = static_cast<int>(population.size());
+			CObj<Stationary> unit = new Stationary(f.world, f.unitDb,
+				index % 3 == 0 ? Neutral : index % 3 == 1 ? Enemy : Ally, CVec3(x, y, 0));
+			unit->CloseWarFog(true);
+			unit->Radius(index % 2 ? 18 : 7);
+			if (index % 4) unit->AddFlag(NDb::UNITFLAG_CANSEEINVISIBLE);
+			unit->mounted = index % 2;
+			if (index % 3) unit->AddFlag(NDb::UNITFLAG_FLYING | NDb::UNITFLAG_INVISIBLE);
+			population.push_back(unit);
+		}
+	const int targets = NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_AFFECTMOUNTED | NDb::SPELLTARGET_FLYING;
+	for (float x : {0.0f, 1.0f, 10.0f, width * 0.5f, width - 1.0f, width + 1.0f})
+		for (float y : {0.0f, 1.0f, 10.0f, height * 0.5f, height - 1.0f, height + 1.0f})
+			for (float radius : {0.25f, 5.0f, 18.0f, 32.0f, 1000.0f})
+			{
+				subject->Relocate(CVec3(x, y, 100));
+				checks.ai->maxTrueSightRange = radius;
+				FullScanSight expected(subject->GetPosition(), radius);
+				f.world->GetAIWorld()->ForAllUnits(expected, UnitMaskingPredicate(subject->GetOppositeFactionFlags(), targets));
+				subject->UpdateInvisibility();
+				checks.Check(subject->IsVisibleForEnemy(-1) == expected.enemy &&
+					subject->IsVisibleForFactionInternal(Neutral) == expected.neutral,
+					"bounded true sight equals old full scan on rectangular edges/densities");
+			}
+	// Count predicate work in production StepInvisibility, not an alternate query implementation.
+	subject->Relocate(CVec3(20, 20, 0));
+	checks.ai->maxTrueSightRange = 6;
+	for (auto& unit : population) unit->flightChecks = 0;
+	FullScanSight expected(subject->GetPosition(), 6);
+	f.world->GetAIWorld()->ForAllUnits(expected, UnitMaskingPredicate(subject->GetOppositeFactionFlags(), targets));
+	int fullCalls = 0;
+	for (auto& unit : population) { fullCalls += unit->flightChecks; unit->flightChecks = 0; }
+	subject->UpdateInvisibility();
+	int boundedCalls = 0;
+	int local = 0;
+	for (auto& unit : population)
+	{
+		boundedCalls += unit->flightChecks;
+		const bool inside = fabs2(unit->GetPosition().AsVec2D() - subject->GetPosition().AsVec2D()) <= 36.0f;
+		if (inside) ++local;
+		checks.Check(unit->flightChecks == (inside ? 1 : 0), "production range predicate never touches out-of-circle population");
+	}
+	checks.Check(fullCalls == static_cast<int>(population.size()) && boundedCalls == local && boundedCalls < fullCalls,
+		"actual predicate-call reduction without timing assumptions");
+	std::printf("True sight work [wide=%d density=%d population=%zu]: full predicates=%d bounded predicates=%d\n",
+		checks.wide, checks.density, population.size(), fullCalls, boundedCalls);
+	checks.Check(subject->IsVisibleForEnemy(-1) == expected.enemy &&
+		subject->IsVisibleForFactionInternal(Neutral) == expected.neutral, "work reduction preserves both reveal caches");
+	// Existing TrueSight/TickOwnership cover death, foreign worlds, genuine MoveTo and TeleportTo.
+	const float nan = std::numeric_limits<float>::quiet_NaN();
+	const float inf = std::numeric_limits<float>::infinity();
+	for (float invalid : {nan, inf, -inf, std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()})
+		for (bool xAxis : {true, false})
+		{
+			subject->QueryPosition(xAxis ? CVec3(invalid, 20, 0) : CVec3(20, invalid, 0));
+			for (auto& unit : population) unit->flightChecks = 0;
+			subject->UpdateInvisibility();
+			int calls = 0;
+			for (auto& unit : population) calls += unit->flightChecks;
+			checks.Check(!subject->IsVisibleForEnemy(-1) && !subject->IsVisibleForFactionInternal(Neutral) && calls == 0,
+				"invalid or distant query origin cannot reveal or invoke detector predicates");
+		}
+	subject->QueryPosition(CVec3(20, 20, 0));
+	checks.ai->maxTrueSightRange = 32;
+}
+
 /** World visibility owns one scheduled update; explicit applicator refreshes are additional. */
 void TickOwnership(Checks& checks)
 {
@@ -401,6 +508,7 @@ bool RunPrimeWorldLinuxVisibilityStealthProbe()
 			RangeAndInvalid(checks);
 			TargetLossAndApplicator(checks);
 			TickOwnership(checks);
+			BoundedTrueSight(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility stealth: %d checks, %d failures\n", checks.count, checks.failures);
