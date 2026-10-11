@@ -15,6 +15,7 @@
 #include "../PF_GameLogic/DBAdvMap.h"
 #include "../PF_GameLogic/DBSessionRoots.h"
 #include "../Terrain/DBTerrain.h"
+#include "../libdb/DbResourceCache.h"
 #include <cstdio>
 #include <limits>
 
@@ -939,6 +940,15 @@ static void EnergyBoundaries(Checks& check, PFWorld* world)
 	}
 }
 
+/** Initialize every caller-owned descriptor field, as production applicators do. */
+static PFBaseUnitDamageDesc DirectDamage()
+{
+	PFBaseUnitDamageDesc desc; desc.amount = 0; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	desc.flags = 0; desc.damageMode = NDb::DAMAGEMODE_ZERO;
+	desc.dontAttackBack = false; desc.pDealerApplicator = nullptr;
+	return desc;
+}
+
 /** Hero damage masks use the existing predicate and both pre/incoming callbacks. */
 static void HeroDamageModifiers(Checks& check, PFWorld* world)
 {
@@ -952,7 +962,7 @@ static void HeroDamageModifiers(Checks& check, PFWorld* world)
 		PFBaseHero* hero = dynamic_cast<PFBaseHero*>(receiver.GetPtr());
 		hero->SetAdditionalDamageParam(scale, NDb::ESpellTarget(NDb::SPELLTARGET_ENEMY |
 			(matching ? NDb::SPELLTARGET_CREEP : NDb::SPELLTARGET_HEROMALE)));
-		PFBaseUnitDamageDesc desc; desc.pSender = missingSender ? nullptr : sender.GetPtr();
+		PFBaseUnitDamageDesc desc = DirectDamage(); desc.pSender = missingSender ? nullptr : sender.GetPtr();
 		desc.amount = 20; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
 		const bool applies = matching && !missingSender;
 		const float expectedBefore = applies ? 20 * scale : 20;
@@ -966,7 +976,7 @@ static void HeroDamageModifiers(Checks& check, PFWorld* world)
 	}
 	CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, true);
 	ProbeHero* hero = static_cast<ProbeHero*>(receiver.GetPtr());
-	PFBaseUnitDamageDesc desc; desc.amount = 25; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	PFBaseUnitDamageDesc desc = DirectDamage(); desc.amount = 25;
 	hero->Isolate(true);
 	check(hero->OnDamage(desc) == 0 && hero->GetHealth() == 1000, "isolated hero cannot receive damage");
 	hero->Isolate(false);
@@ -1002,7 +1012,7 @@ static void BehaviourDamage(Checks& check, PFWorld* world)
 		CObj<DamageBehaviour> behavior = new DamageBehaviour(static_cast<PFBaseMovingUnit*>(receiver.GetPtr()));
 		receiver->AddBehaviourOnTop(behavior.GetPtr());
 		if (!enabled) behavior->Disable();
-		PFBaseUnitDamageDesc desc; desc.pSender = sender; desc.amount = amount;
+		PFBaseUnitDamageDesc desc = DirectDamage(); desc.pSender = sender; desc.amount = amount;
 		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE; desc.dontAttackBack = true;
 		check(receiver->OnDamage(desc) == Min(amount, 1000.0f), "behavior damage preserves capped damage");
 		const int expectedCalls = enabled && !automaticOnly ? 1 : 0;
@@ -1052,7 +1062,7 @@ static void DeferredDeath(Checks& check, PFWorld* world)
 		receiver->AddBehaviourOnTop(behavior.GetPtr());
 		CObj<LastHitObserver> listener = new LastHitObserver; listener->unit = receiver.GetPtr(); listener->rescue = rescue;
 		receiver->AddEventListener(listener.GetPtr());
-		PFBaseUnitDamageDesc desc; desc.pSender = sender; desc.amount = 100;
+		PFBaseUnitDamageDesc desc = DirectDamage(); desc.pSender = sender; desc.amount = 100;
 		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
 		check(receiver->OnDamage(desc) == 50, "lethal damage retains the original health cap");
 		check(listener->calls == 1 && listener->observedHealth == (flag ? 1 : 0), "last-hit observes restored survival health");
@@ -1072,6 +1082,67 @@ static void DeferredDeath(Checks& check, PFWorld* world)
 			check(receiver->IsDead() && !receiver->HasBehaviour(), "deferred unit can finish normal death later");
 		}
 	}
+}
+
+/** Give mock resources real distinct DB identities without a database cache. */
+struct ProbeResourceCache : NDb::DbResourceCache
+{
+	static void MarkLoaded(NDb::DbResource* resource) { SetResourceLoaded(resource, true); }
+};
+struct IdentifiedDamage : NDb::DamageApplicator
+{
+	explicit IdentifiedDamage(const char* path)
+	{
+		SetDbId(NDb::DBID(path)); ProbeResourceCache::MarkLoaded(this);
+	}
+};
+
+static void DamageLimiter(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 20);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	const Target target(receiver.GetPtr());
+	const auto make = [&](const char* identity, float limit) {
+		IdentifiedDamage* raw = new IdentifiedDamage(identity);
+		raw->damage.sString = "10"; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE; raw->timeLimiter = limit;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		return CObj<Damage>(new Damage(pars));
+	};
+	const auto hit = [&](const char* identity, float limit, float expected) {
+		CObj<Damage> app = make(identity, limit);
+		const float before = receiver->GetHealth();
+		check(app->Init() && app->Run(), "time-limited damage completes");
+		check(app->GetDamageDealed() == expected && receiver->GetHealth() == before-expected,
+			"time limiter gates the same DB identity before resource mutation");
+	};
+	hit("/probe/limited-a.xdb", 1, 10); hit("/probe/limited-a.xdb", 1, 0);
+	receiver->StepLastAttackData(1);
+	hit("/probe/limited-a.xdb", 1, 0); // The Windows comparison includes equality.
+	receiver->StepLastAttackData(0.125f);
+	hit("/probe/limited-a.xdb", 1, 10); hit("/probe/limited-a.xdb", 1, 0);
+	hit("/probe/limited-b.xdb", 1, 10); hit("/probe/limited-a.xdb", 1, 10);
+	hit("/probe/unlimited.xdb", -1, 10); hit("/probe/unlimited.xdb", -1, 10);
+	hit("/probe/zero.xdb", 0, 10); hit("/probe/zero.xdb", 0, 0);
+	for (float elapsed : {-1.0f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+		receiver->StepLastAttackData(elapsed);
+	hit("/probe/zero.xdb", 0, 0);
+	receiver->StepLastAttackData(0.125f);
+	hit("/probe/zero.xdb", 0, 10);
+	receiver->Step(0.125f);
+	hit("/probe/zero.xdb", 0, 10);
+	hit("/probe/invalid.xdb", std::numeric_limits<float>::quiet_NaN(), 0);
+	hit("/probe/invalid.xdb", 1, 10);
+	hit("/probe/infinite.xdb", std::numeric_limits<float>::infinity(), 0);
+	hit("/probe/infinite.xdb", 1, 10);
+	receiver->StepLastAttackData(std::numeric_limits<float>::max());
+	receiver->StepLastAttackData(std::numeric_limits<float>::max());
+	hit("/probe/infinite.xdb", std::numeric_limits<float>::max(), 0);
+	hit("/probe/infinite.xdb", 1, 10);
+	// Direct callbacks without a damage applicator are independent of the limiter.
+	PFBaseUnitDamageDesc direct = DirectDamage(); direct.pSender = sender; direct.amount = 10;
+	check(receiver->OnDamage(direct) == 10 && receiver->OnDamage(direct) == 10, "direct damage has no DB limiter");
 }
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
@@ -1109,6 +1180,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HeroDamageModifiers(check, world);
 			BehaviourDamage(check, world);
 			DeferredDeath(check, world);
+			DamageLimiter(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

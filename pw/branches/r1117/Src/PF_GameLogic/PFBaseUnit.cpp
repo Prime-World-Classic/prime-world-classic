@@ -18,6 +18,7 @@
 #include "LuaScript.h"
 #include "LinuxBootstrap/formula_context.h"
 #include "PFPredefinedUnitVariables.h"
+#include "PFApplInstant.h"
 
 #include <cmath>
 #include <limits>
@@ -1632,6 +1633,17 @@ float PFBaseUnit::OnDamage(const DamageDesc& desc)
     return 0.0f;
   if (desc.damageType < 0 || desc.damageType >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf())
     return 0.0f;
+	// Match the per-receiver, most-recent DB identity and inclusive Windows limit.
+	if (const PFApplDamage* app = dynamic_cast<const PFApplDamage*>(desc.pDealerApplicator))
+	{
+		const float limit = app->GetDB().timeLimiter;
+		if (!std::isfinite(limit)) return 0.0f;
+		if (lastDamage.abilityDbid.GetHashKey() == app->GetDB().GetDBID().GetHashKey()
+			&& limit >= lastDamage.timeOver)
+			return 0.0f;
+		lastDamage.abilityDbid = app->GetDB().GetDBID();
+		lastDamage.timeOver = 0.0f;
+	}
 
   DamageDesc normalizedDesc(desc);
   if (normalizedDesc.damageType == NDb::APPLICATORDAMAGETYPE_NATIVE)
@@ -2222,7 +2234,17 @@ TileMap* PFBaseUnit::GetTileMap() const { return GetWorld() ? GetWorld()->GetTil
 const NDb::AILogicParameters& PFBaseUnit::GetAIParameters() const { return GetWorld()->GetAIWorld()->GetAIParameters(); }
 void PFBaseUnit::SetLastAttackData(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const NDb::EFaction originalFaction) { lastAttack.pVictim = pVictim; lastAttack.byAutoAttack = byAutoAttack; lastAttack.originalFaction = originalFaction; lastAttack.timePassed = 0.0f; }
 void PFBaseUnit::SetLastAttackDataEx(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const bool, const NDb::EFaction originalFaction) { SetLastAttackData(pVictim, byAutoAttack, originalFaction); }
-void PFBaseUnit::StepLastAttackData(float dtInSeconds) { lastAttack.timePassed += dtInSeconds; lastHeroAttack.timePassed += dtInSeconds; }
+/** Advance combat timers only with finite forward simulation time. */
+void PFBaseUnit::StepLastAttackData(float dtInSeconds)
+{
+	if (!std::isfinite(dtInSeconds) || dtInSeconds <= 0.0f) return;
+	const auto advance = [dtInSeconds](float& timer) {
+		timer += Min(dtInSeconds, std::numeric_limits<float>::max() - timer);
+	};
+	advance(lastAttack.timePassed);
+	advance(lastHeroAttack.timePassed);
+	advance(lastDamage.timeOver);
+}
 void PFBaseUnit::AddToPriorityTargets(const CPtr<PFBaseUnit>& pTarget) { if (pTarget) priorityTargets[pTarget->GetObjectId()] = PriorityTarget(pTarget, pTarget->GetObjectId(), 0.0f); }
 void PFBaseUnit::UpdatePriorityTargets(float) {}
 bool PFBaseUnit::IsPriorityTarget(const CPtr<PFBaseUnit>& pTarget) const { return pTarget && priorityTargets.find(pTarget->GetObjectId()) != priorityTargets.end(); }
