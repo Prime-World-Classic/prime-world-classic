@@ -102,11 +102,12 @@ void PFAbilityInstance::Activate()
     if ( !pAbilityData->IsMultiState() )
       pAbilityData->RecalculateAndRestartCooldown();
 
-    dispatch.Start();
-    pAbilityData->OnDispatchStarted();
-
+		// Native dispatch applies synchronously; its end callback owns the final channel progress.
     if ( ( GetFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING ) != 0 && IsValid( pOwner ) )
       pOwner->SetChannellingProgress( 0.0001f );
+
+    dispatch.Start();
+    pAbilityData->OnDispatchStarted();
 
     if ( ( GetFlags() & NDb::ABILITYFLAGS_CHANNELINGCREATE ) == 0 )
     {

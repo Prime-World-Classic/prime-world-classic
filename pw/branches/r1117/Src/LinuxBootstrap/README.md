@@ -145,6 +145,14 @@ or duplicated final records; wait for the process to exit before validating logs
 - Clone construction, full death rewards/projectile timing,
 	complete casting/movement, remaining HUD actions, online integration
 	and a complete local match are still outstanding.
+- Consumable/talent/portal commands now queue production cast states, approach
+	before payment and revalidate live actor/control/target policy. Inventory keeps
+	32 bounded slots, stacks compatible descriptors and retains shared cooldown data
+	after removal. Real unit simulation advances timed applicators and cached consumable
+	data. Ability instances reject repeated admission, recheck delayed activation and
+	retain deferred payloads; creation channels defer payment until real completion.
+	Full consumable groups, authored animation timing, projectile subtypes and saved-world
+	restoration of bootstrap command observers remain unproven or unported.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
 
@@ -177,6 +185,20 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	cleanup, current/original faction metadata, visibility/flag/queue admission,
 	weak/strong targeting, mount boundaries, cooldown rearming, same-target deduplication,
 	enabled top-stack routing and fresh/resurrected hero integration.
+- [Queued cast commands](cast_command_tests.inc) and
+	[target ranges](cast_target_range_tests.inc): real packed actor/target restoration,
+	control loss during approach, authored masks, actual arrival and payment diagnostics.
+- [Consumable inventory](consumable_inventory_b10_tests.inc) and
+	[simulation](consumable_simulation_b10_tests.inc): fixed slots, stacking, bounded
+	quantities, retained ability identity, once-per-descriptor cooldown updates/reset
+	and original ability-start event identity.
+- [Applicator simulation](applicator_simulation_b10_tests.inc),
+	[deferred dispatch](ability_lifecycle_b10_06_dispatch_tests.inc) and
+	[channel completion](ability_lifecycle_b10_07_channel_tests.inc): actual timed stat
+	restoration and effect ownership through unit stepping, blocked receiver payloads,
+	creation-channel payment/cancellation and synchronous ability-end callbacks.
+	[Delayed admission](ability_lifecycle_b10_05_delayed_tests.inc) mocks serialized
+	timers only; dispatch, damage, resource payment and cancellation use engine code.
 - [Voxel queries](voxel_range_probe.cpp): bounded numeric admission, rectangular
 	geometry, inclusive circles, ordering and retained live callback semantics.
 - [Visibility queries](visibility_query_probe.cpp) and

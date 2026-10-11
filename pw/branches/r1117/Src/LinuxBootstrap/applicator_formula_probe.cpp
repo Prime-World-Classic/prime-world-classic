@@ -1261,6 +1261,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ability_lifecycle_b10_04_terminal_tests.inc"
 #include "ability_lifecycle_b10_05_delayed_tests.inc"
 #include "ability_lifecycle_b10_06_dispatch_tests.inc"
+#include "ability_lifecycle_b10_07_channel_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1342,6 +1343,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityPendingTerminationB10(check, world);
 			AbilityDelayedAdmissionB10(check, world);
 			AbilityWaitingDispatchB10(check, world);
+			AbilityChannelCompletionB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
