@@ -326,9 +326,8 @@ void PFAbilityInstance::PFDispatchHolder::Start()
 		// Preserve descriptor-less bootstrap casts without overriding authored OnStart timing.
 		if (!dispatchGuard->GetDBBase())
 			dispatchGuard->Step(0.0f);
-		// Keep ownership while the dispatch still holds unapplied applicators.
-		if (dispatchGuard->IsObjectDead() || dispatchGuard->GetApplicators().empty())
-			pDispatch = NULL;
+		// A zero holder tick observes completion without stepping the authored algorithm.
+		Step(0.0f);
   }
 	else
 		pDispatch = NULL;
@@ -342,7 +341,12 @@ void PFAbilityInstance::PFDispatchHolder::Step(float dt)
 		// Dispatch travel must not advance on invalid or zero-length simulation ticks.
 		if (std::isfinite(dt) && dt > 0.0f)
 			dispatchGuard->Step(dt);
-		if (dispatchGuard->IsObjectDead() || dispatchGuard->GetApplicators().empty())
+		// Persistent work can outlive application when dieAfterApply is false.
+		const bool effectsFinished = !IsValid(dispatchGuard->GetAbility())
+			|| dispatchGuard->GetAbility()->GetActiveApplicatorsCount() <= 0;
+		const bool finished = dispatchGuard->GetDBBase()
+			? dispatchGuard->HasApplied() && effectsFinished : dispatchGuard->GetApplicators().empty();
+		if (dispatchGuard->IsObjectDead() || finished)
 			pDispatch = NULL;
 	}
 	else

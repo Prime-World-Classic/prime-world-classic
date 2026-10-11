@@ -98,6 +98,10 @@ public:
   void  Cancel() { if ( !IsObjectDead() ) Die(); }
 
   bool  Started() const { return (state >= STATE_PROCEED); }
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Distinguish completed application from an empty payload still travelling or persisting. */
+	bool HasApplied() const { return state == STATE_APPLIED; }
+#endif
   
   void  AddApplicator(CObj<PFBaseApplicator> app) {applicators.addLast(app);}
   void  AddApplicators( vector<NDb::Ptr<NDb::BaseApplicator>> const& newApplicators, PFAbilityData* upgrader = NULL );

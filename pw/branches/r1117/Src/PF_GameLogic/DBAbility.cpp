@@ -7222,7 +7222,8 @@ void DispatchContinuous::Assign( const DispatchContinuous& _dispatchContinuous )
 NWorld::PFDispatch* DispatchContinuous::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// The original continuous dispatch owns persistent Start/Step/Stop and explicit cancellation.
+	return NWorld::FCreateDispatch<NWorld::PFDispatchContinuous>( *this, cp );
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchContinuous>( *this, cp );

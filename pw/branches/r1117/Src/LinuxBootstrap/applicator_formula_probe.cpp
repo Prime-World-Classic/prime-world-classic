@@ -1285,6 +1285,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "dispatch_b11_09_world_tests.inc"
 #include "dispatch_b11_04_formula_tests.inc"
 #include "dispatch_b11_05_linear_tests.inc"
+#include "dispatch_b11_06_persistent_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1387,6 +1388,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DispatchWorldMutationB11(check);
 			DispatchFormulaB11(check, world);
 			DispatchLinearB11(check, world);
+			DispatchPersistentB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

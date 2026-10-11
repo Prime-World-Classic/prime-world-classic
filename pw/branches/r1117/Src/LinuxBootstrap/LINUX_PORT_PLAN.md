@@ -54,6 +54,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 16/20 COMPLETE (`0.47.0`): restore original linear and linked dispatch factories without rewriting PFDispatchStrike1.cpp travel algorithms. Actual unit/attack tests cover speed, suspension, maximum distance, lost/dead targets and retargeted multi-applicator receivers. Baseline 5,088 checks/29 failures; final 5,151/0, 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c16-{before,after,build,ctest}.log`. Native 60-second map run passes strict gameplay/replay validation at step 653 with 105 commands; screenshot inspected (`c16-{default,gate}.log`, `.png`, `Bin/logs/2026.10.11-23.27.30/linux-client-shell.log`). Staged creep damage remains NO at distance 2.0; projectile test success does not establish live duel or match completion.
 
+- Chunk 17/20 COMPLETE (`0.48.0`): restore original continuous dispatch factory and keep empty-payload timed/linear or persistent work in the actual ability holder until application/effect completion. Preserve dieAfterApply and negative-lifetime policies, including explicit cancellation that removes real stat effects and counters. Fourteen baseline failures reproduced; all 5,196 assertions, 28 CTests, six maintained builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c17-{before,after,build,ctest}.log`. Reset-phase preservation, teleport notifications and remaining state world constructors follow before final batch acceptance; no extra serialized state or virtual methods added.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10
