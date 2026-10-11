@@ -50,6 +50,12 @@ public:
 		return linuxInputFinishStep;
 	}
 	int GetLinuxInputFinishStep() const { return linuxInputFinishStep; }
+	/** A closed input barrier overrides even an unbounded interactive step limit. */
+	bool CanDriveLinuxWorld(size_t processedSteps, size_t stepLimit, int worldStep) const
+	{
+		return linuxInputFinishStep >= 0 ? worldStep < linuxInputFinishStep :
+			processedSteps < stepLimit;
+	}
   void QueueLinuxClientStatus(int status);
   size_t GetLinuxProducedStatusCount() const { return linuxProducedStatusCount; }
   size_t GetLinuxConsumedStatusCount() const { return linuxConsumedStatusCount; }

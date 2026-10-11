@@ -49,6 +49,9 @@ they share replay output paths.
 The finite automatic proof closes command admission at its simulation limit,
 drains accepted commands through the final replay step, then freezes the world.
 Use interactive mode above for manual testing without that artificial step cap.
+At a finite interactive deadline, command admission closes and normal wall-paced
+ticks drain accepted input through the replay boundary. A tail that has not drained
+after one second reports a nonzero exit status; live indefinite sessions are unchanged.
 
 ## Original Combat HUD
 
@@ -113,15 +116,20 @@ or duplicated final records; wait for the process to exit before validating logs
 	state. True sight uses bounded voxel queries and AI target selection cannot retry
 	hidden targets through the registry. Rendered fog, complete stealth events/effects
 	and measured whole-world performance parity remain incomplete.
-- Manual attacks check visibility and legality before replacing an order. The
-	bootstrap script visibility/priming bypass is not Windows combat parity; player
-	authorization, mounted routing and full attack/chase states still need work.
+- Manual attacks check visibility and legality before replacing an order, then
+	use the existing simulation state queue. Script orders bypass visibility explicitly;
+	neither path teleports targets, resets cooldowns or synthesizes damage. Attack states
+	approach/stop through native movement and revalidate target legality. Authored
+	chase/LOS/pathfinding, mounted routing and player authorization remain incomplete.
 - Combat now includes seeded critical rolls, outgoing/pre-damage hooks, authored
-	physical/energy defence, attack/cancel notifications, healing modifiers and
-	life/energy drains. Direct callbacks reject nonfinite resource amounts and
-	incoming damage results. These guards do not roll back prior callback effects.
-- Hero-specific damage modifiers, listener priorities, time limiters, deferred
-	death, complete casting/movement, remaining HUD actions, online integration
+	physical/energy defence, hero damage masks/isolation, attack/cancel notifications,
+	healing modifiers, life/energy drains, damage throttling and deferred-death transitions.
+	Listener ordering follows Windows; callback-safe snapshots defer new identities
+	from the current event, unlike Windows live insertion. Direct callbacks reject
+	nonfinite resource amounts and incoming damage results. These guards do not
+	roll back prior callback effects.
+- Clone construction, full hero retaliation/death rewards/projectile timing,
+	complete casting/movement, remaining HUD actions, online integration
 	and a complete local match are still outstanding.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
@@ -144,7 +152,10 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 - [Applicators](applicator_formula_probe.cpp): actual damage/heal/refresh consumers,
 	seeded random/critical hits, posthumous senders, outgoing/incoming events,
 	pre-damage and delegation, defence routing, hero/creep healing modifiers,
-	drains, fatal healing cleanup and direct numeric resource boundaries.
+	drains, fatal healing cleanup, hero masking/isolation, damage throttling,
+	behavior notification, last-hit rescue/deferred death, actual base attacks and
+	direct numeric resource boundaries. [Listener fixtures](event_dispatch_tests.inc)
+	cover priority, registration, nested callbacks and retained contents lifetime.
 - [Voxel queries](voxel_range_probe.cpp): bounded numeric admission, rectangular
 	geometry, inclusive circles, ordering and retained live callback semantics.
 - [Visibility queries](visibility_query_probe.cpp) and
@@ -152,9 +163,14 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	true sight, target loss, movement, death and one scheduled refresh per unit.
 - [Unit lifecycle](visibility_lifecycle_probe.cpp): observer lifecycle and exact
 	serialized command actors/targets, policy changes after queueing, and preservation
-	of prior orders on rejection, including missing and foreign-world objects.
+	of prior orders on rejection, including missing and foreign-world objects;
+	packed attack orders preserve resources/positions/cooldowns, stop/move interrupt
+	them, and target loss or forbidden chase ends movement. Ordinary world movement
+	refreshes live speed stats; explicit overrides remain separate, and zero/tiny
+	speed never becomes a full-distance jump.
 - [Scheduler drain](scheduler_drain_probe.cpp): preserve admitted commands and
-	statuses while closing finite smoke input and draining the replay boundary.
+	statuses while closing finite smoke input and draining the replay boundary,
+	including closed barriers with unbounded interactive step budgets.
 
 Use the graphical acceptance driver above as well; these checks do not prove
 complete stealth abilities, the full combat pipeline or Windows visual parity.

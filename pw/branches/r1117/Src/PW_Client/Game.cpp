@@ -41912,8 +41912,8 @@ void DriveLinuxBootstrapGameScheduler(
 	const bool draining = finishStep >= 0;
 	// Seal admission first, then consume the existing tail including replay's +1 step.
 	const auto canDriveWorld = [&]() {
-		return runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps ||
-			(draining && runtime->transceiverWorldStep < finishStep);
+		return runtime->localScheduler->CanDriveLinuxWorld(runtime->transceiverProcessedSteps,
+			maxBootstrapTransceiverSteps, runtime->transceiverWorldStep);
 	};
 	bool schedulerStepped = interactive || draining;
 
@@ -72744,6 +72744,7 @@ int main(int argc, char** argv)
   double lastDemoCycleTime = 0.0;
   size_t bootstrapClickNextIndex = 0;
   double bootstrapClickNextTime = settings.bootstrapClickAfterSeconds;
+	bool interactiveDrainFailed = false;
 
   while (!NMainFrame::IsExit())
   {
@@ -73052,7 +73053,21 @@ int main(int argc, char** argv)
     {
       if (elapsedSeconds >= settings.runSeconds)
       {
-        break;
+				if (!settings.bootstrapInteractiveWorld || screenRuntime.replayFileInputActive ||
+					!screenRuntime.localScheduler || !screenRuntime.transceiver ||
+					!screenRuntime.transceiverWorldAttached)
+					break;
+				// Retain accepted input; normal wall-clock ticks consume only this sealed tail.
+				const int finishStep = screenRuntime.localScheduler->CloseLinuxInput();
+				if (screenRuntime.transceiverWorldStep >= finishStep)
+					break;
+				if (elapsedSeconds >= settings.runSeconds + 1.0)
+				{
+					fprintf(stderr, "Interactive scheduler drain timed out: world=%d barrier=%d\n",
+						screenRuntime.transceiverWorldStep, finishStep);
+					interactiveDrainFailed = true;
+					break;
+				}
       }
     }
 
@@ -74714,7 +74729,7 @@ int main(int argc, char** argv)
   RootFileSystem::ClearFileSystems();
   NMainFrame::ShutdownApplication();
   fprintf(stdout, "Prime World Linux client shell finished.\n");
-  return 0;
+  return interactiveDrainFailed ? 1 : 0;
 }
 
 #else

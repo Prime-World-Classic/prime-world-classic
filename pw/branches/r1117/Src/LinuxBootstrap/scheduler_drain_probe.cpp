@@ -17,6 +17,12 @@ bool RunPrimeWorldLinuxSchedulerDrainProbe()
 	{
 		StrongMT<Game::LocalCmdScheduler> scheduler = new Game::LocalCmdScheduler(1984);
 		scheduler->StartGame();
+		check(scheduler->CanDriveLinuxWorld(prefix, prefix + 1, 0),
+			"open input retains the finite step budget");
+		check(!scheduler->CanDriveLinuxWorld(prefix, prefix, 0),
+			"open input stops at its finite step budget");
+		check(scheduler->CanDriveLinuxWorld(prefix, static_cast<size_t>(-1), 0),
+			"open interactive input has no artificial simulation cap");
 		CObj<NCore::PackedWorldCommand> before = new NCore::PackedWorldCommand;
 		CObj<NCore::PackedWorldCommand> after = new NCore::PackedWorldCommand;
 		for (int i = 0; i < prefix; ++i)
@@ -29,6 +35,15 @@ bool RunPrimeWorldLinuxSchedulerDrainProbe()
 		scheduler->QueueLinuxClientStatus(1);
 		const int boundary = scheduler->CloseLinuxInput();
 		check(boundary == prefix + 1, "boundary includes current segment and replay offset");
+		for (size_t limit : {size_t(0), size_t(prefix + 1), static_cast<size_t>(-1)})
+		{
+			check(scheduler->CanDriveLinuxWorld(prefix, limit, boundary - 1),
+				"closed tail can advance through the replay barrier");
+			check(!scheduler->CanDriveLinuxWorld(prefix, limit, boundary),
+				"closed input stops at its barrier even with unbounded interactive budget");
+			check(!scheduler->CanDriveLinuxWorld(prefix, limit, boundary + 1),
+				"closed input never advances beyond its barrier");
+		}
 		for (int i = 0; i < 8; ++i)
 		{
 			scheduler->SendMessage(after, i % 2 == 0);
