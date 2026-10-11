@@ -10,6 +10,7 @@
 #include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFCreep.h"
 #include "../PF_GameLogic/PFCommonCreep.h"
+#include "../PF_GameLogic/CollisionResolver.h"
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
 #include "../PF_GameLogic/DBHeroesList.h"
 #include "../PF_GameLogic/PFWorld.h"
@@ -1272,6 +1273,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "consumable_groups_b11_tests.inc"
 #include "consumable_sale_b11_tests.inc"
 #include "talent_purchase_b11_tests.inc"
+#include "collision_reach_b11_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1363,6 +1365,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ConsumableGroupsB11(check, world);
 			ConsumableSaleB11(check, world);
 			TalentPurchaseB11(check, world);
+			CollisionReachB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

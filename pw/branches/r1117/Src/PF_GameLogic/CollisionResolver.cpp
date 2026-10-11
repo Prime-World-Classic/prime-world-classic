@@ -6,12 +6,13 @@
 #include "TileMap.h"
 #include "PFWorldObjectBase.h"
 #include "CollisionResolver.h"
+#include "LinuxBootstrap/unit_collision.h"
 
 namespace
 {
 float LinuxResolverCollisionSize(const NWorld::PFBaseMovingUnit* unit)
 {
-  return unit ? Max(unit->GetObjectSize(), 1.0f) : 1.0f;
+	return unit ? LinuxBootstrap::UnitCollisionRadius(unit->GetObjectSize()) : 1.0f;
 }
 
 CVec2 LinuxResolverSafeDirection(const CVec2& direction, const CVec2& fallback)

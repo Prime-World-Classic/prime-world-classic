@@ -36,6 +36,7 @@ PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
 #include "PFVoxelMap.h"
 #include "TileMap.h"
 #include "WarFog.h"
+#include "LinuxBootstrap/unit_collision.h"
 
 #define PW_NULL_CAST(TypeName) \
 template<> CObjectBase* CastToObjectBaseImpl<TypeName>(TypeName*, void*) { return 0; } \
@@ -61,7 +62,7 @@ static float LinuxUnitCollisionSize(const PFBaseMovingUnit* unit)
 {
   if (!unit)
     return 1.0f;
-  return Max(unit->GetObjectSize(), 1.0f);
+	return LinuxBootstrap::UnitCollisionRadius(unit->GetObjectSize());
 }
 
 static CVec2 LinuxSafeDirection(const CVec2& delta, const CVec2& fallback)
