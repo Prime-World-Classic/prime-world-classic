@@ -689,6 +689,139 @@ static void HealingModifiers(Checks& check, PFWorld* world)
 	}
 }
 
+/** Build actual creep or hero objects; neither drain stat getter is overridden. */
+static CObj<PFBaseUnit> DrainParticipant(PFWorld* world, NDb::EFaction faction, bool hero)
+{
+	CObj<PFBaseUnit> seed = Unit(world, faction, 20);
+	const Placement placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
+	if (!hero)
+	{
+		NDb::Creature* raw = new NDb::Creature; raw->stats = seed->DbUnitDesc()->stats;
+		NDb::Ptr<NDb::Creature> db = raw;
+		return new PFBaseCreep(world, *db, faction, NDb::UNITTYPE_CREEP, -1, placement);
+	}
+	NDb::Hero* raw = new NDb::Hero; raw->stats = seed->DbUnitDesc()->stats;
+	NDb::Ptr<NDb::Hero> db = raw;
+	PFBaseHero::SpawnInfo spawn; spawn.pHero = db; spawn.placement = placement;
+	return new PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, faction, faction);
+}
+
+/** Exercise private ApplyDrains through real OnDamage/applicator dispatch. */
+static void DamageDrains(Checks& check, PFWorld* world)
+{
+	const int life = NDb::DAMAGEMODE_APPLYLIFEDRAINS;
+	const int energy = NDb::DAMAGEMODE_APPLYENERGYDRAINS;
+	for (const bool heroSender : {false, true})
+	{
+		const auto run = [&](int flags, float lifeStat, float energyStat, float amount,
+			float gainedLife, float gainedEnergy, float burned,
+			NDb::EUnitType receiverType = NDb::UNITTYPE_CREEP,
+			bool forbidLife = false, bool forbidEnergy = false, bool deadSender = false,
+			bool nullSender = false, float victimHealth = 400, float victimEnergy = 50,
+			float senderHealth = 400, float senderEnergy = 50, bool invulnerable = false,
+			bool applicator = false) {
+			CObj<PFBaseUnit> sender = DrainParticipant(world, NDb::FACTION_FREEZE, heroSender);
+			CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, false);
+			receiver->AddFlag(NDb::UNITFLAG_FORBIDREWARDS);
+			check(heroSender ? dynamic_cast<PFBaseHero*>(sender.GetPtr()) != nullptr
+				: dynamic_cast<PFBaseCreep*>(sender.GetPtr()) != nullptr, "drain real sender class");
+			receiver->SetUnitType(receiverType);
+			sender->SetHealth(senderHealth); sender->SetEnergy(senderEnergy);
+			receiver->SetHealth(victimHealth); receiver->SetEnergy(victimEnergy);
+			if (victimEnergy == 0) receiver->ChangeMana(-receiver->GetMana());
+			sender->GetStat(NDb::STAT_LIFEDRAIN)->SetCoreValue(lifeStat);
+			sender->GetStat(NDb::STAT_ENERGYDRAIN)->SetCoreValue(energyStat);
+			if (forbidLife) sender->AddFlag(NDb::UNITFLAG_FORBIDLIFERESTORE);
+			if (forbidEnergy) sender->AddFlag(NDb::UNITFLAG_FORBIDENERGYRESTORE);
+			if (deadSender) sender->ChangeHealth(-1000);
+			if (invulnerable) receiver->SetVulnerable(false);
+			PFBaseUnit::DamageDesc desc;
+			desc.pSender = nullSender ? nullptr : sender.GetPtr();
+			desc.amount = amount; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+			desc.flags = 0; desc.damageMode = static_cast<NDb::EDamageMode>(flags);
+			desc.dontAttackBack = true; desc.ignoreDefences = true; desc.pDealerApplicator = nullptr;
+			float actual;
+			if (!applicator)
+				actual = receiver->OnDamage(desc);
+			else
+			{
+				NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+				raw->damage.sString = NStr::StrFmt("%.9g", amount); raw->enabled.sString = "true";
+				raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+				raw->damageMode = static_cast<NDb::EDamageMode>(flags | NDb::DAMAGEMODE_DONTATTACKBACK);
+				NDb::Ptr<NDb::DamageApplicator> db = raw;
+				const Target target(receiver.GetPtr());
+				PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+				pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+				CObj<Damage> app = new Damage(pars);
+				check(app->Init() && app->Run(), "drain damage applicator completes");
+				actual = app->GetDamageDealed();
+			}
+			const float dealt = invulnerable ? 0 : Min(victimHealth, Max(0.0f, amount));
+			check(actual == dealt && receiver->GetHealth() == victimHealth - dealt,
+				"drains preserve the victim's actual damage amount");
+			check(sender->GetHealth() == (deadSender ? 0 : senderHealth) + gainedLife,
+				"life drain changes sender by the capped flat stat amount");
+			check(sender->GetMana() == senderEnergy + gainedEnergy, "energy drain restores only permitted actual burn");
+			check(receiver->GetMana() == victimEnergy - burned, "energy drain burns victim independently of sender capacity");
+		};
+		run(0, 30, 20, 100, 0, 0, 0);
+		run(life, 30, 20, 100, 30, 0, 0);
+		run(energy, 30, 20, 100, 0, 20, 20);
+		run(life | energy, 30, 20, 100, 30, 20, 20);
+		run(life | energy, 300, 200, 10, 10, 10, 10);
+		run(life | energy, 30, 200, 100, 30, 50, 50);
+		run(life | energy, 0, 0, 100, 0, 0, 0);
+		run(life | energy, -30, -20, 100, 0, 0, 0);
+		run(life | energy, 30, 20, 0, 0, 0, 0);
+		run(life | energy, 30, 20, -5, 0, 0, 0);
+		run(life | energy, 30, 20, 100, 0, 20, 20, NDb::UNITTYPE_CREEP, true);
+		run(life | energy, 30, 20, 100, 30, 0, 20, NDb::UNITTYPE_CREEP, false, true);
+		run(life | energy, 30, 20, 100, 0, 0, 20, NDb::UNITTYPE_CREEP, true, true);
+		for (const auto type : {NDb::UNITTYPE_BUILDING, NDb::UNITTYPE_MAINBUILDING, NDb::UNITTYPE_TOWER})
+			run(life | energy, 30, 20, 100, 0, 0, 0, type);
+		run(life | energy, 30, 20, 100, 0, 0, 0, NDb::UNITTYPE_CREEP, false, false, true);
+		run(life | energy, 30, 20, 100, 0, 0, 0, NDb::UNITTYPE_CREEP, false, false, false, true);
+		run(life | energy, 30, 20, 100, 10, 10, 10,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 10);
+		run(life | energy, 30, 20, 100, 30, 7, 7,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 7);
+		run(life | energy, 30, 20, 100, 30, 0, 0,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 0);
+		run(life | energy, 30, 20, 100, 5, 5, 20,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 50, 995, 195);
+		run(life | energy, 30, 20, 100, 0, 0, 20,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 50, 1000, 200);
+		run(life | energy, 30, 20, 100, 0, 0, 0,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 50, 400, 50, true);
+		run(life | energy, 30, 20, 100, 30, 20, 20,
+			NDb::UNITTYPE_CREEP, false, false, false, false, 400, 50, 400, 50, false, true);
+	}
+}
+
+/** Add only after both independent chunks: life drain uses the sender's healing modifiers. */
+static void HealingDrainComposition(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = DrainParticipant(world, NDb::FACTION_FREEZE, true);
+	CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, false);
+	sender->SetHealth(400); sender->SetEnergy(50);
+	receiver->SetHealth(400); receiver->SetEnergy(50);
+	sender->GetStat(NDb::STAT_LIFEDRAIN)->SetCoreValue(20);
+	sender->GetStat(NDb::STAT_ENERGYDRAIN)->SetCoreValue(10);
+	sender->GetVariableVWM(UnitVariables::szHealingScale)->SetBaseValue(0.5f);
+	sender->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(5);
+	// The victim's heal modifiers must not contaminate the sender's restoration.
+	receiver->GetVariableVWM(UnitVariables::szHealingScale)->SetBaseValue(9);
+	receiver->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(500);
+	PFBaseUnit::DamageDesc desc;
+	desc.pSender = sender; desc.amount = 100; desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	desc.flags = 0; desc.dontAttackBack = true; desc.ignoreDefences = true; desc.pDealerApplicator = nullptr;
+	desc.damageMode = static_cast<NDb::EDamageMode>(NDb::DAMAGEMODE_APPLYLIFEDRAINS | NDb::DAMAGEMODE_APPLYENERGYDRAINS);
+	check(receiver->OnDamage(desc) == 100 && receiver->GetHealth() == 300, "modified drain preserves actual damage");
+	check(sender->GetHealth() == 435, "life drain uses recipient scale and bias through real hero healing");
+	check(receiver->GetMana() == 40 && sender->GetMana() == 60, "life modifiers do not modify energy drain");
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -719,6 +852,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CombatFormulaContext(check, world);
 			DefenceReduction(check, world, ai);
 			HealingModifiers(check, world);
+			DamageDrains(check, world); HealingDrainComposition(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

@@ -1593,7 +1593,38 @@ void PFBaseUnit::ApplyDamageReduction(float& damage, NDb::EApplicatorDamageType 
 	const auto result = LinuxBootstrap::EvaluateDamageReductionNumericFormula(formula.sString.c_str(), desc.pSender, this, desc.pDealerApplicator);
 	damage = result.Succeeded() && result.value > 0 ? result.value : 0.0f;
 }
-void PFBaseUnit::ApplyDrains(const DamageDesc&, float) {}
+/** Drain flat stat amounts from post-event, health-capped damage, as on Windows.
+ * Buildings cannot supply either resource. Energy restoration being forbidden
+ * suppresses only the sender's gain, not the victim's energy burn.
+ */
+void PFBaseUnit::ApplyDrains(const DamageDesc& desc, float damage)
+{
+	if (UnitCheck(UNITCHECKID_ISBUILDING) || !IsUnitValid(desc.pSender)
+		|| !std::isfinite(damage) || damage <= 0.0f)
+		return;
+	if ((desc.damageMode & NDb::DAMAGEMODE_APPLYLIFEDRAINS)
+		&& !desc.pSender->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDLIFERESTORE))
+	{
+		const float available = GetHealth();
+		const float stat = desc.pSender->GetLifeDrain();
+		if (std::isfinite(available) && available > 0.0f && std::isfinite(stat) && stat > 0.0f)
+		{
+			const float drained = Min(available, Min(stat, damage));
+			desc.pSender->OnHeal(desc.pSender, drained);
+		}
+	}
+	if (desc.damageMode & NDb::DAMAGEMODE_APPLYENERGYDRAINS)
+	{
+		const float stat = desc.pSender->GetEnergyDrain();
+		if (std::isfinite(stat) && stat > 0.0f)
+		{
+			const float drained = OnBurnEnergy(desc.pSender, Min(stat, damage));
+			if (std::isfinite(drained) && drained > 0.0f
+				&& !desc.pSender->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDENERGYRESTORE))
+				desc.pSender->OnHealEnergy(desc.pSender, drained);
+		}
+	}
+}
 float PFBaseUnit::OnDamage(const DamageDesc& desc)
 {
   if (!IsVulnerable())
