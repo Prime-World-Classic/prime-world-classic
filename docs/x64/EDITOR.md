@@ -105,6 +105,16 @@ powershell -ExecutionPolicy Bypass -File pw\branches\r1117\Tools\EditorBuild\bui
 - Консольный редактор: `_EditorRun\Bin\PF_EditorC.exe` (рабочая папка — `_EditorRun\Bin`), команды:
   `resave`, `validate`, `import`, `checksource`, `fixnames`, `importformulas`, `script`, `run`.
 
+### Готовый редактор в git: `r1117\Bin_Editor`
+
+Собранный редактор лежит в репозитории — `pw\branches\r1117\Bin_Editor` (= `_EditorRun\Bin`:
+`Bin_Original` + новые управляемые сборки + `*.exe.config`). Запуск без сборки: `Bin_Editor\PF_Editor.exe`
+(рабочая папка — `Bin_Editor`). Настройки берутся из `r1117\Profiles`; при первом запуске корень данных
+задаётся в меню «File System Configuration» (сохраняется в `Profiles\PF_Editor.config`, он в `.gitignore`).
+
+Обновить после правок исходников: `build_editor.ps1 -UpdateBinEditor`, затем закоммитить `Bin_Editor`.
+`Bin_Original` не трогается — это эталон для сравнения и основа сборки.
+
 Требуется: Visual Studio 2022 с .NET desktop (targeting pack 4.8). Для E1b дополнительно —
 компоненты «Поддержка C++/CLI для v143» и «C++ ATL/MFC для v143».
 

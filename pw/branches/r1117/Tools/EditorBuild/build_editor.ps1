@@ -17,6 +17,7 @@
 .PARAMETER CodeGen    Не отключать pre/post-build шаги DBCodeGen (перегенерация *.DBTypes и C++-кода).
 .PARAMETER Run        После сборки запустить редактор.
 .PARAMETER NoBuild    Только разложить _EditorRun из уже собранного Src\_Release.
+.PARAMETER UpdateBinEditor  Обновить r1117\Bin_Editor (готовый редактор в git) содержимым _EditorRun\Bin.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File Tools\EditorBuild\build_editor.ps1 -Run
@@ -25,7 +26,8 @@ param(
   [string]$DataRoot = '',
   [switch]$CodeGen,
   [switch]$Run,
-  [switch]$NoBuild
+  [switch]$NoBuild,
+  [switch]$UpdateBinEditor
 )
 
 $ErrorActionPreference = 'Stop'
@@ -116,6 +118,14 @@ if (-not (Test-Path $profiles)) {
 "@
   [IO.File]::WriteAllText((Join-Path $profiles 'PF_Editor.config'), $cfg, (New-Object Text.UTF8Encoding $false))
   Write-Host "Profiles скопированы, корень данных: $root"
+}
+
+# Bin_Editor — тот же Bin, но в git: готовый редактор для тех, кто его не собирает.
+if ($UpdateBinEditor) {
+  $binEditor = Join-Path $r1117 'Bin_Editor'
+  & robocopy $bin $binEditor /MIR /XD logs /NFL /NDL /NJH /NJS /NP | Out-Null
+  if ($LASTEXITCODE -ge 8) { throw "robocopy $bin -> ${binEditor}: код $LASTEXITCODE" }
+  Write-Host "Bin_Editor обновлён: $binEditor"
 }
 
 Write-Host "Готово: $bin\PF_Editor.exe"
