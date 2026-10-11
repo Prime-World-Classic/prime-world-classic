@@ -86,6 +86,8 @@ void PFAbilityInstance::Activate()
 {
   if ( passive )
     return;
+	// Update may already have crossed zero; mark activation before any reentrant callback.
+	activateDelay = -1.0f;
 
   if ( IsValid( pAbilityData ) && pAbilityData->IsTargetValid( target ) )
   {
@@ -126,7 +128,9 @@ void PFAbilityInstance::Activate()
 
 bool PFAbilityInstance::ApplyToTarget()
 {
-  if ( !IsValid( pAbilityData ) || !IsValid( pOwner ) || !pAbilityData->GetDBDesc() )
+	// One instance owns one dispatch; passive and already-submitted instances cannot recast.
+	if (passive || IsActivated() || IsValid(dispatch.Get())
+		|| !IsValid(pAbilityData) || !IsValid(pOwner) || !pAbilityData->GetDBDesc())
     return false;
 
   Target const source( pOwner );
@@ -134,53 +138,10 @@ bool PFAbilityInstance::ApplyToTarget()
   if ( !pDispatch )
     return false;
 
-  CObj<PFDispatch> dispatchGuard(pDispatch);
-  if ( activateDelay < EPS_VALUE )
-  {
-    if ( IsValid( pAbilityData ) && pAbilityData->IsTargetValid( target ) )
-    {
-      if ( pAbilityData->IsMultiState() )
-        pAbilityData->SwitchOn();
-
-      if ( !pAbilityData->IsMultiState() )
-        pAbilityData->RecalculateAndRestartCooldown();
-
-      if ( pDispatch && !pDispatch->IsObjectDead() )
-      {
-        pDispatch->PFDispatch::Start();
-        pDispatch->PFDispatch::Step(0.0f);
-      }
-
-      pAbilityData->OnDispatchStarted();
-
-      if ( ( GetFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING ) != 0 && IsValid( pOwner ) )
-        pOwner->SetChannellingProgress( 0.0001f );
-
-      if ( ( GetFlags() & NDb::ABILITYFLAGS_CHANNELINGCREATE ) == 0 )
-      {
-        NDb::EBaseUnitEvent eventType = NDb::BASEUNITEVENT_CASTMAGIC;
-        if ( pAbilityData->GetEventTypeByAbilityTypeId( eventType ) && IsValid( pOwner ) )
-          pOwner->EventHappened( PFBaseUnitUseAbilityEvent( eventType, this ) );
-
-        pAbilityData->SpendMana();
-        LogAbilityUsed();
-        pAbilityData->NotifyCastProcessed();
-      }
-
-      if ( IsValid( pOwner ) && GetData()->abilityType != NDb::ABILITYTYPEID_SPECIAL )
-        pOwner->StartGlobalCooldown();
-    }
-    else
-    {
-      NotifyAbilityEnd();
-    }
-
-    activateDelay = -1.0f;
-    abilityApplicatorsFinished = true;
-    return true;
-  }
-
   dispatch.Attach(pDispatch);
+	// Keep immediate and delayed payment/event/effect ordering in the original activation hook.
+	if (activateDelay < EPS_VALUE)
+		Activate();
 
   return true;
 }

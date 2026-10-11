@@ -1257,6 +1257,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "applicator_simulation_b10_tests.inc"
 #include "ability_lifecycle_b10_01_toggle_tests.inc"
 #include "ability_lifecycle_b10_02_admission_tests.inc"
+#include "ability_lifecycle_b10_03_activation_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1334,6 +1335,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ApplicatorSimulationB10(check, world);
 			AbilityToggleOwnershipB10(check, world);
 			AbilityAdmissionB10(check, world);
+			AbilityActivationOnceB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
