@@ -332,7 +332,48 @@ PFEvadeCreepBehaviour::PFEvadeCreepBehaviour(PFCommonCreep* pCreep, const Placem
 	}
 }
 
-bool PFEvadeCreepBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
+/** Drive stationary creeps through the existing attack and combat-move orders. */
+bool PFEvadeCreepBehaviour::OnStep(float dtInSeconds)
+{
+	if (!IsUnitValid(pUnit) || !std::isfinite(dtInSeconds) || dtInSeconds < 0) return true;
+	if (pUnit->IsMicroAiEnabled()
+		&& (pUnit->HaveAbilityInProgress() || pUnit->UseAbilityWithMicroAI())) return true;
+	if (!pUnit->GetCurrentState() && !pUnit->HasQueuedStates())
+	{
+		CPtr<PFBaseUnit> target = targetingRange > 0 ? pUnit->FindTarget(targetingRange) : CPtr<PFBaseUnit>();
+		if (IsUnitValid(target))
+		{
+			EnqueueAttackState(pUnit, target, false, true, true);
+			pUnit->SetNeedRotate(true);
+			return true;
+		}
+		if (!useEvade && !IsCreepAtSpawner(4))
+		{
+			if (!pUnit->CheckFlag(NDb::UNITFLAG_FORBIDMOVE))
+			{
+				pUnit->PushState(new PFBaseUnitCombatMoveState(GetWorld(), pUnit,
+					initialPlacement.pos.AsVec2D(), pUnit->GetTileMap()->GetTileSize() * 4));
+				pUnit->SetNeedRotate(true);
+				return true;
+			}
+		}
+		else pUnit->RotateIfNeeded();
+	}
+	const PFCommonCreep* creep = GetUnit();
+	const PFCreepSpawner* spawner = creep->GetSpawner();
+	const float walkLimit = creep->GetWalkLimit();
+	const bool outsideLeash = IsValid(pUnit->GetCurrentTarget())
+		? !CanSelectTarget(pUnit->GetCurrentTarget())
+		: spawner && walkLimit >= 0 && fabs2(walkLimit)
+			< fabs2(pUnit->GetPosition().AsVec2D() - spawner->GetSpawnPosition().pos.AsVec2D());
+	if (!useEvade && outsideLeash && !pUnit->CheckFlag(NDb::UNITFLAG_FORBIDMOVE) && !IsCreepAtSpawner(2))
+	{
+		pUnit->EnqueueState(new PFBaseUnitCombatMoveState(GetWorld(), pUnit,
+			initialPlacement.pos.AsVec2D(), pUnit->GetTileMap()->GetTileSize() * 2), true);
+		pUnit->SetNeedRotate(true);
+	}
+	return true;
+}
 /** Explicit orders retain original target strength and ignore the ordinary chase radius. */
 void PFEvadeCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
 {

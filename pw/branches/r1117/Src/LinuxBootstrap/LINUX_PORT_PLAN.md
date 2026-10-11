@@ -30,6 +30,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 4/20 COMPLETE (`0.42.0`): restore stationary/spawner-creep behavior configuration, inclusive spawner leash geometry, tile-scaled home/default-state queries and production attack-state admission with original strength/chase policy. Missing/nonfinite geometry fails safely. Four baseline failures reproduced with real spawner/creep fixtures; all 4,710 assertions, 28 CTests, six builds and Windows/shared byte checks pass. Evidence `/tmp/pw-b11-c4-{before,after,build,ctest}.log`. Automatic return/evade scheduling follows separately; no full stationary AI claim.
 
+- Chunk 5/20 COMPLETE (`0.42.1`): stationary creeps automatically enqueue production attack orders and return through the existing combat-move state when displaced or beyond their leash, respecting movement forbids and queued orders. Home-state/arrival regressions reproduced. Correct automatic-target fixture to use an isolated world and one enemy (the earlier moving fixture retained its enemy seed, making exact target identity ambiguous). All 4,719 assertions, 28 CTests, six builds and Windows/shared byte checks pass. Evidence `/tmp/pw-b11-c5-{before,after,build,ctest}.log`. Authored evade wait/heal scheduling follows separately.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10
