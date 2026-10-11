@@ -30,6 +30,8 @@ flashWindow(flashContainer)
 
   flashContainer->AddFSListner(ConvertToString(TalentClicked), this);
   flashContainer->AddFSListner(ConvertToString(TalentToolTip), this);
+  flashContainer->AddFSListner("TalentPress", this); // raw press, sent by Flash before its checks (Alt+click status)
+  flashContainer->AddFSListner("TalentSmartCast", this); // click on the smart-cast checkbox of an action bar button
 
   talentStates.resize(GetTalentsCountX()* GetTalentsCountY());
 
@@ -199,6 +201,26 @@ void TalentPanelNew::OnFSCommand( UI::FlashContainer2* _wnd, const char* listene
     return;
   }
   
+  if ( strcmp( listenerID, "TalentSmartCast" ) == 0 )
+  {
+    int slot = -1;
+    int level = -1;
+    sscanf_s( args, "%d %d", &slot, &level );
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnTalentSmartCastToggle( level, slot );
+    return;
+  }
+
+  if ( strcmp( listenerID, "TalentPress" ) == 0 )
+  {
+    int slot = 0;
+    int level = 0;
+    sscanf_s( args, "%d %d", &slot, &level );
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnTalentButtonPress( level, slot );
+    return;
+  }
+
   using namespace FlashFSCommands;
 
   switch ( ConvertToFSCommand( listenerID ) )

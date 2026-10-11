@@ -4,6 +4,7 @@
 #include "PFBaseUnit.h"
 #include "PFSummoned.h"
 #include "PFMaleHero.h"
+#include "PFHero.h"
 #include "PFMainBuilding.h"
 #include "PFAbilityInstance.h"
 #include "PFAbilityData.h"
@@ -205,6 +206,24 @@ namespace
     return &condition;
   }
   
+  // A selector distance equal to the ability's own (unscaled) use range is the reach of the cast,
+  // so it follows the hero's "ability range" like the use range does (e.g. Demonolog's Mental Whip).
+  // Other distances (knockbacks, auras, offsets...) stay as they are.
+  float ScaleCastReach( float range, const PFTargetSelector::RequestParams &pars )
+  {
+    if ( range <= 0.0f || !IsValid( pars.pAbility ) )
+      return range;
+    const float scale = PFBaseHero::GetAbilityRangeScale( pars.pOwner.GetPtr() );
+    if ( fabs( scale - 1.0f ) < 0.001f )
+      return range;
+    const PFAbilityData * pData = pars.pAbility->GetData();
+    if ( !pData )
+      return range;
+    const float baseUseRange = pData->GetUseRange() / scale; // GetUseRange() is already scaled
+    if ( fabs( range - baseUseRange ) > 0.01f )
+      return range;
+    return range * scale;
+  }
 }
 
 PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_)
@@ -509,7 +528,8 @@ void PFSectorTargetSelector::OnForAllTargets(ITargetAction &action, const Reques
     RotateVector(dir, offset);
   }
 
-	float range = RetrieveParam(GetDB().range, pars);
+	// "ability range" stat of the hero lengthens cones (the angle stays)
+	float range = RetrieveParam(GetDB().range, pars) * PFBaseHero::GetAbilityRangeScale( pars.pOwner.GetPtr() );
 
   if ( GetDB().centerIsSegmentEnd )
    beginPos = endPos;
@@ -610,7 +630,7 @@ void PFCapsuleTargetSelector::OnForAllTargets(ITargetAction &action, const Reque
     origin = pars.pOwner->GetPosition().AsVec2D();
 
 	float range = RetrieveParam(GetDB().range, pars);
-  float rangeFromOrigin = RetrieveParam( GetDB().rangeFromOwner, pars );
+  float rangeFromOrigin = ScaleCastReach( RetrieveParam( GetDB().rangeFromOwner, pars ), pars );
 	// Functor
 	struct CapsuleSelectorFunctor : public NonCopyable
 	{
@@ -1380,9 +1400,10 @@ bool PFPointTargetSelector::FindTarget(const RequestParams &pars, Target &target
       direction.z = 0.0f;
       Normalize(&direction);
 
-      float distance = range;
+      const float reach = ScaleCastReach( range, pars );
+      float distance = reach;
 
-      if ( traceDist < range )
+      if ( traceDist < reach )
       {
         distance = traceDist;
       }

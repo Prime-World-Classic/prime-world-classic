@@ -8,13 +8,13 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Trickster/Ability1.TALENT" />
+					<talent href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Trickster/Ability2.TALENT" />
+					<talent href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

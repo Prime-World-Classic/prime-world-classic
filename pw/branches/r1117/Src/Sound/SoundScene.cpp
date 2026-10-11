@@ -623,6 +623,9 @@ int GetSound(FMOD::Sound ** sound, const SoundDescription &soundDescription, CVe
 {
 	threading::MutexLock lock( NSoundScene::fmodMutex );
 
+  if ( !g_pSystem )
+    return INVALID_SOUND_ID;
+
   SoundInfo info;
   info.filename = soundDescription.soundFilename;
   info.is3d = pPosition != 0;
@@ -630,7 +633,7 @@ int GetSound(FMOD::Sound ** sound, const SoundDescription &soundDescription, CVe
   info.isStream = (soundDescription.category == SOUNDCATEGORY_MUSIC || soundDescription.category == SOUNDCATEGORY_VOICE);
 
   *sound = g_sounds.find( info );
-  if ( !sound ) // sound needs to be created
+  if ( !*sound ) // sound needs to be created (was "!sound": the out pointer itself, never null, so file sounds were never created)
   {
     // flags
     FMOD_MODE mode = FMOD_DEFAULT;
@@ -732,8 +735,8 @@ static int playSound( const SoundDescription& soundDescription, CVec3 const *pPo
 {
 	threading::MutexLock lock( NSoundScene::fmodMutex );
 
-  FMOD::Sound * pSound;
-  if (FMOD_OK!=GetSound(&pSound, soundDescription, pPosition, startPos))
+  FMOD::Sound * pSound = 0;
+  if (FMOD_OK!=GetSound(&pSound, soundDescription, pPosition, startPos) || !pSound)
     return INVALID_SOUND_ID;
 
   return PlaySoundWithSource(pSound, soundDescription.looped, startPos, soundDescription.category, pPosition, pTime);
@@ -755,6 +758,18 @@ int AddAmbientSound( const SoundDescription& soundDescription, CVec3 const &posi
 // 	}
 	return INVALID_SOUND_ID;
 }
+// load a (non-streamed, 2d) sound file now without playing it
+bool PrecacheSound( const SoundDescription& soundDescription )
+{
+  threading::MutexLock lock( NSoundScene::fmodMutex );
+
+  if ( !g_pSystem || soundDescription.category == SOUNDCATEGORY_MUSIC || soundDescription.category == SOUNDCATEGORY_VOICE )
+    return false;
+
+  FMOD::Sound * pSound = 0;
+  return GetSound( &pSound, soundDescription, 0, 0.f ) == FMOD_OK && pSound != 0;
+}
+
 // play 2d sound
 int PlaySound( const SoundDescription& soundDescription, float* time )
 {

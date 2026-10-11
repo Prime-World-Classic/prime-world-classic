@@ -70,5 +70,6 @@
 		<Item href="/Heroes/Banshee/_.HROB" />
 		<Item href="/Heroes/Shaman/_.HROB" />
 		<Item href="/Heroes/Bomber/_.HROB" />
+		<Item href="/Heroes/Laguna/_.HROB" />
 	</heroes>
 </HeroesDB>

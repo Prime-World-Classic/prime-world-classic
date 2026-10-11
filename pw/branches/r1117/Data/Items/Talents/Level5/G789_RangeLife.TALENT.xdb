@@ -52,6 +52,7 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset_CastRange/TECH_FormCapacity" />
+				<Item href="/Items/Talents/TalentKits/Redset_CastRange/const_Redset_CastRange_Bonus" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -93,6 +94,7 @@
 	<name textref="/Items/Talents/Level5/G789_RangeLife.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
+		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_Bonus.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_FormCounter.APLR" />
 		<Item href="/Items/Talents/Level5/G789_RangeLife.TALENT" id="81200D03-E821-491C-B55A-DFC635F259BC">
 			<PermanentStatModApplicator>

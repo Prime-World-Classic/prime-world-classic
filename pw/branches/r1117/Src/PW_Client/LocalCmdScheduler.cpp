@@ -63,7 +63,18 @@ void LocalCmdScheduler::Step( float dt )
   if ( localTime < nextStepTime )
     return;
 
-  nextStepTime = localTime + s_StepTime; //OR nextStepTime += 0.1 - to catchup in case of frame rate drops
+  // Previous segment was not taken by the transceiver yet (it runs on its own clock and may lag a bit).
+  // Do not overwrite it - otherwise all player commands from that segment (e.g. move clicks) are silently lost.
+  // Keep collecting commands into currentSegment and rotate right after the transceiver takes nextSegment.
+  if ( gameReady && nextSegment )
+    return;
+
+  // Keep a steady 10 steps per second. 'localTime + 0.1' restarted the schedule from the current frame,
+  // so every step lasted 0.1 s plus part of a frame (~0.108 s on average at 60 fps, uneven 6/7 frames):
+  // the game ran slower than real time and units visibly stuttered between steps.
+  nextStepTime += s_StepTime;
+  if ( nextStepTime < localTime ) // more than a whole step late (hitch, pause): resync instead of catching up
+    nextStepTime = localTime;
 
   if ( !gameReady )
     return;

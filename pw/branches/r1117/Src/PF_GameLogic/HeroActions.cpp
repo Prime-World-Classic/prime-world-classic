@@ -140,6 +140,10 @@ namespace NWorld
 
   DEFINE_2_PARAM_CMD_CHECK( 0xA05CCB40, CmdPickupObject,   CPtr<PFBaseHero>, pHero, CPtr<PFPickupableObjectBase>, pPickupable);
   DEFINE_5_PARAM_CMD_CHECK( 0xB622CC0,  CmdMinimapSignal,  CPtr<PFBaseHero>, pHero, CPtr<PFBaseUnit>, pSelected, Target, target, NDb::EFaction, faction, bool, issuedByScript);
+  DEFINE_4_PARAM_CMD_CHECK( 0x5E1A7C41, CmdTypedSignal,    CPtr<PFBaseHero>, pHero, CVec3, signalPos, INT32, signalType, NDb::EFaction, faction);
+  DEFINE_2_PARAM_CMD_CHECK( 0x5E1A7C43, CmdSetAutoAttack,  CPtr<PFBaseHero>, pHero, bool, enabled);
+  DEFINE_2_PARAM_CMD_CHECK( 0x5E1A7C44, CmdSetAbilityRangeScale, CPtr<PFBaseHero>, pHero, float, scale);
+  DEFINE_3_PARAM_CMD_CHECK( 0x5E1A7C42, CmdPraise,         CPtr<PFBaseHero>, pHero, CPtr<PFBaseHero>, pTarget, INT32, amount);
 
   DEFINE_2_PARAM_CMD_CHECK( 0x9D62D440, CmdInitMinigame,   CPtr<PFEaselPlayer>, easelPlayer, INT32, objId );
 
@@ -629,6 +633,7 @@ namespace NWorld
       {
         pMinimap->AddSignal( target.AcquirePosition(), faction );
       }
+      NGameX::AdventureScreen::Instance()->OnTypedSignal( target.AcquirePosition(), -1, faction, pHero.GetPtr() ); // ring on the ground + "!"
     }
     else if ( target.IsUnitValid() && NGameX::AdventureScreen::Instance()->GetPlayerFaction() == faction )
     {
@@ -637,6 +642,94 @@ namespace NWorld
         pMarkersController->AddMarker( target.GetUnit(), faction );
       }
     }
+#endif
+  }
+
+  bool CmdTypedSignal::CanExecute() const
+  {
+    return CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, false );
+  }
+
+  void CmdTypedSignal::Execute( NCore::IWorldBase * /*pWorld*/ )
+  {
+#ifndef VISUAL_CUTTED
+    if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
+    {
+      if ( NGameX::Minimap *pMinimap = pScreen->GetMinimap() )
+        pMinimap->AddSignal( signalPos, faction );
+      pScreen->OnTypedSignal( signalPos, signalType, faction, pHero.GetPtr() );
+    }
+#endif
+  }
+
+  bool CmdSetAutoAttack::CanExecute() const
+  {
+    return CheckHero(pHero, GetId());
+  }
+
+  void CmdSetAutoAttack::Execute( NCore::IWorldBase * /*pWorld*/ )
+  {
+    if ( IsValid( pHero ) )
+      pHero->SetAutoAttackDisabled( !enabled );
+  }
+
+  NCore::WorldCommand* CreateCmdSetAutoAttack( PFBaseHero *pHero, bool enabled )
+  {
+    NI_VERIFY( NULL != pHero, "Hero object should exist", return 0 );
+    return new CmdSetAutoAttack( pHero, enabled );
+  }
+
+  bool CmdSetAbilityRangeScale::CanExecute() const
+  {
+    return CheckHero(pHero, GetId());
+  }
+
+  void CmdSetAbilityRangeScale::Execute( NCore::IWorldBase * /*pWorld*/ )
+  {
+    if ( IsValid( pHero ) )
+      pHero->SetAbilityRangeScale( Min( Max( scale, 0.1f ), 10.0f ) );
+  }
+
+  NCore::WorldCommand* CreateCmdSetAbilityRangeScale( PFBaseHero *pHero, float scale )
+  {
+    NI_VERIFY( NULL != pHero, "Hero object should exist", return 0 );
+    return new CmdSetAbilityRangeScale( pHero, scale );
+  }
+
+  bool CmdPraise::CanExecute() const
+  {
+    return CheckHero(pHero, GetId()) && IsValid( pTarget ) && pTarget.GetPtr() != pHero.GetPtr() && amount > 0;
+  }
+
+  void CmdPraise::Execute( NCore::IWorldBase * /*pWorld*/ )
+  {
+    if ( !IsValid( pHero ) || !IsValid( pTarget ) || pTarget.GetPtr() == pHero.GetPtr() || amount <= 0 )
+      return;
+    if ( pHero->GetGold() < amount ) // the prime could be spent while the command was on its way
+      return;
+
+    const float given = pHero->TakeGold( static_cast<float>( amount ) );
+    pTarget->AddGold( given, true );
+
+#ifndef VISUAL_CUTTED
+    if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
+      pScreen->OnPraise( pHero.GetPtr(), pTarget.GetPtr(), static_cast<int>( given + 0.5f ) );
+#endif
+  }
+
+  NCore::WorldCommand* CreateCmdPraise( PFBaseHero *pHero, PFBaseHero *pTarget, int amount )
+  {
+    NI_VERIFY( NULL != pHero && NULL != pTarget, "Hero objects should exist", return 0 );
+    return new CmdPraise( pHero, pTarget, amount );
+  }
+
+  NCore::WorldCommand* CreateCmdTypedSignal( PFBaseHero *pHero, const CVec3 & pos, int type, NDb::EFaction faction )
+  {
+    NI_VERIFY(NULL != pHero, "Hero object should exists", return 0);
+#ifndef VISUAL_CUTTED
+    return new CmdTypedSignal( pHero, pos, type, faction );
+#else
+    return 0;
 #endif
   }
 
@@ -764,6 +857,10 @@ REGISTER_SAVELOAD_CLASS_NM( CmdHold, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdRaiseFlag, NWorld );
 REGISTER_SAVELOAD_CLASS_NM( CmdBuyConsumable, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdMinimapSignal, NWorld)
+REGISTER_SAVELOAD_CLASS_NM( CmdTypedSignal, NWorld)
+REGISTER_SAVELOAD_CLASS_NM( CmdPraise, NWorld)
+REGISTER_SAVELOAD_CLASS_NM( CmdSetAutoAttack, NWorld)
+REGISTER_SAVELOAD_CLASS_NM( CmdSetAbilityRangeScale, NWorld)
 REGISTER_SAVELOAD_CLASS_NM( CmdInitMinigame, NWorld )
 //REGISTER_SAVELOAD_CLASS_NM( CmdDenyBuilding, NWorld )
 //REGISTER_SAVELOAD_CLASS_NM( CmdEmote, NWorld )

@@ -40,6 +40,10 @@ public:
   virtual void ApplyValuesOnly();
   virtual void Cancel();
   bool NeedToApply() const;
+
+  // Rows of the "Advanced" settings page exist only in the combat screen flash (main.swf).
+  // Screens with another flash (loading screen, pwl.swf) must call this with false before Init.
+  void SetAdvancedPageEnabled( bool enabled ) { advancedPageEnabled = enabled; }
   
 protected:
   typedef Strong<IPrefVar> PrefVarPtr;
@@ -71,6 +75,7 @@ private:
 private:
   Variables variables;
   const TPresets *pPresets;
+  bool advancedPageEnabled;
 };
 
 }

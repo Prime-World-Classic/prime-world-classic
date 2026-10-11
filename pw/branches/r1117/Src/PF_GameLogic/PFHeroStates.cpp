@@ -533,7 +533,8 @@ namespace NWorld
 
     if(  !GetCurrentState()
       && !pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK)
-      && !pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK)  )
+      && !pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK)
+      && !pOwner->IsAutoAttackDisabled() )
     {
       CPtr<PFBaseUnit> const& pTarget = pOwner->FindTarget( pOwner->GetAttackRange() );
       if(IsTargetValid(pTarget))

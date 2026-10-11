@@ -3,6 +3,7 @@
 	<BackLink DBID="/Heroes/Fairy/_.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Coop1/Heroes/Fairy/_A.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Coop1/Heroes/Fairy/_B.HROB" Count="1" />
+	<BackLink DBID="/Heroes/Laguna/_.HROB" Count="1" />
 	<activeSpellIndex>
 		<compiledString>FQAAAAAAAAAAVYvsUdno2RwkUdnu2RwkagGLRQyLEItNDItCWP/QD7bIUegYAAAAg8QI2Rwk6C4AAACDxARdwwAAAAAAAIA/VYvsUQ+2RQiFwHQI2UUM2V386wbZRRDZXfzZRfyL5V3DuAEAAAAPovfCAAAABHQH8w8sRCQEw+kAAAAAVYvsg+wM2UUI2X38D7dF/A0ADAAAiUX42W3421302W38i0X0i+Vdww==</compiledString>
 		<returnType>int</returnType>

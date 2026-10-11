@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PermanentStatModApplicator>
+	<BackLink DBID="/Items/Talents/Level3/G787_RangeStr.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G788_RangeInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G789_RangeDexAtSpd.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G789_RangeLife.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G791_RangePotential.TALENT" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<caption>Redset_CastRange_Bonus</caption>
+	<customApplyType>None</customApplyType>
+	<enabled>
+		<compiledString>FTIAAAACAAAAOQAAAFYAAABSZWRzZXRfQ2FzdFJhbmdlX0Zvcm1Db3VudGVyAAAAAFRFQ0hfRm9ybUNhcGFjaXR5AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaCAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+		<returnType>bool</returnType>
+		<sString>sender.vRedset_CastRange_FormCounter &lt; cTECH_FormCapacity</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<modifier>
+		<addValue>
+			<compiledString>FRcAAAABAAAAIwAAAFJlZHNldF9DYXN0UmFuZ2VfQm9udXMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+			<returnType>float</returnType>
+			<sString>cRedset_CastRange_Bonus</sString>
+		</addValue>
+		<multValue>
+			<compiledString></compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</multValue>
+		<stat>Life</stat>
+		<topModifier>false</topModifier>
+		<variable>AbilityRange</variable>
+	</modifier>
+	<providerName></providerName>
+</PermanentStatModApplicator>

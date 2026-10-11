@@ -710,6 +710,72 @@ void AdventureFlashInterface::SetDefaultChannel( NDb::EChatChannel channelID )
 }
 
 
+void AdventureFlashInterface::SetChatCentered( bool centered, float raise )
+{
+  CallMethod( "SetChatCentered", centered, raise );
+}
+
+void AdventureFlashInterface::ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale )
+{
+  CallMethod( "ShowPingWheel", nx, ny, labels, colors, bgAlpha, scale );
+}
+
+void AdventureFlashInterface::HighlightPingWheel( int index )
+{
+  CallMethod( "HighlightPingWheel", index );
+}
+
+void AdventureFlashInterface::PreloadPingWheel()
+{
+  CallMethod( "PreloadPingWheel" );
+}
+
+void AdventureFlashInterface::HidePingWheel()
+{
+  CallMethod( "HidePingWheel" );
+}
+
+void AdventureFlashInterface::ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,
+                                          const string & targetIcon, const wstring & targetName, int targetColor, int amount )
+{
+  CallMethod( "ShowPraise", id, senderIcon, senderName, senderColor, targetIcon, targetName, targetColor, amount );
+}
+
+void AdventureFlashInterface::SetPraisePanel( int id, float slide, float row, float alpha, float top )
+{
+  CallMethod( "SetPraisePanel", id, slide, row, alpha, top );
+}
+
+void AdventureFlashInterface::SetTalentSmartCast( int column, int raw, int mode )
+{
+  CallMethod( "SetTalentSmartCast", column, raw, mode );
+}
+
+void AdventureFlashInterface::RefreshSmartCastBoxes()
+{
+  CallMethod( "RefreshSmartCastBoxes" );
+}
+
+void AdventureFlashInterface::SetMinimapAlertSound( bool enabled )
+{
+  CallMethod( "SetMinimapAlertSound", enabled );
+}
+
+void AdventureFlashInterface::PreloadPingImage( const string & path )
+{
+  CallMethod( "PreloadPingImage", path );
+}
+
+void AdventureFlashInterface::SetPingMarkerHero( int id, const string & iconPath )
+{
+  CallMethod( "SetPingMarkerHero", id, iconPath );
+}
+
+void AdventureFlashInterface::SetPingMarker( int id, int type, const wstring & text, int color, float nx, float ny, float gx, float gy, float alpha )
+{
+  CallMethod( "SetPingMarker", id, type, text, color, nx, ny, gx, gy, alpha );
+}
+
 void AdventureFlashInterface::SetChatVisible( bool visible )
 {
   FLASH_INTERFACE_ENTER_FUNCTION("SetChatVisible")

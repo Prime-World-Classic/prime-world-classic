@@ -24,6 +24,9 @@ extern char const* szHealingBias;
 
 extern char const* szScrollDuplicationProc;
 
+// hero ability (cast) range bonus in percent: 15 = +15% to the use range of all abilities
+extern char const* szAbilityRange;
+
 } //namespace UnitVariables
 
 } //namespace NWorld

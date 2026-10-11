@@ -361,6 +361,144 @@ Strong<IPrefVar> createControl( FlashInterface *pFlash, const string &varId, con
   }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// "Advanced" settings page (the "Advanced" button in the options window).
+// Client-side settings that have no description in Preferences data: each row is a console variable
+// (STORAGE_USER, saved to user.cfg), the value is applied immediately, no "Apply" button needed.
+// Rows whose variable is not registered in this build are skipped.
+// To add a setting: add one line to s_advancedVars.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+enum EAdvancedControl { ADV_CHECKBOX, ADV_SLIDER, ADV_HEADER, ADV_PAGE };
+
+struct AdvancedVarDesc
+{
+  const char *     varId;        // control name in Flash (unique)
+  const char *     varName;      // console variable
+  EAdvancedControl type;
+  float            minValue;     // slider: value at the left end
+  float            maxValue;     // slider: value at the right end
+  int              steps;        // slider: number of positions
+  const wchar_t *  format;       // slider: value text, printf-like
+  const char *     enabledFrom;  // varId of the checkbox that enables this row ("" = always enabled)
+  const wchar_t *  label;
+};
+
+// labels are written as \u escapes (independent of the source file codepage); C4428 just notes that
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+static const AdvancedVarDesc s_advancedVars[] =
+{
+  { "adv_page_advanced", "", ADV_PAGE, 0.0f, 0.0f, 0, L"", "", L"" },
+  { "adv_hdr_move", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0414\u0432\u0438\u0436\u0435\u043d\u0438\u0435 \u0438 \u0430\u0442\u0430\u043a\u0430" },
+  { "adv_auto_attack", "auto_attack", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0410\u0432\u0442\u043e\u0430\u0442\u0430\u043a\u0430" },
+  { "adv_move_on_hold", "move_on_hold", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0411\u0435\u0433 \u043f\u0440\u0438 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u041f\u041a\u041c" },
+  { "adv_move_on_hold_marker", "move_on_hold_marker", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_move_on_hold", L"\u041c\u0430\u0440\u043a\u0435\u0440 \u043f\u0440\u0438 \u0431\u0435\u0433\u0435 \u0441 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u041f\u041a\u041c" },
+  { "adv_move_on_hold_interval", "move_on_hold_interval", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_move_on_hold", L"\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b \u043f\u043e\u0432\u0442\u043e\u0440\u0430 \u043f\u0440\u0438\u043a\u0430\u0437\u0430, \u0441" },
+  { "adv_move_smooth_lag", "move_smooth_lag", ADV_SLIDER, 1.0f, 1.5f, 11, L"%.2f", "", L"\u0421\u0433\u043b\u0430\u0436\u0438\u0432\u0430\u043d\u0438\u0435 \u0434\u0432\u0438\u0436\u0435\u043d\u0438\u044f" },
+  { "adv_hdr_turn", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0432\u043e\u0440\u043e\u0442 \u0433\u0435\u0440\u043e\u044f" },
+  { "adv_dota_turns", "dota_turns", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043b\u0430\u0432\u043d\u044b\u0439 \u043f\u043e\u0432\u043e\u0440\u043e\u0442 \u0433\u0435\u0440\u043e\u044f" },
+  { "adv_dota_turn_max_speed", "dota_turn_max_speed", ADV_SLIDER, 300.0f, 1500.0f, 13, L"%.0f", "adv_dota_turns", L"\u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u043f\u043e\u0432\u043e\u0440\u043e\u0442\u0430, \u0433\u0440\u0430\u0434/\u0441" },
+  { "adv_dota_turn_ease", "dota_turn_ease", ADV_SLIDER, 5.0f, 30.0f, 11, L"%.1f", "adv_dota_turns", L"\u041f\u043b\u0430\u0432\u043d\u043e\u0441\u0442\u044c \u043a\u043e\u043d\u0446\u0430 \u043f\u043e\u0432\u043e\u0440\u043e\u0442\u0430" },
+  { "adv_hdr_abilities", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438" },
+  { "adv_smart_cast_toggles", "smart_cast_toggles", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043c\u0430\u0440\u0442\u043a\u0430\u0441\u0442: \u0433\u0430\u043b\u043e\u0447\u043a\u0438 \u043d\u0430 \u043f\u0430\u043d\u0435\u043b\u0438" },
+  { "adv_dbl_click_selfcast", "dbl_click_selfcast", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0414\u0432\u043e\u0439\u043d\u043e\u0435 \u043d\u0430\u0436\u0430\u0442\u0438\u0435 - \u043d\u0430 \u0441\u0435\u0431\u044f" },
+  { "adv_dbl_click_selfcast_time", "dbl_click_selfcast_time", ADV_SLIDER, 0.15f, 0.5f, 8, L"%.2f", "adv_dbl_click_selfcast", L"\u0412\u0440\u0435\u043c\u044f \u0434\u0432\u043e\u0439\u043d\u043e\u0433\u043e \u043d\u0430\u0436\u0430\u0442\u0438\u044f, \u0441" },
+  { "adv_hdr_interface", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0418\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441" },
+  { "adv_chat_centered", "chat_centered", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442 \u043f\u043e \u0446\u0435\u043d\u0442\u0440\u0443 \u044d\u043a\u0440\u0430\u043d\u0430" },
+  { "adv_chat_center_raise", "chat_center_raise", ADV_SLIDER, 0.0f, 50.0f, 11, L"%.0f%%", "adv_chat_centered", L"\u0412\u044b\u0441\u043e\u0442\u0430 \u0447\u0430\u0442\u0430, % \u044d\u043a\u0440\u0430\u043d\u0430" },
+  { "adv_page_comm", "", ADV_PAGE, 1.0f, 0.0f, 0, L"", "", L"" },
+  { "adv_hdr_ping_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b" },
+  { "adv_ping_middle_mouse", "ping_middle_mouse", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b \u043d\u0430 \u0441\u0440\u0435\u0434\u043d\u044e\u044e \u043a\u043d\u043e\u043f\u043a\u0443 \u043c\u044b\u0448\u0438" },
+  { "adv_ping_ground_effect", "ping_ground_effect", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041c\u0435\u0442\u043a\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u0430 \u043d\u0430 \u0437\u0435\u043c\u043b\u0435" },
+  { "adv_ping_sound", "ping_sound", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0417\u0432\u0443\u043a \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432" },
+  { "adv_ping_sound_volume", "ping_sound_volume", ADV_SLIDER, 0.0f, 100.0f, 11, L"%.0f%%", "adv_ping_sound", L"\u0413\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c \u0437\u0432\u0443\u043a\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432" },
+  { "adv_ping_wheel", "ping_wheel", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432 (\u0443\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435)" },
+  { "adv_ping_wheel_delay", "ping_wheel_delay", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_ping_wheel", L"\u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430 \u043a\u043e\u043b\u0435\u0441\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432, \u0441" },
+  { "adv_ping_wheel_transparency", "ping_wheel_transparency", ADV_SLIDER, 0.0f, 90.0f, 10, L"%.0f%%", "adv_ping_wheel", L"\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0444\u043e\u043d\u0430 \u043a\u043e\u043b\u0435\u0441\u0430" },
+  { "adv_ping_wheel_scale", "ping_wheel_scale", ADV_SLIDER, 60.0f, 160.0f, 11, L"%.0f%%", "adv_ping_wheel", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043e\u043b\u0435\u0441\u0430" },
+  { "adv_hdr_praise", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430" },
+  { "adv_praise", "praise", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430 (Alt + \u043a\u043b\u0438\u043a \u043f\u043e \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u0443)" },
+  { "adv_hdr_chat", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442" },
+  { "adv_alt_click_ability_status", "alt_click_ability_status", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"Alt+\u043a\u043b\u0438\u043a \u043f\u043e \u0441\u043a\u0438\u043b\u043b\u0443 - \u0432 \u0447\u0430\u0442" },
+};
+#pragma warning( pop )
+
+static const int ADVANCED_VARS_COUNT = sizeof( s_advancedVars ) / sizeof( s_advancedVars[0] );
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class AdvancedCheckBoxControl: public StdVarBase
+{
+public:
+  AdvancedCheckBoxControl( FlashInterface *pFlash, const AdvancedVarDesc &desc ):
+    StdVarBase( pFlash, desc.varId, desc.varName )
+  {
+    pFlash->CallMethod( "AddAdvancedCheckBox", desc.varId, wstring( desc.label ) );
+  }
+
+private:
+  virtual int convertValueToUI( const VariantValue &val ) const
+  {
+    return val.GetInt64() != 0 ? 1 : 0;
+  }
+
+  virtual const VariantValue convertValueFromUI( int val ) const
+  {
+    return VariantValue( val );
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class AdvancedSliderControl: public StdVarBase
+{
+public:
+  AdvancedSliderControl( FlashInterface *_pFlash, const AdvancedVarDesc &_desc ):
+    StdVarBase( _pFlash, _desc.varId, _desc.varName ), pFlash( _pFlash ), desc( _desc )
+  {
+    pFlash->CallMethod( "AddAdvancedSlider", desc.varId, wstring( desc.label ), desc.steps );
+  }
+
+  virtual void UpdateCurValue( int newVal )
+  {
+    StdVarBase::UpdateCurValue( newVal );
+    UpdateValueText();
+  }
+
+  virtual void UpdateEnabledState( bool isEnabled )
+  {
+    StdVarBase::UpdateEnabledState( isEnabled );
+    UpdateValueText();
+  }
+
+private:
+  void UpdateValueText()
+  {
+    const float value = GetVar( desc.varName ).GetFloat();
+    pFlash->CallMethod( "SetAdvancedValueText", desc.varId, wstring( NStr::StrFmtW( desc.format, value ) ) ); // StrFmtW returns a pointer: pass wstring, not wchar_t*
+  }
+
+  virtual int convertValueToUI( const VariantValue &val ) const
+  {
+    const float range = desc.maxValue - desc.minValue;
+    if ( range <= 0.0f || desc.steps < 2 )
+      return 0;
+    const int pos = static_cast<int>( ( val.GetFloat() - desc.minValue ) / range * ( desc.steps - 1 ) + 0.5f );
+    return pos < 0 ? 0 : ( pos > desc.steps - 1 ? desc.steps - 1 : pos );
+  }
+
+  virtual const VariantValue convertValueFromUI( int val ) const
+  {
+    if ( desc.steps < 2 )
+      return VariantValue( desc.minValue );
+    return VariantValue( desc.minValue + ( desc.maxValue - desc.minValue ) * val / static_cast<float>( desc.steps - 1 ) );
+  }
+
+  FlashInterface * const pFlash;
+  const AdvancedVarDesc &desc;
+};
+
+// descriptions in the format of data-defined preferences (PreferencesProcessor keeps pointers to them)
+static NDb::PrefVariable s_advancedPrefVars[ADVANCED_VARS_COUNT];
+
 } //anonymous namespace
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static const char szUpdateFlashCommand[] = "PreferenceComponentSetValue";
@@ -371,7 +509,7 @@ static const char szShortcutRebindFlashCommand[] = "PreferenceShortcutRebind";
 static const char szShortcutsApplyFlashCommand[] = "PreferenceShortcutsApply";
 
 PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, const char* className ):
-  FlashInterface(flashWnd, className), pPresets(0)
+  FlashInterface(flashWnd, className), pPresets(0), advancedPageEnabled(true)
 {
   flashWnd->AddFSListner( szUpdateFlashCommand, this );
   flashWnd->AddFSListner( szApplyFlashCommand, this );
@@ -395,6 +533,44 @@ void PreferencesProcessor::Init( const NDb::Preferences &desc )
     val.defaultValue = -1;
     
     variables.insert( Variables::value_type( val.pDesc->varId, val ) );  
+  }
+
+  // "Advanced" page rows (see s_advancedVars)
+  for( int i = 0; advancedPageEnabled && i < ADVANCED_VARS_COUNT; ++i )
+  {
+    const AdvancedVarDesc &adv = s_advancedVars[i];
+
+    if( adv.type == ADV_PAGE )
+    {
+      CallMethod( "SetAdvancedTargetPage", static_cast<int>( adv.minValue ) ); // following rows go to this page (0 = Advanced, 1 = Communication)
+      continue;
+    }
+    if( adv.type == ADV_HEADER )
+    {
+      CallMethod( "AddAdvancedHeader", wstring( adv.label ) ); // category title, no variable behind it
+      continue;
+    }
+    if( !NGlobal::IsCommandRegistred( adv.varName ) )
+      continue;                                   // variable is not present in this build
+    if( adv.enabledFrom[0] != '\0' && variables.find( adv.enabledFrom ) == variables.end() )
+      continue;                                   // parent checkbox was skipped
+
+    NDb::PrefVariable &pref = s_advancedPrefVars[i];
+    pref.varId                 = adv.varId;
+    pref.commandName           = adv.varName;
+    pref.controlVarType        = ( adv.type == ADV_CHECKBOX ) ? NDb::CONTROLVARTYPE_CHECKBOX : NDb::CONTROLVARTYPE_SLIDER;
+    pref.applyCommandName      = "";
+    pref.enabledFromOtherVarId = adv.enabledFrom;
+
+    VarData val;
+    val.pDesc = &pref;
+    if( adv.type == ADV_CHECKBOX )
+      val.pAbstract = new AdvancedCheckBoxControl( this, adv );
+    else
+      val.pAbstract = new AdvancedSliderControl( this, adv );
+    val.defaultValue = -1;
+
+    variables.insert( Variables::value_type( pref.varId, val ) );
   }
   
   for( Variables::const_iterator it = variables.begin(); it != variables.end(); ++it )

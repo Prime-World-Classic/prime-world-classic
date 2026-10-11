@@ -32,8 +32,11 @@ public:
     CHANNEL_RANGE2, //<used to show alternative range
     CHANNEL_UNIT_RANGE1,
     CHANNEL_UNIT_RANGE2,
+    CHANNEL_PING_FIRST, //< ground rings of team pings (AdventureScreen), CHANNEL_PING_COUNT channels
+    CHANNEL_PING_LAST = CHANNEL_PING_FIRST + 7,
     _NUM_CHANNELS
   };
+  enum { CHANNEL_PING_COUNT = CHANNEL_PING_LAST - CHANNEL_PING_FIRST + 1 };
 
 public:
   AOERenderer();
@@ -48,6 +51,7 @@ public:
   void SetAreaParams(ChannelType channelId, AreaType type, NDb::Material const* pMaterial, float radius, float span);
   void SetAreaRadius(ChannelType channelId, float radius);
   void SetAreaPosition(ChannelType channelId, CVec3 const& pos, CVec3 const& dir, bool usePrimaryColor, float interpolateColor = -1.0f);
+  void SetAreaColor(ChannelType channelId, HDRColor const& color); //< overrides the material color chosen by SetAreaPosition
   void ResetArea(ChannelType channelId);
   void ResetAll();
 

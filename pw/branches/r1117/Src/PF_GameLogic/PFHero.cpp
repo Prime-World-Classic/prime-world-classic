@@ -135,6 +135,8 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   , distanceRun(0.f)
   , pDbHero( info.pHero )
   , isolated( false )
+  , autoAttackDisabled( false )
+  , abilityRangeScale( 1.0f )
   , ripTime(0.f)
   , inTeamId( info.inTeamId )
   , redeemCost(0.0f)
@@ -860,7 +862,8 @@ void PFHeroBehaviour::OnDamage( const PFBaseUnitDamageDesc& desc )
     {
       if( pUnit->IsIdle() && !pUnit->HasQueuedStates()
         && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)
-        && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK) )
+        && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK)
+        && !static_cast<PFBaseHero*>(pUnit.GetPtr())->IsAutoAttackDisabled() )
       {
         pUnit->PushState( new PFBaseUnitAttackState( GetWorld(), pUnit, desc.pSender, true ) );
       }
@@ -2383,7 +2386,19 @@ void PFBaseHero::Move(const CVec2 & target)
   // PFBaseUnitMoveToState stops movement if target is within 1.0f range
   // Therefore we update listeners manually here
   if ( pHeroOrMount->IsPositionInRange( target, 1.0f ) )
+  {
     pHeroOrMount->EventHappened( NWorld::PFBaseUnitEvent( NDb::BASEUNITEVENT_MOVE ) );
+
+    // Dota-like: a click right next to the hero is too short to walk, so just turn the hero in place
+    // to face the clicked point (smoothly on the client). Executed on every client from the same command,
+    // so the logic direction stays in sync.
+    if ( !pHeroOrMount->IsPositionInRange( target, 0.1f ) )
+    {
+      pHeroOrMount->SetMoveDirection( target );
+      if ( NGameX::PFClientBaseMovingUnit* pClient = pHeroOrMount->ClientObject() )
+        pClient->LookTo( target );
+    }
+  }
 
   if ( PFBaseUnitMoveToState* st = dynamic_cast<PFBaseUnitMoveToState*>( pHeroOrMount->GetCurrentState() ) )
     st->SetNewParams( target, 0.0f );
@@ -2428,6 +2443,16 @@ float PFBaseHero::GetCustomEnergyRegeneration() const
   }
 
   return 0.f;
+}
+
+float PFBaseHero::GetAbilityRangeScale( const PFBaseUnit * pUnit )
+{
+  const PFBaseHero * pHero = dynamic_cast<const PFBaseHero *>( pUnit );
+  if ( !pHero )
+    return 1.0f;
+  // console base (ability_range_scale) x (1 + AbilityRange% from talents / buffs set in the editor)
+  const float bonusPercent = pHero->GetVariableValue( UnitVariables::szAbilityRange );
+  return Min( Max( pHero->abilityRangeScale * ( 1.0f + bonusPercent * 0.01f ), 0.1f ), 10.0f );
 }
 
 void PFBaseHero::OnIdle()

@@ -3,6 +3,7 @@
 #include "../Core/Transceiver.h"
 
 #include "PFBaseUnit.h"
+#include "PFHero.h"
 #include "PFAbilityInstance.h"
 #include "PFUniTarget.h"
 #include "PFTargetSelector.h"
@@ -510,33 +511,35 @@ void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cool
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float PFAbilityData::GetUseRange() const
 {
-  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
+  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f) * PFBaseHero::GetAbilityRangeScale( pOwner.GetPtr() );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const
 {
+  const float rangeScale = PFBaseHero::GetAbilityRangeScale( pOwner.GetPtr() );
   if (IsValid(pTarget))
   {
-    return pDBDesc->useRange(pOwner, pTarget, this, 0.0f);
+    return pDBDesc->useRange(pOwner, pTarget, this, 0.0f) * rangeScale;
   }
   else
   {
     NI_ALWAYS_ASSERT("Target must be valid!");
   }
 
-  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
+  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f) * rangeScale;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float PFAbilityData::GetUseRange(const NWorld::Target & target) const
 {
+  const float rangeScale = PFBaseHero::GetAbilityRangeScale( pOwner.GetPtr() );
   if (target.IsUnit())
   {
     PFBaseUnit * targetUnit = target.GetUnit();
     if (IsValid(targetUnit))
     {
-      return pDBDesc->useRange(pOwner, targetUnit, this, 0.0f);
+      return pDBDesc->useRange(pOwner, targetUnit, this, 0.0f) * rangeScale;
     }
     else
     {
@@ -544,7 +547,7 @@ float PFAbilityData::GetUseRange(const NWorld::Target & target) const
     }
   }
 
-  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
+  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f) * rangeScale;
 }
 
 NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const

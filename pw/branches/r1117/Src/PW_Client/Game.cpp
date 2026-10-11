@@ -136,7 +136,8 @@ REGISTER_DEV_VAR( "video_FPS", g_VideoFPS, STORAGE_NONE);
 REGISTER_DEV_VAR( "video_recording_time", g_RecordingTime, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender", s_NullRender, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender_no_log_box", g_NullRenderNoLogBox, STORAGE_NONE);
-//REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
+// Local game without the launcher/server (lobby with bots). Dev builds only: REGISTER_DEV_VAR is a no-op in Shipping.
+REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesEnable", s_skipFrames, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesBarrier", s_skipFramesBarrier, STORAGE_NONE);
 
@@ -1237,7 +1238,11 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     protocolLineStr = CmdLineLite::Instance().GetStringKey( "protocol", "" );
   }
 
-  if(protocolLineStr.empty()) {
+  if ( s_localGame && context ) {
+    // Local game (setvar local_game = 1 in game.cfg, dev builds only): no launcher protocol needed,
+    // start the local lobby right away.
+    context->Start();
+  } else if(protocolLineStr.empty()) {
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
   } else {

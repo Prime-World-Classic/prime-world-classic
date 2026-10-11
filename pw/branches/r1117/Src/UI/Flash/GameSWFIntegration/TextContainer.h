@@ -22,11 +22,13 @@ class TextContainerStyle : public NMarkup::IStyle, public BaseObjectST
   NI_DECLARE_REFCOUNT_CLASS_1( TextContainerStyle, BaseObjectST );
 public:
   TextContainerStyle( TextContainer * _owner, IFontInstance * font );
+  // same font, own color ('<style:#RRGGBB>' runs); alpha still comes from the field (fades)
+  TextContainerStyle( TextContainer * _owner, IFontInstance * font, const SWF_RGBA & _color );
 
   IFontInstance * Renderable() const { return fontInstance; }
 
 private:
-  TextContainerStyle() {}
+  TextContainerStyle() : hasColor( false ) {}
 
   //NMarkup::IStyle
   virtual NMarkup::TOffset GetTextBounds( NMarkup::SBounds * bounds, const NMarkup::TChar * text, NMarkup::TOffset length, NMarkup::TUnit maxWidth ) const;
@@ -38,6 +40,8 @@ private:
 
   Weak<TextContainer>   owner;
   Strong<IFontInstance>   fontInstance;
+  bool                    hasColor;
+  SWF_RGBA                color;
 };
 
 
@@ -76,12 +80,14 @@ private:
   virtual NMarkup::IImage * CreateImage( NMarkup::TPoint * size, const NMarkup::TChar * image );
 
   typedef map<Strong<IFontInstance>, Strong<TextContainerStyle>>  TFontsCache;
+  typedef map<unsigned, Strong<TextContainerStyle>>  TColorStylesCache;
 
   Strong<FontsDictionary> fontDictionary;
   Strong<IFontRender>     fontRender;
 
   Strong<TextContainerStyle>  defaultFont;
   TFontsCache           fontsCache;
+  TColorStylesCache     colorStyles; // '<style:#RRGGBB>' -> default font with that color
 
   NMarkup::TextMarkup   markup;
 

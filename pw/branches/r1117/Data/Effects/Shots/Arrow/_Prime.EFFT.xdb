@@ -2,6 +2,7 @@
 <BasicEffectStandalone>
 	<BackLink DBID="/Effects/Shots/Arrow/_Prime.EFFT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Stalker/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A1.TALENT" Count="1" />
 	<component href="/Effects/Shots/Arrow/_Prime.PRXY" />
 	<deathType>Manual</deathType>
 	<enableCondition href="" />

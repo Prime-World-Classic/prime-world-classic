@@ -79,6 +79,9 @@ public:
 
   void AddChatMessage(const wstring & msg, NDb::EChatChannel channel);
 
+  // Sends a message from the local player (same checks as typing it in the chat input: mutes, leaver limits, chat off)
+  void SendPlayerMessage(const wstring & message, NDb::EChatChannel channel);
+
   void SetBindsController(BindsController* _bindsController){bindsController = _bindsController;};
   // from UI::IFSCommandListner
   virtual void OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID,  const char* args, const wchar_t * argsW  );

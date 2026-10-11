@@ -1124,6 +1124,7 @@
 	</heroSceneObjects>
 	<heroSkins>
 		<Item href="/Heroes/Trickster/S1/_.HEROSKIN" />
+			<Item href="/Heroes/Trickster/S2/_.HEROSKIN" />
 	</heroSkins>
 	<id>trickster</id>
 	<image href="" />

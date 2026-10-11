@@ -8,6 +8,7 @@
 #include "PFClientApplicators.h"
 #include "AdventureScreen.h"
 #include "PFEffectSwitcher.h"
+#include "PFHero.h"
 
 namespace NGameX
 {
@@ -98,6 +99,45 @@ static bool CanApplyEffect(CObj<PF_Core::BasicEffect> pEffect, NWorld::PFLogicOb
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Standalone effects that draw the reach of an ability: stretched by the "ability range" stat of the caster.
+// (the list is the first step; later this can become a flag of the effect in the data)
+static const char * const s_rangeScaledEffects[] =
+{
+  "effects/debuffs/wind/_.efft", // FireFox: Wind and Sparks
+};
+
+static bool IsRangeScaledEffect( const NDb::EffectBase * pDesc )
+{
+  if ( !pDesc )
+    return false;
+  nstl::string fileName = pDesc->GetDBID().GetFileName();
+  for ( int i = 0; i < fileName.size(); ++i )
+  {
+    if ( fileName[i] >= 'A' && fileName[i] <= 'Z' )
+      fileName[i] = fileName[i] - 'A' + 'a';
+    else if ( fileName[i] == '\\' )
+      fileName[i] = '/';
+  }
+  for ( int i = 0; i < sizeof( s_rangeScaledEffects ) / sizeof( s_rangeScaledEffects[0] ); ++i )
+    if ( strstr( fileName.c_str(), s_rangeScaledEffects[i] ) )
+      return true;
+  return false;
+}
+
+static void ScaleRangeEffect( PF_Core::BasicEffect * pEffect, const NWorld::PFBaseUnit * pSender )
+{
+  const float scale = NWorld::PFBaseHero::GetAbilityRangeScale( pSender );
+  if ( fabs( scale - 1.0f ) < 0.001f )
+    return;
+  PF_Core::BasicEffectStandalone * pStandalone = dynamic_cast<PF_Core::BasicEffectStandalone *>( pEffect );
+  if ( !pStandalone || !pStandalone->GetSceneObject() || !IsRangeScaledEffect( pStandalone->GetDBDesc() ) )
+    return;
+  Placement placement = pStandalone->GetSceneObject()->GetPosition();
+  placement.scale.x *= scale; // the length and the width of the cone, its height stays
+  placement.scale.y *= scale;
+  pStandalone->SetPosition( placement );
+}
+
 void ApplyEffect( CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSender, NWorld::PFLogicObject* pTarget, NWorld::PFLogicObject* pOrigin, PF_Core::IEffectEnableConditionCallback *pEnableCallback /*= NULL*/ )
 {
   if ( !AdventureScreen::Instance()->IsSpectator() )
@@ -124,6 +164,7 @@ void ApplyEffect( CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSende
   {
     pEffect->SetActiveStateName( pSender->GetSkinId() );
     pEffect->Apply( pTarget->ClientObject() );
+    ScaleRangeEffect( pEffect.GetPtr(), pSender );
   }
 }
 
@@ -147,6 +188,7 @@ void RestoreEffect(CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSend
   {
     pStnd->SetPosition( placementOnStart );
     pStnd->AddToScene( pTarget->GetWorld()->GetScene() );
+    ScaleRangeEffect( pStnd, pSender );
   }
   else
   {

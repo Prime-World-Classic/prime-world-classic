@@ -263,6 +263,12 @@ namespace NGameX
     float posDeltaFoward = 0.0f;
     float posDeltaStrafe = 0.0f;
 
+    if ( AdventureScreen::IsMiddleMousePingMode() ) // the middle mouse button pings instead of dragging the camera
+    {
+      inputModifier.mouse_fwd.ClearDelta();
+      inputModifier.mouse_strafe.ClearDelta();
+    }
+
     if (!locked && !forbidObserving )
     {
       inpDeltaFoward = inputModifier.GetDeltaFoward();

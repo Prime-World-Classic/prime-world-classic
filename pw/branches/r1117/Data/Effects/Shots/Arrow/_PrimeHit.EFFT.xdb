@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectStandalone>
 	<BackLink DBID="/Items/Talents/Class/Stalker/Ability_A2.TALENT" Count="4" />
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A1.TALENT" Count="4" />
 	<component href="/Effects/Shots/Arrow/_PrimeHit.PRXY" />
 	<deathType>Anim</deathType>
 	<enableCondition href="" />
