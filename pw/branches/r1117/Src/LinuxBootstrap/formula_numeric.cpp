@@ -6,6 +6,7 @@
 #include <cmath>
 #include <map>
 #include <system_error>
+#include <vector>
 
 #if defined(__FAST_MATH__)
 #error Numeric formula checks require finite-aware arithmetic, not fast-math.
@@ -64,6 +65,41 @@ double GreaterEqual(double a, double b) { return a >= b; }
 double Equal(double a, double b) { return a == b; }
 double NotEqual(double a, double b) { return a != b; }
 
+/** Authored FormulaPars helpers take float arguments, including parameter-first lerp. */
+double Minimum(double a, double b)
+{
+	const float x = Narrow(a), y = Narrow(b);
+	return x < y ? x : y;
+}
+double Maximum(double a, double b)
+{
+	const float x = Narrow(a), y = Narrow(b);
+	return x > y ? x : y;
+}
+double Clamp(double value, double low, double high) { return Minimum(Maximum(value, low), high); }
+double Lerp(double parameter, double low, double high)
+{
+	const float p = Narrow(parameter), a = Narrow(low), b = Narrow(high);
+	const float inverse = Narrow(Finite(1.0f - p));
+	const float left = Narrow(Finite(a * inverse)), right = Narrow(Finite(b * p));
+	return Finite(left + right);
+}
+double Round(double value)
+{
+	const float v = Narrow(value);
+	return v >= 0.0f ? std::floor(v + 0.5f) : std::ceil(v - 0.5f);
+}
+double Absolute(double value) { return Finite(std::fabs(value)); }
+double SquareRoot(double value) { return Finite(std::sqrt(value)); }
+double Floor(double value) { return Finite(std::floor(value)); }
+double Ceil(double value) { return Finite(std::ceil(value)); }
+
+bool IsNumericFunction(const std::string& name)
+{
+	return name == "min" || name == "max" || name == "clamp" || name == "lerp" ||
+		name == "round" || name == "abs" || name == "sqrt" || name == "floor" || name == "ceil";
+}
+
 /** Stable map entries are callback userdata, owned only by the current evaluation. */
 struct Binding
 {
@@ -118,12 +154,24 @@ void Configure(mu::Parser& parser)
 	parser.DefineOprt("/", Divide, 7);
 	parser.DefineInfixOprt("+", Positive, 8, false);
 	parser.DefineInfixOprt("-", Negative, 8, false);
+	parser.DefineConst("true", 1);
+	parser.DefineConst("false", 0);
+	parser.DefineFun("min", Minimum, false);
+	parser.DefineFun("max", Maximum, false);
+	parser.DefineFun("clamp", Clamp, false);
+	parser.DefineFun("lerp", Lerp, false);
+	parser.DefineFun("round", Round, false);
+	parser.DefineFun("abs", Absolute, false);
+	parser.DefineFun("sqrt", SquareRoot, false);
+	parser.DefineFun("floor", Floor, false);
+	parser.DefineFun("ceil", Ceil, false);
 }
 
 /**
  * Token validation/renaming only: no precedence, expression tree or evaluation here.
  * Numeric constants use locale-independent from_chars. Symbols become private
- * zero-argument callbacks; source function calls are rejected before translation.
+ * zero-argument callbacks. Only explicit helpers accept calls; commas are allowed
+ * inside their argument parentheses, never as muParser expression-list operators.
  */
 std::string BindTokens(const std::string& expression, const NumericSymbolResolver& resolver,
 	mu::Parser& parser, std::map<std::string, Binding>& bindings)
@@ -134,6 +182,8 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 	std::size_t depth = 0;
 	std::size_t conditionals = 0;
 	std::size_t signs = 0;
+	std::vector<bool> functionParentheses;
+	bool pendingFunction = false;
 	for (std::size_t pos = 0; pos < expression.size();)
 	{
 		const char ch = expression[pos];
@@ -173,10 +223,22 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (pos < expression.size() && (IsNameStart(expression[pos]) || IsDigit(expression[pos]))) ++pos;
 			if (pos - begin > NumericFormulaMaxIdentifier) throw Error::LimitExceeded;
 			const std::string name = expression.substr(begin, pos - begin);
-			if (name == "true" || name == "false" || name == "nullptr") throw Error::UnsupportedSyntax;
+			if (name == "nullptr") throw Error::UnsupportedSyntax;
 			std::size_t next = pos;
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
-			if (next < expression.size() && expression[next] == '(') throw Error::UnsupportedSyntax;
+			if (next < expression.size() && expression[next] == '(')
+			{
+				if (!IsNumericFunction(name)) throw Error::UnsupportedSyntax;
+				// muParser requires the opening parenthesis adjacent to a function name.
+				translated += name;
+				pendingFunction = true;
+				continue;
+			}
+			if (name == "true" || name == "false")
+			{
+				translated += name + " ";
+				continue;
+			}
 			auto binding = bindings.find(name);
 			if (binding == bindings.end())
 			{
@@ -204,11 +266,18 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		if (ch == '(')
 		{
 			if (++depth > NumericFormulaMaxNesting) throw Error::LimitExceeded;
+			functionParentheses.push_back(pendingFunction);
+			pendingFunction = false;
 		}
 		else if (ch == ')')
 		{
 			if (depth == 0) throw Error::InvalidExpression;
 			--depth;
+			functionParentheses.pop_back();
+		}
+		else if (ch == ',')
+		{
+			if (functionParentheses.empty() || !functionParentheses.back()) throw Error::UnsupportedSyntax;
 		}
 		else if (ch == '?')
 		{

@@ -52,8 +52,12 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * result is narrowed to float. This is NOT the full C++/game formula language or
  * a guarantee of bit-identical Windows floating-point execution.
  *
- * No functions, assignment, strings, lists, logical/bitwise/power operators,
- * comments, casts, hex/octal literals, or implicit built-in constants. Whitespace
+ * Explicit functions: min/max/clamp, parameter-first lerp, round, abs, sqrt,
+ * floor and ceil. The first five use FormulaPars float argument semantics;
+ * round follows its float +/-0.5 then floor/ceil rule. Other helpers use double.
+ * Boolean literals true/false are numeric 1/0. Commas are argument separators only.
+ * No other functions, assignment, strings, lists, logical/bitwise/power operators,
+ * comments, casts, hex/octal literals, or ambient built-in constants. Whitespace
  * is ASCII space, tab, CR and LF. Repeated unary signs require parentheses:
  * -(-2) is supported, - -2 is not. The lexer validates tokens; muParser owns the
  * grammar. Both parenthesis depth and total conditional count are capped at

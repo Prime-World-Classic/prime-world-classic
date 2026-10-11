@@ -170,6 +170,60 @@ void LazySymbols()
 		[](const std::string&, double& value) { value = 2; return true; });
 }
 
+/** Explicit helpers use authored argument order and reject hidden invalid intermediates. */
+void NumericFunctions()
+{
+	ExpectValue("min(4, 9)", 4);
+	ExpectValue("min \t (4, 9)", 4);
+	ExpectValue("max(4, 9)", 9);
+	ExpectValue("clamp(-1, 2, 8)", 2);
+	ExpectValue("clamp(12, 2, 8)", 8);
+	ExpectValue("clamp(5, 8, 2)", 2);
+	ExpectValue("lerp(.25, 10, 30)", 15);
+	ExpectValue("lerp(2, 10, 30)", 50);
+	ExpectValue("min(max(1, 4), clamp(8, 0, 6))", 4);
+	ExpectValue("abs(-3.5) + sqrt(2.25)", 5);
+	ExpectValue("floor(-1.2) + ceil(-1.2)", -3);
+	ExpectValue("round(2.5) + round(-1.5)", 1);
+	ExpectValue("true ? 3 : false", 3);
+	ExpectValue("false ? 1/0 : 7", 7);
+	ExpectValue("1 ? 5 : sqrt(-1)", 5);
+	ExpectValue("0 ? min(1e39, 2) : 6", 6);
+	ExpectValue("max((1 ? 2 : 3), 4)", 4);
+	ExpectValue("max(1, 0 ? 2 : 3)", 3);
+	ExpectValue("min(16777217, 16777218)-16777216", 0);
+	int calls = 0;
+	const NumericSymbolResolver resolver = [&](const std::string& name, double& value) {
+		++calls; value = 4; return name == "live";
+	};
+	ExpectValue("max(live,live)+min(live,8)", 8, resolver);
+	Check(calls == 1, "function arguments retain per-evaluation symbol snapshot");
+	ExpectValue("0 ? max(missing,live) : 8", 8, resolver);
+	Check(calls == 1, "unused function arguments are lazy");
+	for (const char* expression : {"min()", "min(1)", "min(1,2,3)", "max(,1)",
+		"max(1,)", "max((1,2),3)", "(max(1,2),3)", "max(1,2),3",
+		"1 ? 2 : min(1)", "min(1,2)(3)", "floor(1,2)", "clamp(1,2)",
+		"lerp(1,2,3,4)", "true(1)", "min(1;2)", "min(1,max(2,3)),4"})
+		ExpectFailure(expression);
+	for (const char* expression : {"sqrt(-1)", "min(1/0,2)", "max(1,0/0)",
+		"clamp(1e39,0,1)", "lerp(1e38,1e38,1e38)", "abs(1e300*1e300)"})
+		ExpectError(expression, Error::NonFiniteValue);
+	for (int a = -8; a <= 8; ++a)
+	for (int b = -8; b <= 8; ++b)
+	{
+		const std::string args = "(" + std::to_string(a) + "," + std::to_string(b) + ")";
+		ExpectValue("min" + args, float(a < b ? a : b));
+		ExpectValue("max" + args, float(a > b ? a : b));
+	}
+	for (float value : {-8.5f, -2.5f, -.5f, -.49f, 0.f, .49f, .5f, 2.5f, 8.5f, 8388609.f})
+		ExpectValue("round(" + std::to_string(value) + ")",
+			value >= 0 ? std::floor(value + .5f) : std::ceil(value - .5f));
+	std::string nested = "1";
+	for (std::size_t i = 0; i < NumericFormulaMaxNesting; ++i) nested = "abs(" + nested + ")";
+	ExpectValue(nested, 1);
+	ExpectError("abs(" + nested + ")", Error::LimitExceeded);
+}
+
 /** Unsupported C++/muParser surfaces must fail instead of acquiring new semantics. */
 void RejectedSyntax()
 {
@@ -178,7 +232,7 @@ void RejectedSyntax()
 		"1^2", "1**2", "1&2", "1|2", "1&&2", "1||2", "1<<2", "1>>2", "~1",
 		"!1", "5%2", "x++", "--x", "1//2", "1/*x*/+2", "1;2", "x[0]", "x.y",
 		"p->x", "0x10", "0b10", "010", "1u", "1L", "1.0ff", "1.0 f", "1e+",
-		"(float)1", "true", "false", "nullptr", "1?2:bad()", "1?2:1^2"})
+		"(float)1", "nullptr", "1?2:bad()", "1?2:1^2"})
 		ExpectFailure(expression);
 	for (const char* expression : {"(", ")", "()", "1+", "*1", "1 2", "1(2)",
 		"live live", "1?2", "1:2", "1?2:", "?1:2", "1??2:3", "((1)", "1)", "- -2"})
@@ -326,6 +380,7 @@ int main()
 	LiteralsAndOperators();
 	PlaneRange();
 	LazySymbols();
+	NumericFunctions();
 	RejectedSyntax();
 	NumericFailures();
 	Bounds();
