@@ -1244,6 +1244,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "consumable_state_tests.inc"
 #include "hero_follow_lifecycle_tests.inc"
 #include "hero_follow_combat_tests.inc"
+#include "hero_hold_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1299,6 +1300,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HeroConsumableLifecycleB9(check, world);
 			HeroFollowLifecycleB9(check, world);
 			HeroFollowCombatB9(check, world);
+			HeroHoldB9(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

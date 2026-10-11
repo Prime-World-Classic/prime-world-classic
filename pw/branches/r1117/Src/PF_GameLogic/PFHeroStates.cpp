@@ -335,21 +335,39 @@ PFHeroHoldState::PFHeroHoldState( CPtr<PFWorld> const& pWorld, CPtr<PFBaseHero> 
 
 bool PFHeroHoldState::OnStep(float dt)
 {
-  (void)dt;
-  return true;
+	if (!IsOwnerSuitable() || !std::isfinite(dt) || dt < 0)
+		return true;
+	if (!GetCurrentState() && !pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK) &&
+		!pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK))
+	{
+		CPtr<PFBaseUnit> selected = pOwner->FindTarget(pOwner->GetAttackRange());
+		if (IsTargetValid(selected))
+			pOwner->PushState(new PFBaseUnitAttackState(pWorld, pOwner.GetPtr(), selected, true, false, false, false, false));
+	}
+	return pOwner->IsMoving();
 }
 
 void PFHeroHoldState::OnEnter()
 {
+	if (IsOwnerSuitable())
+	{
+		pOwner->OnHold(true);
+		if (doStopOnEnter && !pOwner->IsMovingSpecial())
+			pOwner->Stop();
+		pOwner->Idle();
+	}
 }
 
 void PFHeroHoldState::OnLeave()
 {
+	if (IsValid(pOwner))
+		pOwner->OnHold(false);
 }
 
 bool PFHeroHoldState::IsOwnerSuitable() const
 {
-  return false;
+	return IsUnitValid(pOwner) && !pOwner->IsMounted() && pWorld &&
+		pWorld.GetPtr() == pOwner->GetWorld();
 }
 
 PFInteractObjectState::PFInteractObjectState( PFBaseHero * _pOwner, const Target& _target )
