@@ -56,6 +56,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 17/20 COMPLETE (`0.48.0`): restore original continuous dispatch factory and keep empty-payload timed/linear or persistent work in the actual ability holder until application/effect completion. Preserve dieAfterApply and negative-lifetime policies, including explicit cancellation that removes real stat effects and counters. Fourteen baseline failures reproduced; all 5,196 assertions, 28 CTests, six maintained builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c17-{before,after,build,ctest}.log`. Reset-phase preservation, teleport notifications and remaining state world constructors follow before final batch acceptance; no extra serialized state or virtual methods added.
 
+- Chunk 18/20 COMPLETE (`0.48.1`): native dispatch Reset preserves the original simulation phase instead of rewinding to INIT. Timed and linear travel, blocked immediate arrival and persistent cancellation retain existing progress and ownership. Twelve baseline failures reproduced; all 5,218 assertions, 28 CTests, six maintained builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c18-{before,after,build,ctest}.log`. This covers client reconstruction, not saved-world deserialization; existing unrelated unit resource-reset policy is unchanged.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

@@ -220,7 +220,7 @@ void PFDispatch::Reset()
     originalTarget.GetObject()->DoReset();
   if ( source.IsObject() && IsObjectValid( source.GetObject() ) )
     source.GetObject()->DoReset();
-  state = STATE_INIT;
+	// Match authored reset: rebuild clients/endpoints without rewinding dispatch simulation state.
 }
 
 void PFDispatch::SetNewTarget( const Target & _target )
