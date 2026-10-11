@@ -58,6 +58,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 18/20 COMPLETE (`0.48.1`): native dispatch Reset preserves the original simulation phase instead of rewinding to INIT. Timed and linear travel, blocked immediate arrival and persistent cancellation retain existing progress and ownership. Twelve baseline failures reproduced; all 5,218 assertions, 28 CTests, six maintained builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c18-{before,after,build,ctest}.log`. This covers client reconstruction, not saved-world deserialization; existing unrelated unit resource-reset policy is unchanged.
 
+- Chunk 19/20 COMPLETE (`0.48.2`): native successful teleports notify existing inbound projectile callbacks according to notifyDispatches. Retain a dispatch snapshot and recheck live target identity around callbacks; authored straight/homing target loss and pursue retention use unchanged engine algorithms. Two real concurrent projectiles per policy reproduce six baseline failures; all 5,266 assertions, 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c19-{before,after,build,ctest}.log`. Initial compile used a private base typedef; corrected to the public projectile-ring type before running the fixed binary. This is projectile notification parity, not full teleport placement/camera/pathfinding parity.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

@@ -648,8 +648,31 @@ bool PFBaseMovingUnit::MoveTo(const CVec2& target, float stopDistance, IPointChe
 bool PFBaseMovingUnit::MoveTo(PFBaseUnit* target, float stopDistance, IPointChecking* pointChecking) { if (!target) return false; world.MoveTo(target, stopDistance, pointChecking); return world.IsMoving(); }
 void PFBaseMovingUnit::SetMoveFlags(unsigned value) { world.moveFlags = value; }
 float PFBaseMovingUnit::SetUnitSpeed(float value) { world.SetUnitSpeed(value * world.speedScale); return world.GetUnitSpeed(); }
-void PFBaseMovingUnit::NotifyDispatchesOnTargetTeleport() {}
-bool PFBaseMovingUnit::TeleportTo(const CVec2& target, bool, bool) { const bool result = world.TeleportTo(target, true); position = CVec3(target, position.z); return result; }
+/** Retain inbound payloads while authored target-loss callbacks may change their registration. */
+void PFBaseMovingUnit::NotifyDispatchesOnTargetTeleport()
+{
+	vector<CObj<PFDispatch> > pending;
+	for (ring::Range<PFDispatchUniformLinearMove::UnitDispatchesRing> it(inboundDispatches); it; ++it)
+		pending.push_back(CObj<PFDispatch>(&*it));
+	for (const auto& retained : pending)
+	{
+		PFDispatchUniformLinearMove* dispatch = dynamic_cast<PFDispatchUniformLinearMove*>(retained.GetPtr());
+		if (dispatch && !dispatch->IsObjectDead() && dispatch->GetTarget().IsUnit()
+			&& dispatch->GetTarget().GetUnit() == this)
+			dispatch->OnTargetTeleport();
+	}
+}
+
+/** Preserve the caller's notification policy after native placement has succeeded. */
+bool PFBaseMovingUnit::TeleportTo(const CVec2& target, bool instantMove, bool notifyDispatches)
+{
+	if (!world.TeleportTo(target, instantMove))
+		return false;
+	position = CVec3(target, position.z);
+	if (notifyDispatches)
+		NotifyDispatchesOnTargetTeleport();
+	return true;
+}
 void PFBaseMovingUnit::Stop(bool notifyClient) { if (!forbidStop) { world.Stop(notifyClient); OnStopped(); } }
 bool PFBaseMovingUnit::Step(float dtInSeconds) { random = (random + 1) % RANDOM_MAX; world.Step(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
 void PFBaseMovingUnit::StepInvisibility() { PFBaseUnit::StepInvisibility(); }
