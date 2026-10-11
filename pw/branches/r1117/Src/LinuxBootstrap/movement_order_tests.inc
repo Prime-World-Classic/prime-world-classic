@@ -105,3 +105,47 @@ static void AttackFormulaPolicy(Checks& checks)
 		owner->Cleanup(); owner->Stop(false);
 	}
 }
+
+/** Point orders stop at range, recover from interruption and leave no ordinary motion. */
+static void PointMoveLifecycle(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	NDb::Unit* raw = new NDb::Unit; Configure(*raw); NDb::Ptr<NDb::Unit> db = raw;
+	CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(20, 20, 0));
+	owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); owner->SetUnitSpeed(4);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(24, 20), 5), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "already-in-range point order does not start motion");
+	owner->Cleanup(); owner->Stop(false);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(40, 20), 2), true);
+	owner->Step(0.0f); owner->Stop(false); owner->Step(0.0f);
+	checks.Check(owner->IsMoving(), "point order resumes ordinary interrupted movement");
+	for (int i = 0; i < 100 && !owner->IsIdle(); ++i) owner->Step(0.1f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "finished point order stops motion");
+	checks.Check(owner->IsPositionInRange(CVec2(40, 20), 2) && owner->GetPosition().x <= 38.01f,
+		"point order retains authored stopping distance");
+	owner->TeleportTo(CVec2(20, 20));
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(40, 20), 2), true);
+	owner->Step(0.0f); owner->Cleanup();
+	checks.Check(!owner->IsMoving(), "point state cleanup stops ordinary movement");
+	owner->Stop(false); owner->AddFlag(NDb::UNITFLAG_FORBIDMOVE);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(40, 20), 2), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "forbidden point movement terminates its state");
+	owner->RemoveFlag(NDb::UNITFLAG_FORBIDMOVE); owner->Cleanup(); owner->Stop(false);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(),
+		CVec2(std::numeric_limits<float>::quiet_NaN(), 20), 2), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving() && std::isfinite(owner->GetPosition().x),
+		"invalid point goal ends before movement or coordinate mutation");
+	owner->Cleanup(); owner->Stop(false);
+	owner->CloseWarFog(true);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(24, 20), 5, true), true);
+	owner->Step(0.0f);
+	checks.Check(!owner->IsIdle() && owner->IsMoving(), "point arrival also requires requested personal sight");
+	owner->Cleanup(); owner->Stop(false);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(40, 20), 2), true);
+	owner->Step(0.0f); owner->MoveToSpecial(CVec2(60, 20), false); owner->Cleanup();
+	checks.Check(owner->IsMovingSpecial(), "point cleanup does not interrupt special movement");
+	owner->Stop(false);
+}

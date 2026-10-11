@@ -59,14 +59,19 @@ PFBaseUnitMoveToState::PFBaseUnitMoveToState( PFBaseMovingUnit* _pUnit, const CV
 bool PFBaseUnitMoveToState::OnStep(float dt)
 {
   (void)dt;
-  if (!IsValid(pOwner))
+	if (!IsUnitValid(pOwner) || !std::isfinite(target.x) || !std::isfinite(target.y)
+		|| !std::isfinite(range) || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
     return true;
-  if (!initiatedMove)
+	const bool needsSight = requireLineOfSight && !pOwner->CanSee(target);
+	if (pOwner->IsPositionInRange(target, range) && !needsSight)
+		return true;
+	if (!initiatedMove || (!pOwner->IsMoving() && !pOwner->IsMounted()))
   {
-    pOwner->MoveTo(target);
+		if (!pOwner->MoveTo(target, requireLineOfSight ? pOwner->GetObjectSize() : range))
+			return true;
     initiatedMove = true;
   }
-  return pOwner->IsPositionInRange(target, range);
+  return false;
 }
 
 void PFBaseUnitMoveToState::OnEnter()
@@ -75,6 +80,8 @@ void PFBaseUnitMoveToState::OnEnter()
 
 void PFBaseUnitMoveToState::OnLeave()
 {
+	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial() && !pOwner->IsMounted())
+		pOwner->Stop(false);
 }
 
 PFBaseUnitMoveToBuildingState::PFBaseUnitMoveToBuildingState(PFBaseMovingUnit * pUnit, PFBaseUnit * _targetBuilding, IPointChecking * _pointChecking, bool _requireLineOfSight)

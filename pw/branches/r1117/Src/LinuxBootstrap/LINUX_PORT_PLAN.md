@@ -17,13 +17,15 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 2/10 at `0.29.1`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; one bounded behavior helper writes scratch drafts only. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
+- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 3/10 at `0.29.2`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; one bounded behavior helper writes scratch drafts only. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
 
 ### Current Batch
 
 - Chunk 1/10 COMPLETE (`0.29.0`): restore authored chase/targeting/aggro distances with unit override precedence and per-type AI defaults, plus authored scream range. Missing bootstrap targeting retains the bounded visibility fallback; configured zero remains zero and malformed distances remain invalid instead of becoming unlimited chase. Real mock-map fixtures reproduce 78 failures, then pass all 2,412 lifecycle assertions and 28 CTests. Windows bytes match B8 baseline. General target weighting and complete zero-range consumer semantics are not introduced here.
 
 - Chunk 2/10 COMPLETE (`0.29.1`): attack-range checks use the checked evaluator with actual sender/target/ability context; malformed configured ranges never become the unrelated base stat. Restore authored allowChase for distant orders, preserving empty/default and finite nonzero boolean semantics and allowing already-in-range attacks even when chase is denied. Movement range uses the same checked ability context; valid nonpositive useRange retains Windows stat fallback. Reproduce 144 failures, then pass all 2,706 lifecycle checks and 28 CTests, including live target properties, malformed/infinite results and in-range behavior. Windows bytes unchanged; generic formula coverage, LOS and pathfinding remain bounded.
+
+- Chunk 3/10 COMPLETE (`0.29.2`): point-movement state checks live owner, finite goal/range, movement prohibition and requested personal sight before arrival. Preserve authored stopping distance, restart interrupted ordinary movement and stop it on state exit; special/mounted movement keeps its interruption policy. Reproduce 48 failures, then pass all 2,766 lifecycle assertions and 28 CTests. Windows bytes unchanged. Client movement-failure notifications/turning presentation and complete pathfinding are not added by this bounded lifecycle fix.
 
 ### Previous Orders And Lifecycle Batch
 
