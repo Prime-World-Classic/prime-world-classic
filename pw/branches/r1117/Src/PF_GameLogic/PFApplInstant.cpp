@@ -66,6 +66,18 @@ bool PFApplDamage::Start()
   {
 	damage = ReadLinuxApplicatorAmount(*this, GetDB().damage);
 	if (!std::isfinite(damage) || damage <= 0.0f) return true;
+	if (GetDB().damageMode & NDb::DAMAGEMODE_COULDBECRITICAL)
+	{
+		const CPtr<PFBaseUnit> owner = GetAbilityOwner();
+		if (!IsUnitValid(owner) || !owner->GetWorld()) return true;
+		const float chance = owner->GetCritChance(), multiplier = owner->GetCritMult();
+		if (!std::isfinite(chance) || chance < 0 || chance > 100
+			|| !std::isfinite(multiplier) || multiplier < 0) return true;
+		// Retain the engine Roll's stream advancement at both probability endpoints.
+		isCritical = owner->GetWorld()->GetRndGen()->Roll(chance);
+		if (isCritical) damage *= multiplier;
+		if (!std::isfinite(damage) || damage <= 0) return true;
+	}
 	if (kind == NDb::APPLICATORDAMAGETYPE_MANA)
 	{
 		damageDealed = pReceiver->OnBurnEnergy(GetAbilityOwner(), damage);
@@ -84,6 +96,7 @@ bool PFApplDamage::Start()
     desc.delegated = IsDelegated();
     desc.ignoreDefences = ignoreDefences;
     desc.pDealerApplicator = this;
+    desc.isDelegatedCriticalDamage = isCritical;
     damageDealed = pReceiver->OnDamage(desc);
   }
   return true;

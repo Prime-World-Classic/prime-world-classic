@@ -287,6 +287,42 @@ static void DamageRouting(Checks& check, PFWorld* world)
 	run(NDb::APPLICATORDAMAGETYPE_PURE, "25", 0, false, &delegated);
 }
 
+/** Critical hits consume exactly the existing world Roll, including 0/100 percent. */
+static void CriticalDamage(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	for (float bonus : {0.0f, 70.0f, 200.0f})
+	for (bool enabled : {false, true})
+	for (auto kind : {NDb::APPLICATORDAMAGETYPE_PURE, NDb::APPLICATORDAMAGETYPE_MANA})
+	{
+		sender->GetStat(NDb::STAT_CRITCHANCEBONUS)->SetCoreValue(bonus);
+		sender->GetStat(NDb::STAT_CRITICALMULTIPLIER)->SetCoreValue(2);
+		world->GetRndGen()->SetSeed(631); NRandom::RandomGenerator oracle(631);
+		for (int i = 0; i < 12; ++i)
+		{
+			NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+			raw->damage.sString = "25"; raw->damageType = kind;
+			raw->damageMode = enabled ? NDb::DAMAGEMODE_COULDBECRITICAL : NDb::DAMAGEMODE_ZERO;
+			NDb::Ptr<NDb::DamageApplicator> db = raw;
+			const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+			pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+			CObj<Damage> app = new Damage(pars);
+			receiver->SetHealth(1000); receiver->SetEnergy(200);
+			const bool critical = enabled && oracle.Roll(sender->GetCritChance());
+			const float expected = critical ? 50 : 25;
+			check(app->Init() && app->Run(), "critical applicator completes");
+			check(app->GetDamageDealed() == expected, "seeded critical amount");
+			check(app->GetVariable("isCritical") == (critical ? 1 : 0), "critical authored variable");
+			check(receiver->GetHealth() == 1000 - (kind == NDb::APPLICATORDAMAGETYPE_PURE ? expected : 0), "critical health delta");
+			check(receiver->GetMana() == 200 - (kind == NDb::APPLICATORDAMAGETYPE_MANA ? expected : 0), "critical mana delta");
+			if (kind == NDb::APPLICATORDAMAGETYPE_PURE)
+				check(static_cast<ProbeUnit*>(receiver.GetPtr())->lastDamage.isDelegatedCriticalDamage == critical, "critical descriptor metadata");
+		}
+		check(world->GetRndGen()->Next() == oracle.Next(), "critical world RNG stream matches engine Roll");
+	}
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -310,6 +346,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		{
 			DamageFormulas(check, world); HealingFormulas(check, world); HealingFormulas(check, world, true);
 			CooldownFormulas(check, world); DamageRouting(check, world);
+			CriticalDamage(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

@@ -17,9 +17,17 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Ten-chunk batch COMPLETE after `0.22.1` (2026-10-11), checkpoint `0.23.9`. Each chunk has its own commit, annotated version tag and push. STOP at 10/10; do not start another chunk without a new request. This batch ports checked damage/random/heal/cooldown consumers, correct resource/delegation routing, bounded spatial queries and true sight, AI/direct-attack visibility policy and actual hero healing. Native OpenGL and Ruffle opt-in/default-OFF are preserved. The scratch helper is closed; parent integrated, tested and published its bounded drafts. No client/build/probe sessions remain running at close-out.
+- New ten-chunk batch B6 authorized after `34649d42b` / `0.23.9`. Commit, annotated tag and push after EACH verified chunk, then STOP at 10/10. Scope: remaining damage pipeline hooks, checked defence evaluation, healing/drains and native acceptance. Preserve Windows branches and Ruffle default-OFF. One scratch-only helper investigates healing/drains; parent owns integration and publication.
 
 ### Current Batch
+
+- Chunk 1/10 COMPLETE (`0.24.0`): restore critical rolls through the existing seeded world RNG, critical multipliers and descriptor metadata for ordinary health and mana applicators. Disabled critical mode does not roll; both probability endpoints retain engine stream advancement. Invalid critical inputs fail closed. Regression reproduced 132/1,334 failures before implementation; all 1,334 checks and 28 CTests now pass. PFApplInstant Windows bytes match B6 baseline. This does not make an invalid downstream spell tree transactional.
+
+### Previous Applicator/Spatial/Targeting Batch
+
+- Ten-chunk batch COMPLETE after `0.22.1` (2026-10-11), checkpoint `0.23.9`. Each chunk has its own commit, annotated version tag and push. STOP at 10/10; do not start another chunk without a new request. This batch ports checked damage/random/heal/cooldown consumers, correct resource/delegation routing, bounded spatial queries and true sight, AI/direct-attack visibility policy and actual hero healing. Native OpenGL and Ruffle opt-in/default-OFF are preserved. The scratch helper is closed; parent integrated, tested and published its bounded drafts. No client/build/probe sessions remain running at close-out.
+
+### B5 Chunks
 - Chunk 1/10 COMPLETE (`0.23.0`): Linux damage applicators consume checked live sender/receiver stats, ability/upgrader constants and scaling. Disabled applicators stop before damage; invalid/nonfinite/nonpositive values never reach OnDamage. The former substring fallback cannot damage from unrelated formulas; only the exact authored random(f2l(sDamageMin),f2l(sDamageMax)) retains the temporary mean approximation pending chunk 2. Generic RetrieveParam and Windows code are unchanged. Failure after casting is not transactional refund/admission across arbitrary spell trees.
 - Chunk 1 gates: 20/73 regression failures reproduced; all 73 actual applicator checks and 27 client CTests pass. The native 60-second gate passes at step 653 with all 81 replay commands consumed (`/tmp/pw-b5-damage-native.log`, inspected `.png`, `Bin/logs/2026.10.11-07.05.51/linux-client-shell.log`). Command count differs from the previous checkpoint as more authored damage now executes; strict replay/startup checks are unchanged. Windows PFApplInstant/Game suffix bytes match `8b2769c81`.
 
