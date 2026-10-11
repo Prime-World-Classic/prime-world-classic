@@ -166,6 +166,7 @@ static void TalentCommandAdmissionB10(Checks& check, PFWorld* world)
 		CObj<B10CommandHero> hero = CommandHeroB10(world);
 		NDb::Talent* raw = new NDb::Talent;
 		raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->targetType = NDb::SPELLTARGET_SELF;
 		raw->useRange.sString = "0"; raw->manaCost.sString = "15";
 		raw->naftaCost = 0; raw->cooldownTime.sString = "0";
 		raw->requireLineOfSight = false;
@@ -260,6 +261,44 @@ static void PortalCommandTargetsB10(Checks& check, PFWorld* world)
 		check(!command->CanExecute(), "portal command rejects malformed/off-map targets before queueing");
 		command->Execute(world);
 		check(!hero->HasQueuedStates(), "direct portal execution cannot queue a malformed target");
+		hero->DoStop();
+	}
+}
+
+/** Authored masks admit only the requested relation/kind; invalid-target counters stay authoritative. */
+static void TalentCommandTargetMasksB10(Checks& check, PFWorld* world)
+{
+	for (bool portal : {false, true})
+	for (int relation = 0; relation < 3; ++relation)
+	for (int policy = 0; policy < 5; ++policy)
+	{
+		CObj<B10CommandHero> hero = CommandHeroB10(world);
+		CObj<PFBaseUnit> other = Unit(world, relation == 2 ? NDb::FACTION_BURN : NDb::FACTION_FREEZE, 20);
+		PFBaseUnit* target = relation == 0 ? static_cast<PFBaseUnit*>(hero.GetPtr()) : other.GetPtr();
+		const unsigned kind = 1u << target->GetUnitKind();
+		NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->targetType = static_cast<NDb::ESpellTarget>(policy == 0 ? 0 : policy == 1 ? NDb::SPELLTARGET_SELF :
+			policy == 2 ? kind | NDb::SPELLTARGET_ALLY : policy == 3 ? kind | NDb::SPELLTARGET_ENEMY : NDb::SPELLTARGET_ENEMY);
+		raw->useRange.sString = "4"; raw->manaCost.sString = "0"; raw->naftaCost = 0;
+		raw->requireLineOfSight = false;
+		NDb::Ptr<NDb::Talent> db = raw;
+		if (portal) hero->InstallPortal(db); else hero->InstallTalent(db);
+		CObj<NCore::WorldCommand> command = portal ? CreateCmdUsePortal(hero.GetPtr(), Target(target), true) :
+			CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(target), true);
+		const bool allowed = policy == 0 || (policy == 1 && relation == 0) ||
+			(policy == 2 && relation == 1) || (policy == 3 && relation == 2);
+		check(command->CanExecute() == allowed, "talent/portal target admission preserves authored self/faction/kind masks");
+		if (!allowed)
+		{
+			command->Execute(world);
+			check(!hero->HasQueuedStates(), "invalid authored talent target cannot replace an order through direct execution");
+		}
+		if (allowed && policy != 0)
+		{
+			target->SetInvalidAbilityTarget(true);
+			check(!command->CanExecute(), "engine invalid-ability-target predicate overrides an otherwise allowed mask");
+			target->SetInvalidAbilityTarget(false);
+		}
 		hero->DoStop();
 	}
 }

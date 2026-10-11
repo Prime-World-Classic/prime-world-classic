@@ -22,6 +22,7 @@
 #include "PF_GameLogic/PFWorld.h"
 #include "PF_GameLogic/PFPlayer.h"
 #include "PF_GameLogic/HeroActions.h"
+#include "PF_GameLogic/TargetSelectorHelper.hpp"
 #include "ground_talent_target.h"
 
 namespace NWorld
@@ -166,6 +167,28 @@ namespace NWorld
 			dynamic_cast<PFLogicObject*>(world->GetObject(object->GetObjectId())) == object;
 	}
 
+	/** Retain the Windows command's authored self/kind/faction and target-condition rules. */
+	static bool CanUseLinuxAuthoredTalentTarget(PFBaseMaleHero* hero, PFTalent* talent, const Target& target)
+	{
+		if (!IsLinuxAbilityCommandTarget(hero->GetWorld(), target)) return false;
+		const unsigned types = talent->GetTargetType();
+		if (!types) return true;
+		if (target.IsPosition())
+		{
+			const float range = talent->GetUseRange(target);
+			return std::isfinite(range) && range != 0;
+		}
+		if (!talent->IsTargetValid(target) || !CheckValidAbilityTargetCondition()(target, talent)) return false;
+		PFLogicObject* object = target.GetObject();
+		if (object == hero)
+			return (types & NDb::SPELLTARGET_SELF) || (talent->IsMultiState() && talent->IsOn());
+		const int kind = object->GetUnitKind();
+		if (kind < 0 || kind >= 32 || !(types & (1u << kind))) return false;
+		if (kind == NDb::UNITTYPE_FLAGPOLE && object->GetFaction() == NDb::FACTION_NEUTRAL) return false;
+		return object->GetFaction() == hero->GetFaction() ? (types & NDb::SPELLTARGET_ALLY) != 0 :
+			(types & NDb::SPELLTARGET_ENEMY) != 0;
+	}
+
   static int EncodeLinuxBootstrapCommandHeroSlotIndex(
     PFBaseHero* hero,
     int slotIndex)
@@ -257,45 +280,6 @@ namespace NWorld
     if (target.IsObjectValid(true))
       return static_cast<int>(target.GetObject()->GetFaction());
     return -1;
-  }
-
-  static AbilityTarget ResolveLinuxBootstrapAbilityTarget(
-    PFWorld* world,
-    const AbilityTarget& target,
-    PFBaseUnit* fallbackUnit = 0)
-  {
-    if (!world || !target.IsObject())
-      return target;
-
-    const int targetObjectId = GetLinuxBootstrapTargetObjectId(target);
-    if (targetObjectId < 0)
-    {
-      if (target.IsUnit() && IsValid(fallbackUnit))
-      {
-        AbilityTarget resolved = AbilityTarget(Target(fallbackUnit));
-        resolved.SetDBAlternativeTarget(target.GetDBAlternativeTarget());
-        return resolved;
-      }
-      return target;
-    }
-
-    if (target.IsUnit())
-    {
-      PFBaseUnit* liveUnit = world->FindLinuxUnitByObjectId(targetObjectId);
-      if (IsValid(liveUnit))
-      {
-        AbilityTarget resolved = AbilityTarget(Target(liveUnit));
-        resolved.SetDBAlternativeTarget(target.GetDBAlternativeTarget());
-        return resolved;
-      }
-    }
-
-    CObjectBase* liveObjectBase = world->GetObject(targetObjectId);
-    PFLogicObject* liveObject = dynamic_cast<PFLogicObject*>(liveObjectBase);
-    if (IsValid(liveObject))
-      return AbilityTarget(liveObject, target.AcquirePosition(), target.GetDBAlternativeTarget());
-
-    return target;
   }
 
   static void CaptureLinuxBootstrapTargetUnit(
@@ -1099,6 +1083,7 @@ namespace NWorld
     ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanChecks;
 		const bool manualGround = NeedsLinuxGroundTalentValidation(pHero, target, issuedByScript);
 		const bool accepted = CanUseLinuxTalentCommand(pHero, LinuxCommandTalent(pHero, level, slot)) &&
+			CanUseLinuxAuthoredTalentTarget(pHero, LinuxCommandTalent(pHero, level, slot), target) &&
 			(!manualGround || CanUseLinuxGroundTalent(pHero, level, slot, target, GetId()));
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanAccepted;
@@ -1128,7 +1113,7 @@ namespace NWorld
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
 		const bool manualGround = NeedsLinuxGroundTalentValidation(pHero, target, issuedByScript);
 		hero = manualGround ? pHero.GetPtr() : ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
-    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target);
+		AbilityTarget resolvedTarget = target;
     g_linuxHeroGameplayCommandDiagnostics.useTalentTargetType = static_cast<int>(resolvedTarget.GetType());
     g_linuxHeroGameplayCommandDiagnostics.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(resolvedTarget);
     g_linuxHeroGameplayCommandDiagnostics.useTalentTargetFaction = GetLinuxBootstrapTargetFaction(resolvedTarget);
@@ -1139,7 +1124,8 @@ namespace NWorld
 		const bool manualGroundAllowed = !manualGround || (world && IsValid(hero) &&
 			hero->GetWorld() == world && CanUseLinuxGroundTalent(hero, level, slot, resolvedTarget, GetId()));
 		PFTalent* talent = manualGroundAllowed ? LinuxCommandTalent(hero, level, slot) : nullptr;
-		const bool canUse = manualGroundAllowed && CanUseLinuxTalentCommand(hero, talent);
+		const bool canUse = manualGroundAllowed && CanUseLinuxTalentCommand(hero, talent) &&
+			CanUseLinuxAuthoredTalentTarget(hero, talent, resolvedTarget);
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
@@ -1171,7 +1157,7 @@ namespace NWorld
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanChecks;
 		const bool accepted = CanUseLinuxTalentCommand(pHero, IsValid(pHero) ? pHero->GetPortal() : nullptr) &&
-			IsLinuxAbilityCommandTarget(pHero->GetWorld(), target);
+			CanUseLinuxAuthoredTalentTarget(pHero, pHero->GetPortal(), target);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanAccepted;
     const CVec3 portalTarget = target.AcquirePosition();
@@ -1201,7 +1187,7 @@ namespace NWorld
 #endif
 #if defined(PW_LINUX_NULL_RENDER)
 		const bool canUse = CanUseLinuxTalentCommand(hero, IsValid(hero) ? hero->GetPortal() : nullptr) &&
-			IsLinuxAbilityCommandTarget(world, resolvedTarget);
+			CanUseLinuxAuthoredTalentTarget(hero, hero->GetPortal(), resolvedTarget);
 #else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->GetPortal() && hero->GetPortal()->CanBeUsed();
 #endif
