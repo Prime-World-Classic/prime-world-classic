@@ -8,6 +8,8 @@
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFConsumable.h"
+#include "PFAbilityInstance.h"
+#include "PFBaseUnitEvent.h"
 #include "PFAIWorld.h"
 #include "../Game/PF/Audit/ClientStubs.h"
 
@@ -210,12 +212,24 @@ bool PFBaseMaleHero::CanUseTalent( PFTalent * talent ) const { return IsValid(ta
 CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( int level, int slot, Target const& target ) { return UseTalent(GetTalent(level, slot), target); }
 CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( PFTalent* talent, Target const& target )
 {
-  if (!CanUseTalent(talent))
-    return 0;
-  CObj<PFAbilityInstance> instance = talent->ApplyToTarget(target);
-  if (instance)
-    talent->SetLastUseStep(GetWorld() ? GetWorld()->GetStepNumber() : -1);
-  return instance;
+	if (!CanUseTalent(talent) || !talent->IsActivated() || talent->GetOwner() != this)
+		return 0;
+	if (talent->IsOn())
+	{
+		if (talent->GetActiveInstancesCount() > 0)
+			EventHappened(PFBaseUnitAbilityStartEvent(talent->GetActiveInstances()[0]));
+		talent->Toggle(target);
+		return 0;
+	}
+	// Ordinary casts must be advanced exactly once by this unit's simulation.
+	CObj<PFAbilityInstance> instance = talent->IsMultiState() ? talent->Toggle(target) : CreateAbilityInstance(talent, target);
+	if (instance)
+	{
+		EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+		lastTalentUseStep = GetWorld() ? GetWorld()->GetStepNumber() : -1;
+		talent->SetLastUseStep(lastTalentUseStep);
+	}
+	return instance;
 }
 int PFBaseMaleHero::GetDevPoints() const { return IsValid(pTalents) ? pTalents->GetDevPoints() : 0; }
 int const &PFBaseMaleHero::GetDevPointsRef() const { static int zero = 0; return IsValid(pTalents) ? pTalents->GetDevPoints() : zero; }

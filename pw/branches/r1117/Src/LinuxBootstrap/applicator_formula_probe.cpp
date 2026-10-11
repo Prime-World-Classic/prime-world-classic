@@ -1292,6 +1292,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			BaseUseRangeB9(check, world);
 			BaseUseLifetimeB9(check, world);
 			HeroUseApproachB9(check, world);
+			HeroTalentLifecycleB9(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

@@ -710,8 +710,18 @@ float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilitySc
   float result = max((statValue - statLeft) * (valueRight - valueLeft) / (statRight - statLeft) + valueLeft, valueLeft);
   return bRound ? Round(result) : result;
 }
-bool PFAbilityData::IsAbilitySupposedToStopUnit() const { return false; }
-bool PFAbilityData::IsAbilitySupposedToSyncVisual() const { return false; }
+/** Restore authored stop/synchronization metadata without introducing a renderer dependency. */
+bool PFAbilityData::IsAbilitySupposedToStopUnit() const
+{
+	return !(GetFlags() & NDb::ABILITYFLAGS_FORCEDONOTSTOPUNIT) && IsAbilitySupposedToSyncVisual();
+}
+bool PFAbilityData::IsAbilitySupposedToSyncVisual() const
+{
+	const unsigned flags = GetFlags();
+	const char* node = GetAbilityNode();
+	return !(flags & NDb::ABILITYFLAGS_MOMENTARY) || (flags & NDb::ABILITYFLAGS_WAITFORCHANNELING)
+		|| (node && node[0]) || (GetDBDesc() && !GetDBDesc()->isUnitFreeAfterCast);
+}
 bool PFAbilityData::IsAbilitySuitable( NDb::Ability const* pDbAbility, vector<NDb::Ptr<NDb::Ability> > const& dbAbilities, NDb::EUseMode mode )
 {
   if (!pDbAbility)

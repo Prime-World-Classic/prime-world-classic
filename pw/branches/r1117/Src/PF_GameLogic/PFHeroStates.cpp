@@ -18,6 +18,8 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 #include "PFHeroStates.h"
 #include "PFAbilityInstance.h"
 #include "PFConsumable.h"
+#include "PFTalent.h"
+#include "LinuxBootstrap/formula_context.h"
 #include "PFFlagpole.h"
 #include "PFPickupable.h"
 
@@ -151,30 +153,72 @@ PFHeroUseTalentState::PFHeroUseTalentState( PFBaseMaleHero * _pOwner, PFTalent *
 
 void PFHeroUseTalentState::OnEnter()
 {
+	PFBaseUseHeroState::OnEnter();
 }
 
 void PFHeroUseTalentState::OnLeave()
 {
+	PFBaseUseHeroState::OnLeave();
 }
 
+/** Approach once, invoke the owned talent, and observe simulation-owned cast/channel work. */
 bool PFHeroUseTalentState::OnStep( float dt )
 {
-  (void)dt;
-  return true;
+	if (!IsUnitValid(hero)) return true;
+	if (!std::isfinite(dt) || dt < 0) return false;
+	if (!pAbilityInstance)
+	{
+		const float range = GetUseRange();
+		const CVec3 position = target.AcquirePosition();
+		if (!target.IsValid() || !std::isfinite(range) || range < 0
+			|| !std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)
+			|| (target.IsUnit() && target.GetUnit()->GetWorld() != hero->GetWorld())
+			|| (NeedToGetClose() && hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)))
+		{
+			if (!hero->IsMovingSpecial() && !hero->IsMounted()) hero->Stop(false);
+			return true;
+		}
+	}
+	FSMStep(dt);
+	if (GetCurrentState()) return false;
+	if (!pAbilityInstance)
+	{
+		if (!IsValid(talent) || talent->GetOwner() != hero.GetPtr() || !hero->CanUseTalent(talent))
+		{
+			if (!hero->IsMovingSpecial() && !hero->IsMounted()) hero->Stop(false);
+			return true;
+		}
+		if (NeedToGetClose() || (target.IsUnit() && !CanIgnoreVisibility()
+			&& !target.GetUnit()->IsVisibleForFaction(hero->GetFaction()))) return true;
+		if (talent->IsAbilitySupposedToStopUnit() && hero->IsMoving() && !hero->IsMovingSpecial() && !hero->IsMounted())
+			hero->Stop(false);
+		pAbilityInstance = hero->UseTalent(talent, target);
+		if (!pAbilityInstance) return true;
+	}
+	if (IsValid(talent) && talent->IsMultiState() && !talent->IsOn() && pAbilityInstance->IsActivated()) return true;
+	const bool finished = GetDBDesc() && !GetDBDesc()->isUnitFreeAfterCast ? IsAbilityFinished() : IsCastFinished();
+	if (waitForChanneling && finished && dt > 0) waitForChanneling = false;
+	return !waitForChanneling && finished;
 }
 
 float PFHeroUseTalentState::GetUseRange() const
 {
-  return -1.0f;
+	if (!IsValid(talent)) return -1;
+	const NDb::AlternativeTarget* alternative = target.GetDBAlternativeTarget();
+	if (alternative && alternative->alternativeActivity)
+		return LinuxBootstrap::EvaluateUnitNumericFormula(alternative->alternativeActivity->useRange.sString.c_str(),
+			pOwner.GetPtr(), pOwner.GetPtr(), talent.GetPtr()).value;
+	return talent->GetUseRange(target);
 }
 
 void PFHeroUseTalentState::PlayAskSound()
 {
+	if (IsValid(talent)) talent->PlayAck(target.IsUnit() ? dynamic_cast<PFBaseHero*>(target.GetUnit().GetPtr()) : nullptr);
 }
 
 NDb::Ability const* PFHeroUseTalentState::GetDBDesc() const
 {
-  return 0;
+	return IsValid(talent) ? talent->GetDBDesc() : nullptr;
 }
 
 PFHeroFollowUnitState::PFHeroFollowUnitState(CPtr<PFBaseHero> const& pOwner, CPtr<PFBaseUnit> const& pUnit, float range, float forceRange)
