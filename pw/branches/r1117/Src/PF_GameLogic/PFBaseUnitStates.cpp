@@ -5,6 +5,7 @@
 #include "PFBaseMovingUnit.h"
 #include "PFUniTarget.h"
 #include "PFBaseAttackData.h"
+#include "PFBehaviour.h"
 #include "LinuxBootstrap/formula_context.h"
 
 namespace
@@ -162,22 +163,65 @@ PFBaseUnitChaseState::PFBaseUnitChaseState(PFBaseMovingUnit * pOwner, bool _requ
   , ignoreVisibility(ignoreVisibility_)
   , useAttackRange(useAttackRange_)
 {
+	if (IsValid(targetUnit))
+	{
+		lastPos = targetUnit->GetPosition().AsVec2D();
+		halfTargetSize = targetUnit->GetObjectSize() * 0.5f;
+	}
 }
 
+/** Track visible units, otherwise approach only the retained last-seen position. */
 bool PFBaseUnitChaseState::OnStep( float dt )
 {
   (void)dt;
-  if (!IsValid(pOwner) || !IsValid(targetUnit))
-    return true;
-  lastPos = targetUnit->GetPosition().AsVec2D();
-  if (pOwner->IsTargetInAttackRange(targetUnit, true))
-    return true;
-  pOwner->MoveTo(lastPos);
-  return false;
+	if (!IsUnitValid(pOwner) || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)
+		|| (!strongTarget && pOwner->IsHoldingPosition()) || !std::isfinite(attackRange)
+		|| attackRange < 0 || !std::isfinite(chaseRange) || !std::isfinite(lastPos.x)
+		|| !std::isfinite(lastPos.y) || !std::isfinite(halfTargetSize))
+		return true;
+	if ((!IsUnitValid(targetUnit) && lastPos == VNULL2)
+		|| (!strongTarget && targetUnit != pOwner->GetCurrentTarget())
+		|| (IsValid(targetUnit) && targetUnit->GetWorld() != pOwner->GetWorld())
+		|| (pOwner->GetBehaviour() && !pOwner->GetBehaviour()->CanSelectTarget(targetUnit)))
+		return true;
+	if (IsUnitValid(targetUnit) && (ignoreVisibility || targetUnit->IsVisibleForFaction(pOwner->GetFaction())))
+	{
+		lastPos = targetUnit->GetPosition().AsVec2D();
+		if (!std::isfinite(lastPos.x) || !std::isfinite(lastPos.y)) return true;
+		const bool needsSight = !ignoreVisibility && requireLineOfSight && !pOwner->CanSee(*targetUnit.GetPtr());
+		const bool reached = useAttackRange ? pOwner->IsTargetInAttackRange(targetUnit, true) :
+			pOwner->IsTargetInRange(targetUnit, attackRange);
+		if (!needsSight && reached) return true;
+		if (chaseRange >= EPS_VALUE && !pOwner->IsTargetInRange(targetUnit, chaseRange)) return true;
+		float effectiveRange = attackRange;
+		if (useAttackRange)
+		{
+			effectiveRange = pOwner->GetAttackRange();
+			if (const PFBaseAttackData* attack = pOwner->GetAttackAbility())
+			{
+				if (attack->GetDBDesc() && !attack->GetDBDesc()->useRange.sString.empty())
+				{
+					const float authored = attack->GetUseRange(targetUnit.GetPtr());
+					if (!std::isfinite(authored)) return true;
+					if (authored > 0) effectiveRange = authored;
+				}
+			}
+		}
+		const float approach = halfTargetSize + (requireLineOfSight ? pOwner->GetObjectSize() * 0.5f : effectiveRange);
+		if (!std::isfinite(approach) || approach < 0) return true;
+		pOwner->MoveTo(targetUnit.GetPtr(), approach);
+		return false;
+	}
+	const float distance = pOwner->IsTrueHero() ? 0.0f : attackRange;
+	if (pOwner->IsPositionInRange(lastPos, distance)) return true;
+	pOwner->MoveTo(lastPos, distance);
+	return !pOwner->IsMoving();
 }
 
 void PFBaseUnitChaseState::OnLeave()
 {
+	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial())
+		pOwner->Stop(false);
 }
 
 void PFBaseUnitChaseState::OnDestroyContents()

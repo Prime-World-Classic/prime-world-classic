@@ -149,3 +149,53 @@ static void PointMoveLifecycle(Checks& checks)
 	checks.Check(owner->IsMovingSpecial(), "point cleanup does not interrupt special movement");
 	owner->Stop(false);
 }
+
+/** Standalone chase orders retain their own ranges and last-seen target position. */
+static void ChaseLifecycle(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	for (int reason = 0; reason < 9; ++reason)
+	{
+		NDb::Unit* raw = new NDb::Unit; Configure(*raw);
+		AddStat(*const_cast<NDb::StatsContainer*>(raw->stats.GetPtr()), NDb::STAT_RANGE, "4");
+		NDb::Ptr<NDb::Unit> db = raw;
+		CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(20, 20, 0));
+		CObj<ProbeMover> target = new ProbeMover(fixture.world, *db, CVec3(28, 20, 0));
+		target->ChangeFaction(Enemy); fixture.Tick();
+		owner->AssignTarget(target.GetPtr(), false);
+		target->SetObjectSize(2);
+		owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); owner->SetUnitSpeed(4);
+		const bool strong = reason != 2 && reason != 3;
+		const float chase = reason == 6 ? 5.0f : (reason == 7 ? 0.0f : 20.0f);
+		owner->EnqueueState(new PFBaseUnitChaseState(owner.GetPtr(), false, 6, chase,
+			target.GetPtr(), strong, false, reason == 8), true);
+		if (reason == 1) owner->AddFlag(NDb::UNITFLAG_FORBIDMOVE);
+		if (reason == 2) owner->OnHold(true);
+		if (reason == 3) owner->DropTarget();
+		owner->Step(0.0f);
+		if (reason == 1 || reason == 2 || reason == 3 || reason == 6)
+		{
+			checks.Check(owner->IsIdle() && !owner->IsMoving(), "chase ends on prohibition, weak target loss or range limit");
+			checks.Check(owner->GetPosition().x == 20, "rejected chase preserves position");
+		}
+		else
+		{
+			if (reason == 4)
+			{
+				target->AddFlag(NDb::UNITFLAG_INVISIBLE); target->TeleportTo(CVec2(60, 20));
+				PFBaseUnit::StepLinuxWarFog(fixture.world, 0.0f);
+			}
+			if (reason == 5) target->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+			for (int i = 0; i < 120 && !owner->IsIdle(); ++i) owner->Step(0.1f);
+			const float expected = reason == 4 || reason == 5 ? 22.0f : (reason == 8 ? 23.0f : 21.0f);
+			if (!owner->IsIdle() || owner->IsMoving() || fabs(owner->GetPosition().x - expected) >= 0.02f)
+				std::printf("Chase context: reason=%d idle=%d moving=%d x=%.5f targetAlive=%d targetVisible=%d\n",
+					reason, owner->IsIdle(), owner->IsMoving(), owner->GetPosition().x,
+					!target->IsDead(), target->IsVisibleForFaction(Ally));
+			checks.Check(owner->IsIdle() && !owner->IsMoving(), "completed chase stops ordinary movement");
+			checks.Check(fabs(owner->GetPosition().x - expected) < 0.02f,
+				"chase uses configured or live attack range and retained last position");
+		}
+		owner->Cleanup(); owner->Stop(false);
+	}
+}

@@ -17,7 +17,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 3/10 at `0.29.2`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; one bounded behavior helper writes scratch drafts only. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
+- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 4/10 at `0.29.3`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; bounded behavior helper has completed scratch drafts and is closed. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
 
 ### Current Batch
 
@@ -26,6 +26,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Chunk 2/10 COMPLETE (`0.29.1`): attack-range checks use the checked evaluator with actual sender/target/ability context; malformed configured ranges never become the unrelated base stat. Restore authored allowChase for distant orders, preserving empty/default and finite nonzero boolean semantics and allowing already-in-range attacks even when chase is denied. Movement range uses the same checked ability context; valid nonpositive useRange retains Windows stat fallback. Reproduce 144 failures, then pass all 2,706 lifecycle checks and 28 CTests, including live target properties, malformed/infinite results and in-range behavior. Windows bytes unchanged; generic formula coverage, LOS and pathfinding remain bounded.
 
 - Chunk 3/10 COMPLETE (`0.29.2`): point-movement state checks live owner, finite goal/range, movement prohibition and requested personal sight before arrival. Preserve authored stopping distance, restart interrupted ordinary movement and stop it on state exit; special/mounted movement keeps its interruption policy. Reproduce 48 failures, then pass all 2,766 lifecycle assertions and 28 CTests. Windows bytes unchanged. Client movement-failure notifications/turning presentation and complete pathfinding are not added by this bounded lifecycle fix.
+
+- Chunk 4/10 COMPLETE (`0.29.3`): standalone chase states honor movement prohibition, weak-target/hold policy, configured chase/approach ranges, behavior selection and requested visibility/sight. Invisible or dead targets retain only last-seen position, rather than continuing live hidden tracking; ordinary movement stops on exit. Live attack-range mode now uses that same effective range for approach, avoiding a stop-short loop. Normalize mock target radius explicitly, then reproduce 84 baseline failures and pass all 2,880 lifecycle checks plus 28 CTests. Windows bytes unchanged. Attack-sector formation and full path/LOS presentation are not restored here; the Windows VNULL2 last-position sentinel is retained.
 
 ### Previous Orders And Lifecycle Batch
 
