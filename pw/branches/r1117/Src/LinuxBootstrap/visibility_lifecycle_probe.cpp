@@ -9,6 +9,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFBaseMovingUnit.h"
 #include "../PF_GameLogic/PFHero.h"
+#include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFResourcesCollectionClient.h"
 #include "../PF_GameLogic/DBAdvMap.h"
@@ -382,6 +383,7 @@ void HeroRespawn(Checks& checks)
 	spawn.pHero = db;
 	spawn.placement = Placement(CVec3(20, 20, 0), QNULL, CVec3(1, 1, 1));
 	CObj<PFBaseHero> hero = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Ally, Ally);
+	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 	PFBaseHero* exactHero = hero.GetPtr();
 	checks.Check(CastToUserObject(static_cast<CObjectBase*>(exactHero), exactHero) == exactHero,
 		"hero cast retains concrete object identity");
@@ -417,6 +419,8 @@ void HeroRespawn(Checks& checks)
 	// Restored unit targets must retain identity even for concrete derived classes.
 	CObj<ProbeUnit> enemy = new ProbeUnit(fixture.world, db);
 	enemy->ChangeFaction(Enemy);
+	fixture.Tick();
+	checks.Check(enemy->IsVisibleForFaction(hero->GetFaction()), "packed positive target has actual committed faction fog");
 	PFBaseUnit* exactUnit = enemy.GetPtr();
 	checks.Check(CastToUserObject(static_cast<CObjectBase*>(exactUnit), exactUnit) == exactUnit,
 		"unit cast retains derived object identity");
@@ -470,7 +474,6 @@ void HeroRespawn(Checks& checks)
 	attack->Execute(fixture.world);
 	checks.Check(!hero->GetCurrentTarget(), "execution does not acquire a dead target");
 	enemy->CloseWarFog(true);
-	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 	hero->SetForbidRespawn(true);
 	fixture.Tick();
 	checks.Check(fixture.Visible(20, 20), "hero initial observer");
@@ -481,6 +484,257 @@ void HeroRespawn(Checks& checks)
 	hero->Resurrect();
 	fixture.Tick();
 	checks.Check(!hero->IsDead() && fixture.Visible(20, 20), "hero resurrect reopens observer");
+	hero->CloseWarFog(true);
+}
+
+/** Round-trip both pointers and issuedByScript through the real packed-command serializer. */
+CObj<NCore::WorldCommand> PackedAttack(Fixture& fixture, PFBaseHero* hero, PFBaseUnit* target,
+	bool script, IPointerHolder* restore = 0)
+{
+	CObj<NCore::WorldCommand> command = CreateCmdAttackTarget(hero, target, script);
+	CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(command,
+		fixture.world->GetPointerSerialization(), 1984, 0);
+	return packet->GetWorldCommand(restore ? restore : fixture.world->GetPointerSerialization());
+}
+
+/** Observe real order/resource state, including scripted priming side effects, without mocking policy. */
+struct AttackSnapshot
+{
+	PFBaseUnit* current;
+	const IPFState* state;
+	bool moving;
+	CVec3 heroPosition;
+	CVec2 destination;
+	CVec3 targetPosition;
+	float life;
+	bool vulnerable;
+	AttackSnapshot(PFBaseHero& hero, PFBaseUnit& target)
+		: current(hero.GetCurrentTarget()), state(hero.GetCurrentState()), moving(hero.IsMoving()),
+		  heroPosition(hero.GetPosition()), destination(hero.GetDestination()), targetPosition(target.GetPosition()), life(target.GetLife()),
+		  vulnerable(target.IsVulnerable()) {}
+	void Check(Checks& checks, PFBaseHero& hero, PFBaseUnit& target) const
+	{
+		checks.Check(hero.GetCurrentTarget() == current && hero.GetCurrentState() == state && hero.IsMoving() == moving &&
+			fabs2(hero.GetDestination() - destination) == 0,
+			"rejected attack preserves exact current target, state and movement");
+		checks.Check(fabs2(hero.GetPosition() - heroPosition) == 0 && fabs2(target.GetPosition() - targetPosition) == 0 &&
+			target.GetLife() == life && target.IsVulnerable() == vulnerable,
+			"rejected attack cannot prime, relocate, change vulnerability or damage");
+	}
+};
+
+/** Execute even after rejection, as a queued command can be invalidated after its original admission. */
+void RejectedAttack(Checks& checks, Fixture& fixture, NCore::WorldCommand* command,
+	PFBaseHero& hero, PFBaseUnit& target, const char* reason)
+{
+	const AttackSnapshot before(hero, target);
+	checks.Check(command && !command->CanExecute(), reason);
+	before.Check(checks, hero, target);
+	ResetLinuxHeroGameplayCommandDiagnostics();
+	if (command) command->Execute(fixture.world);
+	checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackExecuteCalls == 0,
+		"invalid queued attack rejected before execution side effects");
+	before.Check(checks, hero, target);
+}
+
+/** Acceptance must acquire the serialized target, not whichever target was already selected. */
+void AcceptedAttack(Checks& checks, Fixture& fixture, NCore::WorldCommand* command,
+	PFBaseHero& hero, PFBaseUnit& target, const char* reason)
+{
+	checks.Check(command && command->CanExecute(), reason);
+	checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackTargetObjectId == target.GetObjectId(),
+		"admitted packed attack retains exact target identity");
+	ResetLinuxHeroGameplayCommandDiagnostics();
+	if (command) command->Execute(fixture.world);
+	checks.Check(hero.GetCurrentTarget() == &target &&
+		GetLinuxHeroGameplayCommandDiagnostics().attackExecuteCalls == 1,
+		"accepted packed attack acquires the requested target at execution");
+}
+
+/** Enforce manual visibility and shared legality at both stages, without broad auto-target policy. */
+void AttackCommandPolicy(Checks& checks)
+{
+	Fixture fixture(checks);
+	if (!fixture.loaded) return;
+	NDb::Hero* raw = new NDb::Hero;
+	Configure(*raw);
+	NDb::Ptr<NDb::Hero> db = raw;
+	PFBaseHero::SpawnInfo spawn;
+	spawn.pHero = db;
+	spawn.placement = Placement(CVec3(20, 20, 0), QNULL, CVec3(1, 1, 1));
+	CObj<PFBaseHero> hero = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Ally, Ally);
+	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+	CObj<ProbeUnit> target = new ProbeUnit(fixture.world, db);
+	target->ChangeFaction(Enemy);
+	target->Relocate(CVec3(24, 20, 0));
+	CObj<ProbeUnit> previous = new ProbeUnit(fixture.world, db);
+	previous->ChangeFaction(Enemy);
+	previous->Relocate(CVec3(22, 20, 0));
+	fixture.Tick();
+	checks.Check(target->IsVisibleForFaction(Ally) && hero->CanAttackTarget(target), "fixture: visible attackable enemy");
+	checks.Check(!hero->CanAttackFlying(), "fixture: ordinary hero cannot attack flying units");
+	for (bool script : {false, true})
+	{
+		hero->AssignTarget(previous.GetPtr(), true);
+		CObj<NCore::WorldCommand> positive = PackedAttack(fixture, hero, target, script);
+		AcceptedAttack(checks, fixture, positive, *hero, *target, "visible legal attack admitted for humans and scripts");
+		hero->AssignTarget(previous.GetPtr(), true);
+		// Both packets are admitted while visible; only the script may retain visibility bypass.
+		CObj<NCore::WorldCommand> queued = PackedAttack(fixture, hero, target, script);
+		checks.Check(queued && queued->CanExecute(), "visible attack admitted before invisibility transition");
+		target->AddFlag(NDb::UNITFLAG_INVISIBLE);
+		target->UpdateInvisibility();
+		checks.Check(target->IsPlacementVisible(Ally) && !target->IsVisibleForFaction(Ally), "fixture: stealth hidden inside real faction fog");
+		checks.Check(hero->GetCurrentTarget() == previous.GetPtr(), "new target becoming invisible leaves old order available");
+		CObj<NCore::WorldCommand> hidden = PackedAttack(fixture, hero, target, script);
+		if (script)
+		{
+			AcceptedAttack(checks, fixture, hidden, *hero, *target, "script bypasses invisibility at admission");
+			hero->AssignTarget(previous.GetPtr(), true);
+			AcceptedAttack(checks, fixture, queued, *hero, *target, "script bypasses invisibility after queueing");
+		}
+		else
+		{
+			hero->Move(CVec2(40, 20));
+			hero->AssignTarget(previous.GetPtr(), true);
+			checks.Check(hero->IsMoving(), "fixture: old movement remains active while hidden command is rejected");
+			RejectedAttack(checks, fixture, hidden, *hero, *target, "human attack cannot admit an invisible target");
+			RejectedAttack(checks, fixture, queued, *hero, *target, "human queued attack rejects newly invisible target");
+			hero->Stop(false);
+		}
+		hero->AssignTarget(previous.GetPtr(), true);
+		target->RemoveFlag(NDb::UNITFLAG_INVISIBLE);
+		target->UpdateInvisibility();
+		CObj<NCore::WorldCommand> queuedFog = PackedAttack(fixture, hero, target, script);
+		checks.Check(queuedFog && queuedFog->CanExecute(), "visible attack admitted before fog is removed");
+		hero->CloseWarFog(true);
+		fixture.Tick();
+		checks.Check(target->IsVisibleForEnemy(-1) && !target->IsVisibleForFaction(Ally), "fixture: fog hidden without stealth");
+		CObj<NCore::WorldCommand> fogHidden = PackedAttack(fixture, hero, target, script);
+		if (script)
+		{
+			AcceptedAttack(checks, fixture, fogHidden, *hero, *target, "script bypasses fog at admission");
+			hero->AssignTarget(previous.GetPtr(), true);
+			AcceptedAttack(checks, fixture, queuedFog, *hero, *target, "script bypasses fog after queueing");
+		}
+		else
+		{
+			RejectedAttack(checks, fixture, fogHidden, *hero, *target, "human attack cannot admit fog-hidden target");
+			RejectedAttack(checks, fixture, queuedFog, *hero, *target, "human queued attack rejects fog loss without replacing old order");
+		}
+		hero->AssignTarget(previous.GetPtr(), true);
+		hero->OpenWarFog();
+		fixture.Tick();
+		for (int restriction = 0; restriction < 3; ++restriction)
+		{
+			CObj<NCore::WorldCommand> admitted = PackedAttack(fixture, hero, target, script);
+			checks.Check(admitted && admitted->CanExecute(), "legal attack admitted before capability/flag transition");
+			if (restriction == 0) hero->AddFlag(NDb::UNITFLAG_FORBIDATTACK);
+			if (restriction == 1) target->SetVulnerable(false);
+			if (restriction == 2) target->AddFlag(NDb::UNITFLAG_FLYING);
+			checks.Check(restriction == 0 ? hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK) : !hero->CanAttackTarget(target),
+				"fixture: actual forbid-attack or CanAttackTarget query rejects");
+			CObj<NCore::WorldCommand> blocked = PackedAttack(fixture, hero, target, script);
+			RejectedAttack(checks, fixture, blocked, *hero, *target, "forbid-attack, invulnerability and unsupported flight reject admission including scripts");
+			RejectedAttack(checks, fixture, admitted, *hero, *target, "forbid-attack, invulnerability and unsupported flight reject queued execution including scripts");
+			if (restriction == 0) hero->RemoveFlag(NDb::UNITFLAG_FORBIDATTACK);
+			if (restriction == 1) target->SetVulnerable(true);
+			if (restriction == 2) target->RemoveFlag(NDb::UNITFLAG_FLYING);
+		}
+		// Restored pointers retain the previous hard identity boundaries for both command origins.
+		for (bool retainHero : {false, true})
+		{
+			CObj<PointersHolder> incomplete = new PointersHolder(fixture.world, 0);
+			PFBaseUnit* retained = retainHero ? static_cast<PFBaseUnit*>(hero.GetPtr()) : target.GetPtr();
+			incomplete->Add(retained, fixture.world->GetPointerSerialization()->GetObjectID(retained));
+			CObj<NCore::WorldCommand> missing = PackedAttack(fixture, hero, target, script, incomplete);
+			RejectedAttack(checks, fixture, missing, *hero, *target, "script visibility bypass cannot repair a missing actor or target pointer");
+		}
+		Fixture other(checks);
+		if (other.loaded)
+		{
+			CObj<ProbeUnit> foreign = new ProbeUnit(other.world, db);
+			foreign->ChangeFaction(Enemy);
+			// A world's serializer rejects foreign pointers before command policy; use a real explicit holder.
+			CObj<PointersHolder> crossWorld = new PointersHolder(fixture.world, 0);
+			crossWorld->Add(hero.GetPtr(), 101);
+			crossWorld->Add(foreign.GetPtr(), 102);
+			CObj<NCore::WorldCommand> foreignRaw = CreateCmdAttackTarget(hero, foreign, script);
+			CObj<NCore::PackedWorldCommand> foreignPacket = new NCore::PackedWorldCommand(foreignRaw, crossWorld, 1984, 0);
+			CObj<NCore::WorldCommand> foreignTarget = foreignPacket->GetWorldCommand(crossWorld);
+			RejectedAttack(checks, fixture, foreignTarget, *hero, *foreign, "foreign-world target cannot bypass identity through script flag");
+			CObj<NCore::WorldCommand> foreignExecution = PackedAttack(fixture, hero, target, script);
+			checks.Check(foreignExecution && foreignExecution->CanExecute(), "fixture: local command admitted before foreign-world execution");
+			const AttackSnapshot before(*hero, *target);
+			ResetLinuxHeroGameplayCommandDiagnostics();
+			if (foreignExecution) foreignExecution->Execute(other.world);
+			before.Check(checks, *hero, *target);
+			checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackExecuteCalls == 0, "foreign-world execution cannot bypass actor identity");
+			foreign->CloseWarFog(true);
+		}
+		CObj<NCore::WorldCommand> allied = PackedAttack(fixture, hero, target, script);
+		checks.Check(allied && allied->CanExecute(), "enemy admitted before faction change");
+		target->ChangeFaction(Ally);
+		RejectedAttack(checks, fixture, allied, *hero, *target, "script bypass cannot attack a newly allied target");
+		target->ChangeFaction(Enemy);
+		fixture.Tick();
+	}
+	// Regress the script-only priming path with an actual distant moving unit.
+	CObj<ProbeMover> movingTarget = new ProbeMover(fixture.world, *db, CVec3(60, 20, 0));
+	movingTarget->ChangeFaction(Enemy);
+	CObj<NCore::WorldCommand> queuedPrime = PackedAttack(fixture, hero, movingTarget, true);
+	checks.Check(queuedPrime && queuedPrime->CanExecute(), "script can queue a distant attackable moving target");
+	movingTarget->SetVulnerable(false);
+	RejectedAttack(checks, fixture, queuedPrime, *hero, *movingTarget, "script cannot prime an invulnerable moving target after queueing");
+	movingTarget->SetVulnerable(true);
+	movingTarget->CloseWarFog(true);
+	// Faction visibility, not the hero's personal observer, authorizes a manual attack.
+	hero->CloseWarFog(true);
+	CObj<ProbeUnit> allyObserver = new ProbeUnit(fixture.world, db);
+	fixture.Tick();
+	checks.Check(!hero->CanSee(*target) && target->IsVisibleForFaction(Ally), "fixture: teammate shares fog while personal observer is closed");
+	CObj<NCore::WorldCommand> sharedSight = PackedAttack(fixture, hero, target, false);
+	AcceptedAttack(checks, fixture, sharedSight, *hero, *target, "manual attack accepts shared faction visibility");
+	hero->AssignTarget(previous.GetPtr(), true);
+	// Explicit attacks must not inherit the unrelated automatic-selection exclusion.
+	target->AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+	CObj<NCore::WorldCommand> explicitTarget = PackedAttack(fixture, hero, target, false);
+	AcceptedAttack(checks, fixture, explicitTarget, *hero, *target, "manual attack does not accidentally adopt auto-target restrictions");
+	target->RemoveFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+	hero->AssignTarget(previous.GetPtr(), true);
+	// Flying is a capability gate, not an unconditional command-level ban.
+	NDb::BaseAttack* flyingDb = new NDb::BaseAttack;
+	flyingDb->targetType = static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_FLYING);
+	CObj<PFBaseAttackData> flyingAttack = new PFBaseAttackData(hero.GetPtr(), flyingDb);
+	CObj<PFBaseAttackData> originalAttack = hero->ReplaceBaseAttack(flyingAttack, false);
+	target->AddFlag(NDb::UNITFLAG_FLYING);
+	checks.Check(hero->CanAttackFlying() && hero->CanAttackTarget(target), "fixture: real attack ability permits flying target");
+	CObj<NCore::WorldCommand> supportedFlight = PackedAttack(fixture, hero, target, false);
+	AcceptedAttack(checks, fixture, supportedFlight, *hero, *target, "manual attack accepts supported flying target");
+	target->RemoveFlag(NDb::UNITFLAG_FLYING);
+	hero->ReplaceBaseAttack(originalAttack, false);
+	hero->AssignTarget(previous.GetPtr(), true);
+	for (bool script : {false, true})
+	{
+		CObj<ProbeUnit> doomed = new ProbeUnit(fixture.world, db);
+		doomed->ChangeFaction(Enemy);
+		fixture.Tick();
+		CObj<NCore::WorldCommand> dying = PackedAttack(fixture, hero, doomed, script);
+		checks.Check(dying && dying->CanExecute(), "living target admitted before death");
+		doomed->KillUnit(0, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+		RejectedAttack(checks, fixture, dying, *hero, *doomed, "script visibility bypass never bypasses target liveness");
+	}
+	CObj<NCore::WorldCommand> humanActorDies = PackedAttack(fixture, hero, target, false);
+	CObj<NCore::WorldCommand> scriptActorDies = PackedAttack(fixture, hero, target, true);
+	checks.Check(humanActorDies && humanActorDies->CanExecute() && scriptActorDies && scriptActorDies->CanExecute(),
+		"living actor commands admitted before death");
+	hero->SetForbidRespawn(true);
+	hero->KillUnit(0, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+	RejectedAttack(checks, fixture, humanActorDies, *hero, *target, "human queued attack rejects dead actor");
+	RejectedAttack(checks, fixture, scriptActorDies, *hero, *target, "script visibility bypass never bypasses actor liveness");
+	allyObserver->CloseWarFog(true);
+	previous->CloseWarFog(true);
+	target->CloseWarFog(true);
 	hero->CloseWarFog(true);
 }
 }
@@ -505,6 +759,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			HideFactionAndDeath(checks);
 			InvalidAndWorldIsolation(checks);
 			HeroRespawn(checks);
+			AttackCommandPolicy(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

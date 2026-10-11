@@ -171,6 +171,18 @@ namespace NWorld
 			preferredTarget : 0;
   }
 
+	/** Shared admission/execution policy after exact actor/target identity resolution.
+	 * Scripts bypass faction visibility only, never liveness, attackability or forbid-attack.
+	 * Do not use CanSelectTarget: its automatic-selection exclusions do not govern manual orders.
+	 */
+	static bool CanAttackLinuxBootstrapCommandTarget(PFBaseHero* hero, PFBaseUnit* target, bool issuedByScript)
+	{
+		return IsUnitValid(hero) && IsUnitValid(target) && hero != target &&
+			hero->GetFaction() != target->GetFaction() &&
+			!hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK) && hero->CanAttackTarget(target) &&
+			(issuedByScript || target->IsVisibleForFaction(hero->GetFaction()));
+	}
+
   static float ResolveLinuxBootstrapCommandAttackRange(
     PFBaseHero* hero,
     PFBaseUnit* targetUnit)
@@ -620,13 +632,16 @@ namespace NWorld
       &g_linuxHeroGameplayCommandDiagnostics.attackTargetFaction,
       &g_linuxHeroGameplayCommandDiagnostics.attackTargetPlayerId,
       pTarget);
-		if (!IsValid(pHero) || !ResolveLinuxBootstrapCommandTargetUnit(pHero->GetWorld(), pHero, pTarget))
-			return false;
-#endif
+		PFWorld* world = IsValid(pHero) ? pHero->GetWorld() : 0;
+		PFBaseHero* hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), 0, 0);
+		PFBaseUnit* target = ResolveLinuxBootstrapCommandTargetUnit(world, hero, pTarget);
+		const bool accepted = CanAttackLinuxBootstrapCommandTarget(hero, target, issuedByScript);
+#else
     const bool accepted = IsValid(pHero) &&
       IsValid(pTarget) &&
       pHero != pTarget &&
       pHero->GetFaction() != pTarget->GetFaction();
+#endif
 #if defined(PW_LINUX_NULL_RENDER)
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.attackCanAccepted;
@@ -642,7 +657,7 @@ namespace NWorld
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
     hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), 0, 0);
     targetUnit = ResolveLinuxBootstrapCommandTargetUnit(world, hero, pTarget);
-		if (IsValid(hero) && IsValid(targetUnit) && hero->GetFaction() == targetUnit->GetFaction())
+		if (!CanAttackLinuxBootstrapCommandTarget(hero, targetUnit, issuedByScript))
 			return;
 #else
     hero = pHero;
