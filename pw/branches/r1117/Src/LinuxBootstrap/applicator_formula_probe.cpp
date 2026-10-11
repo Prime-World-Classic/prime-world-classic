@@ -1240,6 +1240,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "behaviour_tests/hero_tests.inc"
 #include "behaviour_tests/dispatch_tests.inc"
 #include "base_use_tests.inc"
+#include "hero_cast_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1290,6 +1291,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			BehaviourHeroConstructionB8(check, world);
 			BaseUseRangeB9(check, world);
 			BaseUseLifetimeB9(check, world);
+			HeroUseApproachB9(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

@@ -38,27 +38,62 @@ PFBaseUseHeroState::PFBaseUseHeroState( PFBaseMaleHero * _owner, Target const& _
 {
 }
 
+/** Enter the original movement HFSM only after live target/range admission. */
 void PFBaseUseHeroState::OnEnter()
 {
+	if (!IsUnitValid(hero) || !target.IsValid()) return;
+	if (target.IsUnit() && (target.GetUnit()->GetWorld() != hero->GetWorld()
+		|| !target.GetUnit()->IsVisibleForFaction(hero->GetFaction()))) return;
+	const float range = GetUseRange();
+	if (!std::isfinite(range) || range < 0) return;
+	waitForChanneling = (GetAbilityFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING) != 0;
+	wasInvisible = !hero->IsVisibleForEnemy(hero->GetFaction());
+	const bool needsApproach = NeedToGetClose();
+	if (needsApproach && hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)) return;
+	PlayAskSound();
+	if (needsApproach)
+	{
+		approachRequired = true;
+		if (target.IsUnit())
+			PushState(new PFBaseUnitChaseState(hero, IsRequireLineOfSight(), range, 1e10f, target.GetUnit(), true));
+		else
+			PushState(new PFBaseUnitMoveToState(hero, target.AcquirePosition().AsVec2D(), range, IsRequireLineOfSight()));
+	}
 }
 
 void PFBaseUseHeroState::OnAfterLeave()
 {
+	if (!IsValid(pAbilityInstance) || !IsUnitValid(hero) || hero->HasQueuedStates()) return;
+	const bool movesCaster = (GetAbilityFlags() & NDb::ABILITYFLAGS_MOVING) != 0;
+	if (target.IsUnit() && (approachRequired || movesCaster || wasInvisible))
+	{
+		PFBaseUnit* unit = target.GetUnit();
+		if (!IsUnitValid(unit) || unit->GetWorld() != hero->GetWorld()) return;
+		if (unit->GetFaction() != hero->GetFaction() && !(GetAbilityFlags() & NDb::ABILITYFLAGS_STAYINVISIBLE))
+		{
+			if (hero->CanAttackTarget(unit)) hero->OnTarget(unit, true);
+		}
+		else if (!approachRequired && !wasInvisible) hero->Cleanup();
+	}
+	else if (!target.IsUnit() && movesCaster && IsUnitValid(hero->FindTarget(hero->GetTargetingRange(), true)))
+		hero->Cleanup();
 }
 
 bool PFBaseUseHeroState::CanIgnoreVisibility() const
 {
-  return true;
+	const NDb::Ability* db = GetDBDesc();
+	return db && !(db->targetType & NDb::SPELLTARGET_VISIBLETARGETSONLY);
 }
 
 bool PFBaseUseHeroState::IsRequireLineOfSight() const
 {
-  return false;
+	return GetDBDesc() && GetDBDesc()->requireLineOfSight;
 }
 
 bool PFBaseUseHeroState::NeedToGetClose() const
 {
-  return false;
+	return PFBaseUseState::NeedToGetClose() || (IsUnitValid(hero) && IsRequireLineOfSight()
+		&& !hero->CanSee(target.AcquirePosition()));
 }
 
 PFHeroUseConsumableState::PFHeroUseConsumableState( PFBaseMaleHero * _pOwner, int _slot, Target const& _target )
