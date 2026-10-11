@@ -5,6 +5,8 @@
 #include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
+#include "../PF_GameLogic/PFDispatchFactory.h"
+#include "../PF_GameLogic/PFDispatchStrike1.h"
 #include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFHero.h"
@@ -1274,6 +1276,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "consumable_sale_b11_tests.inc"
 #include "talent_purchase_b11_tests.inc"
 #include "collision_reach_b11_tests.inc"
+#include "dispatch_b11_01_factory_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1366,6 +1369,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ConsumableSaleB11(check, world);
 			TalentPurchaseB11(check, world);
 			CollisionReachB11(check, world);
+			DispatchFactoryB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

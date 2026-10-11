@@ -17,6 +17,7 @@
 #include "../Scene/DBScene.h"
 #include "DBAbility.h"
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PFDispatchStrike1.h"
 #include "PFApplAura.h"
 #include "PFApplHelper.h"
 #include "PFApplInstant.h"
@@ -7433,7 +7434,8 @@ void DispatchImmediate::Assign( const DispatchImmediate& _dispatchImmediate )
 NWorld::PFDispatch* DispatchImmediate::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Use the authored engine subtype, including its instantApply start policy.
+	return NWorld::FCreateDispatch<NWorld::PFDispatchImmediate>( *this, cp );
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchImmediate>( *this, cp );

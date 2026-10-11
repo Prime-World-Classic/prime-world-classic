@@ -44,6 +44,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 11/20 COMPLETE (`0.43.3`): native placement and collision resolution share the engine diameter-to-radius conversion, with a documented fallback for unauthored/invalid footprints. Actual moving-creep, resolver and attack fixtures reproduce five reach/damage failures; all 4,790 assertions, 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c11-{before,after,build,ctest}.log`. A 60-second native window passes unchanged gameplay/replay validation (step 653, 105 commands), screenshot inspected: `/tmp/pw-b11-c11-{default,gate}.log`, `.png`, `Bin/logs/2026.10.11-23.13.08/linux-client-shell.log`. Live creep distance improves from 8.0 to 2.0, but damage remains NO; this is not sustained-combat acceptance. Dispatch ownership/scheduling and other base-state world-context gaps remain.
 
+- Chunk 12/20 COMPLETE (`0.44.0`): authored dispatch creation calls the DB runtime factory, restores PFDispatchImmediate and client start delay, and rejects unsupported descriptors instead of substituting instant damage. Descriptor-less bootstrap casts remain compatible. Four baseline failures reproduced; all 4,795 assertions, 28 CTests and six maintained builds pass; generated DB/header Windows conditional views also match B11 baseline. Evidence `/tmp/pw-b11-c12-{before,after,build,ctest}.log`. Deferred subtype scheduling and attack ownership are deliberately not claimed yet; linear/timed/continuous factories remain disabled until their verified checkpoints.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

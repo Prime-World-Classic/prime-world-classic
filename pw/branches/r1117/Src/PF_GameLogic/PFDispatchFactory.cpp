@@ -32,7 +32,6 @@ PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
                            bool start,
                            float startDelay)
 {
-  (void)startDelay;
   if (!IsValid(pAbility) || !pAbility->GetData() || !IsValid(pAbility->GetOwner()))
     return 0;
 
@@ -40,8 +39,10 @@ PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
   dcp.pDBDispatch = pSpell ? pSpell->dispatch : 0;
   dcp.pSender = pAbility->GetOwner();
   dcp.pWorld = dcp.pSender->GetWorld();
+	dcp.clientStartDelay = startDelay;
 
-  PFDispatch* pDispatch = new PFDispatch(dcp);
+	// Missing descriptors retain bootstrap compatibility; unsupported authored types fail closed.
+	PFDispatch* pDispatch = dcp.pDBDispatch ? dcp.pDBDispatch->Create(dcp) : new PFDispatch(dcp);
   if (pDispatch && pSpell)
   {
     pDispatch->AddApplicators(pSpell->applicators);
