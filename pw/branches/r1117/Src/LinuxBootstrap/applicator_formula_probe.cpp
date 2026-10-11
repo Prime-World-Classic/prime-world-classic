@@ -1253,6 +1253,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "cast_command_tests.inc"
 #include "cast_target_range_tests.inc"
 #include "consumable_inventory_b10_tests.inc"
+#include "consumable_simulation_b10_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1326,6 +1327,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			QueuedCastControlLossB10(check, world);
 			CastTargetRangesB10(check, world);
 			ConsumableInventoryB10(check, world);
+			ConsumableSimulationB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

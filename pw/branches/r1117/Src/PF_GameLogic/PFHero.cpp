@@ -145,6 +145,9 @@ bool PFBaseHero::Step(float dtInSeconds)
     }
   }
 
+	// Cached descriptor data survives item removal; shared stacks must tick only once.
+	for (auto& ability : rgConsumablesAbilities)
+		if (ability) ability->Update(dtInSeconds, true);
   return PFCreature::Step(dtInSeconds);
 }
 int PFBaseHero::GetTotalNaftaEarned() const { return GetGold(); }
@@ -432,7 +435,14 @@ bool PFBaseHero::IsSlotValid( int slot ) const { return slot >= 0 && slot < cons
 int PFBaseHero::GetSlotCount() const { return consumables.size(); }
 PFConsumable const* PFBaseHero::GetConsumable(int slot) const { return IsSlotValid(slot) ? consumables[slot].GetPtr() : 0; }
 void PFBaseHero::DropConsumable( int slot, const CVec2& target) { (void)target; RemoveConsumable(slot); }
-void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& pConsumable) { (void)pConsumable; }
+/** Retain externally restored or replaced consumable data in simulation ownership. */
+void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& item)
+{
+	if (!item || !item->GetAbility()) return;
+	for (const auto& ability : rgConsumablesAbilities)
+		if (ability == item->GetAbility()) return;
+	rgConsumablesAbilities.push_back(item->GetAbility());
+}
 void PFBaseHero::OnSerialize(IBinSaver& f) { (void)f; }
 void PFBaseHero::InitializeCustomEnergyVariables() { customEnergy = false; customEnergyValue = 0; customEnergyMaximum = 0; customEnergyRegeneration = 0; }
 bool PFBaseHero::CanUseConsumable(int slot) const { return CanUseConsumables() && IsSlotValid(slot) && consumables[slot] && consumables[slot]->GetQuantity() > 0 && consumables[slot]->CanBeUsed(); }
@@ -444,9 +454,16 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
     return CObj<PFAbilityInstance>(0);
 
   pConsumable->GetAbility()->SetUsingConsumable( pConsumable );
-  return CreateAbilityInstance( pConsumable->GetAbility(), target );
+	AddConsumableCooldown(pConsumable);
+	CObj<PFAbilityInstance> instance = CreateAbilityInstance(pConsumable->GetAbility(), target);
+	if (instance) EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+	return instance;
 }
-CObj<PFAbilityInstance> PFBaseHero::UseConsumable( int slot, const Target& target, bool isLocal ) { CObj<PFConsumable> c = IsSlotValid(slot) ? consumables[slot] : 0; return UseConsumable(c, target, isLocal); }
+CObj<PFAbilityInstance> PFBaseHero::UseConsumable(int slot, const Target& target, bool isLocal)
+{
+	if (!CanUseConsumable(slot)) return CObj<PFAbilityInstance>(0);
+	return UseConsumable(consumables[slot], target, isLocal);
+}
 /** Admit a complete bounded stack before mutating the original fixed inventory. */
 bool PFBaseHero::TakeConsumable(const NDb::Consumable* db, int quantity, NDb::EConsumableOrigin origin, int slot)
 {
@@ -494,7 +511,19 @@ bool PFBaseHero::CanTakeConsumable(const NDb::Consumable* db, int quantity) cons
 {
 	return GetSlotForConsumable(db, quantity) >= 0;
 }
-void PFBaseHero::DropConsumablesCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
+/** Reduce each occupied descriptor's shared cooldown once, honoring the exception. */
+void PFBaseHero::DropConsumablesCooldowns(const DropCooldownParams& params)
+{
+	vector<PFConsumableAbilityData*> visited;
+	for (const auto& item : consumables)
+	{
+		if (!item || !item->GetAbility() || item->GetAbility() == params.exceptAbility) continue;
+		PFConsumableAbilityData* data = item->GetAbility();
+		if (find(visited.begin(), visited.end(), data) != visited.end()) continue;
+		visited.push_back(data);
+		data->DropCooldown(true, params.cooldownReduction, params.reduceByPercent);
+	}
+}
 /** Cache descriptor-owned ability data independently of occupied inventory slots. */
 CObj<PFConsumableAbilityData> PFBaseHero::GetConsumableAbility(const NDb::Ability* db)
 {
