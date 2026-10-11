@@ -277,6 +277,38 @@ bool PFHeroFollowUnitState::OnStep(float dt)
 		return true;
 	if (pOwner->IsMovingSpecial())
 		return false;
+	// Forced escort distance takes ownership back from an outstanding nested attack.
+	if (forceFollowRange > 0 && !pOwner->IsTargetInRange(pUnit, forceFollowRange))
+	{
+		Cleanup(true);
+		pCurrentTarget = nullptr;
+		if (!pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+			DoMove();
+		return false;
+	}
+	FSMStep(dt);
+	CPtr<PFBaseUnit> selected = pUnit->GetCurrentTarget();
+	bool strong = true;
+	if (!IsTargetValid(selected))
+	{
+		selected = pOwner->FindTarget(pOwner->GetTargetingRange());
+		strong = false;
+	}
+	if (pCurrentTarget != selected && GetCurrentState())
+		Cleanup(true);
+	pCurrentTarget = selected;
+	if (GetCurrentState())
+		return false;
+	if (IsTargetValid(selected) && selected->GetFaction() != pOwner->GetFaction() &&
+		pOwner->CanSelectTarget(selected, true) &&
+		!pOwner->CheckFlag(NDb::UNITFLAG_FORBIDSELECTTARGET))
+	{
+		if (moveInitiated)
+			pOwner->Stop();
+		moveInitiated = false;
+		PushState(new PFBaseUnitAttackState(pOwner->GetWorld(), pOwner.GetPtr(), selected, strong, true));
+		return false;
+	}
 	if (pOwner->IsTargetInRange(pUnit, followRange))
 	{
 		pOwner->Stop();
