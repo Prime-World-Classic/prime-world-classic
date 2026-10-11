@@ -129,7 +129,8 @@ void PFAbilityInstance::Activate()
   }
 
   activateDelay = -1.0f;
-  abilityApplicatorsFinished = true;
+	// A receiver may defer dispatch application even after cast activation/payment.
+	abilityApplicatorsFinished = abilityApplicatorsFinished || !IsValid(dispatch.Get());
 }
 
 bool PFAbilityInstance::ApplyToTarget()
@@ -181,12 +182,20 @@ bool PFAbilityInstance::Update(float dt)
     if ( activateDelay < EPS_VALUE )
       Activate();
   }
+	else if (IsValid(dispatch.Get()))
+	{
+		// Retry an unapplied native payload from its existing unit-owned instance, without reactivation.
+		dispatch.Start();
+		if (!IsValid(dispatch.Get()))
+			abilityApplicatorsFinished = true;
+	}
   return IsFinished();
 }
 
 bool PFAbilityInstance::IsFinished() const
 {
-  return IsCastFinished() && abilityApplicatorsFinished && activeApplicatorsCount <= 0;
+	return IsCastFinished() && abilityApplicatorsFinished && activeApplicatorsCount <= 0
+		&& !IsValid(dispatch.Get());
 }
 
 bool PFAbilityInstance::IsCastFinished() const
@@ -314,8 +323,12 @@ void PFAbilityInstance::PFDispatchHolder::Start()
   {
     dispatchGuard->PFDispatch::Start();
     dispatchGuard->PFDispatch::Step(0.0f);
-    pDispatch = NULL;
+		// Keep ownership while the dispatch still holds unapplied applicators.
+		if (dispatchGuard->IsObjectDead() || dispatchGuard->GetApplicators().empty())
+			pDispatch = NULL;
   }
+	else
+		pDispatch = NULL;
 }
 
 void PFAbilityInstance::PFDispatchHolder::Cancel()
