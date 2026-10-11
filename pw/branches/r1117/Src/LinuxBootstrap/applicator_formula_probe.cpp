@@ -1264,6 +1264,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ability_lifecycle_b10_06_dispatch_tests.inc"
 #include "ability_lifecycle_b10_07_channel_tests.inc"
 #include "creep_combat_b11_tests.inc"
+#include "creep_route_b11_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1347,6 +1348,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityWaitingDispatchB10(check, world);
 			AbilityChannelCompletionB10(check, world);
 			CommonCreepCombatB11(check, world);
+			CommonCreepRouteB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

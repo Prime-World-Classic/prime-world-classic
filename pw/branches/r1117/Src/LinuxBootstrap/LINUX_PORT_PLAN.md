@@ -24,6 +24,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 1 final gates: six maintained targets build at `0.41.0`, 28/28 CTests pass, twelve retained engine Windows branches plus shared HeroActions.cpp and Version.h pass the byte audit. Main build remains Ruffle OFF. Original-HUD opt-in artifact still belongs to B10 until refreshed for this batch.
 
+- Chunk 2/20 COMPLETE (`0.41.1`): lane creeps use the original PFBaseUnitPathMovingState, retaining authored waypoints for forward resumption after combat. Do not overwrite active or queued orders; forbid-move admission and state-owned stop/cleanup remain authoritative. Four regression failures reproduced; all 4,695 applicator assertions and 28 CTests pass, six targets build and retained Windows/shared source byte checks pass. Evidence `/tmp/pw-b11-c2-{before,after,build,ctest}.log`. Route-state restoration is not obstacle pathfinding or full creep AI parity.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

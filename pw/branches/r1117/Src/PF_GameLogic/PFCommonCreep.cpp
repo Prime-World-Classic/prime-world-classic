@@ -293,13 +293,13 @@ bool PFCommonCreepBehaviour::OnStep(float dtInSeconds)
     return true;
   }
 
-  const float waypointRadius = Max(0.5f, g_fCreepWayPointRadius);
-  const float waypointRadius2 = waypointRadius * waypointRadius;
-  while (!wayPoints.empty() && fabs2(pUnit->GetPosition().AsVec2D() - wayPoints.front()) <= waypointRadius2)
-    wayPoints.erase(wayPoints.begin());
-
-  if (!wayPoints.empty() && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE) && !pUnit->IsMoving())
-    pUnit->MoveTo(wayPoints.front(), waypointRadius, 0);
+	// Retain the authored route so combat interruption can resume its forward section.
+	if (pUnit->IsIdle() && !pUnit->HasQueuedStates() && !wayPoints.empty()
+		&& !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+	{
+		pUnit->PushState(new PFBaseUnitPathMovingState(pUnit, wayPoints, g_fCreepWayPointRadius));
+		pUnit->FSMStep(0.0f);
+	}
 
   return true;
 }
