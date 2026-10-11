@@ -6,6 +6,7 @@
 #include "PFBaseMovingUnit.h"
 #include "PFBehaviour.h"
 #include "PFAIWorld.h"
+#include "PFBaseUnitStates.h"
 
 namespace NWorld
 {
@@ -39,7 +40,22 @@ void PFBaseBehaviour::Disable()
 	pUnit->RemoveLastHeroAttackData();
 }
 bool PFBaseBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
-void PFBaseBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
+/** Retaliate through the existing weak attack state, resolving mounted senders first. */
+void PFBaseBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc)
+{
+	if (!IsUnitValid(pUnit) || !GetWorld() || pUnit->GetWorld() != GetWorld())
+		return;
+	if (IsUnitValid(pUnit->GetCurrentTarget())
+		|| pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+		return;
+	if (!IsValid(desc.pSender) || desc.pSender->GetWorld() != GetWorld())
+		return;
+	const CPtr<PFBaseUnit> sender = desc.pSender->IsMounted()
+		? desc.pSender->GetMountedOn() : desc.pSender;
+	if (IsTargetValid(sender) && sender->GetWorld() == GetWorld()
+		&& sender->IsVisibleForFaction(pUnit->GetFaction()) && !desc.dontAttackBack)
+		PushAttackState(pUnit, pUnit, sender, false, true);
+}
 /** Preserve both current-faction and original-faction ally classification. */
 bool PFBaseBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const
 {

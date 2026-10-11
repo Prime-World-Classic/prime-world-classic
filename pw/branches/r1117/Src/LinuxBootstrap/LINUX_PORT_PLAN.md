@@ -17,7 +17,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 6/10 at `0.30.0`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; bounded behavior helper has completed scratch drafts and is closed. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
+- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 7/10 at `0.30.1`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; bounded behavior helper has completed scratch drafts and is closed. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
 
 ### Current Batch
 
@@ -32,6 +32,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Chunk 5/10 COMPLETE (`0.29.4`): restore the Windows nearest-forward route-section algorithm without consuming the authored waypoint list. Routes restart ordinary interrupted movement, reject forbidden/malformed goals, stop at the final point and stop ordinary motion on cleanup while retaining special/mounted interruption policy. Reproduce 36 failures, then pass all 2,922 lifecycle assertions and 28 CTests; all six maintained targets build. Windows bytes unchanged. The sustained 60-second native gate passes at world step 653 with all 91 replay commands consumed (`/tmp/pw-b8-mid-default.log`, inspected `.png`, `Bin/logs/2026.10.11-10.51.20/linux-client-shell.log`). The capture confirms simplified map/units/HUD rendering, not visual parity or full pathfinding/match completion.
 
 - Chunk 6/10 COMPLETE (`0.30.0`): integrate reviewed behavior cleanup/ally draft with actual engine fixtures. Disable drops active and queued states, target/strength, screams and both attack-memory victim slots in Windows order; repeated disable is safe and enable never resurrects them. Ally classification forwards current and original faction metadata, retaining Windows dead/foreign metadata semantics while guarding absent inputs. Reproduce 18 failures, then pass all 3,724 applicator assertions and 28 CTests; six targets build and Windows bytes match baseline. Paused delayed FSM queues and full attack-history reset are not expanded beyond existing Cleanup/Clear contracts. Retaliation follows in the next checkpoints.
+
+- Chunk 7/10 COMPLETE (`0.30.1`): integrate reviewed base behavior retaliation through existing PushAttackState, preserving weak targeting, alert screams, any-live-current-target precedence and Windows attack/visibility/dontAttackBack policy. Resolve mounted senders to their endpoint before endpoint validity/visibility checks; foreign owner/sender/endpoint worlds are rejected. Real direct-damage dispatch retains enabled/onlyAutoTargeting caller gates. Reproduce 31 failures in 3,816 checks, then pass all 3,821 applicator assertions and 28 CTests; six targets build and Windows bytes unchanged. Additional conditional scream assertions explain the final count increase. Positive mount fixtures expose endpoint metadata only: baseline GetMountedOn remains unimplemented, and a real null endpoint does not fall back to the rider. This does not claim mounted gameplay parity or full recipient/tower help delivery.
 
 ### Previous Orders And Lifecycle Batch
 

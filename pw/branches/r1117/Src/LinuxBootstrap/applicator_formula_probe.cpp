@@ -1236,6 +1236,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 }
 
 #include "behaviour_tests/cleanup_tests.inc"
+#include "behaviour_tests/retaliation_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1278,6 +1279,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			UnitStateScheduling(check, world);
 			BaseAttackExecution(check, world);
 			BehaviourCleanupB8A(check, world); BehaviourAllyB8A(check, world);
+			BehaviourRetaliationB8B(check, world); BehaviourMountedRetaliationB8B(check, world);
+			BehaviourDamageDispatchB8B(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
