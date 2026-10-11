@@ -810,7 +810,14 @@ void PFBaseUnit::InitializeLifeEnergy()
 void PFBaseUnit::RegisterInAIWorld() { if (GetWorld() && GetWorld()->GetAIWorld()) GetWorld()->GetAIWorld()->RegisterUnit(this); }
 float PFBaseUnit::GetAttackSpeedInternal() const { return GetAttackSpeed(); }
 const NDb::UnitTargetingParameters& PFBaseUnit::GetTargetingParams() const { return *GetTargetingParamsPtr(); }
-const NDb::UnitTargetingParameters* PFBaseUnit::GetTargetingParamsPtr() const { return unitTargetingParams ? unitTargetingParams.GetPtr() : baseUnitTargetingParams.GetPtr(); }
+/** Resolve overrides/unit DB first, then the authored AI defaults for this type. */
+const NDb::UnitTargetingParameters* PFBaseUnit::GetTargetingParamsPtr() const
+{
+	if (unitTargetingParams) return unitTargetingParams.GetPtr();
+	if (baseUnitTargetingParams) return baseUnitTargetingParams.GetPtr();
+	return GetWorld() && GetWorld()->GetAIWorld() ?
+		GetWorld()->GetAIWorld()->GetUnitParameters(GetUnitType()).targetingPars.GetPtr() : nullptr;
+}
 bool PFBaseUnit::HasAtackAbility() const { return pAttackAbility != 0; }
 NDb::EApplicatorDamageType PFBaseUnit::GetBaseAttackDamageType() const { return GetNativeDamageType(); }
 void PFBaseUnit::InitBaseAttack()
@@ -1891,11 +1898,32 @@ const bool PFBaseUnit::CanUseAbility(CPtr<PFAbilityData> const& pAbility) const
   return isNormalAbility ? CanUseAbility(abilityIndex) : true;
 }
 float PFBaseUnit::GetVisibilityRange() const { return GetStatValue(NDb::STAT_VISIBILITYRANGE); }
-float PFBaseUnit::GetChaseRange() const { return GetVisibilityRange(); }
-float PFBaseUnit::GetTargetingRange() const { return GetVisibilityRange(); }
+/** Invalid configuration stays invalid; zero chase has an authored unlimited meaning. */
+static float LinuxCheckedTargetingDistance(float value)
+{
+	return std::isfinite(value) && value >= 0 ? value : std::numeric_limits<float>::quiet_NaN();
+}
+float PFBaseUnit::GetChaseRange() const
+{
+	const NDb::UnitTargetingParameters* params = GetTargetingParamsPtr();
+	return LinuxCheckedTargetingDistance(params ? params->chaseRange : GetVisibilityRange());
+}
+float PFBaseUnit::GetTargetingRange() const
+{
+	const NDb::UnitTargetingParameters* params = GetTargetingParamsPtr();
+	return LinuxCheckedTargetingDistance(params ? params->targetingRange : GetVisibilityRange());
+}
 float PFBaseUnit::GetAttackRange() const { return GetStatValue(NDb::STAT_RANGE); }
-float PFBaseUnit::GetAggroRange() const { return GetVisibilityRange(); }
-float PFBaseUnit::GetScreamRange() const { return 0.0f; }
+float PFBaseUnit::GetAggroRange() const
+{
+	const NDb::UnitTargetingParameters* params = GetTargetingParamsPtr();
+	return LinuxCheckedTargetingDistance(params ? params->aggroRange : GetVisibilityRange());
+}
+float PFBaseUnit::GetScreamRange() const
+{
+	return GetWorld() && GetWorld()->GetAIWorld() ? LinuxCheckedTargetingDistance(
+		GetWorld()->GetAIWorld()->GetUnitParameters(GetUnitType()).screamRange) : 0.0f;
+}
 const float PFBaseUnit::GetManaPercent() const { return maxEnergy > EPS_VALUE ? energy / maxEnergy : 0.0f; }
 bool PFBaseUnit::HasMana() const { return maxEnergy > EPS_VALUE; }
 const bool PFBaseUnit::ChangeHealth(float delta) { health = Min(Max(health + delta, 0.0f), static_cast<float>(maxHealth)); return IsDead(); }

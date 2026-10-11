@@ -826,6 +826,8 @@ static void AttackStateLifecycle(Checks& checks)
 	}
 }
 
+#include "movement_order_tests.inc"
+
 bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> savedRoot = NDb::SessionRoot::GetRoot();
@@ -848,6 +850,8 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			AttackCommandPolicy(checks);
 			AttackOrderScheduling(checks);
 			AttackStateLifecycle(checks);
+			AuthoredTargetRanges(checks);
+			DefaultTargetRanges(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

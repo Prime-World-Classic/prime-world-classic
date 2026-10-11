@@ -17,9 +17,17 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B7 COMPLETE, 10/10, final checkpoint `0.28.3`; baseline `f3d58268f` / `0.25.5`. Each chunk has its own commit, annotated tag and push; the chunk-3 metadata and chunk-9 test-fixture corrections retain published history. STOP after this checkpoint; do not begin more work without a new request. Combat lifecycle and actual queued attack/chase orders are restored within the boundaries below. The bounded helper is closed and all build/client/probe sessions have finished. Main build is Ruffle OFF; the separate original-HUD opt-in executable is refreshed. Windows implementation bytes remain preserved, but Windows was not built here. No full playable-match claim.
+- Batch B8 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `458e56fec` / `0.28.3`. Progress 1/10 at `0.29.0`; authored movement/targeting and behavior retaliation are the scope. Parent owns integration and publication; one bounded behavior helper writes scratch drafts only. Main build stays Ruffle OFF; Windows bodies are preserved. No full playable-match claim.
 
 ### Current Batch
+
+- Chunk 1/10 COMPLETE (`0.29.0`): restore authored chase/targeting/aggro distances with unit override precedence and per-type AI defaults, plus authored scream range. Missing bootstrap targeting retains the bounded visibility fallback; configured zero remains zero and malformed distances remain invalid instead of becoming unlimited chase. Real mock-map fixtures reproduce 78 failures, then pass all 2,412 lifecycle assertions and 28 CTests. Windows bytes match B8 baseline. General target weighting and complete zero-range consumer semantics are not introduced here.
+
+### Previous Orders And Lifecycle Batch
+
+- Batch B7 COMPLETE, 10/10, final checkpoint `0.28.3`; baseline `f3d58268f` / `0.25.5`. Each chunk has its own commit, annotated tag and push; the chunk-3 metadata and chunk-9 test-fixture corrections retain published history. STOP after this checkpoint; do not begin more work without a new request. Combat lifecycle and actual queued attack/chase orders are restored within the boundaries below. The bounded helper is closed and all build/client/probe sessions have finished. Main build is Ruffle OFF; the separate original-HUD opt-in executable is refreshed. Windows implementation bytes remain preserved, but Windows was not built here. No full playable-match claim.
+
+### B7 Chunks
 
 - Chunk 1/10 COMPLETE (`0.26.0`): restore hero-specific attacker-mask scaling in OnBeforeDamage and OnDamage, plus isolated-hero damage rejection. Reuse UnitMaskingPredicate and existing modifier setter; missing senders bypass masking safely. Incoming scaling preserves caller amount and forwards delegated totals. Tests reproduce 18 failures before correction; 3,397 actual-engine assertions and 28 CTests pass, including nonmatching/missing senders, zero/negative/nonfinite scales and isolation exit. PFHero Windows suffix is byte-identical to B7 baseline. Clone construction remains a separate unported path; no new damage UI/statistics parity is claimed.
 
