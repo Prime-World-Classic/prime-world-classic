@@ -4,6 +4,7 @@
 #include "PFBaseUnitStates.h"
 #include "PFBaseMovingUnit.h"
 #include "PFUniTarget.h"
+#include "PFBaseAttackData.h"
 
 namespace
 {
@@ -203,24 +204,47 @@ void PFBaseUnitAttackState::OnLeave()
 {
   if ( IsUnitValid( pOwner ) )
   {
+    pOwner->Stop(false);
     pOwner->DropTarget();
     pOwner->OnLeaveCombat();
   }
 }
 
+/** Keep explicit combat orders legal and approach through the native movement primitive. */
 bool PFBaseUnitAttackState::OnStep(float dt)
 {
   (void)dt;
   if (!IsUnitValid(pOwner) || !IsUnitValid(pTarget))
     return true;
-  if (!pOwner->CanAttackTarget(pTarget))
+	if (!pWorld || pOwner->GetWorld() != pWorld.GetPtr() || pTarget->GetWorld() != pWorld.GetPtr()
+		|| pOwner == pTarget || (!allowAllies && pOwner->GetFaction() == pTarget->GetFaction())
+		|| !pOwner->CanAttackTarget(pTarget)
+		|| (!ignoreVisibility && !pTarget->IsVisibleForFaction(pOwner->GetFaction())))
     return true;
+	if (!strongTarget && pOwner->GetCurrentTarget() != pTarget)
+		return true;
+	if (pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+	{
+		pOwner->Stop(false);
+		return false;
+	}
   if (!pOwner->IsTargetInAttackRange(pTarget, true))
   {
-    if (allowChase)
-      pOwner->MoveTo(pTarget->GetPosition().AsVec2D());
+		const float chaseRange = ignoreChaseRange ? 0.0f : pOwner->GetChaseRange();
+		if (!allowChase || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)
+			|| (!strongTarget && pOwner->IsHoldingPosition()) || !std::isfinite(chaseRange)
+			|| (chaseRange > EPS_VALUE && !pOwner->IsTargetInRange(pTarget, chaseRange)))
+			return true;
+		float range = pOwner->GetAttackRange();
+		if (const PFBaseAttackData* attack = pOwner->GetAttackAbility())
+			range = attack->GetUseRange(pTarget.GetPtr());
+		if (!std::isfinite(range) || range < 0) return true;
+		pOwner->MoveTo(pTarget.GetPtr(), range * 0.9f);
     return false;
   }
+	pOwner->Stop(false);
+	if (strongTarget && ignoreVisibility && pOwner->GetCurrentTarget() != pTarget)
+		pOwner->AssignTarget(pTarget, true);
   return pOwner->IsReadyToAttack() && !pOwner->DoAttack(allowAllies);
 }
 

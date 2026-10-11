@@ -6,6 +6,7 @@
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
 #include "../PF_GameLogic/PFBaseUnitStates.h"
+#include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFCreep.h"
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
@@ -1187,6 +1188,51 @@ static void UnitStateScheduling(Checks& check, PFWorld* world)
 	check(creep->GetPosition().x >= 11.5f && creep->GetPosition().x <= 12.01f,
 		"authored move state reaches its target using native movement");
 	check(creep->IsIdle(), "arrived movement order leaves its state");
+	for (float speed : {0.0f, 0.0001f})
+	{
+		creep->TeleportTo(CVec2(5, 5), false, false);
+		creep->SetMoveFlags(MOVE_FLAG_OVERRIDE_SPEED | MOVE_FLAG_NO_COLLIDE);
+		creep->SetUnitSpeed(speed); creep->MoveTo(CVec2(12, 5));
+		creep->Step(0.01f);
+		check(creep->GetPosition().x < 5.001f, "zero or tiny movement speed never becomes a full-distance jump");
+		creep->Stop(false);
+	}
+	creep->TeleportTo(CVec2(5, 5), false, false);
+	creep->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
+	creep->GetStat(NDb::STAT_MOVESPEED)->SetCoreValue(5);
+	const float speed = creep->GetMoveSpeedMpS();
+	creep->MoveTo(CVec2(12, 5));
+	MovingUnit::UpdateMovements(world->GetAIWorld(), nullptr, world->GetTileMap(), 0.1f);
+	check(speed > 0 && fabs(creep->GetPosition().x - (5+speed*0.1f)) < 0.001f,
+		"ordinary movement consumes the live engine move-speed stat");
+}
+
+/** Real base attacks must report authored results, including intentional zero damage. */
+static void BaseAttackExecution(Checks& check, PFWorld* world)
+{
+	for (const char* expression : {"13", "0", "-1", "missing", "0.125"})
+	for (bool enabled : {false, true})
+	for (bool cancelled : {false, true})
+	{
+		CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+		CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+		NDb::DamageApplicator* damage = new NDb::DamageApplicator;
+		damage->damage.sString = expression; damage->enabled.sString = enabled ? "true" : "false";
+		damage->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+		NDb::BaseAttack* raw = new NDb::BaseAttack;
+		raw->useRange.sString = "20"; raw->manaCost.sString = "0"; raw->applicators.push_back(damage);
+		CObj<PFBaseAttackData> attack = new PFBaseAttackData(sender.GetPtr(), raw);
+		sender->ReplaceBaseAttack(attack, false); sender->AssignTarget(receiver.GetPtr(), true);
+		CObj<IncomingListener> listener = new IncomingListener;
+		if (cancelled) { listener->replacement = 0; receiver->AddEventListener(listener.GetPtr()); }
+		const float authored = nstl::string(expression) == "13" ? 13 : nstl::string(expression) == "0.125" ? 0.125f : 0;
+		const float expected = enabled && !cancelled ? authored : 0;
+		check(sender->DoAttack(false), "actual base attack starts through the engine instance");
+		check(receiver->GetHealth() == 1000-expected, "base attack uses only authored damage without synthesis");
+		check(!cancelled || listener->calls == (enabled && authored > 0 ? 1 : 0),
+			"cancelled authored attack does not emit a second fallback damage event");
+		if (cancelled) receiver->RemoveEventListener(listener.GetPtr());
+	}
 }
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
@@ -1228,6 +1274,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			EventOrderingB7Regression(check, world);
 			EventReentrancyB7Regression(check, world);
 			UnitStateScheduling(check, world);
+			BaseAttackExecution(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

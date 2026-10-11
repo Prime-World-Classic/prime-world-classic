@@ -761,6 +761,7 @@ static void AttackOrderScheduling(Checks& checks)
 		CObj<PFBaseHero> target = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Enemy, Enemy);
 		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET); target->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 		fixture.Tick(); hero->GetAttackAbility()->RestartCooldown(0.5f);
+		hero->SetUnitSpeed(4); hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
 		const float prepared = hero->GetAttackAbility()->GetPreparedness();
 		const CVec3 position = target->GetPosition(); const float health = target->GetHealth();
 		CObj<NCore::WorldCommand> command = PackedAttack(fixture, hero, target, script);
@@ -773,6 +774,10 @@ static void AttackOrderScheduling(Checks& checks)
 		hero->Step(0.1f);
 		checks.Check(dynamic_cast<const PFBaseUnitAttackState*>(hero->GetCurrentState()) != nullptr,
 			"simulation owns the queued attack state");
+		for (int i = 0; i < 30; ++i) hero->Step(0.1f);
+		checks.Check(hero->IsTargetInAttackRange(target.GetPtr(), true) && !hero->IsMoving(),
+			"native attack order approaches and stops within attack range");
+		checks.Check(target->GetHealth() == health, "attack without authored damage remains nondamaging in simulation");
 		CObj<NCore::WorldCommand> stop = CreateCmdStopHero(hero.GetPtr()); stop->Execute(fixture.world);
 		hero->Step(0.1f);
 		checks.Check(!hero->GetCurrentTarget() && hero->IsIdle() && !hero->IsMoving(), "stop cancels the combat order");
@@ -780,6 +785,44 @@ static void AttackOrderScheduling(Checks& checks)
 		CObj<NCore::WorldCommand> move = CreateCmdMoveHero(hero.GetPtr(), CVec2(20, 25)); move->Execute(fixture.world);
 		checks.Check(!hero->GetCurrentTarget() && !dynamic_cast<const PFBaseUnitAttackState*>(hero->GetCurrentState()),
 			"movement replaces the old attack order");
+	}
+}
+
+/** Current attack states revalidate combat legality and stop when their order ends. */
+static void AttackStateLifecycle(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	for (int reason = 0; reason < 5; ++reason)
+	for (bool script : {false, true})
+	{
+		NDb::Hero* raw = new NDb::Hero; Configure(*raw);
+		NDb::StatsContainer* stats = const_cast<NDb::StatsContainer*>(raw->stats.GetPtr());
+		AddStat(*stats, NDb::STAT_RANGE, "4");
+		NDb::Ptr<NDb::Hero> db = raw;
+		PFBaseHero::SpawnInfo spawn; spawn.pHero = db;
+		spawn.placement = Placement(CVec3(20, 20, 0), QNULL, CVec3(1, 1, 1));
+		CObj<PFBaseHero> hero = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Ally, Ally);
+		spawn.placement.pos.x = 28;
+		CObj<PFBaseHero> target = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Enemy, Enemy);
+		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET); target->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		fixture.Tick();
+		hero->EnqueueState(new PFBaseUnitAttackState(fixture.world, hero.GetPtr(), target.GetPtr(), true, false, script, false, reason != 4), true);
+		hero->SetUnitSpeed(4); hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
+		hero->Step(0.1f);
+		if (reason == 0) target->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+		if (reason == 1) target->ChangeFaction(Ally);
+		if (reason == 2) { target->AddFlag(NDb::UNITFLAG_INVISIBLE); PFBaseUnit::StepLinuxWarFog(fixture.world, 0.0f); }
+		if (reason == 3) hero->AddFlag(NDb::UNITFLAG_FORBIDMOVE);
+		hero->Step(0.1f);
+		const bool survives = reason == 2 && script;
+		if (hero->IsIdle() == survives || (!survives && (hero->GetCurrentTarget() || hero->IsMoving())))
+			std::printf("Attack state context: reason=%d script=%d idle=%d moving=%d visible=%d forbidMove=%d\n",
+				reason, script, hero->IsIdle(), hero->IsMoving(), target->IsVisibleForFaction(Ally),
+				hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE));
+		checks.Check(hero->IsIdle() != survives, "attack state ends on illegal target or forbidden chase");
+		checks.Check(survives || (!hero->GetCurrentTarget() && !hero->IsMoving()),
+			"ended attack order drops target and movement together");
+		hero->Cleanup(); hero->Stop(false);
 	}
 }
 
@@ -804,6 +847,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			HeroRespawn(checks);
 			AttackCommandPolicy(checks);
 			AttackOrderScheduling(checks);
+			AttackStateLifecycle(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

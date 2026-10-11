@@ -231,11 +231,16 @@ void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionRes
   for (int i = 0; i < units.size(); ++i)
   {
     if (units[i] && !units[i]->IsDead())
+    {
+		units[i]->world.PreStep(timeDelta);
       units[i]->Step(timeDelta);
+    }
   }
 }
 void MovingUnit::Step(float timeDelta)
 {
+	if (!std::isfinite(timeDelta) || timeDelta <= 0.0f)
+		return;
   stateTime += timeDelta;
   timeStanding += timeDelta;
 
@@ -296,8 +301,10 @@ void MovingUnit::Step(float timeDelta)
 
   delta /= distance;
   const CVec2 finalCenter = finishDistance > EPS_VALUE ? vFarTarget - delta * finishDistance : vFarTarget;
-  float stepDistance = speed > EPS_VALUE ? speed * Max(timeDelta, 0.0f) : distance;
-  const bool finishing = stepDistance <= EPS_VALUE || stepDistance >= distance - finishDistance;
+	// Zero/tiny speed is a small displacement, never permission to jump to the goal.
+	if (!std::isfinite(speed) || speed <= EPS_VALUE) return;
+  const float stepDistance = speed * timeDelta;
+  const bool finishing = stepDistance >= distance - finishDistance;
   const CVec2 desiredCenter = finishing ? finalCenter : origin + delta * stepDistance;
   const float desiredDistance = fabs(desiredCenter - origin);
   const PFBaseMovingUnit* movingTarget =
@@ -362,7 +369,16 @@ void MovingUnit::Step(float timeDelta)
   timeStanding = 0.0f;
   UpdateAttachedMovement();
 }
-void MovingUnit::PreStep(float) {}
+/** Refresh ordinary movement from live stats; explicit speed overrides retain control. */
+void MovingUnit::PreStep(float)
+{
+	if (!(moveFlags & MOVE_FLAG_OVERRIDE_SPEED) && IsValid(pOwner))
+	{
+		const float value = pOwner->GetMoveSpeedMpS();
+		const float scaled = Max(0.0001f, value) * speedScale;
+		speed = std::isfinite(value) && std::isfinite(scaled) ? scaled : 0.0f;
+	}
+}
 void MovingUnit::MovingUnitStep(float) {}
 void MovingUnit::NotifyMoving(bool teleported) { if (pOwner) pOwner->NotifyMoving(teleported); }
 void MovingUnit::OnDie() { moveState = MOVE_STATE_DEAD; }
