@@ -44,7 +44,7 @@ class Renderer
   bool                  bResetDevice;
   bool                  bTripleBufferUsed;
   bool                  isRunningUnderPerfHUD;
-	unsigned int          hWnd;
+	HWND                  hWnd;   // HWND, not unsigned int: on x64 a handle does not fit in 32 bits safely
 	D3DPRESENT_PARAMETERS presentParams;
 	DXSurfacePtr          pDeviceDepthSurface;
 	DXSurfacePtr          pDeviceColorSurface;
@@ -63,10 +63,10 @@ class Renderer
 	void FillCaps();
 
 public:
-	explicit Renderer(unsigned int _hWnd);
+	explicit Renderer(HWND _hWnd);
 	 ~Renderer();
 
-	static void Init(unsigned int _hWnd)
+	static void Init(HWND _hWnd)
 	{
 	  s_pInstance = new Renderer(_hWnd);
 	}

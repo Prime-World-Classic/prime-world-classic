@@ -55,7 +55,7 @@ struct BuiltInEntry
   char const *  cpName;
   unsigned char nArgs;
   unsigned char cRet;
-  unsigned char cArg[6];
+  unsigned char cArg[kFormulaSigMaxArgs];
 };
 
 static const BuiltInEntry kBuiltIn[BI_COUNT] =
@@ -385,7 +385,7 @@ private:
         if (m_lex.CurCh() != ',') { Err("ожидалась ',' м/у аргументами"); break; }
         m_lex.Next();
       }
-      if (kFormulaSigArgType[nSig * 6 + i] == FT_P)
+      if (kFormulaSigArgType[nSig * kFormulaSigMaxArgs + i] == FT_P)
       {
         // указательные аргументы в DSL пишутся как pFirst/pSecond (не выражение)
         // «deref» после имени (pMisc->GetObjectParent()) — это уже выражение,
@@ -402,7 +402,7 @@ private:
       else
       {
         ParseExpr();
-        ConvTo(kFormulaSigArgType[nSig * 6 + i]);
+        ConvTo(kFormulaSigArgType[nSig * kFormulaSigMaxArgs + i]);
       }
     }
     if (m_lex.CurCh() != ')') { Err("ожидалась ')'"); return FT_I; }
@@ -1682,10 +1682,13 @@ FormulaVM::Val const * FormulaVM::Run(void const * pFirst, void const * pSecond,
         FormulaAccEntry const & e = kFormulaAcc[pOp->nA];
         int nArgs = kFormulaSigArgs[e.nSig];
         if (sp < nArgs + 1) { m_nRuntimeErr = 16; pOp = 0; break; }
+        // ap[] sized by the generated table (kFormulaSigMaxArgs); the guard is for a
+        // table/bytecode mismatch, which would otherwise be a silent stack overrun.
+        if (nArgs > kFormulaSigMaxArgs) { m_nRuntimeErr = 24; pOp = 0; break; }
         Val * pRecv = st + sp - 1 - nArgs;
         void const * self = pRecv->p;
         if (self == 0) { m_nRuntimeErr = 4; pOp = 0; break; }
-        void const * ap[6];
+        void const * ap[kFormulaSigMaxArgs];
         // ВАЖНО: ap[i] — это адрес ЗНАЧЕНИЯ (FormulaAccCall разбирает его как
         // int const*/float const*/void const* const* и т.п.), а не адрес Val:
         // Val = { unsigned char t; union {...} }, union из-за выравнивания лежит со

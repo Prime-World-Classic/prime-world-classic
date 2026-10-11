@@ -183,6 +183,7 @@ def emit_mock(parsed):
     print("")
     q = chr(34)
     UNIT_PTR = ("GetObjectMaster", "GetObjectFavorite", "GetObjectTarget")
+    all_slots = []          # инвентарь (iface, slot, имя) — для покрытия харнесом
     for ii, iface in enumerate(IFACES):
         print("struct Mock%s : public %s" % (iface[1:], iface))
         print("{")
@@ -211,12 +212,24 @@ def emit_mock(parsed):
                 # имя метода передаём ключом: mock возвращает значения по имени
                 body = ("return %s(%d, %d, " + q + "%s" + q + ");") % (CALL[rc], ii, slot, meth)
             rtype = ret if rc == "P" else RET[rc]
+            if rc != "P":
+                all_slots.append((ii, slot, meth))
             dig = " ".join("MockDigest(a%d);" % k for k in range(len(params)))
             tr = " ".join('MockTraceStr("%s", a%d);' % (meth, k)
                            for k, x in enumerate(params) if "char" in x)
             print("  virtual %s %s(%s) const { %s %s %s }" % (rtype, meth, ps, tr, dig, body))
         print("};")
         print("")
+    # Инвентарь всех vtable-слотов аксессоров: харнес по нему считает, сколько
+    # аксессоров реально проверено golden-диффом (остальные — слепая зона: неверный
+    # слот в таблице на x64 проявится только в бою).
+    print("struct MockSlotInfo { unsigned iface; unsigned slot; char const * name; };")
+    print("static const MockSlotInfo kMockAllSlots[] = {")
+    for ii, slot, meth in all_slots:
+        print("  { %d, %d, %s }," % (ii, slot, (q + meth + q)))
+    print("};")
+    print("static const unsigned kMockAllSlotsCount = %d;" % len(all_slots))
+    print("")
     print("#endif")
 
 
@@ -306,9 +319,14 @@ def main():
     w("// --- вызов аксессора: аргументы снимаются со стека VM, результат кладётся ---")
     TYMAP = {"F": "FT_F", "D": "FT_D", "I": "FT_I", "U": "FT_I", "E": "FT_I",
              "B": "FT_B", "V": "FT_V", "P": "FT_P", "S": "FT_P", "X": "FT_U"}
-    w("static const unsigned char kFormulaSigArgType[SIG_COUNT * 6] = {")
+    # ширина слота аргументов — из реального максимума: FormulaVM.cpp объявляет
+    # ap[kFormulaSigMaxArgs]; захардкодить 6 = тихое переполнение стека (и /GS
+    # fastfail), когда в FormulaPars.h появится 7-аргументный метод
+    MAXA = max((len(v[1]) for v in sigs.values()), default=0) or 1
+    w("static const int kFormulaSigMaxArgs = %d;" % MAXA)
+    w("static const unsigned char kFormulaSigArgType[SIG_COUNT * %d] = {" % MAXA)
     for key in sorted(sigs):
-        ac = list(sigs[key][1]) + [""] * (6 - len(sigs[key][1]))
+        ac = list(sigs[key][1]) + [""] * (MAXA - len(sigs[key][1]))
         w("  %s,  // %s" % (", ".join(TYMAP[a] if a else "FT_U" for a in ac), key))
     w("};")
     w("static const unsigned char kFormulaSigArgs[SIG_COUNT] = {")

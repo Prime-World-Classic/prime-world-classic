@@ -75,7 +75,7 @@ const RenderMode& Renderer::GetCurrentRenderMode()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Renderer::Renderer(unsigned int _hWnd) : 
+Renderer::Renderer(HWND _hWnd) : 
 	pD3D(0), 
 	pDevice(0),
 	hWnd(_hWnd),

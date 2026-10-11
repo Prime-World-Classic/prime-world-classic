@@ -163,41 +163,48 @@ static LONG CALLBACK FastfailVeh(PEXCEPTION_POINTERS pi)
 #ifdef _WIN64
     // Real backtrace via the PE unwind tables (.pdata) - no pdb needed. Addresses are
     // logged as RVAs: Tools/WineClientBuild/map_rvas.py <map> --rvas <...>
-    CONTEXT walk = *c;
-    UNWIND_HISTORY_TABLE hist;
-    memset(&hist, 0, sizeof(hist));
-    for (int frame = 0; frame < 48; ++frame)
+    // UNW_FLAG_NHANDLER: we only walk frames; EHANDLER would let RtlVirtualUnwind run
+    // the crashed function's own handlers/scope-exits, which must not execute during
+    // post-mortem logging (re-entrancy into the code that just crashed).
+    __try
     {
-      if (!walk.Rip)
-        break;
-      int m = _snprintf(line, sizeof(line) - 3, "frame[%d]=%08X",
-                        frame, (unsigned)(walk.Rip - (DWORD64)(uintptr_t)mod));
-      if (m > 0)
+      CONTEXT walk = *c;
+      UNWIND_HISTORY_TABLE hist;
+      memset(&hist, 0, sizeof(hist));
+      for (int frame = 0; frame < 48; ++frame)
       {
-        if (m > (int)sizeof(line) - 3) m = (int)sizeof(line) - 3;
-        line[m++] = '\n';
-        WriteFile(f, line, (DWORD)m, &wr, NULL);
-      }
-      DWORD64 imageBase = 0;
-      PRUNTIME_FUNCTION rf = RtlLookupFunctionEntry(walk.Rip, &imageBase, &hist);
-      if (!rf)
-      {
-        // leaf function without unwind info: the return address sits at [rsp]
-        DWORD64 ret = 0;
-        __try { ret = *(DWORD64 *)walk.Rsp; } __except (EXCEPTION_EXECUTE_HANDLER) { ret = 0; }
-        if (!ret || ret == walk.Rip)
+        if (!walk.Rip)
           break;
-        walk.Rip = ret;
-        walk.Rsp += 8;
-        continue;
+        int m = _snprintf(line, sizeof(line) - 3, "frame[%d]=%08X",
+                          frame, (unsigned)(walk.Rip - (DWORD64)(uintptr_t)mod));
+        if (m > 0)
+        {
+          if (m > (int)sizeof(line) - 3) m = (int)sizeof(line) - 3;
+          line[m++] = '\n';
+          WriteFile(f, line, (DWORD)m, &wr, NULL);
+        }
+        DWORD64 imageBase = 0;
+        PRUNTIME_FUNCTION rf = RtlLookupFunctionEntry(walk.Rip, &imageBase, &hist);
+        if (!rf)
+        {
+          // leaf function without unwind info: the return address sits at [rsp]
+          DWORD64 ret = 0;
+          __try { ret = *(DWORD64 *)walk.Rsp; } __except (EXCEPTION_EXECUTE_HANDLER) { ret = 0; }
+          if (!ret || ret == walk.Rip)
+            break;
+          walk.Rip = ret;
+          walk.Rsp += 8;
+          continue;
+        }
+        PVOID handlerData = NULL;
+        DWORD64 establisher = 0;
+        RtlVirtualUnwind(UNW_FLAG_NHANDLER, imageBase, walk.Rip, rf, &walk, &handlerData,
+                        &establisher, NULL);
+        if (!walk.Rip || walk.Rip == (DWORD64)-1)
+          break;
       }
-      PVOID handlerData = NULL;
-      DWORD64 establisher = 0;
-      RtlVirtualUnwind(UNW_FLAG_EHANDLER, imageBase, walk.Rip, rf, &walk, &handlerData,
-                      &establisher, NULL);
-      if (!walk.Rip || walk.Rip == (DWORD64)-1)
-        break;
     }
+    __except (EXCEPTION_EXECUTE_HANDLER) {}
 #endif
   }
   CloseHandle(f);

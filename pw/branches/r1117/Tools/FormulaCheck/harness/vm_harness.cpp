@@ -47,6 +47,7 @@ static MockCustomFormulaPars g_custom;
 // в аксессоры мусор (на клиенте это вылезло как AV в dynamic_cast у FindApplicator).
 unsigned long long g_mockDigest = 0;
 unsigned long long g_mockCallHash = 0x9E3779B97F4A7C15ull;
+static unsigned char g_mockSeen[8][512];
 
 // Контрольная сумма строится как СУММА хэшей отдельных вызовов (iface+slot+имя+
 // аргументы): порядок вызовов не важен (C++ и VM считают выражения в разном порядке,
@@ -61,6 +62,9 @@ static unsigned long long MixU(unsigned long long h, unsigned long long v)
 
 static void MockFold(int nIface, int nSlot, char const * cpName)
 {
+  // покрытие: какие vtable-слоты аксессоров вообще проверены golden-диффом
+  if (nIface >= 0 && nIface < 8 && nSlot >= 0 && nSlot < 512)
+    g_mockSeen[nIface][nSlot] = 1;
   unsigned long long h = 1469598103934665603ull;
   h = MixU(h, (unsigned)(unsigned char)nIface);
   h = MixU(h, (unsigned)(unsigned char)nSlot);
@@ -304,6 +308,22 @@ int main(int argc, char ** argv)
     else { strcpy(cmpTxt, "NO_REF"); ++st.nNoNative; }
     fprintf(fo, "%d\t%s\t%s\t%s\terr=%d\n", nIdx, pRet, resTxt, cmpTxt, nErr);
     delete pVM;
+  }
+
+  // Покрытие таблицы аксессоров. Таблица (имя -> vtable-слот) генерируется из
+  // FormulaPars.h по порядку virtual'ов; на x64 сдвиг слота = вызов чужого метода
+  // с тем же ABI. Проверены golden-диффом только затронутые корпусом слоты —
+  // остальные печатаем списком, чтобы знать слепую зону.
+  {
+    int nCov = 0, nMiss = 0;
+    for (unsigned i = 0; i < kMockAllSlotsCount; ++i)
+    {
+      MockSlotInfo const & si = kMockAllSlots[i];
+      if (si.iface < 8 && si.slot < 512 && g_mockSeen[si.iface][si.slot]) ++nCov;
+      else if (nMiss < 40) { fprintf(stderr, "NOCOV[%d] iface=%u slot=%u %s\n", nMiss, si.iface, si.slot, si.name); ++nMiss; }
+      else ++nMiss;
+    }
+    printf("COVER: аксессоров проверено=%d из %u\n", nCov, kMockAllSlotsCount);
   }
 
   fclose(f);

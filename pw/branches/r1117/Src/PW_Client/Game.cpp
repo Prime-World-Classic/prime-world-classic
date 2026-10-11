@@ -250,7 +250,9 @@ void DumpLoadedModules()
     DebugTrace( NStr::StrFmt( "\n     base address   = 0x%08X", (DWORD) me32.modBaseAddr ) ); 
     DebugTrace( NStr::StrFmt( "\n     base size      = %d",             me32.modBaseSize ) ); */
 
-    const char* line = NStr::StrFmt( "%08X,%08X,%s\x0D\x0A", (DWORD)me32.modBaseAddr, me32.modBaseSize, me32.szExePath );
+    // module base must be printed pointer-sized: on x64 a DWORD truncates it and
+    // the module list can no longer be used to resolve crash RVAs
+    const char* line = NStr::StrFmt( "%016I64X,%08X,%s\x0D\x0A", (unsigned __int64)(uintptr_t)me32.modBaseAddr, me32.modBaseSize, me32.szExePath );
     pFile->WriteString( line );
 
   } while( Module32Next( hModuleSnap, &me32 ) ); 
@@ -974,7 +976,10 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   }
 #endif // _SHIPPING
 
-  hWnd = (HWND)CmdLineLite::Instance().GetIntKey( "parentWindow" );
+  // HWND from the command line must not go through int: on x64 a handle does not
+  // fit in 32 bits (legacy embedded-mode key, unused by the current launcher)
+  { const char * cpParentWindow = CmdLineLite::Instance().GetStringKey( "parentWindow" );
+    hWnd = cpParentWindow ? (HWND)(uintptr_t)_strtoui64( cpParentWindow, NULL, 0 ) : NULL; }
   SPluginSettings parentSettings;
   Strong<NGameX::ISocialConnection> socialServer;
   Strong<NGameX::GuildEmblem> guildEmblem = new NGameX::GuildEmblem;

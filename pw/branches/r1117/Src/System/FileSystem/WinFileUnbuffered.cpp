@@ -49,8 +49,8 @@ void WinFileUnbuffered::Write(void const **pBuffer, size_t *bufferSizes,  size_t
   size_t nSum = 0;
   for(currBuffer = 0; currBuffer < buffersNum; currBuffer++)
   {
-    //get address as int
-    DWORD addr = (DWORD)pBuffer[currBuffer];
+    // address as pointer-sized int: on x64 a DWORD would truncate the buffer address
+    DWORD_PTR addr = (DWORD_PTR)pBuffer[currBuffer];
     NI_VERIFY((addr & (pageSize   - 1)) == 0, "Address should be aligned", return;);
     if(currBuffer < (buffersNum - 1))
     {

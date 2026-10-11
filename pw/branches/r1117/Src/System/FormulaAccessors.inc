@@ -588,6 +588,7 @@ static const FormulaEnumEntry kFormulaEnum[] = {
 static const int kFormulaEnumCount = 136;
 
 // --- вызов аксессора: аргументы снимаются со стека VM, результат кладётся ---
+static const int kFormulaSigMaxArgs = 6;
 static const unsigned char kFormulaSigArgType[SIG_COUNT * 6] = {
   FT_U, FT_U, FT_U, FT_U, FT_U, FT_U,  // B__
   FT_I, FT_U, FT_U, FT_U, FT_U, FT_U,  // B__E
