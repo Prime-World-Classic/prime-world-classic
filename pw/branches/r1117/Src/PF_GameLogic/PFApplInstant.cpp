@@ -152,9 +152,10 @@ bool PFApplKill::Start()
 
 bool PFApplRefreshCooldown::Start()
 {
-  PFBaseApplicator::Start();
+	if (PFBaseApplicator::Start() || !IsValid(pReceiver) || !pReceiver->IsHero()) return true;
 
-  float reductionAmount = RetrieveParam(GetDB().reductionAmount, 0.0f);
+	float reductionAmount = ReadLinuxApplicatorAmount(*this, GetDB().reductionAmount);
+	if (!std::isfinite(reductionAmount)) return true;
   if (reductionAmount < 0.0f && !GetDB().allowCdIncrease)
     reductionAmount = 0.0f;
   else if (reductionAmount == 0.0f && GetDB().allowCdIncrease)
@@ -168,7 +169,8 @@ bool PFApplRefreshCooldown::Start()
   else if (IsValid(pReceiver) && pReceiver->IsHero())
   {
     PFBaseHero *pHero = static_cast<PFBaseHero*>(pReceiver.GetPtr());
-    const DropCooldownParams dropCdParams(GetDB().flags, GetDB().talents, GetDB().useListAs, GetDB().refreshThis ? NULL : GetAbility()->GetData(), reductionAmount, GetDB().reduceByPercent);
+    const DropCooldownParams dropCdParams(GetDB().flags, GetDB().talents, GetDB().useListAs,
+		GetDB().refreshThis || !GetAbility() ? NULL : GetAbility()->GetData(), reductionAmount, GetDB().reduceByPercent);
     pHero->DropCooldowns(dropCdParams);
   }
 

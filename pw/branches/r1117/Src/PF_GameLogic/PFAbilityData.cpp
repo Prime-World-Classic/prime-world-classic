@@ -429,7 +429,7 @@ void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, boo
 }
 void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cooldownReduction, bool reduceByPercent)
 {
-	if (!std::isfinite(cooldownReduction) || cooldownReduction < 0
+	if (!std::isfinite(cooldownReduction)
 		|| !std::isfinite(cooldownTime[forAbilityState]) || cooldownTime[forAbilityState] < 0
 		|| !std::isfinite(cooldown[forAbilityState]) || cooldown[forAbilityState] < 0) return;
   if (cooldownReduction == 0.0f)
@@ -438,14 +438,18 @@ void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cool
   }
   else if (reduceByPercent)
   {
-    cooldown[forAbilityState] =
-      min(cooldownTime[forAbilityState], cooldown[forAbilityState] * (1.0f - min(cooldownReduction, 1.0f)));
+		const double scaled = double(cooldown[forAbilityState]) * (1.0f - min(cooldownReduction, 1.0f));
+		cooldown[forAbilityState] = float(std::min(double(cooldownTime[forAbilityState]), scaled));
   }
   else
   {
-    cooldown[forAbilityState] = max(0.0f, cooldown[forAbilityState] - cooldownReduction);
-    if (cooldown[forAbilityState] > cooldownTime[forAbilityState])
-      cooldownTime[forAbilityState] -= cooldownReduction;
+		// Negative reductions extend cooldowns only after the applicator permits them.
+		const float remaining = max(0.0f, cooldown[forAbilityState] - cooldownReduction);
+		const float duration = remaining > cooldownTime[forAbilityState]
+			? cooldownTime[forAbilityState] - cooldownReduction : cooldownTime[forAbilityState];
+		if (!std::isfinite(remaining) || !std::isfinite(duration)) return;
+		cooldown[forAbilityState] = remaining;
+		cooldownTime[forAbilityState] = duration;
   }
 }
 float PFAbilityData::GetUseRange() const

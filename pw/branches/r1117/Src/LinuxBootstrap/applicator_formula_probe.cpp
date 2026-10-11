@@ -3,6 +3,9 @@
 #include "applicator_formula_probe.h"
 #include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFAbilityData.h"
+#include "../PF_GameLogic/PFAbilityInstance.h"
+#include "../PF_GameLogic/PFHero.h"
+#include "../PF_GameLogic/DBHeroesList.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFAIWorld.h"
 #include "../PF_GameLogic/PFResourcesCollectionClient.h"
@@ -36,6 +39,12 @@ struct Damage : PFApplDamage
 struct Heal : PFApplHeal
 {
 	explicit Heal(const PFApplCreatePars& p) : PFApplHeal(p) {}
+	bool Run() { return Start(); }
+};
+
+struct Refresh : PFApplRefreshCooldown
+{
+	explicit Refresh(const PFApplCreatePars& p) : PFApplRefreshCooldown(p) {}
 	bool Run() { return Start(); }
 };
 
@@ -86,7 +95,8 @@ void DamageFormulas(Checks& check, PFWorld* world)
 		if (compiledOnly) raw->damage.compiledString = "unsupported-native-bytecode";
 		raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
 		NDb::Ptr<NDb::DamageApplicator> db = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pUpgraderAbilityData = ability; pars.pDBAppl = db;
 		CObj<Damage> app = new Damage(pars);
 		receiver->SetHealth(1000);
@@ -131,7 +141,8 @@ static void HealingFormulas(Checks& check, NWorld::PFWorld* world)
 		NDb::HealApplicator* raw = new NDb::HealApplicator;
 		raw->amount.sString = expression; raw->healTarget = pool; raw->enabled.sString = enabled ? "true" : "false";
 		NDb::Ptr<NDb::HealApplicator> db = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 		CObj<Heal> app = new Heal(pars);
 		receiver->SetHealth(400); receiver->SetEnergy(50);
@@ -155,6 +166,49 @@ static void HealingFormulas(Checks& check, NWorld::PFWorld* world)
 	run("25", static_cast<NDb::EHealTarget>(99), 0);
 }
 
+/** Refresh uses an actual hero/ability and independently checks both cooldown states. */
+static void CooldownFormulas(Checks& check, PFWorld* world)
+{
+	NDb::Hero* rawHero = new NDb::Hero;
+	CObj<PFBaseUnit> source = Unit(world, NDb::FACTION_FREEZE, 40);
+	rawHero->stats = source->DbUnitDesc()->stats;
+	NDb::Ptr<NDb::Hero> heroDb = rawHero;
+	PFBaseHero::SpawnInfo spawn; spawn.pHero = heroDb;
+	spawn.placement = Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
+	CObj<PFBaseHero> hero = new PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, NDb::FACTION_FREEZE, NDb::FACTION_FREEZE);
+	const auto run = [&](const char* expression, float expected, bool percent = false,
+		bool increase = false, bool enabled = true, bool compiledOnly = false, bool heroTarget = true) {
+		NDb::Ability* rawAbility = new NDb::Ability;
+		rawAbility->cooldownTime.sString = "20"; rawAbility->cooldownTimeSecondState.sString = "20";
+		NDb::Ptr<NDb::Ability> abilityDb = rawAbility;
+		CObj<PFAbilityData> ability = new PFAbilityData(hero.GetPtr(), abilityDb, NDb::ABILITYTYPEID_SPECIAL, false, false);
+		ability->RestartCooldown(); ability->SetState(EAbilityState::Second); ability->RestartCooldown();
+		ability->Update(10, false);
+		const Target target(heroTarget ? static_cast<PFBaseUnit*>(hero.GetPtr()) : source.GetPtr());
+		CObj<PFAbilityInstance> instance = new PFAbilityInstance(ability, target, false);
+		NDb::RefreshCooldownApplicator* raw = new NDb::RefreshCooldownApplicator;
+		raw->refreshThis = true; raw->flags = 0; raw->reductionAmount.sString = expression;
+		raw->reduceByPercent = percent; raw->allowCdIncrease = increase;
+		raw->enabled.sString = enabled ? "true" : "false";
+		if (compiledOnly) raw->reductionAmount.compiledString = "unsupported-native-bytecode";
+		NDb::Ptr<NDb::RefreshCooldownApplicator> db = raw;
+		PFApplCreatePars pars(instance, target); pars.pDBAppl = db;
+		CObj<Refresh> app = new Refresh(pars);
+		check(app->Init() && app->Run(), "cooldown applicator completes");
+		check(ability->GetCurrentCooldown() == expected, expression);
+		ability->SetState(EAbilityState::First);
+		check(ability->GetCurrentCooldown() == expected, "refresh applies to both states");
+	};
+	run("sStrength/10", 6); run(".25", 7.5f, true); run("2", 0, true);
+	run("0", 0); run("", 0); run("0", 10, false, true);
+	run("-5", 0); run("-5", 15, false, true); run("-.5", 15, true, true);
+	run("-30", 40, false, true); run("-.5", 10, true, true, false);
+	run("5", 10, false, false, false);
+	for (const char* bad : {"cMissing", "1/0", "1e39"}) run(bad, 10);
+	run("", 10, false, false, true, true);
+	run("5", 10, false, false, true, false, false);
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -174,7 +228,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		PFWorld* world = dynamic_cast<PFWorld*>(owner.GetPtr());
 		const bool loaded = world && world->LoadMap(db, 0, NCore::TPlayersStartInfo(), 0, false, PFResourcesCollection::TalentMap());
 		check(loaded, "applicator mock map loads");
-		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); }
+		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); CooldownFormulas(check, world); }
 	}
 	NDb::SessionRoot::InitRoot(saved);
 	std::printf("Applicator formulas: %d checks, %d failures\n", check.count, check.failed);

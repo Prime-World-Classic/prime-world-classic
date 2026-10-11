@@ -283,8 +283,9 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 			check(ability->GetCurrentCooldown() == 3, "percentage then absolute reduction");
 			for (float invalid : {-1.f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
 			{
-				ability->Update(invalid, false); ability->DropCooldown(false, invalid, false);
-				check(ability->GetCurrentCooldown() == 3, "invalid time and reduction are inert");
+				ability->Update(invalid, false);
+				if (!std::isfinite(invalid)) ability->DropCooldown(false, invalid, false);
+				check(ability->GetCurrentCooldown() == 3, "invalid time and nonfinite reduction are inert");
 			}
 			ability->RestartCooldown(std::numeric_limits<float>::quiet_NaN());
 			check(!ability->IsReady(), "invalid explicit restart fails closed");
