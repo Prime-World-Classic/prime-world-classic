@@ -139,6 +139,11 @@ static void PointMoveLifecycle(Checks& checks)
 	checks.Check(owner->IsIdle() && !owner->IsMoving() && std::isfinite(owner->GetPosition().x),
 		"invalid point goal ends before movement or coordinate mutation");
 	owner->Cleanup(); owner->Stop(false);
+	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(40, 20),
+		std::numeric_limits<float>::quiet_NaN()), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "invalid point arrival radius cannot become the fallback");
+	owner->Cleanup(); owner->Stop(false);
 	owner->CloseWarFog(true);
 	owner->EnqueueState(new PFBaseUnitMoveToState(owner.GetPtr(), CVec2(24, 20), 5, true), true);
 	owner->Step(0.0f);
@@ -229,5 +234,11 @@ static void PathMoveLifecycle(Checks& checks)
 	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points, 0.5f), true);
 	owner->Step(0.0f);
 	checks.Check(owner->IsIdle() && !owner->IsMoving(), "invalid route is rejected before moving");
+	owner->Cleanup(); owner->Stop(false);
+	points[1].x = 40;
+	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points,
+		std::numeric_limits<float>::quiet_NaN()), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "invalid route arrival radius cannot become the fallback");
 	owner->Cleanup(); owner->Stop(false);
 }

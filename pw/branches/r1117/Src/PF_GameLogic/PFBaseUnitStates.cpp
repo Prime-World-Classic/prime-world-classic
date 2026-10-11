@@ -48,9 +48,10 @@ void MoveUnitStateFSM::DumpStateToConsole(int depths)
   (void)depths;
 }
 
+/** Preserve malformed radii for step rejection; retain the finite bootstrap fallback. */
 PFBaseUnitMoveToState::PFBaseUnitMoveToState( PFBaseMovingUnit* _pUnit, const CVec2& _target, const float _range, bool _requireLOS )
   : PFBaseMovingUnitState(_pUnit)
-  , range(_range > 0.0f ? _range : 1.0f)
+	, range(std::isfinite(_range) && _range <= 0.0f ? 1.0f : _range)
   , initiatedMove(false)
   , target(_target)
   , requireLineOfSight(_requireLOS)
@@ -114,12 +115,13 @@ void PFBaseUnitMoveToBuildingState::OnLeave()
     pOwner->Stop();
 }
 
+/** Preserve malformed radii for step rejection; retain the finite bootstrap fallback. */
 PFBaseUnitPathMovingState::PFBaseUnitPathMovingState( CPtr<PFBaseMovingUnit> const& pUnit, vector<CVec2> const & _wayPoints, const float _range )
   : PFBaseMovingUnitState(pUnit)
   , wayPoints(_wayPoints)
   , currentPoint(_wayPoints.empty() ? VNULL2 : _wayPoints.front())
   , isFirstMove(true)
-  , range(_range > 0.0f ? _range : 1.0f)
+	, range(std::isfinite(_range) && _range <= 0.0f ? 1.0f : _range)
 {
 }
 

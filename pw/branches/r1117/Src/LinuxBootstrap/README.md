@@ -120,7 +120,11 @@ or duplicated final records; wait for the process to exit before validating logs
 	use the existing simulation state queue. Script orders bypass visibility explicitly;
 	neither path teleports targets, resets cooldowns or synthesizes damage. Attack states
 	approach/stop through native movement and revalidate target legality. Authored
-	chase/LOS/pathfinding, mounted routing and player authorization remain incomplete.
+	targeting/chase/aggro distances resolve unit overrides and AI defaults; attack
+	range and allowChase use checked live formula contexts. Point/chase/route states
+	restart interrupted ordinary motion, stop on exit and retain last-seen chase positions.
+	Full pathfinding/LOS presentation, attack sectors, mounted routing and player
+	authorization remain incomplete.
 - Combat now includes seeded critical rolls, outgoing/pre-damage hooks, authored
 	physical/energy defence, hero damage masks/isolation, attack/cancel notifications,
 	healing modifiers, life/energy drains, damage throttling and deferred-death transitions.
@@ -128,7 +132,13 @@ or duplicated final records; wait for the process to exit before validating logs
 	from the current event, unlike Windows live insertion. Direct callbacks reject
 	nonfinite resource amounts and incoming damage results. These guards do not
 	roll back prior callback effects.
-- Clone construction, full hero retaliation/death rewards/projectile timing,
+- Enabled top behaviors receive target orders without unconditional assignment;
+	ordinary heroes install their production behavior and restore missing ownership
+	on resurrection. Base retaliation uses weak orders, while hero retaliation uses
+	strong orders with its own idle/queue policy and help-scream cooldown. Behavior
+	disable clears orders, targets, screams and attack-memory victims. Tower help,
+	complete mounted endpoints and allied-recipient behavior remain unfinished.
+- Clone construction, full death rewards/projectile timing,
 	complete casting/movement, remaining HUD actions, online integration
 	and a complete local match are still outstanding.
 - Linux source guards preserve the Windows path, but an actual Windows build and
@@ -156,6 +166,13 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	behavior notification, last-hit rescue/deferred death, actual base attacks and
 	direct numeric resource boundaries. [Listener fixtures](event_dispatch_tests.inc)
 	cover priority, registration, nested callbacks and retained contents lifetime.
+- [Behavior cleanup](behaviour_tests/cleanup_tests.inc),
+	[base retaliation](behaviour_tests/retaliation_tests.inc),
+	[hero policy](behaviour_tests/hero_tests.inc) and
+	[unit dispatch](behaviour_tests/dispatch_tests.inc): actual FSM and combat-memory
+	cleanup, current/original faction metadata, visibility/flag/queue admission,
+	weak/strong targeting, mount boundaries, cooldown rearming, same-target deduplication,
+	enabled top-stack routing and fresh/resurrected hero integration.
 - [Voxel queries](voxel_range_probe.cpp): bounded numeric admission, rectangular
 	geometry, inclusive circles, ordering and retained live callback semantics.
 - [Visibility queries](visibility_query_probe.cpp) and
@@ -168,6 +185,11 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	them, and target loss or forbidden chase ends movement. Ordinary world movement
 	refreshes live speed stats; explicit overrides remain separate, and zero/tiny
 	speed never becomes a full-distance jump.
+- [Movement orders](movement_order_tests.inc): authored unit/AI distances, live
+	attack range/chase expressions, point/chase lifecycle and nearest-forward waypoint
+	selection across wide/portrait maps and three voxel densities. Malformed goals
+	and prohibited motion fail before movement; ordinary interruption cleanup is
+	separate from special/mounted movement policy.
 - [Scheduler drain](scheduler_drain_probe.cpp): preserve admitted commands and
 	statuses while closing finite smoke input and draining the replay boundary,
 	including closed barriers with unbounded interactive step budgets.
