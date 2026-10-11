@@ -3,6 +3,36 @@
 #include "../PF_GameLogic/HeroActions.h"
 #include "../PF_GameLogic/PointersHolder.h"
 
+/** Install descriptors through the production set; expose no alternate cast implementation. */
+struct B10CommandHero : B9CastHero
+{
+	B10CommandHero(PFWorld* world, const SpawnInfo& spawn)
+		: B9CastHero(world, spawn, NDb::FACTION_FREEZE) {}
+	void InstallTalent(const NDb::Talent* db, bool bought = true)
+	{
+		pTalents = new PFTalentsSet(GetWorld());
+		PFTalentsSet::SetInfo info;
+		info[0][0].pTalentDesc = db; info[0][0].refineRate = 1;
+		pTalents->LoadSet(this, info);
+		if (bought) GetTalent(0, 0)->Activate();
+	}
+	void InstallPortal(const NDb::Talent* db, bool bought = true)
+	{
+		portal = new PFTalent(this, db, 1, -1, -2, false);
+		if (bought) portal->Activate();
+	}
+};
+
+/** Reuse the literal hero DB fixture while retaining a separately registered real actor. */
+static CObj<B10CommandHero> CommandHeroB10(PFWorld* world)
+{
+	CObj<B9CastHero> seed = B9MaleHero(world, NDb::FACTION_FREEZE);
+	PFBaseHero::SpawnInfo spawn;
+	spawn.pHero = dynamic_cast<const NDb::Hero*>(seed->GetDbHero());
+	spawn.placement = Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
+	return new B10CommandHero(world, spawn);
+}
+
 /** Packed commands exercise real actor restoration, inventory and permission gates. */
 static void ConsumableCommandAdmissionB10(Checks& check, PFWorld* world)
 {
@@ -124,5 +154,47 @@ static void ConsumableCommandTargetsB10(Checks& check, PFWorld* world)
 		command->Execute(world);
 		check(!hero->HasQueuedStates() && hero->GetMana() == 200,
 			"direct execution cannot queue a consumable for another world's object");
+	}
+}
+
+/** Talent and portal commands share exact actor, purchase and live-control admission. */
+static void TalentCommandAdmissionB10(Checks& check, PFWorld* world)
+{
+	for (bool portal : {false, true})
+	for (bool bought : {false, true})
+	{
+		CObj<B10CommandHero> hero = CommandHeroB10(world);
+		NDb::Talent* raw = new NDb::Talent;
+		raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->useRange.sString = "0"; raw->manaCost.sString = "15";
+		raw->naftaCost = 0; raw->cooldownTime.sString = "0";
+		raw->requireLineOfSight = false;
+		NDb::Ptr<NDb::Talent> db = raw;
+		if (portal) hero->InstallPortal(db, bought); else hero->InstallTalent(db, bought);
+		CObj<NCore::WorldCommand> command = portal ?
+			CreateCmdUsePortal(hero.GetPtr(), Target(hero.GetPtr()), true) :
+			CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(hero.GetPtr()), true);
+		check(command->CanExecute() == bought, "talent and portal commands require real purchase admission");
+		for (NDb::EUnitFlag flag : {NDb::UNITFLAG_FORBIDPLAYERCONTROL, NDb::UNITFLAG_INMINIGAME})
+		{
+			hero->AddFlag(flag);
+			check(!command->CanExecute(), "talent and portal commands observe live control permissions");
+			command->Execute(world);
+			check(hero->GetMana() == 200 && !hero->HasQueuedStates(),
+				"blocked talent or portal execution cannot spend resources or enqueue a cast");
+			hero->RemoveFlag(flag);
+		}
+		CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(command,
+			world->GetPointerSerialization(), 1984, 0);
+		CObj<PointersHolder> pointers = new PointersHolder(world, 0);
+		CObj<NCore::WorldCommand> missing = packet->GetWorldCommand(pointers);
+		check(missing && !missing->CanExecute(), "talent and portal commands reject missing restored actors");
+		if (!portal)
+			for (int slot : {-1, 1, 100})
+			{
+				CObj<NCore::WorldCommand> invalid = CreateCmdUseTalent(hero.GetPtr(), 0, slot, Target(hero.GetPtr()), true);
+				check(!invalid->CanExecute(), "talent command rejects invalid or empty slots before lookup");
+			}
+		hero->DoStop();
 	}
 }

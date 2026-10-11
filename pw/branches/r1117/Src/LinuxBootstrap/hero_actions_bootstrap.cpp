@@ -120,13 +120,33 @@ namespace NWorld
     return dynamic_cast<PFBaseMaleHero*>(hero);
   }
 
-	/** Recheck inventory/control admission on the exact registered actor at both boundaries. */
-	static bool CanUseLinuxConsumableCommand(PFBaseMaleHero* hero, int slot)
+	/** Shared live actor/control gate; local AI UIDs never substitute another actor. */
+	static bool CanUseLinuxCastingActor(PFBaseMaleHero* hero)
 	{
 		return IsUnitValid(hero) && hero->GetWorld() &&
 			hero->GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero &&
 			!hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) &&
-			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME) && hero->CanUseConsumable(slot);
+			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME);
+	}
+
+	/** Recheck inventory admission at both command boundaries. */
+	static bool CanUseLinuxConsumableCommand(PFBaseMaleHero* hero, int slot)
+	{
+		return CanUseLinuxCastingActor(hero) && hero->CanUseConsumable(slot);
+	}
+
+	/** Validate indices before the engine set lookup, which expects valid slot coordinates. */
+	static PFTalent* LinuxCommandTalent(PFBaseMaleHero* hero, int level, int slot)
+	{
+		return IsValid(hero) && level >= 0 && level < PFTalentsSet::LEVELS_COUNT &&
+			slot >= 0 && slot < PFTalentsSet::SLOTS_COUNT ? hero->GetTalent(level, slot) : nullptr;
+	}
+
+	/** Commands may enqueue only bought, active and usable talents owned by their actor. */
+	static bool CanUseLinuxTalentCommand(PFBaseMaleHero* hero, PFTalent* talent)
+	{
+		return CanUseLinuxCastingActor(hero) && IsValid(talent) && talent->GetDBDesc() &&
+			talent->GetOwner() == hero && talent->IsActivated() && talent->IsActive() && hero->CanUseTalent(talent);
 	}
 
 	/** Preserve the serialized endpoint identity; positions must be finite and on-map. */
@@ -1021,8 +1041,8 @@ namespace NWorld
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanChecks;
 		const bool manualGround = NeedsLinuxGroundTalentValidation(pHero, target, issuedByScript);
-		const bool accepted = manualGround ? CanUseLinuxGroundTalent(pHero, level, slot, target, GetId()) :
-			(!IsValid(pHero) || !pHero->IsDead());
+		const bool accepted = CanUseLinuxTalentCommand(pHero, LinuxCommandTalent(pHero, level, slot)) &&
+			(!manualGround || CanUseLinuxGroundTalent(pHero, level, slot, target, GetId()));
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanAccepted;
     g_linuxHeroGameplayCommandDiagnostics.useTalentLevel = level;
@@ -1061,7 +1081,7 @@ namespace NWorld
 #if defined(PW_LINUX_NULL_RENDER)
 		const bool manualGroundAllowed = !manualGround || (world && IsValid(hero) &&
 			hero->GetWorld() == world && CanUseLinuxGroundTalent(hero, level, slot, resolvedTarget, GetId()));
-		PFTalent* talent = IsValid(hero) && manualGroundAllowed ? hero->GetTalent(level, slot) : 0;
+		PFTalent* talent = manualGroundAllowed ? LinuxCommandTalent(hero, level, slot) : nullptr;
     if (talent)
     {
       g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepBefore =
@@ -1071,8 +1091,7 @@ namespace NWorld
       g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownBefore =
         talent->GetCurrentCooldown();
     }
-		const bool canUse = manualGround ? manualGroundAllowed :
-			(IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(talent));
+		const bool canUse = manualGroundAllowed && CanUseLinuxTalentCommand(hero, talent);
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
@@ -1092,7 +1111,7 @@ namespace NWorld
 						life ? hero->GetLife() : hero->GetMana(), talent->GetLastUseStep());
       }
     }
-		talent = IsValid(hero) && manualGroundAllowed ? hero->GetTalent(level, slot) : 0;
+		talent = manualGroundAllowed ? LinuxCommandTalent(hero, level, slot) : nullptr;
     if (talent)
     {
       g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepAfter =
@@ -1126,7 +1145,7 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanChecks;
-    const bool accepted = !IsValid(pHero) || !pHero->IsDead();
+		const bool accepted = CanUseLinuxTalentCommand(pHero, IsValid(pHero) ? pHero->GetPortal() : nullptr);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanAccepted;
     const CVec3 portalTarget = target.AcquirePosition();
@@ -1154,7 +1173,11 @@ namespace NWorld
 #else
     hero = pHero;
 #endif
+#if defined(PW_LINUX_NULL_RENDER)
+		const bool canUse = CanUseLinuxTalentCommand(hero, IsValid(hero) ? hero->GetPortal() : nullptr);
+#else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->GetPortal() && hero->GetPortal()->CanBeUsed();
+#endif
 #if defined(PW_LINUX_NULL_RENDER)
     g_linuxHeroGameplayCommandDiagnostics.usePortalCanUse = canUse ? 1 : 0;
 #endif
