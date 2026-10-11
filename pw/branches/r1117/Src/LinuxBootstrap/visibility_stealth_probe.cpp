@@ -470,6 +470,7 @@ void TickOwnership(Checks& checks)
 	checks.Check(moving->reveals == movingBefore, "moving gameplay Step does not duplicate world reveal update");
 	moving->AddFlag(NDb::UNITFLAG_CANSEEINVISIBLE);
 	moving->SetUnitSpeed(16);
+	moving->SetMoveFlags(moving->GetMoveFlags() | MOVE_FLAG_OVERRIDE_SPEED);
 	checks.Check(moving->MoveTo(CVec2(24, 20), 0, 0), "real detector movement requested");
 	const int gameplayBefore = moving->gameplay;
 	a.Tick(1);
