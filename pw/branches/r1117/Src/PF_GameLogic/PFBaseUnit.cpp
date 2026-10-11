@@ -1429,6 +1429,9 @@ bool PFBaseUnit::Step(float dtInSeconds)
 
   timeSinceLevelUp += dtInSeconds;
   StepLastAttackData(dtInSeconds);
+	// The existing order queue must advance on live simulation units, as on Windows.
+	if (!IsDead() && std::isfinite(dtInSeconds) && dtInSeconds >= 0.0f)
+		FsmStep(dtInSeconds);
   return PFLogicObject::Step(dtInSeconds);
 }
 

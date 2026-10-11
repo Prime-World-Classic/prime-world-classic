@@ -5,6 +5,7 @@
 #include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
+#include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFCreep.h"
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
@@ -1147,6 +1148,47 @@ static void DamageLimiter(Checks& check, PFWorld* world)
 
 #include "event_dispatch_tests.inc"
 
+/** Observe scheduling through the existing state interface, not a replacement FSM. */
+struct SchedulingState : PFBaseUnitState
+{
+	int entries = 0, steps = 0, leaves = 0;
+	float elapsed = 0;
+	bool complete = false;
+	explicit SchedulingState(PFBaseUnit* unit) : PFBaseUnitState(unit) {}
+	void OnEnter() override { ++entries; }
+	bool OnStep(float dt) override { ++steps; elapsed += dt; return complete; }
+	void OnLeave() override { ++leaves; }
+};
+
+static void UnitStateScheduling(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> unit = Unit(world, NDb::FACTION_FREEZE, 20);
+	CObj<SchedulingState> state = new SchedulingState(unit.GetPtr());
+	unit->EnqueueState(state.GetPtr(), true);
+	unit->Step(0.25f);
+	check(state->entries == 1 && state->steps == 1 && state->elapsed == 0,
+		"queued unit state enters once at the existing zero-time boundary");
+	unit->Step(0.25f);
+	check(state->steps == 2 && state->elapsed == 0.25f, "unit state advances once per simulation step");
+	unit->PauseFSM(true); unit->Step(0.25f);
+	check(state->steps == 2, "paused unit state does not advance");
+	unit->PauseFSM(false); state->complete = true; unit->Step(0.25f);
+	check(state->leaves == 1 && unit->IsIdle(), "completed state leaves once and releases current order");
+	state = new SchedulingState(unit.GetPtr()); unit->PushState(state.GetPtr()); unit->Step(0.25f);
+	check(state->entries == 1 && state->elapsed == 0.25f, "directly pushed state uses the same unit schedule");
+	unit->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS); unit->Step(0.25f);
+	check(state->leaves == 1 && state->steps == 1 && unit->IsIdle(), "dead unit clears and does not step its order");
+
+	CObj<PFBaseUnit> moving = DrainParticipant(world, NDb::FACTION_FREEZE, false);
+	PFBaseMovingUnit* creep = static_cast<PFBaseMovingUnit*>(moving.GetPtr());
+	creep->SetUnitSpeed(4);
+	creep->EnqueueState(new PFBaseUnitMoveToState(creep, CVec2(12, 5), 0.5f), true);
+	for (int i = 0; i < 80; ++i) creep->Step(0.1f);
+	check(creep->GetPosition().x >= 11.5f && creep->GetPosition().x <= 12.01f,
+		"authored move state reaches its target using native movement");
+	check(creep->IsIdle(), "arrived movement order leaves its state");
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -1185,6 +1227,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DamageLimiter(check, world);
 			EventOrderingB7Regression(check, world);
 			EventReentrancyB7Regression(check, world);
+			UnitStateScheduling(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
