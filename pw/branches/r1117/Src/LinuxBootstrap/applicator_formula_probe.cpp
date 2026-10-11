@@ -339,10 +339,12 @@ struct OutgoingListener : CObjectBase, PFBaseUnitEventListener
 	OBJECT_BASIC_METHODS(OutgoingListener);
 public:
 	int calls = 0;
+	int cancellations = 0;
 	float replacement = 11;
 	const PFBaseUnit* target = nullptr;
 	unsigned int OnEvent(const PFBaseUnitEvent* event) override
 	{
+		if (event->GetType() == NDb::BASEUNITEVENT_CANCELINVISIBILITY) ++cancellations;
 		if (const auto* outgoing = dynamic_cast<const PFOutgoingDamageEvent*>(event))
 		{
 			++calls; target = outgoing->pTaker; outgoing->damage = replacement;
@@ -417,6 +419,48 @@ static void PreDamage(Checks& check, PFWorld* world)
 	sender->RemoveEventListener(listener.GetPtr());
 }
 
+/** Attack history is health-only; only original authored damage cancels invisibility. */
+static void DamageNotifications(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	CObj<OutgoingListener> listener = new OutgoingListener;
+	sender->AddEventListener(listener.GetPtr());
+	for (bool mana : {false, true})
+	for (bool cancel : {false, true})
+	for (bool dontAttack : {false, true})
+	for (bool delegated : {false, true})
+	for (bool enabled : {false, true})
+	{
+		if (mana && delegated) continue;
+		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+		raw->damage.sString = "25"; raw->enabled.sString = enabled ? "true" : "false";
+		raw->damageType = mana ? NDb::APPLICATORDAMAGETYPE_MANA : NDb::APPLICATORDAMAGETYPE_PURE;
+		raw->damageMode = dontAttack ? NDb::DAMAGEMODE_DONTATTACKBACK : NDb::DAMAGEMODE_ZERO;
+		raw->cancelInvisibility = cancel;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Damage> app = new Damage(pars);
+		PFBaseUnit::DamageDesc desc; desc.pSender = sender; desc.amount = 13;
+		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE; desc.flags = 0;
+		desc.damageMode = raw->damageMode; desc.dontAttackBack = dontAttack; desc.pDealerApplicator = nullptr;
+		sender->RemoveLastAttackData(); listener->cancellations = 0; receiver->SetHealth(1000); receiver->SetEnergy(200);
+		check(app->Init(), "notification target initialization");
+		if (delegated) app->SetDelegated(&desc);
+		check(app->Run(), "notification application completes");
+		check(listener->cancellations == (enabled && cancel && !delegated ? 1 : 0), "authored invisibility cancellation policy");
+		const bool remember = enabled && !mana && !dontAttack;
+		check(sender->GetLastAttackData()->pVictim.GetPtr() == (remember ? receiver.GetPtr() : nullptr), "health attack history and dont-attack-back policy");
+		if (remember)
+		{
+			check(sender->GetLastAttackData()->originalFaction == NDb::FACTION_BURN, "history stores original victim faction");
+			check(!sender->GetLastAttackData()->byAutoAttack, "special effect is not an auto attack");
+		}
+	}
+	sender->RemoveEventListener(listener.GetPtr());
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -443,6 +487,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CriticalDamage(check, world);
 			OutgoingDamage(check, world);
 			PreDamage(check, world);
+			DamageNotifications(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

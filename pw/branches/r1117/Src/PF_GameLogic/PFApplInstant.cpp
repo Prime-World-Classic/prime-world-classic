@@ -48,6 +48,14 @@ bool PFApplDamage::Start()
 	if (!IsUnitValid(pReceiver)) return true;
 	const int kind = GetDB().damageType;
 	if (kind < 0 || kind >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf()) return true;
+	const auto notifyDamage = [&]() {
+		const CPtr<PFBaseUnit> owner = GetAbilityOwner();
+		if (!IsValid(owner)) return;
+		if (kind != NDb::APPLICATORDAMAGETYPE_MANA && !(GetDB().damageMode & NDb::DAMAGEMODE_DONTATTACKBACK))
+			owner->SetLastAttackData(pReceiver, GetAbilityData() && GetAbilityData()->IsAutoAttack(), pReceiver->GetFaction());
+		if (GetDB().cancelInvisibility && !IsDelegated())
+			owner->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_CANCELINVISIBILITY));
+	};
 	if (IsDelegated())
 	{
 		// Delegation is synchronous; consume the original descriptor without rebuilding metadata.
@@ -60,6 +68,7 @@ bool PFApplDamage::Start()
 		damage = desc->amount;
 		damageDealed = pReceiver->OnDamage(*desc);
 		isCritical = desc->isDelegatedCriticalDamage;
+		notifyDamage();
 		return true;
 	}
   if (IsValid(pReceiver))
@@ -81,6 +90,7 @@ bool PFApplDamage::Start()
 	if (kind == NDb::APPLICATORDAMAGETYPE_MANA)
 	{
 		damageDealed = pReceiver->OnBurnEnergy(GetAbilityOwner(), damage);
+		notifyDamage();
 		return true;
 	}
     PFBaseUnit::DamageDesc desc;
@@ -102,7 +112,8 @@ bool PFApplDamage::Start()
 	{
 		PFOutgoingDamageEvent event(pReceiver, desc, damage);
 		desc.pSender->EventHappened(event);
-		if (!std::isfinite(event.damage) || event.damage <= 0) { damageDealed = 0; return true; }
+		if (!std::isfinite(event.damage)) { damageDealed = 0; return true; }
+		if (event.damage <= 0) { damageDealed = 0; notifyDamage(); return true; }
 		desc.amount = event.damage;
 	}
 	// Defence formulas inspect this applicator during the synchronous receiver hooks.
@@ -110,6 +121,7 @@ bool PFApplDamage::Start()
 	if (!std::isfinite(damageDealed)) { damageDealed = 0; return true; }
 	damageDealed = pReceiver->OnDamage(desc);
 	delegatedDamage = std::isfinite(desc.delegatedDamage) ? desc.delegatedDamage : 0.0f;
+	notifyDamage();
   }
   return true;
 }
