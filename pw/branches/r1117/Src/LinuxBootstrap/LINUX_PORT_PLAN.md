@@ -36,6 +36,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 7/20 COMPLETE (`0.42.3`): staged live creep diagnostic submits behavior-owned strong attack orders once, then only observes health/position. Remove per-frame target assignment, stopping/teleporting and direct DoAttack calls. Initial one-time staging remains explicit; this is an integration demonstration, not natural-lane combat proof. Six builds, 4,727 assertions, 28 CTests and unchanged strict native gameplay/replay gate pass (60-second window, step 653, 88 commands). Evidence `/tmp/pw-b11-c7-{default,gate}.log`, inspected `.png`, `Bin/logs/2026.10.11-23.01.20/linux-client-shell.log`. Actual creep damage remains NO, distance ends at 8.0; investigate reach/collision and do not label this sustained combat. A diagnostic debugger snapshot taken during the still-running normal-duration test is not hang evidence. No validator was relaxed.
 
+- Chunk 8/20 COMPLETE (`0.43.0`): restore authored consumable group membership and cooldown propagation from actual casts/restarts. Cache absent-inventory peer ability data, retain longer existing cooldowns, skip null members and malformed group durations, and distinguish anonymous descriptors instead of matching empty IDs. Four baseline failures reproduced; all 4,734 assertions, 28 CTests, six builds and retained Windows/shared audits pass. Evidence `/tmp/pw-b11-c8-{before,after,build,ctest}.log`. No new vendor/library is needed; this reuses existing group data and ability caches.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

@@ -1269,6 +1269,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "creep_evade_b11_tests.inc"
 #include "creep_home_b11_tests.inc"
 #include "creep_recovery_b11_tests.inc"
+#include "consumable_groups_b11_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1357,6 +1358,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CreepEvadeAdmissionB11(check, world);
 			CreepHomeB11(check, world);
 			CreepRecoveryB11(check, world);
+			ConsumableGroupsB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

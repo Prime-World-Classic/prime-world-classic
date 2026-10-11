@@ -560,8 +560,32 @@ float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const
     ? GetModifiedAbilityValue( pDBDesc->naftaCost, NDb::ABILITYMODMODE_NAFTACOST, NDb::ABILITYTYPEID_CONSUMABLE, pDBDesc )
     : 0.0f;
 }
-void PFBaseHero::RestartGroupCooldowns( PFConsumableAbilityData const* pConsumableAD ) { (void)pConsumableAD; }
-void PFBaseHero::AddConsumableToGroup( PFConsumableAbilityData* pConsumableAD ) { (void)pConsumableAD; }
+/** Keep group members on the authored minimum cooldown, including absent inventory items. */
+void PFBaseHero::RestartGroupCooldowns(PFConsumableAbilityData const* ability)
+{
+	const NDb::ConsumableGroup* group = ability ? ability->GetGroup() : nullptr;
+	if (!group || !std::isfinite(group->cooldown) || group->cooldown < 0) return;
+	for (const auto& descriptor : group->consumables)
+	{
+		if (!descriptor) continue;
+		CObj<PFConsumableAbilityData> peer = GetConsumableAbility(descriptor);
+		if (peer && peer != ability && peer->GetCurrentCooldown() < group->cooldown)
+			peer->PFAbilityData::RestartCooldown(group->cooldown);
+	}
+}
+
+/** Match authored resource IDs, but retain identity for anonymous test/runtime descriptors. */
+void PFBaseHero::AddConsumableToGroup(PFConsumableAbilityData* ability)
+{
+	if (!ability || !ability->GetDBDesc() || !GetWorld() || !GetWorld()->GetAIWorld()) return;
+	const auto& groups = GetWorld()->GetAIWorld()->GetAIParameters().consumableGroups;
+	if (!groups) return;
+	for (const auto& group : groups->groups)
+		for (const auto& descriptor : group.consumables)
+			if (descriptor && (descriptor.GetPtr() == ability->GetDBDesc()
+				|| (!descriptor->GetDBID().IsEmpty() && descriptor->GetDBID() == ability->GetDBDesc()->GetDBID())))
+				ability->SetGroup(&group);
+}
 void PFBaseHero::AddAbilityModifier( PFApplAbilityMod* appl )
 {
   if (!appl)

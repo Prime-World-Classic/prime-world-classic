@@ -881,6 +881,8 @@ void PFConsumableAbilityData::NotifyCastProcessed()
 void PFConsumableAbilityData::RestartCooldown( float cooldownTime_ )
 {
   PFAbilityData::RestartCooldown( cooldownTime_ );
+	if (IsValid(GetOwner()) && pDBGroup)
+		GetOwner()->RestartGroupCooldowns(this);
 }
 
 } //namespace NWorld
