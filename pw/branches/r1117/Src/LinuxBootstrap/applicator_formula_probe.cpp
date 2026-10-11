@@ -1314,6 +1314,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HeroFlagPickupB9(check, world, ai);
 			ConsumableCommandAdmissionB10(check, world);
 			ConsumableCommandQueueB10(check, world);
+			ConsumableCommandTargetsB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

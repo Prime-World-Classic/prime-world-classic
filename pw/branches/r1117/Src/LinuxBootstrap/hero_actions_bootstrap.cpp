@@ -129,6 +129,23 @@ namespace NWorld
 			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME) && hero->CanUseConsumable(slot);
 	}
 
+	/** Preserve the serialized endpoint identity; positions must be finite and on-map. */
+	static bool IsLinuxAbilityCommandTarget(PFWorld* world, const Target& target)
+	{
+		if (!world) return false;
+		if (target.IsPosition())
+		{
+			const CVec3& point = target.GetPosition();
+			const CVec2& bounds = world->GetMapSize();
+			return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z) &&
+				point.x >= 0 && point.y >= 0 && point.x < bounds.x && point.y < bounds.y;
+		}
+		if (!target.IsObjectValid(true)) return false;
+		PFLogicObject* object = target.GetObject();
+		return object->GetWorld() == world &&
+			dynamic_cast<PFLogicObject*>(world->GetObject(object->GetObjectId())) == object;
+	}
+
   static int EncodeLinuxBootstrapCommandHeroSlotIndex(
     PFBaseHero* hero,
     int slotIndex)
@@ -834,7 +851,8 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanChecks;
-    const bool accepted = CanUseLinuxConsumableCommand(pHero, slot);
+    const bool accepted = CanUseLinuxConsumableCommand(pHero, slot) &&
+			IsLinuxAbilityCommandTarget(pHero->GetWorld(), target);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanAccepted;
     g_linuxHeroGameplayCommandDiagnostics.useConsumableSlot = slot;
@@ -860,7 +878,8 @@ namespace NWorld
 #if defined(PW_LINUX_NULL_RENDER)
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
     hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
-    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target, hero);
+		// Pointer deserialization already restored the exact target; never substitute self.
+		AbilityTarget resolvedTarget = target;
     g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetType = static_cast<int>(resolvedTarget.GetType());
     g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetObjectId = GetLinuxBootstrapTargetObjectId(resolvedTarget);
     g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetFaction = GetLinuxBootstrapTargetFaction(resolvedTarget);
@@ -879,7 +898,8 @@ namespace NWorld
         beforeConsumable->GetAbility()->GetCurrentCooldown() : 0.0f;
 #endif
 #if defined(PW_LINUX_NULL_RENDER)
-		const bool canUse = CanUseLinuxConsumableCommand(hero, slot);
+		const bool canUse = CanUseLinuxConsumableCommand(hero, slot) &&
+			IsLinuxAbilityCommandTarget(world, resolvedTarget);
 #else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseConsumable(slot);
 #endif
