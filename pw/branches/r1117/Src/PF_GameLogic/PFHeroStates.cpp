@@ -478,10 +478,15 @@ PFHeroUseUnitState::PFHeroUseUnitState( PFBaseHero* _pOwner, PFBaseUnit* _pUnit 
   : PFInteractObjectState( _pOwner, Target( _pUnit ) )
   , pUnit( _pUnit )
 {
+	range = IsUnitValid(pOwner) && IsUnitValid(pUnit) && pOwner->GetWorld() == pUnit->GetWorld()
+		? pUnit->GetUseRange(pOwner) : -1.f;
 }
 
 void PFHeroUseUnitState::DoAction()
 {
+	if (IsUnitValid(pOwner) && IsUnitValid(pUnit) && pOwner->GetWorld() == pUnit->GetWorld() &&
+		!pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT))
+		pActionInstance = pUnit->Use(pOwner);
 }
 
 PFCreatureRaiseFlagState::PFCreatureRaiseFlagState( PFBaseHero* pOwner, PFFlagpole* _pFlagpole )

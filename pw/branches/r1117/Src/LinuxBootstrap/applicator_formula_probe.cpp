@@ -1248,6 +1248,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "hero_suspend_tests.inc"
 #include "hero_interaction_approach_tests.inc"
 #include "hero_interaction_action_tests.inc"
+#include "hero_use_unit_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1307,6 +1308,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HeroSuspendB9(check, world);
 			HeroInteractionApproachB9(check, world);
 			HeroInteractionActionB9(check, world);
+			HeroUseUnitB9(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
