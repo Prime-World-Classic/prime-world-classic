@@ -51,6 +51,13 @@ struct Refresh : PFApplRefreshCooldown
 /** Access the protected initializer without overriding gameplay or formula getters. */
 struct ProbeUnit : PFBaseUnit
 {
+	int damageCalls = 0;
+	DamageDesc lastDamage;
+	float OnDamage(const DamageDesc& desc) override
+	{
+		++damageCalls; lastDamage = desc;
+		return PFBaseUnit::OnDamage(desc);
+	}
 	ProbeUnit(PFWorld* world, const NDb::Unit* db, NDb::EFaction faction) : PFBaseUnit(world, CVec3(5, 5, 0), db)
 	{
 		InitData data; data.pObjectDesc = db; data.type = NDb::UNITTYPE_BUILDING;
@@ -209,6 +216,68 @@ static void CooldownFormulas(Checks& check, PFWorld* world)
 	run("5", 10, false, false, true, false, false);
 }
 
+/** Observe the real OnDamage path while preserving its resource/event implementation. */
+static void DamageRouting(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	ProbeUnit* observed = static_cast<ProbeUnit*>(receiver.GetPtr());
+	const auto run = [&](NDb::EApplicatorDamageType kind, const char* expression, float dealt,
+		bool dead = false, const PFBaseUnit::DamageDesc* delegated = nullptr) {
+		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+		raw->damageType = kind; raw->damage.sString = expression;
+		raw->damageMode = NDb::DAMAGEMODE_DONTATTACKBACK;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Damage> app = new Damage(pars);
+		receiver->SetHealth(400); receiver->SetEnergy(50); observed->damageCalls = 0;
+		if (dead) receiver->ChangeHealth(-1000);
+		check(app->Init(), "routing target initializes");
+		if (delegated) app->SetDelegated(delegated);
+		check(app->Run(), "routing applicator completes");
+		const bool mana = kind == NDb::APPLICATORDAMAGETYPE_MANA;
+		check(receiver->GetHealth() == (dead ? 0 : 400) - (mana ? 0 : dealt), "damage routing health");
+		check(receiver->GetMana() == 50 - (mana ? dealt : 0), "damage routing mana");
+		check(app->GetDamageDealed() == dealt, "routing reports actual delta");
+		check(app->GetVariable("damageDealed") == dealt, "authored damage variable");
+		check(app->GetVariable("isCritical") == (delegated && dealt > 0 ? 1 : 0), "delegated critical variable");
+		check(observed->damageCalls == (!mana && dealt > 0 ? 1 : 0), "only valid health damage invokes callback");
+		if (!mana && dealt > 0)
+		{
+			const auto& actual = observed->lastDamage;
+			check(actual.dontAttackBack, "do-not-retaliate flag survives");
+			if (delegated)
+			{
+				check(actual.pSender == delegated->pSender && actual.pDealerApplicator == delegated->pDealerApplicator,
+					"delegation preserves sender and dealer");
+				check(actual.damageType == delegated->damageType && actual.damageMode == delegated->damageMode
+					&& actual.flags == delegated->flags && actual.delegated == delegated->delegated
+					&& actual.ignoreDefences == delegated->ignoreDefences
+					&& actual.isDelegatedCriticalDamage == delegated->isDelegatedCriticalDamage,
+					"delegation preserves damage metadata");
+			}
+		}
+	};
+	run(NDb::APPLICATORDAMAGETYPE_MANA, "sStrength+tStrength", 50);
+	run(NDb::APPLICATORDAMAGETYPE_MANA, "25", 25);
+	run(NDb::APPLICATORDAMAGETYPE_MANA, "25", 0, true);
+	run(NDb::APPLICATORDAMAGETYPE_PURE, "25", 0, true);
+	run(NDb::APPLICATORDAMAGETYPE_PURE, "25", 25);
+	run(static_cast<NDb::EApplicatorDamageType>(99), "25", 0);
+	for (const char* bad : {"-1", "1/0", "1e39", "cMissing"}) run(NDb::APPLICATORDAMAGETYPE_MANA, bad, 0);
+	PFBaseUnit::DamageDesc delegated;
+	delegated.pSender = receiver; delegated.amount = 17; delegated.damageType = NDb::APPLICATORDAMAGETYPE_ENERGY;
+	delegated.flags = 9; delegated.damageMode = NDb::DAMAGEMODE_DONTATTACKBACK;
+	delegated.dontAttackBack = true; delegated.delegated = true; delegated.ignoreDefences = true;
+	delegated.isDelegatedCriticalDamage = true; delegated.pDealerApplicator = nullptr;
+	run(NDb::APPLICATORDAMAGETYPE_PURE, "cMissing", 17, false, &delegated);
+	run(NDb::APPLICATORDAMAGETYPE_MANA, "25", 0, false, &delegated);
+	delegated.amount = std::numeric_limits<float>::infinity();
+	run(NDb::APPLICATORDAMAGETYPE_PURE, "25", 0, false, &delegated);
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -228,7 +297,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		PFWorld* world = dynamic_cast<PFWorld*>(owner.GetPtr());
 		const bool loaded = world && world->LoadMap(db, 0, NCore::TPlayersStartInfo(), 0, false, PFResourcesCollection::TalentMap());
 		check(loaded, "applicator mock map loads");
-		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); CooldownFormulas(check, world); }
+		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); CooldownFormulas(check, world); DamageRouting(check, world); }
 	}
 	NDb::SessionRoot::InitRoot(saved);
 	std::printf("Applicator formulas: %d checks, %d failures\n", check.count, check.failed);

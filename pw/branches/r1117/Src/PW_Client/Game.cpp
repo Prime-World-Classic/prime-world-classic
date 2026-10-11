@@ -24359,12 +24359,18 @@ void ProbeEffectsPoolRuntime(
         if (statusInstance)
           statusInstance->Cancel();
 
+		// RefreshCooldown is hero-only on Windows; use a real hero for this fixture.
+		NWorld::PFBaseHero::SpawnInfo refreshSpawn;
+		refreshSpawn.pHero = new NDb::Hero;
+		refreshSpawn.placement = Placement(CVec3(84, 30, 0), QNULL, CVec3(1, 1, 1));
+		CObj<NWorld::PFBaseHero> refreshHero = new NWorld::PFBaseHero(0, refreshSpawn,
+			NDb::UNITTYPE_HEROMALE, NDb::FACTION_FREEZE, NDb::FACTION_FREEZE);
         NDb::Ability* refreshAbility = new NDb::Ability();
         refreshAbility->type = NDb::ABILITYTYPE_ACTIVE;
         refreshAbility->targetType = NDb::SPELLTARGET_ALL;
         CObj<NWorld::PFAbilityData> refreshAbilityData(
           new NWorld::PFAbilityData(
-            CPtr<NWorld::PFBaseUnit>(chainFreezeOwner.GetPtr()),
+            CPtr<NWorld::PFBaseUnit>(refreshHero.GetPtr()),
             NDb::Ptr<NDb::Ability>(refreshAbility),
             NDb::ABILITYTYPEID_SPECIAL,
             false,
@@ -24373,7 +24379,7 @@ void ProbeEffectsPoolRuntime(
         );
         refreshAbilityData->RestartCooldown(4.0f);
         unitChainRefreshBefore = refreshAbilityData->GetCurrentCooldown();
-        NWorld::Target refreshTarget(chainFreezeOwner.GetPtr());
+        NWorld::Target refreshTarget(refreshHero.GetPtr());
         CObj<NWorld::PFAbilityInstance> refreshInstance(
           new NWorld::PFAbilityInstance(refreshAbilityData, refreshTarget, false)
         );

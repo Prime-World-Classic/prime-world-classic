@@ -45,10 +45,32 @@ PFApplDamage::PFApplDamage(PFApplCreatePars const &cp)
 bool PFApplDamage::Start()
 {
 	if (PFBaseApplicator::Start()) return true;
+	if (!IsUnitValid(pReceiver)) return true;
+	const int kind = GetDB().damageType;
+	if (kind < 0 || kind >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf()) return true;
+	if (IsDelegated())
+	{
+		// Delegation is synchronous; consume the original descriptor without rebuilding metadata.
+		const PFBaseUnit::DamageDesc* desc = delegateDamageDesc;
+		delegateDamageDesc = nullptr;
+		if (!desc || kind == NDb::APPLICATORDAMAGETYPE_MANA || !std::isfinite(desc->amount)
+			|| desc->amount <= 0 || desc->damageType < 0
+			|| desc->damageType >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf()
+			|| desc->damageType == NDb::APPLICATORDAMAGETYPE_MANA) return true;
+		damage = desc->amount;
+		damageDealed = pReceiver->OnDamage(*desc);
+		isCritical = desc->isDelegatedCriticalDamage;
+		return true;
+	}
   if (IsValid(pReceiver))
   {
-	damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : ReadLinuxApplicatorAmount(*this, GetDB().damage);
+	damage = ReadLinuxApplicatorAmount(*this, GetDB().damage);
 	if (!std::isfinite(damage) || damage <= 0.0f) return true;
+	if (kind == NDb::APPLICATORDAMAGETYPE_MANA)
+	{
+		damageDealed = pReceiver->OnBurnEnergy(GetAbilityOwner(), damage);
+		return true;
+	}
     PFBaseUnit::DamageDesc desc;
     desc.pSender = GetAbilityOwner();
     desc.amount = damage;
@@ -58,7 +80,7 @@ bool PFApplDamage::Start()
         : GetDB().damageType;
     desc.flags = flags;
     desc.damageMode = GetDB().damageMode;
-    desc.dontAttackBack = false;
+    desc.dontAttackBack = (GetDB().damageMode & NDb::DAMAGEMODE_DONTATTACKBACK) != 0;
     desc.delegated = IsDelegated();
     desc.ignoreDefences = ignoreDefences;
     desc.pDealerApplicator = this;
@@ -69,7 +91,7 @@ bool PFApplDamage::Start()
 
 void PFApplDamage::SetDelegated(PFBaseUnit::DamageDesc const* desc)
 {
-  if (!desc)
+  if (!desc || !GetTarget().IsUnit())
     return;
   flags |= FLAG_DELEGATED;
   pReceiver = GetTarget().IsUnit() ? GetTarget().GetUnit() : 0;
@@ -82,6 +104,10 @@ void PFApplDamage::LogDamage(PFBaseUnit const*, PFBaseUnit const*) const {}
 
 float PFApplDamage::GetVariable(const char* sVariableName) const
 {
+	if (strcmp(sVariableName, "damageDealed") == 0) return damageDealed + delegatedDamage;
+	if (strcmp(sVariableName, "isCritical") == 0) return isCritical ? 1.0f : 0.0f;
+	if (strcmp(sVariableName, "isAutoAttack") == 0)
+		return GetAbilityData() && GetAbilityData()->IsAutoAttack() ? 1.0f : 0.0f;
   if (strcmp(sVariableName, "Damage") == 0)
     return damage;
   if (strcmp(sVariableName, "DamageDealed") == 0 || strcmp(sVariableName, "DamageDealt") == 0)
