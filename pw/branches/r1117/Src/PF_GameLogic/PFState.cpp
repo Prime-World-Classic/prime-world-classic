@@ -4,16 +4,27 @@
 
 #include "PFState.h"
 #include "PFBaseMovingUnit.h"
+#include "PFHero.h"
+#include "PFMainBuilding.h"
+#include "PFPet.h"
 
 namespace NWorld
 {
 
-PFBaseUnitState::PFBaseUnitState(PFBaseUnit* unit) : TPFState<PFBaseUnit>(unit), PFWorldObjectBase(0, 0) {}
+/** Use-state and guard descendants need owner-world identity and weak registration, not world stepping. */
+PFBaseUnitState::PFBaseUnitState(PFBaseUnit* unit)
+	: TPFState<PFBaseUnit>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
 /** Nested production states resolve their world through this base object. */
 PFBaseMovingUnitState::PFBaseMovingUnitState(PFBaseMovingUnit* unit) : TPFState<PFBaseMovingUnit>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
-PFBaseHeroState::PFBaseHeroState(PFBaseHero* unit) : TPFState<PFBaseHero>(unit), PFWorldObjectBase(0, 0) {}
-PFMainBuildingState::PFMainBuildingState(PFMainBuilding* unit) : TPFState<PFMainBuilding>(unit), PFWorldObjectBase(0, 0) {}
-PFBasePetUnitState::PFBasePetUnitState(PFBasePetUnit* unit) : TPFState<PFBasePetUnit>(unit), PFWorldObjectBase(0, 0) {}
+/** Hero state parents must share their owner's context with nested moving-unit states. */
+PFBaseHeroState::PFBaseHeroState(PFBaseHero* unit)
+	: TPFState<PFBaseHero>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
+/** Main-building guards keep the same base world context as their initialized building. */
+PFMainBuildingState::PFMainBuildingState(PFMainBuilding* unit)
+	: TPFState<PFMainBuilding>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
+/** Pet escort states retain their world even though their owner is not a hero or ordinary creep. */
+PFBasePetUnitState::PFBasePetUnitState(PFBasePetUnit* unit)
+	: TPFState<PFBasePetUnit>(unit), PFWorldObjectBase(unit ? unit->GetWorld() : 0, 0) {}
 
 void PFBaseUnitState::DumpState(const char* state) { (void)state; }
 void PFBaseMovingUnitState::DumpState(const char* state) { (void)state; }
