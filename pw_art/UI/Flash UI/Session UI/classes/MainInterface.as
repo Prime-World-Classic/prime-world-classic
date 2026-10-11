@@ -28,6 +28,7 @@
 	import MainScreen.*;
 	import StatisticBars.CurrentGameStatistics;
 	import flashx.textLayout.formats.Float;
+	import Utils.GameTimeGlobalUtils;
 
 	public class MainInterface
 	{
@@ -322,6 +323,7 @@
 		public function SetGameProgress(humanTerrain:Number, elfTerrain:Number, gameTime:int,timeToCreepSpawn:int):void
 		{
 			mainWindow.statisticsBar_mc.allStats_mc.SetGameProgress(humanTerrain, elfTerrain, gameTime);
+			GameTimeGlobalUtils.CurrentTime = gameTime;
 			if (mainWindow.dayNight_mc.visible)
 				mainWindow.dayNight_mc.GameTime = gameTime;
 			else
@@ -1455,7 +1457,12 @@
 		{
 			mainWindow.actionBarContainer.actionBar_mc.LockActionBar(lock);
 		}
-		
+
+		public function ShowPanel(show:Boolean):void
+		{
+			mainWindow.actionBarContainer.actionBar_mc.ShowPanel(show);
+		}
+
 		public function TempUnlockActionBar(unlock:Boolean):void
 		{
 			mainWindow.actionBarContainer.actionBar_mc.TempUnlockActionBar(unlock);

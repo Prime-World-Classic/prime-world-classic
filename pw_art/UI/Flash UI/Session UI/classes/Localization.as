@@ -100,6 +100,8 @@
 		
 		public static var Tooltip_LockActionBarBtnUp:String  = "Закрепить таланты";
 		public static var Tooltip_LockActionBarBtnDown:String  = "Открепить таланты";
+		public static var Tooltip_ShowPanelBtnUp:String  = "Расширить панель";
+		public static var Tooltip_ShowPanelBtnDown:String  = "Скрыть панель";
 		
 		public static var Tooltip_ActionBarCuestLogWindowOn:String = "";
 		public static var Tooltip_ActionBarCuestLogWindowOff:String = "";
@@ -179,6 +181,20 @@
 		public static var ShortcutsMenu_ActionBarSlot8:String = "Ячейка 8";
 		public static var ShortcutsMenu_ActionBarSlot9:String = "Ячейка 9";
 		public static var ShortcutsMenu_ActionBarSlot10:String = "Ячейка 10";
+		public static var ShortcutsMenu_ActionBarSlot11:String = "Ячейка 11";
+		public static var ShortcutsMenu_ActionBarSlot12:String = "Ячейка 12";
+		public static var ShortcutsMenu_ActionBarSlot13:String = "Ячейка 13";
+		public static var ShortcutsMenu_ActionBarSlot14:String = "Ячейка 14";
+		public static var ShortcutsMenu_ActionBarSlot15:String = "Ячейка 15";
+		public static var ShortcutsMenu_ActionBarSlot16:String = "Ячейка 16";
+		public static var ShortcutsMenu_ActionBarSlot17:String = "Ячейка 17";
+		public static var ShortcutsMenu_ActionBarSlot18:String = "Ячейка 18";
+		public static var ShortcutsMenu_ActionBarSlot19:String = "Ячейка 19";
+		public static var ShortcutsMenu_ActionBarSlot20:String = "Ячейка 20";
+		public static var ShortcutsMenu_ActionBarSlot21:String = "Ячейка 21";
+		public static var ShortcutsMenu_ActionBarSlot22:String = "Ячейка 22";
+		public static var ShortcutsMenu_ActionBarSlot23:String = "Ячейка 23";
+		public static var ShortcutsMenu_ActionBarSlot24:String = "Ячейка 24";
 		public static var ShortcutsMenu_SelfCast:String = "Использовать на себя";
 		public static var ShortcutsMenu_Portal:String = "Портал";
 		public static var ShortcutsMenu_ActionBarLockOff:String = "Временно разблокировать ячейки";

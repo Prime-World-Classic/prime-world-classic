@@ -93,13 +93,32 @@
 		public var btn8:ActionButton;
 		public var btn9:ActionButton;
 		public var btn10:ActionButton;
+		public var btn11:ActionButton;
+		public var btn12:ActionButton;
 		public var portalBtn:ActionButtonPortal;
-		
+
+		// second row, shown by showPanelBtn
+		public var btn13:ActionButton;
+		public var btn14:ActionButton;
+		public var btn15:ActionButton;
+		public var btn16:ActionButton;
+		public var btn17:ActionButton;
+		public var btn18:ActionButton;
+		public var btn19:ActionButton;
+		public var btn20:ActionButton;
+		public var btn21:ActionButton;
+		public var btn22:ActionButton;
+		public var btn23:ActionButton;
+		public var btn24:ActionButton;
+
 		public var errorMessageText:TextField;
 		public var impulsTalent_mc:ImpulsTalent;
 		public var lockBtn:ButtonRound;
-		
-		
+		public var showPanelBtn:ButtonRound;
+
+		private const FIRST_ROW_SIZE:int = 12;
+		private const PANEL_ROW_HEIGHT:Number = 53.5;
+
 		private var epselon:Number=0.001;
 		
 		private const START_POSITION:int = 0;
@@ -119,7 +138,10 @@
 		private var lockActionBar:Boolean;
 		private var blockActionBar:Boolean;
 		private var tempUnlockActionBar:Boolean;
-		
+
+		private var panelShown:Boolean = false;
+		private var channelBarBaseOffset:Number;
+
 		public function ActionBar()
 		{
 			this.stop();
@@ -133,13 +155,17 @@
 			
 			this.mouseEnabled = false;
 			lockBtn.AutoCheck = false;
-			
+			showPanelBtn.AutoCheck = false;
+
 			channelBar.visible = false;
-		
+
 			buffArr = [buff1,buff2,buff3,buff4,buff5,buff6,buff7,buff8,buff9,buff10,buff11,
 			   buff12,buff13,buff14,buff15,buff16,buff17,buff18,buff19,buff20,buff21,buff22];
 
-			actionButtons = [btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10];
+			actionButtons = [btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, btn11, btn12,
+			   btn13, btn14, btn15, btn16, btn17, btn18, btn19, btn20, btn21, btn22, btn23, btn24];
+
+			SetSecondRowVisible(false);
 			
 			BarButtonsArray = [talents_btn,char_btn,inventory_btn,null,null,statistics_btn,esc_btn]
 			
@@ -167,7 +193,8 @@
 			addEventListener(Event.ADDED_TO_STAGE, ThisAddedToStage);
 			
 			lockBtn.addEventListener(ToggleButtonClickedEvent.EVENT_TYPE, OnLockUp);
-			
+			showPanelBtn.addEventListener(ToggleButtonClickedEvent.EVENT_TYPE, OnShowPanelToggle);
+
 			FillButtonTooltips();
 			
 			if (Localization.CompleteEventDispatcher != null)
@@ -194,7 +221,53 @@
 			
 			FSCommands.Send(FSCommands.ActionBarLock, int(e.Checked).toString());
 		}
-		
+
+		private function OnShowPanelToggle(e:ToggleButtonClickedEvent):void
+		{
+			e.stopPropagation();
+
+			ShowPanel(!panelShown);
+
+			FSCommands.Send(FSCommands.ActionBarShowPanel, int(panelShown).toString());
+		}
+
+		// called by the game to restore the saved state of the second row
+		public function ShowPanel(show:Boolean):void
+		{
+			if (panelShown == show) return;
+
+			panelShown = show;
+
+			SetSecondRowVisible(show);
+
+			var offset:Number = show ? -PANEL_ROW_HEIGHT : PANEL_ROW_HEIGHT;
+
+			manaBar_mc.y += offset;
+			healthBar_mc.y += offset;
+			errorMessageText.y += offset;
+			grafic01.y += offset;
+			grafic02.y += offset;
+			channelBar.y += offset;
+
+			for each (var buff:Buf in buffArr)
+			{
+				buff.y += offset;
+			}
+
+			if (show)
+				showPanelBtn.SwitchOn();
+			else
+				showPanelBtn.SwitchOff();
+		}
+
+		private function SetSecondRowVisible(show:Boolean):void
+		{
+			for (var i:int = FIRST_ROW_SIZE; i < actionButtons.length; i++)
+			{
+				actionButtons[i].visible = show;
+			}
+		}
+
 		private function FillLocalization(e:Event):void
 		{
 			FillButtonTooltips();
@@ -203,29 +276,31 @@
 		public function ThisAddedToStage(e:Event):void
 		{
 			var gapForChannelingBar:Number = healthBar_mc.y- (buff1.y + buff1.BuffHeight);
-			
-			var firstPos:Number = healthBar_mc.y - gapForChannelingBar-channelBar.BarHeight;
-			var secondPos:Number = buff1.y - gapForChannelingBar-channelBar.BarHeight;
-			var thirdPos:Number = buff12.y - gapForChannelingBar-channelBar.BarHeight;
 
-			firstPos = Math.round(firstPos - 0.5);
-			secondPos = Math.round(secondPos - 0.5);
-			thirdPos = Math.round(thirdPos - 0.5);
-			
-			myTweenBarUp = new Tween(channelBar,"y",Strong.easeOut,firstPos,secondPos,6,false);
-			myTweenBarUp.stop();
-			myTweenBarUp2 = new Tween(channelBar,"y",Strong.easeOut,secondPos,thirdPos,5,false);
-			myTweenBarUp2.stop();
+			channelBarBaseOffset = -gapForChannelingBar - channelBar.BarHeight;
+			channelBar.y = Math.round(healthBar_mc.y + channelBarBaseOffset - 0.5);
 
-			
-			myTweenBarDown = new Tween(channelBar,"y",Strong.easeOut,secondPos,firstPos,5,false);
-			myTweenBarDown.stop();
-			myTweenBarDown2 = new Tween(channelBar,"y",Strong.easeOut,thirdPos,secondPos,5,false);
-			myTweenBarDown2.stop();
-			
-			channelBar.y = firstPos;
-			//activate button Portal
-			//btn11.Shortcut.State = ActionBarSlotState.ACTIVE;
+			// tweens are created on demand in AnimateChanelingTo, because bars and buffs move when the second row is toggled
+			myTweenBarUp = null;
+			myTweenBarUp2 = null;
+			myTweenBarDown = null;
+			myTweenBarDown2 = null;
+		}
+
+		private function GetChannelBarTargetY(value:int):Number
+		{
+			var gapForChannelingBar:Number = healthBar_mc.y - (buff1.y + buff1.BuffHeight);
+
+			switch (value)
+			{
+				case START_POSITION:
+					return Math.round(healthBar_mc.y + channelBarBaseOffset - 0.5);
+				case FIRST_LINE_POSITION:
+					return Math.round(buff1.y - gapForChannelingBar - channelBar.BarHeight - 0.5);
+				case SECOND_LINE_POSITION:
+					return Math.round(buff14.y - gapForChannelingBar - channelBar.BarHeight - 0.5);
+			}
+			return channelBar.y;
 		}
 		
 		public function set EnemyHealthbarPresentation(value:Boolean):void
@@ -439,16 +514,21 @@
 			lockBtn.visible = show;
 			
 			if(!show)
-				channelBar.visible = show;
-				
+				channelBar.visible = false;
+
 			UpdateBuffsVisibility();
-			
-			for (i = 0; i < actionButtons.length; i++)
+
+			for (i = 0; i < FIRST_ROW_SIZE; i++)
 			{
 				actionButtons[i].visible = show;
 			}
+			for (i = FIRST_ROW_SIZE; i < actionButtons.length; i++)
+			{
+				actionButtons[i].visible = show && panelShown;
+			}
 			portalBtn.visible = show;
-			
+			showPanelBtn.visible = show;
+
 		}
 	
 		public function GetActionBarItem(index:int):MovieClip
@@ -547,53 +627,32 @@
 		private function AnimateChanelingTo(value:int):void
 		{
 			if (currentChanelingLevel == value) return;
-		
+
+			if (myTweenBarUp != null) myTweenBarUp.stop();
+			if (myTweenBarUp2 != null) myTweenBarUp2.stop();
+			if (myTweenBarDown != null) myTweenBarDown.stop();
+			if (myTweenBarDown2 != null) myTweenBarDown2.stop();
+
+			var duration:int = Math.abs(value - currentChanelingLevel) == 1 ? 5 : 6;
+			var tween:Tween = new Tween(channelBar, "y", Strong.easeOut, channelBar.y, GetChannelBarTargetY(value), duration, false);
+			tween.start();
+
 			if (value > currentChanelingLevel)
 			{
-				AnimateDownChaneling(value)
+				if (value == FIRST_LINE_POSITION)
+					myTweenBarUp = tween;
+				else
+					myTweenBarUp2 = tween;
 			}
 			else
 			{
-				AnimateUpChaneling(value)
+				if (value == FIRST_LINE_POSITION)
+					myTweenBarDown2 = tween;
+				else
+					myTweenBarDown = tween;
 			}
 			currentChanelingLevel = value;
 		}
-		
-		private function AnimateDownChaneling(value:int):void
-		{
-			myTweenBarDown.stop();
-			myTweenBarDown2.stop();
-			
-			if (value == FIRST_LINE_POSITION)
-			{			
-				myTweenBarUp2.stop()
-				myTweenBarUp.start();
-			}
-			
-			if (value == SECOND_LINE_POSITION)
-			{			
-				myTweenBarUp.stop()
-				myTweenBarUp2.start();
-			}
-		}
-		
-		private function AnimateUpChaneling(value:int):void
-		{
-			myTweenBarUp.stop();
-			myTweenBarUp2.stop();
-			
-			if (value == FIRST_LINE_POSITION)
-			{			
-				myTweenBarDown.stop()
-				myTweenBarDown2.start();
-			}
-			
-			if (value == START_POSITION)
-			{			
-				myTweenBarDown2.stop()
-				myTweenBarDown.start();
-			}
-		}		
 		
 		public function SetErrorMessage(errorID:int, msg:String, playSound:Boolean, lifeTime:Number):void
 		{
@@ -803,7 +862,10 @@
 		{	
 			lockBtn.Tooltip = Localization.Tooltip_LockActionBarBtnUp;
 			lockBtn.TogledTooltip = Localization.Tooltip_LockActionBarBtnDown;
-			
+
+			showPanelBtn.Tooltip = Localization.Tooltip_ShowPanelBtnUp;
+			showPanelBtn.TogledTooltip = Localization.Tooltip_ShowPanelBtnDown;
+
 			talents_btn.Tooltip = Localization.Tooltip_ActionBarTalentWindowOn;
 			talents_btn.TogledTooltip = Localization.Tooltip_ActionBarTalentWindowOff;
 			

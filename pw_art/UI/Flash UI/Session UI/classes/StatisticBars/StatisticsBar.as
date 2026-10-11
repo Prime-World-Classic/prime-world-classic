@@ -82,5 +82,24 @@
 				this.y = Math.floor(this.y);
 			}
 		}
+
+		// window is out of the screen (or its top is hidden): put it back to the center
+		override public function SetOnStartPosition():void
+		{
+			if (!isAddedToStage) return;
+
+			var verticalCenter:Number = this.y + this.windowHeight / 2;
+			var horizontalCenter:Number = this.x + this.windowWidth / 2;
+
+			if (this.y < 0 || verticalCenter < 0 || verticalCenter > stage.stageHeight || horizontalCenter < 0 || horizontalCenter > stage.stageWidth)
+			{
+				this.x = (stage.stageWidth - this.width) / 2;
+				this.y = (stage.stageHeight - this.height) / 2;
+				this.x = Math.floor(this.x);
+				this.y = Math.floor(this.y);
+				curPosition.x = this.x;
+				curPosition.y = this.y;
+			}
+		}
 	}
 }

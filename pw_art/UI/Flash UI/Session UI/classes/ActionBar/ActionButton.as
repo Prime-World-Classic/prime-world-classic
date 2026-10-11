@@ -52,9 +52,13 @@
 			_index = value;
 			
 			value += 1;
-			if (value == 10) 
-				value = 0;
-			if(!isBindSetted)
+			if (isBindSetted) return;
+
+			if (value == 10)
+				textNum.text = "0";
+			else if (value >= 11 && value <= 24)
+				textNum.text = "F" + (value - 10).toString();
+			else
 				textNum.text = value.toString();
 		}
 		

@@ -152,7 +152,7 @@
         {
           return;
         }
-        raitingAccBar.SetHeroRaiting(isItOurHero,raiting,deltaWin,deltaLose,rankIcon,rankTooltip);
+        raitingAccBar.SetHeroRaitingAcc(isItOurHero,raiting,deltaWin,deltaLose,rankIcon,rankTooltip);
     }
 		
 		public function SetPremium(hasPremium:Boolean, originalFraction:int, heroName:String):void 
