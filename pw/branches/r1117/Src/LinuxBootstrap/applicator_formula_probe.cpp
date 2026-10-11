@@ -52,10 +52,20 @@ struct Refresh : PFApplRefreshCooldown
 struct ProbeUnit : PFBaseUnit
 {
 	int damageCalls = 0;
+	int beforeCalls = 0;
+	float delegateAmount = 0, observedBefore = 0, observedDuring = 0;
+	float OnBeforeDamage(const DamageDesc& desc) override
+	{
+		++beforeCalls;
+		observedBefore = desc.pDealerApplicator ? desc.pDealerApplicator->GetVariable("damageDealed") : -1;
+		desc.delegatedDamage = delegateAmount;
+		return desc.amount;
+	}
 	DamageDesc lastDamage;
 	float OnDamage(const DamageDesc& desc) override
 	{
 		++damageCalls; lastDamage = desc;
+		observedDuring = desc.pDealerApplicator ? desc.pDealerApplicator->GetVariable("damageDealed") : -1;
 		return PFBaseUnit::OnDamage(desc);
 	}
 	ProbeUnit(PFWorld* world, const NDb::Unit* db, NDb::EFaction faction) : PFBaseUnit(world, CVec3(5, 5, 0), db)
@@ -369,6 +379,44 @@ static void OutgoingDamage(Checks& check, PFWorld* world)
 	sender->RemoveEventListener(listener.GetPtr());
 }
 
+/** Pre-damage return populates the applicator context, not a replacement descriptor amount. */
+static void PreDamage(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	ProbeUnit* observed = static_cast<ProbeUnit*>(receiver.GetPtr());
+	CObj<OutgoingListener> listener = new OutgoingListener;
+	listener->replacement = 17; sender->AddEventListener(listener.GetPtr());
+	for (bool delegated : {false, true})
+	{
+		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+		raw->damage.sString = "25"; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Damage> app = new Damage(pars);
+		PFBaseUnit::DamageDesc desc; desc.pSender = sender; desc.amount = 13;
+		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE; desc.flags = 0;
+		desc.damageMode = NDb::DAMAGEMODE_ZERO; desc.dontAttackBack = false; desc.pDealerApplicator = nullptr;
+		observed->beforeCalls = observed->damageCalls = listener->calls = 0;
+		observed->delegateAmount = 7; receiver->SetHealth(1000);
+		check(app->Init(), "pre-damage target initialization");
+		if (delegated) app->SetDelegated(&desc);
+		check(app->Run(), "pre-damage completes");
+		check(observed->beforeCalls == (delegated ? 0 : 1), "pre-hook once only on original damage");
+		check(listener->calls == (delegated ? 0 : 1), "delegation does not repeat outgoing event");
+		check(observed->damageCalls == 1, "single receiver damage call");
+		check(app->GetDamageDealed() == (delegated ? 13 : 17), "actual direct damage");
+		check(app->GetVariable("damageDealed") == (delegated ? 13 : 24), "original reports direct plus delegated damage");
+		if (!delegated)
+		{
+			check(observed->observedBefore == 25, "pre-hook sees original post-critical damage context");
+			check(observed->observedDuring == 17, "damage reduction sees pre-hook return after outgoing modifier");
+		}
+	}
+	sender->RemoveEventListener(listener.GetPtr());
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -394,6 +442,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CooldownFormulas(check, world); DamageRouting(check, world);
 			CriticalDamage(check, world);
 			OutgoingDamage(check, world);
+			PreDamage(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

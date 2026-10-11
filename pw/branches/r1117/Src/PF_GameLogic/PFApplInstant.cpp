@@ -97,14 +97,19 @@ bool PFApplDamage::Start()
     desc.ignoreDefences = ignoreDefences;
     desc.pDealerApplicator = this;
     desc.isDelegatedCriticalDamage = isCritical;
+	damageDealed = damage;
 	if (IsValid(desc.pSender))
 	{
 		PFOutgoingDamageEvent event(pReceiver, desc, damage);
 		desc.pSender->EventHappened(event);
-		if (!std::isfinite(event.damage) || event.damage <= 0) return true;
+		if (!std::isfinite(event.damage) || event.damage <= 0) { damageDealed = 0; return true; }
 		desc.amount = event.damage;
 	}
-    damageDealed = pReceiver->OnDamage(desc);
+	// Defence formulas inspect this applicator during the synchronous receiver hooks.
+	damageDealed = pReceiver->OnBeforeDamage(desc);
+	if (!std::isfinite(damageDealed)) { damageDealed = 0; return true; }
+	damageDealed = pReceiver->OnDamage(desc);
+	delegatedDamage = std::isfinite(desc.delegatedDamage) ? desc.delegatedDamage : 0.0f;
   }
   return true;
 }

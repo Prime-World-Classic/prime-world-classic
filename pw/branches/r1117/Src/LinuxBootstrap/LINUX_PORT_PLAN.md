@@ -25,6 +25,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 2/10 COMPLETE (`0.24.1`): ordinary health damage sends the existing PFOutgoingDamageEvent to the sender before receiver damage, retaining receiver/descriptor identity. Nonfinite/nonpositive listener results cannot reach resource callbacks. Mana and delegated routing remain separate. Actual registered-listener tests reproduced 24/1,406 failures; all checks and 28 CTests now pass. Windows bytes unchanged. Listener ordering/removal and complete trigger parity are not introduced here.
 
+- Chunk 3/10 COMPLETE (`0.24.2`): restore synchronous OnBeforeDamage before OnDamage, expose original/post-hook damage to defence formulas at the Windows hook boundaries, and collect mutable delegatedDamage only on the original application. Delegation skips outgoing/pre hooks. Nonfinite hook returns are rejected. Four baseline failures reproduced; all 1,422 applicator checks and 28 CTests pass. This wires hooks; it does not implement every delegation applicator or listener lifecycle rule.
+
 ### Previous Applicator/Spatial/Targeting Batch
 
 - Ten-chunk batch COMPLETE after `0.22.1` (2026-10-11), checkpoint `0.23.9`. Each chunk has its own commit, annotated version tag and push. STOP at 10/10; do not start another chunk without a new request. This batch ports checked damage/random/heal/cooldown consumers, correct resource/delegation routing, bounded spatial queries and true sight, AI/direct-attack visibility policy and actual hero healing. Native OpenGL and Ruffle opt-in/default-OFF are preserved. The scratch helper is closed; parent integrated, tested and published its bounded drafts. No client/build/probe sessions remain running at close-out.
