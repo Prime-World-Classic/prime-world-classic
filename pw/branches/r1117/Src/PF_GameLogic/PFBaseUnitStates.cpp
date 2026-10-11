@@ -372,21 +372,76 @@ bool PFBaseUnitAttackState::isTargetDropped(const PFBaseUnit* pTarget_)
   return !pTarget_;
 }
 
+/** Reuse the Windows alert HFSM: search before moving, then resume after creep combat. */
+class PFBaseUnitAlertMoveState : public MoveUnitStateFSM
+{
+	WORLD_OBJECT_METHODS(0xF5CC387, PFBaseUnitAlertMoveState)
+	CVec2 vTarget;
+	CPtr<PFWorld> pWorld;
+	float range;
+	bool inAttackState;
+	PFBaseUnitAlertMoveState() {}
+public:
+	PFBaseUnitAlertMoveState(const CPtr<PFWorld>& world, PFBaseMovingUnit* owner, const CVec2& target, float radius)
+		: MoveUnitStateFSM(owner), vTarget(target), pWorld(world),
+		  range(std::isfinite(radius) ? Max(radius, 1.0f) : radius), inAttackState(false) {}
+	int operator&(IBinSaver& f)
+	{
+		f.Add(1, (MoveUnitStateFSM*)this); f.Add(2, &vTarget); f.Add(3, &pWorld);
+		f.Add(4, &range); f.Add(5, &inAttackState); return 0;
+	}
+protected:
+	bool OnStep(float dt) override
+	{
+		if (!IsUnitValid(pOwner) || !IsValid(pWorld) || pOwner->GetWorld() != pWorld.GetPtr()
+			|| !std::isfinite(vTarget.x) || !std::isfinite(vTarget.y) || !std::isfinite(range)
+			|| pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)) return true;
+		FSMStep(dt);
+		if (inAttackState && !GetCurrentState()) return true;
+		if (!GetCurrentState())
+		{
+			PFBaseUnit* enemy = pOwner->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? nullptr
+				: pOwner->FindTarget(pOwner->GetTargetingRange());
+			if (enemy)
+			{
+				PushState(new PFBaseUnitAttackState(pWorld, pOwner, enemy, false));
+				inAttackState = pOwner->IsTrueHero();
+			}
+			else if (!pOwner->IsMoving())
+			{
+				if (pOwner->IsPositionInRange(vTarget, range)) return true;
+				if (!pOwner->MoveTo(vTarget)) return true;
+			}
+		}
+		pOwner->Stacked(!pOwner->IsInCombat() && !pOwner->IsMoving()
+			&& !pOwner->IsPositionInRange(vTarget, range));
+		return false;
+	}
+	void OnLeave() override
+	{
+		Cleanup();
+		if (IsValid(pOwner)) pOwner->Stacked(false);
+	}
+};
+
 PFBaseUnitCombatMoveState::PFBaseUnitCombatMoveState( const CPtr<PFWorld>& pWorld, const CPtr<PFBaseMovingUnit>& pOwner, const CVec2& target, float range )
   : MoveUnitStateFSM(pOwner)
 {
-  (void)pWorld;
-  PushState(new PFBaseUnitMoveToState(pOwner, target, range));
+	if (IsValid(pOwner)) PushState(new PFBaseUnitAlertMoveState(pWorld, pOwner, target, range));
 }
 
 bool PFBaseUnitCombatMoveState::OnStep(float dt)
 {
+	if (!IsUnitValid(pOwner)) return true;
   FSMStep(dt);
   return GetCurrentState() == 0;
 }
 
 void PFBaseUnitCombatMoveState::OnLeave()
 {
+	Cleanup();
+	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial() && !pOwner->IsMounted())
+		pOwner->Stop(false);
 }
 
 PFBaseUnitCombatMoveToBuildingState::PFBaseUnitCombatMoveToBuildingState(const CPtr<PFWorld>& pWorld_, PFBaseMovingUnit* pUnit, PFBaseUnit* pTarget_, IPointChecking* pPointChecking, bool requireLineOfSight)
@@ -417,6 +472,7 @@ REGISTER_WORLD_OBJECT_NM(PFBaseUnitMoveToState,     NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitChaseState,      NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitAttackState,     NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitCombatMoveState, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitAlertMoveState, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitPathMovingState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitMoveToBuildingState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitCombatMoveToBuildingState, NWorld)

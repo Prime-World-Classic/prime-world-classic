@@ -830,6 +830,7 @@ static void AttackStateLifecycle(Checks& checks)
 
 #include "movement_order_tests.inc"
 #include "building_order_tests.inc"
+#include "combat_move_tests.inc"
 
 bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 {
@@ -861,6 +862,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			PathMoveLifecycle(checks);
 			BuildingMoveLifecycle(checks);
 			RegionMovement(checks);
+			CombatMoveLifecycle(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);
