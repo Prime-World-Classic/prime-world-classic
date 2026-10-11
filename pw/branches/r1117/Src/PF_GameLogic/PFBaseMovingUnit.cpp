@@ -30,6 +30,7 @@ PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_INLINE_NULL_CAST
 
 #include "PFBaseMovingUnit.h"
+#include "PointChecking.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
 #include "PFVoxelMap.h"
@@ -42,7 +43,13 @@ template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, voi
 template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
 PW_NULL_CAST(CCommonStaticPath)
 PW_NULL_CAST(NWorld::CStandartPath2)
-PW_NULL_CAST(NWorld::IPointChecking)
+/** Region/range checkers use multiple inheritance; retain the actual interface offset. */
+BASIC_REGISTER_CLASS(NWorld::IPointChecking)
+template<> NWorld::IPointChecking* CastToUserObjectImpl<NWorld::IPointChecking>(
+	CObjectBase* object, NWorld::IPointChecking*, CObjectBase*)
+{
+	return dynamic_cast<NWorld::IPointChecking*>(object);
+}
 #undef PW_NULL_CAST
 
 namespace NWorld

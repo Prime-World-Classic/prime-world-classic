@@ -6,6 +6,8 @@
 #include "PFUniTarget.h"
 #include "PFBaseAttackData.h"
 #include "PFBehaviour.h"
+#include "TileMap.h"
+#include "PointChecking.h"
 #include "LinuxBootstrap/formula_context.h"
 
 namespace
@@ -96,23 +98,35 @@ PFBaseUnitMoveToBuildingState::PFBaseUnitMoveToBuildingState(PFBaseMovingUnit * 
 {
 }
 
+/** Building arrival is defined by occupied-region tiles, not distance to its center. */
 bool PFBaseUnitMoveToBuildingState::OnStep(float dt)
 {
-  (void)dt;
-  if (!IsValid(pOwner) || !IsValid(targetBuilding))
-    return true;
-  if (!initiatedMove)
-  {
-    pOwner->MoveTo(targetBuilding->GetPosition().AsVec2D());
-    initiatedMove = true;
-  }
-  return pOwner->IsPositionInRange(targetBuilding->GetPosition().AsVec2D(), Max(targetBuilding->GetObjectSize() * 0.5f, 1.0f));
+	(void)dt;
+	if (!IsUnitValid(pOwner) || !IsUnitValid(targetBuilding) || !IsValid(pointChecking)
+		|| pOwner->GetWorld() != targetBuilding->GetWorld()
+		|| pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE) || pOwner->IsHoldingPosition())
+		return true;
+	TileMap* map = pOwner->GetTileMap();
+	if (!IsValid(map)) return true;
+	if (pointChecking->IsGoodTile(map->GetTile(pOwner->GetPosition().AsVec2D()))
+		&& (!requireLineOfSight || pOwner->CanSee(*targetBuilding.GetPtr())))
+		return true;
+	if (!initiatedMove || (!pOwner->IsMoving() && !pOwner->IsMounted()))
+	{
+		const float approach = pOwner->GetAttackRange() * 0.7f;
+		if (!std::isfinite(approach) || approach < 0
+			|| !pOwner->MoveTo(targetBuilding, approach))
+			return true;
+		initiatedMove = true;
+	}
+	return false;
 }
 
 void PFBaseUnitMoveToBuildingState::OnLeave()
 {
-  if (needStopOnLeave && IsValid(pOwner) && pOwner->IsMoving())
-    pOwner->Stop();
+	if (needStopOnLeave && initiatedMove && IsValid(pOwner) && pOwner->IsMoving()
+		&& !pOwner->IsMovingSpecial() && !pOwner->IsMounted())
+		pOwner->Stop(false);
 }
 
 /** Preserve malformed radii for step rejection; retain the finite bootstrap fallback. */
