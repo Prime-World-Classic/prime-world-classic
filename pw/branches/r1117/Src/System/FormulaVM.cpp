@@ -871,6 +871,17 @@ private:
 
     char cstName[512];
     cstName[0] = 0;
+    // tal("X","Y") встречается в контенте (2 формулы Archeress). Старый компилятор
+    // разбирал второй аргумент и выбрасывал его: в блобе строки "Y" нет, код
+    // соответствует tal("X") (проверено декомпиляцией blob'а
+    // Items/Talents/Class/Archeress/Ability_A4.TALENT.xdb). Без этого шага формула
+    // не компилировалась и на x64 возвращала 0 вместо поведения x86.
+    if ( !bConst && !bRefine && m_lex.CurCh() == ',' )
+    {
+      m_lex.Next();
+      if ( m_lex.Cur().nKind != TK_STR ) { Err("ожидается имя константы в кавычках"); return FT_F; }
+      m_lex.Next();
+    }
     if (bConst)
     {
       if (m_lex.CurCh() == ',') m_lex.Next();
@@ -1081,6 +1092,17 @@ private:
       ParseExpr(); ConvTo(FT_F);
       if (m_lex.CurCh() == ',') m_lex.Next();
       ParseExpr(); ConvTo(FT_F);
+      // refineScale(200,12,5) (G096_Flower) - третья величина в контенте одна штука.
+      // Скомпилированный x86-код вызывает GetRefineAbilityScale(a,b) по cdecl и просто
+      // не читает третий аргумент; разбираем его и откатываем опкоды, чтобы сошлась
+      // лексема и поведение совпало с x86.
+      if (m_lex.CurCh() == ',')
+      {
+        m_lex.Next();
+        int nMark = Here();
+        ParseExpr();
+        m_vm.TruncateOps(nMark);
+      }
       if (m_lex.CurCh() == ')') m_lex.Next();
       int idx = FindAcc(FI_MISC, "GetRefineAbilityScale");
       E(FormulaVM::OP_ACC, idx);

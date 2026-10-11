@@ -103,6 +103,9 @@ private:
 
   int  Emit(int nOp, int nA, int nB);
   int  OpCount() const { return m_nOps; }
+  // откат только что выпущенных опкодов: нужно для аргументов, которые
+  // скомпилированный x86-код игнорирует (разбираем, чтобы сошлась лексема, и выбрасываем)
+  void TruncateOps( int nOpIdx ) { if ( nOpIdx >= 0 && nOpIdx <= m_nOps ) m_nOps = nOpIdx; }
   void PatchJump(int nOpIdx, int nTarget);
   void PatchConv(int nOpIdx, int nType);
 
