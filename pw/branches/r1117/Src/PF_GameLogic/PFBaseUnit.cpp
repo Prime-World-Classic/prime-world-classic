@@ -17,6 +17,7 @@
 #include "Scripts/lua.hpp"
 #include "LuaScript.h"
 #include "LinuxBootstrap/formula_context.h"
+#include "PFPredefinedUnitVariables.h"
 
 #include <cmath>
 #include <limits>
@@ -1643,13 +1644,39 @@ float PFBaseUnit::OnDamage(const DamageDesc& desc)
 
   return damage;
 }
-float PFBaseUnit::OnHeal(CPtr<PFBaseUnit>, float amount, bool)
+/** Apply recipient healing modifiers in Windows float-operation order.
+ * Stage the result before changing health so invalid numeric input is a no-op.
+ * Negative effective healing is intentional and must enter the death lifecycle.
+ */
+float PFBaseUnit::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods)
 {
-  if (amount <= 0.0f || CheckFlag(NDb::UNITFLAG_FORBIDLIFERESTORE))
-    return 0.0f;
-  const float before = GetHealth();
-  ChangeHealth(amount);
-  return GetHealth() - before;
+	if (!std::isfinite(amount) || CheckFlag(NDb::UNITFLAG_FORBIDLIFERESTORE))
+		return 0.0f;
+	const float before = GetHealth();
+	const float maximum = GetMaxHealth();
+	if (!std::isfinite(before) || !std::isfinite(maximum) || maximum <= 0.0f)
+		return 0.0f;
+	float next = before;
+	if (!ignoreHealingMods)
+	{
+		const float scale = GetVariable(UnitVariables::szHealingScale);
+		const float bias = GetVariable(UnitVariables::szHealingBias);
+		if (!std::isfinite(scale) || !std::isfinite(bias))
+			return 0.0f;
+		amount *= 1.0f + scale;
+		next += bias;
+		if (!std::isfinite(amount) || !std::isfinite(next))
+			return 0.0f;
+	}
+	next += amount;
+	if (!std::isfinite(next))
+		return 0.0f;
+	health = next;
+	if (health > maximum)
+		health = maximum;
+	else if (IsDead())
+		OnUnitDie(pSender, UNITDIEFLAGS_NONE);
+	return GetHealth() - before;
 }
 float PFBaseUnit::OnBurnEnergy(CPtr<PFBaseUnit>, float amount)
 {

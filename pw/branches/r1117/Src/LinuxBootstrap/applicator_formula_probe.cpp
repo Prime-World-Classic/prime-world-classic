@@ -6,6 +6,8 @@
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
 #include "../PF_GameLogic/PFHero.h"
+#include "../PF_GameLogic/PFCreep.h"
+#include "../PF_GameLogic/PFPredefinedUnitVariables.h"
 #include "../PF_GameLogic/DBHeroesList.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFAIWorld.h"
@@ -573,6 +575,120 @@ static void DefenceReduction(Checks& check, PFWorld* world, NDb::AILogicParamete
 	ai->physicalDamageReduction = savedPhysical;
 }
 
+/** Construct real base-unit, creep, and hero recipients with the probe's DB stats. */
+static CObj<PFBaseUnit> HealingReceiver(PFWorld* world, int kind)
+{
+	CObj<PFBaseUnit> seed = Unit(world, NDb::FACTION_FREEZE, 20);
+	if (kind == 0)
+		return seed;
+	const Placement placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
+	if (kind == 1)
+	{
+		NDb::Creature* raw = new NDb::Creature; raw->stats = seed->DbUnitDesc()->stats;
+		NDb::Ptr<NDb::Creature> db = raw;
+		return new PFBaseCreep(world, *db, NDb::FACTION_FREEZE, NDb::UNITTYPE_CREEP, -1, placement);
+	}
+	NDb::Hero* raw = new NDb::Hero; raw->stats = seed->DbUnitDesc()->stats;
+	NDb::Ptr<NDb::Hero> db = raw;
+	PFBaseHero::SpawnInfo spawn; spawn.pHero = db; spawn.placement = placement;
+	return new PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, NDb::FACTION_FREEZE, NDb::FACTION_FREEZE);
+}
+
+/** Direct calls cover Windows signed/zero semantics; applicators keep their own admission checks. */
+static void HealingModifiers(Checks& check, PFWorld* world)
+{
+	for (int kind = 0; kind != 3; ++kind)
+	{
+		CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_BURN, 40);
+		CObj<PFBaseUnit> receiver = HealingReceiver(world, kind);
+		check(kind != 1 || dynamic_cast<PFBaseCreep*>(receiver.GetPtr()), "healing real creep fixture");
+		check(kind != 2 || dynamic_cast<PFBaseHero*>(receiver.GetPtr()), "healing real hero fixture");
+		sender->GetVariableVWM(UnitVariables::szHealingScale)->SetBaseValue(9);
+		sender->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(800);
+		const auto run = [&](float amount, float scale, float bias, float expected,
+			bool ignore = false, float start = 400.0f, bool forbidden = false) {
+			receiver->SetHealth(start); receiver->SetEnergy(50);
+			receiver->GetVariableVWM(UnitVariables::szHealingScale)->SetBaseValue(scale);
+			receiver->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(bias);
+			if (forbidden) receiver->AddFlag(NDb::UNITFLAG_FORBIDLIFERESTORE);
+			const float actual = receiver->OnHeal(sender.GetPtr(), amount, ignore);
+			check(actual == expected, "healing modifiers report actual signed delta");
+			check(receiver->GetHealth() == start + expected, "healing modifiers change recipient health only");
+			check(receiver->GetMana() == 50, "health modifiers do not change energy");
+			check(sender->GetHealth() == 1000, "healing sender is not the recipient");
+			if (forbidden) receiver->RemoveFlag(NDb::UNITFLAG_FORBIDLIFERESTORE);
+		};
+		run(100, 0, 0, 100);
+		run(100, 0.5f, 10, 160);
+		run(100, 0.5f, 10, 100, true);
+		run(100, -0.5f, -30, 20);
+		run(10, 0, -30, -20);
+		run(10, -2, 0, -10);
+		run(10, 0, -20, -10, false, 1000);
+		run(100, 0.5f, 10, 50, false, 950);
+		run(100, 0.5f, 10, 0, false, 1000);
+		run(0, 0, 15, 15);
+		run(0, 0, 15, 0, true);
+		run(-25, 0, 0, -25);
+		run(-25, 0.5f, 10, -25, true);
+		run(100, 0.5f, 10, 0, false, 400, true);
+		run(100, 0.5f, 10, 0, true, 400, true);
+		for (const float invalid : {std::numeric_limits<float>::quiet_NaN(),
+			std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity()})
+		{
+			run(invalid, 0.5f, 10, 0);
+			run(invalid, 0.5f, 10, 0, true);
+		}
+		run(std::numeric_limits<float>::max(), 1.0f, 10, 0);
+		run(std::numeric_limits<float>::max(), -3.0f, 10, 0);
+		run(std::numeric_limits<float>::max(), 1.0f, 10, 600, true);
+
+		// Real variable modifiers must participate, not just their raw base values.
+		receiver->SetHealth(400);
+		ValueWithModifiers* scale = receiver->GetVariableVWM(UnitVariables::szHealingScale);
+		scale->SetBaseValue(0.25f);
+		const int modifier = scale->AddModifier(1, 0.25f, 71);
+		receiver->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(10);
+		check(receiver->OnHeal(sender.GetPtr(), 100) == 160, "healing reads current variable modifiers");
+		scale->RemoveModifier(modifier);
+		receiver->SetHealth(400);
+		check(receiver->OnHeal(sender.GetPtr(), 100) == 135, "healing observes modifier removal");
+
+		// Use real applicator dispatch as well as direct virtual callbacks.
+		for (const bool ignore : {false, true})
+		{
+			receiver->SetHealth(400);
+			scale->SetBaseValue(0.5f);
+			NDb::HealApplicator* raw = new NDb::HealApplicator;
+			raw->amount.sString = "100"; raw->enabled.sString = "true";
+			raw->healTarget = NDb::HEALTARGET_HEALTH; raw->ignoreHealingMods = ignore;
+			NDb::Ptr<NDb::HealApplicator> db = raw;
+			const Target target(receiver.GetPtr());
+			PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+			pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+			CObj<Heal> app = new Heal(pars);
+			const float expected = ignore ? 100 : 160;
+			check(app->Init() && app->Run(), "modified heal applicator completes");
+			check(receiver->GetHealth() == 400 + expected, "authored ignoreHealingMods reaches unit callback");
+			check(app->GetAmountRestored() == expected && app->GetVariable("amountRestored") == expected,
+				"modified heal reports actual restoration");
+		}
+		receiver->SetEnergy(50);
+		check(receiver->OnHealEnergy(sender.GetPtr(), 20) == 20 && receiver->GetMana() == 70,
+			"health scale and bias do not affect energy healing");
+
+		// A damaging healing modifier must perform teardown, not just clamp life to zero.
+		receiver->SetHealth(400);
+		receiver->AssignTarget(sender.GetPtr(), true);
+		check(receiver->GetCurrentTarget() == sender.GetPtr(), "fatal healing has a target to clean up");
+		scale->SetBaseValue(0);
+		receiver->GetVariableVWM(UnitVariables::szHealingBias)->SetBaseValue(-500);
+		check(receiver->OnHeal(sender.GetPtr(), 10) == -400, "fatal healing reports post-lifecycle health delta");
+		check(receiver->IsDead() && receiver->GetHealth() == 0, "fatal healing enters the death lifecycle");
+		check(!receiver->GetCurrentTarget(), "fatal healing cleans up the attack target");
+	}
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -602,6 +718,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DamageNotifications(check, world);
 			CombatFormulaContext(check, world);
 			DefenceReduction(check, world, ai);
+			HealingModifiers(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
