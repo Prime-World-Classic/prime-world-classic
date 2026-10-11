@@ -101,7 +101,10 @@ static void BehaviourMountedRetaliationB8B(Checks& check, PFWorld* world)
 		PFWorld* riderWorld = scenario == 9 ? foreign.world : world;
 		NDb::Ptr<NDb::Creature> db = B8BehaviourCreatureDb(riderWorld, NDb::FACTION_BURN);
 		CObj<B8BehaviourRider> rider = new B8BehaviourRider(riderWorld, *db, NDb::FACTION_BURN);
-		mount->AttachUnit(rider.GetPtr());
+		// Physical attachment is local; resolved endpoint metadata can still be foreign.
+		CObj<B8BehaviourCreep> carrier = mount;
+		if (mount->GetWorld() != riderWorld) carrier = B8BehaviourMoving(riderWorld, NDb::FACTION_BURN);
+		carrier->AttachUnit(rider.GetPtr());
 		rider->mountedOn = scenario == 1 ? nullptr : static_cast<PFBaseUnit*>(mount.GetPtr());
 		if (scenario == 3) mount->ChangeHealth(-1000);
 		if (scenario == 5) mount->EnemyVisible(false);
@@ -122,7 +125,7 @@ static void BehaviourMountedRetaliationB8B(Checks& check, PFWorld* world)
 			check(attack && attack->GetTarget() == mount.GetPtr(),
 				"B retaliation uses mount visibility and liveness rather than rider visibility or health");
 		owner->DropStates();
-		mount->DetachUnit();
+		carrier->DetachUnit();
 	}
 	CObj<B8BehaviourCreep> owner = B8BehaviourMoving(world, NDb::FACTION_FREEZE);
 	CObj<B8BehaviourCreep> mount = B8BehaviourMoving(world, NDb::FACTION_BURN);

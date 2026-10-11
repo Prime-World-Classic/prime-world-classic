@@ -183,7 +183,7 @@ MovingUnit::MovingUnit(const CVec3& pos, const CVec2& direction, TileMap* pTileM
 }
 
 void MovingUnit::Init(PFBaseMovingUnit* owner) { pOwner = owner; MarkTiles(); }
-void MovingUnit::Reset(TileMap* map) { pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pAttached = 0; pFollowed = 0; isFollowing = false; }
+void MovingUnit::Reset(TileMap* map) { DetachUnit(); pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pFollowed = 0; isFollowing = false; }
 void MovingUnit::RecalculateGhostMode() { curGhostMode = 0; for (int i = 0; i < ghostMode.size(); ++i) curGhostMode |= ghostMode[i].mode; }
 void MovingUnit::ApplyGhostMode() { RecalculateGhostMode(); }
 int MovingUnit::SetGhostMode(int mode, bool overrideMode) { ghostModeIndex++; ghostMode.push_back(GhostModeType(ghostModeIndex, mode, overrideMode)); ApplyGhostMode(); return ghostModeIndex; }
@@ -191,7 +191,7 @@ void MovingUnit::ResetGhostMode(int index) { for (int i = 0; i < ghostMode.size(
 void MovingUnit::MoveTo(const CVec2& target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = 0; vFarTarget = target; vShortTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; UpdateMoveDir(target); moveState = MOVE_STATE_MOVING; }
 void MovingUnit::MoveTo(PFBaseUnit* target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; if (target) { vFarTarget = target->GetPosition().AsVec2D(); vShortTarget = vFarTarget; UpdateMoveDir(vFarTarget); moveState = MOVE_STATE_MOVING; } }
 bool MovingUnit::TeleportTo(const CVec2& target, bool) { SetCenter(target); vFarTarget = target; vShortTarget = target; moveState = MOVE_STATE_IDLE; return true; }
-void MovingUnit::Stop(bool) { moveState = MOVE_STATE_IDLE; pUnitTarget = 0; }
+void MovingUnit::Stop(bool) { if (moveState == MOVE_STATE_MOUNTED || moveState == MOVE_STATE_DEAD) return; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; }
 bool MovingUnit::MoveToSpecial(const CVec2& target, bool) { MoveTo(target, 0.0f, 0); moveState = MOVE_STATE_SPECIAL_MOVE; return true; }
 bool MovingUnit::MoveToSpecial(const CPtr<PFBaseUnit>& target, bool notifyClient) { return IsValid(target) ? MoveToSpecial(target->GetPosition().AsVec2D(), notifyClient) : false; }
 void MovingUnit::FollowTo(const CPtr<PFBaseMovingUnit>& unit, bool forced) { if (unit == pFollowed) return; Stop(); if (IsValid(unit)) { pFollowed = unit; followDistance = fabs(unit->GetPosition().AsVec2D() - origin); isFollowing = true; isFollowingForced = forced; } else if (!isFollowingForced || forced) { pFollowed = 0; followDistance = -1.0f; isFollowing = false; isFollowingForced = false; } }
@@ -396,14 +396,60 @@ void MovingUnit::PreStep(float)
 }
 void MovingUnit::MovingUnitStep(float) {}
 void MovingUnit::NotifyMoving(bool teleported) { if (pOwner) pOwner->NotifyMoving(teleported); }
-void MovingUnit::OnDie() { moveState = MOVE_STATE_DEAD; }
-void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { DetachUnit(); pAttached = unit; if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_MOUNTED; pAttached->world.SetCenter(origin); } }
-void MovingUnit::DetachUnit() { if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_IDLE; pAttached->world.SetCenter(origin); } pAttached = 0; }
+void MovingUnit::OnDie() { DetachUnit(); moveState = MOVE_STATE_DEAD; }
+/** Admit a live same-world acyclic chain before releasing the current passenger. */
+void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit)
+{
+	if (!IsUnitValid(pOwner) || !IsUnitValid(unit) || unit == pOwner
+		|| unit->GetWorld() != pOwner->GetWorld()) return;
+	if (pAttached == unit) return;
+	if (unit->IsMounted()) return;
+	vector<MovingUnit*> visited;
+	for (MovingUnit* link = &unit->world; link; link = IsValid(link->pAttached) ? &link->pAttached->world : nullptr)
+	{
+		if (link == this || find(visited.begin(), visited.end(), link) != visited.end()) return;
+		visited.push_back(link);
+	}
+	DetachUnit();
+	pAttached = unit;
+	pAttached->world.Stop(false);
+	pAttached->world.SetState(MOVE_STATE_MOUNTED);
+	pAttached->world.SetCenter(origin);
+	UpdateAttachedMovement();
+}
+
+/** Release only this link; never turn a dead passenger back into an idle mover. */
+void MovingUnit::DetachUnit()
+{
+	if (IsUnitValid(pAttached))
+	{
+		pAttached->world.SetState(MOVE_STATE_IDLE);
+		pAttached->world.SetCenter(origin);
+	}
+	pAttached = 0;
+}
 bool MovingUnit::ShouldLockMap() const { return false; }
 bool MovingUnit::IsTerrainNative(float, float) const { return true; }
 bool MovingUnit::IsTerrainNative(SVector) const { return true; }
 bool MovingUnit::IsTerrainNative() const { return true; }
-void MovingUnit::UpdateAttachedMovement() { if (IsValid(pAttached)) { pAttached->world.SetCenter(origin); pAttached->world.UpdateAttachedMovement(); } }
+/** Iterative propagation also contains malformed restored chains without recursive overflow. */
+void MovingUnit::UpdateAttachedMovement()
+{
+	if (!IsValid(pOwner)) return;
+	vector<MovingUnit*> visited;
+	for (MovingUnit* link = this; IsValid(link->pAttached); link = &link->pAttached->world)
+	{
+		visited.push_back(link);
+		MovingUnit* child = &link->pAttached->world;
+		if (!IsUnitValid(link->pAttached) || link->pAttached->GetWorld() != pOwner->GetWorld()
+			|| find(visited.begin(), visited.end(), child) != visited.end())
+		{
+			link->pAttached = 0;
+			return;
+		}
+		child->SetCenter(link->origin);
+	}
+}
 Pathfinding::CCommonPathFinder* MovingUnit::GetPathFinder() { return 0; }
 Pathfinding::RoutePathFinder* MovingUnit::GetRoutePathFinder() { return 0; }
 bool MovingUnit::UseRoutePathFinder(SVector const&, SVector const&) const { return false; }

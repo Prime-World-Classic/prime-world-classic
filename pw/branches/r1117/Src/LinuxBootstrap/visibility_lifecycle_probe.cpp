@@ -832,6 +832,7 @@ static void AttackStateLifecycle(Checks& checks)
 #include "building_order_tests.inc"
 #include "combat_move_tests.inc"
 #include "attack_sector_tests.inc"
+#include "attachment_tests.inc"
 
 bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 {
@@ -867,6 +868,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			BuildingCombatLifecycle(checks);
 			AttackSectorGeometry(checks);
 			ChaseSectorOwnership(checks);
+			AttachmentLifecycleB9(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);
