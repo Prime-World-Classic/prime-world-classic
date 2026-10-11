@@ -1289,6 +1289,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			BehaviourTargetDispatchB8(check, world); BehaviourHeroDispatchB8(check, world);
 			BehaviourHeroConstructionB8(check, world);
 			BaseUseRangeB9(check, world);
+			BaseUseLifetimeB9(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

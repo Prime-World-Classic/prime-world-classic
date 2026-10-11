@@ -4,6 +4,8 @@
 
 #include "PFBaseUseState.h"
 #include "PFBaseUnit.h"
+#include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
 
 namespace NWorld
 {
@@ -23,11 +25,31 @@ bool PFBaseUseState::NeedToGetClose() const
 	if ((GetAbilityFlags() & NDb::ABILITYFLAGS_CANUSEOUTOFRANGE) || range <= 0) return false;
 	return !pOwner->IsTargetInRange(target, range);
 }
-bool PFBaseUseState::IsCastFinished() const { return true; }
-bool PFBaseUseState::IsAbilityFinished() const { return true; }
-bool PFBaseUseState::IsBlocking() const { return false; }
+/** Observe simulation-owned completion; an absent instance has not cast anything. */
+bool PFBaseUseState::IsCastFinished() const
+{
+	return IsValid(pAbilityInstance) && IsValid(pOwner)
+		&& pAbilityInstance->IsCastFinished() && !pOwner->IsInChannelling();
+}
+bool PFBaseUseState::IsAbilityFinished() const
+{
+	return IsValid(pAbilityInstance) && IsValid(pOwner)
+		&& pAbilityInstance->IsFinished() && !pOwner->IsInChannelling();
+}
+bool PFBaseUseState::IsBlocking() const
+{
+	if (!IsValid(pAbilityInstance)) return false;
+	const PFAbilityData* data = pAbilityInstance->GetData();
+	const NDb::Ability* db = data ? data->GetDBDesc() : nullptr;
+	return !(db && db->isUnitFreeAfterCast ? pAbilityInstance->IsCastFinished() : pAbilityInstance->IsFinished());
+}
 bool PFBaseUseState::IsEjecting() const { return !(GetAbilityFlags() & NDb::ABILITYFLAGS_MOMENTARY); }
-void PFBaseUseState::OnLeave() { pAbilityInstance = 0; }
+/** Cancel work and approach, retaining instance metadata for momentary after-leave policy. */
+void PFBaseUseState::OnLeave()
+{
+	Cleanup();
+	if (IsValid(pAbilityInstance)) pAbilityInstance->Cancel();
+}
 /** An authored alternative activity overrides the base ability's flags. */
 unsigned int PFBaseUseState::GetAbilityFlags() const
 {
