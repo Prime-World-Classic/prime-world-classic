@@ -38,6 +38,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 8/20 COMPLETE (`0.43.0`): restore authored consumable group membership and cooldown propagation from actual casts/restarts. Cache absent-inventory peer ability data, retain longer existing cooldowns, skip null members and malformed group durations, and distinguish anonymous descriptors instead of matching empty IDs. Four baseline failures reproduced; all 4,734 assertions, 28 CTests, six builds and retained Windows/shared audits pass. Evidence `/tmp/pw-b11-c8-{before,after,build,ctest}.log`. No new vendor/library is needed; this reuses existing group data and ability caches.
 
+- Chunk 9/20 COMPLETE (`0.43.1`): consumable sales refund half the modified stack value with original integer rounding instead of silently deleting items. Restore ability-modified money cost and validate finite/nonnegative/representable prices and bounded gold before removing inventory; missing/repeated sales are inert. Six baseline failures reproduced; all 4,749 assertions, 28 CTests, six builds and Windows/shared byte audits pass. Evidence `/tmp/pw-b11-c9-{before,after,build,ctest}.log`. This restores the sale transaction, not complete shop-command authorization or original shop UI.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

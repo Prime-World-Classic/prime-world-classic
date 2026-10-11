@@ -553,7 +553,16 @@ bool PFBaseHero::StackConsumables(int src, int dst)
 	if (!TakeConsumable(item->GetDBDesc(), item->GetQuantity(), NDb::CONSUMABLEORIGIN_DEFAULT, dst)) return false;
 	return RemoveConsumable(src);
 }
-void PFBaseHero::SellConsumable(int slot) { RemoveConsumable(slot); }
+/** Refund half the modified stack value once, without overflowing the gold interface. */
+void PFBaseHero::SellConsumable(int slot)
+{
+	const PFConsumable* item = GetConsumable(slot);
+	if (!item || item->GetQuantity() <= 0 || item->GetMoneyCost() < 0) return;
+	const int64_t refund = int64_t(item->GetMoneyCost()) * item->GetQuantity() / 2;
+	if (refund > int64_t(std::numeric_limits<int>::max()) - GetGold()) return;
+	RemoveConsumable(slot);
+	AddGold(static_cast<float>(refund));
+}
 float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const
 {
   return pDBDesc

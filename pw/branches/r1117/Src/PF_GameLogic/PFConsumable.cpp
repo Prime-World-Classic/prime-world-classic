@@ -6,6 +6,7 @@
 #include "PFConsumable.h"
 #include "PFAbilityData.h"
 #include "DBConsumable.h"
+#include <limits>
 
 namespace NWorld
 {
@@ -51,7 +52,11 @@ int PFConsumable::GetMaxQuantity() const
 
 int const& PFConsumable::GetMoneyCost() const
 {
-  moneyCost = pDBDesc ? pDBDesc->naftaCost : 0;
+	// Keep invalid authored/modifier results out of integer conversion and transactions.
+	const float modified = pDBDesc && pAbilityData
+		? pAbilityData->GetModifiedValue(pDBDesc->naftaCost, NDb::ABILITYMODMODE_NAFTACOST) : -1;
+	moneyCost = std::isfinite(modified) && modified >= 0
+		&& static_cast<double>(modified) <= std::numeric_limits<int>::max() ? static_cast<int>(modified) : -1;
   return moneyCost;
 }
 
