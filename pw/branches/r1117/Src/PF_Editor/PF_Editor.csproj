@@ -1,6 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <!-- E1a: нативные C++/CLI-сборки редактора пока берутся готовыми (docs/x64/EDITOR.md) -->
+    <EditorNativeBinDir Condition="'$(EditorNativeBinDir)' == ''">$(MSBuildThisFileDirectory)..\..\Bin_Original\</EditorNativeBinDir>
+  </PropertyGroup>
+  <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">Win32</Platform>
     <ProjectGuid>{D83C2206-CF59-4414-90B6-E4DC7C1EF902}</ProjectGuid>
@@ -9,7 +13,7 @@
     <RootNamespace>PF_Editor</RootNamespace>
     <AssemblyName>PF_Editor</AssemblyName>
     <ApplicationIcon>App.ico</ApplicationIcon>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
@@ -36,7 +40,7 @@
     <WarningLevel>4</WarningLevel>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Win32' ">
@@ -50,7 +54,7 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Shipping|Win32' ">
@@ -74,7 +78,7 @@
   <ItemGroup>
     <Reference Include="ScintillaNET, Version=2.5.2.0, Culture=neutral, PublicKeyToken=948d6c9751444115, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(OutDir)\ScintillaNET.dll</HintPath>
+      <HintPath>..\..\Vendor\ScintillaNET\ScintillaNET.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -85,8 +89,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="WeifenLuo.WinFormsUI.Docking, Version=2.3.1.31872, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(OutDir)\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
+      <HintPath>..\..\Vendor\WinFormsUI\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs">
@@ -140,10 +147,10 @@
       <Project>{AEB9B15A-6C51-4B9B-8838-7254064A4E98}</Project>
       <Name>EditorLib</Name>
     </ProjectReference>
-    <ProjectReference Include="..\EditorNative\EditorNative.vcproj">
-      <Project>{8661805A-1298-4D53-8666-1FB9922886AF}</Project>
-      <Name>EditorNative</Name>
-    </ProjectReference>
+    <Reference Include="EditorNative">
+      <HintPath>$(EditorNativeBinDir)EditorNative.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <ProjectReference Include="..\EditorPlugins\EditorPlugins.csproj">
       <Project>{2521247A-CE57-4FAA-BBF0-3158313680F0}</Project>
       <Name>EditorPlugins</Name>
@@ -156,10 +163,10 @@
       <Project>{5DFA0790-582A-4A71-93AE-A5D31AA7864F}</Project>
       <Name>MayaExeInteraction</Name>
     </ProjectReference>
-    <ProjectReference Include="..\PF_EditorNative\PF_EditorNative.vcproj">
-      <Project>{8661805A-1298-4D53-8666-1FB9922886AE}</Project>
-      <Name>PF_EditorNative</Name>
-    </ProjectReference>
+    <Reference Include="PF_EditorNative">
+      <HintPath>$(EditorNativeBinDir)PF_EditorNative.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <ProjectReference Include="..\PF_Types.DBTypes\PF_Types.DBTypes.csproj">
       <Project>{66E75FE1-7475-4096-B532-F8F8C033FE9A}</Project>
       <Name>PF_Types.DBTypes</Name>

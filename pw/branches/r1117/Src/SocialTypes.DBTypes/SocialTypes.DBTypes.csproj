@@ -14,7 +14,7 @@
 		<AppDesignerFolder>Properties</AppDesignerFolder>
 		<RootNamespace>SocialTypes.DBTypes</RootNamespace>
 		<AssemblyName>SocialTypes.DBTypes</AssemblyName>
-		<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+		<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
 		<FileAlignment>512</FileAlignment>
 		<TargetFrameworkSubset></TargetFrameworkSubset>
 	</PropertyGroup>

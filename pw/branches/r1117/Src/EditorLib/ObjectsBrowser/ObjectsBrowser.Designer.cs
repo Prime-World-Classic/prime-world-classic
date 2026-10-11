@@ -248,7 +248,6 @@
       // 
       this.objectsBrowserControl.CurrentFolder = null;
       this.objectsBrowserControl.Dock = System.Windows.Forms.DockStyle.Fill;
-      this.objectsBrowserControl.ExtensionsFilter = ( (System.Collections.Generic.List<string>)( resources.GetObject( "objectsBrowserControl.ExtensionsFilter" ) ) );
       this.objectsBrowserControl.FilterType = null;
       this.objectsBrowserControl.FullRowSelect = true;
       this.objectsBrowserControl.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;

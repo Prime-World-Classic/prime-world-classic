@@ -1157,6 +1157,36 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   RootFileSystem::RegisterFileSystem( new fileSystem::PileFileSystem(callback), callback );
   RootFileSystem::RegisterFileSystem( new WinFileSystem( NFile::GetBaseDir() + "Data", false ) );
 
+  {
+    string earlyProtocol = CmdLineLite::Instance().GetStringKey( "protocol", "" );
+    if(!earlyProtocol.empty()) {
+      const char* delim = "/";
+      char* line = const_cast<char*>(earlyProtocol.c_str());
+      char* tok = strtok(line, delim);
+      vector<string> tokens;
+      tokens.reserve(6);
+      while(tok) { tokens.push_back(tok); tok = strtok(0, delim); }
+      if(tokens.size() >= 6) {
+        string langPart = tokens[5];
+        // tokens[5] is also the server IP block (hex, length is a multiple of 8):
+        // take it as a language only if it looks like "en" or "en-US"
+        int langLen = (int)langPart.size();
+        bool isLangCode = ( langLen == 2 || ( langLen == 5 && langPart[2] == '-' ) );
+        for(int i = 0; isLangCode && i < langLen; ++i)
+          if(i != 2 && !isalpha((unsigned char)langPart[i])) isLangCode = false;
+        if(isLangCode) {
+          if((int)langPart.size() == 2) {
+            string upper = langPart;
+            for(int i = 0; i < (int)upper.size(); ++i) upper[i] = toupper(upper[i]);
+            g_language = langPart + "-" + upper;
+          } else {
+            g_language = langPart;
+          }
+        }
+      }
+    }
+  }
+
   if (g_language.empty())
   {
     g_language = "ru-RU";
