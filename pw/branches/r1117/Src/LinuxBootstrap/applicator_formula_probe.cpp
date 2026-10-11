@@ -1251,6 +1251,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "hero_use_unit_tests.inc"
 #include "hero_flag_pickup_tests.inc"
 #include "cast_command_tests.inc"
+#include "cast_target_range_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1322,6 +1323,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			TalentCommandTargetMasksB10(check, world);
 			QueuedTalentTargetChangesB10(check, world);
 			QueuedCastControlLossB10(check, world);
+			CastTargetRangesB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

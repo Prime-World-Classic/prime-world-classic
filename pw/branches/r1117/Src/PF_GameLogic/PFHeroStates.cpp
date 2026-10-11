@@ -152,8 +152,9 @@ float PFHeroUseConsumableState::GetUseRange() const
 	const NDb::AlternativeTarget* alternative = target.GetDBAlternativeTarget();
 	if (alternative && alternative->alternativeActivity)
 		return LinuxBootstrap::EvaluateUnitNumericFormula(alternative->alternativeActivity->useRange.sString.c_str(),
-			pOwner.GetPtr(), pOwner.GetPtr(), item->GetAbility().GetPtr()).value;
-	return item->GetAbility()->GetUseRange();
+			pOwner.GetPtr(), target.IsObjectValid(true) ? target.GetObject() : pOwner.GetPtr(),
+			item->GetAbility().GetPtr()).value;
+	return item->GetAbility()->GetUseRange(target);
 }
 
 NDb::Ability const* PFHeroUseConsumableState::GetDBDesc() const
@@ -228,7 +229,8 @@ float PFHeroUseTalentState::GetUseRange() const
 	const NDb::AlternativeTarget* alternative = target.GetDBAlternativeTarget();
 	if (alternative && alternative->alternativeActivity)
 		return LinuxBootstrap::EvaluateUnitNumericFormula(alternative->alternativeActivity->useRange.sString.c_str(),
-			pOwner.GetPtr(), pOwner.GetPtr(), talent.GetPtr()).value;
+			pOwner.GetPtr(), target.IsObjectValid(true) ? target.GetObject() : pOwner.GetPtr(),
+			talent.GetPtr()).value;
 	return talent->GetUseRange(target);
 }
 
