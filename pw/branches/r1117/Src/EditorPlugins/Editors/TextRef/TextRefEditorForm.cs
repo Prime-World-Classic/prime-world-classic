@@ -15,19 +15,21 @@ namespace EditorPlugins.Editors.TextRef
 			public int LocationX = 100;
 			public int LocationY = 100;
 			public int Width = 300;
-			public int Height = 200;
+			public int Height = 400;
 			public bool WordWrap = true;
 		}
 
 		private IEditorWinApplication application;
 		public readonly libdb.DB.TextRef Value = null;
 		private string originalText;
+		private string originalTextEn;
 
 		public TextRefEditorForm(libdb.DB.TextRef value, IEditorWinApplication application)
 		{
 			InitializeComponent();
 			Value = value;
 			originalText = tbMain.Text = value.ToString();
+			originalTextEn = tbEn.Text = value.GetTextEn();
 			this.Text = value.GetOwner().DBId.FileName;
 			this.application = application;
 		}
@@ -37,10 +39,12 @@ namespace EditorPlugins.Editors.TextRef
             if (cbWordWrap.Checked)
             {
                 tbMain.LineWrapping.Mode = ScintillaNET.LineWrappingMode.Word;
+                tbEn.LineWrapping.Mode = ScintillaNET.LineWrappingMode.Word;
             }
-            else 
+            else
             {
                 tbMain.LineWrapping.Mode = ScintillaNET.LineWrappingMode.None;
+                tbEn.LineWrapping.Mode = ScintillaNET.LineWrappingMode.None;
             }
 		}
 
@@ -63,7 +67,7 @@ namespace EditorPlugins.Editors.TextRef
 				return;
 			}
 			// Проверим не изменился ли текст извне
-			if( originalText != Value.ToString())
+			if( originalText != Value.ToString() || originalTextEn != Value.GetTextEn() )
 			{
 				DialogResult res = MessageBox.Show((IWin32Window) this, "Text has been modified outside of this editor" +
 				                                                        " \r\n Do you want to overwrite that changes with your text?",
@@ -79,6 +83,7 @@ namespace EditorPlugins.Editors.TextRef
 				}
 			}
 			Value.FromString(tbMain.Text);
+			Value.FromStringEn(tbEn.Text);
 			Close();
 		}
 

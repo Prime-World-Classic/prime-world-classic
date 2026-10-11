@@ -40,6 +40,40 @@ namespace libdb.DB
     }
   }
 
+  public class ChangeTextRefEnOperation : IUndoRedoOperation
+  {
+    private readonly TextRef text;
+    private readonly string value;
+    private readonly string oldValue;
+
+    public ChangeTextRefEnOperation(TextRef text, string value)
+    {
+      this.text = text;
+      this.value = value;
+      this.oldValue = text.GetTextEn();
+    }
+
+    public void Undo()
+    {
+      text.FromStringEnInternal(oldValue);
+    }
+
+    public void Redo()
+    {
+      text.FromStringEnInternal(value);
+    }
+
+    public string DefaultCaption
+    {
+      get { return value; }
+    }
+
+    public libdb.DB.DBResource GetOwner()
+    {
+      return text.GetOwner();
+    }
+  }
+
   [SimpleType]
   [RenameType("CTextRef")]
   public sealed class TextRef : SimpleSerializable<TextRef.TextRefSerializeAttributes>, IBasicDBValue, IChangeable
@@ -104,22 +138,14 @@ namespace libdb.DB
       return true;
     }
 
-    private static string currentLanguage = "ru";
-
-    public static string CurrentLanguage
+    /// <summary>
+    /// English translation is stored next to the original text: Name.txt -> Name_en.txt
+    /// </summary>
+    private static string GetEnFileName(string fileName)
     {
-      get { return currentLanguage; }
-      set { currentLanguage = value; }
-    }
-
-    private static string AddLanguageSuffix(string fileName, string langCode)
-    {
-      // ru is the original language: its texts live in files without a suffix
-      if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(langCode) || langCode == "ru")
-        return fileName;
-      if (!fileName.EndsWith(".txt"))
-        return fileName;
-      return fileName.Substring(0, fileName.Length - 4) + "_" + langCode + ".txt";
+      if (string.IsNullOrEmpty(fileName) || !fileName.EndsWith(".txt", StringComparison.Ordinal))
+        return string.Empty;
+      return fileName.Substring(0, fileName.Length - 4) + "_en.txt";
     }
 
     private static string GetFileNameFromFieldPath(FieldPath path)
@@ -170,6 +196,7 @@ namespace libdb.DB
 
     private DBResource owner = null;
     private string text = string.Empty;
+    private string textEn = string.Empty;
     private string fileName = string.Empty;
 
     public TextRef() { }
@@ -207,7 +234,25 @@ namespace libdb.DB
 
     internal void FromStringInternal(string text)
     {
+      // editing a derived text detaches it from the parent: keep the parent's translation
+      if (parent != null && isDerivedFromParent)
+        textEn = parent.GetTextEn();
       this.text = text;
+      OnChanged();
+    }
+
+    public void FromStringEn(string text)
+    {
+      if (text != GetTextEn())
+        DataBase.AddOperation(new ChangeTextRefEnOperation(this, text));
+    }
+
+    internal void FromStringEnInternal(string text)
+    {
+      // editing a derived translation detaches it from the parent: keep the parent's original text
+      if (parent != null && isDerivedFromParent)
+        this.text = parent.ToString();
+      textEn = text;
       OnChanged();
     }
 
@@ -218,31 +263,53 @@ namespace libdb.DB
       return text;
     }
 
+    /// <summary>
+    /// English translation (file Name_en.txt next to the original Name.txt)
+    /// </summary>
+    public string GetTextEn()
+    {
+      if (parent != null && isDerivedFromParent)
+        return parent.GetTextEn();
+      return textEn;
+    }
+
     protected override TextRefSerializeAttributes Serialize(FieldPath path)
     {
-      string baseFileName = string.IsNullOrEmpty(text) ? string.Empty : GetFileNameFromFieldPath(path);
-      string diskFileName = AddLanguageSuffix(baseFileName, currentLanguage);
+      string wantedFileName = string.IsNullOrEmpty(text) ? string.Empty : GetFileNameFromFieldPath(path);
 
-      if (!string.IsNullOrEmpty(baseFileName) && !StoreTest(DataBase.FileSystem, diskFileName, text))
-        baseFileName = string.Empty;
+      if (!string.IsNullOrEmpty(wantedFileName) && !StoreTest(DataBase.FileSystem, wantedFileName, text))
+        wantedFileName = string.Empty;
 
-      fileName = baseFileName;
+      fileName = wantedFileName;
+      StoreTextEn();
       return new TextRefSerializeAttributes(fileName);
+    }
+
+    private void StoreTextEn()
+    {
+      string enFileName = GetEnFileName(fileName);
+      if (string.IsNullOrEmpty(enFileName))
+        return;
+
+      if (!string.IsNullOrEmpty(textEn))
+        StoreTest(DataBase.FileSystem, enFileName, textEn);
+      else if (DataBase.FileSystem.GetFileInfo(enFileName).IsFileExists)
+        DataBase.FileSystem.DeleteFile(enFileName);
     }
 
     protected override bool Deserialize(TextRef.TextRefSerializeAttributes attributes)
     {
       fileName = attributes.textref;
-      string localizedFileName = AddLanguageSuffix(fileName, currentLanguage);
-
-      if (!TryLoadString(DataBase.FileSystem, localizedFileName, out text))
+      //@Ivn@TODO: actually I want Application here
+      if (!TryLoadString(DataBase.FileSystem, fileName, out text))
       {
-        if (!TryLoadString(DataBase.FileSystem, fileName, out text))
-        {
-          fileName = string.Empty;
-          text = string.Empty;
-        }
+        fileName = string.Empty;
+        text = string.Empty;
       }
+
+      string enFileName = GetEnFileName(fileName);
+      if (string.IsNullOrEmpty(enFileName) || !TryLoadString(DataBase.FileSystem, enFileName, out textEn))
+        textEn = string.Empty;
       OnChanged();
 
       return true;
@@ -258,10 +325,12 @@ namespace libdb.DB
         {
             fileName = string.IsNullOrEmpty(src.text) ? string.Empty : GetFileNameFromFieldPath(path);
 
+            // avoid calling OnChanged on creating new object due Initialize( this ) in classes' constructors
             if (string.IsNullOrEmpty(ToString()) && string.IsNullOrEmpty(src.ToString()))
                 return;
 
             text = src.text;
+            textEn = src.textEn;
             OnChanged();
         }
     }
@@ -279,6 +348,7 @@ namespace libdb.DB
           return;
 
         text = src.text;
+        textEn = src.textEn;
         OnChanged();
       }
     }
