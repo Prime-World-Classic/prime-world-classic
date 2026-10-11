@@ -487,21 +487,31 @@ PFHeroSuspendState::PFHeroSuspendState()
 
 bool PFHeroSuspendState::OnStep( float dt )
 {
-  waitTime += dt;
-  return true;
+	if (!IsOwnerSuitable() || !std::isfinite(dt) || dt < 0 ||
+		!std::isfinite(suspendTimeout) || suspendTimeout < 0)
+		return true;
+	waitTime += dt;
+	return waitTime >= suspendTimeout;
 }
 
 void PFHeroSuspendState::OnEnter()
 {
+	if (IsOwnerSuitable())
+	{
+		const NDb::UnitTargetingParameters& params = pOwner->GetTargetingParams();
+		suspendTimeout = isSuspendLong ? params.longSuspendTimeout : params.sortSuspendTimeout;
+	}
 }
 
 void PFHeroSuspendState::OnLeave()
 {
+	if (IsOwnerSuitable())
+		pOwner->OnAfterSuspend(isSuspendLong);
 }
 
 bool PFHeroSuspendState::IsOwnerSuitable() const
 {
-  return false;
+	return IsUnitValid(pOwner) && !pOwner->IsMounted();
 }
 
 } // namespace NWorld
