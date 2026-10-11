@@ -295,6 +295,14 @@ void MovingUnit::Step(float timeDelta)
     vShortTarget = vFarTarget;
   }
 
+	// Range and occupied-region predicates may accept before the geometric destination.
+	if (moveState == MOVE_STATE_MOVING && IsValid(pChecking) && IsValid(pMap)
+		&& pChecking->IsGoodTile(pMap->GetTile(origin)))
+	{
+		Stop(false);
+		UpdateAttachedMovement();
+		return;
+	}
   CVec2 delta = vFarTarget - origin;
   const float distance = fabs(delta);
   const float finishDistance = Max(stopDistance, 0.0f);

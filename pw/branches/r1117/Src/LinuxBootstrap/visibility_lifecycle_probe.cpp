@@ -22,6 +22,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include "../PF_GameLogic/HeroActions.h"
 #include "../PF_GameLogic/PointersHolder.h"
 #include "../PF_GameLogic/PointChecking.h"
+#include "../PF_GameLogic/RegionPointChecker.h"
 #include "../Core/WorldCommand.h"
 #include "../Core/GameCommand.h"
 
@@ -859,6 +860,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			ChaseLifecycle(checks);
 			PathMoveLifecycle(checks);
 			BuildingMoveLifecycle(checks);
+			RegionMovement(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

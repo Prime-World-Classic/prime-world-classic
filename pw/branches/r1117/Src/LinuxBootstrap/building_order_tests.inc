@@ -53,3 +53,32 @@ static void BuildingMoveLifecycle(Checks& checks)
 	checks.Check(!owner->IsIdle() && owner->IsMoving(), "good building region still requires requested personal sight");
 	owner->Cleanup(); owner->Stop(false);
 }
+
+/** Link the original Manhattan region checker and honor it during ordinary movement. */
+static void RegionMovement(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	vector<SVector> tiles; tiles.push_back(fixture.Tile(24, 20)); tiles.push_back(fixture.Tile(24, 22));
+	CObj<RegionPointChecker> actual = new RegionPointChecker(fixture.world, tiles, 2);
+	for (int x = 0; x < 40; ++x)
+	for (int y = 0; y < 40; ++y)
+	{
+		bool expected = false;
+		for (const SVector& tile : tiles) expected |= abs(x - tile.x) + abs(y - tile.y) <= 2;
+		checks.Check(actual->IsGoodTile(SVector(x, y)) == expected, "authored region matches Manhattan occupied-tile oracle");
+	}
+	NDb::Unit* raw = new NDb::Unit; Configure(*raw); NDb::Ptr<NDb::Unit> db = raw;
+	CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(20, 20, 0));
+	owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); owner->SetUnitSpeed(4);
+	CObj<B9Region> region = new B9Region; region->good = true;
+	owner->MoveTo(CVec2(60, 20), 0, region); owner->Step(0.25f);
+	checks.Check(!owner->IsMoving() && owner->GetPosition().x == 20, "accepted checker stops before displacement");
+	region->good = false;
+	owner->MoveTo(CVec2(60, 20), 0, region); owner->Step(0.25f);
+	checks.Check(owner->IsMoving() && owner->GetPosition().x > 20, "unaccepted checker permits ordinary approach");
+	const float before = owner->GetPosition().x; region->good = true; owner->Step(0.25f);
+	checks.Check(!owner->IsMoving() && owner->GetPosition().x == before, "live checker acceptance stops an ongoing approach");
+	owner->MoveTo(CVec2(60, 20)); owner->Step(0.25f);
+	checks.Check(owner->IsMoving() && owner->GetPosition().x > before, "new point order does not retain the previous checker");
+	owner->Stop(false);
+}

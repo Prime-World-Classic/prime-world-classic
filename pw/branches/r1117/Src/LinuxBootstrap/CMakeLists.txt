@@ -2188,6 +2188,11 @@ set_source_files_properties(
     COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_TERRAIN_RUNTIME_PROBE"
 )
 
+target_sources(PrimeWorldLinuxClient PRIVATE ../PF_GameLogic/RegionPointChecker.cpp)
+target_sources(PrimeWorldLinuxGameplayProbe PRIVATE ../PF_GameLogic/RegionPointChecker.cpp)
+set_source_files_properties(../PF_GameLogic/RegionPointChecker.cpp PROPERTIES
+	COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP")
+
 set_property(
   SOURCE ../PF_GameLogic/PFBaseUnit.cpp
   APPEND
