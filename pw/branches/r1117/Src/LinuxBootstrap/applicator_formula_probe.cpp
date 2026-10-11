@@ -1255,6 +1255,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "consumable_inventory_b10_tests.inc"
 #include "consumable_simulation_b10_tests.inc"
 #include "applicator_simulation_b10_tests.inc"
+#include "ability_lifecycle_b10_01_toggle_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1330,6 +1331,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ConsumableInventoryB10(check, world);
 			ConsumableSimulationB10(check, world);
 			ApplicatorSimulationB10(check, world);
+			AbilityToggleOwnershipB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

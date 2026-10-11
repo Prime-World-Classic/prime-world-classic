@@ -255,7 +255,10 @@ CObj<PFAbilityInstance> PFAbilityData::ApplyToTarget( Target const& target )
 CObj<PFAbilityInstance> PFAbilityData::Toggle( Target const& target )
 {
   if ( !isOn )
-    return ApplyToTarget(target);
+	{
+		// The unit, not the ability data or order state, advances active cast work.
+		return IsValid(pOwner) ? pOwner->CreateAbilityInstance(this, target) : CObj<PFAbilityInstance>(0);
+	}
 
   SwitchOff();
   CancelActiveInstances();
