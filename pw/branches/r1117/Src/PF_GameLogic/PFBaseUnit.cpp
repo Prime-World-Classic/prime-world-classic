@@ -1871,7 +1871,13 @@ bool PFBaseUnit::DoAttack(bool allowAllies)
   return pAttackAbility->DoAttack(Target(pCurrentTarget), allowAllies);
 }
 
-void PFBaseUnit::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget) { AssignTarget(pTarget, strongTarget); }
+/** Delegate orders to the enabled top behavior using the Windows automatic-only gate. */
+void PFBaseUnit::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget)
+{
+	const NDb::UnitTargetingParameters* params = GetTargetingParamsPtr();
+	if ((!params || !params->onlyAutoTargeting) && HasBehaviour() && Behaviour()->IsEnabled())
+		Behaviour()->OnTarget(pTarget, strongTarget);
+}
 
 bool PFBaseUnit::IsReadyToAttack() const
 {

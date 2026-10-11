@@ -71,6 +71,12 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   data.pObjectDesc = info.pHero;
   Initialize(data);
   pProfile = new PFBetweenSessionsData(pWorld);
+	// Ordinary heroes own the behavior consumed by unit target/damage dispatch.
+	if (!isClone)
+	{
+		CObj<PFBaseBehaviour> behavior = new PFHeroBehaviour(this);
+		AddBehaviourOnTop(behavior.GetPtr());
+	}
 }
 
 void PFBaseHero::PrepareExcludedResourcesList( const NDb::EFaction& sourceFaction ) { (void)sourceFaction; excludedResources.clear(); }
@@ -303,6 +309,12 @@ void PFBaseHero::DoResurrect()
   activatedWhileLastDeathtime.clear();
   respawnDelay = -1.0f;
   advanceRespawnDelay = -1.0f;
+	// Final death releases behavior ownership; resurrection restores it once.
+	if (!HasBehaviour())
+	{
+		CObj<PFBaseBehaviour> behavior = new PFHeroBehaviour(this);
+		AddBehaviourOnTop(behavior.GetPtr());
+	}
 }
 /** A stop command replaces the queued/current order, not just its movement. */
 void PFBaseHero::DoStop() { Cleanup(); DropTarget(); Stop(); }

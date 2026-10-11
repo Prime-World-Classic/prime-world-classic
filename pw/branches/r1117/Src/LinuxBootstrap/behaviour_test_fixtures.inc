@@ -57,7 +57,7 @@ struct B8BehaviourHero : PFBaseHero
 	void EnemyVisible(bool visible) { visibleForEnemy = visible; }
 };
 
-static CObj<B8BehaviourHero> B8BehaviourHeroUnit(PFWorld* world, NDb::EFaction faction)
+static CObj<B8BehaviourHero> B8BehaviourHeroUnit(PFWorld* world, NDb::EFaction faction, bool clone = false)
 {
 	NDb::Ptr<NDb::Creature> source = B8BehaviourCreatureDb(world, faction);
 	NDb::Hero* raw = new NDb::Hero;
@@ -66,6 +66,7 @@ static CObj<B8BehaviourHero> B8BehaviourHeroUnit(PFWorld* world, NDb::EFaction f
 	NDb::Ptr<NDb::Hero> db = raw;
 	PFBaseHero::SpawnInfo spawn;
 	spawn.pHero = db;
+	spawn.isClone = clone;
 	spawn.placement = Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
 	return new B8BehaviourHero(world, spawn, faction);
 }
