@@ -19,6 +19,7 @@ template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatisti
 #include "PFMaleHero.h"
 #include "PFBaseUnitStates.h"
 #include "PFAbilityInstance.h"
+#include "PFBaseUnitEvent.h"
 #include "PFTalent.h"
 #include "PFConsumable.h"
 #include "PFStatistics.h"
@@ -71,6 +72,7 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   data.pObjectDesc = info.pHero;
   Initialize(data);
   pProfile = new PFBetweenSessionsData(pWorld);
+	consumables.resize(32);
 	// Ordinary heroes own the behavior consumed by unit target/damage dispatch.
 	if (!isClone)
 	{
@@ -445,17 +447,83 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
   return CreateAbilityInstance( pConsumable->GetAbility(), target );
 }
 CObj<PFAbilityInstance> PFBaseHero::UseConsumable( int slot, const Target& target, bool isLocal ) { CObj<PFConsumable> c = IsSlotValid(slot) ? consumables[slot] : 0; return UseConsumable(c, target, isLocal); }
-bool PFBaseHero::TakeConsumable( const NDb::Consumable * pDBDesc, int quantity, NDb::EConsumableOrigin origin, int slot ) { (void)origin; if (!pDBDesc || quantity <= 0) return false; CObj<PFConsumable> c = new PFConsumable(CPtr<PFWorld>(GetWorld()), CPtr<PFBaseUnit>(this), pDBDesc); c->SetQuantity(quantity); if (slot >= 0 && slot < consumables.size()) consumables[slot] = c; else consumables.push_back(c); return true; }
+/** Admit a complete bounded stack before mutating the original fixed inventory. */
+bool PFBaseHero::TakeConsumable(const NDb::Consumable* db, int quantity, NDb::EConsumableOrigin origin, int slot)
+{
+	if (slot == -1) slot = GetSlotForConsumable(db, quantity);
+	if (!CanPutConsumableIntoSlot(db, quantity, slot)) return false;
+	CObj<PFConsumable>& item = consumables[slot];
+	if (item) item->AddQuantity(quantity);
+	else
+	{
+		CObj<PFConsumableAbilityData> ability = GetConsumableAbility(db);
+		if (!ability) return false;
+		item = new PFConsumable(ability, quantity);
+		if (!ability->HasPassiveInstance()) ability->ApplyPassivePart(true);
+	}
+	if (origin != NDb::CONSUMABLEORIGIN_DEFAULT)
+		EventHappened(PFHeroEventConsumableObtained(db, origin));
+	return true;
+}
 void PFBaseHero::SwapConsumables(int id1, int id2) { if (IsSlotValid(id1) && IsSlotValid(id2)) nstl::swap(consumables[id1], consumables[id2]); }
 bool PFBaseHero::RemoveConsumable(int slot) { if (!IsSlotValid(slot)) return false; consumables[slot] = 0; return true; }
 void PFBaseHero::RemoveConsumable( PFConsumable const* pConsumable ) { for (int i = 0; i < consumables.size(); ++i) if (consumables[i] == pConsumable) consumables[i] = 0; }
-bool PFBaseHero::CanPutConsumableIntoSlot( const NDb::Consumable * pDBDesc, int quantity, int slot) const { (void)pDBDesc; (void)quantity; return slot >= 0; }
-int PFBaseHero::GetSlotForConsumable( const NDb::Consumable * pDBDesc, int quantity ) const { (void)pDBDesc; (void)quantity; return consumables.size(); }
-bool PFBaseHero::CanTakeConsumable( const NDb::Consumable * pDBDesc, int quantity ) const { return pDBDesc && quantity > 0; }
+/** Use subtraction to avoid overflowing quantities while retaining unspendable items. */
+bool PFBaseHero::CanPutConsumableIntoSlot(const NDb::Consumable* db, int quantity, int slot) const
+{
+	if (!db || quantity <= 0 || !IsSlotValid(slot)
+		|| (db->maxQuantity > 0 ? quantity > db->maxQuantity : quantity != 1)) return false;
+	const PFConsumable* item = GetConsumable(slot);
+	return !item || (db->maxQuantity > 0 && item->GetDBDesc() == db && item->GetQuantity() >= 0
+		&& item->GetQuantity() <= db->maxQuantity - quantity);
+}
+
+/** Prefer compatible stacks before the first empty slot, matching Windows ordering. */
+int PFBaseHero::GetSlotForConsumable(const NDb::Consumable* db, int quantity) const
+{
+	int empty = -1;
+	for (int slot = 0; slot < consumables.size(); ++slot)
+	{
+		if (!CanPutConsumableIntoSlot(db, quantity, slot)) continue;
+		if (consumables[slot]) return slot;
+		if (empty < 0) empty = slot;
+	}
+	return empty;
+}
+bool PFBaseHero::CanTakeConsumable(const NDb::Consumable* db, int quantity) const
+{
+	return GetSlotForConsumable(db, quantity) >= 0;
+}
 void PFBaseHero::DropConsumablesCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
-CObj<PFConsumableAbilityData> PFBaseHero::GetConsumableAbility( const NDb::Ability * pDBDesc ) { (void)pDBDesc; return 0; }
-bool PFBaseHero::CanStackConsumables( int src, int dst ) const { (void)src; (void)dst; return false; }
-bool PFBaseHero::StackConsumables( int src, int dst ) { (void)src; (void)dst; return false; }
+/** Cache descriptor-owned ability data independently of occupied inventory slots. */
+CObj<PFConsumableAbilityData> PFBaseHero::GetConsumableAbility(const NDb::Ability* db)
+{
+	if (!db) return CObj<PFConsumableAbilityData>(0);
+	for (const auto& ability : rgConsumablesAbilities)
+		if (ability && ability->GetDBDesc() == db) return ability;
+	for (const auto& item : consumables)
+		if (item && item->GetDBDesc() == db) return item->GetAbility();
+	CObj<PFConsumableAbilityData> ability = new PFConsumableAbilityData(this, db, NDb::ABILITYTYPEID_CONSUMABLE);
+	rgConsumablesAbilities.push_back(ability);
+	AddConsumableToGroup(ability);
+	return ability;
+}
+
+bool PFBaseHero::CanStackConsumables(int src, int dst) const
+{
+	const PFConsumable* item = GetConsumable(src);
+	return src != dst && item && GetConsumable(dst)
+		&& CanPutConsumableIntoSlot(item->GetDBDesc(), item->GetQuantity(), dst);
+}
+
+/** Remove the source only after successful destination admission and transfer. */
+bool PFBaseHero::StackConsumables(int src, int dst)
+{
+	if (!CanStackConsumables(src, dst)) return false;
+	const PFConsumable* item = GetConsumable(src);
+	if (!TakeConsumable(item->GetDBDesc(), item->GetQuantity(), NDb::CONSUMABLEORIGIN_DEFAULT, dst)) return false;
+	return RemoveConsumable(src);
+}
 void PFBaseHero::SellConsumable(int slot) { RemoveConsumable(slot); }
 float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const
 {

@@ -15,7 +15,7 @@ NAMEMAP_BEGIN(PFConsumable)
 NAMEMAP_END
 
 PFConsumable::PFConsumable(CObj<PFConsumableAbilityData> const& abilityData, int quantity_)
-: PFWorldObjectBase(0, 0)
+: PFWorldObjectBase(abilityData ? abilityData->GetWorld() : 0, 0)
 , moneyCost(0)
 , actionBarIndex(-1)
 , isPet(false)
