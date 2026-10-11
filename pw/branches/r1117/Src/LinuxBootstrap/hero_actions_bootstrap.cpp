@@ -120,6 +120,15 @@ namespace NWorld
     return dynamic_cast<PFBaseMaleHero*>(hero);
   }
 
+	/** Recheck inventory/control admission on the exact registered actor at both boundaries. */
+	static bool CanUseLinuxConsumableCommand(PFBaseMaleHero* hero, int slot)
+	{
+		return IsUnitValid(hero) && hero->GetWorld() &&
+			hero->GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero &&
+			!hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) &&
+			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME) && hero->CanUseConsumable(slot);
+	}
+
   static int EncodeLinuxBootstrapCommandHeroSlotIndex(
     PFBaseHero* hero,
     int slotIndex)
@@ -825,7 +834,7 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanChecks;
-    const bool accepted = !IsValid(pHero) || !pHero->IsDead();
+    const bool accepted = CanUseLinuxConsumableCommand(pHero, slot);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanAccepted;
     g_linuxHeroGameplayCommandDiagnostics.useConsumableSlot = slot;
@@ -869,7 +878,11 @@ namespace NWorld
       beforeConsumable && beforeConsumable->GetAbility() ?
         beforeConsumable->GetAbility()->GetCurrentCooldown() : 0.0f;
 #endif
+#if defined(PW_LINUX_NULL_RENDER)
+		const bool canUse = CanUseLinuxConsumableCommand(hero, slot);
+#else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseConsumable(slot);
+#endif
 #if defined(PW_LINUX_NULL_RENDER)
     g_linuxHeroGameplayCommandDiagnostics.useConsumableCanUse = canUse ? 1 : 0;
 #endif

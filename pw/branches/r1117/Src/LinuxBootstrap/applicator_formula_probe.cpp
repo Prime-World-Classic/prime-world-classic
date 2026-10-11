@@ -1250,6 +1250,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "hero_interaction_action_tests.inc"
 #include "hero_use_unit_tests.inc"
 #include "hero_flag_pickup_tests.inc"
+#include "cast_command_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1311,6 +1312,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			HeroInteractionActionB9(check, world);
 			HeroUseUnitB9(check, world);
 			HeroFlagPickupB9(check, world, ai);
+			ConsumableCommandAdmissionB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
