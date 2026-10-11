@@ -264,14 +264,13 @@ void PFCommonCreep::RotateIfNeeded() { SetNeedRotate(false); }
 const NDb::DBID* PFCommonCreep::GetSpawnerDBID() const { return GetSpawner() && GetSpawner()->GetDBDesc() ? &(GetSpawner()->GetDBDesc()->GetDBID()) : 0; }
 void PFCommonCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
 {
-  const bool wasRegisteredCreep = creepsRingPart.isLinked();
+	const bool wasLiveRegistered = ringField.isLinked();
   PFBaseCreep::OnUnitDie(pKiller, flags, pDamageDesc);
-  if (wasRegisteredCreep)
-  {
-    if (GetWorld())
-      GetWorld()->UnregisterCreep(this);
-    CreepsRing::remove(this);
-  }
+	// World population registration is independent of optional spawner membership.
+	if (wasLiveRegistered && !(flags & UNITDIEFLAGS_DEFERREDDEATH) && GetWorld())
+		GetWorld()->UnregisterCreep(this);
+	if (!(flags & UNITDIEFLAGS_DEFERREDDEATH) && creepsRingPart.isLinked())
+		CreepsRing::remove(this);
 }
 void PFCommonCreep::OnDestroyContents() { if (creepsRingPart.isLinked()) CreepsRing::remove(this); PFBaseCreep::OnDestroyContents(); }
 

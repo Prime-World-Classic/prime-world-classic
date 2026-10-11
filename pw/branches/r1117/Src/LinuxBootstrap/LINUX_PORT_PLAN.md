@@ -26,6 +26,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 2/20 COMPLETE (`0.41.1`): lane creeps use the original PFBaseUnitPathMovingState, retaining authored waypoints for forward resumption after combat. Do not overwrite active or queued orders; forbid-move admission and state-owned stop/cleanup remain authoritative. Four regression failures reproduced; all 4,695 applicator assertions and 28 CTests pass, six targets build and retained Windows/shared source byte checks pass. Evidence `/tmp/pw-b11-c2-{before,after,build,ctest}.log`. Route-state restoration is not obstacle pathfinding or full creep AI parity.
 
+- Chunk 3/20 COMPLETE (`0.41.2`): common-creep population removal follows live AI-world registration, not the optional spawner ring. Deferred death retains both population and spawner ownership; repeated final notifications do not decrement twice, including lethal damage that zeroes health before OnUnitDie. Three initial failures reproduced, and repeated-death failures caught during the first fix. All 4,701 assertions and 28 CTests pass; six targets build, Windows/shared bytes unchanged. Evidence `/tmp/pw-b11-c3-{before,after,build,ctest}.log`. Full saved-world registration restoration remains unproven.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10
