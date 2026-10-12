@@ -196,7 +196,46 @@ int PFBaseHero::GetTSliceSalary() const { return 0; }
 void PFBaseHero::SetTSliceSalary(float salary) { (void)salary; }
 void PFBaseHero::AddTSliceSalary(float salary) { (void)salary; }
 void PFBaseHero::OnDie() { PFCreature::OnDie(); }
-void PFBaseHero::CallForTowerHelp( const CPtr<PFBaseUnit>& pTarget ) { (void)pTarget; }
+/** Restore original tower retarget/priority policy with exact native world ownership. */
+void PFBaseHero::CallForTowerHelp(const CPtr<PFBaseUnit>& pTarget)
+{
+	PFWorld* world = GetWorld();
+	if (!world || !world->GetAIWorld() || !IsUnitValid(this) || !IsUnitValid(pTarget)
+		|| pTarget->GetWorld() != world || world->FindLinuxUnitByObjectId(pTarget->GetObjectId()) != pTarget.GetPtr()
+		|| world->FindLinuxUnitByObjectId(GetObjectId()) != this || !pTarget->IsVulnerable()
+		|| pTarget->GetFaction() == GetFaction() || pTarget->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOTARGETME)
+		|| GetFaction() < 0 || GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return;
+	const CObj<PFBaseUnit> attacker(pTarget.GetPtr());
+	const CObj<PFBaseUnit> selected(pTarget->GetAlphaSummon() ? pTarget->GetAlphaSummon().GetPtr() : pTarget.GetPtr());
+	if (!IsUnitValid(selected) || selected->GetWorld() != world
+		|| world->FindLinuxUnitByObjectId(selected->GetObjectId()) != selected.GetPtr()) return;
+	const CVec3& position = selected->GetPosition();
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return;
+	struct Collect
+	{
+		vector<CObj<PFBaseUnit>> towers;
+		void operator()(PFBaseUnit& tower) { towers.push_back(&tower); }
+	} collect;
+	world->GetAIWorld()->ForAllUnits(collect, UnitMaskingPredicate(1 << GetFaction(), NDb::SPELLTARGET_TOWER));
+	for (const auto& tower : collect.towers)
+	{
+		if (!IsUnitValid(tower) || tower->GetWorld() != world
+			|| world->FindLinuxUnitByObjectId(tower->GetObjectId()) != tower.GetPtr()
+			|| !IsUnitValid(attacker) || !IsUnitValid(selected)) continue;
+		const auto& current = tower->GetCurrentTarget();
+		if (IsValid(current) && ((current->IsTrueHero() && !current->GetAlphaSummon()) || current->IsAlphaSummon())) continue;
+		if (tower->IsTargetInAttackRange(selected.GetPtr()))
+		{
+			tower->AssignTarget(selected.GetPtr(), false);
+			tower->AddToPriorityTargets(attacker.GetPtr());
+		}
+		else if (const auto params = tower->GetTargetingParamsPtr())
+		{
+			if (std::isfinite(params->nearbyRange) && params->nearbyRange >= 0
+				&& attacker->IsInRange(tower.GetPtr(), params->nearbyRange)) tower->AddToPriorityTargets(attacker.GetPtr());
+		}
+	}
+}
 
 /** Preserve hero help and strong retaliation policies without mount redirection. */
 void PFHeroBehaviour::OnDamage(const PFBaseUnitDamageDesc& desc)

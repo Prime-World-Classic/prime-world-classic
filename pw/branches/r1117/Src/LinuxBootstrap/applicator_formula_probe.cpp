@@ -1347,6 +1347,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "wrapper_factory_b12_tests.inc"
 #include "../PF_GameLogic/PFMicroAI.h"
 #include "microai_b12_tests.inc"
+#include "tower_help_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1476,6 +1477,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DirectionalSelectorB12(check);
 			WrapperFactoryB12(check, world);
 			MicroAIB12(check);
+			TowerHelpB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
