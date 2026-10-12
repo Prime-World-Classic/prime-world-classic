@@ -116,7 +116,27 @@ void PFBaseHero::AttachToPlayer(CPtr<PFPlayer> const& pNewPlayer)
 void PFBaseHero::DetachFromPlayer() { pPlayer = 0; }
 bool PFBaseHero::UpdateClientColor() { return false; }
 int PFBaseHero::GetStatisticsUid() const { return IsValid(pPlayer) ? pPlayer->GetUserID() : 0; }
-void PFBaseHero::Initialize(InitData const& data) { PFBaseUnit::Initialize(data); }
+void PFBaseHero::Initialize(InitData const& data)
+{
+	PFBaseUnit::Initialize(data);
+	customEnergy = false;
+	customEnergyValue = customEnergyMaximum = customEnergyRegeneration = 0;
+	if (!pDbHero || !pDbHero->uniqueResource) return;
+	const NDb::HeroResource& resource = *pDbHero->uniqueResource;
+	// Original ownership disables mana and its drain/regeneration, not the authored custom pool.
+	const int provider = std::numeric_limits<int>::min() + 3;
+	for (auto stat : {NDb::STAT_ENERGY, NDb::STAT_ENERGYDRAIN,
+		NDb::STAT_ENERGYREGENERATION, NDb::STAT_ENERGYREGENERATIONABSOLUTE})
+		if (StatValueWithModifiers* value = GetStat(stat))
+		{
+			value->AddModifier(0, 0, provider, true, NDb::STATCONSTRAINT_LOWERLIMIT);
+			value->AddModifier(0, 0, provider, true, NDb::STATCONSTRAINT_UPPERLIMIT);
+		}
+	InitializeLifeEnergy();
+	customEnergy = resource.overtipManaProgressMaterial && !resource.formulaNameValue.empty()
+		&& !resource.formulaNameMaximum.empty() && !resource.formulaNameRegeneration.empty();
+	InitializeCustomEnergyVariables();
+}
 void PFBaseHero::InitHero(const NDb::BaseHero *pDesc) { pDbHero = pDesc; InitializeCustomEnergyVariables(); }
 bool PFBaseHero::Step(float dtInSeconds)
 {
@@ -148,6 +168,25 @@ bool PFBaseHero::Step(float dtInSeconds)
 	// Cached descriptor data survives item removal; shared stacks must tick only once.
 	for (auto& ability : rgConsumablesAbilities)
 		if (ability) ability->Update(dtInSeconds, true);
+	if (!IsDead() && customEnergy && std::isfinite(dtInSeconds) && dtInSeconds >= 0)
+	{
+		if (!pDbHero || !pDbHero->uniqueResource)
+		{
+			customEnergy = false;
+			customEnergyValue = customEnergyMaximum = customEnergyRegeneration = 0;
+		}
+		else
+		{
+			const float value = GetCustomEnergyValue(), maximum = GetCustomEnergyMaximum();
+			const float regeneration = GetCustomEnergyRegeneration();
+			const float change = regeneration * dtInSeconds;
+			const float next = value + change;
+			// Preserve signed regeneration and stock base-value assignment, but reject poisoned arithmetic.
+			if (customEnergyValue && std::isfinite(value) && std::isfinite(maximum) && maximum >= 0
+				&& std::isfinite(regeneration) && std::isfinite(change) && std::isfinite(next))
+				customEnergyValue->SetBaseValue(Clamp(next, 0.f, maximum));
+		}
+	}
   return PFCreature::Step(dtInSeconds);
 }
 int PFBaseHero::GetTotalNaftaEarned() const { return GetGold(); }
@@ -443,8 +482,41 @@ void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& item)
 		if (ability == item->GetAbility()) return;
 	rgConsumablesAbilities.push_back(item->GetAbility());
 }
-void PFBaseHero::OnSerialize(IBinSaver& f) { (void)f; }
-void PFBaseHero::InitializeCustomEnergyVariables() { customEnergy = false; customEnergyValue = 0; customEnergyMaximum = 0; customEnergyRegeneration = 0; }
+void PFBaseHero::OnSerialize(IBinSaver& f)
+{
+	if (f.IsReading() && customEnergy) InitializeCustomEnergyVariables();
+}
+
+/** Rebind runtime pointers; existing serialized variables keep their values and modifiers. */
+void PFBaseHero::InitializeCustomEnergyVariables()
+{
+	customEnergyValue = customEnergyMaximum = customEnergyRegeneration = 0;
+	if (!customEnergy || !pDbHero || !pDbHero->uniqueResource)
+	{
+		customEnergy = false;
+		return;
+	}
+	const NDb::HeroResource& resource = *pDbHero->uniqueResource;
+	if (resource.formulaNameValue.empty() || resource.formulaNameMaximum.empty() || resource.formulaNameRegeneration.empty())
+	{
+		customEnergy = false;
+		return;
+	}
+	customEnergyValue = SearchVariableVWM(resource.formulaNameValue.c_str());
+	customEnergyMaximum = SearchVariableVWM(resource.formulaNameMaximum.c_str());
+	customEnergyRegeneration = GetVariableVWM(resource.formulaNameRegeneration.c_str());
+	const int provider = std::numeric_limits<int>::min() + 3;
+	if (!customEnergyValue)
+	{
+		customEnergyValue = GetVariableVWM(resource.formulaNameValue.c_str());
+		customEnergyValue->AddModifier(0, 0, provider, true, NDb::STATCONSTRAINT_LOWERLIMIT);
+	}
+	if (!customEnergyMaximum)
+	{
+		customEnergyMaximum = GetVariableVWM(resource.formulaNameMaximum.c_str());
+		customEnergyMaximum->AddModifier(0, 0, provider, true, NDb::STATCONSTRAINT_LOWERLIMIT);
+	}
+}
 bool PFBaseHero::CanUseConsumable(int slot) const { return CanUseConsumables() && IsSlotValid(slot) && consumables[slot] && consumables[slot]->GetQuantity() > 0 && consumables[slot]->CanBeUsed(); }
 bool PFBaseHero::CanUseConsumables() const { return !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDUSECONSUMABLES); }
 CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumable, const Target& target, bool isLocal )
@@ -737,9 +809,18 @@ void PFBaseHero::Move(const CVec2 & target)
   pHeroOrMount->SetMoveFlags(pHeroOrMount->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED);
   pHeroOrMount->SetUnitSpeed(6.0f);
 }
-float PFBaseHero::GetCustomEnergyValue() const { return customEnergyValue ? customEnergyValue->GetValue() : 0.0f; }
-float PFBaseHero::GetCustomEnergyMaximum() const { return customEnergyMaximum ? customEnergyMaximum->GetValue() : 0.0f; }
-float PFBaseHero::GetCustomEnergyRegeneration() const { return customEnergyRegeneration ? customEnergyRegeneration->GetValue() : 0.0f; }
+float PFBaseHero::GetCustomEnergyValue() const
+{
+	return customEnergy && pDbHero && pDbHero->uniqueResource && customEnergyValue ? customEnergyValue->GetValue() : 0.f;
+}
+float PFBaseHero::GetCustomEnergyMaximum() const
+{
+	return customEnergy && pDbHero && pDbHero->uniqueResource && customEnergyMaximum ? customEnergyMaximum->GetValue() : 0.f;
+}
+float PFBaseHero::GetCustomEnergyRegeneration() const
+{
+	return customEnergy && pDbHero && pDbHero->uniqueResource && customEnergyRegeneration ? customEnergyRegeneration->GetValue() : 0.f;
+}
 void PFBaseHero::OnIdle() {}
 void PFBaseHero::OnAfterSuspend(bool isLongSuspend) { (void)isLongSuspend; }
 void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc )
