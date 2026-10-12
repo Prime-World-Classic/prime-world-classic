@@ -113,21 +113,27 @@ PW_EXTRA_DEFS=-DPW_RENDER_SHADER_STATS ./build_client_x64_wine.sh
 
 ## 2. Поверхность D3D9, которую надо убрать
 
-### 2.1 Утечки за пределы `Src/Render` (правятся в первую очередь)
+### 2.1 Утечки D3D9 за пределы `Src/Render` — полный список (пересчитан)
 
-| Место | Что |
-|---|---|
-| `Scene/SHGridCalculator.cpp` | `#include <d3d9.h>`, `D3DXVECTOR2/3`, `D3DXVec3Normalize` (см. §2.1.1 — что из D3DX реально живо) |
-| `PF_GameLogic/PFRenderInterface.cpp` | 41 `GetDevice()`: `SetRenderState`, `SetSamplerState(D3DSAMP_BORDERCOLOR/MIPMAPLODBIAS)`, `SetPixelShaderConstantF`, `StretchRect`, `D3DXVECTOR3`, `D3DSURFACE_DESC`, `EvictManagedResources`, `Clear` |
-| `PF_GameLogic/PFClientVisibilityMap.cpp` | `GetDevice()` |
-| `PF_GameLogic/SocialConnection.cpp` | скриншот: `CreateOffscreenPlainSurface`, `D3DXLoadSurfaceFromSurface`, `D3DXSaveSurfaceToFile` |
-| `PF_Core/{AnimatedTexture,RecolorableTexture}.cpp` | `D3DPOOL_MANAGED` assert, `EndScene` |
-| `Terrain/{Terrain,ArrayInVRAM}.cpp` | `GetDevice()`, `GetDirect3D` (`UberElement.{h,cpp}` и `Render/d3d9texture2D.h` удалены — оба `#error`-файлы без включений) |
-| `EditorNative/*` | `SetViewport`, `D3DVIEWPORT9`, `SetFVF` |
-| `Src/UI`, `Src/Game` | **0** — уже чисто |
+**Текущие цифры (после этапа 1):** `GetDevice()` — 190, из них 145 в `Src/Render`
+и **45 снаружи, в 8 файлах**; `IDirect3D*` — 200 ссылок. (Первичная оценка
+«344» считала все упоминания `IDirect3D`/`D3DX` по дереву, а не вызовы.)
 
-Всего прямых `GetDevice()` — **344** (Render 153, PF_GameLogic 41, Terrain 2,
-EditorNative 2).
+| Файл | Кол-во | Что именно | На что менять |
+|---|---|---|---|
+| `PF_GameLogic/PFRenderInterface.cpp` | 33 | 25 «сырых» `SetRenderState` (SRCBLEND/DESTBLEND/BLENDOP, SEPARATEALPHABLEND*, BLENDOPALPHA=MAX/REVSUBTRACT, COLORWRITEENABLE, ALPHATEST*/ALPHAREF/ALPHAFUNC, ZENABLE/ZWRITEENABLE), 2 `SetSamplerState(0, D3DSAMP_BORDERCOLOR, 0)`, 2 `SetPixelShaderConstantF(96, …)`, 2 `SetScissorRect`, `StretchRect`, `Clear`, `GetDepthStencilSurface`, 2 `EvictManagedResources` | **главная проблема не в количестве, а в том, что это обход `RenderStatesManager`**: состояния не попадают в `RenderState`-ключ и не восстанавливаются после `SetState()` → порядок вызовов критичен. Правка = перевести на `RenderStatesManager::SetState`/`SetStateDirect` (одна точка истины), `StretchRect` → `copyTexture`/blit, `Clear` → `clearRenderTargetView`, `GetDepthStencilSurface` → запрос текущего depth у бэкенда, `EvictManagedResources` → no-op |
+| `PF_GameLogic/PFRenderWater.cpp` | 3 | `GetViewport(&vp)` (перевод экранных координат в NDC) | кэшированный viewport в бэкенде (`getViewport()`), либо передавать размеры экрана извне |
+| `PF_GameLogic/PFClientVisibilityMap.cpp` | 3 | `SetTexture(WARFOGSAMPLERINDEX, …)` ×2 (s10), `IDirect3DDevice9*` локальная | биндинг через `SmartRenderer::BindTexture` (уже есть) → binding set |
+| `PF_GameLogic/SocialConnection.cpp` | 1 | скриншот: `GetRenderTargetData` + `D3DXLoadSurfaceFromSurface` + `D3DXSaveSurfaceToFile(PNG)` | readback через staging + свой PNG-энкодер (или `ICommandList::writeTexture` + stb/`WIC`) |
+| `PF_GameLogic/PFPostFXParams.cpp` | 1 | `ColorFill(surface, NULL, D3DCOLOR_XRGB(0,255,0))` | `clearSurfaceView(color)` |
+| `Terrain/Terrain.cpp` | 1 | `GetDevice()` → `GetDirect3D()` → `IDirect3D9` (395–398) | перечисление адаптера → DXGI adapter LUID / Vulkan device UUID |
+| `Terrain/TerrainTextureCache.cpp` | 1 | `EvictManagedResources()` перед аллокацией тайлов | no-op (у кэша тайлов свой LRU, пула D3D9 больше нет) |
+| `EditorNative/EditorRender.cpp` | 2 | `SetViewport`, `Present(0,0,hEditorWindow,0)` — редактор рендерит в своё окно | **решение:** редактор в новый бэкенд не переносим (внутренний инструмент), выключаем из сборки на этапе 4 |
+
+Итого для контракта `IRenderBackend` нужно ровно: state-object (blend/depth/
+stencil/alpha-test/color-write/scissor), viewport, clear (color+depth),
+copy/blit, bind-texture, set-constants, readback, enumerate-adapters.
+Ничего из перечисленного не требует D3D9-специфики.
 
 ### 2.1.1 D3DX-математика: что реально живо (уточнено)
 
@@ -413,7 +419,7 @@ color-correct начинают получать настоящие веса) —
       (`float3 POSITION @0`, `float TEXCOORD0 @12`, `int4 COLOR0 @16`
       — байт-в-байт совместим с `Vertex2D`).
 - [ ] Ликвидировать утечки D3D9 из `PF_GameLogic`/`Scene`/`Terrain`/
-      `PF_Core`/`EditorNative` (§2.1) — 41+ `GetDevice()` снаружи.
+      `PF_Core`/`EditorNative` (§2.1) — 45 `GetDevice()` снаружи в 8 файлах.
 - [ ] `Scene/SHGridCalculator.cpp` + `Render/SHCoeffs.cpp`: D3DX-математика
       (`D3DXSHEvalDirection`, `D3DXSHEvalDirectionalLight`) → своя/`System/Geom`.
 - Критерий: `grep -c "IDirect3D\|D3DX\|d3d9" Src/{Scene,UI,Game,Terrain,
