@@ -33,7 +33,8 @@ static void DispatchFactoryB11(Checks& check, PFWorld* world)
 		raw->dispatch = cursor ? static_cast<NDb::Dispatch*>(new NDb::DispatchCursor) : new NDb::DispatchRockmanMace;
 		CObj<PFDispatch> unsupported = CreateDispatch(cast, nullptr, Target(sender.GetPtr()),
 			Target(receiver.GetPtr()), spell, 0, false, 0);
-		check(!unsupported, "B11 unsupported descriptor cannot silently become immediate damage");
+		check(cursor ? (unsupported && !dynamic_cast<PFDispatchImmediate*>(unsupported.GetPtr())) : !unsupported,
+			"cursor uses authored travel; unsupported mace cannot silently become immediate damage");
 		if (unsupported) unsupported->Cancel();
 	}
 }

@@ -7,6 +7,7 @@
 #include "../PF_GameLogic/PFAbilityInstance.h"
 #include "../PF_GameLogic/PFDispatchFactory.h"
 #include "../PF_GameLogic/PFDispatchStrike1.h"
+#include "../PF_GameLogic/PFDispatchCursor.h"
 #include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFHero.h"
@@ -1313,6 +1314,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "permanent_stat_b12_tests.inc"
 #include "stat_buff_b12_tests.inc"
 #include "map_force_b12_tests.inc"
+#include "cursor_dispatch_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1414,6 +1416,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			PermanentStatB12(check, world);
 			StatBuffB12(check, world);
 			MapForceB12(check, world);
+			CursorDispatchB12(check, world);
+			CursorCommandB12(check);
+			CursorPersistentB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

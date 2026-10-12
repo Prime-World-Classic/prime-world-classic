@@ -542,6 +542,7 @@ add_executable(
   ../PF_GameLogic/PFDispatch.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+	../PF_GameLogic/PFDispatchCursor.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
   ../PF_GameLogic/PFEffectSwitcher.cpp
@@ -1065,6 +1066,7 @@ add_library(
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+	../PF_GameLogic/PFDispatchCursor.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
   ../PF_GameLogic/PFEffectSwitcher.cpp
@@ -1234,6 +1236,7 @@ add_library(
   ../PF_GameLogic/PFDispatch.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+	../PF_GameLogic/PFDispatchCursor.cpp
   ../PF_GameLogic/ForceCalc.cpp
   ../PF_GameLogic/PFBehaviour.cpp
   ../PF_GameLogic/PFEaselPlayer.cpp
@@ -1782,6 +1785,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFDispatch.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+	../PF_GameLogic/PFDispatchCursor.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
   ../PF_GameLogic/PFEffectSwitcher.cpp
@@ -1907,6 +1911,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+	../PF_GameLogic/PFDispatchCursor.cpp
   ../PF_GameLogic/ForceCalc.cpp
   ../PF_GameLogic/PFFlagpole.cpp
   ../PF_GameLogic/PFGlyph.cpp

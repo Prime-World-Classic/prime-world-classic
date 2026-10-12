@@ -1,7 +1,13 @@
 #include "stdafx.h"
 #include "PFDispatchCursor.h"
 #include "TileMap.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "PFWorld.h"
+#include "PFPlayer.h"
+#include <cmath>
+#else
 #include "PFDispatchCursorClient.h"
+#endif
 #include "PFBaseUnit.h"
 #include "../Core/WorldCommand.h"
 #include "PFHero.h"
@@ -35,7 +41,9 @@ void PFDispatchCursor::OnStart()
 
 void PFDispatchCursor::CreateClientDispatch()
 {
+#if !defined(PW_LINUX_NULL_RENDER)
   CreateClientObject<TClientObject>( GetWorld()->GetScene() );
+#endif
 }
 
 void PFDispatchCursor::UpdatePersistentApplicatorsPosition()
@@ -57,6 +65,10 @@ void PFDispatchCursor::UpdatePersistentApplicatorsPosition()
 
 bool PFDispatchCursor::Step(float dtInSeconds)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0)
+		return false;
+#endif
   NI_PROFILE_FUNCTION
 
     if ( IsObjectDead() )
@@ -64,6 +76,10 @@ bool PFDispatchCursor::Step(float dtInSeconds)
 
   if (state == STATE_PROCEED)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+		if (!std::isfinite(duration))
+			return false;
+#endif
     bool time2Die = false;
     if (IsUnitValid(pSender))
     {
@@ -90,6 +106,20 @@ bool PFDispatchCursor::Step(float dtInSeconds)
       return true;
     }
 
+#if defined(PW_LINUX_NULL_RENDER)
+		// Invalid travel must not suspend the original lifetime or persistent effects.
+		const CVec2 from = source.AcquirePosition().AsVec2D();
+		const CVec2 to = target.AcquirePosition().AsVec2D();
+		if (!std::isfinite(maxSpeed) || maxSpeed < 0 || !std::isfinite(dtInSeconds * maxSpeed) ||
+			!curPos.IsFinite() || !std::isfinite(GetDB().linkRange) || GetDB().linkRange < 0 ||
+			!from.IsFinite() || !to.IsFinite() || !std::isfinite(fabs2(to - curPos)) ||
+			!std::isfinite(fabs2(to - from)) || !std::isfinite(fabs2(curPos - from)))
+		{
+			if (curPos.IsFinite()) UpdatePersistentApplicatorsPosition();
+			Base::Step(dtInSeconds);
+			return false;
+		}
+#endif
     float const linkRange = GetDB().linkRange;
     CVec2 const senderPos = source.AcquirePosition().AsVec2D();
     CVec2 receiverPos = target.AcquirePosition().AsVec2D();
@@ -116,6 +146,16 @@ bool PFDispatchCursor::Step(float dtInSeconds)
       NI_ASSERT( newPos.IsFinite(), "Bad curpos" );
 
       TileMap* pMap = GetWorld()->GetTileMap();
+#if defined(PW_LINUX_NULL_RENDER)
+			if (!pMap || !newPos.IsFinite() || !std::isfinite(pMap->GetTileSize()) || pMap->GetTileSize() <= 0 ||
+				newPos.x < 0 || newPos.y < 0 || double(newPos.x) / pMap->GetTileSize() >= pMap->GetSizeX() ||
+				double(newPos.y) / pMap->GetTileSize() >= pMap->GetSizeY())
+			{
+				UpdatePersistentApplicatorsPosition();
+				Base::Step(dtInSeconds);
+				return false;
+			}
+#endif
       SVector tile = pMap->GetTile( newPos );
       if ( !pMap->IsPointOutsideMap( tile.x, tile.y ) )
       {
@@ -151,6 +191,10 @@ bool PFDispatchCursor::Step(float dtInSeconds)
 
 void PFDispatchCursor::UpdateCursorPos( CVec2 pos )
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (IsObjectDead() || HasArrived() || !pos.IsFinite())
+		return;
+#endif
   target.SetPosition( CVec3(pos.x,pos.y,0.0f) );
 }
 
@@ -164,6 +208,20 @@ NCore::WorldCommand* CreateCmdUpdateCursorPos(PFDispatchCursor *pDispatch, CVec2
 
 bool CmdUpdateCursorPos::CanExecute() const
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!IsValid(pDispatch) || pDispatch->IsObjectDead() || !pDispatch->Started() ||
+		pDispatch->HasArrived() || !pos.IsFinite())
+		return false;
+	PFWorld* world = pDispatch->GetWorld();
+	PFBaseHero* hero = dynamic_cast<PFBaseHero*>(pDispatch->GetSender().GetPtr());
+	if (!world || !IsUnitValid(hero) || hero->GetWorld() != world ||
+		world->FindLinuxUnitByObjectId(hero->GetObjectId()) != hero || !world->IsSubscribed(pDispatch.GetPtr()) ||
+		world->GetObjectById(pDispatch->GetObjectId()) != pDispatch.GetPtr())
+		return false;
+	const PFPlayer* player = hero->GetPlayer();
+	return IsValid(player) && player->GetWorld() == world && player->GetHero() == hero &&
+		(player->GetUserID() == GetId() || player->IsBot());
+#else
   if ( IsValid(pDispatch) )
     if ( NWorld::PFBaseHero* hero = dynamic_cast<NWorld::PFBaseHero*>( pDispatch->GetSender().GetPtr() ) )
       if ( const NWorld::PFPlayer * pPlayer = hero->GetPlayer() )
@@ -171,15 +229,30 @@ bool CmdUpdateCursorPos::CanExecute() const
           return true;
 
   return false;
+#endif
 }
 
+#if defined(PW_LINUX_NULL_RENDER)
+/** Recheck command ownership after queueing; never resolve a replacement actor. */
+void CmdUpdateCursorPos::Execute(NCore::IWorldBase* world)
+{
+	if (CanExecute() && world == pDispatch->GetWorld())
+		pDispatch->UpdateCursorPos(pos);
+}
+#else
 void CmdUpdateCursorPos::Execute(NCore::IWorldBase *)
 {
   if ( IsValid(pDispatch) )
     pDispatch->UpdateCursorPos(pos);
 }
+#endif
 
 }
 
 REGISTER_SAVELOAD_CLASS_NM( CmdUpdateCursorPos, NWorld )
+#if defined(PW_LINUX_NULL_RENDER)
+REGISTER_WORLD_OBJECT_NM(PFDispatchCursor, NWorld)
+NGameX::PFDispatchCursorClient* NWorld::PFDispatchCursor::ClientObject() const { return nullptr; }
+#else
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM( PFDispatchCursor, NWorld)
+#endif

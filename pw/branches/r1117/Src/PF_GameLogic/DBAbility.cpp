@@ -207,6 +207,7 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 // includes for factories
 #if defined(PW_LINUX_DB_BOOTSTRAP)
 #include "PFAdvancedSummon.h"
+#include "PFDispatchCursor.h"
 #include "PFAITargetSelectors.h"
 #include "PFApplBounce.h"
 #include "PFApplChainLightning.h"
@@ -7381,7 +7382,17 @@ void DispatchCursor::Assign( const DispatchCursor& _dispatchCursor )
 NWorld::PFDispatch* DispatchCursor::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Reject malformed travel before activation payment or persistent-applicator creation.
+	if (!cp.pWorld || !cp.source.IsValid() || !cp.target.IsValid() ||
+		!cp.source.AcquirePosition().IsFinite() || !cp.target.AcquirePosition().IsFinite())
+		return 0;
+	const float duration = NWorld::PFDispatch::EvaluateNativeParameter(cp, lifeTime);
+	const float travelSpeed = NWorld::PFDispatch::EvaluateNativeParameter(cp, speed);
+	const float travelMaxSpeed = NWorld::PFDispatch::EvaluateNativeParameter(cp, maxSpeed);
+	if (!std::isfinite(duration) || !std::isfinite(travelSpeed) || travelSpeed < 0 ||
+		!std::isfinite(travelMaxSpeed) || travelMaxSpeed < 0 || !std::isfinite(linkRange) || linkRange < 0)
+		return 0;
+	return NWorld::FCreateDispatch<NWorld::PFDispatchCursor>(*this, cp);
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchCursor>( *this, cp );
