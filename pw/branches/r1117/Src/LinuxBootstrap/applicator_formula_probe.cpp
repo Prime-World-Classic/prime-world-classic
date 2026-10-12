@@ -1344,6 +1344,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "weighted_targeting_b12_tests.inc"
 #include "area_selector_b12_tests.inc"
 #include "directional_selector_b12_tests.inc"
+#include "wrapper_factory_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1471,6 +1472,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			WeightedTargetingB12(check);
 			AreaSelectorB12(check);
 			DirectionalSelectorB12(check);
+			WrapperFactoryB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

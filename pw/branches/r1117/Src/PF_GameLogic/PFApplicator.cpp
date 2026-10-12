@@ -15,6 +15,7 @@
 #include "PFTalent.h"
 #include "TileMap.h"
 #include "../LinuxBootstrap/formula_context.h"
+#include <set>
 
 namespace NWorld
 {
@@ -402,11 +403,20 @@ const char* PFBaseApplicator::ErrorStr(const char *str) const { return str; }
 
 NDb::Ptr<NDb::BaseApplicator> const& PFBaseApplicator::GetDBBase() const
 {
-  if (!pDBAppl)
-    return g_emptyApplicatorDb;
-  if (pDBAppl->GetObjectTypeID() == NDb::ApplicatorNameOverrider::typeId)
-    return static_cast<NDb::ApplicatorNameOverrider const*>(pDBAppl.GetPtr())->applicator;
-  return pDBAppl;
+	return ResolveNativeApplicatorDescriptor(pDBAppl);
+}
+
+NDb::Ptr<NDb::BaseApplicator> const& ResolveNativeApplicatorDescriptor(NDb::Ptr<NDb::BaseApplicator> const& descriptor)
+{
+	const NDb::Ptr<NDb::BaseApplicator>* current = &descriptor;
+	std::set<const NDb::BaseApplicator*> visited;
+	// Iteration avoids recursive factory calls; identity checks also reject loaded DB cycles.
+	while (*current && (*current)->GetObjectTypeID() == NDb::ApplicatorNameOverrider::typeId)
+	{
+		if (!visited.insert(current->GetPtr()).second) return g_emptyApplicatorDb;
+		current = &static_cast<const NDb::ApplicatorNameOverrider*>(current->GetPtr())->applicator;
+	}
+	return *current ? *current : g_emptyApplicatorDb;
 }
 
 string const& PFBaseApplicator::GetApplicatorName() const

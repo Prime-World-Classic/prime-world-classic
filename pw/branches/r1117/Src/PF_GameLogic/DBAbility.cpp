@@ -4475,7 +4475,10 @@ void ApplicatorNameOverrider::Assign( const ApplicatorNameOverrider& _applicator
 NWorld::PFBaseApplicator* ApplicatorNameOverrider::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	const Ptr<BaseApplicator>& inner = NWorld::ResolveNativeApplicatorDescriptor(applicator);
+	const Ptr<BaseApplicator>& owner = NWorld::ResolveNativeApplicatorDescriptor(cp.pDBAppl);
+	// Keep the original outer name, enabled policy and creation context; only delegate effect data.
+	return inner && inner.GetPtr() == owner.GetPtr() ? inner->Create(cp) : 0;
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFBaseApplicator>( *this, cp );

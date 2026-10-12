@@ -22,6 +22,10 @@ class PFAbilityData;
 class PFDispatch;
 
 class PFBaseApplicator;
+#if defined(PW_LINUX_NULL_RENDER)
+/** Resolve wrapper effect data without replacing its outer metadata; malformed chains return empty. */
+NDb::Ptr<NDb::BaseApplicator> const& ResolveNativeApplicatorDescriptor(NDb::Ptr<NDb::BaseApplicator> const& descriptor);
+#endif
 bool ActivateApplicator(CObj<PFBaseApplicator> app, CObj<PFAbilityInstance> const& pAbility);
 void MemorizeApplicator(CObj<PFBaseApplicator> app);
 void CreateAndActivateApplicators(const vector<NDb::Ptr<NDb::BaseApplicator>> &applicators, const CObj<PFAbilityInstance> &pAbility, 
