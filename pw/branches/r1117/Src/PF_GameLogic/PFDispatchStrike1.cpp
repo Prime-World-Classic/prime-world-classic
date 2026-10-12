@@ -7,6 +7,11 @@
 #include "TileMap.h"
 #include "../Core/Scheduler.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+#include <cmath>
+#include <limits>
+
+#endif
 #ifndef VISUAL_CUTTED
 #include "PFClientDispatch.h"
 #include "PFClientApplicators.h"
@@ -581,6 +586,78 @@ void PFDispatchWithLink::Reset()
 	PFDispatchUniformLinearMove::Reset();
 }
 
+#if defined(PW_LINUX_NULL_RENDER)
+namespace
+{
+/** Tile conversion and the map's signed bounds expression must both remain representable. */
+bool LinuxMacePositionFits(const CVec2& pos, const TileMap& map)
+{
+	if (!pos.IsFinite() || !std::isfinite(map.GetTileSize()) || map.GetTileSize() <= 0 ||
+		map.GetSizeX() <= 0 || map.GetSizeY() <= 0)
+		return false;
+	const double x = static_cast<double>(pos.x) / map.GetTileSize();
+	const double y = static_cast<double>(pos.y) / map.GetTileSize();
+	const double limit = std::numeric_limits<int>::max();
+	return x > -limit + map.GetSizeX() && x < limit - map.GetSizeX() &&
+		y > -limit + map.GetSizeY() && y < limit - map.GetSizeY();
+}
+}
+
+bool PFDispatchRockmanMace::CanCreateNative(const NDb::DispatchRockmanMace& db, const CreateParams& cp)
+{
+	if (!cp.pWorld || !cp.pWorld->GetTileMap() || !IsValid(cp.pSender) ||
+		!cp.source.IsValid(true) || !cp.target.IsValid(true) ||
+		!std::isfinite(db.speed) || db.speed < 0 || !std::isfinite(db.maxDistance) ||
+		!std::isfinite(db.minDistance) || !std::isfinite(db.suspendTime) || !std::isfinite(db.maxDeviation))
+		return false;
+	const TileMap& map = *cp.pWorld->GetTileMap();
+	const CVec3 source = cp.source.AcquirePosition(), destination = cp.target.AcquirePosition();
+	if (!source.IsFinite() || !destination.IsFinite() || !LinuxMacePositionFits(source.AsVec2D(), map) ||
+		!LinuxMacePositionFits(destination.AsVec2D(), map))
+		return false;
+	const CVec2 delta = destination.AsVec2D() - source.AsVec2D();
+	const float length = fabs(delta);
+	if (!delta.IsFinite() || !std::isfinite(length))
+		return false;
+	PFBaseMovingUnit* moving = dynamic_cast<PFBaseMovingUnit*>(cp.pSender.GetPtr());
+	if (!moving)
+		return true;
+	if (!LinuxMacePositionFits(moving->GetPos(), map))
+		return false;
+	float distance = moving->CheckStraightMove(destination.AsVec2D(), MAP_MODE_BUILDING);
+	if (!std::isfinite(distance) || distance < 0)
+		return false;
+	distance = min(distance, db.maxDistance > 0 ? db.maxDistance : 1e6f);
+	if (distance >= length)
+		return true;
+	// Match the constructor's float operation order, including minDistance overriding the trace.
+	const CVec2 scaled = delta * max(distance, db.minDistance);
+	const CVec2 clipped = source.AsVec2D() + scaled / length;
+	return scaled.IsFinite() && clipped.IsFinite() && LinuxMacePositionFits(clipped, map);
+}
+
+bool PFDispatchRockmanMace::Step(float dtInSeconds)
+{
+	if (IsObjectDead() || !Started() || !std::isfinite(dtInSeconds) || dtInSeconds <= 0 ||
+		!std::isfinite(speed) || speed < 0 || !std::isfinite(dtInSeconds * speed) ||
+		!std::isfinite(suspendTime) || !std::isfinite(maxDistance) || !std::isfinite(travelledDistance))
+		return false;
+	const TileMap* map = GetWorld() ? GetWorld()->GetTileMap() : nullptr;
+	// Lost or mounted units follow the original DropTarget path to lastTargetPos.
+	const CVec2 destination = (target.IsUnit() && (!target.IsUnitValid() || target.IsUnitMounted()))
+		? lastTargetPos : target.AcquirePosition().AsVec2D();
+	const CVec2 delta = destination - curPos;
+	const float length = fabs(delta);
+	if (!map || !LinuxMacePositionFits(curPos, *map) || !LinuxMacePositionFits(destination, *map) ||
+		!lastTargetPos.IsFinite() || !delta.IsFinite() || !std::isfinite(length) ||
+		!std::isfinite(travelledDistance + min(length, dtInSeconds * speed)) ||
+		!std::isfinite(GetDB().maxDeviation) ||
+		(suspendTime > EPS_VALUE && !std::isfinite(suspendTime - dtInSeconds)))
+		return false;
+	return PFDispatchUniformLinearMove::Step(dtInSeconds);
+}
+
+#endif
 PFDispatchRockmanMace::PFDispatchRockmanMace( CreateParams const &cp ) : Base(cp)
 {
   lastTargetPos = target.AcquirePosition().AsVec2D();
@@ -605,7 +682,11 @@ PFDispatchRockmanMace::PFDispatchRockmanMace( CreateParams const &cp ) : Base(cp
         // if collision occurred set new target at collision point
         lastTargetPos = curPos + (lastTargetPos - curPos) * max( dist, GetDB().minDistance ) / distFromStartPos;
         float terrainHeight = 0.f;
+#if !defined(PW_LINUX_NULL_RENDER)
         GetWorld()->GetScene()->GetHeightsController().GetHeight(lastTargetPos.x, lastTargetPos.y, 0, &terrainHeight, NULL);
+#else
+		// Native gameplay uses the same Z=0 plane as the inherited GetCurrentPosition().
+#endif
         target.SetPosition( CVec3(lastTargetPos.x, lastTargetPos.y, terrainHeight) );
       }
     }
@@ -615,12 +696,19 @@ PFDispatchRockmanMace::PFDispatchRockmanMace( CreateParams const &cp ) : Base(cp
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFDispatchRockmanMace::CreateClientDispatch()
 {
+#if !defined(PW_LINUX_NULL_RENDER)
   CreateClientObject<TClientObject>( GetWorld()->GetScene(), GetDB().locatorOrient, clientStartDelay );
+#endif
 }
 
 void PFDispatchRockmanMace::Reset()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// The linear reset only adds client reconstruction after this gameplay reset.
+	PFDispatch::Reset();
+#else
 	PFDispatchWithLink::Reset();
+#endif
 }
 
 bool PFDispatchRockmanMace::OnArrive(bool canApply, bool playApplyEffect /*= true*/ )

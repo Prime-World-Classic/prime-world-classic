@@ -7708,7 +7708,9 @@ void DispatchRockmanMace::Assign( const DispatchRockmanMace& _dispatchRockmanMac
 NWorld::PFDispatch* DispatchRockmanMace::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Preserve mace collision and deferred arrival, admitting only safe native travel inputs.
+	return NWorld::PFDispatchRockmanMace::CanCreateNative(*this, cp)
+		? NWorld::FCreateDispatch<NWorld::PFDispatchRockmanMace>(*this, cp) : 0;
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchRockmanMace>( *this, cp );

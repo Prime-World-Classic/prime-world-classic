@@ -84,6 +84,10 @@ protected:
   virtual void SetNewTarget( const Target & _target );
 
 private:
+#if defined(PW_LINUX_NULL_RENDER)
+	// Mace validates its tick before delegating to the unchanged linear algorithm.
+	friend class PFDispatchRockmanMace;
+#endif
   virtual bool Step(float dtInSeconds);
 	void UpdatePersistentApplicatorsPosition();
 
@@ -151,6 +155,10 @@ class PFDispatchRockmanMace : public DBLinker<PFDispatchWithLink, NDb::DispatchR
   WORLD_OBJECT_METHODS_WITH_CLIENT(0xA073CA82, PFDispatchRockmanMace, NGameX::PFDispatchRockmanMace)
 public:
   PFDispatchRockmanMace(CreateParams const &cp);
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Reject invalid geometry before constructors register the dispatch or build applicators. */
+	static bool CanCreateNative(const NDb::DispatchRockmanMace& db, const CreateParams& cp);
+#endif
   virtual void CreateClientDispatch();
 	virtual void Reset();
 
@@ -159,6 +167,10 @@ protected:
   virtual bool OnArrive(bool canApply, bool playApplyEffect = true );
 
 private:
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Guard native travel arithmetic without changing stock arrival or persistence policy. */
+	virtual bool Step(float dtInSeconds);
+#endif
   ZDATA_(DBLinker)
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); return 0; }
