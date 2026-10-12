@@ -9,6 +9,10 @@
 	// нику (без тега гильдии) среди союзников; кто не в бою — не показывается.
 	// Если звонок идёт хотя бы с одним человеком, союзники (не боты) вне звонка
 	// получают значок «нет в войсе».
+	//
+	// Клиент шлёт состояние только при изменениях, причём первое — ещё до Show(true),
+	// а портреты в начале боя могут появиться позже. Поэтому последнее состояние
+	// запоминается и применяется заново при показе и при зажатии/отпускании клавиши.
 	public class VoiceTeamOverlay
 	{
 		public static const COMMAND:String = "VoiceOverlayCmd";
@@ -21,6 +25,8 @@
 		private var indicators:Object = {};
 		private var shown:Boolean = false;
 		private var interactive:Boolean = false;
+		// Аргументы последнего SetState или null.
+		private var lastState:Array = null;
 
 		// playersSource(): Array of PlayerStatisticData; mateSource(heroId): MateInfoBase
 		// союзника или null; ourIdSource(): int — наш heroId.
@@ -36,6 +42,8 @@
 			shown = show;
 			if (!show)
 				Clear();
+			else
+				Reapply();
 		}
 
 		public function SetInteractive(value:Boolean):void
@@ -43,12 +51,24 @@
 			interactive = value;
 			for each (var indicator:MateVoiceIndicator in indicators)
 				indicator.SetInteractive(value);
+			Reapply();
 		}
 
 		public function SetState(micState:int, meSpeaking:Boolean, myName:String, ids:Array, flags:Array, volumes:Array, names:Array):void
 		{
-			if (!shown)
+			lastState = [micState, meSpeaking, myName, ids || [], flags || [], volumes || [], names || []];
+			Reapply();
+		}
+
+		private function Reapply():void
+		{
+			if (!shown || lastState == null)
 				return;
+			Apply(lastState[0], lastState[1], lastState[3], lastState[4], lastState[5], lastState[6]);
+		}
+
+		private function Apply(micState:int, meSpeaking:Boolean, ids:Array, flags:Array, volumes:Array, names:Array):void
+		{
 
 			var keep:Object = {};
 
