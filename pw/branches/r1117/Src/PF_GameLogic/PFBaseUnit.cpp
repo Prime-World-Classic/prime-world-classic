@@ -1108,7 +1108,193 @@ bool PFBaseUnit::IsAttackFinished() const
 
   return true;
 }
-float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>&, const NDb::UnitTargetingParameters&, PathMap*) const { return 0.0f; }
+/** Original Windows score composition, with selected-input bounds and native context guards.
+ * Native BuildPathMap is not ported; an explicit path map is rejected, never approximated.
+ * A rejected input returns the selector's -1 sentinel, not a selectable zero weight.
+ */
+float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::UnitTargetingParameters& unitPars, PathMap* pPathMap) const
+{
+	struct Local
+	{
+		static bool PositionValid(const PFBaseUnit* unit)
+		{
+			const CVec3& p = unit->GetPosition();
+			return std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z);
+		}
+		static CPtr<PFBaseUnit> Master(const CPtr<PFBaseUnit>& unit, bool resolve = true)
+		{
+			return IsValid(unit) && resolve && unit->IsAlphaSummon() ? unit->GetMasterUnit() : unit;
+		}
+		static float Table(const vector<float>& table, int type, float coefficient)
+		{
+			if (!std::isfinite(coefficient)) return std::numeric_limits<float>::quiet_NaN();
+			if (coefficient == 0) return 0;
+			if (type < 0 || type >= table.size()) return std::numeric_limits<float>::quiet_NaN();
+			return table[type] * coefficient;
+		}
+		static const AttackData* AlliedAttack(const PFBaseUnit* owner, const CPtr<PFBaseUnit>& attacker,
+			const NDb::UnitTargetingParameters& params, bool hero)
+		{
+			if (!IsValid(attacker) || attacker->GetWorld() != owner->GetWorld()) return nullptr;
+			const AttackData* data = hero ? attacker->GetLastHeroAttackData() : attacker->GetLastAttackData();
+			if (!data || !IsValid(data->pVictim) || data->pVictim->GetWorld() != owner->GetWorld() ||
+				!std::isfinite(data->timePassed) || data->timePassed < 0 || !std::isfinite(params.maxTimeFromAttack) ||
+				(params.maxTimeFromAttack >= 0 && params.maxTimeFromAttack <= data->timePassed)) return nullptr;
+			const PFBaseBehaviour* behaviour = owner->GetBehaviour();
+			const bool allied = behaviour ? behaviour->IsAttackedUnitAlly(data->pVictim, data->originalFaction) :
+				owner->IsAttackedUnitAlly(data->pVictim, data->originalFaction);
+			return allied && IsValid(data->pVictim) && data->pVictim->GetWorld() == owner->GetWorld() ? data : nullptr;
+		}
+	};
+
+	PFWorld* world = GetWorld();
+	const float range = unitPars.targetingRange;
+	if (!world || !world->GetAIWorld() || !IsUnitValid(pTarget) || pTarget->GetWorld() != world ||
+		!CanAttackTarget(pTarget) || pPathMap || !Local::PositionValid(this) || !Local::PositionValid(pTarget) ||
+		!std::isfinite(range) || range <= 0 || !std::isfinite(unitPars.rangeWeight) ||
+		!std::isfinite(unitPars.weightMaximumRangePersent)) return -1;
+
+	if (unitPars.ignoreSiblingTarget)
+	{
+		if (!dbUnitDesc) return -1;
+		struct SiblingChecker
+		{
+			const PFBaseUnit& owner;
+			bool operator()(const PFBaseUnit& unit) const
+			{
+				return unit.GetWorld() == owner.GetWorld() && unit.GetFaction() == owner.GetFaction() &&
+					unit.DbUnitDesc() && unit.DbUnitDesc()->GetDBID() == owner.DbUnitDesc()->GetDBID();
+			}
+		} siblingChecker = {*this};
+		struct Counter
+		{
+			bool found = false;
+			void operator()(const PFBaseUnit&) { found = true; }
+		} counter;
+		pTarget->ForAllAttackers(siblingChecker, counter);
+		if (counter.found) return -1;
+	}
+
+	const CPtr<PFBaseUnit> target = Local::Master(pTarget, !unitPars.isStationarySummon);
+	const CPtr<PFBaseUnit> current = Local::Master(pCurrentTarget, !unitPars.isStationarySummon);
+	if (!IsValid(target) || target->GetWorld() != world || !Local::PositionValid(target)) return -1;
+	const int type = target->GetUnitType();
+	if (type < 0 || type >= NDb::KnownEnum<NDb::EUnitType>::SizeOf()) return -1;
+	float weight = 0;
+	bool useUnitTypeWeight = true;
+	const float distance = fabs(GetPosition() - target->GetPosition());
+	if (!std::isfinite(distance)) return -1;
+
+	if (current != target)
+	{
+		float aggroRange = unitPars.aggroRange;
+		if (!std::isfinite(aggroRange)) return -1;
+		if (aggroRange < EPS_VALUE) aggroRange = range;
+		if (distance > aggroRange) weight += unitPars.OutOfAggroWeight;
+		if (unitPars.allyTargetWeight != 0)
+		{
+			const float screamRange = GetScreamRange();
+			if (!std::isfinite(screamRange) || screamRange < 0 || GetFaction() < 0 ||
+				GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return -1;
+			struct AllySameTarget
+			{
+				PFWorld* world;
+				const CPtr<PFBaseUnit>& target;
+				bool found = false;
+				AllySameTarget(PFWorld* world, const CPtr<PFBaseUnit>& target) : world(world), target(target) {}
+				void operator()(PFBaseUnit& unit)
+				{
+					if (found || !IsUnitValid(&unit) || unit.GetWorld() != world) return;
+					found = Local::Master(unit.GetCurrentTarget()) == target;
+				}
+			} finder(world, target);
+			world->GetAIWorld()->ForAllUnitsInRange(GetPosition(), screamRange, finder, UnitMaskingPredicate(1 << GetFaction()));
+			if (finder.found) weight += unitPars.allyTargetWeight;
+		}
+	}
+
+	if (type == NDb::UNITTYPE_SUMMON)
+	{
+		if (!std::isfinite(unitPars.attackerHeroSummonWeight)) return -1;
+		if (unitPars.attackerHeroSummonWeight > 0 && Local::AlliedAttack(this, target->GetMasterUnit(), unitPars, true))
+		{
+			weight += unitPars.attackerHeroSummonWeight;
+			useUnitTypeWeight = false;
+		}
+	}
+
+	if (!std::isfinite(target->GetMaxLife()) || !std::isfinite(target->GetLife())) return -1;
+	if (target->GetMaxLife() >= EPS_VALUE && target->GetLife() >= EPS_VALUE)
+		weight += unitPars.healthWeight * (1.0f - Clamp(target->GetLife() / target->GetMaxHealth(), 0.0f, 1.0f));
+
+	if (IsUnitValid(pMaster))
+	{
+		if (pMaster->GetWorld() != world || !Local::PositionValid(pMaster)) return -1;
+		const PFSummonBehaviour* behaviour = dynamic_cast<const PFSummonBehaviour*>(GetBehaviour());
+		if (!behaviour || !behaviour->IsUnleashed())
+		{
+			const float leash = GetChaseRange() + GetAttackRange();
+			const float masterDistance2 = fabs2(GetPosition() - pMaster->GetPosition());
+			if (!std::isfinite(leash) || !std::isfinite(masterDistance2) || !std::isfinite(fabs2(leash))) return -1;
+			if (masterDistance2 > fabs2(leash)) return 0;
+		}
+		if (target == pMaster->GetCurrentTarget()) weight += unitPars.masterTargetWeight;
+	}
+
+	const float denominator = unitPars.weightMaximumRangePersent < .9999f ?
+		range * (1.0f - unitPars.weightMaximumRangePersent) : range;
+	if (!std::isfinite(denominator) || denominator <= 0) return -1;
+	weight += unitPars.rangeWeight * Clamp((range - distance) / denominator, 0.0f, 1.0f);
+	if (target == current) weight += Local::Table(unitPars.currentTargetWeight, type, unitPars.currentTargetTableWeight);
+
+	if (const AttackData* attack = Local::AlliedAttack(this, target, unitPars, true))
+	{
+		weight += attack->byAutoAttack ? unitPars.autoAttackWeight : unitPars.talentAttackWeight;
+		if (useUnitTypeWeight)
+		{
+			weight += Local::Table(unitPars.attackerHeroWeight, type, unitPars.attackerHeroTableWeight);
+			if (target->IsAggressiveNeutralCreep()) weight += unitPars.aggressiveNeutralAttackingHeroWeight;
+			if (GetUnitType() != NDb::UNITTYPE_TOWER) useUnitTypeWeight = false;
+		}
+		weight += unitPars.attackerNearbyHeroWeight;
+	}
+	else if (const AttackData* attack = Local::AlliedAttack(this, target, unitPars, false))
+	{
+		const CPtr<PFBaseUnit> victim = attack->pVictim;
+		weight += attack->byAutoAttack ? unitPars.autoAttackWeight : unitPars.talentAttackWeight;
+		if (victim == pMaster) weight += unitPars.attackerMasterWeight;
+		else if (victim == this) weight += unitPars.attackerMeWeight;
+		else if ((victim->IsTrueHero() || victim->IsLikeHero() || victim->IsAlphaSummon()) && useUnitTypeWeight)
+		{
+			weight += Local::Table(unitPars.attackerHeroWeight, type, unitPars.attackerHeroTableWeight);
+			if (target->IsAggressiveNeutralCreep()) weight += unitPars.aggressiveNeutralAttackingHeroWeight;
+			if (GetUnitType() != NDb::UNITTYPE_TOWER) useUnitTypeWeight = false;
+		}
+		else if (victim->GetUnitType() == NDb::UNITTYPE_TOWER) weight += unitPars.attackerTowerWeight;
+		else weight += unitPars.attackerAllyWeight;
+	}
+
+	if (useUnitTypeWeight)
+	{
+		weight += Local::Table(unitPars.unitTargetWeight, type, unitPars.unitTypeTableWeight);
+		if (target->IsAggressiveNeutralCreep()) weight += unitPars.aggressiveNeutralWeight;
+	}
+	if (IsValid(GetAttackAbilityData()))
+	{
+		if (GetAttackAbilityData()->GetOwner() != this) return -1;
+		// Preserve Windows' actual candidate context, not its resolved alpha master.
+		if (!unitPars.customWeight.sString.empty())
+		{
+			const LinuxBootstrap::NumericFormulaResult result = LinuxBootstrap::EvaluateUnitNumericFormula(
+				unitPars.customWeight.sString.c_str(), this, pTarget.GetPtr(), GetAttackAbilityData().GetPtr());
+			if (!result.Succeeded()) return -1;
+			weight += result.value;
+		}
+		else if (!unitPars.customWeight.compiledString.empty()) return -1;
+	}
+	if (IsPriorityTarget(target)) weight += unitPars.attackerNearbyHeroWeight;
+	return std::isfinite(weight) && IsUnitValid(pTarget) && pTarget->GetWorld() == world ? weight : -1;
+}
 bool PFBaseUnit::IsRequireDirectSightToAttack() { return false; }
 bool PFBaseUnit::CanAttackFlying() const
 {
@@ -1139,39 +1325,65 @@ bool PFBaseUnit::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) 
 class LinuxAIWorldTargetScan
 {
 public:
-  LinuxAIWorldTargetScan(const PFBaseUnit& owner, float maxRange)
-    : owner(owner)
-    , maxRange(maxRange)
-    , bestDistance2(FLT_MAX)
-    , origin(owner.GetPosition().AsVec2D())
-  {
-  }
+	LinuxAIWorldTargetScan(const PFBaseUnit& owner, float maxRange)
+		: owner(owner)
+		, maxRange(maxRange)
+		, bestDistance2(FLT_MAX)
+		, origin(owner.GetPosition().AsVec2D())
+		, params(owner.GetTargetingParamsPtr())
+		, maxWeight(-1.0f)
+	{
+	}
 
-  void operator()(PFBaseUnit& unit)
-  {
-    if (unit.GetWorld() != owner.GetWorld())
-      return;
-    if (!owner.CanSelectTarget(&unit, true))
-      return;
-    if (!owner.IsTargetInRange(&unit, maxRange))
-      return;
+	void operator()(PFBaseUnit& unit)
+	{
+		if (unit.GetWorld() != owner.GetWorld())
+			return;
+		if (!owner.CanSelectTarget(&unit, true))
+			return;
+		if (!owner.IsTargetInRange(&unit, maxRange))
+			return;
 
-    const float distance2 = fabs2(unit.GetPosition().AsVec2D() - origin);
-    if (distance2 < bestDistance2)
-    {
-      bestDistance2 = distance2;
-      bestTarget = &unit;
-    }
-  }
+		if (params)
+		{
+			const float weight = owner.GetTargetWeight(CPtr<PFBaseUnit>(&unit), *params);
+			if (std::isfinite(weight) && weight > maxWeight)
+			{
+				maxWeight = weight;
+				bestTarget = &unit;
+			}
+			// A rejected numeric/context candidate must not reenter through alpha preference.
+			if (std::isfinite(weight) && weight > -1.0f && unit.IsAlphaSummon()) competingTargets.push_back(&unit);
+			return;
+		}
 
-  const CPtr<PFBaseUnit>& GetTarget() const { return bestTarget; }
+		// Only unconfigured bootstrap units retain the preexisting closest-target route.
+		const float distance2 = fabs2(unit.GetPosition().AsVec2D() - origin);
+		if (distance2 < bestDistance2)
+		{
+			bestDistance2 = distance2;
+			bestTarget = &unit;
+		}
+	}
+
+	CPtr<PFBaseUnit> GetTarget() const
+	{
+		if (!IsUnitValid(bestTarget) || bestTarget->GetWorld() != owner.GetWorld()) return CPtr<PFBaseUnit>();
+		const CPtr<PFBaseUnit>& alpha = bestTarget->GetAlphaSummon();
+		if (params && IsUnitValid(alpha) && alpha->GetWorld() == owner.GetWorld() &&
+			competingTargets.find(alpha) != competingTargets.end()) return alpha;
+		return bestTarget;
+	}
 
 private:
-  const PFBaseUnit& owner;
-  float maxRange;
-  float bestDistance2;
-  CVec2 origin;
-  CPtr<PFBaseUnit> bestTarget;
+	const PFBaseUnit& owner;
+	float maxRange;
+	float bestDistance2;
+	CVec2 origin;
+	CPtr<PFBaseUnit> bestTarget;
+	NDb::Ptr<NDb::UnitTargetingParameters> params;
+	float maxWeight;
+	vector<CPtr<PFBaseUnit>> competingTargets;
 };
 
 CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, bool checkForbid)
@@ -2461,16 +2673,43 @@ PFVoxelMap* PFBaseUnit::GetVoxelMap() const { return GetWorld() ? GetWorld()->Ge
 TileMap* PFBaseUnit::GetTileMap() const { return GetWorld() ? GetWorld()->GetTileMap() : 0; }
 const NDb::AILogicParameters& PFBaseUnit::GetAIParameters() const { return GetWorld()->GetAIWorld()->GetAIParameters(); }
 void PFBaseUnit::SetLastAttackData(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const NDb::EFaction originalFaction) { lastAttack.pVictim = pVictim; lastAttack.byAutoAttack = byAutoAttack; lastAttack.originalFaction = originalFaction; lastAttack.timePassed = 0.0f; }
-void PFBaseUnit::SetLastAttackDataEx(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const bool, const NDb::EFaction originalFaction) { SetLastAttackData(pVictim, byAutoAttack, originalFaction); }
-/** Advance combat timers only with finite forward simulation time. */
+/** Aggressive true-hero/hero-like summon hits have their own original targeting history. */
+void PFBaseUnit::SetLastAttackDataEx(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack,
+	const bool byAggressiveDispatch, const NDb::EFaction originalFaction)
+{
+	if (!IsValid(pVictim) || !GetWorld() || pVictim->GetWorld() != GetWorld()) return;
+	const NDb::EUnitType type = pVictim->GetUnitType();
+	const bool hero = ((type == NDb::UNITTYPE_HEROMALE || type == NDb::UNITTYPE_HEROFEMALE) && pVictim->IsTrueHero()) ||
+		(type == NDb::UNITTYPE_SUMMON && pVictim->IsLikeHero());
+	AttackData& attack = byAggressiveDispatch && hero ? lastHeroAttack : lastAttack;
+	attack.pVictim = pVictim;
+	attack.byAutoAttack = byAutoAttack;
+	attack.originalFaction = originalFaction;
+	attack.timePassed = 0;
+}
+/** Retain attack memory only while the victim can see and chase this attacker. */
 void PFBaseUnit::StepLastAttackData(float dtInSeconds)
 {
 	if (!std::isfinite(dtInSeconds) || dtInSeconds <= 0.0f) return;
 	const auto advance = [dtInSeconds](float& timer) {
 		timer += Min(dtInSeconds, std::numeric_limits<float>::max() - timer);
 	};
-	advance(lastAttack.timePassed);
-	advance(lastHeroAttack.timePassed);
+	const auto update = [this, &advance](AttackData& attack) {
+		if (!IsValid(attack.pVictim)) return;
+		const PFBaseUnit* victim = attack.pVictim.GetPtr();
+		const float range = victim->GetChaseRange();
+		if (!GetWorld() || victim->GetWorld() != GetWorld() || !std::isfinite(range) ||
+			!std::isfinite(attack.timePassed) || attack.timePassed < 0 ||
+			!(range < EPS_VALUE || victim->IsTargetInRange(this, range)) ||
+			!IsVisibleForEnemy(victim->GetFaction()))
+		{
+			attack.Clear();
+			return;
+		}
+		advance(attack.timePassed);
+	};
+	update(lastAttack);
+	update(lastHeroAttack);
 	advance(lastDamage.timeOver);
 }
 /** Retain the original alpha-master identity with the current authored timeout. */
@@ -2729,7 +2968,13 @@ float PFBaseUnit::GetUseRange(PFBaseUnit* pUser) const
     new PFAbilityData(pUser, GetExternalAbility(), NDb::ABILITYTYPEID_SPECIAL, false);
   return pAbilityData->GetUseRange(this);
 }
-bool PFBaseUnit::IsLikeHero() const { return IsHero(); }
+/** The original hero-like flag belongs to alpha summon behavior, not ordinary heroes/clones. */
+bool PFBaseUnit::IsLikeHero() const
+{
+	if (!IsAlphaSummon()) return false;
+	const PFSummonBehaviour* behaviour = dynamic_cast<const PFSummonBehaviour*>(GetBehaviour());
+	return behaviour && behaviour->IsLikeHero();
+}
 void PFBaseUnit::OnSerialize(IBinSaver&) {}
 PFBaseUnit::TClientObject* PFBaseUnit::ClientObject() const { return 0; }
 

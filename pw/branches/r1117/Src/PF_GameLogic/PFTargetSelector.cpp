@@ -9,6 +9,8 @@
 #include "PFAIWorld.h"
 #include "TargetSelectorHelper.hpp"
 
+#include <cmath>
+
 namespace
 {
   static int g_show_ts_ranges = 0;
@@ -1008,48 +1010,49 @@ PFWeightTargetSelector::PFWeightTargetSelector(NDb::WeightTargetSelector const &
 
 bool PFWeightTargetSelector::FindTarget(const RequestParams &pars, Target &target)
 {
-  if (!pTargetSelector || !pars.pRequester || !pars.pRequester->IsUnit())
-    return false;
+	if (!pTargetSelector || !pars.pRequester || !pars.pRequester->IsUnit())
+		return false;
 
-  PFBaseUnit* owner = pars.pRequester->GetUnit().GetPtr();
-  if (!owner)
-    return false;
+	PFBaseUnit* owner = pars.pRequester->GetUnit().GetPtr();
+	if (!IsUnitValid(owner) || !owner->GetWorld() || !owner->GetTargetingParamsPtr())
+		return false;
 
-  struct Func : public ITargetAction, public NonCopyable
-  {
-    Func(PFBaseUnit& owner_, const NDb::UnitTargetingParameters& unitPars_)
-      : owner(owner_), unitPars(unitPars_), maxWeight(-FLT_MAX) {}
+	struct Func : public ITargetAction, public NonCopyable
+	{
+		Func(PFBaseUnit& owner_, const NDb::UnitTargetingParameters& unitPars_)
+			: owner(owner_), unitPars(unitPars_), maxWeight(-1.0f) {}
 
-    virtual void operator()(const Target& candidate)
-    {
-      if (!candidate.IsUnit())
-        return;
-      PFBaseUnit* unit = candidate.GetUnit().GetPtr();
-      if (!owner.CanSelectTarget(unit, true))
-        return;
+		virtual void operator()(const Target& candidate)
+		{
+			if (!candidate.IsUnit())
+				return;
+			PFBaseUnit* unit = candidate.GetUnit().GetPtr();
+			if (!IsUnitValid(unit) || unit->GetWorld() != owner.GetWorld() || !owner.CanSelectTarget(unit, true))
+				return;
 
-      const CPtr<PFBaseUnit> pUnit(unit);
-      const float weight = owner.GetTargetWeight(pUnit, unitPars, 0);
-      if (!target.IsValid(true) || weight > maxWeight)
-      {
-        maxWeight = weight;
-        target = candidate;
-      }
-    }
+			const CPtr<PFBaseUnit> pUnit(unit);
+			const float weight = owner.GetTargetWeight(pUnit, unitPars, 0);
+			// Match the original strict threshold and retain enumeration order on ties.
+			if (std::isfinite(weight) && weight > maxWeight)
+			{
+				maxWeight = weight;
+				target = candidate;
+			}
+		}
 
-    PFBaseUnit& owner;
-    const NDb::UnitTargetingParameters& unitPars;
-    float maxWeight;
-    Target target;
-  } finder(*owner, owner->GetTargetingParams());
+		PFBaseUnit& owner;
+		const NDb::UnitTargetingParameters& unitPars;
+		float maxWeight;
+		Target target;
+	} finder(*owner, owner->GetTargetingParams());
 
-  pTargetSelector->EnumerateTargets(finder, pars);
-  if (!finder.target.IsValid(true))
-    return false;
+	pTargetSelector->EnumerateTargets(finder, pars);
+	if (!finder.target.IsValid(true))
+		return false;
 
-  target = finder.target;
-  DUMP_SELECTOR_TARGET(target);
-  return true;
+	target = finder.target;
+	DUMP_SELECTOR_TARGET(target);
+	return true;
 }
 
 PFListOfTargetSelectors::PFListOfTargetSelectors(NDb::ListOfTargetSelectors const &db, PFWorld* world)

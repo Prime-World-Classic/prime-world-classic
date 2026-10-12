@@ -266,10 +266,10 @@ static void PrioritySelectionBoundaryB12(Checks& check)
 	params->maxTimeFromAttack = 2; params->targetingRange = 20; params->attackerNearbyHeroWeight = 10000;
 	params->unitTypeTableWeight = 1; params->unitTargetWeight[NDb::UNITTYPE_BUILDING] = -10000;
 	owner->OverrideTargetingParams(params);
-	check(owner->GetTargetWeight(far.GetPtr(), *params) == 0,
-		"known boundary: native GetTargetWeight remains a stub despite authored priority weight");
-	check(owner->IsPriorityTarget(far.GetPtr()) && owner->FindTarget(20, false, 0, false) == near.GetPtr(),
-		"known boundary: retained priority does not replace the native nearest-target scan");
+	check(owner->GetTargetWeight(far.GetPtr(), *params) == 10000,
+		"retained priority contributes the authored nearby-hero weight");
+	check(owner->IsPriorityTarget(far.GetPtr()) && owner->FindTarget(20, false, 0, false) == far.GetPtr(),
+		"retained priority participates in native weighted acquisition");
 	far->AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
 	check(!owner->CanSelectTarget(far.GetPtr(), true) && owner->IsPriorityTarget(far.GetPtr()),
 		"retention does not bypass an authored target-selection exclusion");

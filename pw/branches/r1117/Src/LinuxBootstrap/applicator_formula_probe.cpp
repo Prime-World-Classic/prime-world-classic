@@ -1339,6 +1339,8 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "custom_energy_b12_tests.inc"
 #include "cast_condition_b12_tests.inc"
 #include "cast_target_b12_tests.inc"
+#include "../PF_GameLogic/PFTargetSelector.h"
+#include "weighted_targeting_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1462,6 +1464,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CustomEnergyB12(check, world);
 			CastConditionB12(check, world);
 			CastTargetB12(check, world);
+			WeightedTargetingB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
