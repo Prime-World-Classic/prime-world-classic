@@ -976,6 +976,16 @@ add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-gri
 add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 add_test(NAME LinuxApplicatorFormula COMMAND PrimeWorldLinuxClient --bootstrap-applicator-formula-probe)
 set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 30)
+add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
+	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
+	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")
+set_tests_properties(LinuxSessionStartup PROPERTIES TIMEOUT 60
+	ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy;DISPLAY=;WAYLAND_DISPLAY=")
+add_test(NAME LinuxSessionStartupInvalidRoot COMMAND ${CMAKE_COMMAND}
+	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DINVALID_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")
+set_tests_properties(LinuxSessionStartupInvalidRoot PROPERTIES TIMEOUT 10
+	ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy;DISPLAY=;WAYLAND_DISPLAY=")
 add_test(NAME LinuxVisibilityLifecycle COMMAND PrimeWorldLinuxClient --bootstrap-visibility-lifecycle-probe)
 add_test(NAME LinuxVisibilityQueries COMMAND PrimeWorldLinuxClient --bootstrap-visibility-query-probe)
 add_test(NAME LinuxVisibilityStealth COMMAND PrimeWorldLinuxClient --bootstrap-visibility-stealth-probe)

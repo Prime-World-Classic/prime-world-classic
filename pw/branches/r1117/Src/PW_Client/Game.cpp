@@ -2767,6 +2767,7 @@ struct LinuxSessionRootPreview
   bool visualRootReady;
   bool visualEffectsReady;
   bool visualEffectsPoolRuntimeReady;
+	bool unitChainRuntimeReady;
   bool visualEffectsPoolDefaultRetrieved;
   bool visualEffectsPoolDefaultReleased;
   bool visualEffectsPoolComponentRetrieved;
@@ -3033,6 +3034,7 @@ struct LinuxSessionRootPreview
       visualRootReady(false),
       visualEffectsReady(false),
       visualEffectsPoolRuntimeReady(false),
+			unitChainRuntimeReady(false),
       visualEffectsPoolDefaultRetrieved(false),
       visualEffectsPoolDefaultReleased(false),
       visualEffectsPoolComponentRetrieved(false),
@@ -24490,6 +24492,15 @@ void ProbeEffectsPoolRuntime(
       unitChainProbabilityApplied ? "yes" : "no",
       unitChainProbabilityBefore,
       unitChainProbabilityAfter);
+		// Reuse real startup outcomes: fixture references must not hide external-ability lifetime bugs.
+		preview->unitChainRuntimeReady = unitChainDbReady && unitChainUnitsReady
+			&& unitChainSpellCreated && unitChainSpellApplied
+			&& unitChainProxyCreated && unitChainProxyApplied && unitChainProxyVariable
+			&& unitChainStatusCreated && unitChainDispellCreated && unitChainDispellApplied
+			&& unitChainRefreshCreated && unitChainRefreshApplied
+			&& unitChainAbilityEndCreated && unitChainAbilityEndApplied
+			&& unitChainPeriodicCreated && unitChainPeriodicApplied
+			&& unitChainProbabilityCreated && unitChainProbabilityApplied;
 
     NDb::BounceApplicator* fanoutBounceDb = new NDb::BounceApplicator();
     NDb::ChainLightningApplicator* fanoutChainDb = new NDb::ChainLightningApplicator();
@@ -71067,6 +71078,17 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+	const bool sessionStartupProbe = CmdLineLite::Instance().IsKeyDefined("--bootstrap-session-startup-probe");
+	if (sessionStartupProbe)
+	{
+		// The asset-backed gate requires an explicit root; never silently test a fallback installation.
+		const char* root = ReadStringArg(argc, argv, "--root");
+		if (!root || !IsGameRootCandidate(fs::path(root)))
+		{
+			fprintf(stderr, "Session startup: FAIL explicit game root required\n");
+			return 1;
+		}
+	}
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-query-probe"))
 		return RunPrimeWorldLinuxVisibilityQueryProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-scheduler-drain-probe"))
@@ -71181,6 +71203,25 @@ int main(int argc, char** argv)
   ProbeUiRootPreview(rootFileSystemPreview, &uiRootPreview);
   LinuxSessionRootPreview sessionRootPreview;
   ProbeSessionRootPreview(rootFileSystemPreview, &sessionRootPreview);
+	if (sessionStartupProbe)
+	{
+		// Stop before sound, graphics and replay setup; this is startup integration, not a match gate.
+		const bool roots = rootFileSystemPreview.dbCacheReady && sessionRootPreview.ready
+			&& sessionRootPreview.uiRootReady && sessionRootPreview.logicRootReady
+			&& sessionRootPreview.heroesDbReady && sessionRootPreview.mapListReady;
+		const bool effects = sessionRootPreview.visualEffectsPoolRuntimeReady
+			&& sessionRootPreview.visualEffectsPoolDefaultRetrieved && sessionRootPreview.visualEffectsPoolDefaultReleased;
+		const bool chain = sessionRootPreview.unitChainRuntimeReady;
+		const bool passed = roots && effects && chain;
+		Input::BindsManager::Instance()->SetBinds(0);
+		ClearLoadingUiDataResourceCache();
+		NDb::SessionRoot::InitRoot(0);
+		NDb::SetResourceCache(0);
+		RootFileSystem::ClearFileSystems();
+		fprintf(stdout, "Session startup: %s roots=%s effects=%s chain=%s\n",
+			passed ? "PASS" : "FAIL", roots ? "yes" : "no", effects ? "yes" : "no", chain ? "yes" : "no");
+		return passed ? 0 : 1;
+	}
   LinuxSoundRootPreview soundRootPreview;
   ProbeSoundRootPreview(rootFileSystemPreview, &soundRootPreview);
   LinuxResourceCatalogPreview resourceCatalogPreview;
