@@ -516,9 +516,20 @@ color-correct начинают получать настоящие веса) —
       дампов нет, `runtime error`/`shader`/`D3D`/`assert` в логе нет, набор
       `Unknown command or variable` = эталонный. Грабель про гейт версии
       (`PW_VERSION=2.16.1` для `client-modern`) — в скиле `pw-client`.
-- Критерий: `grep -c "IDirect3D\|D3DX\|d3d9" Src/{Scene,UI,Game,Terrain,
-  PF_GameLogic,PF_Core,EditorNative}` → 0 (сейчас 2, оба `EditorNative`);
-  в `Src/Render` — только
+- **Проверка критерия (2026-10-12): в КОМПИЛИРУЕМОМ клиенте утечек не
+  осталось — 0.** Оставшиеся 2 `GetDevice()` в `EditorNative/EditorRender.cpp`
+  в сборку `PW_Game.exe` **не входят**: граф `Tools/ClientCMake` = 25
+  объектных библиотек (`Client Core Foundation GameChatClient MemoryLib
+  Network NivalInput PF_Core PF_GameLogic PF_Minigames PW_Client RemoteObjects
+  Render RpcBase Scene Scripts Shared Sound Terrain UI libdb mballocator
+  nio transport`), `EditorNative` и `PF_EditorNative` среди них **нет**
+  (`.obj`-ов в `build/x64-wine` — 0). Эти проекты живут только в VS-решении
+  `Src/PF.sln` (внутренний редактор) и для клиента не собираются вовсе —
+  «снимать с сборки на этапе 4» не нужно, нужно только **удалить из дерева**
+  вместе с их `.vcproj`, когда решим, что редактор нам больше не нужен
+  (решение отложено; в плане NVRHI он не участвует).
+  Формальный grep по `Src/EditorNative` поэтому в критерий не входит.
+- в `Src/Render` — только
   `renderer.*`, `dxutils.*`, `texture*`, `smartrenderer.*`, `shadercompiler.*`,
   `Dx*`, `configdatabase.*`.
 
