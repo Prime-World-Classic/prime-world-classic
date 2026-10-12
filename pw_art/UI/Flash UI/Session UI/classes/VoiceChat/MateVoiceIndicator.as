@@ -36,7 +36,9 @@
 		private static const BLINK_PERIOD_MS:Number = 700;
 
 		// Элементы портрета, которые должны быть поверх кольца.
-		private static const PRIORITY_CHILDREN:Array = ["levelRoundFrame", "level_txt", "levelHighLight", "healthBar_mc", "manaBar_mc", "nameText"];
+		// Рамку кладём выше слоёв портрета (roundFrame, свечения, полоска ульты закрывали её),
+		// но под уровнем и ником; полоски — ниже портрета, рамка их не перекрывает.
+		private static const PRIORITY_CHILDREN:Array = ["levelRoundFrame", "level_txt", "levelHighLight", "nameText"];
 
 		public var mate:MateInfoBase;
 		public var peerId:int;
@@ -81,6 +83,9 @@
 			ring = new Shape();
 			ring.visible = false;
 			mate.addChildAt(ring, RingIndex());
+			// Полоски ХП и МП тоже над рамкой (они под портретом, рамку портрета не перекрывают).
+			RaiseAboveRing("manaBar_mc");
+			RaiseAboveRing("healthBar_mc");
 
 			badge = new Shape();
 			badge.visible = false;
@@ -188,6 +193,7 @@
 				return;
 			speaking = value;
 			ring.visible = speaking;
+			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg speaking " + (isMe ? "me" : "peer " + peerId) + " " + speaking + " ringIndex " + (ring.parent != null ? mate.getChildIndex(ring) + "/" + mate.numChildren : "-"));
 			if (speaking)
 			{
 				Measure();
@@ -254,6 +260,16 @@
 					index = Math.min(index, mate.getChildIndex(child));
 			}
 			return index;
+		}
+
+		private function RaiseAboveRing(name:String):void
+		{
+			var child:DisplayObject = Child(name);
+			if (child == null || child.parent != mate)
+				return;
+			var ringIndex:int = mate.getChildIndex(ring);
+			if (mate.getChildIndex(child) < ringIndex)
+				mate.setChildIndex(child, ringIndex);
 		}
 
 		private function Child(name:String):DisplayObject
