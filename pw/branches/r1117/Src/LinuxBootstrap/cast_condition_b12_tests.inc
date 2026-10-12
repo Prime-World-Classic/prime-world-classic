@@ -7,7 +7,7 @@ static void CastConditionB12(Checks& check, PFWorld* world)
 	for (const auto& entry : {Case{"true", true, false}, Case{"false", false, false}, Case{"1", true, false},
 		Case{"-2", true, false}, Case{"0", false, false}, Case{"", true, false}, Case{"", false, true},
 		Case{"true", true, true}, Case{"sLife == rLife", true, false},
-		Case{"sLife == 1000 && rLife == 1000", false, false},
+		Case{"sLife == 1000 && rLife == 1000", true, false},
 		Case{"sender.vCharge >= cLimit", true, false}, Case{"receiver.vCharge >= cLimit", false, false},
 		Case{"cMissing", false, false}, Case{"1/0", false, false}, Case{"sqrt(-1)", false, false},
 		Case{"1e39", false, false}, Case{"sLife+", false, false}, Case{"unknown(sLife)", false, false},

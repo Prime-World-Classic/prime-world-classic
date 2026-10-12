@@ -52,7 +52,11 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  *
  * Accepts decimal/scientific literals (optional adjacent f/F suffix), ASCII names
  * [A-Za-z_][A-Za-z_0-9]*, parentheses, unary +/- and binary + - * / < <= > >= == !=,
- * and lazy ?: with C++ operator precedence. All scalars use floating-point
+ * and lazy ?:, &&, || plus unary ! with C++ operator precedence. Logical truth
+ * is nonzero, with boolean results 0/1; &&/|| skip unselected callbacks and math.
+ * Logical operators are structurally lowered to muParser conditional bytecode;
+ * arithmetic and call evaluation remain muParser-owned. Conditional and logical
+ * operator counts share the nesting budget. All scalars use floating-point
  * arithmetic: 1/2 is 0.5, not C++ integer division. Unsuffixed literals and
  * arithmetic use double; f/F literals round to float first. The finite final
  * result is narrowed to float. This is NOT the full C++/game formula language or
@@ -68,11 +72,12 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * ut_bldg/ut_hero pass two evaluated arguments to the receiver-kind context callback.
  * Like FormulaBuilder's SwitchByBool, their arguments are eager unless the entire
  * call is in an unselected ?: branch. This layer does not classify game units.
- * No other functions, assignment, strings, lists, logical/bitwise/power operators,
+ * No other functions, assignment, strings, lists, bitwise/power operators,
  * comments, casts, hex/octal literals, or ambient built-in constants. Whitespace
  * is ASCII space, tab, CR and LF. Repeated unary signs require parentheses:
- * -(-2) is supported, - -2 is not. The lexer validates tokens; muParser owns the
- * grammar. Both parenthesis depth and total conditional count are capped at
+ * -(-2) is supported, - -2 is not. The lexer validates tokens; logical lowering
+ * preserves grouping before muParser validates and evaluates the resulting grammar.
+ * Both parenthesis depth and total conditional/logical count are capped at
  * MaxNesting; consecutive sign tokens have the same conservative cap.
  *
  * Each selected symbol is resolved at most once per call, only when its branch

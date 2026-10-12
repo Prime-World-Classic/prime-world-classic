@@ -91,6 +91,96 @@ void LiteralsAndOperators()
 	ExpectValue("1e300 / 1e300", 1.0f);
 }
 
+/** Logical lowering retains C++ precedence, nonzero truth and lazy side-effect boundaries. */
+void LogicalOperators()
+{
+	for (double a : {0., -.0, .5, -2.}) for (double b : {0., .5, -2.}) for (double c : {0., .5, -2.})
+	{
+		const NumericSymbolResolver resolver = [&](const std::string& name, double& value) {
+			value = name == "a" ? a : name == "b" ? b : c; return true;
+		};
+		ExpectValue("a && b", a && b, resolver);
+		ExpectValue("a || b", a || b, resolver);
+		ExpectValue("!a", !a, resolver);
+		ExpectValue("!!a", !!a, resolver);
+		ExpectValue("a || b && c", a || (b && c), resolver);
+		ExpectValue("a && b || c", (a && b) || c, resolver);
+		ExpectValue("a == b || c", (a == b) || c, resolver);
+		ExpectValue("!a == b", (!a) == b, resolver);
+		ExpectValue("a || b ? 3 : 4", (a || b) ? 3 : 4, resolver);
+		ExpectValue("a ? b || c : !c", a ? (b || c) : !c, resolver);
+		ExpectValue("min(a || b, !c)", std::fmin(double(a || b), double(!c)), resolver);
+		ExpectValue("(a + b) && (b - c)", (a + b) && (b - c), resolver);
+	}
+	std::vector<std::string> trace;
+	const NumericSymbolResolver resolver = [&](const std::string& name, double& value) {
+		trace.push_back(name); value = name == "on" ? .5 : 0; return name != "missing";
+	};
+	ExpectValue("off && missing", 0, resolver);
+	Check(trace == std::vector<std::string>{"off"}, "false AND skips its RHS callback");
+	trace.clear(); ExpectValue("on || missing", 1, resolver);
+	Check(trace == std::vector<std::string>{"on"}, "nonzero fractional OR skips its RHS callback");
+	trace.clear(); ExpectValue("on && off || on", 1, resolver);
+	Check(trace == std::vector<std::string>({"on", "off"}), "logical operands retain per-symbol caching and first-resolution order");
+	ExpectError("on && missing", Error::UnknownSymbol, resolver);
+	ExpectError("off || missing", Error::UnknownSymbol, resolver);
+	ExpectValue("false && (1/0)", 0); ExpectValue("true || sqrt(-1)", 1);
+	ExpectValue("!0 ? 1 : missing", 1); ExpectValue("!(1 || missing)", 0);
+	int randomCalls = 0;
+	const NumericFunctionResolver random = [&](const std::string&, const double*, std::size_t, double& value) {
+		++randomCalls; value = 2; return true;
+	};
+	Check(EvaluateNumericFormula("false && random(1,2)", {}, random).value == 0 && randomCalls == 0,
+		"short-circuited logical RNG is never invoked");
+	Check(EvaluateNumericFormula("true && random(1,2)", {}, random).value == 1 && randomCalls == 1,
+		"selected logical RNG is invoked once and normalized to boolean");
+	ExpectFailure("true || random(1)"); ExpectFailure("false && unknown(1)");
+	ExpectFailure("true || (1 + )"); ExpectFailure("false && 1e400");
+	for (const char* bad : {"!", "1!2", "1 &&", "||1", "1&&&2", "1|||2", "1 & 2", "1 | 2"}) ExpectFailure(bad);
+	ExpectValue(std::string(NumericFormulaMaxNesting, '!') + "0", 0);
+	ExpectError(std::string(NumericFormulaMaxNesting + 1, '!') + "0", Error::LimitExceeded);
+	std::string chain = "true";
+	for (std::size_t i = 0; i < NumericFormulaMaxNesting; ++i) chain += " && true";
+	ExpectValue(chain, 1); ExpectError(chain + " || false", Error::LimitExceeded);
+	ExpectFailure("true && - -2");
+}
+
+/** Deterministic mixed-expression corpus checks lowering against independent scalar expectations. */
+void LogicalCorpus()
+{
+	struct Node { std::string source; double value; };
+	std::uint32_t seed = 0x4c4f4749;
+	const auto next = [&]() { seed = seed * 1664525u + 1013904223u; return seed; };
+	const auto make = [&](const auto& self, int depth) -> Node {
+		if (depth == 0)
+		{
+			const double value = (static_cast<int>(next() % 9) - 4) * .5;
+			return {std::to_string(value), value};
+		}
+		const int operation = next() % 10;
+		const Node a = self(self, depth - 1), b = self(self, depth - 1);
+		const std::string left = "(" + a.source + ")", right = "(" + b.source + ")";
+		switch (operation)
+		{
+		case 0: return {left + "&&" + right, double(a.value && b.value)};
+		case 1: return {left + "||" + right, double(a.value || b.value)};
+		case 2: return {"!" + left, double(!a.value)};
+		case 3: return {left + "+" + right, a.value + b.value};
+		case 4: return {left + "-" + right, a.value - b.value};
+		case 5: return {left + "*" + right, a.value * b.value};
+		case 6: return {left + "<" + right, double(a.value < b.value)};
+		case 7: return {left + "==" + right, double(a.value == b.value)};
+		case 8: return {"max(" + left + "," + right + ")", std::fmax(a.value, b.value)};
+		default: return {left + "?" + right + ":0.5", a.value ? b.value : .5};
+		}
+	};
+	for (int i = 0; i < 1000; ++i)
+	{
+		const Node node = make(make, 3);
+		ExpectValue("!!(" + node.source + ")", node.value != 0);
+	}
+}
+
 /** Exact native Data formula; no dependency on the parent's engine or CMake work. */
 void PlaneRange()
 {
@@ -308,8 +398,8 @@ void RejectedSyntax()
 {
 	for (const char* expression : {"x=1", "x+=1", "1,2", "(1,2)", "1?2:3,4", "\"x\"",
 		"'x'", "rnd()", "sin(0)", "random(0,1)", "tal(\"Plane_A1u\")", "live ()",
-		"1^2", "1**2", "1&2", "1|2", "1&&2", "1||2", "1<<2", "1>>2", "~1",
-		"!1", "5%2", "x++", "--x", "1//2", "1/*x*/+2", "1;2", "x[0]", "x.y",
+		"1^2", "1**2", "1&2", "1|2", "1<<2", "1>>2", "~1",
+		"5%2", "x++", "--x", "1//2", "1/*x*/+2", "1;2", "x[0]", "x.y",
 		"p->x", "0x10", "0b10", "010", "1u", "1L", "1.0ff", "1.0 f", "1e+",
 		"(float)1", "nullptr", "1?2:bad()", "1?2:1^2"})
 		ExpectFailure(expression);
@@ -457,6 +547,8 @@ void Ownership()
 int main()
 {
 	LiteralsAndOperators();
+	LogicalOperators();
+	LogicalCorpus();
 	PlaneRange();
 	LazySymbols();
 	NumericFunctions();

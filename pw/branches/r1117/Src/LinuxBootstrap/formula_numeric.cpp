@@ -244,7 +244,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		const char ch = expression[pos];
 		if (IsSpace(ch)) { ++pos; continue; }
 		if (++tokens > NumericFormulaMaxTokens) throw Error::LimitExceeded;
-		signs = ch == '+' || ch == '-' ? signs + 1 : 0;
+		signs = ch == '+' || ch == '-' || ch == '!' ? signs + 1 : 0;
 		if (signs > NumericFormulaMaxNesting) throw Error::LimitExceeded;
 
 		if (IsDigit(ch) || ch == '.')
@@ -316,6 +316,13 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		}
 
 		const char next = pos + 1 < expression.size() ? expression[pos + 1] : '\0';
+		if ((ch == '&' && next == '&') || (ch == '|' && next == '|'))
+		{
+			if (++conditionals > NumericFormulaMaxNesting) throw Error::LimitExceeded;
+			translated += expression.substr(pos, 2) + " ";
+			pos += 2;
+			continue;
+		}
 		if ((ch == '<' || ch == '>' || ch == '=' || ch == '!') && next == '=')
 		{
 			translated += expression.substr(pos, 2) + " ";
@@ -363,7 +370,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		{
 			if (++conditionals > NumericFormulaMaxNesting) throw Error::LimitExceeded;
 		}
-		else if (ch != ':' && ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '<' && ch != '>')
+		else if (ch != ':' && ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '<' && ch != '>' && ch != '!')
 			throw Error::UnsupportedSyntax;
 		translated += ch;
 		translated += ' ';
@@ -373,6 +380,121 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 	if (depth != 0) throw Error::InvalidExpression;
 	return translated;
 }
+
+/** Lower validated, bound logical syntax to muParser's lazy conditional bytecode.
+ * This translates structure only: muParser still validates calls and evaluates all
+ * arithmetic. Its eager logical opcodes cannot provide C++ callback short-circuiting.
+ * Input length, tokens, nesting and conditional count are bounded by BindTokens.
+ */
+class LogicalLowering
+{
+public:
+	explicit LogicalLowering(const std::string& bound)
+	{
+		for (std::size_t pos = 0; pos < bound.size();)
+		{
+			if (IsSpace(bound[pos])) { ++pos; continue; }
+			const std::size_t begin = pos++;
+			if (IsNameStart(bound[begin]))
+				while (pos < bound.size() && (IsNameStart(bound[pos]) || IsDigit(bound[pos]))) ++pos;
+			else if (pos < bound.size())
+			{
+				const std::string pair = bound.substr(begin, 2);
+				if (pair == "&&" || pair == "||" || pair == "==" || pair == "!=" || pair == "<=" || pair == ">=") ++pos;
+			}
+			tokens.push_back(bound.substr(begin, pos - begin));
+		}
+	}
+
+	std::string Translate()
+	{
+		const std::string result = Expression(1);
+		if (position != tokens.size()) throw Error::InvalidExpression;
+		return result;
+	}
+
+private:
+	std::vector<std::string> tokens;
+	std::size_t position = 0;
+
+	bool Take(const char* token)
+	{
+		if (position == tokens.size() || tokens[position] != token) return false;
+		++position;
+		return true;
+	}
+
+	void Require(const char* token)
+	{
+		if (!Take(token)) throw Error::InvalidExpression;
+	}
+
+	static int Precedence(const std::string& op)
+	{
+		if (op == "||") return 2;
+		if (op == "&&") return 3;
+		if (op == "==" || op == "!=") return 4;
+		if (op == "<" || op == "<=" || op == ">" || op == ">=") return 5;
+		if (op == "+" || op == "-") return 6;
+		if (op == "*" || op == "/") return 7;
+		return 0;
+	}
+
+	std::string Operand()
+	{
+		if (position == tokens.size()) throw Error::InvalidExpression;
+		const std::string token = tokens[position++];
+		if (token == "!") return "(" + Operand() + "==0)";
+		if (token == "+" || token == "-")
+		{
+			// Retain the numeric subset's parenthesis requirement for repeated unary signs.
+			if (position != tokens.size() && (tokens[position] == "+" || tokens[position] == "-")) throw Error::InvalidExpression;
+			return "(" + token + Operand() + ")";
+		}
+		if (token == "(")
+		{
+			const std::string result = Expression(1);
+			Require(")");
+			return "(" + result + ")";
+		}
+		if (!IsNameStart(token[0])) throw Error::InvalidExpression;
+		if (!Take("(")) return token;
+		std::string result = token + "(";
+		if (!Take(")"))
+		{
+			result += Expression(1);
+			while (Take(",")) result += "," + Expression(1);
+			Require(")");
+		}
+		return result + ")";
+	}
+
+	std::string Expression(int minimum)
+	{
+		std::string left = Operand();
+		while (position != tokens.size())
+		{
+			const std::string op = tokens[position];
+			if (op == "?" && minimum <= 1)
+			{
+				++position;
+				const std::string yes = Expression(1);
+				Require(":");
+				const std::string no = Expression(1);
+				left = "(" + left + "?" + yes + ":" + no + ")";
+				continue;
+			}
+			const int precedence = Precedence(op);
+			if (precedence < minimum) break;
+			++position;
+			const std::string right = Expression(precedence + 1);
+			if (op == "&&") left = "(" + left + "?(" + right + "!=0):0)";
+			else if (op == "||") left = "(" + left + "?1:(" + right + "!=0))";
+			else left = "(" + left + op + right + ")";
+		}
+		return left;
+	}
+};
 }
 
 NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
@@ -385,7 +507,10 @@ NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
 		std::map<std::string, FunctionBinding> calls;
 		mu::Parser parser;
 		Configure(parser);
-		parser.SetExpr(BindTokens(expression, resolver, functions, parser, bindings, calls));
+		std::string bound = BindTokens(expression, resolver, functions, parser, bindings, calls);
+		if (bound.find("&&") != std::string::npos || bound.find("||") != std::string::npos || bound.find("! ") != std::string::npos)
+			bound = LogicalLowering(bound).Translate();
+		parser.SetExpr(bound);
 		const float value = Narrow(parser.Eval());
 		return {Error::None, value};
 	}

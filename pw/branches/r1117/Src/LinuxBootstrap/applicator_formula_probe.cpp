@@ -159,7 +159,13 @@ void DamageFormulas(Checks& check, PFWorld* world)
 		"random(f2l(1e39),3)", "random(1,2,3)", "f2l(2147483648)"}) run(expression, 0);
 	run("random(10,20)", 0, "false");
 	run("1 ? 7 : random(10,20)", 7);
+	run("false && random(10,20)", 0);
+	run("true || random(10,20)", 1);
+	run("11", 11, "true && !false");
 	check(world->GetRndGen()->Next() == expected.Next(), "invalid disabled and unselected formulas do not advance RNG");
+	expected.Next(10, 20); expected.Next(10, 20);
+	run("random(10,20) > 0 && random(10,20) > 0", 1);
+	check(world->GetRndGen()->Next() == expected.Next(), "selected logical random calls consume the original world stream once each");
 	run("f2l(-3.9)+10", 7);
 }
 }
