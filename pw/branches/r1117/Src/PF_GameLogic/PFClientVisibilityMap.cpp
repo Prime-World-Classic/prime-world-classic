@@ -344,13 +344,13 @@ void VisibilityMapClient::ClearTextures()
   if ( Render::GetRenderer()->DeviceIsLost() || m_disabled )
     return;
 
-  IDirect3DDevice9* const pDevice = Render::GetDevice();
+  Render::Renderer* const pRenderer = Render::GetRenderer();
   DXSurfaceRef pSurf = m_texBlended->GetSurface(0);
-  pDevice->ColorFill(Get(pSurf), NULL, 0);
+  pRenderer->ColorFillSurface(Get(pSurf), 0);
   pSurf = m_texStep[0]->GetSurface(0);
-  pDevice->ColorFill(Get(pSurf), NULL, 0);
+  pRenderer->ColorFillSurface(Get(pSurf), 0);
   pSurf = m_texStep[1]->GetSurface(0);
-  pDevice->ColorFill(Get(pSurf), NULL, 0);
+  pRenderer->ColorFillSurface(Get(pSurf), 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +450,7 @@ void VisibilityMapClient::BlendTextures()
 
   // smirnov [2009/1/28]: FIX: Direct3D9: (WARN) :Can not render to a render target that is also used as a texture. 
   // A render target was detected as bound, but couldn't detect if texture was actually used in rendering.
-  GetDevice()->SetTexture(WARFOGSAMPLERINDEX, NULL);
+  SmartRenderer::BindTexture(WARFOGSAMPLERINDEX, 0);
 
   // set shader parameters
   rsManager.SetSampler(1, SamplerState::PRESET_CLAMP_POINT(), m_texStep[m_texIndex]);
@@ -462,7 +462,7 @@ void VisibilityMapClient::BlendTextures()
   SmartRenderer::BindRenderTargetDefault();
 
   // smirnov [2009/1/28]: Restore texture binding
-  GetDevice()->SetTexture(WARFOGSAMPLERINDEX, m_texBlended->GetDXTexture());
+  SmartRenderer::BindTexture(WARFOGSAMPLERINDEX, m_texBlended.GetPtr());
 }
 
 void VisibilityMapClient::OnRender()

@@ -388,31 +388,10 @@ Terrain::~Terrain()
     Reset(pTextureCache);
   }
 
-  static int GetAvailableVidMem()
-  {
-    if( ConfigManager * const pCM = GetConfigManager() )
-    {
-      IDirect3DDevice9* const pDevice = GetDevice();
-      IDirect3D9* pD3D;
-      if( SUCCEEDED(pDevice->GetDirect3D(&pD3D)) ) {
-        IntrusivePtr<IDirect3D9> pD3D_holder(pD3D, false);
-        D3DDEVICE_CREATION_PARAMETERS devParams;
-
-        if( SUCCEEDED(pDevice->GetCreationParameters(&devParams)) )
-        {
-          UINT memSize, memSizeTotal;
-          pCM->GetVidMem(pD3D->GetAdapterMonitor(devParams.AdapterOrdinal), &memSize, &memSizeTotal);
-          return memSize;
-        }
-      }
-    }
-    return -1;
-  }
-
   void Terrain::RestoreRenderResources()
   {
     static const int vidMemRequired = 128; // in MB
-    if(!IsEditable() && s_useTextureCache && GetAvailableVidMem() >= vidMemRequired)
+    if(!IsEditable() && s_useTextureCache && GetRenderer()->GetAvailableVidMem() >= vidMemRequired)
     {
       const float tileSize = gridConstants.metersPerElement;
       Reset( pTextureCache, TerrainTextureCache::Create(textureCacheSize, tileSize) );

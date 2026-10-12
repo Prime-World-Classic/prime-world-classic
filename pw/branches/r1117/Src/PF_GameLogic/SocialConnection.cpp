@@ -266,29 +266,10 @@ void SocialConnection::Step()
     }
     string screenshotName = NFile::Combine(path, screenshotFileName);
 
-    IDirect3DDevice9* pDevice = Render::GetDevice();
-    IDirect3DSurface9* pBB, *pDest;
-    
-    if(SUCCEEDED(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB)))
-    {
-      if(SUCCEEDED(pDevice->CreateOffscreenPlainSurface(width, height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &pDest, NULL)))
-      {
-        RECT rect = { x, y, x + width, y + height };
-        if(SUCCEEDED(D3DXLoadSurfaceFromSurface(pDest, NULL, NULL, pBB, NULL, needCrop ? &rect : NULL, D3DX_FILTER_NONE, 0)))
-        {
-          if(SUCCEEDED(D3DXSaveSurfaceToFile(screenshotName.c_str(), D3DXIFF_PNG, pDest, NULL, NULL)))
-          {
-            g_shareState = EShareState::WAIT_SCREENSHOT;
-          }
-          else
-          {
-            systemLog(NLogg::LEVEL_ASSERT) << "Creating share.png failed." << endl;
-          }
-        }
-        pDest->Release();
-      }
-      pBB->Release();
-    }
+    if(Render::GetRenderer()->SaveScreenshotToFile(screenshotName.c_str(), x, y, width, height, needCrop))
+      g_shareState = EShareState::WAIT_SCREENSHOT;
+    else
+      systemLog(NLogg::LEVEL_ASSERT) << "Creating share.png failed." << endl;
   }
   else if (g_shareState == EShareState::WAIT_SCREENSHOT)
   {

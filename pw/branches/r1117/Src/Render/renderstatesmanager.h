@@ -39,6 +39,11 @@ public:
 	void SetStencilState(StencilState state, DWORD mask = 0xFFFFFFFF, DWORD bits = 0xFFFFFFFF);
   void SetStencilStateAddonBits(DWORD mask, DWORD bits);
 	void SetSamplerState(unsigned index, SamplerState const& state);
+  // Прямая запись в сэмплер в обход SetSamplerState(). Обязана инвалидировать
+  // кэш lastSamplerState: без этого следующий SetSamplerState() с тем же
+  // пресетом будет пропущен (сравнение решит, что сэмплер уже в нужном
+  // состоянии) и запись уйдёт в никуда.
+  void SetSamplerStateDirect(unsigned index, D3DSAMPLERSTATETYPE type, DWORD value);
   void SetSampler(unsigned index, SamplerState const& state, const Texture* texture)
   {
     SetSamplerState(index, state);

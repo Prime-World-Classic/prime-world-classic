@@ -68,7 +68,7 @@ public:
     ClearTags();
     cacheAABB.Init2Empty();
 
-    GetDevice()->EvictManagedResources();
+    GetRenderer()->EvictManagedResources();
 
     D3DSURFACE_DESC desc = { D3DFMT_A8R8G8B8, D3DRTYPE_SURFACE,
                              D3DUSAGE_RENDERTARGET | 0, // D3DUSAGE_RENDERTARGET | D3DUSAGE_AUTOGENMIPMAP

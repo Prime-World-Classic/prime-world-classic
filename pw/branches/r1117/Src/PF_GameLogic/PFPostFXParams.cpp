@@ -192,7 +192,7 @@ void PostFXParamsManager::AcquireSurfaces()
     if( screenMap[i] )
       screenSurf[i] = screenMap[i]->GetSurface(0);
     if( mapData[i] )
-      GetDevice()->ColorFill( Get(mapSurf[i] = mapData[i]->GetSurface(0)), NULL, D3DCOLOR_XRGB(0,255,0) );
+      GetRenderer()->ColorFillSurface( Get(mapSurf[i] = mapData[i]->GetSurface(0)), D3DCOLOR_XRGB(0,255,0) );
   }
 }
 

@@ -7,6 +7,7 @@
 #include "renderstatesmanager.h"
 #include "renderflagsconverter.h"
 #include "renderresourcemanager.h"
+#include "dxutils.h" // D3DX для SaveScreenshotToFile (этап 1)
 
 #include "vertexformatdescriptor.h"
 #include "texture.h"
@@ -850,6 +851,92 @@ void Renderer::StretchSurface(const DXSurfaceRef &pSrc, const DXSurfaceRef &pDst
   HRESULT hr = GetDevice()->StretchRect(::Get(pSrc), 0, ::Get(pDst), 0, bLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "StretchSurface");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::GetViewport(D3DVIEWPORT9 &vp)
+{
+  GetDevice()->GetViewport(&vp);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::SetScissorRect(const RECT *pRect)
+{
+  GetDevice()->SetScissorRect(pRect);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color)
+{
+  if(!pSurface)
+    return;
+  HRESULT hr = GetDevice()->ColorFill(pSurface, NULL, color);
+  if(s_DXWarnLevel > 1)
+    NI_DX_WARN(hr, "ColorFillSurface");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
+                                  IDirect3DSurface9 *pDst, const RECT *pDstRect, D3DTEXTUREFILTERTYPE filter)
+{
+  HRESULT hr = GetDevice()->StretchRect(pSrc, pSrcRect, pDst, pDstRect, filter);
+  if(s_DXWarnLevel > 1)
+    NI_DX_WARN(hr, "StretchSurfaceRect");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Renderer::EvictManagedResources()
+{
+  GetDevice()->EvictManagedResources();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int Renderer::GetAvailableVidMem()
+{
+  ConfigManager * const pCM = GetConfigManager();
+  if(!pCM)
+    return -1;
+
+  IDirect3D9 *pD3D = 0;
+  if(FAILED(GetDevice()->GetDirect3D(&pD3D)))
+    return -1;
+  IntrusivePtr<IDirect3D9> pD3D_holder(pD3D, false);
+
+  D3DDEVICE_CREATION_PARAMETERS devParams;
+  if(FAILED(GetDevice()->GetCreationParameters(&devParams)))
+    return -1;
+
+  UINT memSize = 0, memSizeTotal = 0;
+  pCM->GetVidMem(pD3D->GetAdapterMonitor(devParams.AdapterOrdinal), &memSize, &memSizeTotal);
+  return (int)memSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Renderer::SaveScreenshotToFile(const char *fileName, int x, int y, int width, int height, bool needCrop)
+{
+  IDirect3DDevice9 *pDevice = GetDevice();
+  IDirect3DSurface9 *pBB = 0, *pDest = 0;
+
+  if(FAILED(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB)))
+    return false;
+
+  bool saved = false;
+  if(SUCCEEDED(pDevice->CreateOffscreenPlainSurface(width, height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &pDest, NULL)))
+  {
+    RECT rect = { x, y, x + width, y + height };
+    if(SUCCEEDED(D3DXLoadSurfaceFromSurface(pDest, NULL, NULL, pBB, NULL, needCrop ? &rect : NULL, D3DX_FILTER_NONE, 0)))
+      saved = SUCCEEDED(D3DXSaveSurfaceToFile(fileName, D3DXIFF_PNG, pDest, NULL, NULL));
+    pDest->Release();
+  }
+  pBB->Release();
+  return saved;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

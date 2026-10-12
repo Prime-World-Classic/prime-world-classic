@@ -69,7 +69,7 @@ void ConvertSHCoeffs2ShaderConstants(const SHCoeffs &c, SHShaderConstants &s)
 	// These constants are described in the article by Peter-Pike Sloan titled 
 	// "Efficient Evaluation of Irradiance Environment Maps" in the book 
 	// "ShaderX 2 - Shader Programming Tips and Tricks" by Wolfgang F. Engel.
-	static const float s_fSqrtPI = ((float)sqrtf(D3DX_PI));
+	static const float s_fSqrtPI = ((float)sqrtf(3.14159265358979323846f)); // = D3DX_PI
 	const float fC0 = 1.0f/(2.0f*s_fSqrtPI);
 	const float fC1 = (float)sqrt(3.0f)/(3.0f*s_fSqrtPI);
 	const float fC2 = (float)sqrt(15.0f)/(8.0f*s_fSqrtPI);
@@ -144,21 +144,47 @@ void EvaluateLightingBySHShaderConstants(const SHShaderConstants &consts, const 
 //   if ( color.B < 0.f ) color.B = 0.f;
 }
 
+namespace
+{
+  // Константы сняты битами с настоящей d3dx9_43.dll (x64) — базис, знаки и
+  // значения восстанавливает прогон tools/sh_math_test (README там же).
+  // Базис: ортонормированные вещественные сферические гармоники в порядке
+  // индексов D3DX; ЗНАК у x и y отрицательный (D3DX — левая система
+  // координат), l=2,m=0 = (3z^2-1)/2.
+  inline float FBits(unsigned b) { float f; memcpy(&f, &b, sizeof(f)); return f; }
+
+  void EvalDirLightSH(const CVec3 &dir, float I, float *sh)
+  {
+    const float c0 = FBits(0x3F558751);  // 0.834096014
+    const float c1 = FBits(0x3FB8EBD2);  // 1.444696665
+    const float c2 = FBits(0x404EBF89);  // 3.230440378
+    const float c3 = FBits(0x3FEEBB70);  // 1.865095139
+    const float c4 = FBits(0x3FCEBF88);  // 1.615220070
+
+    const float x = dir.x, y = dir.y, z = dir.z;
+    sh[0] = c0 * I;
+    sh[1] = (-c1 * y) * I;
+    sh[2] = ( c1 * z) * I;
+    sh[3] = (-c1 * x) * I;
+    sh[4] = (( c2 * x) * y) * I;
+    sh[5] = ((-c2 * y) * z) * I;
+    sh[6] = (c3 * (0.5f * (3.0f * z * z - 1.0f))) * I;
+    sh[7] = ((-c2 * x) * z) * I;
+    sh[8] = (c4 * (x * x - y * y)) * I;
+  }
+}
+
 void EvaluateSHCoeffsForDirLight(const HDRColor &color, const CVec3 &dir, SHCoeffs &coeffs)
 {
-	if( !Renderer::Get()->IsRunningUnderPerfHUD() // Hack, coz PerfHUD can't live with this function
-      && !Compatibility::IsRunnedUnderWine() )
-	{
-		D3DXSHEvalDirectionalLight(3, (const D3DXVECTOR3*)(&dir), color.R, color.G, color.B, 
-													  	 coeffs.RCoeffs(), coeffs.GCoeffs(), coeffs.BCoeffs());
-	}
-	else
-	{
-		memset(&coeffs, 0, sizeof(SHCoeffs));
-		coeffs.RCoeffs()[0] = color.R;
-		coeffs.GCoeffs()[0] = color.B;
-		coeffs.BCoeffs()[0] = color.G;
-	}
+  // D3DXSHEvalDirectionalLight убрана. Причина не только в зависимости от
+  // d3dx9_математики: её же Wine/PerfHUD-фолбэк писал только DC-член и по
+  // пути менял каналы местами (G<->B), т.е. под Wine и под нативным Windows
+  // свет считался по-разному. Теперь считается одинаково. Точность замены
+  // измерена: maxAbs = 9.5e-7 (~1 ULP), maxRel = 4.3e-6 только на вычитании
+  // в члене (3z^2-1)/2 вблизи нуля.
+  EvalDirLightSH(dir, color.R, coeffs.RCoeffs());
+  EvalDirLightSH(dir, color.G, coeffs.GCoeffs());
+  EvalDirLightSH(dir, color.B, coeffs.BCoeffs());
 }
 
 }

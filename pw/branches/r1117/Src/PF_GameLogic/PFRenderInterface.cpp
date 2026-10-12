@@ -398,7 +398,7 @@ void Interface::CreateDepthTextures(UINT _width, UINT _height, UINT _copy_width,
   depthCopyShaderName = 0;
   s_stencilSupported = true;
 
-  GetDevice()->EvictManagedResources();
+  GetRenderer()->EvictManagedResources();
 
   if( s_readableDepth )
   {
@@ -557,7 +557,7 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
   DXSurfaceRef surf = decalRT->GetSurface(0);
   SmartRenderer::BindRenderTargetColor(0, surf);
   SmartRenderer::BindRenderTargetColor(1, 0);
-  Render::GetDevice()->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 0.0f, 0);
+  GetRenderer()->ClearColorOnly(Color(0, 0, 0, 0));
 
   if ( SmartRenderer::UseMainViewport() ) // smirnov [2009/7/15]: why set it here? decals doesn't set their own viewport.
     SmartRenderer::ResetMainViewport();   // Need to find proper place for this call.
@@ -583,26 +583,26 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
   
   // Setup states for both passes
   float decalMaskWeight = 1.0f;
-  GetDevice()->SetPixelShaderConstantF(96, &decalMaskWeight, 1);
-  GetDevice()->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
-  GetDevice()->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
-  GetDevice()->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
-  GetDevice()->SetSamplerState(0, D3DSAMP_BORDERCOLOR, 0);
+  GetRenderer()->SetPixelShaderConstantsFloat(c96, decalMaskWeight);
+  statesManager.SetStateDirect(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
+  statesManager.SetStateDirect(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+  statesManager.SetStateDirect(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
+  statesManager.SetSamplerStateDirect(0, D3DSAMP_BORDERCOLOR, 0);
   
   // Setup states for pass 1
-  GetDevice()->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_MAX);
+  statesManager.SetStateDirect(D3DRS_BLENDOPALPHA, D3DBLENDOP_MAX);
   
   queue.Render(priority);
 
   // Render second pass (don't touch decals RGB)
   decalMaskWeight = 0.0f;
-  GetDevice()->SetPixelShaderConstantF(96, &decalMaskWeight, 1);
-  GetDevice()->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
-  GetDevice()->SetRenderState(D3DRS_ALPHAREF, 1);
-  GetDevice()->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
-  GetDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA);
-  GetDevice()->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_REVSUBTRACT);
-  GetDevice()->SetSamplerState(0, D3DSAMP_BORDERCOLOR, 0);
+  GetRenderer()->SetPixelShaderConstantsFloat(c96, decalMaskWeight);
+  statesManager.SetStateDirect(D3DRS_ALPHATESTENABLE, TRUE);
+  statesManager.SetStateDirect(D3DRS_ALPHAREF, 1);
+  statesManager.SetStateDirect(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+  statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_ALPHA);
+  statesManager.SetStateDirect(D3DRS_BLENDOPALPHA, D3DBLENDOP_REVSUBTRACT);
+  statesManager.SetSamplerStateDirect(0, D3DSAMP_BORDERCOLOR, 0);
 
   queue.Render(priority);
 
@@ -610,13 +610,13 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
   SmartRenderer::BindRenderTargetColor(0, oldRT0);
 
   // Blend decals on top of original RT
-  GetDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, 0xf);
-  GetDevice()->SetRenderState(D3DRS_ZENABLE, FALSE);
-  GetDevice()->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-  GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-  GetDevice()->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
-  GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-  GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+  statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, 0xf);
+  statesManager.SetStateDirect(D3DRS_ZENABLE, FALSE);
+  statesManager.SetStateDirect(D3DRS_ZWRITEENABLE, FALSE);
+  statesManager.SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+  statesManager.SetStateDirect(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+  statesManager.SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+  statesManager.SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
   GetImmRenderer()->RenderScreenQuad(ImmRenderer::Params("DiffuseMap", decalRT));
 
   SmartRenderer::BindTexture(2, 0);
@@ -628,10 +628,10 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
 
   // Reset states
   statesManager.SetStateDirect(D3DRS_ZWRITEENABLE, 1);
-  GetDevice()->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
-  GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-  GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-  GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+  statesManager.SetStateDirect(D3DRS_ALPHATESTENABLE, FALSE);
+  statesManager.SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+  statesManager.SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+  statesManager.SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
   return true;
 }
@@ -687,17 +687,6 @@ void Interface::RenderOpaque( const BatchQueue &queue, NDb::MaterialPriority pri
 {
   if (!g_bDrawOpaque)
     return;
-/*
-  {
-    IDirect3DSurface9 *pDS = 0;
-    HRESULT hr = GetDevice()->GetDepthStencilSurface(&pDS);
-    if( SUCCEEDED(hr) && pDS ) {
-      D3DSURFACE_DESC desc;
-      hr = pDS->GetDesc(&desc);
-      pDS->Release();
-    }
-  } */
-
   RenderSequenceMarker(priority);
 
   // by default clear stencil marks (shadow/decal), may be overridden in material
@@ -754,7 +743,7 @@ void Interface::RenderMainPassOpaque( const BatchQueue &queue )
   const bool renderingReflection = WaterManager::Get()->IsReflectionRendering();
   if(!renderingReflection)
   {
-    GetDevice()->SetScissorRect(&renderArea);
+    GetRenderer()->SetScissorRect(&renderArea);
     statesManager.SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
     RenderSequenceMarker("SILHOUETTE");
     RenderSilhouette(queue);
@@ -1139,7 +1128,7 @@ void Interface::DoPostFX(const SceneConstants & _sceneConsts)
     RECT rc = { max(x, renderArea.left), max(y, renderArea.top),
                 min(x + w, renderArea.right), min(y + h, renderArea.bottom) };
     statesManager.SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
-    GetDevice()->SetScissorRect(&rc);
+    GetRenderer()->SetScissorRect(&rc);
 
     pPostFX->Apply( _sceneConsts, secondRTInChain, pPostFXMan->GetCoeff(), g_PostFXEnabled, g_SharpEnabled,
                     colorSaturation, disableWarFog ? 0 : pMainRT1.GetPtr(), pPostFXMan->GetPivotParams(),
@@ -1148,7 +1137,7 @@ void Interface::DoPostFX(const SceneConstants & _sceneConsts)
     rc.left = rc.top = 0;
     rc.right  = firstRTInChain->GetWidth();
     rc.bottom = firstRTInChain->GetHeight();
-    GetDevice()->SetScissorRect(&rc);
+    GetRenderer()->SetScissorRect(&rc);
 
     SmartRenderer::ResetMainViewport();
   }
@@ -1429,7 +1418,7 @@ void Interface::PrepareForUI(bool _isEditor)
         stretcher.Stretch(firstRTInChain, &rcSrc, firstRTInChain, secondRTInChain);
       else
       {
-        GetDevice()->StretchRect(::Get(pSrc), &AsRect(rcSrc), ::Get(secondRTInChain->GetSurface(0)), NULL, D3DTEXF_LINEAR);
+        GetRenderer()->StretchSurfaceRect(::Get(pSrc), &AsRect(rcSrc), ::Get(secondRTInChain->GetSurface(0)), NULL, D3DTEXF_LINEAR);
         SwapRTInChain();
       }
     }
@@ -1614,12 +1603,11 @@ void Interface::SetDefaultStates()
   rsManager.SetStateDirect(D3DRS_FILLMODE, D3DFILL_SOLID);
   rsManager.SetStencilState(STENCILSTATE_IGNORE);
 
-  IDirect3DDevice9* const pDevice = GetDevice();
   // GetStatesManagerOld()->SetMipMapBias( miplodbias );
   //CRAP{ Перенести в SamplerState
   for(size_t samplerIdx = 0; samplerIdx < 16; ++samplerIdx)
   {
-    pDevice->SetSamplerState(samplerIdx, D3DSAMP_MIPMAPLODBIAS, (DWORD&)miplodbias);
+    rsManager.SetSamplerStateDirect((unsigned)samplerIdx, D3DSAMP_MIPMAPLODBIAS, (DWORD&)miplodbias);
   }
   //CRAP}
 }
@@ -1672,7 +1660,7 @@ void Interface::InvalidateResources()
   pRT0Big = 0;
   pRT0BigCopy = 0;
   
-  GetDevice()->EvictManagedResources();
+  GetRenderer()->EvictManagedResources();
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -148,7 +148,7 @@ public:
 
 #ifdef _DEBUG_VIEWPORT
     D3DVIEWPORT9 vp;
-    GetDevice()->GetViewport(&vp);
+    GetRenderer()->GetViewport(vp);
 #endif // _DEBUG_VIEWPORT
 
 		// Select batch queue to use
@@ -240,7 +240,7 @@ public:
 		WaterManager::Get()->SetReflectionRenderingFlag( false );
 
 #ifdef _DEBUG_VIEWPORT
-    GetDevice()->GetViewport(&vp);
+    GetRenderer()->GetViewport(vp);
 #endif // _DEBUG_VIEWPORT
 
 		// ----------------------------------------------------
@@ -254,7 +254,7 @@ public:
     GetStatesManager()->SetStencilState(STENCILSTATE_WRITEBITS, STENCILBIT_SHADOWRECEIVER | STENCILBIT_DECALRECEIVER);
 
 #ifdef _DEBUG_VIEWPORT
-    GetDevice()->GetViewport(&vp);
+    GetRenderer()->GetViewport(vp);
 #endif // _DEBUG_VIEWPORT
     // Render batches
     batchQueue.Render();

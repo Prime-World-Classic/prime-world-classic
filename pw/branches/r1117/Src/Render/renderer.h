@@ -173,6 +173,24 @@ public:
 	bool GetRenderTargetData(IDirect3DSurface9* pSrc, IDirect3DSurface9 *pDst);
 	void StretchSurface(const DXSurfaceRef &pSrc, const DXSurfaceRef &pDst, bool bLinear = false);
 
+  // --- Этап 1 миграции на NVRHI (docs/PLAN_NVRHI.md): сюда переезжают прямые
+  //     вызовы устройства, которые раньше жили вне Render/. Всё это — D3D9,
+  //     на этапах 3-4 часть исчезнет, часть станет реализацией IRenderBackend.
+  //     Цель сейчас: вне Render/ не остаётся ни одного вызова
+  //     IDirect3DDevice9, чтобы поверхность портирования была измерима.
+  void GetViewport(D3DVIEWPORT9 &vp);
+  void SetScissorRect(const RECT *pRect);
+  void ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color);
+  void StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
+                          IDirect3DSurface9 *pDst, const RECT *pDstRect, D3DTEXTUREFILTERTYPE filter);
+  // Сброс managed-пула. Есть только в D3D9; в Vulkan/DX12 аналога нет, поэтому
+  // на этапе 3 вызов просто удаляется (пула managed там нет).
+  void EvictManagedResources();
+  // Доступная видеопамять адаптера (-1 = неизвестно). D3D9 + ConfigManager.
+  int GetAvailableVidMem();
+  // Бэк-буфер -> PNG (needCrop=false берётся весь кадр). D3D9 + D3DX.
+  bool SaveScreenshotToFile(const char *fileName, int x, int y, int width, int height, bool needCrop);
+
   RenderStatesManager* GetRenderStatesManager() { return &statesMan; }
 	LightsManager* GetLightsManager() { return &lightsMan; }
 

@@ -171,6 +171,17 @@ void RenderStatesManager::SetStateDirect(D3DRENDERSTATETYPE State, DWORD Value)
 	STATESTATS(g_statesDebugDirect++);
 }
 
+void RenderStatesManager::SetSamplerStateDirect(unsigned index, D3DSAMPLERSTATETYPE type, DWORD value)
+{
+	// Инвалидация кэша сэмплеров — см. комментарий в заголовке. Приём тот же,
+	// что в конструкторе и в SetStateDirect: выставляем alwaysFailCompare.
+	if (index < ARRAY_SIZE(lastSamplerState))
+		lastSamplerState[index].alwaysFailCompare = 1;
+
+	GetDevice()->SetSamplerState(index, type, value);
+	STATESTATS(g_statesDebugDirect++);
+}
+
 void RenderStatesManager::SetSamplerState(unsigned index, SamplerState const& state)
 {
 	STATESTATS(g_statesDebugAllSampler++);
