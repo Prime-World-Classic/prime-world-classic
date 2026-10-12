@@ -40,6 +40,40 @@ namespace libdb.DB
     }
   }
 
+  public class ChangeTextRefEnOperation : IUndoRedoOperation
+  {
+    private readonly TextRef text;
+    private readonly string value;
+    private readonly string oldValue;
+
+    public ChangeTextRefEnOperation(TextRef text, string value)
+    {
+      this.text = text;
+      this.value = value;
+      this.oldValue = text.GetTextEn();
+    }
+
+    public void Undo()
+    {
+      text.FromStringEnInternal(oldValue);
+    }
+
+    public void Redo()
+    {
+      text.FromStringEnInternal(value);
+    }
+
+    public string DefaultCaption
+    {
+      get { return value; }
+    }
+
+    public libdb.DB.DBResource GetOwner()
+    {
+      return text.GetOwner();
+    }
+  }
+
   [SimpleType]
   [RenameType("CTextRef")]
   public sealed class TextRef : SimpleSerializable<TextRef.TextRefSerializeAttributes>, IBasicDBValue, IChangeable
@@ -104,6 +138,16 @@ namespace libdb.DB
       return true;
     }
 
+    /// <summary>
+    /// English translation is stored next to the original text: Name.txt -> Name_en.txt
+    /// </summary>
+    private static string GetEnFileName(string fileName)
+    {
+      if (string.IsNullOrEmpty(fileName) || !fileName.EndsWith(".txt", StringComparison.Ordinal))
+        return string.Empty;
+      return fileName.Substring(0, fileName.Length - 4) + "_en.txt";
+    }
+
     private static string GetFileNameFromFieldPath(FieldPath path)
     {
       string result = string.Empty;
@@ -152,6 +196,7 @@ namespace libdb.DB
 
     private DBResource owner = null;
     private string text = string.Empty;
+    private string textEn = string.Empty;
     private string fileName = string.Empty;
 
     public TextRef() { }
@@ -189,7 +234,25 @@ namespace libdb.DB
 
     internal void FromStringInternal(string text)
     {
+      // editing a derived text detaches it from the parent: keep the parent's translation
+      if (parent != null && isDerivedFromParent)
+        textEn = parent.GetTextEn();
       this.text = text;
+      OnChanged();
+    }
+
+    public void FromStringEn(string text)
+    {
+      if (text != GetTextEn())
+        DataBase.AddOperation(new ChangeTextRefEnOperation(this, text));
+    }
+
+    internal void FromStringEnInternal(string text)
+    {
+      // editing a derived translation detaches it from the parent: keep the parent's original text
+      if (parent != null && isDerivedFromParent)
+        this.text = parent.ToString();
+      textEn = text;
       OnChanged();
     }
 
@@ -200,6 +263,16 @@ namespace libdb.DB
       return text;
     }
 
+    /// <summary>
+    /// English translation (file Name_en.txt next to the original Name.txt)
+    /// </summary>
+    public string GetTextEn()
+    {
+      if (parent != null && isDerivedFromParent)
+        return parent.GetTextEn();
+      return textEn;
+    }
+
     protected override TextRefSerializeAttributes Serialize(FieldPath path)
     {
       string wantedFileName = string.IsNullOrEmpty(text) ? string.Empty : GetFileNameFromFieldPath(path);
@@ -208,7 +281,20 @@ namespace libdb.DB
         wantedFileName = string.Empty;
 
       fileName = wantedFileName;
+      StoreTextEn();
       return new TextRefSerializeAttributes(fileName);
+    }
+
+    private void StoreTextEn()
+    {
+      string enFileName = GetEnFileName(fileName);
+      if (string.IsNullOrEmpty(enFileName))
+        return;
+
+      if (!string.IsNullOrEmpty(textEn))
+        StoreTest(DataBase.FileSystem, enFileName, textEn);
+      else if (DataBase.FileSystem.GetFileInfo(enFileName).IsFileExists)
+        DataBase.FileSystem.DeleteFile(enFileName);
     }
 
     protected override bool Deserialize(TextRef.TextRefSerializeAttributes attributes)
@@ -220,6 +306,10 @@ namespace libdb.DB
         fileName = string.Empty;
         text = string.Empty;
       }
+
+      string enFileName = GetEnFileName(fileName);
+      if (string.IsNullOrEmpty(enFileName) || !TryLoadString(DataBase.FileSystem, enFileName, out textEn))
+        textEn = string.Empty;
       OnChanged();
 
       return true;
@@ -240,6 +330,7 @@ namespace libdb.DB
                 return;
 
             text = src.text;
+            textEn = src.textEn;
             OnChanged();
         }
     }
@@ -257,6 +348,7 @@ namespace libdb.DB
           return;
 
         text = src.text;
+        textEn = src.textEn;
         OnChanged();
       }
     }

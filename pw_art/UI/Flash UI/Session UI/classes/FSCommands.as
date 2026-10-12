@@ -87,6 +87,7 @@ package
 		public static const PortalTooltip:String = "PortalTooltip";
 		public static const PortalClick:String = "PortalClick";
 		public static const ActionBarLock:String = "ActionBarLock";
+		public static const ActionBarShowPanel:String = "ActionBarShowPanel";
 		
 		//-----------------------------------------------------------------------------
 		//SelectionInfo.as-------------------------------------------------------------

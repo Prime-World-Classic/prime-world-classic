@@ -40,7 +40,7 @@ package LoaderSources
       teamMateTooltipTemplate = LoaderLocalization.TeamMateRaitingAccTooltip;
     }
 
-    public function SetHeroRaiting(isItOurHero:Boolean,raiting:int, deltaWin:Number, deltaLose:Number, rankIcon:String, rankTooltip:String):void 
+    public function SetHeroRaitingAcc(isItOurHero:Boolean,raiting:int, deltaWin:Number, deltaLose:Number, rankIcon:String, rankTooltip:String):void 
     {
       this.visible = true;
       

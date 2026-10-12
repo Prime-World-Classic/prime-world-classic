@@ -12,7 +12,7 @@
 		<AppDesignerFolder>Properties</AppDesignerFolder>
 		<RootNamespace>PF_Types.DBTypes</RootNamespace>
 		<AssemblyName>PF_Types.DBTypes</AssemblyName>
-		<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+		<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
 		<TargetFrameworkProfile />
 	</PropertyGroup>
 	<PropertyGroup

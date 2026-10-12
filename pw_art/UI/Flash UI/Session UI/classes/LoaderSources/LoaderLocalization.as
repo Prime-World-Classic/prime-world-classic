@@ -12,6 +12,8 @@ package LoaderSources
 		public static var ChatBar_CantFindPlayer:String = "Сообщение не отправлено - игрок не найден";
 		public static var TeamMateRaitingTooltip:String = "<br>Рейтинг героя"
 		public  static var OurPlayerRaitingTooltip:String = "<br>Рейтинг героя<br>Победа: +{0}<br>Поражение: -{1}";
+		public static var TeamMateRaitingAccTooltip:String = "<br>Рейтинг аккаунта";
+		public static var OurPlayerRaitingAccTooltip:String = "<br>Рейтинг аккаунта<br>Победа: +{0}<br>Поражение: -{1}";
 		public static var ExitButtonText:String = "Выход";
 		public static var PremiumAccountTooltip:String = "В замке игрока {0} наступил Золотой Век!<br>В случае победы все игроки его команды получат дополнительный талант. В случае поражения только игрок {0} получит дополнительный талант"
 		

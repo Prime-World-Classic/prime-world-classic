@@ -10,7 +10,6 @@ package ActionBar
 	
 	public class ActionBarContainer extends BaseResizableObject
 	{
-		private var startProp:Number;
 		public var actionBar_mc:ActionBar;
 		public var hintMessage_mc:HintMessage;
 		public var actionBarBack_mc:MovieClip;
@@ -18,7 +17,6 @@ package ActionBar
 		public function ActionBarContainer()
 		{
 			this.mouseEnabled = false;
-			startProp =  actionBarBack_mc.height / this.height;
 			actionBarBack_mc.mouseEnabled = false;
 			actionBarBack_mc.mouseChildren = false;
 		}
@@ -35,7 +33,8 @@ package ActionBar
 		{	
 			super.BaseBarObjectResize();
 			this.x = stage.stageWidth / 2 - positionOnCenter * this.width;
-			this.y = (stage.stageHeight - this.height * startProp - DecorLine.DECOR_LINE_HEIGHT);
+			// actionBar_mc is taller than the back now (second row of slots), so align by the back itself
+			this.y = (stage.stageHeight - actionBarBack_mc.height * this.scaleY - DecorLine.DECOR_LINE_HEIGHT);
 			this.x = Math.floor(this.x);
 			this.y = Math.floor(this.y);
 		}

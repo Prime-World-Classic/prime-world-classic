@@ -177,6 +177,25 @@ extern "C" INTERMODULE_EXPORT void TooSmartLinker();
 
 namespace
 {
+// Language of the texts, last token of the launch protocol (allTokens[7]):
+// "en" or "en-US". Returns the short code ("en") or an empty string when the
+// token does not look like a language code.
+string ParseProtocolLanguage( const char * token )
+{
+  int len = (int)strlen( token );
+  if ( len != 2 && !( len == 5 && token[2] == '-' ) )
+    return string();
+
+  for ( int i = 0; i < len; ++i )
+    if ( i != 2 && !isalpha( (unsigned char)token[i] ) )
+      return string();
+
+  string shortCode( token, 2 );
+  for ( int i = 0; i < 2; ++i )
+    shortCode[i] = (char)tolower( (unsigned char)shortCode[i] );
+  return shortCode;
+}
+
 void ShowLocalizedErrorMB(LPCWSTR pszName, LPCWSTR pszDefault)
 {
   // get the current language from the 'lang.cfg' file
@@ -1250,7 +1269,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   } else {
     // Manual tokenization instead of strtok. The protocol line has a fixed,
     // predictable structure:
-    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort]".
+    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort][/language]".
     // strtok would overwrite the internal buffer of protocolLineStr (std::string)
     // with NUL separators, which is undefined behavior and can corrupt adjacent
     // state; here the separators are only located and the tokens are copied.
@@ -1328,6 +1347,21 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       }
       Network::SetClusterBasePort(basePort);
       systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server base port: " << basePort << endl;
+    }
+
+    // Optional last token (allTokens[7]) — language of the texts chosen in the
+    // launcher ("en" / "en-US"), always after the IP block and the base port. Only the
+    // texts follow it (<name>_en.txt, see Texts.cpp): the "language" var keeps
+    // selecting Data/Localization/<language> piles, voice and splashes, and is
+    // not saved to the profile from here. A malformed token is ignored.
+    if (allTokens.size() >= 8) {
+      string textLanguage = ParseProtocolLanguage( allTokens[7].c_str() );
+      if (!textLanguage.empty()) {
+        SetCurrentLanguage( textLanguage );
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol text language: " << textLanguage.c_str() << endl;
+      } else {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Ignored protocol language token: \"" << allTokens[7].c_str() << "\"" << endl;
+      }
     }
 
     usedServer = usedServer % GetServerIpCount();

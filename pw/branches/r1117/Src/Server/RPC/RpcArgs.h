@@ -308,7 +308,7 @@ public:
   bool Push(rpc::Transaction* transaction, const rpc::MemoryBlock& value) { return transaction?transaction->GetArgs().Push(value):false; }
   template <typename T> bool Push(rpc::Transaction* transaction, const nstl::vector<T>& value) { return transaction?transaction->GetArgs().Push(value):false; }
   template <typename T, unsigned int capacity> bool Push(rpc::Transaction* transaction, const FixedVector<T, capacity>& value) { return transaction?transaction->GetArgs().Push(value):false; }
-  template <unsigned int capacity, typename TChar = char> bool Push(rpc::Transaction* transaction, const FixedString<capacity, TChar>& value) { return transaction?transaction->GetArgs().Push(value.c_str()):false; }
+  template <unsigned int capacity, typename TChar> bool Push(rpc::Transaction* transaction, const FixedString<capacity, TChar>& value) { return transaction?transaction->GetArgs().Push(value.c_str()):false; }
 
   template <typename T> bool Push(rpc::Transaction* transaction, T* value) 
   { 

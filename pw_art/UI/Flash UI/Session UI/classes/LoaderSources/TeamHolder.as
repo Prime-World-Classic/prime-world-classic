@@ -229,6 +229,7 @@ package LoaderSources
 			for each (var item:LoaderTeamMate in _TeammatesMovieclips)
 			{
 				item.raitingBar.visible = false;
+				item.raitingAccBar.visible = false;
 			}
 		}
 
