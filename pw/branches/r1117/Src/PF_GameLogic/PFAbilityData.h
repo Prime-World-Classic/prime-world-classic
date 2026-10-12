@@ -188,7 +188,11 @@ protected:
   PFAbilityData();
   
   void  UpdateAbilityModifiers();
+#if defined(PW_LINUX_NULL_RENDER)
+	void RecalculateManaCost() const;
+#else
   void  RecalculateManaCost();
+#endif
   void  RecalculateCooldown();
 
   void  AddInstance(CObj<PFAbilityInstance> const& inst);
@@ -254,7 +258,11 @@ private:
   int                           rank;
   TCooldown                     cooldownTime;
   TCooldown                     cooldown;
+#if defined(PW_LINUX_NULL_RENDER)
+	mutable float manaCost; // Logical admission cache; no new field or serialization change.
+#else
   float                         manaCost;
+#endif
   int                           zzCost;
   bool                          isOn;
   int                           forbids;

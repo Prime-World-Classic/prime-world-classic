@@ -27,6 +27,40 @@ namespace NNameMap
 namespace NWorld
 {
 
+namespace
+{
+/** State selection also participates in admission; it cannot wait for the next world timestamp. */
+EAbilityState::Enum LinuxAbilityState(const PFAbilityData& ability)
+{
+	const auto* hero = IsValid(ability.GetOwner()) ? dynamic_cast<const PFBaseHero*>(ability.GetOwner().GetPtr()) : nullptr;
+	if (!hero)
+		return ability.GetState();
+	for (ring::Range<PFApplAbilityMod::Ring> it(hero->GetAbilitiesMods()); it; ++it)
+	{
+		PFApplAbilityMod* mod = &(*it);
+		if (IsValid(mod) && mod->GetMode() == NDb::ABILITYMODMODE_STATE
+			&& mod->IsApplicable(NDb::ABILITYMODMODE_STATE, ability.GetAbilityTypeId(), ability.GetDBDesc()))
+			return EAbilityState::Second;
+	}
+	return EAbilityState::First;
+}
+
+/** Compute an authored cooldown candidate without changing a running timer or explicit override. */
+float LinuxAbilityCooldown(const PFAbilityData& ability, const ExecutableFloatString& expression)
+{
+	const float invalid = std::numeric_limits<float>::quiet_NaN();
+	if (!IsValid(ability.GetOwner()))
+		return invalid;
+	const auto raw = expression.sString.empty() && expression.compiledString.empty()
+		? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 0}
+		: LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), ability.GetOwner(), ability.GetOwner(), &ability);
+	if (!raw.Succeeded() || raw.value < 0)
+		return invalid;
+	const float modified = ability.GetModifiedValue(raw.value, NDb::ABILITYMODMODE_COOLDOWN);
+	return std::isfinite(modified) && modified >= 0 ? modified : invalid;
+}
+}
+
 int PFAbilityData::baseRefineRate = 4;
 
 NAMEMAP_BEGIN(PFAbilityData::ConstantsResolver)
@@ -222,6 +256,8 @@ void PFAbilityData::ApplyPassivePart( bool bApply )
 
 CObj<PFAbilityInstance> PFAbilityData::ApplyToTarget( Target const& target )
 {
+	// State modifiers must also be sampled before direct/external cast admission.
+	UpdateAbilityModifiers();
 	// Direct and external callers must satisfy the same live-context admission as orders.
 	if (!pDBDesc || !IsValid(pOwner) || pOwner->IsDead() || IsForbidded()
 		|| !IsTargetValid(target) || !IsReady() || !IsEnoughMana())
@@ -289,12 +325,18 @@ void PFAbilityData::LevelUp()
 
 bool PFAbilityData::IsReady() const
 {
-	return std::isfinite(cooldownTime[abilityState]) && cooldownTime[abilityState] >= 0
-		&& std::isfinite(cooldown[abilityState]) && cooldown[abilityState] >= 0
-		&& cooldown[abilityState] < EPS_VALUE;
+	const auto state = LinuxAbilityState(*this);
+	if (!pDBDesc || (state != EAbilityState::First && state != EAbilityState::Second)
+		|| !std::isfinite(cooldown[state]) || cooldown[state] < 0 || cooldown[state] >= EPS_VALUE)
+		return false;
+	// A new modifier can invalidate the next cooldown even while the old timer is ready.
+	return std::isfinite(LinuxAbilityCooldown(*this, state == EAbilityState::Second
+		? pDBDesc->cooldownTimeSecondState : pDBDesc->cooldownTime));
 }
 bool PFAbilityData::IsEnoughMana() const
 {
+	// Admission can happen repeatedly inside one world tick, including delayed activation.
+	RecalculateManaCost();
 	if (!IsValid(pOwner) || !std::isfinite(manaCost) || manaCost < 0)
 		return false;
 	const float available = DoesSpendLifeInsteadEnergy() ? pOwner->GetLife() : pOwner->GetMana();
@@ -302,8 +344,12 @@ bool PFAbilityData::IsEnoughMana() const
 }
 void PFAbilityData::SpendMana() const
 {
-  if (!IsEnoughMana())
-    return;
+	// Pay the admitted cache, as Windows does. Synchronous dispatch effects must not reprice this cast.
+	if (!IsValid(pOwner) || !std::isfinite(manaCost) || manaCost < 0)
+		return;
+	const float available = DoesSpendLifeInsteadEnergy() ? pOwner->GetLife() : pOwner->GetMana();
+	if (!std::isfinite(available) || available < manaCost)
+		return;
 
   if (DoesSpendLifeInsteadEnergy())
     pOwner->TakeHealth(GetManaCost());
@@ -323,8 +369,8 @@ void PFAbilityData::UpdateAbilityModifiers()
     return;
 
   PFBaseHero const* pHero = static_cast<PFBaseHero const*>(pOwner.GetPtr());
-  if (cachedModifiersTime >= pHero->AbilitiesModsGetActualizationTime())
-    return;
+	// World-time floats cannot distinguish successive changes in a tick (or restored future stamps).
+	// Rebuild the stock serialized cache conservatively; no revision field or wire change is needed.
 
   for (int i = 0; i < NDb::KnownEnum<NDb::EAbilityModMode>::sizeOf; ++i)
     modifiers[i].clear();
@@ -355,13 +401,16 @@ void PFAbilityData::UpdateAbilityModifiers()
 }
 float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) const
 {
+	if (!std::isfinite(value))
+		return std::numeric_limits<float>::quiet_NaN();
   const int modeIndex = static_cast<int>(mode);
   if (modeIndex < 0 || modeIndex >= NDb::KnownEnum<NDb::EAbilityModMode>::sizeOf)
     return value;
   if (!IsValid(pOwner) || !pOwner->IsHero())
     return value;
 
-  return value * modifiers[modeIndex].mul + modifiers[modeIndex].add;
+	// Read the hero's cached applicator coefficients, not the ability's timestamp-gated snapshot.
+	return static_cast<const PFBaseHero*>(pOwner.GetPtr())->GetModifiedAbilityValue(value, mode, abilityType, GetDBDesc());
 }
 float PFAbilityData::GetBaseManaCost() const
 {
@@ -378,7 +427,7 @@ float PFAbilityData::GetBaseManaCost() const
 	const float cost = raw.value * modifier;
 	return std::isfinite(cost) ? cost : std::numeric_limits<float>::quiet_NaN();
 }
-void PFAbilityData::RecalculateManaCost()
+void PFAbilityData::RecalculateManaCost() const
 {
   if (DoesSpendLifeInsteadEnergy())
     manaCost = GetBaseManaCost();
@@ -396,16 +445,8 @@ void PFAbilityData::RecalculateCooldown()
 		cooldownTime[EAbilityState::First] = cooldownTime[EAbilityState::Second] = invalid;
 		return;
 	}
-	const auto duration = [&](const auto& expression) {
-		// Preserve the absent-field default, not the old invalid-expression fallback.
-		const float raw = expression.sString.empty() && expression.compiledString.empty() ? 0
-			: LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), pOwner.GetPtr(), pOwner.GetPtr(), this).value;
-		if (!std::isfinite(raw) || raw < 0) return invalid;
-		const float modified = GetModifiedValue(raw, NDb::ABILITYMODMODE_COOLDOWN);
-		return std::isfinite(modified) && modified >= 0 ? modified : invalid;
-	};
-	cooldownTime[EAbilityState::First] = duration(pDBDesc->cooldownTime);
-	cooldownTime[EAbilityState::Second] = duration(pDBDesc->cooldownTimeSecondState);
+	cooldownTime[EAbilityState::First] = LinuxAbilityCooldown(*this, pDBDesc->cooldownTime);
+	cooldownTime[EAbilityState::Second] = LinuxAbilityCooldown(*this, pDBDesc->cooldownTimeSecondState);
 }
 void PFAbilityData::RestartCooldown(float cooldownTime_)
 {
@@ -418,7 +459,12 @@ void PFAbilityData::RestartCooldown(float cooldownTime_)
     cooldownTime[abilityState] = cooldownTime_;
   cooldown[abilityState] = cooldownTime[abilityState];
 }
-void PFAbilityData::RecalculateAndRestartCooldown() { RecalculateCooldown(); RestartCooldown(); }
+void PFAbilityData::RecalculateAndRestartCooldown()
+{
+	UpdateAbilityModifiers();
+	RecalculateCooldown();
+	RestartCooldown();
+}
 void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, bool reduceByPercent)
 {
   if (forAllStates)

@@ -612,6 +612,8 @@ void PFBaseHero::RemoveAbilityModifier( PFApplAbilityMod* appl )
 void PFBaseHero::RecacheAbilitiesModifiers() { abilityModsActualizationTime = GetWorld() ? GetWorld()->GetTimeElapsed() : 0.0f; }
 float PFBaseHero::GetModifiedAbilityValue( float value, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility ) const
 {
+	if (!std::isfinite(value))
+		return std::numeric_limits<float>::quiet_NaN();
   float add = 0.0f;
   float mul = 1.0f;
   for ( ring::Range<PFApplAbilityMod::Ring> it(rgAbilitiesModifiers); it; ++it )
@@ -620,7 +622,12 @@ float PFBaseHero::GetModifiedAbilityValue( float value, NDb::EAbilityModMode mod
     if (IsValid(pAppl))
       pAppl->AddModifier(add, mul, mode, abilityType, dbAbility);
   }
-  return value * mul + add;
+	// Check the original float intermediates, including overflow hidden by later cancellation.
+	const float product = value * mul;
+	if (!std::isfinite(product))
+		return std::numeric_limits<float>::quiet_NaN();
+	const float result = product + add;
+	return std::isfinite(result) ? result : std::numeric_limits<float>::quiet_NaN();
 }
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const StatisticService::RPC::SessionEventInfo & params ) { (void)eventType; (void)params; }
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const NDb::DbResource * resource) { (void)eventType; (void)resource; }
