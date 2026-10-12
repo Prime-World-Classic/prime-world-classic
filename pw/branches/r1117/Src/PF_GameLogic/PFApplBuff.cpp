@@ -45,6 +45,7 @@ bool PFApplBuff::Init()
 bool PFApplBuff::Start()
 {
   PFBaseApplicator::Start();
+	if (!IsAlive()) return true;
 
 	const auto& authored = GetDBAppl<NDb::BuffApplicator>().startCondition;
 	LinuxBootstrap::NumericFormulaResult condition{LinuxBootstrap::NumericFormulaError::None, 1.f};
@@ -59,6 +60,7 @@ bool PFApplBuff::Start()
   if (IsEnabled())
     Enable();
 
+	if (!IsAlive()) return true;
   if (IsValid(pReceiver))
     receiverPlacementOnStart = pReceiver->GetVisualPosition3D();
 
@@ -142,6 +144,7 @@ bool PFApplBuff::CanBeAppliedOnDead()
 
 void PFApplBuff::Stop()
 {
+	if (!IsAlive()) return;
   if (IsEnabled())
   {
     SetEnabled(false);

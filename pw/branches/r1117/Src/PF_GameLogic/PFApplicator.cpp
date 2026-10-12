@@ -196,11 +196,14 @@ static bool LinuxApplicatorEnabled(const PFBaseApplicator& app, const NDb::Ptr<N
 
 bool PFBaseApplicator::Start()
 {
+	if (!IsAlive()) return true;
   if (pAbility)
     pAbility->NotifyApplicatorStarted(pReceiver);
   if (IsValid(pParent))
     pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_START);
 
+	// A parent may terminate this effect synchronously from its start notification.
+	if (!IsAlive()) return true;
   const bool isEnabled = IsDelegated() || LinuxApplicatorEnabled(*this, pDBAppl);
   SetEnabled(isEnabled);
   return !isEnabled;
@@ -208,6 +211,8 @@ bool PFBaseApplicator::Start()
 
 void PFBaseApplicator::Stop()
 {
+	// Preserve sibling ownership and history when cleanup is repeated or reentrant.
+	if (!IsAlive()) return;
   pDispatch = 0;
   pUpgraderAbilityData = 0;
   flags |= FLAG_STOPPED;
@@ -233,11 +238,13 @@ void PFBaseApplicator::Enable() { SetEnabled(true); }
 void PFBaseApplicator::Disable() { SetEnabled(false); }
 void PFBaseApplicator::Block()
 {
+	if (!IsAlive()) return;
 	SetBlocked(true);
 	if (IsEnabled()) { SetEnabled(false); Disable(); }
 }
 void PFBaseApplicator::Unblock()
 {
+	if (!IsAlive()) return;
 	SetBlocked(false);
 	if (!IsEnabled()) { SetEnabled(true); Enable(); }
 }
