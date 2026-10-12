@@ -647,10 +647,56 @@ void PFBaseHero::DoLevelups( int count, float statsBonusBudget )
   ForAllSummons( f, NDb::SUMMONTYPE_SECONDARY );
   ForAllClones( f );
 }
-float PFBaseHero::GetUltimateCD() const { return 0.0f; }
-IMiscFormulaPars const* PFBaseHero::GetTalent(const char* id) const { (void)id; return 0; }
-PFTalent* PFBaseHero::GetTalentById(const char* id) const { (void)id; return 0; }
-bool PFBaseHero::HasTalentFromPack( const char* id ) const { (void)id; return false; }
+/** Preserve the original first purchased ultimate and absent-value sentinel. */
+float PFBaseHero::GetUltimateCD() const
+{
+	for (int level = 0; level < NDb::KnownEnum<NDb::ETalentLevel>::SizeOf(); ++level)
+		for (int slot = 0; slot < NDb::KnownEnum<NDb::ETalentSlot>::SizeOf(); ++slot)
+		{
+			PFTalent* talent = GetTalent(level, slot);
+			if (!talent || !talent->GetTalentDesc() || !talent->IsUltimate() || !talent->IsTalentBought())
+				continue;
+			const float cooldown = talent->GetCooldown();
+			const float remaining = talent->GetCurrentCooldown();
+			if (std::isfinite(cooldown) && cooldown > 0 && std::isfinite(remaining))
+			{
+				const float ratio = remaining / cooldown;
+				if (std::isfinite(ratio)) return ratio;
+			}
+		}
+	return -1;
+}
+
+/** Formula callers receive the same live talent object as persistent-ID lookup. */
+IMiscFormulaPars const* PFBaseHero::GetTalent(const char* id) const { return GetTalentById(id); }
+
+/** Search authored grid order without filtering purchase state or normalizing IDs. */
+PFTalent* PFBaseHero::GetTalentById(const char* id) const
+{
+	if (!id) return nullptr;
+	for (int level = 0; level < NDb::KnownEnum<NDb::ETalentLevel>::SizeOf(); ++level)
+		for (int slot = 0; slot < NDb::KnownEnum<NDb::ETalentSlot>::SizeOf(); ++slot)
+		{
+			PFTalent* talent = GetTalent(level, slot);
+			if (talent && talent->GetTalentDesc() && strcmp(talent->GetTalentDesc()->persistentId.c_str(), id) == 0)
+				return talent;
+		}
+	return nullptr;
+}
+
+/** Membership uses the actual runtime pack, including unpurchased talents. */
+bool PFBaseHero::HasTalentFromPack(const char* id) const
+{
+	if (!id) return false;
+	for (int level = 0; level < NDb::KnownEnum<NDb::ETalentLevel>::SizeOf(); ++level)
+		for (int slot = 0; slot < NDb::KnownEnum<NDb::ETalentSlot>::SizeOf(); ++slot)
+		{
+			PFTalent* talent = GetTalent(level, slot);
+			if (talent && talent->GetPack() && strcmp(talent->GetPack()->id.c_str(), id) == 0)
+				return true;
+		}
+	return false;
+}
 void PFBaseHero::OnGameFinished( const NDb::EFaction failedFaction ) { (void)failedFaction; }
 void PFBaseHero::SetHappy() {}
 void PFBaseHero::OnStopped() {}
