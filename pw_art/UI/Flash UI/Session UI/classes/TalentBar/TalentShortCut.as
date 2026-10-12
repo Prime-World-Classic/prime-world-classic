@@ -65,6 +65,12 @@
 			talent.shortcut = null;
 		}
 		
+		// the talent of this shortcut (smart-cast checkboxes of the action bar)
+		public function get TalentObj():Talent
+		{
+			return talent;
+		}
+		
 		override public function get DesirableIndex():int 
 		{
 			return talent.DesiredIndex;

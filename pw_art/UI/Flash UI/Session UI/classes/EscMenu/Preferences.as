@@ -28,6 +28,32 @@ package EscMenu
 			main.optionsWindow.SetControlValue(controlName, value, active);
 		}
 		
+		// 'Advanced' / 'Communication' option pages: the rows are created from C++ (PreferencesProcessor.cpp, s_advancedVars)
+		public function AddAdvancedCheckBox(name:String, caption:String):void
+		{
+			main.optionsWindow.AddAdvancedCheckBox(name, caption);
+		}
+		
+		public function AddAdvancedSlider(name:String, caption:String, maxValue:int):void
+		{
+			main.optionsWindow.AddAdvancedSlider(name, caption, maxValue);
+		}
+		
+		public function SetAdvancedTargetPage(page:int):void
+		{
+			main.optionsWindow.SetAdvancedTargetPage(page);
+		}
+		
+		public function AddAdvancedHeader(caption:String):void
+		{
+			main.optionsWindow.AddAdvancedHeader(caption);
+		}
+		
+		public function SetAdvancedValueText(name:String, text:String):void
+		{
+			main.optionsWindow.SetAdvancedValueText(name, text);
+		}
+		
 		public function ActivateAbilityToChange(activate:Boolean):void
 		{
 			main.optionsWindow.ActivateAbilityToChange(activate);
