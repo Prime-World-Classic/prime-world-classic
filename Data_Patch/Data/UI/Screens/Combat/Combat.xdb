@@ -1238,6 +1238,22 @@
 						<propertyName>StatBar_HeroRankTooltip</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_224_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>Options_AdvancedPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_225_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_CommunicationPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_226_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_AdvancedTitle</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_227_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_CommunicationTitle</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_228_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />
