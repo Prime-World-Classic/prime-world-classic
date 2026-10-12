@@ -36,6 +36,7 @@
 		public static var Options_CommunicationPage:String = "Общение";
 		public static var Options_AdvancedTitle:String = "Дополнительные настройки";
 		public static var Options_CommunicationTitle:String = "Общение";
+		public static var Options_Back:String = "Назад";
 		
 		//InventoryBar
 		public static var InventoryBar_HeaderText:String = "Инвентарь";

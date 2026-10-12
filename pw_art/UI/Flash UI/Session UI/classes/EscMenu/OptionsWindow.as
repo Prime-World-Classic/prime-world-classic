@@ -183,6 +183,10 @@
 				_loc1_++;
 			}
 			OptionsWindow.advancedPanel = OptionsWindow.pagePanels[0];
+			if(Localization.CompleteEventDispatcher != null)
+			{
+				Localization.CompleteEventDispatcher.addEventListener(Event.COMPLETE,this.OnLocalizationComplete);
+			}
 			OptionsWindow.advancedBtn = OptionsWindow.pageButtons[0];
 			OptionsWindow.advancedNextY = 0;
 		}
@@ -200,6 +204,26 @@
 			OptionsWindow.advancedNextY = OptionsWindow.pageNextY[param1];
 		}
 		
+		// Окно создаётся до того, как движок подставит переводы в Localization (Combat.xdb):
+		// без этого при первом открытии подписи были на языке по умолчанию.
+		private function OnLocalizationComplete(e:Event) : void
+		{
+			if(OptionsWindow.pageButtons == null)
+			{
+				return;
+			}
+			var i:int = 0;
+			while(i < OptionsWindow.pageButtons.length)
+			{
+				this.SetPageButtonText(i,OptionsWindow.shownPage == i ? Localization.Options_Back : String(OptionsWindow.PAGE_NAMES[i]));
+				i++;
+			}
+			if(OptionsWindow.shownPage >= 0)
+			{
+				this.title.text = String(OptionsWindow.PAGE_TITLES[OptionsWindow.shownPage]);
+			}
+		}
+
 		private function SetPageButtonText(param1:int, param2:String) : void
 		{
 			var _loc3_:ButtonStandart = OptionsWindow.pageButtons[param1];
@@ -280,7 +304,7 @@
 				_loc3_ = String(OptionsWindow.PAGE_NAMES[_loc2_]);
 				if(_loc4_)
 				{
-					_loc3_ = "Назад";
+					_loc3_ = Localization.Options_Back;
 				}
 				this.SetPageButtonText(_loc2_,_loc3_);
 				_loc2_++;
