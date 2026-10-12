@@ -102,6 +102,8 @@ bool PFTalent::Activate()
 void PFTalent::RestartCooldown( float cooldownTime_ )
 {
   PFAbilityData::RestartCooldown( cooldownTime_ );
+	if (pDBGroup && IsValid(pOwner))
+		pOwner->RestartGroupCooldowns(this);
 }
 
 int PFTalent::GetMoneyCost() const
@@ -236,24 +238,91 @@ void PFTalentsSet::LoadSet( CPtr<PFBaseMaleHero> const& pOwner_, SetInfo const& 
       }
     }
   }
+	CreateGroups();
+	CreateKits();
+	CreatePacks();
 }
 
 void PFTalentsSet::Reset()
 {
+	if (IsValid(pOwner) && pOwner->IsClone())
+	{
+		CreateGroups();
+		CreateKits();
+		CreatePacks();
+	}
 }
 
+/** Preserve all authored group memberships and the original last-match active group. */
 void PFTalentsSet::CreateGroups()
 {
-  talentGroups.clear();
+	talentGroups.clear();
+	if (!GetWorld() || !GetWorld()->GetAIWorld()) return;
+	const auto& groups = GetWorld()->GetAIWorld()->GetAIParameters().talentGroups;
+	if (!groups) return;
+	for (int level = 0; level < LEVELS_COUNT; ++level)
+		for (int slot = 0; slot < SLOTS_COUNT; ++slot)
+		{
+			PFTalent* talent = talents[level][slot];
+			if (!talent) continue;
+			for (const auto& group : groups->groups)
+				if (group.talents.find(talent->GetTalentDesc()) != group.talents.end())
+				{
+					talentGroups[&group].push_back(talent);
+					talent->SetGroup(&group);
+				}
+		}
 }
 
+/** Reuse already selected kits before searching the global list, as on Windows. */
 void PFTalentsSet::CreateKits()
 {
-  talentKits.clear();
+	talentKits.clear();
+	if (!GetWorld() || !GetWorld()->GetAIWorld()) return;
+	const auto& kits = GetWorld()->GetAIWorld()->GetAIParameters().talentKits;
+	if (!kits) return;
+	for (int level = 0; level < LEVELS_COUNT; ++level)
+		for (int slot = 0; slot < SLOTS_COUNT; ++slot)
+		{
+			PFTalent* talent = talents[level][slot];
+			if (!talent) continue;
+			bool found = false;
+			for (const auto& existing : talentKits)
+				if (existing.first && existing.first->talents.find(talent->GetTalentDesc()) != existing.first->talents.end())
+				{
+					talent->SetKit(existing.first);
+					found = true;
+					break;
+				}
+			if (found) continue;
+			for (const auto& kit : kits->kits)
+				if (kit && kit->talents.find(talent->GetTalentDesc()) != kit->talents.end())
+				{
+					talent->SetKit(kit);
+					talentKits[kit] = 0;
+					break;
+				}
+		}
 }
 
+/** Match the first authored pack containing each loaded talent. */
 void PFTalentsSet::CreatePacks()
 {
+	if (!GetWorld() || !GetWorld()->GetAIWorld()) return;
+	const auto& packs = GetWorld()->GetAIWorld()->GetAIParameters().talentPacks;
+	if (!packs) return;
+	for (int level = 0; level < LEVELS_COUNT; ++level)
+		for (int slot = 0; slot < SLOTS_COUNT; ++slot)
+		{
+			PFTalent* talent = talents[level][slot];
+			if (!talent) continue;
+			for (const auto& pack : packs->packs)
+				if (pack && pack->talents.find(talent->GetTalentDesc()) != pack->talents.end())
+				{
+					talent->SetPack(pack);
+					break;
+				}
+		}
 }
 
 void PFTalentsSet::Update(float dt)

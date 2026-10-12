@@ -259,7 +259,17 @@ float PFBaseMaleHero::GetManaCostModifier( bool altCost ) const { return altCost
 void PFBaseMaleHero::RecalculateManaCostModifier() { manaCostForceModifier = 1.0f; lifeCostForceModifier = 1.0f; }
 float PFBaseMaleHero::GetTalentsAcquiredBudgetPercent() const { return pTalents ? pTalents->GetAcquiredBudgetPercent() : 0.0f; }
 void PFBaseMaleHero::DropTalentsCooldowns( DropCooldownParams const& dropCooldownParams ) const { (void)dropCooldownParams; }
-void PFBaseMaleHero::RestartGroupCooldowns( PFTalent const* pTalent ) { (void)pTalent; }
+/** Start only shorter sibling cooldowns; the base call avoids recursive group propagation. */
+void PFBaseMaleHero::RestartGroupCooldowns(PFTalent const* pTalent)
+{
+	if (!pTalent || !pTalents || pTalent->GetOwner() != this) return;
+	const NDb::TalentGroup* group = pTalent->GetGroup();
+	if (!group || !std::isfinite(group->cooldown) || group->cooldown < 0) return;
+	const vector<PFTalent*>& members = pTalents->GetTalentsFromGroup(group);
+	for (PFTalent* talent : members)
+		if (talent && talent != pTalent && talent->GetCurrentCooldown() < group->cooldown)
+			talent->PFAbilityData::RestartCooldown(group->cooldown);
+}
 const IUnitFormulaPars* PFBaseMaleHero::GetObjectFavorite() const { return 0; }
 void PFBaseMaleHero::ExecuteCommandUseConsumable( int slot, const Target& target, bool isPlayerCommand )
 {

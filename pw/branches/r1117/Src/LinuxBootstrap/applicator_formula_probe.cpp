@@ -1318,6 +1318,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "cancel_dispatch_b12_tests.inc"
 #include "hero_talent_queries_b12_tests.inc"
 #include "dispatch_mace_b12_tests.inc"
+#include "talent_relations_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1425,6 +1426,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CancelDispatchB12(check, world);
 			HeroTalentQueriesB12(check, world);
 			DispatchMaceB12(check);
+			TalentRelationsB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
