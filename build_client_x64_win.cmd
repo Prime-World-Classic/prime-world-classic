@@ -1,5 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
+REM Python output (gen_cmake.py, check_exe.py) is UTF-8; the OEM console codepage
+REM mangles it, so switch the console and tell Python explicitly.
+chcp 65001 >nul
+set "PYTHONIOENCODING=utf-8"
 REM =============================================================================
 REM build_client_x64_win.cmd - native Windows build of ShippingSingleExe x64
 REM (PW_Game.exe, cl 14.44, /MT). TWIN of build_client_x64_wine.sh: it calls the
@@ -69,7 +73,11 @@ REM   safe to run while another build is running on the same machine).
 REM =============================================================================
 
 set "CFG=ShippingSingleExe|Win32"
+REM Tag of gen/build dirs and of the generated cmd wrapper. PW_BUILD_TAG keeps
+REM several graphs side by side (x64-win = base, x64-win-pch = with PCH) so a
+REM comparison run does not wipe the base build dir.
 set "TC_TAG=x64-win"
+if not "%PW_BUILD_TAG%"=="" set "TC_TAG=%PW_BUILD_TAG%"
 set "JOBS=%PW_BUILD_JOBS%"
 if "%JOBS%"=="" set "JOBS=8"
 set "PW_MACHINE=X64"
@@ -94,7 +102,9 @@ if /i "%~1"=="-h"           goto usage
 REM cmd treats '=' as an argument separator, so --build-dir=PATH arrives split in
 REM two tokens unless quoted: accept both "--build-dir PATH" and quoted "--build-dir=PATH".
 if /i "%~1"=="--build-dir" (set "BUILD_DIR=%~2" & set "KNOWN=1" & shift)
-if /i "%~1:~0,11%"=="--build-dir=" (set "BUILD_DIR=%~1:~11%" & set "KNOWN=1")
+REM substring of %~1 is not allowed directly (%~1:~0,11% is a syntax error) - copy first.
+set "A1=%~1"
+if /i "!A1:~0,12!"=="--build-dir=" (set "BUILD_DIR=!A1:~12!" & set "KNOWN=1")
 REM NOTE: "&" in batch separates commands - without parentheses the if binds
 REM only to echo, so exit /b would run for ANY argument.
 if "%KNOWN%"=="0" (echo == unknown argument: %~1 -- see --help & exit /b 2)
@@ -157,13 +167,37 @@ for /d %%v in ("C:\Program Files\Microsoft Visual Studio\2022\*", "C:\Program Fi
     if exist "%%v\VC\Auxiliary\Build\vcvars64.bat" set "VSVARS=%%v\VC\Auxiliary\Build\vcvars64.bat"
 )
 if "%VSVARS%"=="" if not "%VCVARS64%"=="" set "VSVARS=%VCVARS64%"
+REM Mode 2: a COPIED x64 toolchain (no VS install, no admin) - PW_MSVC_DIR=...
+REM VC\Tools\MSVC\<ver>, PW_KITS_DIR=...\Windows Kits\10; env is built by hand,
+REM exactly as build_client_x64_wine.sh does for the Wine prefix. This is how the
+REM build runs on tiny10 (the VM has no Visual Studio installed).
+if not "%PW_MSVC_DIR%"=="" (
+    if not exist "%PW_MSVC_DIR%\bin\HostX64\x64\cl.exe" (
+        echo ERROR: PW_MSVC_DIR has no bin\HostX64\x64\cl.exe: %PW_MSVC_DIR%
+        exit /b 1
+    )
+    if "%PW_KITS_DIR%"=="" (echo ERROR: PW_MSVC_DIR set but PW_KITS_DIR is empty & exit /b 1)
+    set "KVER="
+    REM for /d with a QUOTED pattern does not glob - enumerate via dir instead.
+    REM %%KVER%% inside a parenthesized block expands at PARSE time (always empty
+    REM here) - the value set by the for below is visible only via delayed expansion.
+    for /f "delims=" %%d in ('dir /ad /b "%PW_KITS_DIR%\Include\10.*" 2^>nul') do set "KVER=%%d"
+    if "!KVER!"=="" (echo ERROR: no Include\10.* under %PW_KITS_DIR% & exit /b 1)
+    set "PATH=%PW_MSVC_DIR%\bin\HostX64\x64;%PW_KITS_DIR%\bin\!KVER!\x64;%PATH%"
+    set "INCLUDE=%PW_MSVC_DIR%\include;%PW_KITS_DIR%\Include\!KVER!\ucrt;%PW_KITS_DIR%\Include\!KVER!\um;%PW_KITS_DIR%\Include\!KVER!\shared"
+    set "LIB=%PW_MSVC_DIR%\lib\x64;%PW_KITS_DIR%\Lib\!KVER!\ucrt\x64;%PW_KITS_DIR%\Lib\!KVER!\um\x64"
+    echo == toolchain: copied MSVC, kits !KVER! ^(PW_MSVC_DIR/PW_KITS_DIR, no vcvars^)
+    goto toolchaindone
+)
 if "%VSVARS%"=="" (
     echo ERROR: vcvars64.bat not found under C:\Program Files [x86]\Microsoft Visual Studio\2022\*
     echo Install VS2022 with "MSVC v143 - VS 2022 C++ x64/x86 build tools" + Windows SDK,
-    echo or set VCVARS64=path\to\vcvars64.bat.
+    echo set VCVARS64=path\to\vcvars64.bat, or point PW_MSVC_DIR + PW_KITS_DIR at a
+    echo copied toolchain ^(VC\Tools\MSVC\<ver> and Windows Kits\10^).
     exit /b 1
 )
 echo == vcvars: %VSVARS%
+:toolchaindone
 
 REM cmake / ninja: from PATH, or PW_CMAKE / PW_NINJA
 set "CMAKE=%PW_CMAKE%"
@@ -225,12 +259,14 @@ if not "%PW_CACHE_LAUNCHER%"=="" set "LAUNCHER=-DCMAKE_CXX_COMPILER_LAUNCHER=%PW
 set "NSTATS="
 if "%PW_NINJA_STATS%"=="1" set "NSTATS=-d stats"
 
+if "%VSVARS%"=="" goto clbanner
 call "%VSVARS%" >"%TEMP%\pwc_vcvars.log" 2>&1
 if errorlevel 1 (
     echo ERROR: vcvars64
     type "%TEMP%\pwc_vcvars.log"
     exit /b 1
 )
+:clbanner
 cl >"%TEMP%\pwc_cl.log" 2>&1
 findstr /i /c:"Optimizing Compiler Version" "%TEMP%\pwc_cl.log"
 del "%TEMP%\pwc_cl.log" "%TEMP%\pwc_vcvars.log" >nul 2>nul

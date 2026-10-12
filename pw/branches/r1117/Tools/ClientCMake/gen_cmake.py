@@ -38,6 +38,10 @@ import os
 import re
 import sys
 
+# Python embeddable (Windows) держит sys.path в pythonNN._pth и НЕ добавляет каталог
+# скрипта — соседний модуль приходится добавлять явно.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import pch_rules
 
 CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
