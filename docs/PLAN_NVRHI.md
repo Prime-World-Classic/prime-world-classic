@@ -505,6 +505,13 @@ color-correct начинают получать настоящие веса) —
       (15), `Vec3Normalize` (3) + типы `D3DXVECTOR3`(105)/`D3DXMATRIX`(26)/
       `D3DXPLANE`(7). Матричные перемножения участвуют и в игровых
       трансформациях — менять только с проверкой битов (инвариант FP).
+- [ ] **Удалить GPU-окклюзию целиком** (§3.y — решение принято 2026-10-12):
+      `Render/OcclusionQueries.{h,cpp}`, `RenderComponent::GetQueries()` +
+      реализации, `RenderBatch<mode>`/`switch(GetUseMode())` в `batch.cpp`,
+      `IssueQueriesInvisible`, `g_useQueries`/cvar `waterUseQueries`,
+      `OcclusionQueriesBank::OnFrameStart()`. В дефолте механизм выключен
+      (`waterZPrepass=0`), так что это зачистка мёртвого, а не смена поведения;
+      заодно уходит `IDirect3DQuery9` и `#include <d3d9.h>` из `OcclusionQueries.h`.
 - [ ] Загрузка текстур через D3DX (`CreateTextureFromFileInMemoryEx`,
       `CreateCubeTextureFromFileInMemoryEx`, `D3DX_FILTER_*`, `D3DXIFF_DDS`) —
       нужен собственный DDS/TGA/PNG-загрузчик; это работа этапа 3/4, не этап 1.
@@ -577,8 +584,10 @@ color-correct начинают получать настоящие веса) —
       NULL-RT → color-write 0. **Скриншот-дифф с ожиданием дрейфа** —
       зафиксировать новые эталоны.
 - [ ] SH/PostFX: vertex-texture/R2VB → structured buffer.
-- [ ] Occlusion — **не `IQuery`** (в NVRHI его нет, см. §3.x): выбрать
-      обход через нативный query-пул или патч NVRHI.
+- [x] Occlusion-запросы — **решение принято: отказываемся** (2026-10-12,
+      §3.y). Реализация удаляется целиком на этапе 1 (остаток), в NVRHI-бэкенде
+      GPU-окклюзии не будет; при необходимости вернёмся отдельной задачей
+      (CPU-culling / HZB), вне рамок миграции.
       UP-вызовы → временные буферы; `StretchRect` →
       `copyTexture`/fullscreen-blit; `GetRenderTargetData` → `copyTextureRegion`
       в staging.
@@ -634,29 +643,65 @@ color-correct начинают получать настоящие веса) —
 `VK_ERROR_OUT_OF_DATE_KHR` / `DXGI_STATUS_OC_RESIZED`. Это же — единственная
 часть, где придётся держать нативный Vulkan/DXGI код в обход NVRHI.
 
-### 3.y GAP: occlusion-запросов в NVRHI нет
+### 3.y Решение: GPU-окклюзии не будет (принято 2026-10-12)
 
-Проверено по исходникам NVRHI (`6b96fb03`, 2026-10-05): в `nvrhi.h` есть
-только `IEventQuery` и `ITimerQuery` (`beginTimerQuery/endTimerQuery/
-getTimerQueryTime`); **`IQuery`/occlusion-типа нет нигде** (ни в `d3d12.h`,
-ни в `vulkan.h`).
+**Факт по NVRHI** (`6b96fb03`): в `nvrhi.h` есть только `IEventQuery` и
+`ITimerQuery` (`beginTimerQuery/endTimerQuery/getTimerQueryTime`);
+`IQuery`/occlusion-типа нет нигде — ни в `d3d12.h`, ни в `vulkan.h`.
 
-При этом occlusion в клиенте **живой**: `OcclusionQueriesBank`
-(`Render/OcclusionQueries.cpp`, `D3DQUERYTYPE_OCCLUSION`, пул запросов с
-кольцевым буфером `head/currentFrame/lastFinishedQuery`) используется для
-подводного/верхнего cullinga из `PF_GameLogic/PFRenderWater.cpp`
-(`SetUseMode(QUM_ISSUE / QUM_CHECK_AND_ISSUE / QUM_NONE)`), потребление —
-`Render/batch.cpp` (`QUM_CHECK`/`QUM_ISSUE` в обходе батчей).
+**Факт по клиенту (разбор кода, 2026-10-12) — механизм выключен по умолчанию
+и даже включённый работает в одном запросе на камеру за кадр:**
 
-Варианты (решение принимать на этапе 3, не сейчас):
-1. **Обход NVRHI**: `IDevice::getNativeDevice()` → нативный
-   `ID3D12QueryHeap`+`ID3D12GraphicsCommandList` / `vkCmdBeginQuery`+
-   `VkQueryPool`. NVRHI это разрешает, но ломает переносимость бэкенда и
-   требует своей обвязки над command-list'ом NVRHI.
-2. **Запатчить/завендорить NVRHI** (`IQuery` + реализация DX12/Vulkan) —
-   самый чистый, но это поддержка форка.
-3. **Убрать GPU-occlusion** и усилить CPU-culling — риск по производительности
-   на подводных/крупных сценах и по поведению (активные cvar'ы).
+1. `OcclusionQueries::s_useMode` инициализирован `QUM_NONE`. Единственные места,
+   где ставится `QUM_ISSUE` / `QUM_CHECK_AND_ISSUE`, — `PFRenderWater.cpp:93`
+   (внутри `IssueInvisibleQueries()`) и `:220`, и оба под гейтом
+   `if (g_doTerrainZPrepass)`, а `g_doTerrainZPrepass = false`
+   (cvar `waterZPrepass`, `STORAGE_NONE`). Значит **в дефолтной конфигурации
+   `RenderBatchesPtrArray()` всегда идёт по ветке `QUM_NONE`**, а
+   `Batch::IssueQuery*` не вызывается вовсе.
+2. `OcclusionQueriesBank` содержит 2 слота (`StaticArray<OcclusionQuery, 2>`),
+   но `EndNextQuery()` фиксирует `currentFrame = s_currentFrame`, после чего
+   `BeginNextQuery()` до конца кадра возвращает `E_FAIL`. Итого — **один
+   occlusion-запрос на камеру за кадр**, а `GetLatestResults()` отдаёт этот
+   единственный результат всем батчам прогона; `IssueQueriesInvisible()`
+   перепроверяет только первый из помеченных `dontDraw`. Т.е. это не
+   поштучный occlusion-culling геометрии, а одна OBB-проверка на камеру.
+3. Не-нулевой `GetQueries()` дают только `StaticMesh` и `SkeletalMesh`
+   (`Render/StaticMesh.cpp:247`, `Render/SkeletalMesh.h:112`); у
+   `InstancedMesh`, `ParticleFX`, `TerrainElement`, `GrassRegion`, `RoadSceneObject`,
+   `TraceFX`, `LightningFX` — `return 0`.
+4. Реализация — чистая D3D9-зависимость: `#include <d3d9.h>`,
+   `CreateQuery(D3DQUERYTYPE_OCCLUSION)`, `D3DISSUE_BEGIN/END`,
+   `D3DGETDATA_FLUSH`, `DXQueryRef`.
+
+**Что это значит для миграции:** GPU-окклюзия не является ни feature-wymoganiem,
+ни механизмом, влияющим на картинку (пропускается только то, что и так
+перекрыто, и сейчас — с однокадровой задержкой). Цена отказа — возможная
+просадка FPS в отражениях воды **только при `waterZPrepass=1`** (нестандартный
+режим). Поэтому вариант «обход через `getNativeDevice()` + свой query-пул» и
+вариант «патчить/форкать NVRHI» **отклонены**: оба дороже того, что дают.
+
+**Что удаляется (этап 1, остаток — это зачистка, а не переделка):**
+- `Render/OcclusionQueries.{h,cpp}` целиком;
+- `RenderComponent::GetQueries()` (чисто виртуальный) + все реализации
+  (12+, включая `StaticMesh::GetQueries` и поле `SkeletalMesh::queries`);
+- `Render/batch.cpp`: шаблон `RenderBatch<UINT mode>` сворачивается в одну
+  реализацию без `mode`, `switch (OcclusionQueries::GetUseMode())` в
+  `RenderBatchesPtrArray()` → тело `QUM_NONE`; `Batch::IssueQuery`,
+  `Batch::IssueQueryUP`, `IssueQueriesInvisible()`, `s_queryUP`,
+  `Batch::dontDraw` (после проверки других потребителей);
+- `PFRenderWater.cpp`: `IssueInvisibleQueries()`, `g_useQueries` + cvar
+  `waterUseQueries`, вызовы `SetUseMode/SetCurrentCameraID`. **`waterZPrepass`
+  остаётся** — он про Z-препасс террейна в отражениях, к окклюзии отношения
+  не имеет;
+- `Render/smartrenderer.cpp:360` `OcclusionQueriesBank::OnFrameStart()`.
+
+**Чем заменяется (если понадобится):** усиление CPU-culling (он уже есть:
+`FrustumCuller`, AABB/OBB в `Scene`, `PFClientVisibilityMap`) и, отдельно от
+миграции, программный occlusion по иерархии глубины (HZB) — это шейдерная
+техника, она ложится на `IRenderBackend` без query-примитивов. Решения по ней
+в рамках NVRHI не принимается.
+
 
 ## 4. Риски
 
