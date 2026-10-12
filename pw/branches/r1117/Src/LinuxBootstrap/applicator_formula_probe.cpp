@@ -1327,6 +1327,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "priority_target_b12_tests.inc"
 #include "status_lifecycle_b12_tests.inc"
 #include "ability_cache_b12_tests.inc"
+#include "unit_flags_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1444,6 +1445,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			StatusLifecycleB12(check, world);
 			AbilityModCacheDependencyB12(check, world);
 			AbilityCacheB12(check, world);
+			UnitFlagsB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

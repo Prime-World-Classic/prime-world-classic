@@ -712,12 +712,10 @@ static bool LinuxWarFogRadius(const TileMap* tiles, float radius, int& tileRadiu
 	return tileRadius >= 0 && tileRadius <= 4096;
 }
 
-/** ISOLATED is a composite; CheckFlag(mask) tests any bit, not all bits. */
+/** Fog isolation requires the complete authored composite, not an individual forbid. */
 static bool LinuxWarFogFullyIsolated(const PFBaseUnit& unit)
 {
-	for (unsigned bit = 1; bit <= NDb::UNITFLAG_FORBIDUSETALENTS; bit <<= 1)
-		if (!unit.CheckFlag(bit)) return false;
-	return true;
+	return unit.CheckFlag(NDb::UNITFLAG_ISOLATED);
 }
 
 PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _dbUnitDesc )
@@ -2202,12 +2200,14 @@ void PFBaseUnit::RemoveFlag(unsigned int flag)
       --forbidFlags[i];
 }
 
+/** Match Windows all-bits semantics: zero succeeds; unsupported requested bits fail. */
 bool PFBaseUnit::CheckFlag(unsigned int flag) const
 {
-  for (int i = 0; i < forbidFlags.size(); ++i)
-    if ((flag & (1U << i)) && forbidFlags[i] > 0)
-      return true;
-  return false;
+	unsigned int check = 0;
+	for (int i = 0; i < forbidFlags.size(); ++i)
+		if (forbidFlags[i])
+			check |= (1U << i);
+	return (check & flag) == flag;
 }
 
 void PFBaseUnit::CopyFlagsFrom(const PFBaseUnit* pOther, bool addNotReplace)
@@ -2226,7 +2226,11 @@ bool PFBaseUnit::CheckFlagType(NDb::EUnitFlagType type) const
   return 0 <= type && type < forbidFlags.size() && forbidFlags[type] > 0;
 }
 
-bool PFBaseUnit::IsStunned() const { return false; }
+/** STUN is independent of FREEZE and movement restrictions in the original API. */
+bool PFBaseUnit::IsStunned() const
+{
+	return CheckFlagType(NDb::UNITFLAGTYPE_STUN);
+}
 void PFBaseUnit::UpgradeStats(int count, float)
 {
   if (count <= 0)
