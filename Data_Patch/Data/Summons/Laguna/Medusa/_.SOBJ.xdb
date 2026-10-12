@@ -1,0 +1,196 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneObject>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Medusa/_.SOBJ" id="5F535442-062E-4AB7-AD31-F1F387EE0F8C">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Summons/Medusa/_.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Summons/Medusa/_.mayaAnim</mayaFileName>
+							<name></name>
+							<srcFileName crc="0">/Summons/Medusa/_</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="" />
+					<anims />
+					<attached />
+					<caption></caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="" />
+					<mayaFileName>/Summons/Medusa/_.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection></selection>
+					<skeletonFileName>/Summons/Medusa/_.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Summons/Medusa/_.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Summons/Medusa/_.SOBJ" id="B6FD2C57-E057-482D-8EFE-81A8EAC208E1">
+									<BasicMaterial>
+										<caption></caption>
+										<diffuseColor>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</diffuseColor>
+										<DiffuseMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/Summons/Medusa/_.SOBJ" id="B9D97D21-51D1-4927-AFB5-F0FD2BD611A4">
+												<Texture>
+													<generatedFileName></generatedFileName>
+													<mipLevels>0</mipLevels>
+													<mipLevelUsage>AutoGenerate</mipLevelUsage>
+													<mipSharpenPasses></mipSharpenPasses>
+													<pixelFormat>DXT5</pixelFormat>
+													<size>
+														<height>0</height>
+														<width>0</width>
+													</size>
+													<srcFileName crc="0">/Summons/Medusa/_.dds</srcFileName>
+													<startMipLevel>0</startMipLevel>
+													<textureFileName>/Summons/Medusa/_.dds</textureFileName>
+													<textureType>Color</textureType>
+												</Texture>
+											</texture>
+										</DiffuseMap>
+										<emissive>0</emissive>
+										<EmissivePinValue>EmissiveOff</EmissivePinValue>
+										<ignoreRenderState>false</ignoreRenderState>
+										<lightingIntencity>1</lightingIntencity>
+										<LightingPinValue>LightingSH</LightingPinValue>
+										<NormalMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</NormalMap>
+										<outputAdd>
+											<A>0</A>
+											<B>0</B>
+											<G>0</G>
+											<R>0</R>
+										</outputAdd>
+										<outputMul>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</outputMul>
+										<ReflectionMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</ReflectionMap>
+										<reflectivity>1</reflectivity>
+										<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+										<renderFlags>2</renderFlags>
+										<renderState>
+											<alphaTest>Off</alphaTest>
+											<alphaTestRef>127</alphaTestRef>
+											<blendMode>Off</blendMode>
+											<culling>On</culling>
+										</renderState>
+										<SpecularMap>
+											<Add>
+												<A>0</A>
+												<B>0</B>
+												<G>0</G>
+												<R>0</R>
+											</Add>
+											<Multiplier>
+												<A>1</A>
+												<B>1</B>
+												<G>1</G>
+												<R>1</R>
+											</Multiplier>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</SpecularMap>
+										<specularPower>0</specularPower>
+										<SubPriority>0</SubPriority>
+									</BasicMaterial>
+								</Item>
+							</materialsReferences>
+							<mayaFileName>/Summons/Medusa/_.mayaSkin</mayaFileName>
+							<selection></selection>
+							<skinPartName></skinPartName>
+							<srcFileName crc="0">/Summons/Medusa/_</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Summons/Medusa/_</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>5</x>
+					<y>5</y>
+					<z>5</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<collisionGeometry href="" />
+	<ignoreAttachesToNonDefaultLocators>false</ignoreAttachesToNonDefaultLocators>
+	<tracksList href="" />
+</DBSceneObject>

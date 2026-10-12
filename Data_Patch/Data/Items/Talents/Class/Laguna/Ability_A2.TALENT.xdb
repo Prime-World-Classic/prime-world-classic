@@ -1,0 +1,582 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Trickster.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="/Effects/UI/AOESelection/Circle.MTRL" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString>FQYAAAACAAAAEwAAACYAAABXaWR0aABVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDTQAAADZXfzZRfyL5V3DAAAAAAAA+D8=</compiledString>
+		<returnType>float</returnType>
+		<sString>cWidth*1.5</sString>
+	</aoeSize>
+	<aoeType>Disk</aoeType>
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="51E9EFD1-16CF-4391-B18E-5E68CE7A4F08">
+			<ProgramApplicator>
+				<applicators>
+					<Item>
+						<applicator href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="BB454E58-3817-49A4-B3E9-7494B648E68F">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>Лужа</caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="0CE5E117-8F73-4875-B0C3-20045D2F67B5">
+									<Spell>
+										<applicators />
+										<dispatch href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="E68BA6E6-AC9E-4A33-816A-BA0455B572E0">
+											<DispatchByTime>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<cancelOnSenderDeath>true</cancelOnSenderDeath>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="/Summons/Laguna/Dolphin/Effects/_Puddle.EFFT" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<lifeTime>
+													<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAPw==</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0</sString>
+												</lifeTime>
+												<persistentApplicators />
+											</DispatchByTime>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>AbilityTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="D73A48B9-0339-48D4-9D02-32D5304BDF78">
+									<SelectApplicatorTarget>
+										<applicatorIndex>0</applicatorIndex>
+										<applicatorName></applicatorName>
+										<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+										<selectTarget>AbilityTarget</selectTarget>
+									</SelectApplicatorTarget>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>0</continueEvents>
+						<delay>
+							<compiledString>FQkAAAABAAAAFQAAAEEyX0RlbGF5AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cA2_Delay</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="F68D30E9-8B52-4162-B0D9-14CD15D43421">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption></caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="6DC398BC-7A34-4780-9375-9480166E703D">
+									<Spell>
+										<applicators />
+										<dispatch href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="B0DD7557-406E-4ECA-A665-97F5CEA60478">
+											<DispatchByTime>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<cancelOnSenderDeath>true</cancelOnSenderDeath>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="/Summons/Laguna/Dolphin/Effects/_Hit.EFFT" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<lifeTime>
+													<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+													<returnType>float</returnType>
+													<sString>2.0f</sString>
+												</lifeTime>
+												<persistentApplicators />
+											</DispatchByTime>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>AbilityTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="3CAEA93B-139A-4802-99D5-0C88A903E52C">
+									<SelectApplicatorTarget>
+										<applicatorIndex>0</applicatorIndex>
+										<applicatorName></applicatorName>
+										<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+										<selectTarget>AbilityTarget</selectTarget>
+									</SelectApplicatorTarget>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>0</continueEvents>
+						<delay>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>0.1</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="29B87342-5813-41A3-94B8-7B5CBB11969B">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>Дельфин: урон и подброс</caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="9C1614EB-F323-4675-83E4-31DF23D76E4F">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="ED7EB714-E27E-444F-93EF-99F4976AD758">
+												<DamageApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<cancelInvisibility>true</cancelInvisibility>
+													<caption>урон</caption>
+													<damage>
+														<compiledString>FQoAAAABAAAAFgAAAEEyX0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+														<returnType>float</returnType>
+														<sString>cA2_Damage</sString>
+													</damage>
+													<damageMode>4</damageMode>
+													<damageType>Energy</damageType>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<timeLimiter>-1</timeLimiter>
+													<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+												</DamageApplicator>
+											</Item>
+											<Item href="/GameLogic/GeneralApplicators/ThrowUp.APLR" />
+										</applicators>
+										<dispatch href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="9E96013F-0F30-44E8-A2F3-0C12044632AB">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>1</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>ApplicatorTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="1773FE8D-F42F-4C24-802E-848D944789F0">
+									<AreaTargetSelector>
+										<absolutePosition>
+											<x>0</x>
+											<y>0</y>
+										</absolutePosition>
+										<flags>0</flags>
+										<mode>Normal</mode>
+										<range>
+											<compiledString>FQoAAAABAAAAFgAAAEEyX1JhZGl1cwBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+											<returnType>float</returnType>
+											<sString>cA2_Radius</sString>
+										</range>
+										<targetFilter>542965823</targetFilter>
+										<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="94A386F1-FC13-4A60-BEB0-882E2B953A77">
+											<SelectApplicatorTarget>
+												<applicatorIndex>0</applicatorIndex>
+												<applicatorName></applicatorName>
+												<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+												<selectTarget>AbilityTarget</selectTarget>
+											</SelectApplicatorTarget>
+										</targetSelector>
+									</AreaTargetSelector>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>0</continueEvents>
+						<delay>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>1.2</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="81F93C39-C7E5-426F-90EF-1006559FEDFC">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>Дельфин: урон при приземлении</caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="00D61E11-C277-4893-8F9B-CBAC1848810B">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="998C9188-9530-4CEB-B025-650AA4CD40FA">
+												<DamageApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<cancelInvisibility>true</cancelInvisibility>
+													<caption>урон</caption>
+													<damage>
+														<compiledString>FQ4AAAABAAAAGgAAAEEyX0xhbmREYW1hZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+														<returnType>float</returnType>
+														<sString>cA2_LandDamage</sString>
+													</damage>
+													<damageMode>4</damageMode>
+													<damageType>Energy</damageType>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<timeLimiter>-1</timeLimiter>
+													<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+												</DamageApplicator>
+											</Item>
+										</applicators>
+										<dispatch href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="5903E383-E4C0-4DF5-BEA0-23E411C15183">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>1</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>ApplicatorTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="9A3EDC31-69BD-4467-9135-F284223CECDF">
+									<AreaTargetSelector>
+										<absolutePosition>
+											<x>0</x>
+											<y>0</y>
+										</absolutePosition>
+										<flags>0</flags>
+										<mode>Normal</mode>
+										<range>
+											<compiledString>FQoAAAABAAAAFgAAAEEyX1JhZGl1cwBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+											<returnType>float</returnType>
+											<sString>cA2_Radius</sString>
+										</range>
+										<targetFilter>542965823</targetFilter>
+										<targetSelector href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="015E8620-F530-44EE-A6F1-5C0EE7F027BA">
+											<SelectApplicatorTarget>
+												<applicatorIndex>0</applicatorIndex>
+												<applicatorName></applicatorName>
+												<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+												<selectTarget>AbilityTarget</selectTarget>
+											</SelectApplicatorTarget>
+										</targetSelector>
+									</AreaTargetSelector>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+				</applicators>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>218</behaviorFlags>
+				<caption>Программа</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</ProgramApplicator>
+		</Item>
+	</applicators>
+	<askId>2</askId>
+	<autoTargetSelector href="" />
+	<budget>0</budget>
+	<caption>A2. Дельфин</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Class/Laguna/Ability_A2.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="18F1D602-260C-4D46-8AB2-BAA9654E48F1">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="879DB159-DC98-4182-AF46-B921844A7B4B">
+					<UnitConstant>
+						<name>Width</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="87DA32F0-8894-47A0-A52B-F7DC14A72DC8">
+					<UnitConstant>
+						<name>Range</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>14.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="79006CB3-1078-4479-A503-BB0455EE3DBA">
+					<UnitConstant>
+						<name>A2_Radius</name>
+						<var>
+							<compiledString>FQYAAAACAAAAEwAAACYAAABXaWR0aABVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDTQAAADZXfzZRfyL5V3DAAAAAAAA+D8=</compiledString>
+							<returnType>float</returnType>
+							<sString>cWidth*1.5</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="C76310AD-5305-42E4-982E-E6450771D0B5">
+					<UnitConstant>
+						<name>A2_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAASEIAAK9DVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength),50, 350)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="E60AACBE-51C0-45F1-886A-F063E40FB279">
+					<UnitConstant>
+						<name>ThrowUp_StartCondition</name>
+						<var>
+							<compiledString>FQAAAAABAAAAEgAAAFWL7FGLRQyLEItNDIsC/9DcHTQAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAANtF/IvlXcMAAAAAAAAAAA==</compiledString>
+							<returnType>float</returnType>
+							<sString>rLife &gt; 0</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="098BD4A8-79D2-4DA6-AC5C-E8DE0417F349">
+					<UnitConstant>
+						<name>A2_Delay</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="E3A67098-85C3-43EA-A9EB-95E863EBF508">
+					<UnitConstant>
+						<name>A2_LandDamage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAASEIAAK9DVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength),50, 350)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Laguna/Ability_A2.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" id="73034EB4-12B8-484A-A23D-C17C60762084">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>67</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1.0f</sString>
+	</manaCost>
+	<marker>doCast1</marker>
+	<microAI href="" />
+	<minLevel>0</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>300</naftaCost>
+	<name textref="/Items/Talents/Class/Laguna/Ability_A2.TALENT_name.txt" />
+	<node>ability1</node>
+	<passiveApplicators />
+	<persistentId>Laguna_A2</persistentId>
+	<prerequisiteTalents />
+	<rarity>Class</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Laguna/Ability_A2.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>16777216</targetType>
+	<type>Active</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cRange</sString>
+	</useRange>
+	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

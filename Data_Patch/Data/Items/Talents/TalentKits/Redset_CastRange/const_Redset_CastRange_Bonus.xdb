@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level3/G787_RangeStr.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G788_RangeInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G789_RangeDexAtSpd.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G789_RangeLife.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G791_RangePotential.TALENT" Count="1" />
+	<name>Redset_CastRange_Bonus</name>
+	<var>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+		<returnType>float</returnType>
+		<sString>5</sString>
+	</var>
+</UnitConstant>
