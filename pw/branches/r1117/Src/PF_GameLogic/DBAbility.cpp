@@ -13110,7 +13110,7 @@ void TargetCastLimitation::Assign( const TargetCastLimitation& _targetCastLimita
 const NWorld::PFAbilityData* TargetCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CheckTargetLimitation( *this, cp );
 #else
 	return NWorld::CheckTargetLimitation( *this, cp );
 #endif

@@ -9,15 +9,33 @@
 #include "PFApplInstant.h"
 #include "PFCastLimitations.h"
 #include "../LinuxBootstrap/formula_context.h"
+#include "PFWorld.h"
 #include <cmath>
 
 namespace NWorld
 {
 
+namespace
+{
+/** Selection uses a global native candidate cache; admission retains exact world ownership. */
+bool LinuxCastTargetContext(const Target& target, PFWorld* world)
+{
+	if (!world || !target.IsValid(true)) return false;
+	const CVec3 position = target.AcquirePosition();
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return false;
+	if (target.IsPosition()) return true;
+	if (!target.IsObject() || !IsValid(target.GetObject()) || target.GetObject()->GetWorld() != world) return false;
+	return !target.IsUnit() || world->FindLinuxUnitByObjectId(target.GetUnit()->GetObjectId()) == target.GetUnit().GetPtr();
+}
+}
+
 const PFAbilityData* CheckTargetLimitation(NDb::TargetCastLimitation const &dbLimit, CastLimitationsCheckParams const &cp)
 {
-  if (!cp.pAbility || !cp.pTarget || !dbLimit.targetSelector)
+  if (!cp.pAbility || !cp.pTarget || !dbLimit.targetSelector || !IsValid(cp.pAbility->GetOwner()))
     return 0;
+	PFWorld* world = cp.pAbility->GetOwner()->GetWorld();
+	if (!LinuxCastTargetContext(Target(cp.pAbility->GetOwner().GetPtr()), world)
+		|| !LinuxCastTargetContext(*cp.pTarget, world)) return 0;
 
   CObj<PFTargetSelector> pTS = dbLimit.targetSelector->Create(0);
   if (!pTS)
@@ -25,14 +43,15 @@ const PFAbilityData* CheckTargetLimitation(NDb::TargetCastLimitation const &dbLi
 
   struct CalcTargets : public ITargetAction
   {
-    CalcTargets() : count(0) {}
-    int count;
-    virtual void operator()(const Target&) { ++count; }
-  } f;
+		explicit CalcTargets(PFWorld* world) : world(world), found(false) {}
+		PFWorld* world;
+		bool found;
+		virtual void operator()(const Target& target) { found = found || LinuxCastTargetContext(target, world); }
+  } f(world);
 
   PFTargetSelector::RequestParams rp(cp.pAbility->GetOwner(), cp.pAbility, *cp.pTarget);
   pTS->EnumerateTargets(f, rp);
-  return f.count > 0 ? cp.pAbility : 0;
+  return f.found ? cp.pAbility : 0;
 }
 
 const PFAbilityData* CheckConditionLimitation(NDb::ConditionCastLimitation const &dbLimit, CastLimitationsCheckParams const &cp)

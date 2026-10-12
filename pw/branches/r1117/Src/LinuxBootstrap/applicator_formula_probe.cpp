@@ -1337,6 +1337,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "unit_flags_b12_tests.inc"
 #include "custom_energy_b12_tests.inc"
 #include "cast_condition_b12_tests.inc"
+#include "cast_target_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1458,6 +1459,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			UnitFlagsB12(check);
 			CustomEnergyB12(check, world);
 			CastConditionB12(check, world);
+			CastTargetB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
