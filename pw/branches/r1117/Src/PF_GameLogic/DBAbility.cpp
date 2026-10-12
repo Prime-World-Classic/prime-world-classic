@@ -7817,7 +7817,7 @@ void DispellCastLimitation::Assign( const DispellCastLimitation& _dispellCastLim
 const NWorld::PFAbilityData* DispellCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CheckDispellLimitation( *this, cp );
 #else
 	return NWorld::CheckDispellLimitation( *this, cp );
 #endif
