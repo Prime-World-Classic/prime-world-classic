@@ -62,7 +62,7 @@ static void AbilityDelayedAdmissionB10(Checks& check, PFWorld* world)
 		if (loss == 5)
 		{
 			NDb::ConditionCastLimitation* condition = new NDb::ConditionCastLimitation;
-			condition->condition.sString = "true";
+			condition->condition.sString = "false";
 			raw->castLimitations.push_back(condition);
 		}
 		pending->Update(.75f);

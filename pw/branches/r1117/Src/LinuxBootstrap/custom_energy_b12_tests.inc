@@ -100,7 +100,7 @@ static void CustomEnergyB12(Checks& check, PFWorld* world)
 		f.Values(2, 100, 4);
 		raw->castLimitations.push_back(conditionOwner);
 		check(!f.hero->UseTalent(talent, Target(f.hero.GetPtr())) && f.hero->GetCustomEnergyValue() == 2,
-			"unsupported condition admission remains fail-closed without spending the custom resource");
+			"denied condition admission remains fail-closed without spending the custom resource");
 	}
 	{
 		B8BehaviourForeignWorld loaded(check);

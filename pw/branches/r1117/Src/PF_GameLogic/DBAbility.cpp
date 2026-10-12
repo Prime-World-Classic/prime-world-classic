@@ -29,6 +29,7 @@
 #include "PFHighlander.h"
 #include "PFMicroAI.h"
 #include "PFTargetSelector.h"
+#include "PFCastLimitations.h"
 #endif
 namespace
 {
@@ -6215,7 +6216,7 @@ void ConditionCastLimitation::Assign( const ConditionCastLimitation& _conditionC
 const NWorld::PFAbilityData* ConditionCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CheckConditionLimitation( *this, cp );
 #else
 	return NWorld::CheckConditionLimitation( *this, cp );
 #endif

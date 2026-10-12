@@ -8,6 +8,8 @@
 #include "PFAbilityData.h"
 #include "PFApplInstant.h"
 #include "PFCastLimitations.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
 
 namespace NWorld
 {
@@ -35,10 +37,27 @@ const PFAbilityData* CheckTargetLimitation(NDb::TargetCastLimitation const &dbLi
 
 const PFAbilityData* CheckConditionLimitation(NDb::ConditionCastLimitation const &dbLimit, CastLimitationsCheckParams const &cp)
 {
-  if (!cp.pAbility || !cp.pTarget)
-    return 0;
-  PFLogicObject *pObject = cp.pTarget->IsPosition() ? cp.pAbility->GetOwner().GetPtr() : cp.pTarget->GetObject();
-  return dbLimit.condition(cp.pAbility->GetOwner(), pObject, cp.pAbility, true) ? cp.pAbility : 0;
+	if (!cp.pAbility || !cp.pTarget || !IsValid(cp.pAbility->GetOwner())) return 0;
+	const PFBaseUnit* owner = cp.pAbility->GetOwner();
+	if (!owner->GetWorld()) return 0;
+	const PFLogicObject* receiver = owner;
+	if (cp.pTarget->IsPosition())
+	{
+		const CVec3& position = cp.pTarget->GetPosition();
+		if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return 0;
+	}
+	else
+	{
+		if (!cp.pTarget->IsObject() || !IsValid(cp.pTarget->GetObject())) return 0;
+		receiver = cp.pTarget->GetObject();
+		if (receiver->GetWorld() != owner->GetWorld()) return 0;
+	}
+	// Windows substitutes the owner for ground targets and defaults only an absent condition to true.
+	const auto& expression = dbLimit.condition;
+	const auto result = expression.sString.empty() && expression.compiledString.empty()
+		? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 1.f}
+		: LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), owner, receiver, cp.pAbility);
+	return result.Succeeded() && result.value != 0 ? cp.pAbility : 0;
 }
 
 const PFAbilityData* CheckDispellLimitation(NDb::DispellCastLimitation const&, CastLimitationsCheckParams const &cp)
