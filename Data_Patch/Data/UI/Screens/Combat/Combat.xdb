@@ -1254,6 +1254,10 @@
 						<propertyName>Options_CommunicationTitle</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_228_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>Options_Back</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_229_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />
