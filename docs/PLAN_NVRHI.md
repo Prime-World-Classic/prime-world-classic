@@ -379,12 +379,30 @@ color-correct начинают получать настоящие веса) —
       `d3d11::DeviceDesc` принимает только `context`; ни VkInstance, ни VkDevice,
       ни surface NVRHI не создаёт. Итоговые размеры статики и список «что
       осталось на tiny10» — `tools/nvrhi_probe/README.md`.
-- [ ] **Runtime-смоук Vulkan/D3D11 — НЕ сделан.** В этом Wine-префиксе нет
-      адаптера: `D3D11CreateDevice` → `DXGI_ERROR_NOT_FOUND`, `vkCreateInstance`
-      → `VK_ERROR_EXTENSION_NOT_PRESENT` (winevulkan есть, surface-расширения
-      нет; хостовый llvmpipe-ICD через `VK_ICD_FILENAMES` не помог). Делать на
-      tiny10: instance+surface, `VkSwapchainKHR`, `createHandleForNativeTexture`,
-      clear+present в окне клиента.
+- [x] **Runtime-смоук — сделан частично (2026-10-12).** Три среды: Wine (обе
+      ветки падают: нет адаптера / нет surface-расширений), **tiny10** (D3D11
+      через **WARP**, FL 11_0, смоук проходит; **Vulkan в госте нет вообще** —
+      `Microsoft Basic Display Adapter`, `vulkan-1.dll` отсутствует) и
+      **нативный Linux-хост** (Vulkan: instance → device →
+      `nvrhi::vulkan::createDevice` → `IEventQuery` → смоук
+      «createTexture → clear → copy → readback» с эталонным пикселем
+      `(0,188,255,255)`; устройство — **llvmpipe**, модули nvidia на хосте не
+      загружены). Итог: **Vulkan-путь NVRHI работоспособен**, но реального
+      Vulkan-железа ни в одной доступной среде нет (см. риски, п.5).
+- [x] **Ещё два структурных факта об API (меняют план):**
+      (а) **render pass'ов в NVRHI `6b96fb03` нет** — вместо
+      `beginRenderPass`/`endRenderPass` один `setGraphicsState(GraphicsState)` +
+      `draw()`, очистка явная (`clearTextureFloat/UInt` +
+      `clearDepthStencilTexture`). Для клиента это скорее плюс: его модель
+      «RT + SetRenderState + Draw» ложится один-в-один, перестраивать под render
+      pass не надо; но и tile-based-оптимизации из кода не получить.
+      (б) приложение **обязано** включить Vulkan 1.2+ (`timelineSemaphore`) и
+      `VK_KHR_synchronization2` (или 1.3) на `VkDevice`, а каждой текстуре —
+      `initialState` + `keepInitialState`; без этого NVRHI падает в assert /
+      SIGSEGV. В доках NVRHI об этом нет ни строки — детали в
+      `tools/nvrhi_probe/README.md`.
+- [ ] `VkSurfaceKHR`/`VkSwapchainKHR` + present в настоящем окне — **не сделано**
+      (нет среды, где есть и Vulkan-драйвер, и окно).
 - [ ] Зафиксировать: `d3dcompiler_47` vs DXC для SPIR-V; размер прироста;
       какие DXGI/Vulkan-зависимости появляются.
 - [x] Счётчики уникальных VS/PS/пар переведены на `USE_RENDER_SHADER_STATS`
@@ -558,12 +576,26 @@ getTimerQueryTime`); **`IQuery`/occlusion-типа нет нигде** (ни в 
    `StretchRect`/`GetRenderTargetData`/PostFX-после-чтения-экрана — ручные.
 4. **Vulkan: `PrimitiveType::TriangleFan` + `LineStrip`** — есть, но
    `PatchList`/тесселяция не нужны (уже удалили).
-5. **Wine + Vulkan.** DXVK исключён, значит под Wine нужен нативный
-   Vulkan-путь Wine (`winevulkan` + Vulkan-драйвер хоста). Проверить на этапе 0:
-   есть ли в `~/.wine-vs`-тулчейне/окружении Vulkan (`vulkan-1.dll`,
-   `winevulkan.dll`), и что покажет смоук. Если под Wine Vulkan недоступен —
-   тестирование только на tiny10 (нативный Windows + Vulkan-драйвер), а Wine
-   остаётся тулчейном сборки, не средой запуска.
+5. **Где запускать Vulkan (уточнено этапом 0, 2026-10-12).** Прежнее
+   предположение «tiny10 = нативный Windows + Vulkan-драйвер» **ошибочно**:
+   tiny10 — это QEMU со стандартным VGA, в госте `Microsoft Basic Display
+   Adapter` (драйвер 10.0.17763.1), `vulkan-1.dll` в системе **нет**
+   (`[FAIL] vulkan: LoadLibrary(vulkan-1.dll)`). D3D11 там при этом работает
+   через **WARP** (`D3D_DRIVER_TYPE_WARP`, feature level 11_0) и смоук
+   NVRHI-D3D11 проходит.winevulkan на домашней машине есть, но surface-расширений
+   не даёт (`VK_ERROR_EXTENSION_NOT_PRESENT`), т.е. под Wine Vulkan-окно не
+   поднять.
+   Рабочая среда Vulkan-смоука на сегодня — **нативный Linux домашней машины**
+   (`tools/nvrhi_probe/build-linux`, g++): NVRHI-Vulkan поднимается, смоук
+   «createTexture → clear → copy → readback» даёт эталонный пиксель
+   `(0,188,255,255)`. Минус: доступен только **llvmpipe** (модули nvidia на
+   хосте не загружены, RTX 3060 в перечне устройств не появляется), поэтому
+   `ComputeQueue/Meshlets/RayTracing/VRS` = 0 и производительность не измеряется.
+   Варианты на выбор (решение нужно до этапа 3): (а) загрузить nvidia-модули на
+   хосте и гонять Vulkan-смоук на RTX 3060 из-под Linux; (б) поставить в tiny10
+   Mesa lavapipe (`vulkan-1.dll` + lvp ICD) — software-Vulkan в госте, медленно,
+   но картинка/детерминизм проверяемы на том же стенде, что и E2E; (в) физическая
+   Windows-машина с NVIDIA. Wine остаётся **только тулчейном сборки**.
 6. **Производительность.** Текущий рендер заточен под D3D9-дешевизну
    `SetRenderState`. После этапа 2 (кэш пайплайнов) узкое место — число
    `setGraphicsState`. Замерить на этапе 3 (`numDIP`, `numVS/numPS`).

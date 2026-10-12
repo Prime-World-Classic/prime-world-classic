@@ -6,17 +6,36 @@ Vulkan, сколько весит.
 
 ```sh
 ./fetch_vendor.sh          # клонирует nvrhi + Vulkan-Headers + DirectX-Headers (в vendor/, в git не лежит)
-./build_probe_wine.sh      # configure + build (cl 14.44 под Wine, тот же префикс ~/.wine-vs)
+./build_probe_wine.sh      # Windows-сборка cl 14.44 под Wine (тот же префикс ~/.wine-vs)
 ./build_probe_wine.sh --run
+./build_probe_linux.sh     # нативная Linux-сборка (g++) — ради Vulkan-смоука на хосте
+./build_probe_linux.sh --run
+```
+Артефакты: `build/nvrhi_probe.exe` (Windows), `build-linux/nvrhi_probe` (Linux).
+Windows-артефакт запускается на tiny10 так:
+
+```sh
+scp build/nvrhi_probe.exe pw-tiny10:C:/tools/nvrhi_probe.exe
+ssh pw-tiny10 'cd C:\tools & nvrhi_probe.exe'
 ```
 
-## Что доказано на этой машине (2026-10-12)
+## Итоги прогонов (2026-10-12)
 
-| Проверка | Итог |
-|---|---|
-| NVRHI собирается cl 14.44 под Wine, C++17, статика, **`/MT`** | **ДА.** Конфигурирование и сборка без единой ошибки; в командной строке cl видно `-MT` (после `CMAKE_POLICY_DEFAULT_CMP0091=NEW` + `MSVC_RUNTIME_LIBRARY=MultiThreaded`) |
-| линкуется с приложением | **ДА**, но см. «Порядок линковки» ниже |
-| Vulkan/D3D11 поднимаются | **НЕ ПРОВЕРЕНО здесь.** В этом Wine-префиксе нет адаптера: `D3D11CreateDevice` → `DXGI_ERROR_NOT_FOUND` (0x887A0004), `vkCreateInstance` → `VK_ERROR_EXTENSION_NOT_PRESENT` (winevulkan есть, surface-расширения нет). Runtime-смоук — на tiny10 |
+| Среда | D3D11 | Vulkan | Смоук «RT → clear → copy → readback» |
+|---|---|---|---|
+| Wine `~/.wine-vs` (домашняя) | FAIL `DXGI_ERROR_NOT_FOUND` (0x887A0004) | FAIL `VK_ERROR_EXTENSION_NOT_PRESENT` (winevulkan есть, surface-расширений нет) | — (среды запуска нет) |
+| **tiny10** (`ssh pw-tiny10`) | **PASS** — hardware не дал, взят **WARP**, feature level **11_0** | **FAIL: `vulkan-1.dll` в госте нет** (видео = `Microsoft Basic Display Adapter`, драйвер 10.0.17763.1) | **PASS** на D3D11: пиксель `(0,188,255,255)` |
+| **Linux-хост** (g++, нативно) | — | **PASS**: instance → device → `nvrhi::vulkan::createDevice` → `IEventQuery` → смоук | **PASS**: пиксель `(0,188,255,255)`, pitch 64 |
+
+Вывод: **Vulkan сегодня проверяется только на Linux-хосте**, и то на
+**llvmpipe** (модули nvidia на хосте не загружены → RTX 3060 в перечне устройств
+не появляется, `ComputeQueue/Meshlets/RayTracing/VRS = 0`, производительность не
+измеряется). tiny10 годится как D3D11/WARP-эталон и стенд E2E клиента, но **не**
+как Vulkan-стенд.
+
+Сборка/линковка: NVRHI `6b96fb03` собирается cl 14.44 под Wine, C++17, статика,
+**`/MT`** — без ошибок (`-MT` виден в командной строке cl; нужен
+`-DCMAKE_POLICY_DEFAULT_CMP0091=NEW`, иначе `MSVC_RUNTIME_LIBRARY` игнорируется).
 
 Размеры статики (`/O2`, без PDB): `nvrhi.lib` 4.8 МБ, `nvrhi_d3d11.lib` 5.8 МБ,
 `nvrhi_d3d12.lib` 10.5 МБ, `nvrhi_vk.lib` 13.0 МБ; `nvrhi_probe.exe` 0.72 МБ.
@@ -55,11 +74,45 @@ Vulkan-бэкенд дорогой по коду из-за шаблонного 
 8. **Грязь в заголовках:** `vulkan_win32.h` требует `windows.h` ДО себя;
    `VK_USE_PLATFORM_WIN32_KHR` NVRHI включает как `PUBLIC` define на своей цели.
 
-## Что осталось на tiny10
+## Обязательные условия Vulkan-бэкенда (в доках NVRHI их нет; получены ценой abort'ов)
 
-- `vkCreateInstance` с `VK_KHR_surface` + `VK_KHR_win32_surface` на реальном
-  драйвере;
-- `VkSwapchainKHR` + `createHandleForNativeTexture` + clear + present в окне
-  клиента;
-- D3D11/D3D12-ветки (для сравнения картинки с D3D9);
-- `IEventQuery` как замена `D3DQUERYTYPE_EVENT` в `Renderer::Synchronize()`.
+Приложение **обязано** включить при создании `VkDevice`, иначе NVRHI падает:
+
+| Требование | Симптом без него |
+|---|---|
+| `VK_KHR_synchronization2` (или Vulkan 1.3) — NVRHI зовёт `vkCmdPipelineBarrier2` | assert Vulkan-Hpp: `Function <vkCmdPipelineBarrier2> requires <VK_KHR_synchronization2> or <VK_VERSION_1_3>` |
+| timeline-семафоры (Vulkan 1.2 / `VK_KHR_timeline_semaphore`) — `vkGetSemaphoreCounterValue` | assert: `Function <vkGetSemaphoreCounterValue> requires <VK_KHR_timeline_semaphore> or <VK_VERSION_1_2>` |
+| у каждой текстуры `initialState` + `keepInitialState` (либо `beginTrackingTextureState`) | SIGSEGV в `CommandListResourceStateTracker::requireTextureState` |
+
+В probe включены: API 1.3; `VkPhysicalDeviceVulkan12Features`
+(`timelineSemaphore`, `bufferDeviceAddress`,
+`descriptorBindingUniformBufferUpdateAfterBind`); `VkPhysicalDeviceVulkan13Features`
+(`synchronization2`, `dynamicRendering`, `subgroupSizeControl`,
+`computeFullSubgroups`); расширения устройства `VK_KHR_swapchain` +
+`VK_KHR_synchronization2`.
+
+Прочие ловушки:
+
+- **`vkDestroyInstance` — instance-level**: `vkGetInstanceProcAddr(NULL, "vkDestroyInstance")`
+  возвращает NULL и на Linux-загрузчике, и на winevulkan (то же для
+  `vkEnumeratePhysicalDevices`). До создания инстанса грузится только
+  `vkCreateInstance`.
+- **порядок статических либ на g++**: бэкенды зависят от core → `nvrhi_vk nvrhi`
+  (на MSVC порядок не важен; на g++ иначе undefined reference к
+  `CommandListResourceStateTracker::*` и `utils::InvalidEnum`).
+- **`vulkan_win32.h` включать ПОСЛЕ `vulkan_core.h`** (иначе C4430/C2146 на
+  `VkWin32SurfaceCreateFlagsKHR`), а `windows.h` — до `vulkan.h`.
+- **никаких render pass'ов**: `beginRenderPass`/`endRenderPass`/`RenderPassDesc`
+  в этой версии **нет** — всё через `setGraphicsState(GraphicsState)` + `draw()`,
+  очистка явная (`clearTextureFloat` / `clearTextureUInt` /
+  `clearDepthStencilTexture`).
+
+## Что осталось
+
+- `VkSurfaceKHR` + `VkSwapchainKHR` + `createHandleForNativeTexture` + present в
+  настоящем окне (для Windows — на реальной машине с Vulkan-драйвером: tiny10 не
+  годится, Wine — не даёт surface);
+- D3D12-ветка (для сравнения картинки с D3D9);
+- замеры на реальном GPU (на llvmpipe бессмысленны);
+- `IEventQuery` как замена `D3DQUERYTYPE_EVENT` в `Renderer::Synchronize()` —
+  работает, проверено.

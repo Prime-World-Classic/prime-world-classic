@@ -29,8 +29,15 @@ set(NVRHI_BUILD_SHARED     OFF CACHE BOOL "")
 set(NVRHI_INSTALL          OFF CACHE BOOL "")
 set(NVRHI_WITH_VALIDATION  ON  CACHE BOOL "")
 set(NVRHI_WITH_VULKAN      ON  CACHE BOOL "")
-set(NVRHI_WITH_DX11        ON  CACHE BOOL "")
-set(NVRHI_WITH_DX12        ON  CACHE BOOL "")
+# DX11/DX12 — только Windows (в NVRHI это cmake_dependent_option c WIN32; на
+# Linux их нельзя включать и в кэш).
+if(WIN32)
+  set(NVRHI_WITH_DX11      ON  CACHE BOOL "")
+  set(NVRHI_WITH_DX12      ON  CACHE BOOL "")
+else()
+  set(NVRHI_WITH_DX11      OFF CACHE BOOL "")
+  set(NVRHI_WITH_DX12      OFF CACHE BOOL "")
+endif()
 set(NVRHI_FETCH_VULKAN_HEADERS   OFF CACHE BOOL "")
 set(NVRHI_FETCH_DIRECTX_HEADERS  OFF CACHE BOOL "")
 add_subdirectory("${NVRHI_ROOT}" "${CMAKE_BINARY_DIR}/nvrhi" EXCLUDE_FROM_ALL)
@@ -38,12 +45,22 @@ add_subdirectory("${NVRHI_ROOT}" "${CMAKE_BINARY_DIR}/nvrhi" EXCLUDE_FROM_ALL)
 # ВАЖНО (найдено этим прогоном): при СТАТИЧЕСКОЙ сборке NVRHI даёт НЕ один
 # nvrhi.lib, а четыре: nvrhi (common+validation), nvrhi_d3d11, nvrhi_d3d12,
 # nvrhi_vk. Ссылаться надо на все нужные, иначе createDevice не слинкуется.
-set(NVRHI_LIBS nvrhi nvrhi_d3d11 nvrhi_d3d12 nvrhi_vk)
+# ПОРЯДОК ВАЖЕН: бэкенды зависят от core (nvrhi), поэтому core идёт ПОСЛЕДНИМ
+# (статическая линковка слева направо). На MSVC порядок не важен, на g++ — важен.
+set(NVRHI_LIBS nvrhi_vk nvrhi)
+if(WIN32)
+  list(INSERT NVRHI_LIBS 0 nvrhi_d3d11 nvrhi_d3d12)
+endif()
 
 add_executable(nvrhi_probe probe.cpp)
 target_link_libraries(nvrhi_probe PRIVATE ${NVRHI_LIBS} Vulkan::Headers)
 # /MT вместо /MD: клиент статически слинкован, CRT-DLL в поставке клиента нет.
-target_compile_options(nvrhi_probe PRIVATE /W3 /permissive-)
+if(MSVC)
+  target_compile_options(nvrhi_probe PRIVATE /W3 /permissive-)
+else()
+  target_compile_options(nvrhi_probe PRIVATE -Wall)
+  target_link_libraries(nvrhi_probe PRIVATE dl)
+endif()
 set_property(TARGET nvrhi_probe PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 foreach(_l ${NVRHI_LIBS})
   set_property(TARGET ${_l} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
