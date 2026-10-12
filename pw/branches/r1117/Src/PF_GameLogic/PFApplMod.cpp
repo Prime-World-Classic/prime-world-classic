@@ -111,6 +111,36 @@ bool LinuxStatModCanApply(const ValueWithModifiers& stat, int id, float mul, flo
 	}
 	return LinuxStatModFinite(candidate);
 }
+
+/** Ability modifiers require both authored coefficients, without legacy fallback mutation. */
+bool LinuxAbilityModParameters(const NDb::AbilityModApplicator& db, const PFBaseApplicator& app,
+	float& mul, float& add)
+{
+	const auto nextMul = LinuxBootstrap::EvaluateApplicatorNumericFormula(db.multValue.sString.c_str(), app);
+	if (!nextMul.Succeeded())
+		return false;
+	const auto nextAdd = LinuxBootstrap::EvaluateApplicatorNumericFormula(db.addValue.sString.c_str(), app);
+	if (!nextAdd.Succeeded())
+		return false;
+	mul = nextMul.value;
+	add = nextAdd.value;
+	return true;
+}
+
+/** Stage the two talent variables together, including the stock initial multiplier base. */
+bool LinuxAbilityModCanApply(const ValueWithModifiers* addVar, const ValueWithModifiers* mulVar,
+	int addId, int mulId, float mul, float add, bool initializeMul = false)
+{
+	if (addVar && !LinuxStatModCanApply(*addVar, addId, 1.f, add, false, NDb::STATCONSTRAINT_NONE))
+		return false;
+	if (!mulVar)
+		return true;
+	if (!initializeMul)
+		return LinuxStatModCanApply(*mulVar, mulId, mul, 0.f, false, NDb::STATCONSTRAINT_NONE);
+	StatValueWithModifiers candidate = LinuxStatModCopy(*mulVar);
+	candidate.SetBaseValue(1.f);
+	return LinuxStatModCanApply(candidate, mulId, mul, 0.f, false, NDb::STATCONSTRAINT_NONE);
+}
 }
 
 bool PFApplStatMod::Start()
@@ -318,55 +348,77 @@ void PFApplPermanentStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
 
 bool PFApplAbilityMod::Start()
 {
-  pTalCdAddVar = 0;
-  pTalCdMulVar = 0;
-  pTalMcAddVar = 0;
-  pTalMcMulVar = 0;
-  talCdAddModifierId = INVALID_MODIFIER_ID;
-  talCdMulModifierId = INVALID_MODIFIER_ID;
-  talMcAddModifierId = INVALID_MODIFIER_ID;
-  talMcMulModifierId = INVALID_MODIFIER_ID;
-  cachedAdd = RetrieveParam(GetDB().addValue, 0.0f);
-  cachedMul = RetrieveParam(GetDB().multValue, 1.0f);
-
-  if (!IsValid(pReceiver))
-    return true;
-
-  pHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
-  if (!IsValid(pHero))
-    return PFApplBuff::Start();
-
-  if ((GetDB().targetAbilities & NDb::ABILITYIDFLAGS_TALENTS) && GetDB().talents.empty() && IsValid(pOwner) && pOwner->GetFaction() == pHero->GetFaction())
-  {
-    if (GetDB().mode == NDb::ABILITYMODMODE_COOLDOWN)
-    {
-      pTalCdAddVar = pHero->GetVariableVWM(UnitVariables::szTalentsCdAdd);
-      pTalCdMulVar = pHero->GetVariableVWM(UnitVariables::szTalentsCdMul);
-      if (pTalCdMulVar)
-        pTalCdMulVar->SetBaseValue(1.0f);
-    }
-    else if (GetDB().mode == NDb::ABILITYMODMODE_MANACOST)
-    {
-      pTalMcAddVar = pHero->GetVariableVWM(UnitVariables::szTalentsMcAdd);
-      pTalMcMulVar = pHero->GetVariableVWM(UnitVariables::szTalentsMcMul);
-      if (pTalMcMulVar)
-        pTalMcMulVar->SetBaseValue(1.0f);
-    }
-  }
-
-  return PFApplBuff::Start();
+	pTalCdAddVar = pTalCdMulVar = pTalMcAddVar = pTalMcMulVar = 0;
+	talCdAddModifierId = talCdMulModifierId = talMcAddModifierId = talMcMulModifierId = INVALID_MODIFIER_ID;
+	pHero = IsValid(pReceiver) ? dynamic_cast<PFBaseHero*>(pReceiver.GetPtr()) : 0;
+	const char* addName = 0;
+	const char* mulName = 0;
+	if (IsValid(pHero) && IsValid(pOwner) && pOwner->GetFaction() == pHero->GetFaction()
+		&& (GetDB().targetAbilities & NDb::ABILITYIDFLAGS_TALENTS) && GetDB().talents.empty())
+	{
+		if (GetDB().mode == NDb::ABILITYMODMODE_COOLDOWN)
+		{
+			addName = UnitVariables::szTalentsCdAdd;
+			mulName = UnitVariables::szTalentsCdMul;
+		}
+		else if (GetDB().mode == NDb::ABILITYMODMODE_MANACOST)
+		{
+			addName = UnitVariables::szTalentsMcAdd;
+			mulName = UnitVariables::szTalentsMcMul;
+		}
+	}
+	float mul, add;
+	if (!IsValid(pHero) || !LinuxAbilityModParameters(GetDB(), *this, mul, add)
+		|| (addName && !LinuxAbilityModCanApply(pHero->SearchVariableVWM(addName), pHero->SearchVariableVWM(mulName),
+			INVALID_MODIFIER_ID, INVALID_MODIFIER_ID, mul, add, true)))
+	{
+		// Actual activation calls Stop on completion: balance its count, but never enable a rejected buff.
+		PFBaseApplicator::Start();
+		SetEnabled(false);
+		return true;
+	}
+	cachedMul = mul;
+	cachedAdd = add;
+	if (addName)
+	{
+		ValueWithModifiers* addVar = pHero->GetVariableVWM(addName);
+		ValueWithModifiers* mulVar = pHero->GetVariableVWM(mulName);
+		mulVar->SetBaseValue(1.f);
+		if (GetDB().mode == NDb::ABILITYMODMODE_COOLDOWN)
+		{
+			pTalCdAddVar = addVar;
+			pTalCdMulVar = mulVar;
+		}
+		else
+		{
+			pTalMcAddVar = addVar;
+			pTalMcMulVar = mulVar;
+		}
+	}
+	return PFApplBuff::Start();
 }
 void PFApplAbilityMod::CheckCachedValues()
 {
-  const float add = RetrieveParam(GetDB().addValue, 0.0f);
-  const float mul = RetrieveParam(GetDB().multValue, 1.0f);
-  if (cachedAdd != add || cachedMul != mul)
-  {
-    cachedAdd = add;
-    cachedMul = mul;
-    if (IsValid(pHero))
-      pHero->RecacheAbilitiesModifiers();
-  }
+	float mul, add;
+	if (!IsValid(pHero) || !LinuxAbilityModParameters(GetDB(), *this, mul, add)
+		|| !LinuxAbilityModCanApply(pTalCdAddVar, pTalCdMulVar, talCdAddModifierId, talCdMulModifierId, mul, add)
+		|| !LinuxAbilityModCanApply(pTalMcAddVar, pTalMcMulVar, talMcAddModifierId, talMcMulModifierId, mul, add))
+		return;
+	if (cachedAdd != add || cachedMul != mul)
+	{
+		cachedAdd = add;
+		cachedMul = mul;
+		pHero->RecacheAbilitiesModifiers();
+	}
+	// Failed evaluation or staging above must not touch either live variable, even with old values.
+	if (pTalCdAddVar && talCdAddModifierId != INVALID_MODIFIER_ID)
+		pTalCdAddVar->UpdateModifierAdd(talCdAddModifierId, cachedAdd);
+	if (pTalCdMulVar && talCdMulModifierId != INVALID_MODIFIER_ID)
+		pTalCdMulVar->UpdateModifierMul(talCdMulModifierId, cachedMul);
+	if (pTalMcAddVar && talMcAddModifierId != INVALID_MODIFIER_ID)
+		pTalMcAddVar->UpdateModifierAdd(talMcAddModifierId, cachedAdd);
+	if (pTalMcMulVar && talMcMulModifierId != INVALID_MODIFIER_ID)
+		pTalMcMulVar->UpdateModifierMul(talMcMulModifierId, cachedMul);
 }
 bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility)
 {
@@ -375,7 +427,7 @@ bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityType
     return false;
 
   if (!IsValid(pHero))
-    return true;
+		return false;
 
   if (abilityType == NDb::ABILITYTYPEID_TALENT && (dbDesc.targetAbilities & NDb::ABILITYIDFLAGS_TALENTS)
       && !PFAbilityData::IsAbilitySuitable(dbAbility, dbDesc.talents, dbDesc.useListAs))
@@ -389,21 +441,31 @@ bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityType
 }
 void PFApplAbilityMod::AddModifier(float& add, float& mul, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility)
 {
-  if (IsApplicable(mode, abilityType, dbAbility) && mode != NDb::ABILITYMODMODE_STATE)
-  {
-    CheckCachedValues();
-    add += cachedAdd;
-    mul *= cachedMul;
-  }
+	if (IsApplicable(mode, abilityType, dbAbility) && mode != NDb::ABILITYMODMODE_STATE)
+	{
+		// Stock reads use the step cache; publish neither aggregate if float arithmetic overflows.
+		const float nextAdd = add + cachedAdd;
+		const float nextMul = mul * cachedMul;
+		if (std::isfinite(nextAdd) && std::isfinite(nextMul))
+		{
+			add = nextAdd;
+			mul = nextMul;
+		}
+	}
 }
 void PFApplAbilityMod::Enable()
 {
-  PFApplBuff::Enable();
-  if (!IsValid(pHero))
-    return;
-
-  pHero->AddAbilityModifier(this);
-  CheckCachedValues();
+	if (!IsValid(pHero) || !IsEnabled() || !IsAlive() || abilityModRing.isLinked())
+		return;
+	float mul, add;
+	if (!LinuxAbilityModParameters(GetDB(), *this, mul, add)
+		|| !LinuxAbilityModCanApply(pTalCdAddVar, pTalCdMulVar, talCdAddModifierId, talCdMulModifierId, mul, add)
+		|| !LinuxAbilityModCanApply(pTalMcAddVar, pTalMcMulVar, talMcAddModifierId, talMcMulModifierId, mul, add))
+		return;
+	cachedMul = mul;
+	cachedAdd = add;
+	PFApplBuff::Enable();
+	pHero->AddAbilityModifier(this);
 
   const int provider = LinuxModifierProvider(GetAbilityOwner());
   if (pTalCdAddVar && pTalCdMulVar)
@@ -441,18 +503,18 @@ bool PFApplAbilityMod::Step(float dtInSeconds)
 {
   if (PFApplBuff::Step(dtInSeconds))
     return true;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0)
+		return false;
 
   if (IsEnabled())
   {
-    CheckCachedValues();
-    if (pTalCdAddVar && talCdAddModifierId != INVALID_MODIFIER_ID)
-      pTalCdAddVar->UpdateModifierAdd(talCdAddModifierId, cachedAdd);
-    if (pTalCdMulVar && talCdMulModifierId != INVALID_MODIFIER_ID)
-      pTalCdMulVar->UpdateModifierMul(talCdMulModifierId, cachedMul);
-    if (pTalMcAddVar && talMcAddModifierId != INVALID_MODIFIER_ID)
-      pTalMcAddVar->UpdateModifierAdd(talMcAddModifierId, cachedAdd);
-    if (pTalMcMulVar && talMcMulModifierId != INVALID_MODIFIER_ID)
-      pTalMcMulVar->UpdateModifierMul(talMcMulModifierId, cachedMul);
+		// Unblock can request Enable while a formula is invalid; retry without installing stale defaults.
+		if (!abilityModRing.isLinked())
+		{
+			Enable();
+			return false;
+		}
+		CheckCachedValues();
   }
 
   return false;
@@ -461,16 +523,11 @@ void PFApplAbilityMod::DumpInfo(NLogg::CChannelLogger&) const {}
 void PFApplAbilityMod::Reset()
 {
   PFApplBuff::Reset();
-  cachedAdd = 0.0f;
-  cachedMul = 1.0f;
+	// IDs and cached coefficients are serialized ownership. Reset only rebinds raw runtime pointers.
   pTalCdAddVar = 0;
   pTalCdMulVar = 0;
   pTalMcAddVar = 0;
   pTalMcMulVar = 0;
-  talCdAddModifierId = INVALID_MODIFIER_ID;
-  talCdMulModifierId = INVALID_MODIFIER_ID;
-  talMcAddModifierId = INVALID_MODIFIER_ID;
-  talMcMulModifierId = INVALID_MODIFIER_ID;
 
   if (!IsValid(pHero) || !IsValid(pOwner) || pOwner->GetFaction() != pHero->GetFaction())
     return;
