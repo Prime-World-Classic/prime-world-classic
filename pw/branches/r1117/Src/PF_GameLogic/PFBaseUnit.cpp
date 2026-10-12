@@ -1012,7 +1012,34 @@ const float PFBaseUnit::GetStatValue(NDb::EDerivativeStat const stat) const
     return 0.0f;
   return derivativeStatsContainer->derivativeStats[index](this, 0, 0);
 }
-void PFBaseUnit::CopyStatModifiersFrom(PFBaseUnit*, int) {}
+/** Append engine Retrieve copies without copying base/core values or current resources. */
+void PFBaseUnit::CopyStatModifiersFrom(PFBaseUnit* sourceUnit, int provider)
+{
+	if (!IsValid(sourceUnit) || sourceUnit == this)
+		return;
+
+	for (int index = 0; index < NDb::KnownEnum<NDb::EStat>::sizeOf; ++index)
+	{
+		const ValueWithModifiers* source = sourceUnit->GetStat(NDb::EStat(index));
+		ValueWithModifiers* destination = GetStat(NDb::EStat(index));
+		if (!source || !destination)
+			continue;
+
+		// Retrieve enables copies and drops constraints, so validate even inactive records.
+		bool finite = true;
+		for (const auto& modifier : source->GetModifiers())
+		{
+			if ((provider == PF_Core::INVALID_OBJECT_ID || modifier.provider == provider) &&
+				(!std::isfinite(modifier.mulValue) || !std::isfinite(modifier.addValue)))
+			{
+				finite = false;
+				break;
+			}
+		}
+		if (finite)
+			source->Retrieve(destination, provider);
+	}
+}
 ValueWithModifiers* PFBaseUnit::GetVariableVWM(char const* name)
 {
   Variable* pVar = SearchVariable(name);
