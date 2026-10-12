@@ -157,17 +157,6 @@ namespace NWorld
 			(player->GetUserID() == clientId || player->IsBot() || !player->IsPlaying());
 	}
 
-	/** Match the original shop's center-distance rule, not the native always-near stub. */
-	static bool IsLinuxShopInRange(PFBaseHero* hero, PFShop* shop)
-	{
-		const CVec3& a = hero->GetPosition();
-		const CVec3& b = shop->GetPosition();
-		const double radius = shop->GetInteractionRadius();
-		const double x = double(a.x) - b.x, y = double(a.y) - b.y, z = double(a.z) - b.z;
-		return std::isfinite(radius) && radius >= 0 && std::isfinite(x) && std::isfinite(y) &&
-			std::isfinite(z) && x*x + y*y + z*z <= radius*radius;
-	}
-
 	/** Resolve bounded authored stock and a usable destination before checking or reserving funds. */
 	static const NDb::Consumable* LinuxShopConsumable(PFWorld* world, PFBaseHero* hero,
 		PFShop* shop, int index, int slot, int clientId)
@@ -175,7 +164,7 @@ namespace NWorld
 		if (!CanUseLinuxShopActor(world, hero, shop, clientId) ||
 			hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT) || shop->GetHiddenCounter() > 0 ||
 			index < 0 || index >= shop->GetNumConsumables() || slot < -1 || slot >= hero->GetSlotCount() ||
-			!IsLinuxShopInRange(hero, shop)) return nullptr;
+			!shop->IsHeroNear(hero)) return nullptr;
 		const NDb::Consumable* db = shop->GetConsumableDesc(index);
 		if (!db || !(slot == -1 ? hero->CanTakeConsumable(db, 1) : hero->CanPutConsumableIntoSlot(db, 1, slot)))
 			return nullptr;

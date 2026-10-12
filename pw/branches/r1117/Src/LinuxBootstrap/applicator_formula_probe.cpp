@@ -1284,6 +1284,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "shop_b12_common.inc"
 #include "shop_b12_01_identity_tests.inc"
 #include "shop_b12_02_purchase_tests.inc"
+#include "shop_b12_03_api_tests.inc"
 #include "collision_reach_b11_tests.inc"
 #include "dispatch_b11_01_factory_tests.inc"
 #include "dispatch_b11_common_tests.inc"
@@ -1394,6 +1395,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			MovingWorldB12(check, false);
 			MovingWorldB12(check, true);
 			ResourceTicksB12(check);
+			ShopApiGeometryB12(check, world);
+			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
 			CommonCreepRegistrationB11(check, world);
 			CreepEvadeAdmissionB11(check, world);

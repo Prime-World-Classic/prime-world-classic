@@ -165,7 +165,22 @@ PFShop::PFShop(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
     Init(dbObject, pDesc, NDb::UNITTYPE_SHOP);
 }
 
-bool PFShop::IsHeroNear(PFBaseHero const*) const { return true; }
+/** Preserve Windows proximity: live 3D center range, or remote dead-ally access.
+ * Malformed live geometry and foreign-world references never authorize a query.
+ */
+bool PFShop::IsHeroNear(PFBaseHero const* hero) const
+{
+	if (!IsValid(hero) || !IsValid(pDesc) || !IsValid(pDesc->shop) ||
+		!GetWorld() || hero->GetWorld() != GetWorld()) return false;
+	if (hero->IsDead()) return GetFaction() == hero->GetFaction();
+
+	const CVec3& a = hero->GetPosition();
+	const CVec3& b = GetPosition();
+	const double radius = GetInteractionRadius();
+	const double x = double(a.x) - b.x, y = double(a.y) - b.y, z = double(a.z) - b.z;
+	return std::isfinite(radius) && radius >= 0 && std::isfinite(x) && std::isfinite(y) &&
+		std::isfinite(z) && x*x + y*y + z*z <= radius*radius;
+}
 float PFShop::GetInteractionRadius() const { return IsValid(pDesc) && IsValid(pDesc->shop) ? pDesc->shop->interactionRadius : 0.0f; }
 NDb::ConsumablesShop const* PFShop::GetConsumablesShop() const { return IsValid(pDesc) ? pDesc->shop.GetPtr() : 0; }
 int PFShop::GetNumConsumables() const { return IsValid(pDesc) && IsValid(pDesc->shop) ? pDesc->shop->items.size() : 0; }
@@ -175,16 +190,14 @@ NDb::Consumable const* PFShop::GetConsumableDesc(int item) const
     return 0;
   return pDesc->shop->items[item];
 }
+/** UI affordability matches Windows; inventory admission remains the buyer's responsibility. */
 bool PFShop::CanBuyConsumable(PFBaseHero const* pHero, int itemId) const
 {
-  if (!IsValid(pHero) || !IsHeroNear(pHero))
-    return false;
-
-  const NDb::Consumable* pConsumable = GetConsumableDesc(itemId);
-  if (!pConsumable || !pHero->CanTakeConsumable(pConsumable, 1))
-    return false;
-
-  return pHero->GetConsumableCost(pConsumable) <= pHero->GetGold();
+	if (itemId < 0 || itemId >= GetNumConsumables() || !IsHeroNear(pHero)) return false;
+	const NDb::Consumable* consumable = GetConsumableDesc(itemId);
+	if (!consumable) return false;
+	const float cost = pHero->GetConsumableCost(consumable);
+	return std::isfinite(cost) && cost >= 0 && cost <= pHero->GetGold();
 }
 void PFShop::Reset() { PFBuilding::Reset(); }
 
