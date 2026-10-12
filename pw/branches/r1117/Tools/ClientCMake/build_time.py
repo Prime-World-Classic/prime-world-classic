@@ -16,6 +16,14 @@ import os
 import re
 import sys
 
+# Консоль Windows (cp1252/cp866) роняет русские сообщения UnicodeEncodeError, а
+# кодовая страница зависит от того, запускался ли скрипт из build-обёртки (там
+# chcp 65001 + PYTHONIOENCODING) или руками. Выводим UTF-8 сами.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except AttributeError:  # python < 3.7
+    pass
+
 DIR_RE = re.compile(r"CMakeFiles[\\/]+([^\\/]+)\.dir")
 
 

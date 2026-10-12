@@ -21,9 +21,15 @@ REM   * CMAKE_MSVC_DEBUG_INFORMATION_FORMAT is left EMPTY here as well: if only
 REM     one of the two builds passes /Zi, the two builds produce different
 REM     binaries and the comparison becomes meaningless. PDB for debugging:
 REM     PW_PDB=1 (adds /Zi + /DEBUG, artifact is no longer comparable).
-REM   * build dir lives OUTSIDE the repo tree (default C:\pwbuild\x64-win):
-REM     1074 PCH wrappers + response files must not hit MAX_PATH, and a CMake
-REM     cache generated at one path is invalid at another.
+REM   * build dir lives INSIDE the repo tree: <repo>\build\<tag> (default
+REM     <repo>\build\x64-win, gitignored). Nothing is ever written outside the
+REM     working copy - writing to the root of C:\ is frequently blocked by Windows
+REM     security policies (SRP/AppLocker/WDAC), so a default like C:\pwbuild fails
+REM     on managed machines. MAX_PATH budget (measured on the VM): objects are laid
+REM     out as <build>\CMakeFiles\<Proj>.dir\<mirrored absolute source path>, so the
+REM     longest path is about 2*len(repo)+110 (130 chars with the repo at
+REM     C:\pwbuild\pwc). That stays under 260 up to a ~75-char repo path; deeper
+REM     clones need --build-dir <short path> (e.g. D:\pw\x64-win).
 REM
 REM Requirements: Python 3 in PATH; Visual Studio 2022 (BuildTools / Community /
 REM   ...) with "MSVC v143 - VS 2022 C++ x64/x86 build tools"; Windows 10/11 SDK;
@@ -38,7 +44,8 @@ REM   build_client_x64_win.cmd --check              verify existing artifact onl
 REM   build_client_x64_win.cmd --build-dir D:\pwbuild\x64-win
 REM   set PW_BUILD_JOBS=8 & build_client_x64_win.cmd
 REM   set PW_EXTRA_OPTS=/std:c++17                  ADDS to toolchain defaults
-REM   set PW_BUILD_DIR=C:\pwbuild\x64-win           same as --build-dir
+REM   set PW_BUILD_DIR=D:\pw\x64-win             same as --build-dir (deep clone)
+REM   build dir default: <repo>\build\x64-win (gitignored); artifact: <repo>\build\PW_Game.exe
 REM
 REM Result: <build-dir>\PW_Game.exe. Wine-side reference (2026-10-10):
 REM   15 725 568 bytes, machine 0x8664, PE32+, subsystem 2, 0 unresolved.
@@ -124,7 +131,10 @@ set "BR=%REPO%pw\branches\r1117"
 set "WCB=%BR%\Tools\WineClientBuild"
 set "CCT=%BR%\Tools\ClientCMake"
 set "GEN=%CCT%\gen\%TC_TAG%"
-if "%BUILD_DIR%"=="" set "BUILD_DIR=C:\pwbuild\%TC_TAG%"
+REM Default build dir: <repo>\build\<tag> - inside the working copy (see the header
+REM note about Windows policies blocking writes to the root of C:\; PW_BUILD_TAG keeps
+REM several build trees side by side under build\).
+if "%BUILD_DIR%"=="" set "BUILD_DIR=%REPO%build\%TC_TAG%"
 set "EXE=%BUILD_DIR%\PW_Game.exe"
 
 echo == repo: %REPO%

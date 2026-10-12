@@ -6,7 +6,7 @@
 | Скрипт (корень репозитория) | Компилятор | Где | build-каталог |
 |---|---|---|---|
 | `build_client_x64_wine.sh` | cl 14.44 (`~/.wine-vs`) | Linux + Wine | `pw/branches/r1117/Tools/ClientCMake/build/x64-wine/` |
-| `build_client_x64_win.cmd` | cl 14.44 (VS2022 нативно) | Windows | `C:\pwbuild\x64-win` (переопределяется `--build-dir PATH` / `PW_BUILD_DIR`) |
+| `build_client_x64_win.cmd` | cl 14.44 (VS2022 нативно) | Windows | `<репо>\build\x64-win` (gitignored; переопределяется `--build-dir PATH` / `PW_BUILD_DIR`) |
 
 Оба вызывают **один и тот же** граф: `Tools/WineClientBuild/parse_vcproj.py` →
 `model.json` → `Tools/ClientCMake/gen_cmake.py` → CMake/Ninja. Отличается только
@@ -75,8 +75,23 @@ set PW_BUILD_JOBS=8 & build_client_x64_win.cmd
    (unix-«/»), нативно — буква диска репозитория. Его читает `winpath()` в
    `gen_cmake.py`; им отличаются **только** PCH-обёртки (`#include` внутри C++),
    всё остальное в графе идентично.
-6. build-каталог нативной сборки — **вне дерева репозитория**: 1074 PCH-обёртки
-   + response-файлы не должны упираться в MAX_PATH, а CMake-кэш привязан к пути.
+6. build-каталог нативной сборки — **внутри рабочей копии** (`<репо>\build\<tag>`,
+   gitignored): наружу от репозитория не пишется ничего, потому что запись в корень
+   `C:\` на управляемых машинах часто запрещена политиками Windows
+   (SRP/AppLocker/WDAC). Бюджет MAX_PATH (замер): объекты лежат как
+   `<build>\CMakeFiles\<Проект>.dir\<зеркало абсолютного пути источника>`, самый
+   длинный путь ≈ `2·len(репо)+110` (130 симв. при репо в `C:\pwbuild\pwc`) — до
+   `260` хватает на путь репо ~75 симв.; глубже — `--build-dir D:\pw\x64-win`.
+   CMake-кэш привязан к пути: при переносе или смене компилятора — `--clean`.
+7. **Расположение build-каталога меняет байты артефакта** (замер: один и тот же
+   PCH-билд в `C:\pwbuild\x64-win-pch` и в `<репо>\build\x64-win` — размер
+   одинаковый 15 150 592, различаются 594 байта в 87 диапазонах): это
+   `TimeDateStamp` в PE-заголовке и в отладочном описателе + хэши анонимных
+   пространств имён в именах типов (`?A0x48f2409c@@` ↔ `?A0x647eb65e@@`), которые
+   MSVC считает от идентичности TU. Путей сборки в экзешнике нет.
+   Поэтому байт-в-байт сравнение осмысленно только для **одного и того же**
+   build-пути; между путями/тулчейнами сравнивают размер, `check_exe.py`
+   (манифест/версия/импорты), E2E и золотые `unitstats`.
 
 Проверка паритета графа (без сборки):
 
@@ -190,7 +205,8 @@ Wine-префикса (`VC\Tools\MSVC\14.44.35207` + `Windows Kits\10`, ~840 М�
 собираются вручную, `vcvars64.bat` не вызывается). Разложенное на VM:
 `C:\pwbuild\vs2022` (MSVC+Kits), `C:\pwbuild\wintools` (cmake/ninja),
 `C:\pwbuild\python` (embeddable), дерево — `C:\pwbuild\pwc`, сборка —
-`C:\pwbuild\x64-win`, лог — `C:\pwbuild\native_build.log`, запуск задачой
+`<репо>\build\x64-win` (дефолт скрипта; первые замеры снимались в
+`C:\pwbuild\x64-win`), лог — `C:\pwbuild\native_build.log`, запуск задачой
 `schtasks /tn PwNativeBuild`.
 
 Что всплыло именно на нативном прогоне:

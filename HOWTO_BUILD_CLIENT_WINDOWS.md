@@ -9,8 +9,8 @@ build_client_x64_win.cmd
 
 Готовый файл — **`build\PW_Game.exe` в корне репозитория** (папка `build/` в
 `.gitignore`; туда же попадают `.pdb`/`.map`, если собирали с `PW_PDB=1` /
-`PW_EXTRA_LINK_OPTS=/MAP`). Промежуточное дерево сборки — `C:\pwbuild\x64-win`
-(x64, ShippingSingleExe). Скрипт сам генерирует CMake-граф, сконфигурирует,
+`PW_EXTRA_LINK_OPTS=/MAP`). Промежуточное дерево сборки — тоже в `build/`:
+`<репо>\build\x64-win` (x64, ShippingSingleExe). Скрипт сам генерирует CMake-граф, сконфигурирует,
 соберёт и **в конце сам проверит артефакт** (`check_exe.py`: x64 / PE32+ /
 `/SUBSYSTEM:WINDOWS` / наличие ресурса манифеста / `FileVersion` против
 `Src\Version.h`) — в конце должно быть `ИТОГ: OK`.
@@ -43,8 +43,16 @@ build_client_x64_win.cmd --build-dir D:\pw\x64-win
 set PW_BUILD_JOBS=4 & build_client_x64_win.cmd
 ```
 
-Build-каталог по умолчанию **вне дерева репо** (`C:\pwbuild\x64-win`) — это
-намеренно: ~1100 PCH-обёрток плюс response-файлы упираются в `MAX_PATH`.
+Build-каталог по умолчанию — `<репо>\build\x64-win` (gitignored). **Наружу от
+рабочей копии не пишется ничего**: запись в корень `C:\` на управляемых машинах
+часто запрещена политиками Windows (SRP/AppLocker/WDAC), поэтому дефолт вида
+`C:\pwbuild` там просто не работает.
+
+Бюджет `MAX_PATH` (замер на VM): объекты лежат как
+`<build>\CMakeFiles\<Проект>.dir\<зеркало абсолютного пути источника>`, самый
+длинный путь ≈ `2·len(репо) + 110` (при репо в `C:\pwbuild\pwc` — 130 симв.). До
+`260` хватает места для пути репо ~75 симв.; если клон глубже — собирать в
+короткий путь: `--build-dir D:\pw\x64-win`.
 
 `--gen-only` безопасен, пока на машине идёт другая сборка (компилятор не
 запускается).
@@ -87,12 +95,12 @@ Build-каталог по умолчанию **вне дерева репо** (`
   ```bat
   set PW_BUILD_TAG=x64-win-pch
   ```
-  даёт свои `gen\x64-win-pch` и `C:\pwbuild\x64-win-pch`.
+  даёт свои `gen\x64-win-pch` и `build\x64-win-pch`.
 - **PDB для отладки на Windows**: `set PW_PDB=1` (добавляет `/Zi` и `/DEBUG`;
   после этого артефакт не сравним с Wine-сборкой).
 - **Замер времени сборки**: `set PW_NINJA_STATS=1`, потом
   ```bat
-  python pw\branches\r1117\Tools\ClientCMake\build_time.py C:\pwbuild\x64-win\.ninja_log
+  python pw\branches\r1117\Tools\ClientCMake\build_time.py build\x64-win\.ninja_log
   ```
 - **Доп. флаги**: `PW_EXTRA_OPTS` **дополняет** дефолты тулчейна (`/WX- /MT`), а
   не заменяет их; `/MAP` для разбора крэшей — `PW_EXTRA_LINK_OPTS=/MAP`.
@@ -117,6 +125,9 @@ build_client_x64_win.cmd
 `vcvars64.bat` не вызывается, `PATH`/`INCLUDE`/`LIB` собираются вручную. Так
 собрана сборка на тестовой Windows-ВМ.
 
+Тулчейн можно положить куда угодно (в том числе рядом с репо — например
+`<репо>\..\tools\vs2022`): сборка по-прежнему пишет только внутрь рабочей копии.
+
 ## 6. Типовые ошибки
 
 | сообщение | что делать |
@@ -126,7 +137,7 @@ build_client_x64_win.cmd
 | `ERROR: no Include\10.* under …` | у `PW_KITS_DIR` не перенесён `Include\10.0.*` (SDK не скопирован целиком) |
 | `fatal error C1083: … Data/GameLogic/Vec2_Base.h` | в переносимое дерево не положены `pw\branches\r1117\Data\GameLogic\*.h` (всего 2 файла, 24 КБ) — они нужны для компиляции; `Data/` целиком (7,2 ГБ) не нужен |
 | ошибки CMake вида «does not match the generator used» / «source directory … does not match» после переноса или смены компилятора | `build_client_x64_win.cmd --clean`: CMake-кэш привязан и к пути, и к компилятору |
-| `fatal error C1083`/`C1041` на длинных путях, «cannot open program database» | build-каталог оказался внутри дерева репо → вынести: `--build-dir C:\pw\x64-win` |
+| `fatal error C1083`/`C1041`, «cannot open program database», обрывы на длинных путях | путь репо слишком длинный (см. бюджет `MAX_PATH` в §2): `--build-dir D:\pw\x64-win` или перенести клон выше |
 | `check_exe.py` ругается на версию | протух `.res`: правка `Src\Version.h` обязана пересобирать ресурс (зависимость добавлена); собрать заново, при `--clean` — точно |
 | экзешник не стартует (`0xC0000135`) | не хватает x64-зависимостей (`d3dx9_43.dll` x64, `fmodex64.dll`, `steam_api64.dll`, …) — набор и источник: `BUILD_CLIENT_X64.md`, раздел «Запуск результата на Windows» |
 
