@@ -624,14 +624,6 @@
 				Name="Utils"
 				>
 				<File
-					RelativePath="./../vendorFOURCC.h"
-					>
-				</File>
-				<File
-					RelativePath=".\atir2vb.h"
-					>
-				</File>
-				<File
 					RelativePath=".\CleanGeometry.cpp"
 					>
 				</File>
@@ -821,14 +813,6 @@
 				</File>
 				<File
 					RelativePath=".\BatchedRenderer.component"
-					>
-				</File>
-				<File
-					RelativePath=".\DXManager.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\DXManager.h"
 					>
 				</File>
 				<File

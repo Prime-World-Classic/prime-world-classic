@@ -148,13 +148,16 @@ PostFXParamsManager::PostFXParamsManager()
   SetDBParams( NDb::Get<NDb::PostFXParams>( NDb::DBID( "Tech/PostFX.PFXP.xdb" ) ) );
   
   const IConfigManager* const pCManager = GetIConfigManager();
-  disabled = RENDER_DISABLED || pCManager->GetSysInfo().IsNullRef || !pCManager->HasVT() && !pCManager->HasR2VB();
+  // Раньше здесь additionally гейтило наличие vertex textures / R2VB.
+  // Чтение текстур вершинной стадией гарантировано SM3.0 (и есть в
+  // Vulkan/DX12), R2VB удалён — остаётся только проверка null-референса.
+  disabled = RENDER_DISABLED || pCManager->GetSysInfo().IsNullRef;
   if(disabled)
     return;
 
   for(int i = 0; i < 2; ++i) {
     screenMap[i] = CreateRenderTexture2D(screenMapWidth, screenMapHeight, FORMAT_A8R8G8B8);
-    mapData[i] = Create<TextureVtx>(TextureVtx::Sizes(1, 1, 4, 1), false);
+    mapData[i] = Create<TextureVtx>(TextureVtx::Sizes(1, 1));
   }
 
   D3DSURFACE_DESC desc = { mapData[0]->GetFormat(), D3DRTYPE_SURFACE, 0, D3DPOOL_SYSTEMMEM,

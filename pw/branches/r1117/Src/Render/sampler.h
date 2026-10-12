@@ -22,8 +22,15 @@ namespace Render
 
 		static const uint MAX_PS_SAMPLER_INDEX = 15;
 		static const uint MIN_PS_SAMPLER_INDEX = 0;
-		static const uint MAX_VS_SAMPLER_INDEX = 260;
-		static const uint MIN_VS_SAMPLER_INDEX = 257;
+		// VS-сэмплеры в D3D9 жили в расширенном диапазоне 257..260
+		// (GlobalMasks.h: `s0 = 257`) — туда писалась PostFX-коэффициентная
+		// текстура и туда же был завязан R2VB. В D3D9 SetTexture по такому
+		// индексу всё равно возвращал D3DERR_INVALIDCALL, а под Vulkan/DX12
+		// отдельного VS-диапазона нет вовсе. После удаления R2VB и переноса
+		// coeffMap в обычный слот (GlobalMasks.h: POSTFX_COEFFSAMPLERINDEX)
+		// диапазон совпадает с PS.
+		static const uint MAX_VS_SAMPLER_INDEX = MAX_PS_SAMPLER_INDEX;
+		static const uint MIN_VS_SAMPLER_INDEX = MIN_PS_SAMPLER_INDEX;
 		///
     // Sampler() {}
 		/// ����������

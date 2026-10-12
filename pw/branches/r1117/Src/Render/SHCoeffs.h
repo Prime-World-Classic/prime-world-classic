@@ -48,8 +48,10 @@ struct SHShaderConstants
   void Export(vector<float>& _dst) const;
 };
 
-void EvaluateSHCoeffsForCubeMap(const TextureCubeRef &pCube, SHCoeffs &coeffs);
-void EvaluateSHCoeffsFor2DTexture(Texture2DRef const &pTarget, Texture2DRef const &pWeightsTexture, SHCoeffs &coeffs);
+// Проекция куб-текстуры / текстуры в SH-коэффициенты
+// (EvaluateSHCoeffsForCubeMap, EvaluateSHCoeffsFor2DTexture) удалена:
+// ни одного вызова в дереве. Это же и шейдеры
+// OnlineShaders/SH.psb, SH2.psb, SH3.psb — они больше не задействованы.
 void ConvertSHCoeffs2ShaderConstants(const SHCoeffs &c, SHShaderConstants &s);
 void EvaluateLightingBySHShaderConstants(const SHShaderConstants &consts, const CVec3 &normal, HDRColor &color);
 void EvaluateSHCoeffsForDirLight(const HDRColor &color, const CVec3 &dir, SHCoeffs &coeffs);

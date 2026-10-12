@@ -69,8 +69,6 @@ protected:
 	void RenderMainScene(bool GIsEditor);
 
   void CopyDepth(const DXSurfaceRef& _dest);
-  // resolve Z-buffer (multisampled or not) to pMainDepth
-  void CopyDepthRESZ();
 
 private:
 	void Init();

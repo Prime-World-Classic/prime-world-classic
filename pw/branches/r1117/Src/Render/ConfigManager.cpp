@@ -36,7 +36,7 @@ public:
   bool CheckFeatureSupport(DWORD _features) const;
   bool CheckFeatureSupportExact(DWORD _features) const;
   DWORD      GetAllFeatures() const { return caps; }
-  bool ReadableDepthEnabled() const { return s_readableDepth && !Compatibility::IsRunnedUnderWine() && ReadableDepthSupported(); }
+  bool ReadableDepthEnabled() const { return s_readableDepth && ReadableDepthSupported(); }
   const ConfigParams& GetConfigParams() const { return config_params; }
 
   bool ReadableDepthSupported() const;
@@ -44,16 +44,9 @@ public:
 protected:
   DWORD caps;
   UINT perfLevels[NUM_RESOURCE_TYPES];
-  vector<D3DFORMAT>  r2vbFormats;
   vector<StringPair> config_params;
   IConfigManager::SysInfo sysInfo;
 };
-
-static inline bool AllowDF24(DWORD _caps)
-{ // Allow only for Radeon X1000 family
-  return false;
-  //return (_caps & IConfigManager::hasDF24) && !(_caps & IConfigManager::hasVT16) && !(_caps & IConfigManager::hasVT32);
-}
 
 ConfigManagerImpl::ConfigManagerImpl() : caps()
 {
@@ -68,22 +61,6 @@ inline void SetFlag(DWORD _flag, bool _val, DWORD *_pDest)
   *_pDest = (~_flag & *_pDest) | (-int(_val) & _flag);
 }
 
-
-static const D3DFORMAT g_R2VBFormats[] = {
-   D3DFMT_A32B32G32R32F,
-   D3DFMT_G32R32F,
-   D3DFMT_A16B16G16R16F,
-   D3DFMT_A16B16G16R16,
-   D3DFMT_Q16W16V16U16,
-   D3DFMT_R32F,
-   D3DFMT_G16R16F,
-   D3DFMT_G16R16,
-   D3DFMT_V16U16,
-   D3DFMT_A2W10V10U10,
-   D3DFMT_A2R10G10B10,
-   D3DFMT_Q8W8V8U8,
-   D3DFMT_A8R8G8B8,
-};
 
 HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats)
 {
@@ -121,19 +98,6 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
     CheckFormats(::Get(pD3D), caps9.AdapterOrdinal, caps9.DeviceType, displayMode.Format);
   }
 
-  if( hasR2VB & caps )
-  {
-    IDirect3DTexture9* pRT = 0;
-    const DWORD usage = D3DUSAGE_RENDERTARGET | D3DUSAGE_DMAP;
-    for(int i = 0; i < ARRAY_SIZE(g_R2VBFormats); ++i)
-      if( SUCCEEDED(_pDevice->CreateTexture(1, 1, 1, usage, g_R2VBFormats[i], D3DPOOL_DEFAULT, &pRT, 0)) )
-      {
-        r2vbFormats.push_back(g_R2VBFormats[i]);
-        pRT->Release();
-        hr = S_OK;
-      }
-  }
-  
   if( IConfigDatabase* const pCDB = IConfigDatabase::Create() )
   {
     SOUND_DEVICE sndDev;
@@ -162,18 +126,9 @@ void ConfigManagerImpl::CheckFormats(IDirect3D9* _pD3D, UINT _Adapter, D3DDEVTYP
 
 #define CHECK_SUPPORT(usage, type, fmt) (D3D_OK == _pD3D->CheckDeviceFormat(_Adapter, _DeviceType, _AdapterFormat, usage, type, fmt))
 
-  SetFlag(hasDF16, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, FOURCC_DF16), &caps);
-  SetFlag(hasDF24, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, FOURCC_DF24), &caps);
-  SetFlag(hasRAWZ, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, FOURCC_RAWZ), &caps);
-  SetFlag(hasINTZ, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, FOURCC_INTZ), &caps);
-  SetFlag(hasRESZ, CHECK_SUPPORT(D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, FOURCC_RESZ), &caps);
-  SetFlag(hasR2VB, CHECK_SUPPORT(                    0, D3DRTYPE_SURFACE, FOURCC_R2VB), &caps);
-  SetFlag(hasNLRT, CHECK_SUPPORT(D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, FOURCC_NULL), &caps);
   SetFlag(hasD16T, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D16),  &caps);
   SetFlag(hasD24X, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D24X8), &caps);
   SetFlag(hasD24S, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D24S8), &caps);
-  SetFlag(hasVT16, CHECK_SUPPORT(D3DUSAGE_QUERY_VERTEXTEXTURE, D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F), &caps);
-  SetFlag(hasVT32, CHECK_SUPPORT(D3DUSAGE_QUERY_VERTEXTEXTURE, D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F), &caps);
 
 #undef CHECK_SUPPORT
 }
@@ -205,9 +160,6 @@ UINT ConfigManagerImpl::FindAcceptableTechnique(const TechniqueDesc **_pDesc, UI
     const TechniqueDesc &desc = *(_pDesc[n]);
     if( desc.flags != (desc.flags & caps) )
       continue;
-    if( (desc.flags & hasR2VB) &&
-        (std::find(r2vbFormats.begin(), r2vbFormats.end(), desc.r2vbFormat) == r2vbFormats.end()) )
-      continue;
     break;
   } while(++n < numDesc);
   return n;
@@ -228,32 +180,25 @@ bool ConfigManagerImpl::CheckFeatureSupportExact(DWORD _features) const
 
 bool ConfigManagerImpl::ReadableDepthSupported() const
 {
-  return caps & (/*hasDF16 |*/ hasRAWZ|hasINTZ) || AllowDF24(caps)
-         || (caps & hasRESZ) && NGlobal::GetVar("enableRESZ").GetInt64();
+  // Читаемая глубина была завязана на vendor-форматы (INTZ/RAWZ/RESZ).
+  // Под Vulkan/DX12 depth-буфер читается как depth SRV всегда, так что
+  // гейт сводится к наличию depth-текстуры (она же — гейт аппаратных
+  // карт теней).
+  return 0 != (caps & (hasD16T|hasD24X|hasD24S));
 }
 
 
 bool ConfigManagerImpl::StencilSupported(ERenderFormat _depthFormat) const
 {
-  return s_stencilEnable &&(FORMAT_DF24 != _depthFormat) && (FORMAT_DF16 != _depthFormat);
+  return s_stencilEnable && (FORMAT_D24S8 == _depthFormat);
 }
 
 
 ERenderFormat ConfigManagerImpl::GetDepthFormatPreffered() const
 {
-  if( caps & hasINTZ ) {
-    DebugTrace("DepthFormat: INTZ");
-    return FORMAT_INTZ;
-  } else if( caps & hasRAWZ ) {
-    DebugTrace("DepthFormat: RAWZ");
-    return FORMAT_RAWZ;
-  } else if( AllowDF24(caps) ) {
-    DebugTrace("DepthFormat: DF16");
-    return FORMAT_DF16;
-  }
-  //else if( caps & hasDF16 )
-  //  return FOURCC_DF16;
-
+  // Vendor-форматы (INTZ/RAWZ/DF16) удалены: единый читаемый формат
+  // глубины со stencil — D24S8 (под Vulkan/DX12 -> D24_UNORM_S8_UINT).
+  DebugTrace("DepthFormat: D24S8");
   return FORMAT_D24S8;
 }
 

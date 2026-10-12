@@ -38,7 +38,9 @@ namespace Render
 		bool MultiShader::OpenFile(  )
 		{
 			char buf[256];
-			sprintf_s( buf, "%s.shd%s", fileName.c_str(), GetRenderer()->GetCaps().bSupportSM30 ? "" : "2" );
+			// .shd2 (SM2.0-вариант) удалён: у .shd один профиль, гейт запуска
+			// без SM3.0 не пускает железо и так.
+			sprintf_s( buf, "%s.shd", fileName.c_str() );
 
 			CObj<Stream> pShaderFileStream = RootFileSystem::OpenFile( buf, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
 			NI_VERIFY( pShaderFileStream && pShaderFileStream->IsOk(), NStr::StrFmt( "Cannot open obj file: %s", buf), pairs.resize(1); return false; );

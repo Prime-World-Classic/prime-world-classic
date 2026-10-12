@@ -77,8 +77,6 @@ private:
 	const SHShaderConstants   *pCurSHConsts;
 	int                       index;
 
-  NV_AUTO_PTR(class DXManager)  resourceManager;
-
 	static void RenderBatchesList(Batch *pBatch);
   static void RenderBatchesPtrArray(UINT numBatches, Batch **pBatches);
 
@@ -97,9 +95,6 @@ public:
 	BatchQueue( Index index, BatchQueueSorter &_sorter, int maxSize = 4096*16 );
   ~BatchQueue();
 
-  void EnableResourceManagment(bool _enable = true);
-  bool OnNextFrame();
-  bool ManageResources();
 
   Priority& GetSubQueue(int priority) { return priorities[priority]; }
 	int  GetIndex() const { return index; }

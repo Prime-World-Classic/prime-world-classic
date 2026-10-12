@@ -2,7 +2,6 @@
 #include <algorithm>
 #include "renderer.h"
 #include "batch.h"
-#include "DXManager.h"
 
 #include "../System/InlineProfiler.h"
 #include "smartrenderer.h"
@@ -18,7 +17,6 @@ REGISTER_VAR("waterQueryUP", s_queryUP, STORAGE_NONE);
 static bool s_sortNew = true;
 REGISTER_DEV_VAR("newTranspSort", s_sortNew, STORAGE_NONE);
 
-static NDebug::PerformanceDebugVar g_timeManage( "DXHint:Manage", "Render", 0, 1.0, false );
 #ifndef _SHIPPING
   static NDebug::DebugVar<int> g_NumSkinnedVertices("numSkinnedVertices", "Render", true);
   static NDebug::DebugVar<int> g_NumSkinnedTriangles("numSkinnedTriangles", "Render", true);
@@ -359,41 +357,9 @@ BatchQueue::BatchQueue( Index ndx, BatchQueueSorter &_sorter, int maxSize )
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-BatchQueue::~BatchQueue() {} // this destructor is defined here because exact meaning of <class DXManager> is defined only here
+BatchQueue::~BatchQueue() {}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void BatchQueue::EnableResourceManagment(bool _enable)
-{
-  if( _enable && resourceManager.get() )
-    return;
-
-  resourceManager = NV_AUTO_PTR(DXManager)(_enable ? new DeviceLostWrapper<DXManager> : 0);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool BatchQueue::OnNextFrame()
-{
-  NDebug::PerformanceDebugVarGuard perfGuard(g_timeManage, true);
-
-  if(!resourceManager.get() )
-    return false;
-
-  resourceManager->OnNextFrame();
-  return true;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool BatchQueue::ManageResources()
-{
-  NDebug::PerformanceDebugVarGuard perfGuard(g_timeManage, false);
-
-  if(!resourceManager.get() )
-    return false;
-
-  resourceManager->Manage();
-  return true;
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void BatchQueue::SetSorting( int priority, bool bSorting )
 {
@@ -493,13 +459,6 @@ void BatchQueue::PushInternal(int priority,
   }
 #endif
 
-  NDebug::PerformanceDebugVarGuard perfGuard(g_timeManage, false);
-
-  if( DXManager* const pManager = resourceManager.get() )
-  {
-    pManager->AddGeometry( pPrimitive->GetBuffers() );
-    pManager->AddTextures( pMaterial );
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,16 +1,20 @@
+// Аппаратные фичи, влияющие на выбор путей рендера.
+//
+// Из набора удалены vendor-специфичные расширения D3D9-эпохи:
+//   hasDF16/hasDF24/hasRAWZ/hasINTZ/hasRESZ — форматы глубины ATI/NV,
+//     читаемые как текстура. Под Vulkan/DX12 ту же роль играет depth SRV
+//     (D24S8/D32F), отдельного флага не требуется.
+//   hasR2VB / hasVT16 / hasVT32 — Render-to-VB и vertex textures.
+//     Заменяются structured/typed buffer'ами.
+//   hasNLRT — null render target. Заменяется color-write маской.
+// hasD16T/hasD24X/hasD24S оставлены как единый гейт «аппаратные карты
+// теней читаются как depth-текстура» (см. HasDSM()).
 enum Features {
-  hasDF16 = 1,            // ATI DF16 depth format
-  hasDF24 = hasDF16 << 1, // ATI DF24 depth format. Implies Fetch4 support
-  hasRAWZ = hasDF24 << 1, // NVidia RAWZ depth format
-  hasINTZ = hasRAWZ << 1, // NV/ATI INTZ depth format
-  hasRESZ = hasINTZ << 1, // ATI-specific support for depth buffer copy
-  hasR2VB = hasRESZ << 1, // ATI Render-to-VB extension. Supported by GF6/GF7 too.
-  hasNLRT = hasR2VB << 1, // NV/ATI Null Render-Target format
-  hasD16T = hasNLRT << 1, // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D16
-  hasD24X = hasD16T << 1, // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24X8
-  hasD24S = hasD24X << 1, // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24S8
-  hasVT16 = hasD24S << 1, // ARGB16F Vertex textures support
-  hasVT32 = hasVT16 << 1, // ARGB32F Vertex textures support
+  hasD16T = 1,            // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D16
+  hasD24X = hasD16T << 1, // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24X8
+  hasD24S = hasD24X << 1, // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24S8
 };
 
-static const int featuresVersion = 1;
+// Меняется при несовместимом изменении набора флагов (в отчёты уходит
+// только маска caps, см. renderer.cpp).
+static const int featuresVersion = 2;

@@ -14,7 +14,6 @@ struct NOVTABLE IConfigManager
   struct TechniqueDesc
   {
     DWORD flags;
-    D3DFORMAT r2vbFormat;
   };
 
   enum ResourceType
@@ -43,21 +42,10 @@ struct NOVTABLE IConfigManager
   virtual const ConfigParams& GetConfigParams() const = 0;
 
   // Wrappers
-  bool HasDF16() const { return CheckFeatureSupport(hasDF16); } // ATI DF16 depth format
-  bool HasDF24() const { return CheckFeatureSupport(hasDF24); } // ATI DF24 depth format. Implies Fetch4 support
-  bool HasRAWZ() const { return CheckFeatureSupport(hasRAWZ); } // NVidia RAWZ depth format
-  bool HasINTZ() const { return CheckFeatureSupport(hasINTZ); } // NV/ATI INTZ depth format
-  bool HasRESZ() const { return CheckFeatureSupport(hasRESZ); } // ATI-specific support for depth buffer copy
-  bool HasR2VB() const { return CheckFeatureSupport(hasR2VB); } // ATI Render-to-VB extension. Supported by GF6/GF7 too.
-  bool HasNLRT() const { return CheckFeatureSupport(hasNLRT); } // NV/ATI Null Render-Target format
-  bool HasD16T() const { return CheckFeatureSupport(hasD16T); } // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D16
-  bool HasD24X() const { return CheckFeatureSupport(hasD24X); } // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24X8
-  bool HasD24S() const { return CheckFeatureSupport(hasD24S); } // NV/ATI Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24S8
-  bool HasVT16() const { return CheckFeatureSupport(hasVT16); } // ARGB16F Vertex textures support
-  bool HasVT32() const { return CheckFeatureSupport(hasVT32); } // ARGB32F Vertex textures support
+  bool HasD16T() const { return CheckFeatureSupport(hasD16T); } // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D16
+  bool HasD24X() const { return CheckFeatureSupport(hasD24X); } // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24X8
+  bool HasD24S() const { return CheckFeatureSupport(hasD24S); } // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24S8
 
-  bool HasVT() const { return CheckFeatureSupport(hasVT16|hasVT32); } // Vertex textures support
-  bool HasDF() const { return CheckFeatureSupport(hasDF16|hasDF24); } // ATI DF16/24 depth format
   // NV/ATI Depth/Stencil textures (hardware shadow maps)
   bool HasDSM() const { return CheckFeatureSupport(hasD16T|hasD24X|hasD24S); }
 

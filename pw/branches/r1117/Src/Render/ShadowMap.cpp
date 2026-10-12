@@ -11,14 +11,8 @@ REGISTER_VAR_INTERFACE( "proxy_shadowPCF4_enable", NGlobal::MakeVarProxy(&shadow
 static float shadowPCF4_coeff = 2.0;
 REGISTER_DEV_VAR("shadowPCF4_coeff", shadowPCF4_coeff, STORAGE_NONE)
 
-static bool shadowFat = false;
-REGISTER_DEV_VAR("shadowFat", shadowFat, STORAGE_NONE)
-
 static bool s_forceMRT = false;
 REGISTER_DEV_VAR("shadowForceMRT", s_forceMRT, STORAGE_NONE)
-
-static bool s_disableNLRT = false;
-REGISTER_DEV_VAR("shadowNoNLRT", s_disableNLRT, STORAGE_USER)
 
 static float s_depthBias = 0.f, s_biasSlope = 0.f;
 REGISTER_DEV_VAR("shadowBias",  s_depthBias, STORAGE_NONE)
@@ -196,7 +190,10 @@ bool ShadowMapPCF_DS::Init(unsigned int _width, unsigned int _height, float _dep
   s_biasSlope = _biasSlope;
 
   const IConfigManager* const pConfigManager = GetIConfigManager();
-  D3DFORMAT format = shadowFat && pConfigManager->HasD24X() ? D3DFMT_D24X8 : D3DFMT_D16;
+  // Vendor-форматы глубины (DF16/DF24/INTZ/RAWZ) удалены: под Vulkan/DX12
+  // аппаратные карты теней читаются как depth SRV (D24S8 / D32F),
+  // «жирная» глубина под них отдельным форматом не выражается.
+  D3DFORMAT format = D3DFMT_D24S8;
   D3DSURFACE_DESC desc = { format, D3DRTYPE_SURFACE, D3DUSAGE_DEPTHSTENCIL, D3DPOOL_DEFAULT,
                            D3DMULTISAMPLE_NONE, 0, _width, _height };
   pDepth = Create<Texture2D>(desc);
@@ -204,8 +201,9 @@ bool ShadowMapPCF_DS::Init(unsigned int _width, unsigned int _height, float _dep
     return false;
   pDepthSurface = pDepth->GetSurface(0);
 
-  //desc.Format = D3DFMT_R5G6B5;
-  desc.Format = (pConfigManager->HasNLRT() && !s_disableNLRT) ? FOURCC_NULL : D3DFMT_R5G6B5;
+  // Пустой color-attachment под Vulkan/DX12 выражается color-write маской
+  // (она и обнуляется в PreRender), отдельный «null RT»-формат не нужен.
+  desc.Format = D3DFMT_R5G6B5;
   desc.Usage  = D3DUSAGE_RENDERTARGET;
   pRT = Create<RenderSurface>(desc);
   if( !IsValidPtr(pRT) || !pDepthSurface )
@@ -279,118 +277,6 @@ bool ShadowMapPCF_DS::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constant
 
   Render::GetStatesManager()->SetSampler(1, SamplerState::PRESET_CLAMP_BILINEAR(), pDepth);
   GetImmRenderer()->RenderScreenQuad(quadParams);
-  return true;
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-//  class ShadowMapPCF_DF
-//////////////////////////////////////////////////////////////////////////
-class ShadowMapPCF_DF : public ShadowMap
-{
-  SHMatrix texScaleBiasMatrix;
-
-  RenderSurfaceRef pRT;
-  Texture2DRef  pDepth;
-  DXSurfaceRef  pDepthSurface;
-
-  float depthBias, biasSlope;
-
-public:
-  ShadowMapPCF_DF(void);
-  virtual ~ShadowMapPCF_DF(void);
-  virtual bool Init(unsigned int _width, unsigned int _height, float _depthBias, float _biasSlope);
-  virtual void PreRender(void);
-  virtual bool PostRender(void);
-  virtual bool Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex);
-};
-
-//////////////////////////////////////////////////////////////////////////
-
-ShadowMapPCF_DF::ShadowMapPCF_DF(void)
-{
-}
-
-ShadowMapPCF_DF::~ShadowMapPCF_DF(void)
-{
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapPCF_DF::Init(unsigned int _width, unsigned int _height, float _depthBias, float _biasSlope)
-{
-  depthBias = _depthBias;
-  biasSlope = _biasSlope;
-
-  D3DFORMAT format = shadowFat ? FOURCC_DF24 : FOURCC_DF16;
-  D3DSURFACE_DESC desc = { format, D3DRTYPE_SURFACE, D3DUSAGE_DEPTHSTENCIL, D3DPOOL_DEFAULT,
-                           D3DMULTISAMPLE_NONE, 0, _width, _height };
-  pDepth = Create<Texture2D>(desc);
-  if(!IsValidPtr(pDepth) )
-    return false;
-  pDepthSurface = pDepth->GetSurface(0);
-
-  desc.Format = GetIConfigManager()->HasNLRT() ? FOURCC_NULL : D3DFMT_R5G6B5;
-  desc.Usage  = D3DUSAGE_RENDERTARGET;
-  pRT = Create<RenderSurface>(desc);
-  if( !IsValidPtr(pRT) || !pDepthSurface )
-    return false;
-
-  //set special texture matrix for shadow mapping
-  const float fOffsetX = 0.5f + (0.5f / (float)_width);
-  const float fOffsetY = 0.5f + (0.5f / (float)_height);
-  const float range = 1; //   .  DX8    2^(bit depth)
-  const float fBias    = 0.0f;
-  //float fBias    = -0.001f * range;
-  texScaleBiasMatrix.Set( 0.5f,  0.0f,  0.0f, fOffsetX,
-                          0.0f, -0.5f,  0.0f, fOffsetY,
-                          0.0f,  0.0f, range, fBias,
-                          0.0f,  0.0f,  0.0f, 1.0f );
-
-  return true;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void ShadowMapPCF_DF::PreRender(void)
-{
-  SmartRenderer::BindRenderTargetColor( 0, pRT->GetDXSurface() );
-  SmartRenderer::BindRenderTargetDepth( pDepthSurface );
-
-  RenderStatesManager* const pStatesManager = GetStatesManager();
-  pStatesManager->SetStateDirect(D3DRS_COLORWRITEENABLE, 0);
-  GetRenderer()->GetDevice()->Clear(0, 0, D3DCLEAR_ZBUFFER, 0, NewFrustumEnabled() ? 0.0f : 1.0f, 0);
-
-  pStatesManager->SetStateDirect(D3DRS_DEPTHBIAS, *(DWORD*)&depthBias);
-  pStatesManager->SetStateDirect(D3DRS_SLOPESCALEDEPTHBIAS, *(DWORD*)&biasSlope);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapPCF_DF::PostRender(void)
-{
-  RenderStatesManager* const pStatesManager = GetStatesManager();
-  pStatesManager->SetStateDirect(D3DRS_DEPTHBIAS, 0);
-  pStatesManager->SetStateDirect(D3DRS_SLOPESCALEDEPTHBIAS, 0);
-  pStatesManager->SetStateDirect(D3DRS_COLORWRITEENABLE, 0x0f);
-  return true;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapPCF_DF::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex)
-{
-  const float texSize = pDepth->GetWidth();
-  _constants[2].x = texSize;
-  _constants[2].y = 1.0f / texSize;
-
-  const float coeffScale = 1.0f / (4.0f + shadowPCF4_coeff);
-  _constants[3].z = coeffScale * shadowPCF4_coeff;
-  _constants[3].w = coeffScale;
-
-  SHMatrix viewToSMSpace;
-  Multiply(&viewToSMSpace, texScaleBiasMatrix, _viewToLightSpace);
-  ShadowMap::Apply(viewToSMSpace, _constants, _depthTex);
-
-  Render::GetStatesManager()->SetSampler(1, SamplerState::PRESET_CLAMP_POINT(), pDepth);
-  char const * const shaderName = shadowPCF4_enable ? "ShadowPassPCFDF4" : "ShadowPassPCFDF";
-  GetImmRenderer()->RenderScreenQuad( ImmRenderer::ParamsVP(shaderName, _depthTex, &SamplerState::PRESET_CLAMP_POINT()) );
   return true;
 }
 
@@ -637,110 +523,6 @@ bool ShadowMapESM::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[
 
 
 //////////////////////////////////////////////////////////////////////////
-//  class ShadowMapESM_Fetch4
-//////////////////////////////////////////////////////////////////////////
-class ShadowMapESM_Fetch4 : public ShadowMapESM
-{
-  DXSurfaceRef pDepthSurface;
-  RenderSurfaceRef pRT;
-
-  static const bool useSmallBuffer = true;
-
-protected:
-  ShadowMapESM_Fetch4(void);
-
-public:
-  virtual ~ShadowMapESM_Fetch4(void);
-  virtual bool Init(unsigned int _width, unsigned int _height, float _depthBias, float _biasSlope);
-  virtual void PreRender(void);
-  virtual bool PostRender(void);
-  virtual bool Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex);
-};
-
-//////////////////////////////////////////////////////////////////////////
-
-ShadowMapESM_Fetch4::ShadowMapESM_Fetch4(void)
-{
-}
-
-ShadowMapESM_Fetch4::~ShadowMapESM_Fetch4(void)
-{
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapESM_Fetch4::Init(unsigned int _width, unsigned int _height, float _depthBias, float _biasSlope)
-{
-  if( useSmallBuffer ) {
-    if( !ShadowMapESM_Base::Init(_width / 2, _height / 2, _depthBias, _biasSlope) )
-      return false;
-  }
-  else
-    if( !ShadowMapESM_Base::Init(_width, _height, _depthBias, _biasSlope) )
-      return false;
-
-  pSAPrePixelShader = Render::ImmRenderer::Get()->GetPShader( "SAPrePixelShaderF4" );
-
-  D3DFORMAT format = shadowFat ? FOURCC_DF24 : FOURCC_DF16;
-  D3DSURFACE_DESC desc = { format, D3DRTYPE_SURFACE, D3DUSAGE_DEPTHSTENCIL, D3DPOOL_DEFAULT,
-                           D3DMULTISAMPLE_NONE, 0, _width, _height };
-
-  pShadowTexture = Create<Texture2D>(desc);
-  if( !IsValidPtr(pShadowTexture) )
-    return false;
-
-  pDepthSurface  = pShadowTexture->GetSurface(0);
-
-  if( useSmallBuffer ) {
-    desc.Format = GetIConfigManager()->HasNLRT() ? FOURCC_NULL : D3DFMT_R5G6B5;
-    desc.Usage  = D3DUSAGE_RENDERTARGET;
-    pRT = Create<RenderSurface>(desc);
-    if( !IsValidPtr(pRT) )
-      return false;
-  }
-  return pDepthSurface;
-}
-
-//////////////////////////////////////////////////////////////////////////
-void ShadowMapESM_Fetch4::PreRender(void)
-{
-  SmartRenderer::BindRenderTargetColor( 0, useSmallBuffer ? pRT->GetDXSurface()
-                                                          : pShadowTextureSummedArea1->GetSurface(0) );
-  SmartRenderer::BindRenderTargetDepth( pDepthSurface );
-
-  RenderStatesManager* const pStatesManager = GetStatesManager();
-  pStatesManager->SetStateDirect(D3DRS_COLORWRITEENABLE, 0);
-  GetRenderer()->GetDevice()->Clear(0, 0, D3DCLEAR_ZBUFFER, 0, NewFrustumEnabled() ? 0.0f : 1.0f, 0);
-
-  //pStatesManager->SetStateDirect(D3DRS_DEPTHBIAS, *(DWORD*)&depthBias);
-  //pStatesManager->SetStateDirect(D3DRS_SLOPESCALEDEPTHBIAS, *(DWORD*)&biasSlope);
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapESM_Fetch4::PostRender(void)
-{
-  if(useSmallBuffer)
-  SmartRenderer::BindRenderTargetColor( 0, pShadowTextureSummedArea1->GetSurface(0) );
-  SmartRenderer::BindRenderTargetDepth( DXSurfaceRef() );
-  SmartRenderer::BindTexture(0, pShadowTexture);
-  GetStatesManager()->SetStateDirect(D3DRS_COLORWRITEENABLE, 0xf);
-
-  // Enable Fetch4
-  GetDevice()->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, FOURCC_GET4);
-  const bool success = ShadowMapESM_Base::PostRender();
-  // Disable Fetch4
-  GetDevice()->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, FOURCC_GET1);
-
-  return success;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool ShadowMapESM_Fetch4::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex)
-{
-  return ShadowMapESM::Apply(_viewToLightSpace, _constants, _depthTex);
-}
-
-
-//////////////////////////////////////////////////////////////////////////
 ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
 {
   ShadowMap* pShadowMap = 0;
@@ -749,28 +531,17 @@ ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
   switch(_shadowMode)
   {
   case NDb::SHADOWMODE_PCF:
-    if(!s_forceMRT)
+    if(!s_forceMRT && pConfigManager->HasDSM() )
     {
-      if( pConfigManager->HasDSM() )
-      {
-        pShadowMap = new DeviceLostWrapper<ShadowMapPCF_DS>;
-        break;
-      }
-      //else if( pConfigManager->HasDF24() )
-      //{
-      //  pShadowMap = new ShadowMapPCF_DF;
-      //  break;
-      //}
+      pShadowMap = new DeviceLostWrapper<ShadowMapPCF_DS>;
+      break;
     }
     pShadowMap = new ShadowMapPCF;
     break;
 
   //case NDb::SHADOWMODE_SAESM:
   default:
-    if( pConfigManager->HasDF24() )
-      pShadowMap = new DeviceLostWrapper<ShadowMapESM_Fetch4>;
-    else
-      pShadowMap = new DeviceLostWrapper<ShadowMapESM>;
+    pShadowMap = new DeviceLostWrapper<ShadowMapESM>;
     break;
   }
 

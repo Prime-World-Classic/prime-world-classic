@@ -265,7 +265,7 @@ namespace Render
     {
       material->GetDiffuseMap()->Enable(false);
       material->PrepareRenderer();
-      SmartRenderer::SetFVF(D3DFVF_XYZ);
+      SmartRenderer::SetVertexFormatXYZ();
 
       RenderStatesManager& statesManager = *GetStatesManager();
       RenderState oldState = statesManager.GetCurrentState();
@@ -567,9 +567,8 @@ namespace Render
       m_shadowFarRange = 10.0f;
 		}
 
-    const IConfigManager* const pConfigManager = GetIConfigManager();
-    if( !pConfigManager->HasDSM() && pConfigManager->HasDF24() )
-      shadowMode = NDb::SHADOWMODE_SAESM;
+    // Аппаратные карты теней читаются как depth SRV (см. Features.h),
+    // vendor-DF24-фолбэк удалён.
 	}
 
 
@@ -598,9 +597,8 @@ namespace Render
     ConvertDirection(smDir, lightDirWS);
     m_lightDirWS = -lightDirWS;
 
-    const IConfigManager* const pConfigManager = GetIConfigManager();
-    if( !pConfigManager->HasDSM() && pConfigManager->HasDF24() )
-      shadowMode = NDb::SHADOWMODE_SAESM;
+    // Аппаратные карты теней читаются как depth SRV (см. Features.h),
+    // vendor-DF24-фолбэк удалён.
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

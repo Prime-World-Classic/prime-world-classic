@@ -64,31 +64,28 @@ psOffset}`):
 таблицу целиком, а `GetShaderPairByIndex(index)` компилирует бинарник
 **лениво** — только затребованные индексы.
 
-### 1.2 Фактическое потребление — посчитать нельзя, счётчики сломаны
+### 1.2 Фактическое потребление — счётчики были нерабочими (исправлено)
 
 `smartrenderer.cpp` задумывал давать ровно нужную метрику:
 `numVSUniq/numPSUniq` (уникальных VS/PS за кадр), `numVSTotal/numPSTotal`
-(за сессию). Но:
+(за сессию). Но весь блок (объявления счётчиков, `hash_set psMap/vsMap`,
+`insert` в `BindVertexShader/BindPixelShader`, `SetValue` в `OnFrameStart()`)
+стоял под `#ifndef _SHIPPING`. E2E/tiny10 гоняют **ShippingSingleExe**, т.е.
+в прогоняемой сборке счётчиков не было вовсе.
 
-```cpp
-#ifndef _SHIPPING
-  NDebug::DebugVar<int> g_numVS( "numVS", "Statistics", true );   // строка 35-36
-  hash_set<void*>  psMap, vsMap, psMapTotal, vsMapTotal;          // строка 37
-#endif
+Исправлено: блок переведён на `USE_RENDER_SHADER_STATS`, который включается
+либо в не-shipping, либо по `-DPW_RENDER_SHADER_STATS` в shipping:
+
+```sh
+PW_EXTRA_DEFS=-DPW_RENDER_SHADER_STATS ./build_client_x64_wine.sh
 ```
 
-`g_numVSu/g_numPSu/g_numVSt/g_numPSt` (строки 31–34) **никогда не инкрементируются
-и не читаются** — `SetValue` в `OnFrameStart()` пишет в них `psMap.size()`, но
-`psMap/vsMap` заполняются только внутри `#ifndef _SHIPPING` в
-`BindVertexShader/BindPixelShader`. В **shipping-сборке `psMap` пуст навсегда →
-все четыре счётчика = 0**. Т.е. штатной метрики нет, и в релизном конфиге, на
-котором идёт E2E/tiny10, она не соберётся.
+Добавлена метрика **`numShaderPairUniq` / `numShaderPairTotal`** — число
+уникальных пар (VS, PS). Это ядро ключа пайплайна; именно оно, а не число
+вариаций в `.shd`, определяет размер кэша `IGraphicsPipeline`.
 
-**Вывод по п.3:** готовых данных нет; верхняя граница — 5×10⁴ пар
-(потенциал контента). Для NVRHI это **не проблема**: 5×10⁴ `IGraphicsPipeline`
-— это нормально (NVRHI-проекты живут с десятками тысяч), при условии что ключ
-пайплайна конечен и кэш не растёт бесконечно. Проблема не в количестве, а в
-том, что к ключу надо домножить состояние (§1.3).
+**Оставшееся действие:** собрать shipping с этим дефайном и снять цифры в бою
+на tiny10 (см. §6, пункт «замеры»).
 
 ### 1.3 Что домножает число пайплайнов
 
@@ -107,10 +104,10 @@ psOffset}`):
 `GetSortId()`/`EqualIDs()` — готовый хеш-ключ, его и надо использовать как
 ключ кэша пайплайнов.
 
-**Обязательная работа перед этапом 3:** починить счётчики (вынести из-под
-`#ifndef _SHIPPING` или добавить shipping-вариант) и снять реальные
-`numVSUniq/numPSUniq` + число уникальных `sortId` за бой. Без этой цифры
-нельзя спроектировать кэш пайплайнов (размер, eviction).
+**Обязательная работа перед этапом 3:** снять реальные
+`numShaderPairTotal` + число уникальных `sortId` за бой. Без этой цифры
+нельзя спроектировать кэш пайплайнов (размер, eviction). Счётчик пар —
+см. §1.2, он готов; счётчик уникальных `sortId` — не добавлен.
 
 ---
 
@@ -120,17 +117,38 @@ psOffset}`):
 
 | Место | Что |
 |---|---|
-| `Scene/SHGridCalculator.cpp` | `#include <d3d9.h>`, `D3DXVECTOR2/3`, `D3DXVec3Normalize`, `D3DXSHEvalDirection` (16 ссылок) |
+| `Scene/SHGridCalculator.cpp` | `#include <d3d9.h>`, `D3DXVECTOR2/3`, `D3DXVec3Normalize` (см. §2.1.1 — что из D3DX реально живо) |
 | `PF_GameLogic/PFRenderInterface.cpp` | 41 `GetDevice()`: `SetRenderState`, `SetSamplerState(D3DSAMP_BORDERCOLOR/MIPMAPLODBIAS)`, `SetPixelShaderConstantF`, `StretchRect`, `D3DXVECTOR3`, `D3DSURFACE_DESC`, `EvictManagedResources`, `Clear` |
 | `PF_GameLogic/PFClientVisibilityMap.cpp` | `GetDevice()` |
 | `PF_GameLogic/SocialConnection.cpp` | скриншот: `CreateOffscreenPlainSurface`, `D3DXLoadSurfaceFromSurface`, `D3DXSaveSurfaceToFile` |
 | `PF_Core/{AnimatedTexture,RecolorableTexture}.cpp` | `D3DPOOL_MANAGED` assert, `EndScene` |
-| `Terrain/{Terrain,UberElement,ArrayInVRAM}.cpp` | `GetDevice()`, `GetDirect3D`, мёртвый `d3d9texture2D.h` |
+| `Terrain/{Terrain,ArrayInVRAM}.cpp` | `GetDevice()`, `GetDirect3D` (`UberElement.{h,cpp}` и `Render/d3d9texture2D.h` удалены — оба `#error`-файлы без включений) |
 | `EditorNative/*` | `SetViewport`, `D3DVIEWPORT9`, `SetFVF` |
 | `Src/UI`, `Src/Game` | **0** — уже чисто |
 
 Всего прямых `GetDevice()` — **344** (Render 153, PF_GameLogic 41, Terrain 2,
 EditorNative 2).
+
+### 2.1.1 D3DX-математика: что реально живо (уточнено)
+
+`Render/SHCoeffs.cpp` + `Scene/SHGridCalculator.cpp` — единственные места
+D3DX-математики. Разбор по вызовам:
+
+| D3DX-вызов | Статус |
+|---|---|
+| `D3DXSHEvalDirectionalLight(order=3, dir, r,g,b, R,G,B)` | **ЖИВО.** `Scene/Scene.cpp:706,710` (lighting environment, два источника) и `Scene/SHGridCalculator.cpp:47` (запекание SH-сетки). Уже имеет Wine/PerfHUD-фолбэк (`Compatibility::IsRunnedUnderWine()` → только DC-член, `coeffs[0]`), причем фолбэк меняет каналы местами (`RCoeffs()[0]=R; GCoeffs()[0]=B; BCoeffs()[0]=G`) — выглядит как баг, проверить при портировании. На tiny10 (нативный Windows) идёт **настоящий** D3DX-путь. |
+| `D3DXVec3Normalize`, `D3DXVECTOR2/3` | **ЖИВО** (`SHGridCalculator::CubeCoord` и обход граней куба). Тривиально заменяется на `CVec3`/свою нормализацию. |
+| `D3DXSHProjectCubeMap` (`EvaluateSHCoeffsForCubeMap`) | **МЁРТВО** — ни одного вызова. Удалено. |
+| GPU-проекция в SH (`EvaluateSHCoeffsFor2DTexture` + `ImmRenderer` проходы `SH`/`SH2`/`SH3`) | **МЁРТВО** — ни одного вызова. Удалено; осиротели `OnlineShaders/{SH,SH2,SH3}.psb`. |
+| `D3DXSaveTextureToFile` (`#ifdef DEBUG_SH`) | **МЁРТВО** — `DEBUG_SH` закомментирован в обоих файлах; путь `“Z:/tst_tex/project.dds”` хардкод. |
+| `D3DXMatrixInverse`, `D3DXMATRIX` (`ShadowManager.cpp`) | **ЖИВО** — построение матриц света/фрустума теней. Заменяется на `SHMatrix`/`System/Geom`. |
+
+Вывод: объём D3DX-математики **меньше**, чем казалось, но `SHEvalDirectionalLight`
+требует **побитово** тех же констант базиса, что и D3DX9 — иначе поедет
+запечённое освещение (и `unitstats`-смоук по бою). Брать константы надо из
+исходников D3DX/DirectXMath (`SHEvalDirection`, таблицы `g_SHCoeff{1..5}`),
+не по памяти; проверить диффом на малом наборе направлений до переключения.
+
 
 ### 2.2 Реальный срез состояний (много меньше, чем кажется)
 
@@ -169,10 +187,12 @@ EditorNative 2).
 
 - `D3DPOOL_MANAGED` 21 место, `DEFAULT` 35, `SYSTEMMEM` 5, `SCRATCH` 0
   (только в строке dump).
-- `DXManager` (managed-priority/eviction по кадрам) — **удалить целиком**.
-- `DXResourcesControl.cpp` (50 D3D9-ссылок, учёт по пулам) — **уже выключен**
-  (`//#define DX_RESOURCE_CONTROL`); либо удалить, либо переписать на
-  NVRHI-refcount-статистику.
+- `DXManager` (managed-priority/eviction по кадрам) — **удалён целиком**
+  (`DXManager.{h,cpp}`, `BatchQueue::resourceManager`, cvar `DXHints`;
+  по умолчанию был выключен — `s_enableDXHints = false`). Вместе с ним
+  осиротел `IRenderablePrimitive::GetBuffers()` (7 реализаций) — убирать на
+  этапе 4.
+- `DXResourcesControl` в дереве **нет** (первичная оценка ошибочна).
 - `DeviceLostHandler` + `DeviceLostWrapper` (~35 классов, `NotifyDeviceLost/
   NotifyDeviceReset`, `RecoverFromDeviceLost`) — **интерфейс сохранить,
   семантику свести к «ресайз/ре-аллокация»**: в DX12/Vulkan device-lost нет.
@@ -190,8 +210,8 @@ VT16, VT32`.
 
 | Фича | Где | Что делать |
 |---|---|---|
-| **R2VB / `D3DUSAGE_DMAP` / vertex textures** | `atir2vb.h`, `TextureVtx` (`texture.{h,cpp}`), `FullScreenFX.cpp`, `PFPostFXParams.cpp`, `SHCoeffs.cpp`, `SHGrid*` | **Удалить.** Заменить на structured/typed buffer (SH-коэффициенты, «vertex texture»). Это же снимает 261-слотовую таблицу сэмплеров (`Sampler::MAX_VS_SAMPLER_INDEX = 260`, VS-слоты 257–260) — она существует **только** ради R2VB и упирается в лимит DX12/Vulkan (16 VS-sampler). |
-| **Fetch4** (`D3DSAMP_MIPMAPLODBIAS = FOURCC_GET4`) | `ShadowMapESM_Fetch4` | **Удалить класс**, оставить `ShadowMapESM`. |
+| **R2VB / `D3DUSAGE_DMAP` / vertex textures** | `atir2vb.h`, `TextureVtx` (`texture.{h,cpp}`), `FullScreenFX.cpp`, `PFPostFXParams.cpp` | **Удалить.** На современном железе `hasR2VB` (`CheckDeviceFormat(0, D3DRTYPE_SURFACE, FOURCC_R2VB)`) == false, т.е. R2VB-ветка мёртвая и её удаление на картинку не влияет. Рабочей была vertex-texture-ветка (`HasVT16/32`). Значения SH/PostFX-коэффициент в Vulkan/DX12 поедут в structured/typed buffer. |
+| **Fetch4** (`D3DSAMP_MIPMAPLODBIAS = FOURCC_GET4`) | `ShadowMapESM_Fetch4` | **Удалить класс**, оставить `ShadowMapESM`. Класс выбирался только при `HasDF24()` (vendor-формат) → на современном железе не создавался. |
 | **DF16/DF24/RAWZ/RESZ** (vendor depth formats) | `ShadowMap.cpp` (`FOURCC_DF16/DF24`), `renderformat.h`, `renderflagsconverter.cpp`, `ConfigManager` | **Удалить.** Тени → `D24S8`/`D32F` + depth SRV (`R24_UNORM_X8_TYPELESS` / `R32F`). |
 | **INTZ** | `renderformat.h FORMAT_INTZ`, `ShadowMap` | **Удалить** → depth SRV. |
 | **NULL-RT** (`FOURCC_NULL`) | `ShadowMap.cpp` (`s_disableNLRT`), `ConfigManager` | **Удалить** → color-write-mask=0 (уже используется рядом мест). |
@@ -235,14 +255,44 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
 - **SM2.0-фолбэк удалить**: `FORCE_SM20`, `ps_2_0/vs_2_0`, `.shd2`-файлы
   (`MultiShader::OpenFile` выбирает `%s.shd%s` по `bSupportSM30`),
   `Session.ROOT_*_shader3compatibilityError.txt`, `forceSM20Usage` dev-var.
-- **`.shd`-контейнер переформатировать**: сейчас это `{count, [vsOffset,
-  psOffset]}` + DXBC-под-SM3.0. Нужен формат под DXBC-SM5 (+ SPIR-V для
-  Vulkan, либо компиляция HLSL→SPIR-V на клиенте через DXC — дороже).
-  Генератор `.shd` в дереве **отсутствует** (`MaterialSpec.h/.cpp` —
-  «GENERATED AUTOMATICALLY! DON'T CHANGE», генератор не в дереве) → **это
-  блокер: без генератора пересобрать 36 uber-shader-наборов нельзя.**
-  Первый практический шаг — найти/написать генератор
-  (`.hlsl` + `MaterialSpec.xml` pins → `.shd` + `MaterialSpec.{h,cpp}`).
+- **`.shd`-контейнер переформатировать**: сейчас это `{uint32 codesCount,
+  [ {vsOffset, psOffset} × count ]}` + DXBC-под-SM3.0. Нужен формат под
+  DXBC-SM5 (+ SPIR-V для Vulkan, либо компиляция HLSL→SPIR-V на клиенте
+  через DXC — дороже).
+- **Генератор `.shd` в дереве ЕСТЬ** (первичная оценка была неверна):
+  проект **`Src/ShaderCompiler/`** (`ShaderCompiler.cpp`,
+  `UberShaderDesc.{h,cpp}`, `parse.cpp`) — читает `MaterialSpec.xml`
+  (`<shaderName>` + `<pinName>/<maxPinValue>/<pinMultiplier>`), для каждой
+  из `GetTotalCount()` комбинаций пинов компилирует **тот же `.hlsl`** с
+  `D3DXCompileShader` и `D3DXMACRO`-определениями пинов, entry points
+  `MainPass_VSMain` / `MainPass_PSMain`, и пишет `.shd`.
+  Вызов — `Vendor/BuildUtils/CompileShaders.cmd` →
+  `Bin/ShaderCompiler.exe ../Src/Render/Shaders/MaterialSpec.xml
+  --out../Data/Shaders/UberShaders/ [--sm20] [--clean] [--name <shader>]`.
+  Проект есть в `Src/PF.sln`, но **не входит в CMake-граф клиента**
+  (25 проектов) — собирается отдельно, под Win32/D3DX9.
+  Что в нём надо менять: `D3DXCompileShader` → `D3DCompile`, профили
+  `vs_3_0/ps_3_0` → `vs_5_0/ps_5_0` (+ DXC→SPIR-V), убрать `--sm20`/`.shd2`,
+  и переносить на x64/вне Wine-D3DX.
+  Инкрементальный кэш `.codes` **фактически выключён**: в
+  `UberShaderFileInfo::Read()` ранний `return` после `Reset()`, т.е. всегда
+  полная компиляция всех пинов (вот откуда 49 966 пар в `BasicMaterial.shd`).
+  `MaterialSpec.{h,cpp}` этим генератором **не** создаются — их генератор
+  (XML → C++-классы материала) в дереве действительно отсутствует;
+  для смены набора пинов (например, убрать `R2VBPinValue`) он нужен.
+- **Второй контейнер шейдеров, не учтённый в первичной оценке:**
+  `Data/Shaders/OnlineShaders/` — **44 файла** `.vsb`/`.psb` (готовые DXBC,
+  без обёртки `.shd`), грузятся `ImmRenderer::Get{V,P}Shader(name)` по имени
+  из кэша (`ImmediateRenderer.cpp`). Это путь всех «нематериальных» проходов:
+  `Z_Only`, `ConstantColor`, `ShadowPass*`, `SA*`, `SH*`, `Upscale{H,V}`,
+  `DecodeZ`, `default_shader`, `WarfogBlend`, `NormalMap`, … Имена либо
+  хардкод в C++ (`ShadowMap.cpp`, `Stretcher.cpp`, `DXHelpers.h`), либо из БД
+  (ресурсы материала). При переносе на NVRHI этот контейнер надо завести
+  **параллельно** `.shd` (тот же DXBC-SM5/SPIR-V, другой способ выбора).
+  Уже осиротели после этапа 1: `DecodeRAWZ.psb` (RESZ-путь удалён) и
+  `SAPrePixelShaderF4.psb` (Fetch4) — ни одного упоминания в коде.
+  Живой 4-таповый PCF — `ShadowPassPCFDST4*` (dev-var `shadowPCF4_enable`,
+  по умолчанию `true`), переносим.
 - **Лимиты SM5, которые надо проверить по контенту:**
   `VSHADER_NIGHT_PARAMS c234`, `PSHADER_NIGHT_PARAMS c220` (OK, 4096),
   `BONES c24` + `MAX_BONES 70` (comment: «can't be much higher due to Wine»),
@@ -271,8 +321,29 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
 работают как `cbuffer`-массив), и C++ (API не меняется), и позволяет
 `SAMPLER_CONSTANTS_BEGIN` остаться константой.
 
-Отдельно: `Sampler::MAX_VS_SAMPLER_INDEX = 260` и `lastTexturesPtrs[261]`
-(`smartrenderer.cpp`) — после удаления R2VB сужается до 16.
+Отдельно — **двойная трактовка имён `sN` в `GlobalMasks.h`** (подводный
+камень, снят на этапе 1): в C++-секции (`#ifndef HLSL`) было
+`static const unsigned int s0 = 257;`, т.е. одно и то же имя `s0` в HLSL —
+это слот 0, а в C++ — слот **257**. Расширенный диапазон 257..260 —
+D3D9-пространство SM3.0 vertex-texture-адресации; под него и была
+размерена таблица `lastTexturesPtrs[MAX_VS_SAMPLER_INDEX+1]` (261).
+Единственный реальный потребитель — PostFX-коэффициенты:
+`FullScreenFX::Apply` биндил `TextureVtx` в `Sampler::MIN_VS_SAMPLER_INDEX`
+(257), тогда как HLSL читает их из `coeffMap : register(s0)`.
+`IDirect3DDevice9::SetTexture` по индексу 257 вне
+`MaxSimultaneousTextures` возвращает `D3DERR_INVALIDCALL` (ошибка только
+печаталась при `s_DXWarnLevel > 1`), т.е. **coeffMap фактически не
+биндился** — VS читал то, что осталось в слоте 0 (обычно DepthMap war fog).
+Плюс `coeffMap : register(s0)` конфликтовал с `DepthMap : register(s0)`
+(тот же `#if WarFogPinValue == PRESENT`).
+
+Снято так: `coeffMap` перенесён в свободный слот
+(`GlobalMasks.h: POSTFX_COEFFSAMPLERINDEX = s3`; у `FullScreenMaterial`
+заняты s0 DepthMap, s1 diffuse, s2 bloom, s10 warFog), C++ `s0..s3`
+стали обычными индексами, `MIN/MAX_VS_SAMPLER_INDEX` совмещены с PS-диапазоном
+(16 слотов вместо 261). Это **изменение картинки** (PostFX sharp /
+color-correct начинают получать настоящие веса) — сознательное, класс
+«исправление мёртвого пути».
 
 ---
 
@@ -285,34 +356,66 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
 
 ### Этап 0. Блокеры и разведка (1–2 смены)
 
-- [ ] **Генератор `.shd` + `MaterialSpec.{h,cpp}`.** Найти в истории/архивах
-      или написать (`Src/Render/Shaders/*.hlsl` + `MaterialSpec.xml` pins →
-      `.shd` + сгенерированные классы). Без этого этапа дальше идти нельзя.
+- [x] **Генератор `.shd` — найден, блокера нет:** `Src/ShaderCompiler/` +
+      `Vendor/BuildUtils/CompileShaders.cmd` (см. §2.6). Не входит в
+      CMake-граф клиента, Win32/D3DX9 — переносить на `D3DCompile`/SM5/DXC
+      нужно в рамках этапа 3.
+- [ ] **Генератор `MaterialSpec.{h,cpp}` из `MaterialSpec.xml` — отсутствует.**
+      Нужен, только если меняется набор пинов материала (например, убрать
+      `R2VBPinValue`). Пока пины не меняются — не блокер.
 - [ ] `tools/nvrhi_probe/` — вне графа клиента: NVRHI статикой под MSVC 14.44
       `/MT` + C++17; **смоук Vulkan** на `HWND` клиента; прогон под Wine
       (нативный `winevulkan`) и на tiny10. DX12 — только проверить, что
       компилируется (запуск позже).
 - [ ] Зафиксировать: `d3dcompiler_47` vs DXC для SPIR-V; размер прироста;
       какие DXGI/Vulkan-зависимости появляются.
-- [ ] Починить счётчики `numVSUniq/numPSUniq/numVSTotal/numPSTotal`
-      (§1.2) и **снять реальные цифры** в бою + число уникальных `sortId`.
+- [x] Счётчики уникальных VS/PS/пар переведены на `USE_RENDER_SHADER_STATS`
+      и доступны в shipping по `-DPW_RENDER_SHADER_STATS` (§1.2).
+- [ ] **Снять реальные цифры** (`numShaderPairTotal`, `numVSUniq`) в бою на
+      tiny10 + число уникальных `sortId`.
 
 ### Этап 1. Зачистка: удалить мёртвое и D3D9-утечки (2–3 смены)
 
-Ничего не меняет в картинке — и потому идёт первым.
+Ничего не меняет в картинке — и потому идёт первым. Единственные
+сознательные отклонения от «картинка не меняется» отмечены в §6
+(PostFX-коэффициенты, §2.7).
 
+- [x] Удалено: `atir2vb.h`, `VendorFOURCC.h`, R2VB-ветка `TextureVtx`,
+      `ShadowMapESM_Fetch4`, `ShadowMapPCF_DF` (никогда не создавался),
+      `D3DUSAGE_DMAP`, vendor-FOURCC (`DF16/DF24/RAWZ/RESZ/INTZ/NULL/R2VB`)
+      и `Features.h`-фичи под них, SM2.0-путь (`FORCE_SM20`, `.shd2`,
+      `forceSM20Usage`), RESZ-путь (`CopyDepthRESZ`, `enableRESZ`),
+      71 `D3DRS_*` + 5 `D3DSAMP_*` из dump-таблицы.
+- [x] `ERenderFormat` сокращён до 12 форматов (§2.4).
 - [ ] Удалить: `rendertarget.h` (уже `#error`), `d3d9texture2D.h`,
-      `atir2vb.h` + `TextureVtx` + R2VB/VT-ветки, `ShadowMapESM_Fetch4`,
-      `D3DUSAGE_DMAP`, vendor-FOURCC (`DF16/DF24/RAWZ/RESZ/INTZ/NULL/R2VB`) и
-      `Features.h`-фичи под них, SM2.0-путь (`FORCE_SM20`, `.shd2`,
-      `forceSM20Usage`, `shader3compatibilityError`), 71 `D3DRS_*` из
-      dump-таблицы, `D3DUSAGE_QUERY`, `D3DQUERYTYPE_EVENT`-механику
-      (`Renderer::Synchronize`), `DXManager` целиком, `DXResourcesControl`
-      (уже выключен).
-- [ ] Убрать FVF/fixed-function (4 места, §2.2).
+      `D3DUSAGE_QUERY`.
+      `D3DQUERYTYPE_EVENT` (`Renderer::Synchronize`) — **не удаляется, а
+      переносится**: это троттлинг CPU относительно GPU при present без
+      тройной буферизации (`g_synchronizeRender`, `!bTripleBufferUsed`).
+      В NVRHI есть `createEventQuery/setEventQuery/pollEventQuery/
+      waitEventQuery/resetEventQuery` — ложится 1:1.
+      `DXManager` удалён целиком (+ cvar `DXHints`, `resourceManager` в
+      `BatchQueue`; по умолчанию был выключен: `s_enableDXHints = false`).
+      `DXResourcesControl` в дереве **нет** (первичная оценка ошибочна).
+      Удалены мёртвые файлы: `Render/rendertarget.h` (`#error` с 2008,
+      ни одного включения), `Terrain/UberElement.{h,cpp}` (`#error`
+      «deprecated 28.05.2008», ни одного включения; единственный
+      `D3DXSaveTextureToFile`-хак в дереве).
+- [x] FVF/fixed-function: `SmartRenderer::SetFVF` удалён, три места
+      (`DXHelpers.h` ×2, `ShadowManager.cpp`) переведены на
+      `SetVertexFormatXYZ()` (POSITION-only declaration).
+      **Осталось одно:** `RenderDeferred2D()` (`smartrenderer.cpp`) —
+      `SetVertexShader(NULL)` + `SetFVF(XYZRHW|DIFFUSE)` +
+      `DrawPrimitiveUP`. Практически вызывается только debug-оверлеями
+      (`DebugRenderer::Draw2D`, график кадров `UI/FrameTimeRender`).
+      Для NVRHI нужен собственный VS/PS (экранизация XYZRHW + diffuse);
+      образец раскладки — `Data/deprecated_shaders/debug_shader.hlsl`
+      (`float3 POSITION @0`, `float TEXCOORD0 @12`, `int4 COLOR0 @16`
+      — байт-в-байт совместим с `Vertex2D`).
 - [ ] Ликвидировать утечки D3D9 из `PF_GameLogic`/`Scene`/`Terrain`/
       `PF_Core`/`EditorNative` (§2.1) — 41+ `GetDevice()` снаружи.
-- [ ] `Scene/SHGridCalculator.cpp`: D3DX-математика → своя/`System/Geom`.
+- [ ] `Scene/SHGridCalculator.cpp` + `Render/SHCoeffs.cpp`: D3DX-математика
+      (`D3DXSHEvalDirection`, `D3DXSHEvalDirectionalLight`) → своя/`System/Geom`.
 - Критерий: `grep -c "IDirect3D\|D3DX\|d3d9" Src/{Scene,UI,Game,Terrain,
   PF_GameLogic,PF_Core,EditorNative}` → 0; в `Src/Render` — только
   `renderer.*`, `dxutils.*`, `texture*`, `smartrenderer.*`, `shadercompiler.*`,
@@ -362,7 +465,9 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
       NULL-RT → color-write 0. **Скриншот-дифф с ожиданием дрейфа** —
       зафиксировать новые эталоны.
 - [ ] SH/PostFX: vertex-texture/R2VB → structured buffer.
-- [ ] Occlusion → `IQuery`; UP-вызовы → временные буферы; `StretchRect` →
+- [ ] Occlusion — **не `IQuery`** (в NVRHI его нет, см. §3.x): выбрать
+      обход через нативный query-пул или патч NVRHI.
+      UP-вызовы → временные буферы; `StretchRect` →
       `copyTexture`/fullscreen-blit; `GetRenderTargetData` → `copyTextureRegion`
       в staging.
 - [ ] `configdatabase`: синтез `D3DCAPS9`-совместимой структуры (§2.5) +
@@ -384,6 +489,30 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
       скил `pw-client`.
 
 ---
+
+### 3.x GAP: occlusion-запросов в NVRHI нет
+
+Проверено по исходникам NVRHI (`6b96fb03`, 2026-10-05): в `nvrhi.h` есть
+только `IEventQuery` и `ITimerQuery` (`beginTimerQuery/endTimerQuery/
+getTimerQueryTime`); **`IQuery`/occlusion-типа нет нигде** (ни в `d3d12.h`,
+ни в `vulkan.h`).
+
+При этом occlusion в клиенте **живой**: `OcclusionQueriesBank`
+(`Render/OcclusionQueries.cpp`, `D3DQUERYTYPE_OCCLUSION`, пул запросов с
+кольцевым буфером `head/currentFrame/lastFinishedQuery`) используется для
+подводного/верхнего cullinga из `PF_GameLogic/PFRenderWater.cpp`
+(`SetUseMode(QUM_ISSUE / QUM_CHECK_AND_ISSUE / QUM_NONE)`), потребление —
+`Render/batch.cpp` (`QUM_CHECK`/`QUM_ISSUE` в обходе батчей).
+
+Варианты (решение принимать на этапе 3, не сейчас):
+1. **Обход NVRHI**: `IDevice::getNativeDevice()` → нативный
+   `ID3D12QueryHeap`+`ID3D12GraphicsCommandList` / `vkCmdBeginQuery`+
+   `VkQueryPool`. NVRHI это разрешает, но ломает переносимость бэкенда и
+   требует своей обвязки над command-list'ом NVRHI.
+2. **Запатчить/завендорить NVRHI** (`IQuery` + реализация DX12/Vulkan) —
+   самый чистый, но это поддержка форка.
+3. **Убрать GPU-occlusion** и усилить CPU-culling — риск по производительности
+   на подводных/крупных сценах и по поведению (активные cvar'ы).
 
 ## 4. Риски
 
@@ -421,3 +550,55 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
 `rndr_backend`, ограничения по слотам/профилям, статус vendor-форматов,
 формат `.shd`, как регенерировать `MaterialSpec`. Здесь — только механизм и
 подводные камни, не текущее состояние.
+
+---
+
+## 6. Статус в ветке `nvrhi`
+
+Ветка от `client-modern` (`84ca6630e`). Гейт: `./build_client_x64_wine.sh`
+(x64 shipping, Wine+MSVC 14.44) + E2E на tiny10.
+
+### Сделано (этап 1, часть)
+
+| Область | Изменение |
+|---|---|
+| `Render/Features.h`, `IConfigManager.h` | из перечня аппаратных фич убраны `hasDF16/DF24/RAWZ/INTZ/RESZ/R2VB/NLRT/VT16/VT32` (+ обёртки `HasDF16()…HasVT()`); остались `hasD16T/D24X/D24S` — единый гейт «depth читается как текстура» (`HasDSM()`). `TechniqueDesc::r2vbFormat` убран, `FindAcceptableTechnique` упрощён. `featuresVersion` → 2. |
+| `Render/VendorFOURCC.h`, `Render/atir2vb.h` | **удалены** (+ записи из `Render.vcproj`, `specific.h`). |
+| `Render/renderformat.h`, `renderflagsconverter.cpp` | `ERenderFormat`: удалены `FORMAT_INTZ/DF24/RAWZ/DF16`; `D3DFormat2Str` без vendor-FOURCC. |
+| `Render/ConfigManager.cpp` | `CheckFormats()` проверяет только D16T/D24X/D24S; удалён прощуп R2VB-форматов (`g_R2VBFormats`, `r2vbFormats`), `AllowDF24`. `GetDepthFormatPreffered()` → всегда `FORMAT_D24S8`; `ReadableDepthSupported()` → `HasDSM()`; `StencilSupported()` — по D24S8. Убран винный гейт `ReadableDepthEnabled()` (читаемость глубины больше не зависит от vendor-форматов). |
+| `Render/ShadowMap.cpp` | удалены классы `ShadowMapPCF_DF` (никогда не создавался — единственная ветка выбора закомментирована) и `ShadowMapESM_Fetch4`; `FOURCC_NULL` → обычный RT + color-write маска; vendor-формат глубины теней → `D24S8`; dev-var'ы `shadowFat`, `shadowNoNLRT` удалены. |
+| `Render/ShadowManager.cpp` | убраны два `!HasDSM() && HasDF24() → SHADOWMODE_SAESM` фолбэка. |
+| `PF_GameLogic/PFRenderInterface.{h,cpp}` | удалён RESZ-путь целиком: `CopyDepthRESZ()`, `s_useRESZ`, `s_EnableRESZ` + dev-var `enableRESZ`, `DECALMODEPIN_ZDECODE`-ветки в decal-проходах, `depthCopyShaderName` всегда `DecodeZ`. `DropAllSamplerStates()` — один проход (VS/PS-диапазоны совмещены). |
+| `Render/renderstatesmanager.cpp` | таблицы `DumpStates` сокращены до реально выставляемых состояний: 32 `D3DRS_*` (было 103) и 8 `D3DSAMP_*` (было 13). |
+| `Render/texture.{h,cpp}` | `TextureVtx` без R2VB: один vertex-texture режим, `Sizes` без r2vb-пары, `Bind(sampler)` без стрима, удалены `UsingR2VB()`, `stream`, `D3DUSAGE_DMAP`, `BindVertexBufferRaw`/`R2VB_*`. |
+| `Render/GlobalMasks.h` | C++ `s0` перестал быть 257; добавлены `s1..s3` и `POSTFX_COEFFSAMPLERINDEX = s3`. |
+| `Render/sampler.h` | `MIN/MAX_VS_SAMPLER_INDEX` = PS-диапазон (было 257/260) → таблица биндингов 16 вместо 261. |
+| `Render/smartrenderer.cpp` | `lastTexturesPtrs` обход по `capacity()` (был off-by-one: 259 из 261); статистика шейдеров на `USE_RENDER_SHADER_STATS` + метрика уникальных пар (VS,PS). |
+| `Render/FullScreenFX.{h,cpp}` | R2VB-ветка удалена (`r2vbGlbEnable_Set`, `SetR2VBPin` вызывается с «есть ли coeff-текстура»), мёртвый `pVDecl` (он был под R2VB-стрим 15) удалён; coeff-текстура биндится в `POSTFX_COEFFSAMPLERINDEX`. |
+| `Render/Shaders/FullScreenMaterial.hlsl` | `coeffMap: register(s0)` → `register(s3)` (см. §2.7). **Пока не пересобран `FullScreenMaterial.shd`, правка инертна:** в готовом DXBC всё ещё `s0`, а C++ пишет коэффициенты в s3 → шейдер читает s0 (= DepthMap), как и раньше. Регресса нет, но и исправления нет до пересборки шейдеров. |
+| `PF_GameLogic/PFPostFXParams.cpp` | гейт `!HasVT() && !HasR2VB()` убран (чтение текстур в VS гарантировано SM3.0); `TextureVtx::Sizes(1,1)`. |
+| `Render/renderer.cpp`, `shadercompiler.cpp`, `multishader.cpp` | SM2.0-путь удалён: `forceSM20Usage` dev-var, `#ifdef FORCE_SM20` клампы, `FORCE_SM20`/`ps_2_0`/`vs_2_0` в рантайм-компиляторе, суффикс `.shd2` в `MultiShader::OpenFile`. `bSupportSM30` оставлен — это гейт запуска (`PW_Client/Game.cpp::CheckHardwareCompatibility`), не путь рендера. |
+
+### Сознательные отклонения от «картинка не меняется»
+
+1. **PostFX sharp / color-correct.** `coeffMap` был не привязан (бинд в
+   слот 257 + конфликт с `DepthMap` в s0). После переноса в s3 веса
+   начинают читаться — картинка PostFX поменяется (в лучшую сторону).
+2. **Тени.** `ShadowMapPCF_DS` вместо `D16`/`D24X8` теперь всегда `D24S8`
+   (было `shadowFat && HasD24X() ? D24X8 : D16`, `shadowFat` — выключенный
+   dev-var → фактически был `D16`). Разрядность глубины выросла →
+   возможны сдвиги в bias-чувствительных местах.
+
+### Не сделано / под вопросом
+
+- `.shd2`-файлы в `Data/Shaders/UberShaders/` (17 шт.) клиентом больше не
+  читаются, но из контента не удалены — удаление трогает `files.list`
+  (манифест обновлений), делать в контентном контуре.
+- `Session.ROOT_*.shader3compatibilityError` (текст про SM3.0) — поле БД,
+  оставлено: гейт `CheckHardwareCompatibility` жив, а менять xdb-раскладку
+  ради мёртвого текста не нужно.
+- `ShaderCompiler` (`--sm20`, `.shd2`, D3DX9) не правился: он вне CMake-графа
+  клиента, переносится целиком на этапе 3.
+- `Render/SHCoeffs.cpp` → `D3DXSHEvalDirectionalLight`, `Scene/SHGridCalculator.cpp`
+  → `D3DXSHEvalDirection`/`D3DXVec3Normalize` — D3DX пока жив, это отдельная
+  задача этапа 1.

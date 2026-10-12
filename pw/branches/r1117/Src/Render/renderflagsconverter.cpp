@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "renderflagsconverter.h"
-#include "VendorFOURCC.h"
 
 namespace Render
 {
@@ -20,12 +19,8 @@ D3DFORMAT ConvertRenderFormat(ERenderFormat format)
 		case FORMAT_A32B32G32R32F: return D3DFMT_A32B32G32R32F;
 		case FORMAT_L16: return D3DFMT_L16;
 		case FORMAT_R5G6B5 : return D3DFMT_R5G6B5;
-    case FORMAT_INTZ : return FOURCC_INTZ;
-    case FORMAT_DF24 : return FOURCC_DF24;
-    case FORMAT_RAWZ : return FOURCC_RAWZ;
-    case FORMAT_DF16 : return FOURCC_DF16;
     case FORMAT_D24S8 : return D3DFMT_D24S8;
-		default: NI_ALWAYS_ASSERT("Неправильный формат render target!"); return D3DFMT_UNKNOWN;
+		default: NI_ALWAYS_ASSERT("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ render target!"); return D3DFMT_UNKNOWN;
 	}
 }
 
@@ -46,12 +41,10 @@ const char* D3DFormat2Str(DWORD _format)
   case D3DFMT_R5G6B5: return "D3DFMT_R5G6B5";
 
   case D3DFMT_D24S8:  return "D3DFMT_D24S8";
+  // D16/D24X Р¶РёРІС‹: СЌС‚Рѕ РµРґРёРЅСЃС‚РІРµРЅРЅС‹Рµ РѕСЃС‚Р°РІС€РёРµСЃСЏ Р°РїРїР°СЂР°С‚РЅС‹Рµ С„РёС‡Рё РіР»СѓР±РёРЅС‹
+  // (hasD16T/hasD24X -> HasDSM(), С‡С‚РµРЅРёРµ РіР»СѓР±РёРЅС‹ РєР°Рє С‚РµРєСЃС‚СѓСЂС‹).
   case D3DFMT_D24X8:  return "D3DFMT_D24X8";
   case D3DFMT_D16:    return "D3DFMT_D16";
-  case FOURCC_DF24:   return "FOURCC_DF24";
-  case FOURCC_DF16:   return "FOURCC_DF16";
-  case FOURCC_RAWZ:   return "FOURCC_RAWZ";
-  case FOURCC_INTZ:   return "FOURCC_INTZ";
   default: return "UNKNOWN";
   }
 }
@@ -70,7 +63,7 @@ const char* D3DPool2Str(D3DPOOL _pool)
 }
 
 
-/// Конвертирование типа примитивов рендера в d3d9
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ d3d9
 D3DPRIMITIVETYPE ConvertPrimitiveType(ERenderPrimitiveType type)
 {
 	switch (type)
@@ -84,7 +77,7 @@ D3DPRIMITIVETYPE ConvertPrimitiveType(ERenderPrimitiveType type)
 		default: NI_ALWAYS_ASSERT("Invalid render primitive type!"); return D3DPT_TRIANGLELIST;
 	}
 }
-/// Конвертирование типа использования элемента вершины в d3d9
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ d3d9
 BYTE ConvertVertexElementUsage(EVertexElementUsage usage)
 {
 	switch (usage)
@@ -107,7 +100,7 @@ BYTE ConvertVertexElementUsage(EVertexElementUsage usage)
 	}
 }
 
-/// Конвертирование типа элемента вершины в его размер
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 UINT GetVertexElementSize(EVertexElementType type)
 {
 	switch (type)
@@ -134,7 +127,7 @@ UINT GetVertexElementSize(EVertexElementType type)
 	}
 }
 
-/// Конвертирование типа элемента вершины в d3d9
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ d3d9
 BYTE ConvertVertexElementType(EVertexElementType type)
 {
 	switch (type)
@@ -175,7 +168,7 @@ DWORD ConvertRenderLockType(ERenderLockType type)
 	}
 }
 
-/// Конвертирование типа использования элемента вершины из d3d9
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ d3d9
 EVertexElementUsage Convert2VertexElementUsage(BYTE usage)
 {
   switch (usage)
@@ -198,7 +191,7 @@ EVertexElementUsage Convert2VertexElementUsage(BYTE usage)
   }
 }
 
-/// Конвертирование типа элемента вершины из d3d9
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ d3d9
 EVertexElementType Convert2VertexElementType(BYTE type)
 {
   switch (type)

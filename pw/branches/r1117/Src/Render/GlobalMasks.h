@@ -16,6 +16,10 @@
 #define TERRAIN_DIFFUSESAMPLER2      s2
 #define TERRAIN_DIFFUSESAMPLER3      s3
 
+// PostFX-коэффициенты для вершинной стадии (FullScreenMaterial).
+// Отдельный слот: s0..s2 у FullScreenMaterial заняты (DepthMap/diffuse/bloom).
+#define POSTFX_COEFFSAMPLERINDEX     s3
+
 // ==================================================================================
 // Material specific samplers
 // ==================================================================================
@@ -188,8 +192,11 @@
 #ifndef HLSL
 #pragma once
 
-static const unsigned int s0 = 257;
+static const unsigned int s0 = 0;
 
+static const unsigned int s1 = 1;
+static const unsigned int s2 = 2;
+static const unsigned int s3 = 3;
 static const unsigned int s7 = 7;
 static const unsigned int s8 = 8;
 static const unsigned int s9 = 9;

@@ -17,7 +17,6 @@
 #include "Render/ShadowManager.h"
 #include "Render/uirenderer.h"
 
-#include "Render/VendorFOURCC.h"
 
 #include "Render/GlobalMasks.h"
 
@@ -74,9 +73,6 @@ static NDebug::PerformanceDebugVar render_TheRest( "TheRest", "Render", 10, 10, 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static bool s_enableDXHints = false;
-REGISTER_VAR( "DXHints", s_enableDXHints, STORAGE_NONE );
-
 DEV_VAR_STATIC bool s_forceSky = true;
 REGISTER_DEV_VAR( "sky_force", s_forceSky, STORAGE_NONE );
 
@@ -121,10 +117,6 @@ REGISTER_CMD( rnd_PFX_new, EnablePFXInstancing );
 
 static bool s_readableDepth = false;
 static bool s_stencilSupported = true;
-static bool s_useRESZ = false;
-//static const bool s_useRESZ = false;
-static bool s_EnableRESZ = false;
-REGISTER_VAR("enableRESZ", s_EnableRESZ, STORAGE_USER);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -411,15 +403,13 @@ void Interface::CreateDepthTextures(UINT _width, UINT _height, UINT _copy_width,
   if( s_readableDepth )
   {
     const IConfigManager* const configManager = GetIConfigManager();
-    s_useRESZ = s_EnableRESZ && !configManager->HasINTZ() &&
-                configManager->CheckFeatureSupportExact(IConfigManager::hasRESZ|IConfigManager::hasDF24);
-    ERenderFormat format = s_useRESZ ? FORMAT_D24S8 : configManager->GetDepthFormatPreffered();
+    ERenderFormat format = configManager->GetDepthFormatPreffered();
     s_stencilSupported = configManager->StencilSupported(format);
     D3DSURFACE_DESC desc = { Render::ConvertRenderFormat(format), D3DRTYPE_SURFACE, D3DUSAGE_DEPTHSTENCIL,
                              D3DPOOL_DEFAULT, D3DMULTISAMPLE_NONE, 0, _width, _height };
     pMainDepth = ::Create<Texture2D>(desc, HANDLERPRIORITY_HIGH);
 
-    depthCopyShaderName = (FORMAT_RAWZ == format) ? "DecodeRAWZ" : "DecodeZ";
+    depthCopyShaderName = "DecodeZ";
   }
   
   pMainRT1 = Render::CreateRenderTexture2D(_copy_width, _copy_height, FORMAT_R32F);
@@ -429,7 +419,7 @@ void Interface::CreateDepthTextures(UINT _width, UINT _height, UINT _copy_width,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline DXSurfaceRef Interface::GetDepthSurface()
 {
-  return s_readableDepth && !s_useRESZ ? pMainDepth->GetSurface(0) : Render::GetRenderer()->GetDepthStencilSurface();  
+  return s_readableDepth ? pMainDepth->GetSurface(0) : Render::GetRenderer()->GetDepthStencilSurface();  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -516,17 +506,15 @@ void Interface::Stop()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::DropAllSamplerStates()
 {
-  const SamplerState &stateVS = SamplerState::PRESET_CLAMP_MIP_BILINEAR();
   const SamplerState &statePS = SamplerState::IsTriLinearDisabled() ? SamplerState::PRESET_CLAMP_MIP_BILINEAR()
                                                                     : SamplerState::PRESET_CLAMP_TRILINEAR();
   const Texture2DRef &emptyTexture = GetEmptyTexture2D();
   RenderStatesManager &rsManager = *GetStatesManager();
 
+  // Отдельного VS-диапазона сэмплеров больше нет (см. Sampler::MIN_VS_SAMPLER_INDEX),
+  // поэтому один проход по общим слотам.
   for (unsigned int i = Sampler::MIN_PS_SAMPLER_INDEX; i <= 9/*Sampler::MAX_PS_SAMPLER_INDEX*/; ++i)
     rsManager.SetSampler(i, statePS, emptyTexture);
-
-  for (unsigned int i = Sampler::MIN_VS_SAMPLER_INDEX; i <= 9/*Sampler::MAX_VS_SAMPLER_INDEX*/; ++i)
-    rsManager.SetSampler(i, stateVS, emptyTexture);
 }
 
 
@@ -589,11 +577,6 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
   if(dualDepthTex) {
     statesManager.SetSampler(3, SamplerState::PRESET_CLAMP_POINT(), pMainRT1Copy);
     decalModeValue = NDb::DECALMODEPIN_DUALDEPTH;
-  }
-  else if(s_useRESZ && NDb::MATERIALPRIORITY_TERRAINDECALS == priority) {
-    const SHMatrix &proj = pScene->GetSceneConstants().projection;
-    GetRenderer()->SetPixelShaderConstantsVector4(PSHADER_LOCALCONST0, CVec4(-proj._34, proj._33, 0.0f, 0.0f));
-    decalModeValue = NDb::DECALMODEPIN_ZDECODE;
   }
   else
     decalModeValue = NDb::DECALMODEPIN_STANDARD;
@@ -682,11 +665,6 @@ void Interface::RenderDecals( const BatchQueue &queue, NDb::MaterialPriority pri
   if(dualDepthTex) {
     statesManager.SetSampler(3, SamplerState::PRESET_CLAMP_POINT(), pMainRT1Copy);
     decalModeValue = NDb::DECALMODEPIN_DUALDEPTH;
-  }
-  else if(s_useRESZ && NDb::MATERIALPRIORITY_TERRAINDECALS == priority) {
-    const SHMatrix &proj = pScene->GetSceneConstants().projection;
-    GetRenderer()->SetPixelShaderConstantsVector4(PSHADER_LOCALCONST0, CVec4(-proj._34, proj._33, 0.0f, 0.0f));
-    decalModeValue = NDb::DECALMODEPIN_ZDECODE;
   }
   else
     decalModeValue = NDb::DECALMODEPIN_STANDARD;
@@ -798,18 +776,13 @@ void Interface::RenderMainPassOpaque( const BatchQueue &queue )
   const bool copyDepth = s_readableDepth && !renderingReflection;
   const bool dualDepthCopy = !s_stencilSupported && !queue.IsEmpty(NDb::MATERIALPRIORITY_WATERDECALS);
   NI_ASSERT(copyDepth || !dualDepthCopy, "dualDepthCopy couldn't be true while copyDepth is false");
-  NI_ASSERT(!(s_useRESZ && dualDepthCopy), "dualDepthCopy and useRESZ couldn't be true at once");
 
   // Copy depth buffer for terrain decals (and water decals, if stencil support is absent) rendering.
-  Render::Texture2D* const pDepthTex = s_useRESZ ? pMainDepth :
-                                       dualDepthCopy ? pMainRT1Copy.GetPtr() : pMainRT1.GetPtr();
+  Render::Texture2D* const pDepthTex = dualDepthCopy ? pMainRT1Copy.GetPtr() : pMainRT1.GetPtr();
   if(copyDepth) {
     const bool hasTerrainDecals = !queue.IsEmpty(NDb::MATERIALPRIORITY_TERRAINDECALS) || !queue.IsEmpty(NDb::MATERIALPRIORITY_TERRAINDOMINATIONDECALS);
-    if(hasTerrainDecals && s_useRESZ)
-      CopyDepthRESZ();
-    else
-      if(hasTerrainDecals || dualDepthCopy)
-        CopyDepth( pDepthTex->GetSurface(0) );
+    if(hasTerrainDecals || dualDepthCopy)
+      CopyDepth( pDepthTex->GetSurface(0) );
   }
   if(!renderingReflection)
   {
@@ -827,12 +800,8 @@ void Interface::RenderMainPassOpaque( const BatchQueue &queue )
     RenderSky(queue);
 
   // Copy depth buffer for water, distortion, shadows etc.
-  if(copyDepth) {
-    if(s_useRESZ)
-      CopyDepthRESZ();
-    else
+  if(copyDepth)
     CopyDepth( pMainRT1->GetSurface(0) );
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1145,29 +1114,6 @@ void Interface::CopyDepth(const DXSurfaceRef& _dest)
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Interface::CopyDepthRESZ()
-{
-  static const D3DXVECTOR3 vDummyPoint(0.0f, 0.0f, 0.0f);
-  static const DipDescriptor desc(RENDERPRIMITIVE_POINTLIST, 0, 0, 1, 0, 1);
-  static const float pointSizeOne = 1.0f;
-
-  // Bind destination depth-stencil texture to texture sampler 0
-  SmartRenderer::BindTexture(0, pMainDepth);
-  // Perform a dummy draw call to ensure texture sampler 0 is set before the resolve is triggered
-  RenderStatesManager& statesManager = *GetStatesManager();
-  statesManager.SetStateDirect(D3DRS_ZENABLE, FALSE);
-  statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, 0);
-  statesManager.SetStateDirect( D3DRS_POINTSIZE, (DWORD&)(pointSizeOne) );
-  SmartRenderer::DrawPrimitiveUP( desc, vDummyPoint, sizeof(D3DXVECTOR3) );
-  statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, 0x0F);
-  statesManager.SetStateDirect(D3DRS_ZENABLE, TRUE);
-  // Trigger the depth buffer resolve; after this call texture sampler 0
-  // will contain the contents of the resolve operation
-  statesManager.SetStateDirect(D3DRS_POINTSIZE, RESZ_CODE);
-
-  statesManager.SetStateDirect( D3DRS_POINTSIZE, (DWORD&)(pointSizeOne) );
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::SetPostFXParams( const NDb::PostFXParams* params )
 {
   pPostFXMan->SetDBParams( params );
@@ -1263,8 +1209,6 @@ void Interface::RenderMainScene(bool GIsEditor)
 
   // Add scene objects
   mainBatchQueue.Clear();
-  mainBatchQueue.EnableResourceManagment(s_enableDXHints);
-  mainBatchQueue.OnNextFrame();
 
   if ( pScene->NeedDebugRender() || showAABBs )
   {
@@ -1303,8 +1247,6 @@ void Interface::RenderMainScene(bool GIsEditor)
     pTerrain->RenderAOESelection_Deprecated(mainBatchQueue);
 
   ProcessSilhouettes(sceneConsts);
-
-  mainBatchQueue.ManageResources();
 
   render_Gather.Stop();
 

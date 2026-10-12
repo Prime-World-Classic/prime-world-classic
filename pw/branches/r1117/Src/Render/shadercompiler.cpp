@@ -197,14 +197,10 @@ DXPixelShaderRef CompilePixelShaderFromFile(const char* filename, const ShaderDe
 	//systemLog( NLogg::LEVEL_MESSAGE ) << "deprecated online PS compiling: " << filename << endl;
   ShaderDefines defines(definesTable);
   defines.AddDefine("PS", "1");
-	bool bSupportSM30 = GetRenderer()->GetCaps().bSupportSM30;
-	if (!bSupportSM30)
-	{
-    defines.AddDefine("FORCE_SM20");
-	}
   defines.End();
 
-  CompiledShaderInfo info = CompileShader(filename, defines.Items(), "PS_main", bSupportSM30 ? "ps_3_0" : "ps_2_0");
+  // SM2.0-фолбэк (FORCE_SM20 / ps_2_0) удалён: см. renderer.cpp.
+  CompiledShaderInfo info = CompileShader(filename, defines.Items(), "PS_main", "ps_3_0");
   if (info.isOk())
   {
     IDirect3DPixelShader9* d3dshader = 0;
@@ -233,14 +229,10 @@ DXVertexShaderRef CompileVertexShaderFromFile(const char* filename, const Shader
 	////////////////////
   ShaderDefines defines(definesTable);
   defines.AddDefine("VS", "1");
-	bool bSupportSM30 = GetRenderer()->GetCaps().bSupportSM30;
-	if (!bSupportSM30)
-	{
-    defines.AddDefine("FORCE_SM20");
-	}
 	defines.End();
 
-  CompiledShaderInfo info = CompileShader(filename, defines.Items(), "VS_main", bSupportSM30 ? "vs_3_0" : "vs_2_0");
+  // SM2.0-фолбэк (FORCE_SM20 / vs_2_0) удалён: см. renderer.cpp.
+  CompiledShaderInfo info = CompileShader(filename, defines.Items(), "VS_main", "vs_3_0");
   if (info.isOk())
   {
     IDirect3DVertexShader9* d3dshader = 0;

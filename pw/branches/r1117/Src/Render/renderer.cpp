@@ -44,8 +44,6 @@ const int SHADER_REGISTERS_COUNT = 256;
 
 const D3DFORMAT frontBufferFormat = D3DFMT_X8R8G8B8;
 
-static bool forceSM20Usage = false;
-
 #ifndef _SHIPPING
 #define _NVPERFHUD_ // comment this to disable NVPerfHUD profiling //////////////////
 #endif // _SHIPPING
@@ -509,19 +507,13 @@ void Renderer::FillCaps()
 		caps.vertexShaderVersion = 0.0f;
 	}
 
-	// 
-	if (!forceSM20Usage)
-	{
-		caps.vertexShaderVersion = float((d3dCaps.VertexShaderVersion >> 8) & 0xFF) + 
-			                         float(d3dCaps.VertexShaderVersion & 0xFF) * 0.1f;
-		caps.pixelShaderVersion = float((d3dCaps.PixelShaderVersion >> 8) & 0xFF) + 
-			                        float(d3dCaps.PixelShaderVersion & 0xFF) * 0.1f;
-	}
-	else
-	{
-		caps.vertexShaderVersion = 2.0f;
-		caps.pixelShaderVersion = 2.0f;
-	}
+	// SM2.0-фолбэк удалён (вместе с .shd2 и FORCE_SM20 в шейдерах):
+	// гейт запуска CheckHardwareCompatibility() всё равно не пускает
+	// железо без SM3.0, а под Vulkan/DX12 минимальный профиль — SM5+.
+	caps.vertexShaderVersion = float((d3dCaps.VertexShaderVersion >> 8) & 0xFF) +
+	                           float(d3dCaps.VertexShaderVersion & 0xFF) * 0.1f;
+	caps.pixelShaderVersion = float((d3dCaps.PixelShaderVersion >> 8) & 0xFF) +
+	                          float(d3dCaps.PixelShaderVersion & 0xFF) * 0.1f;
 
 	caps.bSupportSM30 = caps.pixelShaderVersion >= 3.0f && caps.vertexShaderVersion >= 3.0f;
 }
@@ -609,9 +601,6 @@ void Renderer::SetPixelShaderConstants(unsigned int startRegisterIndex, unsigned
 	constChecker.SetPixelShaderConstants(startRegisterIndex, registersCount);
 #endif
 
-#ifdef FORCE_SM20			
-  startRegisterIndex = min(startRegisterIndex, 31);
-#endif
   bool res = GetDevice()->SetPixelShaderConstantF(startRegisterIndex, (const float*)(data), registersCount) == D3D_OK;
 
 	NI_ASSERT(res, "SetPixelShaderConstants error!");
@@ -922,5 +911,3 @@ void Renderer::ApplyNewParams( const RenderMode &_renderMode )
 }
 
 } // namespace Render
-
-REGISTER_DEV_VAR( "forceSM20Usage", forceSM20Usage, STORAGE_GLOBAL );

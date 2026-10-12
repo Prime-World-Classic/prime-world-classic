@@ -102,8 +102,13 @@ protected:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// R2VB texture - default-pool, RT, contains vertex data. Depending on actual hardware,
-// switches between Render-to-Vertex-Buffer and Vertex-Texture modes.
+// Текстура с построчными данными для вершинной стадии (PostFX-коэффициенты).
+//
+// Исторически имела два режима: ATI Render-to-VB (DMA-поверхность, читаемая
+// через D3DRS_POINTSIZE-токены) и vertex texture. R2VB удалён: под Vulkan/DX12
+// аналога нет, а именно он был единственным владельцем VS-слотов сэмплеров
+// (см. Sampler::MAX_VS_SAMPLER_INDEX). Оставлен vertex-texture путь; для
+// Vulkan он станет structured/typed buffer'ом.
 class TextureVtx : public Texture2D
 {
   OBJECT_METHODS(0x3D897500, TextureVtx);
@@ -113,40 +118,30 @@ public:
 
   struct Sizes
   {
-    SIZE vtx;
-    SIZE r2vb;
+    SIZE tex;
 
     Sizes() {}
     Sizes(UINT _width, UINT _heigth)
     {
-      vtx.cx = r2vb.cx = _width;
-      vtx.cy = r2vb.cy = _heigth;
-    }
-    Sizes(UINT _w_vtx, UINT _h_vtx, UINT _w_r2vb, UINT _h_r2vb)
-    {
-      vtx.cx = _w_vtx;
-      vtx.cy = _h_vtx;
-      r2vb.cx = _w_r2vb;
-      r2vb.cy = _h_r2vb;
+      tex.cx = _width;
+      tex.cy = _heigth;
     }
   };
 
   // WARNING! These methods are NOT virtual! Use typecasts and GetTypeId().
-  void Bind(UINT _sampler, UINT _stream = 15); 
+  void Bind(UINT _sampler);
   void UnBind();
-  bool UsingR2VB() const { return desc.Usage & D3DUSAGE_DMAP; }
   UINT GetPixelSize() const { return pixelSize; }
 
   virtual void OnDeviceReset();
 
 protected:
   TextureVtx() { NI_ASSERT(FALSE, "Invalid TextureVtx constructor called!"); } // just to make OBJECT_METHODS happy
-  TextureVtx(const Sizes& _sizes, bool _preferR2VB = true);
+  explicit TextureVtx(const Sizes& _sizes);
 
 private:
   UINT pixelSize;
   UINT sampler;
-  UINT stream;
   Sizes sizes;
 };
 

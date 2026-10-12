@@ -24,7 +24,17 @@ static bool s_supressHWI = false;
 REGISTER_DEV_VAR( "supressHWI", s_supressHWI, STORAGE_NONE );
 #endif // _SUPRESS_HWI
 
-#ifndef _SHIPPING
+// Статистика по шейдерам: сколько уникальных VS/PS/пар биндится за кадр и за
+// сессию. Нужна для расчёта кэша графических пайплайнов (docs/PLAN_NVRHI.md,
+// этап 0): без неё реальное число вариаций неизвестно — верхняя граница контента
+// (49966 пар в .shd) ничего не говорит о потребляемом множестве.
+// В shipping по умолчанию выключена (per-draw hash insert), включается сборкой
+// с -DPW_RENDER_SHADER_STATS (build_client_x64_wine.sh: PW_EXTRA_DEFS).
+#if !defined(_SHIPPING) || defined(PW_RENDER_SHADER_STATS)
+  #define USE_RENDER_SHADER_STATS 1
+#endif
+
+#ifdef USE_RENDER_SHADER_STATS
 
 namespace
 {
@@ -32,12 +42,20 @@ namespace
   NDebug::DebugVar<int> g_numPSu( "numPSUniq", "Statistics" );
   NDebug::DebugVar<int> g_numVSt( "numVSTotal", "Statistics" );
   NDebug::DebugVar<int> g_numPSt( "numPSTotal", "Statistics" );
+  NDebug::DebugVar<int> g_numPairu("numShaderPairUniq", "Statistics" );
+  NDebug::DebugVar<int> g_numPairt("numShaderPairTotal", "Statistics" );
   NDebug::DebugVar<int> g_numVS( "numVS", "Statistics", true );
   NDebug::DebugVar<int> g_numPS( "numPS", "Statistics", true );
   hash_set<void*>  psMap, vsMap, psMapTotal, vsMapTotal;
+  // Ключ ядра пайплайна: пара (VS, PS). Полный ключ пайплайна —
+  // (пара, RenderState, InputLayout, форматы RT); пара — его самая
+  // широкая составляющая, поэтому её число и меряем.
+  struct PairHash { size_t operator()(UINT64 _k) const { return size_t(_k ^ (_k >> 32)); } };
+  hash_set<UINT64, PairHash> pairMap, pairMapTotal;
+  UINT64 lastBoundPair = 0;
 }
 
-#endif // _SHIPPING
+#endif // USE_RENDER_SHADER_STATS
 
 static unsigned int  triangleCount = 0;
 static unsigned int  dipCount = 0;
@@ -100,6 +118,21 @@ static IDirect3DVertexDeclaration9* pLastVertexDeclaration = 0;
 
 static IDirect3DPixelShader9* pLastPixelShader = 0;
 static IDirect3DVertexShader9* pLastVertexShader = 0;
+
+#ifdef USE_RENDER_SHADER_STATS
+namespace
+{
+  inline void NoteShaderPair()
+  {
+    const UINT64 key = (UINT64(size_t)pLastVertexShader << 32) | UINT32(size_t(pLastPixelShader));
+    if(key == lastBoundPair)
+      return;
+    lastBoundPair = key;
+    pairMap.insert(key);
+    pairMapTotal.insert(key);
+  }
+}
+#endif
 
 static const unsigned int MAX_COLOR_RT = 8;
 static StaticArray<IDirect3DSurface9*,MAX_COLOR_RT> curColorSurface;
@@ -274,7 +307,7 @@ static void NullLastPointers()
     lastVertexBuffersPtrs[i] = 0;
     lastVertexBuffersOffsets[i] = 0;
   }
-  for (unsigned int i = 0; i < Sampler::MAX_VS_SAMPLER_INDEX; ++i) 
+  for (unsigned int i = 0; i < lastTexturesPtrs.capacity(); ++i)
   {
     lastTexturesPtrs[i].pTex = 0;
     lastTexturesPtrs[i].bProtected = false;
@@ -283,6 +316,10 @@ static void NullLastPointers()
   pLastPixelShader = 0;
   pLastVertexShader = 0;
   pLastVertexDeclaration = 0;
+
+#ifdef USE_RENDER_SHADER_STATS
+  lastBoundPair = 0; // иначе первая после сброса пара того же кадра не попадёт в pairMap
+#endif
 
   curDepthSurface = 0;
   for (unsigned int i = 0; i < MAX_COLOR_RT; ++i) 
@@ -308,14 +345,17 @@ void NullThePointers()
 //////////////////////////////////////////////////////////////////////////
 void OnFrameStart()
 {
-#ifndef _SHIPPING
-  g_numPSu.SetValue( psMap.size() );
-  g_numVSu.SetValue( vsMap.size() );
-  g_numPSt.SetValue( psMapTotal.size() );
-  g_numVSt.SetValue( vsMapTotal.size() );
+#ifdef USE_RENDER_SHADER_STATS
+  g_numPSu.SetValue( (int)psMap.size() );
+  g_numVSu.SetValue( (int)vsMap.size() );
+  g_numPSt.SetValue( (int)psMapTotal.size() );
+  g_numVSt.SetValue( (int)vsMapTotal.size() );
+  g_numPairu.SetValue( (int)pairMap.size() );
+  g_numPairt.SetValue( (int)pairMapTotal.size() );
 
   psMap.clear(); vsMap.clear();
-#endif // _SHIPPING
+  pairMap.clear();
+#endif // USE_RENDER_SHADER_STATS
   NullLastPointers();
   OcclusionQueriesBank::OnFrameStart();
 }
@@ -330,7 +370,7 @@ bool IsResourceBound(const IUnknown* const ptr)
 		if( ptr == Get(curColorSurface[n]) )
       return true;
 
-	for(UINT n = 0; n < Sampler::MAX_VS_SAMPLER_INDEX; ++n)
+	for(UINT n = 0; n < lastTexturesPtrs.capacity(); ++n)
 		if( const Texture *pTex = lastTexturesPtrs[n].pTex )
 		  if( ptr == Get(pTex->GetDXTexture()) )
         return true;
@@ -431,9 +471,21 @@ void DisableHardwareInstancing()
 bool InstancingEnabled() { return instancingEnabled; }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void SetFVF(DWORD _fvf)
+// FVF (fixed-function input layout) в клиенте больше не используется:
+// D3DFVF_XYZ разворачивается в обычную vertex declaration. Остался один
+// fixed-function путь — RenderDeferred2D() ниже (debug-оверлеи), он требует
+// собственной пары шейдеров, см. docs/PLAN_NVRHI.md.
+void SetVertexFormatXYZ()
 {
-  GetDevice()->SetFVF(_fvf);
+  static VertexFormatDescriptor descr = []
+  {
+    VertexFormatDescriptor d;
+    d.AddVertexElement(VertexElementDescriptor(0, 0, VERTEXELEMENTTYPE_FLOAT3, VERETEXELEMENTUSAGE_POSITION, 0));
+    return d;
+  }();
+
+  const DXVertexDeclarationRef & decl = GetVertexFormatDeclaration(descr);
+  BindVertexDeclarationRaw(Get(decl));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -677,14 +729,18 @@ void BindVertexShader(IDirect3DVertexShader9 *shader)
 	if(pLastVertexShader == shader)
 		return;
 
-#ifndef _SHIPPING
+#ifdef USE_RENDER_SHADER_STATS
   vsMap.insert(shader);
   vsMapTotal.insert(shader);
   g_numVS.AddValue( 1 );
-#endif // _SHIPPING
+#endif // USE_RENDER_SHADER_STATS
 
-	pLastVertexShader = shader;
-	GetDevice()->SetVertexShader(shader);
+  pLastVertexShader = shader;
+  GetDevice()->SetVertexShader(shader);
+
+#ifdef USE_RENDER_SHADER_STATS
+  NoteShaderPair();
+#endif
 }
 
 /// 
@@ -694,14 +750,18 @@ void BindPixelShader(IDirect3DPixelShader9 *shader)
 	if(pLastPixelShader == shader)
     return;
 
-#ifndef _SHIPPING
+#ifdef USE_RENDER_SHADER_STATS
   psMap.insert(shader);
   psMapTotal.insert(shader);
   g_numPS.AddValue( 1 );
-#endif // _SHIPPING
+#endif // USE_RENDER_SHADER_STATS
 
 	pLastPixelShader = shader;
 	GetDevice()->SetPixelShader(shader);
+
+#ifdef USE_RENDER_SHADER_STATS
+  NoteShaderPair();
+#endif
 }
 
 

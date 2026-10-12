@@ -18,7 +18,7 @@ public:
       GUARD_VALUE(runtimePins.RenderModeValue, NDb::RENDERMODEPIN_RENDERSHAPEONLY);
 
       material->PrepareRenderer();
-      SmartRenderer::SetFVF(D3DFVF_XYZ);
+      SmartRenderer::SetVertexFormatXYZ();
 
       static const Matrix43 unity( CVec3(0,0,0) );
       GetRenderer()->SetVertexShaderConstants(WORLD, 3, &unity);
@@ -79,7 +79,7 @@ public:
     {
       SmartRenderer::BindVertexShader(pVS);
       SmartRenderer::BindPixelShader(pPS);
-      SmartRenderer::SetFVF(D3DFVF_XYZ);
+      SmartRenderer::SetVertexFormatXYZ();
 
       RenderStatesManager& statesManager = *GetStatesManager();
       oldState = statesManager.GetCurrentState();

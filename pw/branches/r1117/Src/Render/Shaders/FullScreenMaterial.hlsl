@@ -51,7 +51,13 @@ struct VS_OUTPUT_VTF
 
 #include "..\OnlineShaders\_commonDepthRead.h"
 
-sampler coeffMap : register(s0);
+// PostFX-коэффициенты читаются вершинной стадией. Слот сдвинут с s0 на s3:
+// в D3D9 массив сэмплеров единый для VS и PS, а s0 у этого материала занят
+// под DepthMap (`#if WarFogPinValue == PRESENT`), из-за чего при включённом
+// war fog + sharp/color correct VS читал бы depth-текстуру вместо весов.
+// s3..s9 у FullScreenMaterial свободны (s0 DepthMap, s1 diffuse, s2 bloom,
+// s10 warFog).
+sampler coeffMap : register(s3);
 
 #if SharpPinValue == PRESENT
 float4 g_pixelSize: register(VSHADER_LOCALCONST7);

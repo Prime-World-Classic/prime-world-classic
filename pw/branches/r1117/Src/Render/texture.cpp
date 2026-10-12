@@ -5,7 +5,6 @@
 #include "renderresourcemanager.h"
 #include "IConfigManager.h"
 #include "ImmediateRenderer.h"
-#include "atir2vb.h"
 
 namespace Render
 {
@@ -269,14 +268,13 @@ void Texture2D::SetTexture( Texture2D const& theOther )
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// R2VB texture - default-pool, RT, contains vertex data. Depending on actual hardware,
-// switches between Render-to-Vertex-Buffer and Vertex-Texture modes.
-
-TextureVtx::TextureVtx(const Sizes& _sizes, bool _preferR2VB /*= true*/)
-: pixelSize(8), sampler(UINT_MAX), stream(UINT_MAX), sizes(_sizes) 
+// Текстура с построчными данными для вершинной стадии (PostFX-коэффициенты).
+// Только vertex-texture путь: R2VB удалён (см. texture.h).
+TextureVtx::TextureVtx(const Sizes& _sizes)
+: pixelSize(8), sampler(UINT_MAX), sizes(_sizes)
 {
   desc.Format = D3DFMT_A16B16G16R16F;
-  desc.Type   = D3DRTYPE_SURFACE;
+  desc.Type   = D3DRTYPE_TEXTURE;
   desc.Usage  = D3DUSAGE_RENDERTARGET;
   desc.Pool   = D3DPOOL_DEFAULT;
   desc.MultiSampleType    = D3DMULTISAMPLE_NONE;
@@ -284,56 +282,21 @@ TextureVtx::TextureVtx(const Sizes& _sizes, bool _preferR2VB /*= true*/)
 
   levels = 1;
 
-  const IConfigManager* const pConfigManager = GetIConfigManager();
-  NI_ASSERT(pConfigManager->HasVT() || pConfigManager->HasR2VB(), "Vertex texures or R2VB required!");
-  if( _preferR2VB && pConfigManager->HasR2VB() )
-    desc.Usage |= D3DUSAGE_DMAP;
-  else {
-    if( !pConfigManager->HasVT16() ) {
-      if( pConfigManager->HasVT32() ) {
-        desc.Format = D3DFMT_A32B32G32R32F;
-        pixelSize = 16;
-      }
-      else
-        desc.Usage |= D3DUSAGE_DMAP;
-    }
-  }
-
   OnDeviceReset();
 }
 
 
-void TextureVtx::Bind( unsigned int _sampler, unsigned int _stream /*= 1*/ )
+void TextureVtx::Bind( unsigned int _sampler )
 {
-  RenderStatesManager& statesManager = *GetStatesManager();
-  if( UsingR2VB() ) {
-    //statesManager.SetStateDirect( D3DRS_POINTSIZE, r2vbGlbEnable_Set(TRUE) );
-    stream  = _stream;
-    SmartRenderer::BindVertexBufferRaw(stream, const_cast<IDirect3DVertexBuffer9*>(GetImmRenderer()->GetFullVB()), pixelSize);
-  }
   sampler = _sampler;
-  statesManager.SetSampler(sampler, SamplerState::PRESET_CLAMP_POINT(), this);
-
-  if( UsingR2VB() ) {
-    const DWORD samplerID = R2VB_VSMP_OVR_VTX0 + sampler - Sampler::MIN_VS_SAMPLER_INDEX;
-    statesManager.SetStateDirect( D3DRS_POINTSIZE, r2vbVStrm2SmpMap_Set(stream, samplerID) );
-  }
+  GetStatesManager()->SetSampler(sampler, SamplerState::PRESET_CLAMP_POINT(), this);
 }
 
 
 void TextureVtx::UnBind()
 {
-  RenderStatesManager& statesManager = *GetStatesManager();
   if(UINT_MAX != sampler) {
-    if(UINT_MAX != stream) {
-      statesManager.SetStateDirect( D3DRS_POINTSIZE, r2vbVStrm2SmpMap_Set(stream, R2VB_VSMP_OVR_DIS) );
-    }
     SmartRenderer::UnBindTexture(sampler);
-    if(UINT_MAX != stream) {
-      SmartRenderer::UnBindVertexBufferRaw(stream);
-      stream = UINT_MAX;
-      //statesManager.SetStaD3DRS_POINTSIZE, r2vbGlbEnable_Set(FALSE) );
-    }
     sampler = UINT_MAX;
   }
 }
@@ -341,14 +304,8 @@ void TextureVtx::UnBind()
 
 void TextureVtx::OnDeviceReset()
 {
-  if( UsingR2VB() ) {
-    desc.Width  = sizes.r2vb.cx;
-    desc.Height = sizes.r2vb.cy;
-  }
-  else {
-    desc.Width  = sizes.vtx.cx;
-    desc.Height = sizes.vtx.cy;
-  }
+  desc.Width  = sizes.tex.cx;
+  desc.Height = sizes.tex.cy;
   CreateInternal();
 }
 

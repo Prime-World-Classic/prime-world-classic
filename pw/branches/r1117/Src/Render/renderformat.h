@@ -15,10 +15,6 @@ namespace Render
 			FORMAT_L16,
 			FORMAT_R16F,
 			FORMAT_R5G6B5,
-      FORMAT_INTZ,
-      FORMAT_DF24,
-      FORMAT_RAWZ,
-      FORMAT_DF16,
       FORMAT_D24S8,
 	};
 };

@@ -22,7 +22,9 @@ namespace Render
 	public:
 		virtual void Bind() const = 0;
     virtual void Draw() const = 0;
-    virtual GeometryBuffers  GetBuffers() const = 0;  // return managed buffers reference here (for DXManager)
+    // Набор буферов. Раньше нужен был для учёта managed-пула
+    // (DXManager, удалён); сейчас не используется.
+    virtual GeometryBuffers  GetBuffers() const = 0;
     virtual GeometryStatistics GetStats() const = 0;
 
 		virtual ~IRenderablePrimitive() {}

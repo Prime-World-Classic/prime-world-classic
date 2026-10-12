@@ -5,7 +5,6 @@
 #include "ImmediateRenderer.h"
 #include "Filter.h"
 #include "MaterialSpec.h"
-#include "Render/atir2vb.h"
 
 namespace Render {
 
@@ -20,24 +19,24 @@ class FullScreenMaterialHolder
       NDb::BooleanPin      sharpPin : 2;        // reserve space for sign bit
       NDb::BooleanPin      bloomPin : 2;        // reserve space for sign bit
       NDb::BooleanPin     warFogPin : 2;        // reserve space for sign bit
-      NDb::BooleanPin       useR2VB : 2;        // reserve space for sign bit
+      NDb::BooleanPin       useVtxTex : 2;      // reserve space for sign bit
     } pins;
     DWORD bitmask;
 
     typedef NDb::BooleanPin BoolPin;
 
     Flags(DWORD _bitmask) : bitmask(_bitmask) {}
-    Flags(NDb::ColorCorrectPin _colorCorrectPin, BoolPin _sharpPin, BoolPin _bloomPin, BoolPin _warFogPin, BoolPin _useR2VB)
+    Flags(NDb::ColorCorrectPin _colorCorrectPin, BoolPin _sharpPin, BoolPin _bloomPin, BoolPin _warFogPin, BoolPin _useVtxTex)
     {
-      SetPins(_colorCorrectPin, _sharpPin, _bloomPin, _warFogPin, _useR2VB);
+      SetPins(_colorCorrectPin, _sharpPin, _bloomPin, _warFogPin, _useVtxTex);
     }
-    Flags& SetPins(NDb::ColorCorrectPin _colorCorrectPin, BoolPin _sharpPin, BoolPin _bloomPin, BoolPin _warFogPin, BoolPin _useR2VB)
+    Flags& SetPins(NDb::ColorCorrectPin _colorCorrectPin, BoolPin _sharpPin, BoolPin _bloomPin, BoolPin _warFogPin, BoolPin _useVtxTex)
     {
       pins.colorCorrectPin = _colorCorrectPin;
       pins.sharpPin = _sharpPin;
       pins.bloomPin = _bloomPin;
       pins.warFogPin = _warFogPin;
-      pins.useR2VB = _useR2VB;
+      pins.useVtxTex = _useVtxTex;
       return *this;
     }
   };
@@ -51,13 +50,13 @@ class FullScreenMaterialHolder
 public:
   FullScreenMaterialHolder() : newFlags(0), oldFlags(0) {} // I assume here, that NDb::FullScreenMaterial() initializes all pins to 0
 
-  void SetPins(NDb::ColorCorrectPin _colorCorrectPinVal, bool _doSharp, bool _doBloom, bool _doWarFog, bool _useR2VB)
+  void SetPins(NDb::ColorCorrectPin _colorCorrectPinVal, bool _doSharp, bool _doBloom, bool _doWarFog, bool _useVtxTex)
   {
     newFlags.SetPins(_colorCorrectPinVal,
                      _doSharp  ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE,
                      _doBloom  ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE,
                      _doWarFog ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE,
-                     _useR2VB  ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE);
+                     _useVtxTex? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE);
   }
 
   FullScreenMaterial* GetMaterial()
@@ -80,8 +79,8 @@ public:
         if(oldPins.warFogPin != newPins.warFogPin)
           pMat->SetWarFogPin(newPins.warFogPin);
 
-        if(oldPins.useR2VB != newPins.useR2VB)
-          pMat->SetR2VBPin(newPins.useR2VB);
+        if(oldPins.useVtxTex != newPins.useVtxTex)
+          pMat->SetR2VBPin(newPins.useVtxTex);
 
         oldFlags = newFlags;
       }
@@ -118,15 +117,9 @@ FullScreenFX::Params::Params()
   SharpCoef = 0.f;
 }
 
-FullScreenFX::FullScreenFX() : pBloom(new Bloom)
+FullScreenFX::FullScreenFX()
+  : pBloom(new Bloom)
 {
-  // dip descriptor
-  VertexFormatDescriptor formatDescriptor;
-  formatDescriptor.AddVertexElement(VertexElementDescriptor(0, 0,	VERTEXELEMENTTYPE_FLOAT2, VERETEXELEMENTUSAGE_POSITION, 0));
-  formatDescriptor.AddVertexElement(VertexElementDescriptor(0, 8, VERTEXELEMENTTYPE_FLOAT2, VERETEXELEMENTUSAGE_TEXCOORD, 0));
-  //formatDescriptor.AddVertexElement(VertexElementDescriptor(15, 0, VERTEXELEMENTTYPE_FLOAT16_4, VERETEXELEMENTUSAGE_COLOR, 0));
-  formatDescriptor.AddVertexElement(VertexElementDescriptor(15, 0, VERTEXELEMENTTYPE_FLOAT16_4, VERETEXELEMENTUSAGE_TEXCOORD, 1));
-  pVDecl = SmartRenderer::GetVertexFormatDeclaration(formatDescriptor);
 }
 
 FullScreenFX::~FullScreenFX()
@@ -265,12 +258,8 @@ void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pText
     FillParam(params[0].Color,  pivotParams + PP_COLOR * NATURE_TYPES_COUNT);
 
   const bool useCoeffTexture = pCoeffTexture && (doSharp || doColorCorrect);
-  const bool useR2VB = useCoeffTexture && pCoeffTexture->UsingR2VB();
 
   RenderStatesManager& statesManager = *GetStatesManager();
-
-  if(useR2VB)
-    statesManager.SetStateDirect( D3DRS_POINTSIZE, r2vbGlbEnable_Set(TRUE) );
 
   Renderer& renderer = *GetRenderer();
   renderer.SetVertexShaderConstantsVector4(VSHADER_LOCALCONST10, colorCastCoef);
@@ -281,7 +270,7 @@ void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pText
 
   /////////////////////////////////////////////////////////////////////////////
   // Set material pins and textures
-  s_MaterialHolder.SetPins(colorCorrectPinValue, doSharp && pCoeffTexture, pBloomTexture, pDepthTexture, useR2VB);
+  s_MaterialHolder.SetPins(colorCorrectPinValue, doSharp && pCoeffTexture, pBloomTexture, pDepthTexture, useCoeffTexture);
 
   FullScreenMaterial* const pMaterial = s_MaterialHolder.GetMaterial();
 
@@ -301,23 +290,20 @@ void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pText
     FillParam(params[0].SharpCoef, sharpParams[2].m);
 
     renderer.SetVertexShaderConstants(VSHADER_LOCALCONST7, 3, sharpParams);
-    pCoeffTexture->Bind(Sampler::MIN_VS_SAMPLER_INDEX);
+    // Коэффициенты PostFX читаются вершинной стадией как обычная текстура
+    // (GlobalMasks.h: POSTFX_COEFFSAMPLERINDEX). R2VB-путь с VS-сэмплерами
+    // расширенного диапазона удалён.
+    pCoeffTexture->Bind(POSTFX_COEFFSAMPLERINDEX);
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // Render
   statesManager.SetState( RenderState::NoBlendNoTest() );
-  if(useR2VB)
-    GetImmRenderer()->RenderScreenQuad(ImmRenderer::MaterialParams(pMaterial), pVDecl);
-  else
-    GetImmRenderer()->RenderScreenQuad( ImmRenderer::MaterialParams(pMaterial) );
+  GetImmRenderer()->RenderScreenQuad( ImmRenderer::MaterialParams(pMaterial) );
 
   GetDevice()->SetTexture(1, 0); // Unbind pTexture (because it is RT)
   if(useCoeffTexture)
     pCoeffTexture->UnBind();
-
-  if(useR2VB)
-    statesManager.SetStateDirect( D3DRS_POINTSIZE, r2vbGlbEnable_Set(FALSE) );
 }
 
 } // namespace Render

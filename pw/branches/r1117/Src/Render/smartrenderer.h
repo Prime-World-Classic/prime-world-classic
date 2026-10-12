@@ -77,7 +77,8 @@ void DisableHardwareInstancing();
 bool InstancingEnabled();
 
 ///
-void SetFVF(DWORD _fvf);
+// Ввод-вершин только с позицией (замена FVF D3DFVF_XYZ).
+void SetVertexFormatXYZ();
 
 ///
 void DrawIndexedPrimitive(const DipDescriptor& _descr);
