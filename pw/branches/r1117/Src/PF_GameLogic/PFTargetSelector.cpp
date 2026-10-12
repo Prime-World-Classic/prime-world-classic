@@ -8,12 +8,14 @@
 #include "PFBaseUnit.h"
 #include "PFAIWorld.h"
 #include "TargetSelectorHelper.hpp"
+#include "PFWorld.h"
+#include "../LinuxBootstrap/formula_context.h"
 
 #include <cmath>
 
 namespace
 {
-  static int g_show_ts_ranges = 0;
+	static int g_show_ts_ranges = 0;
 }
 
 namespace NWorld
@@ -23,6 +25,19 @@ void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
 
 namespace
 {
+  /** Windows selector parameters use owner/owner, even when the requester is a different unit. */
+	static LinuxBootstrap::NumericFormulaResult LinuxSelectorFormula(const ExecutableFloatString& expression,
+		const PFTargetSelector::RequestParams& pars)
+	{
+		if (expression.sString.empty() && expression.compiledString.empty())
+			return {LinuxBootstrap::NumericFormulaError::None, 0.f};
+		const PFAbilityData* ability = Private::GetAbilityData(pars);
+		if (!ability) ability = dynamic_cast<const PFAbilityData*>(pars.pMiscPars);
+		if (!ability)
+			if (const auto* app = dynamic_cast<const PFBaseApplicator*>(pars.pMiscPars)) ability = app->GetAbilityData();
+		return LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), pars.pOwner, pars.pOwner, ability);
+	}
+
   inline const ITargetCondition* GetDefaultTargetCondition()
   {
     static const CheckValidAbilityTargetCondition condition;
@@ -168,22 +183,35 @@ namespace
 
   static void LinuxEnumerateUnits(PFTargetSelector* selector, ITargetAction& action, const PFTargetSelector::RequestParams& pars, NDb::ESpellTarget targetFilter, const CVec3* center, float range)
   {
+	if (!IsValid(pars.pOwner)) return;
+	PFWorld* world = pars.pOwner->GetWorld();
+	if (center && (!std::isfinite(range) || range < 0 || !std::isfinite(center->x)
+		|| !std::isfinite(center->y) || !std::isfinite(center->z))) return;
     vector<CPtr<PFBaseUnit> > units;
     LinuxCollectCandidateUnits(units, pars);
+	// Effect callbacks may remove later candidates. Retain the snapshot, then recheck admission.
+	vector<CObj<PFBaseUnit>> retained;
+	for (const auto& unit : units) if (IsValid(unit)) retained.push_back(unit.GetPtr());
 
     const bool deadAllowed = LinuxSelectorDeadAllowed(selector);
 
-    for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+    for (const auto& held : retained)
     {
-      PFBaseUnit* unit = it->GetPtr();
+	  PFBaseUnit* unit = held.GetPtr();
+	  if (!IsValid(unit) || unit->GetWorld() != world
+		  || (world && world->FindLinuxUnitByObjectId(unit->GetObjectId()) != unit)) continue;
       if (!LinuxUnitPasses(unit, targetFilter, pars, deadAllowed))
         continue;
 
       if (center)
       {
         const float objectRadius = unit->GetObjectSize() * 0.5f;
-        const float allowedRange = range + objectRadius;
-        if (fabs2(unit->GetPosition().AsVec2D() - center->AsVec2D()) > fabs2(allowedRange))
+		const CVec3& position = unit->GetPosition();
+		if (!std::isfinite(objectRadius) || objectRadius < 0 || !std::isfinite(position.x)
+			|| !std::isfinite(position.y) || !std::isfinite(position.z)) continue;
+		const double allowedRange = double(range) + objectRadius;
+		const double dx = double(position.x) - center->x, dy = double(position.y) - center->y;
+		if (dx * dx + dy * dy > allowedRange * allowedRange)
           continue;
       }
 
@@ -339,6 +367,10 @@ void PFAreaTargetSelector::ForAllTargets(ITargetAction &action, const RequestPar
 {
   if (!pars.pRequester || !pars.pRequester->IsValid(true))
     return;
+	if (!IsValid(pars.pOwner) || (pars.pRequester->IsObject()
+		&& pars.pRequester->GetObject()->GetWorld() != pars.pOwner->GetWorld())) return;
+	if (!std::isfinite(GetDB().absolutePosition.x) || !std::isfinite(GetDB().absolutePosition.y)
+		|| (GetDB().targetSelector && !pTargetSelector)) return;
 
   CVec3 pos(0.0f, 0.0f, 0.0f);
   if (fabs2(GetDB().absolutePosition) > 0.0f)
@@ -357,8 +389,9 @@ void PFAreaTargetSelector::ForAllTargets(ITargetAction &action, const RequestPar
     pos = pars.pRequester->AcquirePosition();
   }
 
-  const float range = RetrieveParam(GetDB().range, pars);
-  LinuxEnumerateUnits(this, action, pars, GetDB().targetFilter, &pos, range);
+	const auto range = LinuxSelectorFormula(GetDB().range, pars);
+	if (!range.Succeeded() || range.value < 0) return;
+	LinuxEnumerateUnits(this, action, pars, GetDB().targetFilter, &pos, range.value);
 }
 
 void PFDblPointTargetSelector::MakePos(const RequestParams &pars, NDb::ETargetSelectorPoint pointSpec, CVec2 &pos) const
