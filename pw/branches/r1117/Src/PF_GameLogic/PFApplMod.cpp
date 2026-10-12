@@ -767,8 +767,67 @@ float PFApplStatus::GetModifiedDuration(float original) const { return original;
 void PFApplStatus::ForceUpdateLifetime(float newLifetime, float newDuration) { SetLifetime(newLifetime); SetDuration(newDuration); }
 const NDb::Texture* PFApplStatus::GetStatusImage() const { return GetDB().image; }
 
-void PFApplFlags::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddFlag(GetDB().flag); }
-void PFApplFlags::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveFlag(GetDB().flag); PFApplBuff::Disable(); }
+namespace
+{
+/** Apply the original selected-ability policy symmetrically, including the separate portal. */
+void LinuxFlagsAbilities(PFBaseMaleHero& hero, const NDb::FlagsApplicator& db,
+	const PFBaseApplicator* app, bool enable)
+{
+	if (db.flag & NDb::UNITFLAG_FORBIDUSETALENTS)
+	{
+		auto visit = [&](PFTalent* talent, int, int) {
+			if (talent && PFAbilityData::IsAbilitySuitable(talent->GetTalentDesc(), db.talents, db.useListAs))
+			{
+				if (enable) talent->AddForbid(app);
+				else talent->RemoveForbid();
+			}
+		};
+		visit(hero.GetPortal(), 0, 0);
+		hero.ForAllTalents(visit);
+	}
+	if (db.flag & NDb::UNITFLAG_FORBIDUSECONSUMABLES)
+		for (const auto& descriptor : db.consumables)
+			if (CObj<PFConsumableAbilityData> ability = hero.GetConsumableAbility(descriptor))
+			{
+				if (enable) ability->AddForbid(app);
+				else ability->RemoveForbid();
+			}
+}
+}
+
+void PFApplFlags::Enable()
+{
+	if (!IsValid(pReceiver) || !IsAlive() || !IsEnabled()) return;
+	PFApplBuff::Enable();
+	unsigned int flags = GetDB().flag;
+	if (!GetDB().consumables.empty()) flags &= ~NDb::UNITFLAG_FORBIDUSECONSUMABLES;
+	pReceiver->AddFlag(flags);
+	if (auto* hero = dynamic_cast<PFBaseMaleHero*>(pReceiver.GetPtr()))
+		LinuxFlagsAbilities(*hero, GetDB(), this, true);
+
+	// Preserve Windows notification order; renderer-only picking remains a client concern.
+	if (GetDB().flag & NDb::UNITFLAG_FORBIDMOVE)
+		pReceiver->EventHappened(PFBaseUnitApplicatorEvent(NDb::BASEUNITEVENT_FORBIDMOVE, this));
+	if (GetDB().flag & NDb::UNITFLAG_FORBIDATTACK)
+		pReceiver->EventHappened(PFBaseUnitApplicatorEvent(NDb::BASEUNITEVENT_FORBIDATTACK, this));
+	const unsigned int castFlags = NDb::UNITFLAG_FORBID_ABILITY1 | NDb::UNITFLAG_FORBID_ABILITY2 |
+		NDb::UNITFLAG_FORBID_ABILITY3 | NDb::UNITFLAG_FORBID_ABILITY4;
+	if (GetDB().flag & castFlags)
+		pReceiver->EventHappened(PFBaseUnitApplicatorEvent(NDb::BASEUNITEVENT_FORBIDCAST, this));
+	if (GetDB().flag & NDb::UNITFLAG_FORBIDINVISIBILITY)
+		pReceiver->EventHappened(PFBaseUnitApplicatorEvent(NDb::BASEUNITEVENT_CANCELINVISIBILITY, this));
+}
+
+void PFApplFlags::Disable()
+{
+	if (!IsValid(pReceiver)) return;
+	if (auto* hero = dynamic_cast<PFBaseMaleHero*>(pReceiver.GetPtr()))
+		LinuxFlagsAbilities(*hero, GetDB(), this, false);
+	unsigned int flags = GetDB().flag;
+	if (!GetDB().consumables.empty()) flags &= ~NDb::UNITFLAG_FORBIDUSECONSUMABLES;
+	pReceiver->RemoveFlag(flags);
+	PFApplBuff::Disable();
+}
 void PFApplFlags::Reset() { PFApplBuff::Reset(); }
 void PFApplFlags::DumpInfo(NLogg::CChannelLogger&) const {}
 

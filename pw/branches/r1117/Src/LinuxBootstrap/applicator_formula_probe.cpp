@@ -1323,6 +1323,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "applicator_terminal_b12_tests.inc"
 #include "talent_passive_b12_tests.inc"
 #include "ability_mod_b12_tests.inc"
+#include "flags_buff_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1435,6 +1436,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ApplicatorTerminalB12(check, world);
 			TalentPassiveB12(check, world);
 			AbilityModB12(check, world);
+			FlagsBuffB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
