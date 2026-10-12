@@ -467,7 +467,9 @@ static void DamageNotifications(Checks& check, PFWorld* world)
 		if (delegated) app->SetDelegated(&desc);
 		check(app->Run(), "notification application completes");
 		check(listener->cancellations == (enabled && cancel && !delegated ? 1 : 0), "authored invisibility cancellation policy");
-		const bool remember = enabled && !mana && !dontAttack;
+		const bool remember = (enabled || delegated) && !mana && !dontAttack;
+		check(receiver->GetHealth() == (mana || (!enabled && !delegated) ? 1000 : delegated ? 987 : 1000 - listener->replacement),
+			"delegated damage preserves forced-enabled startup even when the original condition is false");
 		check(sender->GetLastAttackData()->pVictim.GetPtr() == (remember ? receiver.GetPtr() : nullptr), "health attack history and dont-attack-back policy");
 		if (remember)
 		{
@@ -1304,6 +1306,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "stationary_world_b12_tests.inc"
 #include "moving_world_b12_tests.inc"
 #include "resource_tick_b12_tests.inc"
+#include "applicator_enabled_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1398,6 +1401,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			MovingWorldB12(check, false);
 			MovingWorldB12(check, true);
 			ResourceTicksB12(check);
+			ApplicatorEnabledB12(check, world);
+			ApplicatorEnabledTickB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

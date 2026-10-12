@@ -14,6 +14,7 @@
 #include "PFWorldNatureMap.h"
 #include "PFTalent.h"
 #include "TileMap.h"
+#include "../LinuxBootstrap/formula_context.h"
 
 namespace NWorld
 {
@@ -182,6 +183,17 @@ void PFBaseApplicator::SetEnabled(bool isEnabled) { isEnabled ? flags |= FLAG_EN
 void PFBaseApplicator::SetBlocked(bool isBlocked) { isBlocked ? flags |= FLAG_BLOCKED : flags &= ~FLAG_BLOCKED; }
 void PFBaseApplicator::SetChanged(bool isChanged) { isChanged ? flags |= FLAG_CHANGED : flags &= ~FLAG_CHANGED; }
 
+/** Empty authored conditions retain the original true default; unsupported bytecode cannot enable effects. */
+static bool LinuxApplicatorEnabled(const PFBaseApplicator& app)
+{
+	const NDb::Ptr<NDb::BaseApplicator>& db = app.GetDBBase();
+	if (!db) return true;
+	const auto& condition = db->enabled;
+	if (condition.sString.empty() && condition.compiledString.empty()) return true;
+	const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(condition.sString.c_str(), app);
+	return result.Succeeded() && result.value != 0;
+}
+
 bool PFBaseApplicator::Start()
 {
   if (pAbility)
@@ -189,7 +201,7 @@ bool PFBaseApplicator::Start()
   if (IsValid(pParent))
     pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_START);
 
-  const bool isEnabled = pDBAppl ? RetrieveParam(pDBAppl->enabled, true) : true;
+  const bool isEnabled = IsDelegated() || LinuxApplicatorEnabled(*this);
   SetEnabled(isEnabled);
   return !isEnabled;
 }
@@ -206,11 +218,29 @@ void PFBaseApplicator::Stop()
   RemoveFromRingsSafe();
 }
 
-bool PFBaseApplicator::Step(float) { return !IsAlive(); }
+/** Preserve original conditional transitions, block ownership and sender-death policy. */
+bool PFBaseApplicator::Step(float)
+{
+	if (!IsAlive()) return true;
+	bool enabled = IsBlocked() ? IsEnabled() : LinuxApplicatorEnabled(*this);
+	if (IsValid(pOwner) && pOwner->IsDead()) enabled = enabled && !NeedToDisableOnDeath();
+	if (enabled == IsEnabled()) return false;
+	SetEnabled(enabled);
+	if (enabled) Enable(); else Disable();
+	return false;
+}
 void PFBaseApplicator::Enable() { SetEnabled(true); }
 void PFBaseApplicator::Disable() { SetEnabled(false); }
-void PFBaseApplicator::Block() { SetBlocked(true); Disable(); }
-void PFBaseApplicator::Unblock() { SetBlocked(false); Enable(); }
+void PFBaseApplicator::Block()
+{
+	SetBlocked(true);
+	if (IsEnabled()) { SetEnabled(false); Disable(); }
+}
+void PFBaseApplicator::Unblock()
+{
+	SetBlocked(false);
+	if (!IsEnabled()) { SetEnabled(true); Enable(); }
+}
 
 void PFBaseApplicator::MakeApplicationTarget(Target &targ, NDb::EApplicatorApplyTarget applyTarget) const
 {
