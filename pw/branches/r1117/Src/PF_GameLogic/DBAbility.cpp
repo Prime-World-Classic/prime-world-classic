@@ -11295,7 +11295,7 @@ void PositionCastLimitation::Assign( const PositionCastLimitation& _positionCast
 const NWorld::PFAbilityData* PositionCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CheckPositionLimitation( *this, cp );
 #else
 	return NWorld::CheckPositionLimitation( *this, cp );
 #endif

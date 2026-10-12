@@ -96,11 +96,15 @@ const PFAbilityData* CheckDispellLimitation(NDb::DispellCastLimitation const&, C
 
 const PFAbilityData* CheckPositionLimitation(NDb::PositionCastLimitation const& dbLimit, CastLimitationsCheckParams const& cp)
 {
-  if (!cp.pAbility || !cp.pTarget)
-    return 0;
-  const CVec3 pos = cp.pTarget->IsPosition() ? cp.pTarget->GetPosition() : cp.pTarget->GetUnit()->GetPosition();
-  const PFPositionObject object(pos);
-  return dbLimit.condition(cp.pAbility->GetOwner(), &object, cp.pAbility, false) ? cp.pAbility : 0;
+	if (!cp.pAbility || !cp.pTarget || !IsValid(cp.pAbility->GetOwner())) return 0;
+	PFWorld* world = cp.pAbility->GetOwner()->GetWorld();
+	if ((!cp.pTarget->IsPosition() && !cp.pTarget->IsUnit()) ||
+		!LinuxCastTargetContext(Target(cp.pAbility->GetOwner().GetPtr()), world) ||
+		!LinuxCastTargetContext(*cp.pTarget, world)) return 0;
+	// Unlike ConditionCastLimitation, Windows uses a custom position receiver and defaults false.
+	const PFPositionObject position(cp.pTarget->AcquirePosition());
+	const auto result = LinuxBootstrap::EvaluatePositionNumericFormula(dbLimit.condition.sString.c_str(), position, *cp.pAbility);
+	return result.Succeeded() && result.value != 0 ? cp.pAbility : 0;
 }
 
 }

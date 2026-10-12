@@ -82,7 +82,7 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
-bool BindCombatAccessors(const std::string& source, std::string& result)
+bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext)
 {
 	if (source.size() > NumericFormulaMaxLength) return false;
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
@@ -92,7 +92,8 @@ bool BindCombatAccessors(const std::string& source, std::string& result)
 		const std::size_t start = pos;
 		while (pos < source.size() && nameChar(source[pos])) ++pos;
 		const std::string name = source.substr(start, pos - start);
-		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0) return false;
+		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
+			name.compare(0, 10, "__position") == 0) return false;
 		if (name == "pMisc")
 		{
 			bool found = false;
@@ -103,6 +104,12 @@ bool BindCombatAccessors(const std::string& source, std::string& result)
 				result += std::string(" __combat_") + variable + " "; pos += suffix.size(); found = true; break;
 			}
 			if (!found) return false;
+		}
+		else if (name == "appl")
+		{
+			const std::string suffix = ".GetNatureTypeInPos(rPos2D)";
+			if (!positionContext || source.compare(pos, suffix.size(), suffix) != 0) return false;
+			result += " __position_nature "; pos += suffix.size();
 		}
 		else if (name == "sender" || name == "receiver")
 		{
@@ -127,6 +134,7 @@ struct Context
 	const NWorld::PFAbilityData* ability;
 	NRandom::RandomGenerator* random = nullptr;
 	const NWorld::PFBaseApplicator* applicator = nullptr;
+	const ICustomFormulaPars* position = nullptr;
 	unsigned expressions = 0;
 	std::vector<std::string> active;
 	std::map<std::string, float> constants;
@@ -135,7 +143,7 @@ struct Context
 	{
 		if (++expressions > 128) return {NumericFormulaError::LimitExceeded};
 		std::string bound;
-		if (!BindCombatAccessors(expression, bound)) return {NumericFormulaError::UnsupportedSyntax};
+		if (!BindCombatAccessors(expression, bound, position != nullptr)) return {NumericFormulaError::UnsupportedSyntax};
 		return EvaluateNumericFormula(bound, [&](const std::string& name, double& value) {
 			return Resolve(name, value);
 		}, [&](const std::string& name, const double* args, std::size_t count, double& value) {
@@ -200,6 +208,21 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name == "__position_nature")
+		{
+			if (!position || !ability || !IsValid(ability->GetOwner())) return false;
+			const auto* world = ability->GetOwner()->GetWorld();
+			if (!world || !world->GetNatureMap()) return false;
+			const CVec2 point = position->GetPos2D(), size = world->GetMapSize();
+			// The original grid narrows coordinates to int; reject unsafe geometry before lookup.
+			if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+				!std::isfinite(size.x) || !std::isfinite(size.y) || size.x <= 0 || size.y <= 0 ||
+				point.x < 0 || point.y < 0 || point.x > size.x || point.y > size.y) return false;
+			const int nature = ability->GetNatureTypeInPos(point);
+			if (nature < TERR_N || nature > TERR_B) return false;
+			value = nature; return true;
+		}
+		if (position && name == "TERR_N") { value = TERR_N; return true; }
 		if (name == "__combat_damageDealed" || name == "__combat_isAutoAttack")
 		{
 			if (!applicator) return false;
@@ -230,6 +253,11 @@ struct Context
 		const auto* unit = name[0] == 's' ? sender : target;
 		if (!unit) return false;
 		const auto property = name.substr(1);
+		if (property == "Fctn")
+		{
+			value = unit->GetFctn();
+			return true;
+		}
 		if (property == "UnitKind")
 		{
 			value = unit->GetUnitKind();
@@ -265,6 +293,14 @@ NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& express
 	const auto result = context.Evaluate(expression);
 	if (result.Succeeded() && world) *world->GetRndGen() = staged;
 	return result;
+}
+
+NumericFormulaResult EvaluatePositionNumericFormula(const std::string& expression,
+	const ICustomFormulaPars& position, const NWorld::PFAbilityData& ability)
+{
+	Context context{ability.GetOwner(), nullptr, &ability};
+	context.position = &position;
+	return context.Evaluate(expression);
 }
 
 NumericFormulaResult EvaluateDamageReductionNumericFormula(const std::string& expression,

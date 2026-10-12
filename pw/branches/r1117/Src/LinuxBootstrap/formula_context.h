@@ -3,13 +3,14 @@
 #include "formula_numeric.h"
 
 struct IUnitFormulaPars;
+struct ICustomFormulaPars;
 namespace NWorld { class PFAbilityData; class PFBaseApplicator; }
 
 namespace LinuxBootstrap
 {
 /** Resolve the supported s/t/r unit properties through existing live engine getters.
  * r is the authored receiver prefix; t remains a compatibility alias.
- * UnitKind binds the integer engine enum. ut_bldg/ut_hero use the receiver's
+ * UnitKind and Fctn bind the integer engine enums. ut_bldg/ut_hero use the receiver's
  * original UnitCheck and float-argument SwitchByBool, including eager arguments.
  * sender.vName and receiver.vName bind live GetVariable values; Name follows
  * FormulaBuilder's [A-Z][A-Za-z_0-9]* rule. Missing variables retain the engine's
@@ -27,6 +28,16 @@ namespace LinuxBootstrap
 NumericFormulaResult EvaluateUnitNumericFormula(const std::string& expression,
 	const IUnitFormulaPars* sender, const IUnitFormulaPars* target,
 	const NWorld::PFAbilityData* ability = nullptr);
+
+/** Evaluate a position receiver through its real ICustomFormulaPars interface.
+ * Only the exact appl.GetNatureTypeInPos(rPos2D) accessor and TERR_N enum are added;
+ * sender properties/constants remain live, but no receiver unit is substituted.
+ * Nature lookup is lazy and retains the parser's evaluation-local symbol snapshot.
+ * It checks finite inclusive world bounds and the terrain enum,
+ * and calls the ability's existing getter. No terrain runtime or C++ API is emulated.
+ */
+NumericFormulaResult EvaluatePositionNumericFormula(const std::string& expression,
+	const ICustomFormulaPars& position, const NWorld::PFAbilityData& ability);
 
 /** Evaluate an applicator with live receiver/owner/upgrader context and seeded random.
  * RNG is staged locally and committed only after successful numeric evaluation.
