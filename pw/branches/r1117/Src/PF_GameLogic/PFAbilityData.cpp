@@ -46,7 +46,7 @@ NAMEMAP_BEGIN(PFAbilityData)
 NAMEMAP_END;
 
 PFAbilityData::PFAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Ability> const& pDBDesc_, NDb::EAbilityTypeId abilityType_, bool needRegisterInWorld, bool isInteractionAbility_ )
-  : PFWorldObjectBase( 0, 0 )
+	: PFWorldObjectBase(needRegisterInWorld && pOwner_ ? pOwner_->GetWorld() : 0, 0)
   , pDBDesc( pDBDesc_ )
   , abilityType( abilityType_ )
   , pOwner( pOwner_ )
@@ -61,7 +61,6 @@ PFAbilityData::PFAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Abi
   , cachedModifiersTime( -1.0f )
   , isInPassivePartUpdate( false )
 {
-  (void)needRegisterInWorld;
   cooldownTime[EAbilityState::First] = 0.0f;
   cooldownTime[EAbilityState::Second] = 0.0f;
   cooldown[EAbilityState::First] = 0.0f;

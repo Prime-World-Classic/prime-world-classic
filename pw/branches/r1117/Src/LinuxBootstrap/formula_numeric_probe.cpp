@@ -233,6 +233,21 @@ void NumericFunctions()
 /** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
 void ContextFunctions()
 {
+	for (const char* name : {"ut_bldg", "ut_hero"})
+	{
+		int predicateCalls = 0;
+		const NumericFunctionResolver predicate = [&](const std::string& call, const double* args, std::size_t count, double& value) {
+			++predicateCalls; value = args[0]; return call == name && count == 2;
+		};
+		const std::string prefix = name;
+		Check(EvaluateNumericFormula(prefix + "(3,7)", {}, predicate).value == 3 && predicateCalls == 1,
+			"receiver predicate transports two scalar arguments");
+		for (const char* suffix : {"()", "(1)", "(1,2,3)", "(,1)", "(1,)"})
+			Check(!EvaluateNumericFormula("0 ? " + prefix + suffix + " : 2", {}, predicate).Succeeded() && predicateCalls == 1,
+				"receiver predicate arity remains checked in unused branches");
+		Check(EvaluateNumericFormula("0 ? " + prefix + "(1/0,missing) : 4").value == 4,
+			"unselected receiver predicate needs no context");
+	}
 	int randomCalls = 0;
 	const NumericFunctionResolver random = [&](const std::string& name, const double* args, std::size_t count, double& value) {
 		++randomCalls; value = args[1]; return name == "random" && count == 2;

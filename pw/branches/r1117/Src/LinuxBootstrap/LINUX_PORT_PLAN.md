@@ -17,6 +17,14 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
+### Batch B12
+
+- Authorized 2026-10-12: exactly 50 chunks, commit/tag/push after each verified chunk, with large N/50 progress banners. Baseline `1d5adcb50` / `0.48.3`. Subsequent continue messages continue this batch rather than restarting the count. Preserve Windows, native calls, strict gameplay/HUD gates and the three pre-existing untracked crash dumps. Parent starts with actual world-stepped creep combat and owns combat/visibility/world scheduling; bounded helper prepares shop command checkpoints in `/tmp/pw-b12-shop` without editing shared engine/probe/build/metadata. Reuse existing engine implementations and regression-first tests. Choose later checkpoints from confirmed gameplay/porting gaps, not artificial count splits. Complete and stop at 50/50; do not claim a playable match from isolated tests.
+
+- Chunk 1/50 COMPLETE (`0.49.0`): restore authored creep damage through checked UnitKind bindings and original receiver ut_bldg/ut_hero predicates, retaining muParser, eager float arguments and strict arity/finite checks. Restore PFAbilityData owner-world weak registration with the original opt-out, so actual attack instances/applicators can use seeded world RNG. Initial formula/world regressions reproduce 112 failures; explicit context regressions reproduce five after formula repair. Final 5,439 applicator checks, 28 CTests, six targets and retained Windows/shared byte audits pass. Native 60-second real-map run now records sustained creep damage: 15 observed hits, target health 320 -> 0, world step 653 and 96 consumed replay commands; strict default gameplay gate passes and capture is inspected. Evidence `/tmp/pw-b12-c1-{before,context-before,after,build,ctest,windows,live,live-gate}.log`, `live.png`, `Bin/logs/2026.10.12-20.29.51/linux-client-shell.log`. Temporary diagnosis is removed; observation loop has no forced attacks. Full match completion and Windows build/runtime remain unverified.
+
+<!-- B12 next checkpoint -->
+
 ### Batch B11
 
 - Batch B11 COMPLETE: 20/20, baseline `c033dbea7` / `0.40.7`, final checkpoint `0.48.3`. Each verified chunk has an atomic commit, annotated native version tag and push. STOP here; do not start chunk 21 or another batch without a new request. Native creep state/route/recovery, inventory/purchase, collision and original dispatch lifecycle paths are restored to the tested extent below. The bounded helper is closed; all reviewed checkpoints are integrated. Main build remains Ruffle OFF and the separate original-HUD executable is refreshed. Windows/shared protocol bytes and strict gameplay/HUD validators remain intact. Leave the three pre-existing untracked Bin/core dumps untouched. A completed playable match, live creep duel damage and Windows runtime parity are NOT established.

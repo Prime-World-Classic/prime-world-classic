@@ -144,6 +144,16 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "ut_bldg" || name == "ut_hero")
+		{
+			if (!target || count != 2) return false;
+			for (std::size_t i = 0; i < count; ++i)
+				if (!std::isfinite(args[i]) || std::fabs(args[i]) > std::numeric_limits<float>::max()) return false;
+			// FormulaBuilder uses these receiver checks and float-argument SwitchByBool.
+			value = SwitchByBool(target->UnitCheck(name == "ut_bldg" ? UNITCHECKID_ISBUILDING : UNITCHECKID_ISHERO),
+				static_cast<float>(args[0]), static_cast<float>(args[1]));
+			return true;
+		}
 		if (name == "random")
 		{
 			if (!random || count != 2) return false;
@@ -218,6 +228,11 @@ struct Context
 		const auto* unit = name[0] == 's' ? sender : target;
 		if (!unit) return false;
 		const auto property = name.substr(1);
+		if (property == "UnitKind")
+		{
+			value = unit->GetUnitKind();
+			return true;
+		}
 		for (const auto& binding : unitNumericProperties)
 			if (property == binding.name)
 			{

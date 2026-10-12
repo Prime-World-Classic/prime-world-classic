@@ -1271,6 +1271,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ability_lifecycle_b10_06_dispatch_tests.inc"
 #include "ability_lifecycle_b10_07_channel_tests.inc"
 #include "creep_combat_b11_tests.inc"
+#include "creep_formula_b12_tests.inc"
 #include "creep_route_b11_tests.inc"
 #include "creep_registration_b11_tests.inc"
 #include "creep_evade_b11_tests.inc"
@@ -1376,6 +1377,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityWaitingDispatchB10(check, world);
 			AbilityChannelCompletionB10(check, world);
 			CommonCreepCombatB11(check, world);
+			UnitKindFormulasB12(check, world);
+			CreepDamageFormulaB12(check);
 			CommonCreepRouteB11(check, world);
 			CommonCreepRegistrationB11(check, world);
 			CreepEvadeAdmissionB11(check, world);

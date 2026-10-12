@@ -283,7 +283,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
 			if (next < expression.size() && expression[next] == '(')
 			{
-				if (name == "abilityScale" || name == "damageScale" || name == "random")
+				if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero")
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -341,7 +341,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			const auto& frame = functionParentheses.back();
 			if (frame.context)
 			{
-				if (frame.context->name == "random")
+				if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero")
 				{
 					if (frame.arguments != 2) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);

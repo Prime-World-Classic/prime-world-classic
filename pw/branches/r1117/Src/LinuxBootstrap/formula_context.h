@@ -9,6 +9,8 @@ namespace LinuxBootstrap
 {
 /** Resolve the supported s/t/r unit properties through existing live engine getters.
  * r is the authored receiver prefix; t remains a compatibility alias.
+ * UnitKind binds the integer engine enum. ut_bldg/ut_hero use the receiver's
+ * original UnitCheck and float-argument SwitchByBool, including eager arguments.
  * Four exact combat accessors bind scalars: pMisc->GetVariable("damageDealed"),
  * pMisc->GetVariable("isAutoAttack"), sender.vSpellPierce and receiver.vSpellDef.
  * The two pMisc accessors require an applicator; no general object/string API.
