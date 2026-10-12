@@ -7,11 +7,13 @@ cd C:\path\to\prime-world-classic-client-modern
 build_client_x64_win.cmd
 ```
 
-Результат — `C:\pwbuild\x64-win\PW_Game.exe` (x64, ShippingSingleExe). Скрипт сам
-сгенерирует CMake-граф, сконфигурирует, соберёт и **в конце сам проверит
-артефакт** (`check_exe.py`: x64 / PE32+ / `/SUBSYSTEM:WINDOWS` / наличие ресурса
-манифеста / `FileVersion` против `Src\Version.h`) — в конце должно быть
-`ИТОГ: OK`.
+Готовый файл — **`build\PW_Game.exe` в корне репозитория** (папка `build/` в
+`.gitignore`; туда же попадают `.pdb`/`.map`, если собирали с `PW_PDB=1` /
+`PW_EXTRA_LINK_OPTS=/MAP`). Промежуточное дерево сборки — `C:\pwbuild\x64-win`
+(x64, ShippingSingleExe). Скрипт сам генерирует CMake-граф, сконфигурирует,
+соберёт и **в конце сам проверит артефакт** (`check_exe.py`: x64 / PE32+ /
+`/SUBSYSTEM:WINDOWS` / наличие ресурса манифеста / `FileVersion` против
+`Src\Version.h`) — в конце должно быть `ИТОГ: OK`.
 
 Замер на 4 ядрах: **6m54s** с PCH (по умолчанию), 12m02s без PCH
 (`PW_PCH=off`).
@@ -49,7 +51,8 @@ Build-каталог по умолчанию **вне дерева репо** (`
 
 ## 3. Где что лежит
 
-- экзешник: `C:\pwbuild\x64-win\PW_Game.exe`;
+- готовый экзешник: `<корень репозитория>\build\PW_Game.exe` (gitignored; то же
+  место и у Wine-скрипта — куда бы ни собирал, артефакт приезжает сюда);
 - сгенерированный CMake-граф: `pw\branches\r1117\Tools\ClientCMake\gen\x64-win\`
   (gitignored, пересоздаётся на каждый прогон);
 - `pw\branches\r1117\Src\PW_Game\server_ip.h` (gitignored): IP/порты/токен

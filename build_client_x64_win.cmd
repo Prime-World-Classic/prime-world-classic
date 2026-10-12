@@ -329,6 +329,15 @@ if not exist "%EXE%" (
 )
 echo == 3/3. %EXE%
 "%PYTHON%" "%CCT%\check_exe.py" "%EXE%" "%BR%\Src\Version.h"
+REM The finished artifact is copied to <repo root>\build (gitignored): the same
+REM drop location for both toolchains (build_client_x64_wine.sh does the same),
+REM plus .pdb/.map when the build was configured with PW_PDB=1 / /MAP.
+set "OUT=%REPO%build"
+if not exist "%OUT%" mkdir "%OUT%"
+copy /y "%EXE%" "%OUT%\PW_Game.exe" >nul
+if exist "%BUILD_DIR%\PW_Game.pdb" copy /y "%BUILD_DIR%\PW_Game.pdb" "%OUT%\" >nul
+if exist "%BUILD_DIR%\PW_Game.map" copy /y "%BUILD_DIR%\PW_Game.map" "%OUT%\" >nul
+echo == artifact: %OUT%\PW_Game.exe
 exit /b 0
 
 :usage

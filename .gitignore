@@ -119,6 +119,11 @@ pw/branches/r1117/Tools/WineClientBuild/runtime/
 # локальные значения для server_ip.h (IP/токены конкретного стенда)
 pw/branches/r1117/Tools/WineClientBuild/server_ip.env
 
+# готовый артефакт x64-сборки клиента: build_client_x64_{wine.sh,win.cmd} кладут
+# сюда PW_Game.exe (+ .pdb/.map); само дерево сборки — вне дерева репо,
+# см. BUILD_CLIENT_X64.md
+/build/
+
 # client-modern: out-of-source CMake-сборки клиента (см. PLAN_client_modern.md)
 # в Tools/ClientCMake в ветке только генераторы/тулзы (gen_cmake.py, check_exe.py,
 # gen_server_ip.py); модель, сгенерированный граф (gen/), build-каталог,

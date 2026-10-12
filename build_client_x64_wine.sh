@@ -325,3 +325,13 @@ fi
 [ -f "$EXE" ] || { echo "== 3/3. PW_Game.exe НЕ СОБРАН" >&2; exit 1; }
 echo "== 3/3. PW_Game.exe:"
 python3 "$CCT/check_exe.py" "$EXE" "$BR/Src/Version.h"
+# Готовый артефакт складывается в <корень репозитория>/build (gitignored) — одна
+# точка для обоих тулчейнов: и Wine, и нативный Windows кладут PW_Game.exe (+
+# .pdb/.map, если собирались с PW_PDB=1 / PW_EXTRA_LINK_OPTS=/MAP) туда же.
+OUT="$REPO/build"
+mkdir -p "$OUT"
+cp -f "$EXE" "$OUT/PW_Game.exe"
+for ext in pdb map; do
+    [ -f "$BUILD/PW_Game.$ext" ] && cp -f "$BUILD/PW_Game.$ext" "$OUT/"
+done
+echo "== артефакт: $OUT/PW_Game.exe"

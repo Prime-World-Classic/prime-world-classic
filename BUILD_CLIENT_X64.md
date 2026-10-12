@@ -10,7 +10,11 @@
 
 Оба вызывают **один и тот же** граф: `Tools/WineClientBuild/parse_vcproj.py` →
 `model.json` → `Tools/ClientCMake/gen_cmake.py` → CMake/Ninja. Отличается только
-то, чем нативный тулчейн отличается от Wine. Ветка — `client-modern`
+то, чем нативный тулчейн отличается от Wine.
+
+**Готовый `PW_Game.exe` оба скрипта кладут в `<корень репо>/build/`** (gitignored,
+туда же `.pdb`/`.map` при `PW_PDB=1` / `PW_EXTRA_LINK_OPTS=/MAP`) — одна точка
+выхода независимо от тулчейна и от того, где лежит дерево сборки. Ветка — `client-modern`
 (worktree `prime-world-classic-client-modern/`); x86/VS2008 остаётся эталонным
 регресс-чеком (`build_client_wine.sh`, см. `BUILD_CLIENT_WINE.md`).
 
