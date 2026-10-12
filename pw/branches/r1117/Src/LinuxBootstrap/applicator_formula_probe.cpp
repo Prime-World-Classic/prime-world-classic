@@ -1280,6 +1280,8 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "consumable_groups_b11_tests.inc"
 #include "consumable_sale_b11_tests.inc"
 #include "talent_purchase_b11_tests.inc"
+#include "shop_b12_common.inc"
+#include "shop_b12_01_identity_tests.inc"
 #include "collision_reach_b11_tests.inc"
 #include "dispatch_b11_01_factory_tests.inc"
 #include "dispatch_b11_common_tests.inc"
@@ -1378,6 +1380,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityChannelCompletionB10(check, world);
 			CommonCreepCombatB11(check, world);
 			UnitKindFormulasB12(check, world);
+			ShopIdentityB12(check, world);
 			CreepDamageFormulaB12(check);
 			CommonCreepRouteB11(check, world);
 			CommonCreepRegistrationB11(check, world);

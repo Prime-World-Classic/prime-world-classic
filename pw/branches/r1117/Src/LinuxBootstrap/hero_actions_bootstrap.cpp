@@ -130,6 +130,21 @@ namespace NWorld
 			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME);
 	}
 
+	/** Preserve exact shop endpoints and Windows bot/leaver ownership without UID fallback. */
+	static bool CanUseLinuxShopActor(PFWorld* world, PFBaseHero* hero, PFShop* shop, int clientId)
+	{
+		if (!world || !IsUnitValid(hero) || !IsUnitValid(shop) ||
+			hero->GetWorld() != world || shop->GetWorld() != world ||
+			world->FindLinuxUnitByObjectId(hero->GetObjectId()) != hero ||
+			world->FindLinuxUnitByObjectId(shop->GetObjectId()) != shop ||
+			hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) ||
+			hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME)) return false;
+		PFPlayer* player = hero->GetPlayer();
+		return IsValid(player) && player->GetWorld() == world && player->GetHero() == hero &&
+			world->GetObjectById(player->GetObjectId()) == player &&
+			(player->GetUserID() == clientId || player->IsBot() || !player->IsPlaying());
+	}
+
 	/** Recheck inventory admission at both command boundaries. */
 	static bool CanUseLinuxConsumableCommand(PFBaseMaleHero* hero, int slot)
 	{
@@ -1347,11 +1362,7 @@ namespace NWorld
     if (IsValid(pHero) && IsValid(pShop))
     {
 #if defined(PW_LINUX_NULL_RENDER)
-      return new CmdBuyConsumable(
-        pHero,
-        pShop,
-        index,
-        EncodeLinuxBootstrapCommandHeroSlotIndex(pHero, slotIndex));
+			return new CmdBuyConsumable(pHero, pShop, index, slotIndex);
 #else
       return new CmdBuyConsumable(pHero, pShop, index, slotIndex);
 #endif
@@ -1369,13 +1380,11 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = IsValid(pHero) ? pHero->GetObjectId() : -1;
-    if (!IsValid(pHero) || !IsValid(pShop))
-    {
-      ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanAccepted;
-      return true;
-    }
-#endif
+		const bool accepted = CanUseLinuxShopActor(IsValid(pHero) ? pHero->GetWorld() : nullptr,
+			pHero, pShop, GetId());
+#else
     const bool accepted = IsValid(pHero) && IsValid(pShop) && !pHero->IsDead();
+#endif
 #if defined(PW_LINUX_NULL_RENDER)
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanAccepted;
@@ -1398,22 +1407,12 @@ namespace NWorld
     int commandSlotIndex = slotIndex;
 #if defined(PW_LINUX_NULL_RENDER)
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
-    bool resolvedHeroFromWorld = false;
-    const int commandHeroObjectId =
-      DecodeLinuxBootstrapCommandHeroSlotIndex(slotIndex, &commandSlotIndex);
-    if (commandHeroObjectId >= 0 && world)
-    {
-      hero = dynamic_cast<PFBaseHero*>(world->FindLinuxUnitByObjectId(commandHeroObjectId));
-      resolvedHeroFromWorld = IsValid(hero);
-    }
-    if (!IsValid(hero))
-      hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), &resolvedHeroFromWorld, 0);
-    shop = pShop;
-    if (!IsValid(shop) && world)
-      shop = world->FindLinuxFirstShopForHero(hero, &consumableIndex);
+		hero = pHero;
+		shop = pShop;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId = IsValid(hero) ? hero->GetObjectId() : -1;
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld = resolvedHeroFromWorld ? 1 : 0;
+		g_linuxHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld = 0;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = commandSlotIndex;
+		if (!CanUseLinuxShopActor(world, hero, shop, GetId())) return;
 #else
     hero = pHero;
     shop = pShop;
