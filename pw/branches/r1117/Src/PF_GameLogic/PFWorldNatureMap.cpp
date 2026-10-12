@@ -8,6 +8,7 @@
 
 #if defined( PW_LINUX_NULL_RENDER ) && !defined( PW_LINUX_TERRAIN_RUNTIME_PROBE )
 #define PW_LINUX_NATUREMAP_NULL_RENDER 1
+#include <cmath>
 #endif
 
 #ifndef VISUAL_CUTTED
@@ -20,6 +21,32 @@
 
 namespace NWorld
 {
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+namespace
+{
+	/** Reuse the original non-editable loader; missing files never generate factions. */
+	class LinuxNatureQuery : public Terrain::NatureMap
+	{
+		Terrain::NatureMap::NatureMapElementIdList modified;
+	public:
+		LinuxNatureQuery() : Terrain::NatureMap(false) {}
+		bool Load(const NDb::DBNatureMap& db, const CVec2& size)
+		{
+			const Terrain::NatureMapParams params = {&db, CVec3(size, 50.f)};
+			return Initialize(params, &modified);
+		}
+	protected:
+		bool OnLoadAtRuntime(Stream*, int, bool) override { return false; }
+		bool OnSaveAtRuntime(Stream*, bool) const override { return false; }
+	};
+}
+
+PFWorldNatureMap::~PFWorldNatureMap()
+{
+	// NatureMap has a non-virtual destructor; destroy the actual owned type.
+	delete static_cast<LinuxNatureQuery*>(pMap);
+}
+#endif
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PFWorldNatureMap::PFWorldNatureMap(PFWorld *pWorld)
@@ -48,14 +75,29 @@ void PFWorldNatureMap::OnLoaded(const NDb::Ptr<NDb::Terrain>& pDBTerrain_)
 {
   NI_PROFILE_FUNCTION
 
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	delete static_cast<LinuxNatureQuery*>(pMap);
+	pMap = 0;
+#endif
   pDBTerrain = pDBTerrain_;
   NI_VERIFY( pDBTerrain && pDBTerrain->natureMap.attackSpaceRoads.size(), "DBNatureMap not defined properly!", return; );
   NI_VERIFY( pDBTerrain && pDBTerrain->natureMap.logicRoads.size(), "DBNatureMap not defined properly!", return; );
 
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (GetWorld())
+	{
+		LinuxNatureQuery* candidate = new LinuxNatureQuery;
+		if (candidate->Load(pDBTerrain->natureMap, GetWorld()->GetMapSize()))
+			pMap = candidate;
+		else
+			delete candidate;
+	}
+#else
   if (PFWorld * pWorld = GetWorld())
     if (NScene::IScene* pScene = pWorld->GetScene())
       if (Terrain::Terrain* pTerrain = pScene->GetTerrain())
         pMap = &pTerrain->GetNatureMap();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,7 +105,13 @@ void PFWorldNatureMap::OnLoaded(const NDb::Ptr<NDb::Terrain>& pDBTerrain_)
 int PFWorldNatureMap::LocateElement(float x, float y) const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return -1;
+	if (!pMap || !std::isfinite(x) || !std::isfinite(y)) return -1;
+	// The original hex locator converts floor(float) to int. Reject far outside
+	// the grid first, retaining its boundary-cell selection without clamping.
+	const double gx = double(x) / pMap->GetElementSize();
+	const double gy = double(y) / pMap->GetElementSize();
+	if (gx < -2 || gy < -2 || gx > pMap->GetSizeX() + 2.0 || gy > pMap->GetSizeY() + 2.0) return -1;
+	return pMap->LocateElement(x, y);
 #else
   return pMap ? pMap->LocateElement(x, y) : Terrain::NATUREMAPELEMENTID_BAD;
 #endif
@@ -74,7 +122,7 @@ int PFWorldNatureMap::LocateElement(float x, float y) const
 int PFWorldNatureMap::GetNatureInPoint(float x, float y) const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return 0;
+	return GetNatureInPoint(LocateElement(x, y));
 #else
   return pMap ? pMap->GetNature(x, y) : 0;
 #endif
@@ -85,7 +133,7 @@ int PFWorldNatureMap::GetNatureInPoint(float x, float y) const
 int PFWorldNatureMap::GetNatureInPoint(int id) const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return 0;
+	return pMap && id >= 0 && id < pMap->GetSizeX() * pMap->GetSizeY() ? pMap->GetNature(id) : 0;
 #else
   return pMap ? pMap->GetNature(id) : 0;
 #endif

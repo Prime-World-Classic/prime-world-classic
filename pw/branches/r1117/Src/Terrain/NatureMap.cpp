@@ -6,6 +6,10 @@
 #include "System/BinSaver.h"
 
 #include "System/InlineProfiler.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include <cmath>
+#include <cstdint>
+#endif
 
 #define SLICES_PER_SEGMENT 10
 
@@ -30,6 +34,9 @@ namespace
   template <class T>
   void addChecksum(Crc32Checksum& crc, vector<T> const& v)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (v.empty()) return;
+#endif
     crc.Add(reinterpret_cast<unsigned char const*>(&v.front()), v.size() * sizeof(T));
   }
 
@@ -52,7 +59,13 @@ namespace
       addChecksum(crc, dbNatureMap.logicRoads[i]);
     crc.Add(dbNatureMap.baseA).Add(dbNatureMap.baseAOffset);
     crc.Add(dbNatureMap.baseB).Add(dbNatureMap.baseBOffset);
+#if defined(PW_LINUX_NULL_RENDER)
+	// The authored Windows checksum includes a 32-bit size_t, not LP64 size_t.
+	static_assert(sizeof(NatureMapElementInfo) == 16, "Windows nature-cell layout");
+	crc.Add(uint32_t(sizeof(NatureMapElementInfo)));
+#else
     crc.Add(sizeof(NatureMapElementInfo));
+#endif
     crc.Add(NatureMapElementInfo::VERSION);
     return crc.Get();
   }
@@ -99,6 +112,18 @@ NatureMap::~NatureMap()
 bool NatureMap::Initialize(NatureMapParams const& params_, NatureMapElementIdList *modifiedElemsListener)
 {
   NI_VERIFY(params_.pDBNatureMap, "Database object is missing", return false);
+#if defined(PW_LINUX_NULL_RENDER)
+	// Bound every dimension before ResetImpl's float-to-unsigned conversion
+	// and the attack-space loader's signed allocation arithmetic.
+	const float step = params_.pDBNatureMap->gridStep;
+	const CVec3& size = params_.worldSize;
+	if (!std::isfinite(step) || step <= 0 || !std::isfinite(size.x) || !std::isfinite(size.y)
+		|| size.x <= 0 || size.y <= 0 || !modifiedElemsListener) return false;
+	const float columns = size.x / step, rows = size.y / step;
+	if (!std::isfinite(columns) || !std::isfinite(rows) || columns > 1048574 || rows > 1048574
+		|| (double(Max(1.f, floorf(columns))) + 1) * (double(Max(1.f, floorf(rows))) + 1) > 1048576
+		|| params_.pDBNatureMap->segmentCount <= 0 || params_.pDBNatureMap->segmentCount > 65536) return false;
+#endif
   worldSize = params_.worldSize;
 
   dbNatureMap = *params_.pDBNatureMap;
@@ -181,8 +206,13 @@ bool NatureMap::OnLoad( Stream* pStream, int fraction, bool fromRecconect )
 
   ASSERT(pStream);
   checksum = buildChecksum(dbNatureMap, worldSize);
+#if defined(PW_LINUX_NULL_RENDER)
+	uint32_t storedCRC = 0;
+	if (pStream->Read(&storedCRC, sizeof(storedCRC)) != sizeof(storedCRC)) return false;
+#else
   unsigned long storedCRC = 0xBAADF00D;
   pStream->Read(&storedCRC, sizeof(storedCRC));
+#endif
   if (checksum != storedCRC)
   {
     systemLog( NLogg::LEVEL_ASSERT ) << "Ignoring stored NatureAttackSpace binary data because of CRC32 mismatch." << endl;
@@ -190,6 +220,9 @@ bool NatureMap::OnLoad( Stream* pStream, int fraction, bool fromRecconect )
   }
 
   bool loadOk = attackSpace.Load(dbNatureMap, pStream);
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!loadOk) return false;
+#endif
 
   if ( fromRecconect )
   {
@@ -218,8 +251,27 @@ bool NatureMap::OnLoad( Stream* pStream, int fraction, bool fromRecconect )
     NI_VERIFY(bytesRead == length, "Unable to load entire nature map data", return false);
   }
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Sorted-list construction floors attack coordinates to signed integers.
+	for (int i = 0; i < elemList.size(); ++i)
+	{
+		const NatureMapElementInfo& cell = elemList[i];
+		if (!std::isfinite(cell.attackPos.x) || !std::isfinite(cell.attackPos.y)
+			|| fabs(double(cell.attackPos.x)) > 2147483000.0 || fabs(double(cell.attackPos.y)) > 2147483000.0
+			|| cell.natureCur > 2 || cell.natureOld > 2 || cell.natureBase > 2) return false;
+	}
+#endif
   InitSortedList();
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Initial load marks every cell once; avoid quadratic duplicate searches.
+	if (modifiedElems->empty())
+	{
+		modifiedElems->reserve(elemList.size());
+		for (int i = 0; i < elemList.size(); ++i) modifiedElems->push_back(i);
+	}
+	else
+#endif
   ForAllElements(this, &NatureMap::MarkAsModified);
 
   return loadOk;
@@ -238,7 +290,12 @@ bool NatureMap::OnSave( Stream* pStream, bool fromRecconect ) const
 {
   NI_PROFILE_FUNCTION
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Keep native round trips in the same Windows-authored 32-bit file format.
+	uint32_t checkSum = buildChecksum(dbNatureMap, worldSize);
+#else
   unsigned long checkSum = buildChecksum(dbNatureMap, worldSize);
+#endif
   ASSERT(pStream);
   pStream->Write(&checkSum, sizeof(checkSum));
 

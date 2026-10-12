@@ -1,4 +1,4 @@
 #pragma once
 
-/** Exercise checked numeric consumers through real engine applicators and mock DB units. */
-bool RunPrimeWorldLinuxApplicatorFormulaProbe();
+/** Exercise real applicators and mock DB units; dataRoot also validates the shipped nature grid. */
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot = nullptr);

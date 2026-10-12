@@ -22,6 +22,10 @@ class PFWorldNatureMap : public PFWorldObjectBase
 public:
   PFWorldNatureMap() : pMap(0) {}
   explicit PFWorldNatureMap(PFWorld *pWorld);
+#if defined(PW_LINUX_NULL_RENDER) && !defined(PW_LINUX_TERRAIN_RUNTIME_PROBE)
+	/** The headless world owns its read-only authored grid, not a scene terrain. */
+	~PFWorldNatureMap();
+#endif
   
   void OnLoaded(const NDb::Ptr<NDb::Terrain>& pDBTerrain);
   void OnStep(float dt);

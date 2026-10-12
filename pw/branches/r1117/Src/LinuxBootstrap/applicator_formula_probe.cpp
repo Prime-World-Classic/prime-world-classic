@@ -1354,8 +1354,9 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "tower_help_b12_tests.inc"
 #include "unit_abilities_b12_tests.inc"
 #include "applicator_queries_b12_tests.inc"
+#include "nature_query_b12_tests.inc"
 
-bool RunPrimeWorldLinuxApplicatorFormulaProbe()
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
 	NDb::AILogicParameters* ai = new NDb::AILogicParameters;
@@ -1489,6 +1490,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			TowerHelpB12(check);
 			UnitAbilitiesB12(check);
 			ApplicatorQueriesB12(check);
+			NatureQueryB12(check);
+			if (dataRoot) NatureQueryAuthoredB12(check, dataRoot);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
