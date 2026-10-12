@@ -29,6 +29,7 @@
 	import StatisticBars.CurrentGameStatistics;
 	import flashx.textLayout.formats.Float;
 	import Utils.GameTimeGlobalUtils;
+	import VoiceChat.VoiceTeamOverlay;
 
 	public class MainInterface
 	{
@@ -49,6 +50,7 @@
 		
 		private var showAlwaysHeroesLevels:Boolean = false;
 		private var _shortheroname: SetPlayerShortName;
+		private var voiceTeamOverlay:VoiceTeamOverlay;
 	
 		public function MainInterface(_main:Main)
 		{	
@@ -56,6 +58,10 @@
 			_shortheroname = new SetPlayerShortName();
 			friendlyTeamController = new MateInfoController(mainWindow.teamInfoFrendly_mc);
 			enemyTeamController = new MateInfoController(mainWindow.teamInfoEnemy_mc);
+			voiceTeamOverlay = new VoiceTeamOverlay(
+				function():Array { return mainWindow.Players; },
+				function(heroId:int):MateInfoBase { return friendlyTeamController.DoesHeroExist(heroId) ? friendlyTeamController.GetMateInfo(heroId) : null; },
+				function():int { return ourID; });
 		//	var Test:MainInterfaceTest = new MainInterfaceTest(this, mainWindow);
 		//	var Test2:MyFullTest = new MyFullTest(this, mainWindow);
 		}
@@ -1463,25 +1469,25 @@
 			mainWindow.actionBarContainer.actionBar_mc.ShowPanel(show);
 		}
 
-		// Оверлей войса (PF_GameLogic/VoiceOverlayController.cpp).
+		// Войс на портретах союзников (PF_GameLogic/VoiceOverlayController.cpp).
 		public function ShowVoiceOverlay(show:Boolean):void
 		{
-			mainWindow.voiceOverlay.Show(show);
+			voiceTeamOverlay.Show(show);
 		}
 		
+		// Позиция была у отдельного оверлея; на портретах она не нужна.
 		public function SetVoiceOverlayPosition(x:Number, y:Number):void
 		{
-			mainWindow.voiceOverlay.SetPosition(x, y);
 		}
 		
 		public function SetVoiceOverlayInteractive(interactive:Boolean):void
 		{
-			mainWindow.voiceOverlay.SetInteractive(interactive);
+			voiceTeamOverlay.SetInteractive(interactive);
 		}
 		
 		public function SetVoiceOverlayState(micState:int, meSpeaking:Boolean, myName:String, ids:Array, flags:Array, volumes:Array, names:Array):void
 		{
-			mainWindow.voiceOverlay.SetState(micState, meSpeaking, myName, ids, flags, volumes, names);
+			voiceTeamOverlay.SetState(micState, meSpeaking, myName, ids, flags, volumes, names);
 		}
 		
 		public function TempUnlockActionBar(unlock:Boolean):void

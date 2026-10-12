@@ -297,9 +297,6 @@
 		//Smart Chat button tooltip
 		static public var Tooltip_chatBtn:String = "Краткие сообщения (V)";
 		
-		// Voice overlay
-		public static var VoiceOverlay_Hint:String = "Клик — заглушить · колесо — громкость · тащите, чтобы переместить";
-		
 		// Chat messages
 		public static var ChatMessage_Ignore:String = "Игрок {0} добавлен в список игнорируемы";
 		public static var ChatMessage_RemoveIgnore:String = "Игрок {0} удалён из списка игнорируемы";

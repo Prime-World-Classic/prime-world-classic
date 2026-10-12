@@ -80,7 +80,6 @@
 	import flash.events.TimerEvent;
 	
 	import Strokes.HeroOvertipStroke;
-	import VoiceChat.VoiceOverlay;
 	
 	public class Main extends MovieClip
 	{
@@ -152,8 +151,6 @@
 		private var miniGameOpened:Boolean = false;
 		
 		private var fpsCounter:FPSCounter;
-		
-		public var voiceOverlay:VoiceOverlay;
 		
 		public var finalStat:FinalStatisticsBar;
 		public var LeavedPlayers:Array = [];
@@ -252,12 +249,6 @@
 				myIcoDrag.visible = false;
 				addChild(myIcoDrag);
 				DnDController.iconObject = myIcoDrag;
-				
-				// Оверлей войса: под панелью союзников слева и слоем выше неё.
-				voiceOverlay = new VoiceOverlay(
-					function():Array { return This.Players; },
-					function():DisplayObject { return teamInfoFrendly_mc; });
-				addChildAt(voiceOverlay, getChildIndex(teamInfoFrendly_mc) + 1);
 				
 				selectionCharStats_mc.ChangeSelectionCharStatTooltipCommands(true);
 				
