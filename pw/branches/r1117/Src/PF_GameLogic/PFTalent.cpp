@@ -203,7 +203,16 @@ void PFTalentsSet::CleanSet()
 {
   for ( int levelIndex = 0; levelIndex < LEVELS_COUNT; ++levelIndex )
     for ( int slotIndex = 0; slotIndex < SLOTS_COUNT; ++slotIndex )
-      talents[levelIndex][slotIndex] = 0;
+		{
+			CObj<PFTalent>& talent = talents[levelIndex][slotIndex];
+			if (IsValid(talent))
+			{
+				// Match Windows: cancel launched work and passives before releasing the slot.
+				talent->CancelAbility();
+				talent->ApplyPassivePart(false);
+			}
+			talent = 0;
+		}
 
   talentsToActivate.clear();
   talentGroups.clear();
@@ -403,6 +412,8 @@ bool PFTalentsSet::ActivateTalent(int level, int slot)
   if ( IsValid( pOwner ) )
     pOwner->OnTalentActivated( level, slot, statsIncrementFraction );
 
+	// The original purchase applies passives only after payment and progression.
+	pTalent->ApplyPassivePart(true);
   return true;
 }
 
