@@ -454,8 +454,9 @@ color-correct начинают получать настоящие веса) —
       `forceSM20Usage`), RESZ-путь (`CopyDepthRESZ`, `enableRESZ`),
       71 `D3DRS_*` + 5 `D3DSAMP_*` из dump-таблицы.
 - [x] `ERenderFormat` сокращён до 12 форматов (§2.4).
-- [ ] Удалить: `rendertarget.h` (уже `#error`), `d3d9texture2D.h`,
-      `D3DUSAGE_QUERY`.
+- [x] Удалены мёртвые `Render/rendertarget.h`, `Terrain/UberElement.{h,cpp}`;
+      `d3d9texture2D.h` в дереве **нет**, `D3DUSAGE_QUERY` не встречается —
+      пункт закрыт сам собой (проверено grep 2026-10-12).
       `D3DQUERYTYPE_EVENT` (`Renderer::Synchronize`) — **не удаляется, а
       переносится**: это троттлинг CPU относительно GPU при present без
       тройной буферизации (`g_synchronizeRender`, `!bTripleBufferUsed`).
@@ -479,12 +480,45 @@ color-correct начинают получать настоящие веса) —
       образец раскладки — `Data/deprecated_shaders/debug_shader.hlsl`
       (`float3 POSITION @0`, `float TEXCOORD0 @12`, `int4 COLOR0 @16`
       — байт-в-байт совместим с `Vertex2D`).
-- [ ] Ликвидировать утечки D3D9 из `PF_GameLogic`/`Scene`/`Terrain`/
-      `PF_Core`/`EditorNative` (§2.1) — 45 `GetDevice()` снаружи в 8 файлах.
-- [ ] `Scene/SHGridCalculator.cpp` + `Render/SHCoeffs.cpp`: D3DX-математика
-      (`D3DXSHEvalDirection`, `D3DXSHEvalDirectionalLight`) → своя/`System/Geom`.
+- [x] Утечки D3D9 снаружи ликвидированы (2026-10-12, `668c76f7d`): было
+      45 `GetDevice()` в 8 файлах → **осталось 2, оба в `EditorNative`**
+      (внутренний инструмент, снимается с сборки на этапе 4). Новая обвязка:
+      `Renderer::{GetViewport,SetScissorRect,ColorFillSurface,StretchSurfaceRect,
+      EvictManagedResources,GetAvailableVidMem,SaveScreenshotToFile}` +
+      `RenderStatesManager::SetStateDirect/SetSamplerStateDirect`.
+      Попутно закрыт дефект: 21 `SetRenderState` + 18 `SetSamplerState` в
+      `PFRenderInterface` шли мимо `RenderStatesManager`, т.е. не
+      инвалидировали кэш — следующий `SetState()` с тем же пресетом не
+      переписывал состояние.
+- [x] `Render/SHCoeffs.cpp`: `D3DXSHEvalDirectionalLight` заменена своей
+      реализацией (константы сняты битами с настоящей `d3dx9_43.dll` x64 —
+      `tools/sh_math_test/`, расхождение maxAbs 9.5e-7 ≈ 1 ULP); убран
+      Wine/PerfHUD-фолбэк, который писал только DC-член и путал каналы G↔B.
+      `D3DX_PI` → литерал.
+- [ ] `Render/ShadowManager.cpp`: 3 × `D3DXMatrixInverse` → своя реализация.
+      Отложено: обратная матрица уходит в матрицу теней, разница в последнем
+      бите видна как дрог границ — сначала сверка с эталоном из
+      `tools/sh_math_test` (4 случая уже печатаются).
+- [ ] Остальная D3DX-математика (§2.1.1, таблица импортов): `MatrixMultiply`
+      (14), `MatrixLookAtLH` (4), `MatrixTranspose/Translation/PerspectiveLH/
+      OrthoLH/OrthoOffCenterLH`, `Vec3Transform*`/`Vec2TransformNormalArray`
+      (15), `Vec3Normalize` (3) + типы `D3DXVECTOR3`(105)/`D3DXMATRIX`(26)/
+      `D3DXPLANE`(7). Матричные перемножения участвуют и в игровых
+      трансформациях — менять только с проверкой битов (инвариант FP).
+- [ ] Загрузка текстур через D3DX (`CreateTextureFromFileInMemoryEx`,
+      `CreateCubeTextureFromFileInMemoryEx`, `D3DX_FILTER_*`, `D3DXIFF_DDS`) —
+      нужен собственный DDS/TGA/PNG-загрузчик; это работа этапа 3/4, не этап 1.
+- Проверка (2026-10-12): x64-сборка без ошибок (`build/PW_Game.exe`,
+      15 190 016 Б, PE32+, LAA, FileVersion 2.16.1.0) + **полный E2E на tiny10
+      через `PwE2E64` ПРОЙДЕН**: login `Success(5) uid=131` → lobby →
+      `gamesvc_00` → `mapload: all map objects loaded` → бой 3,5 мин →
+      `Switch to EGameState::Finished by 3` → `finish <token>` в dev-бэкенде;
+      дампов нет, `runtime error`/`shader`/`D3D`/`assert` в логе нет, набор
+      `Unknown command or variable` = эталонный. Грабель про гейт версии
+      (`PW_VERSION=2.16.1` для `client-modern`) — в скиле `pw-client`.
 - Критерий: `grep -c "IDirect3D\|D3DX\|d3d9" Src/{Scene,UI,Game,Terrain,
-  PF_GameLogic,PF_Core,EditorNative}` → 0; в `Src/Render` — только
+  PF_GameLogic,PF_Core,EditorNative}` → 0 (сейчас 2, оба `EditorNative`);
+  в `Src/Render` — только
   `renderer.*`, `dxutils.*`, `texture*`, `smartrenderer.*`, `shadercompiler.*`,
   `Dx*`, `configdatabase.*`.
 
