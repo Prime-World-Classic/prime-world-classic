@@ -203,8 +203,25 @@
 			{
 				var bar:DisplayObject = Child(name);
 				if (bar != null && bar.visible)
-					statsBottom = Math.max(statsBottom, Finite(bar.y + bar.height, statsBottom));
+					statsBottom = Math.max(statsBottom, Finite(bar.y + BarHeight(bar), statsBottom));
 			}
+		}
+
+		// Высота полоски без её текстов: у Components.Bar внутри TextField'ы, и движок
+		// раздувает bar.height до их рамки по умолчанию (~100) — кнопка уезжала вниз.
+		private function BarHeight(bar:DisplayObject):Number
+		{
+			var limit:Number = Math.max(4, frameSize * 0.25);
+			var value:Number = NaN;
+			try
+			{
+				value = Number(Object(bar).BarHeight) * Finite(bar.scaleY, 1);
+			}
+			catch (e:Error)
+			{
+			}
+			value = Finite(value, limit);
+			return value > 0 && value < limit ? value : limit;
 		}
 
 		private function RingIndex():int
