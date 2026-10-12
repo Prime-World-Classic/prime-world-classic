@@ -7,6 +7,8 @@
 #include "PFAbilityInstance.h"
 #include "PFClientApplicators.h"
 #include "../PF_Core/DBEffect.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
 
 namespace NWorld
 {
@@ -28,16 +30,27 @@ bool PFApplBuff::Init()
     return false;
   }
 
-  lifeTime = RetrieveParam(GetDBAppl<NDb::BuffApplicator>().lifeTime, -1.0f);
-  duration = GetModifiedDuration(lifeTime);
-  return true;
+	// Only a genuinely absent formula keeps the original infinite default.
+	const auto& authored = GetDBAppl<NDb::BuffApplicator>().lifeTime;
+	LinuxBootstrap::NumericFormulaResult value{LinuxBootstrap::NumericFormulaError::None, -1.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		value = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	lifeTime = value.Succeeded() ? value.value : -1.f;
+	duration = value.Succeeded() ? GetModifiedDuration(lifeTime) : 0.f;
+	if (value.Succeeded() && std::isfinite(duration)) return true;
+	lifeTime = -1.f; duration = 0.f;
+	return false;
 }
 
 bool PFApplBuff::Start()
 {
   PFBaseApplicator::Start();
 
-  if (RetrieveParam(GetDBAppl<NDb::BuffApplicator>().startCondition, true) == false)
+	const auto& authored = GetDBAppl<NDb::BuffApplicator>().startCondition;
+	LinuxBootstrap::NumericFormulaResult condition{LinuxBootstrap::NumericFormulaError::None, 1.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		condition = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+  if (!condition.Succeeded() || condition.value == 0)
   {
     SetEnabled(false);
     return true;
@@ -110,13 +123,16 @@ void PFApplBuff::KillEffects()
 
 bool PFApplBuff::Step(float dtInSeconds)
 {
-  PFBaseApplicator::Step(dtInSeconds);
+	// A stopped or corrupted timer is terminal; invalid elapsed time cannot change lifecycle state.
+	if (!IsAlive() || !std::isfinite(duration)) return true;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return false;
+	if (PFBaseApplicator::Step(dtInSeconds)) return true;
   if (!IsEnabled() && (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_STOPONDISABLE) != 0)
     return true;
   if (duration == -1.0f)
     return false;
   duration -= dtInSeconds;
-  return duration < EPS_VALUE;
+  return !std::isfinite(duration) || duration < EPS_VALUE;
 }
 
 bool PFApplBuff::CanBeAppliedOnDead()
