@@ -21,6 +21,9 @@
 #include "libdb/ClonedPtr.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <cmath>
+#include <map>
+#include <set>
+#include <vector>
 
 namespace NWorld
 {
@@ -687,17 +690,171 @@ bool PFApplTechAbilityUpgrade::Start() { PFBaseApplicator::Start(); return true;
 
 void PFApplStatus::GetChildrenStatMods(vector<PFApplStatMod const*>& statModContainer, bool activeOnly) const
 {
-  for (TApplicators::const_iterator it = childApplicators.begin(); it != childApplicators.end(); ++it)
-  {
-    PFApplStatMod const* statMod = dynamic_cast<PFApplStatMod const*>(it->GetPtr());
-    if (statMod && (!activeOnly || statMod->IsEnabled()))
-      statModContainer.push_back(statMod);
-  }
+	if (!IsEnabled()) return;
+	for (const auto& child : childApplicators)
+		if (IsValid(child) && child->IsAlive() && child->GetTypeId() == PFApplStatMod::typeId
+			&& (!activeOnly || !child->IsBlocked()))
+			statModContainer.push_back(static_cast<const PFApplStatMod*>(child.GetPtr()));
 }
-void PFApplStatus::CompareByPower(PFApplStatus*) {}
-void PFApplStatus::MergeByValue() {}
+
+namespace
+{
+/** DB lists are authored graphs: visit each list once rather than recursing through cycles. */
+bool LinuxStatusInList(const NDb::BaseApplicator& db, const NDb::ApplicatorsList* root)
+{
+	std::vector<const NDb::ApplicatorsList*> pending;
+	std::set<const NDb::ApplicatorsList*> visited;
+	if (root) pending.push_back(root);
+	while (!pending.empty())
+	{
+		const auto* list = pending.back(); pending.pop_back();
+		if (!visited.insert(list).second) continue;
+		for (const auto& app : list->applicators)
+			if (app && app->GetDBID() == db.GetDBID()) return true;
+		for (const auto& nested : list->applicatorLists)
+			if (nested) pending.push_back(nested.GetPtr());
+	}
+	return false;
+}
+
+/** A fresh child generation owns a fresh completion count; suppression is not completion. */
+int LinuxStatusChildCount(const NDb::StatusApplicator& db)
+{
+	if (db.stopBehaviour == NDb::STOPBEHAVIOUR_STOPBYCHILD) return 1;
+	return db.applicators.size() + (db.stopBehaviour == NDb::STOPBEHAVIOUR_STOPBYALLCHILDS ? 0 : 1);
+}
+}
+
+void PFApplStatus::CompareByPower(PFApplStatus* second)
+{
+	if (!second || second == this || !second->IsAlive()) return;
+	float remaining, otherRemaining;
+	const bool longer = GetRemainingLifeTime(remaining) && second->GetRemainingLifeTime(otherRemaining)
+		&& std::isfinite(remaining) && std::isfinite(otherRemaining) && remaining > otherRemaining;
+	if (GetDB().power > second->GetDB().power || (GetDB().power == second->GetDB().power && longer))
+	{
+		blockApplicators.push_back(second);
+		second->blockedByApplicators.push_back(this);
+	}
+	else
+	{
+		blockedByApplicators.push_back(second);
+		second->blockApplicators.push_back(this);
+	}
+}
+
+/** Select one absolute effect per stat, retaining original neutral-stat formula context.
+ * Preview deactivates IDs without consuming/replacing them or changing child lifecycle.
+ * Checked winners are committed only after every preview ID has been restored.
+ */
+void PFApplStatus::MergeByValue()
+{
+	if (!IsComparableByValue() || mergeApplicators.empty()) return;
+	struct Candidate
+	{
+		CObj<PFApplStatMod> app;
+		float mul, add, magnitude;
+		bool applied;
+	};
+	std::vector<Candidate> candidates;
+	auto collect = [&](PFApplStatus* status) {
+		if (!status || !status->IsAlive() || !status->IsEnabled()) return;
+		for (const auto& child : status->childApplicators)
+		{
+			if (!IsValid(child) || !child->IsAlive() || child->GetTypeId() != PFApplStatMod::typeId) continue;
+			auto* app = static_cast<PFApplStatMod*>(child.GetPtr());
+			if (!app->pStat) continue;
+			const auto* modifier = app->pStat->Retrieve(app->modifierID);
+			candidates.push_back({CObj<PFApplStatMod>(app), app->mul, app->add, -1.f, modifier && modifier->active});
+		}
+	};
+	collect(this);
+	for (const auto& other : mergeApplicators)
+		if (IsValid(other) && other.GetPtr() != this) collect(other);
+	std::map<ValueWithModifiers*, size_t> winners;
+	{
+		struct RestorePreview
+		{
+			std::vector<Candidate>& candidates;
+			~RestorePreview()
+			{
+				for (auto& candidate : candidates)
+					if (candidate.applied) candidate.app->pStat->EnableModifier(candidate.app->modifierID, true);
+			}
+		} restore{candidates};
+		for (auto& candidate : candidates)
+			if (candidate.applied) candidate.app->pStat->EnableModifier(candidate.app->modifierID, false);
+		for (size_t i = 0; i < candidates.size(); ++i)
+		{
+			auto& candidate = candidates[i];
+			auto* app = candidate.app.GetPtr();
+			const auto& db = app->GetDB();
+			// Typed effect data is unwrapped, but enabled belongs to the outer descriptor (c13).
+			const auto& enabled = app->pDBAppl->enabled;
+			if (!enabled.sString.empty() || !enabled.compiledString.empty())
+			{
+				const auto condition = LinuxBootstrap::EvaluateApplicatorNumericFormula(enabled.sString.c_str(), *app);
+				if (!condition.Succeeded() || condition.value == 0) continue;
+			}
+			float mul = candidate.mul, add = candidate.add;
+			if (!db.dontUpdate && !LinuxStatModParameters(db.modifier, *app, mul, add))
+			{
+				// Only an actually applied modifier owns a last-good value; never invent neutral defaults.
+				if (!candidate.applied) continue;
+				mul = candidate.mul; add = candidate.add;
+			}
+			const auto measure = [&](float mul, float add, float& magnitude) {
+				StatValueWithModifiers preview = LinuxStatModCopy(*app->pStat);
+				if (preview.Retrieve(app->modifierID)) preview.RemoveModifier(app->modifierID);
+				if (!LinuxStatModFinite(preview)) return false;
+				const float before = preview.GetValue();
+				preview.AddModifier(mul, add, LinuxModifierProvider(app->GetAbilityOwner()), db.modifier.topModifier, db.constraint);
+				if (!LinuxStatModFinite(preview)) return false;
+				magnitude = fabs(preview.GetValue() - before);
+				return std::isfinite(magnitude);
+			};
+			float magnitude;
+			if (!measure(mul, add, magnitude))
+			{
+				// Finite coefficients can still overflow in engine float arithmetic.
+				if (!candidate.applied || !measure(candidate.mul, candidate.add, magnitude)) continue;
+				mul = candidate.mul; add = candidate.add;
+			}
+			candidate.mul = mul; candidate.add = add; candidate.magnitude = magnitude;
+			const auto winner = winners.find(app->pStat);
+			if (winner == winners.end() || magnitude > candidates[winner->second].magnitude)
+				winners[app->pStat] = i;
+		}
+	}
+	for (size_t i = 0; i < candidates.size(); ++i)
+	{
+		auto* app = candidates[i].app.GetPtr();
+		const auto winner = winners.find(app->pStat);
+		if (winner == winners.end() || winner->second != i) app->Block();
+	}
+	for (const auto& winner : winners)
+	{
+		const auto& candidate = candidates[winner.second];
+		auto* app = candidate.app.GetPtr();
+		const auto& db = app->GetDB();
+		if (!LinuxStatModCanApply(*app->pStat, app->modifierID, candidate.mul, candidate.add, db.modifier.topModifier, db.constraint))
+			continue;
+		app->mul = candidate.mul; app->add = candidate.add;
+		if (app->modifierID != INVALID_MODIFIER_ID)
+			app->pStat->UpdateModifier(app->modifierID, candidate.mul, candidate.add);
+		else
+		{
+			// Use the checked neutral-context sample, not a second formula evaluation against other winners.
+			app->modifierID = app->pStat->AddModifier(candidate.mul, candidate.add,
+				LinuxModifierProvider(app->GetAbilityOwner()), db.modifier.topModifier, db.constraint);
+			app->SetBlocked(false); app->SetEnabled(true);
+			app->PFApplBuff::Enable();
+		}
+	}
+}
 bool PFApplStatus::Start()
 {
+	if (!IsAlive()) return true;
 	// Buff Start owns checked condition evaluation and balanced activation accounting.
   if (!IsValid(pReceiver))
   {
@@ -705,60 +862,129 @@ bool PFApplStatus::Start()
     return true;
   }
 
-  bStarted = true;
-  switch (GetDB().stopBehaviour)
-  {
-  case NDb::STOPBEHAVIOUR_STOPBYCHILD:
-    m_applicatorCount = 1;
-    break;
-  case NDb::STOPBEHAVIOUR_STOPBYALLCHILDS:
-    m_applicatorCount = GetDB().applicators.size();
-    break;
-  case NDb::STOPBEHAVIOUR_STOPBYTIME:
-  default:
-    m_applicatorCount = GetDB().applicators.size() + 1;
-    break;
-  }
-
-  m_isComparableByValue = true;
-  return PFApplBuff::Start();
+	// Collect without callbacks; checked Buff Start must succeed before old statuses are changed.
+	struct CollectStatuses
+	{
+		std::vector<CObj<PFApplStatus>> statuses;
+		void operator()(CObj<PFApplStatus>& status) { statuses.push_back(status); }
+	} existing;
+	pReceiver->ForAllStatusApplicators(existing);
+	bStarted = true;
+	m_applicatorCount = LinuxStatusChildCount(GetDB());
+	m_isComparableByValue = false;
+	if (!GetDB().applicators.empty())
+	{
+		if (GetDB().flags & NDb::STATUSFLAGS_ALWAYSMERGE) m_isComparableByValue = true;
+		else for (const auto& child : GetDB().applicators)
+		{
+			if (!child) continue;
+			m_isComparableByValue = child->GetObjectTypeID() == NDb::StatModApplicator::typeId
+				|| child->GetObjectTypeID() == NDb::UIMessageApplicator::typeId;
+			if (!m_isComparableByValue) break;
+		}
+	}
+	if (PFApplBuff::Start()) return true;
+	int count = 0;
+	for (const auto& held : existing.statuses)
+	{
+		auto* old = held.GetPtr();
+		if (!IsValid(old) || !old->IsAlive() || old == this) continue;
+		bool conflict = false, stop = false;
+		if (old->GetDB().GetDBID() == GetDB().GetDBID())
+		{
+			if (old->GetAbilityOwner() == GetAbilityOwner())
+			{
+				if (++count <= GetDB().stackCount)
+				{
+					if ((GetDB().flags & NDb::STATUSFLAGS_UPDATELIFETIME) && GetLifetime() > 0)
+						old->ForceUpdateLifetime(GetLifetime(), GetDuration());
+				}
+				else { conflict = true; stop = GetDB().flags & NDb::STATUSFLAGS_STOPSAMECONFLICTED; }
+			}
+			else if ((GetDB().stackableAcrossUnits == NDb::STACKINGRULE_PARTIALLYSTACKABLE && ++count > GetDB().stackCount)
+				|| GetDB().stackableAcrossUnits == NDb::STACKINGRULE_UNSTACKABLE)
+			{
+				conflict = true; stop = GetDB().flags & NDb::STATUSFLAGS_STOPALLCONFLICTED;
+			}
+		}
+		else if (LinuxStatusInList(old->GetDB(), GetDB().unstackableWith)
+			|| LinuxStatusInList(GetDB(), old->GetDB().unstackableWith))
+		{
+			conflict = true; stop = GetDB().flags & NDb::STATUSFLAGS_STOPALLCONFLICTED;
+		}
+		if (!conflict) continue;
+		if (stop)
+		{
+			old->Stop(); MemorizeApplicator(CObj<PFBaseApplicator>(old));
+		}
+		else if (IsComparableByValue() && old->IsComparableByValue())
+		{
+			mergeApplicators.push_back(old); old->mergeApplicators.push_back(this);
+		}
+		else CompareByPower(old);
+		if (!IsAlive()) return true;
+	}
+	if (!blockedByApplicators.empty()) Block();
+	const TApplStatuses victims = blockApplicators;
+	for (const auto& old : victims)
+		if (IsValid(old)) old->Block();
+	if (IsEnabled()) MergeByValue();
+	return !IsAlive();
 }
 void PFApplStatus::Enable()
 {
-  if (!bStarted)
-    return;
-
-  PFApplBuff::Enable();
-  Target target;
-  MakeApplicationTarget(target);
-  CreateAndActivateApplicators(GetDB().applicators, GetAbility(), target, this);
-  if (IsValid(pReceiver))
-    pReceiver->RegisterStatusApplicator(this);
+	if (!bStarted || !IsAlive() || activeStatusesPart.isLinked()) return;
+	PFApplBuff::Enable();
+	m_applicatorCount = LinuxStatusChildCount(GetDB());
+	Target target;
+	MakeApplicationTarget(target);
+	CreateAndActivateApplicators(GetDB().applicators, GetAbility(), target, this);
+	// A child notification can stop/block this parent while the factory still owns an in-flight child.
+	if (!IsAlive() || !IsEnabled()) { Disable(); return; }
+	if (IsValid(pReceiver)) pReceiver->RegisterStatusApplicator(this);
+	MergeByValue();
 }
 void PFApplStatus::Disable()
 {
-  if (!bStarted)
-    return;
-
-  RemoveChildrenApplicators();
-  childApplicators.clear();
-  ActiveStatusRing::safeRemove(this);
-  PFApplBuff::Disable();
+	if (!bStarted) return;
+	const int remainingChildren = m_applicatorCount;
+	RemoveChildrenApplicators();
+	m_applicatorCount = remainingChildren;
+	childApplicators.clear();
+	ActiveStatusRing::safeRemove(this);
+	PFApplBuff::Disable();
+	MergeByValue();
 }
 void PFApplStatus::Stop()
 {
-  ActiveStatusRing::safeRemove(this);
-  childApplicators.clear();
-  blockApplicators.clear();
-  blockedByApplicators.clear();
-  mergeApplicators.clear();
-  PFApplBuff::Stop();
+	if (!IsAlive()) return;
+	PFApplBuff::Stop();
+	ActiveStatusRing::safeRemove(this);
+	childApplicators.clear();
+	const TApplStatuses victims = blockApplicators;
+	blockApplicators.clear();
+	for (const auto& other : victims)
+		if (IsValid(other))
+		{
+			other->blockedByApplicators.remove(this);
+			if (other->blockedByApplicators.empty()) other->Unblock();
+		}
+	for (const auto& other : blockedByApplicators)
+		if (IsValid(other)) other->blockApplicators.remove(this);
+	blockedByApplicators.clear();
+	for (const auto& other : mergeApplicators)
+		if (IsValid(other)) other->mergeApplicators.remove(this);
+	mergeApplicators.clear();
 }
 bool PFApplStatus::Step(float dtInSeconds)
 {
 	if (PFApplBuff::Step(dtInSeconds)) return true;
 	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return false;
-	return m_applicatorCount <= 0 && GetDB().stopBehaviour != NDb::STOPBEHAVIOUR_STOPBYTIME;
+	if (m_applicatorCount <= 0 && GetDB().stopBehaviour != NDb::STOPBEHAVIOUR_STOPBYTIME) return true;
+	// A blocked dynamic child cannot raise FLAG_CHANGED; it must still compete as its inputs change.
+	MergeByValue();
+	SetChanged(false);
+	return false;
 }
 void PFApplStatus::OnNotification(PFBaseApplicator& app, NDb::EParentNotification note)
 {
@@ -772,7 +998,11 @@ float PFApplStatus::GetModifiedDuration(float original) const
 	return original > 0 && GetAbility() && GetAbility()->GetData()
 		? GetAbility()->GetData()->GetModifiedValue(original, NDb::ABILITYMODMODE_DURATION) : original;
 }
-void PFApplStatus::ForceUpdateLifetime(float newLifetime, float newDuration) { SetLifetime(newLifetime); SetDuration(newDuration); }
+void PFApplStatus::ForceUpdateLifetime(float newLifetime, float newDuration)
+{
+	if (!std::isfinite(newLifetime) || !std::isfinite(newDuration)) return;
+	SetLifetime(newLifetime); SetDuration(newDuration);
+}
 const NDb::Texture* PFApplStatus::GetStatusImage() const { return GetDB().image; }
 
 namespace
