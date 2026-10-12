@@ -27,6 +27,10 @@ public:
   void Update( float timeDelta );
   void SetUnlocked( bool unlocked );
 
+  // Must run before AdventureScreen registers its handlers: a handler resolves its
+  // command by name once, at registration, and never sees a command bound later.
+  static void EnsureDefaultUnlockBind();
+
 private:
   struct Peer
   {

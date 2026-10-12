@@ -118,6 +118,7 @@
 #include "BadBehaviourComplaintCmd.hpp"
 #include "TargetSelectorHelper.hpp"
 #include "SessionData.h"
+#include "VoiceOverlayController.h"
 
 extern nstl::vector<std::pair<int, int>> playersKills;
 
@@ -648,6 +649,7 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
   eventsUI.AddActivationHandler( "actionbar_lock_off",   &AdventureScreen::LockActionBar, 0);
   eventsUI.AddActivationHandler( "actionbar_lock_on",    &AdventureScreen::LockActionBar, 1);
 
+  VoiceOverlayController::EnsureDefaultUnlockBind();
   eventsUI.AddActivationHandler( "voice_overlay_unlock_on",  &AdventureScreen::VoiceOverlayUnlock, 1);
   eventsUI.AddActivationHandler( "voice_overlay_unlock_off", &AdventureScreen::VoiceOverlayUnlock, 0);
 

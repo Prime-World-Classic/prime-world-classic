@@ -54,19 +54,6 @@ namespace
     return true;
   }
 
-  // Players keep their own input_new.cfg, so a new bind never reaches them from the
-  // default config. Define it once; the in-game preferences then save it with the rest.
-  void EnsureDefaultUnlockBind()
-  {
-    Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
-    if ( !binds || binds->FindCommand( "voice_overlay_unlock_on" ) )
-      return;
-
-    NGlobal::RunCommand( L"bindsection adventure_screen", L"input" );
-    NGlobal::RunCommand( L"bind voice_overlay_unlock_on 'SHIFT'", L"input" );
-    NGlobal::RunCommand( L"bind !voice_overlay_unlock_off 'SHIFT'", L"input" );
-    NGlobal::RunCommand( L"bindsection", L"input" );
-  }
 
   bool IsGameWindowActive()
   {
@@ -94,7 +81,21 @@ VoiceOverlayController::VoiceOverlayController( UI::FlashContainer2 * flashWnd, 
   hasCurrent( false )
 {
   flashWnd->AddFSListner( szOverlayCommand, this );
-  EnsureDefaultUnlockBind();
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Players keep their own input_new.cfg, so a new bind never reaches them from the
+// default config. Define it once; the in-game preferences then save it with the rest.
+void VoiceOverlayController::EnsureDefaultUnlockBind()
+{
+  Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
+  if ( !binds || binds->FindCommand( "voice_overlay_unlock_on" ) )
+    return;
+
+  NGlobal::RunCommand( L"bindsection adventure_screen", L"input" );
+  NGlobal::RunCommand( L"bind voice_overlay_unlock_on 'SHIFT'", L"input" );
+  NGlobal::RunCommand( L"bind !voice_overlay_unlock_off 'SHIFT'", L"input" );
+  NGlobal::RunCommand( L"bindsection", L"input" );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
