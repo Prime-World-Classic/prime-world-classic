@@ -30,8 +30,8 @@
 		public static var CharStatBar_ThisIsImportantStat:String = "Данная характеристика важна для этого героя";
 		public static var CharStarBar_RaitingLabelText:String = "Рейтинг";
 		public static var CharStarBar_LeaguePlaceLabelText:String = "Место";
-		public static var StatBar_AccountRankTooltip:String = "Рейтинг аккаунта: {0} ({1})";
-		public static var StatBar_HeroRankTooltip:String = "Рейтинг героя: {0} ({1})";
+		public static var StatBar_AccountRankTooltip:String = "Рейтинг аккаунта - {1}";
+		public static var StatBar_HeroRankTooltip:String = "Рейтинг героя - {1}";
 		public static var Options_AdvancedPage:String = "Дополнительно";
 		public static var Options_CommunicationPage:String = "Общение";
 		public static var Options_AdvancedTitle:String = "Дополнительные настройки";
