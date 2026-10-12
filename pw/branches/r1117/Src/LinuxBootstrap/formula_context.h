@@ -11,9 +11,11 @@ namespace LinuxBootstrap
  * r is the authored receiver prefix; t remains a compatibility alias.
  * UnitKind binds the integer engine enum. ut_bldg/ut_hero use the receiver's
  * original UnitCheck and float-argument SwitchByBool, including eager arguments.
- * Four exact combat accessors bind scalars: pMisc->GetVariable("damageDealed"),
- * pMisc->GetVariable("isAutoAttack"), sender.vSpellPierce and receiver.vSpellDef.
- * The two pMisc accessors require an applicator; no general object/string API.
+ * sender.vName and receiver.vName bind live GetVariable values; Name follows
+ * FormulaBuilder's [A-Z][A-Za-z_0-9]* rule. Missing variables retain the engine's
+ * zero default without creating a variable. No general member/string API is exposed.
+ * pMisc->GetVariable("damageDealed") and pMisc->GetVariable("isAutoAttack")
+ * are the only applicator accessors and require an applicator context.
  * Unknown properties or selected missing units fail, never silently substitute zero.
  * Constants use the existing local/global ability lookup. Recursion is limited
  * to 16 active names and 128 expressions; cycles and missing constants fail.

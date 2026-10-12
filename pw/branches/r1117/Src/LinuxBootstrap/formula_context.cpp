@@ -78,9 +78,9 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"BaseWill", &IUnitFormulaPars::GetBaseWill}
 };
 
-/** Adapt four exact shipped accessors to scalar bindings, without executing object syntax.
- * Only complete identifiers match. Everything else still reaches muParser's bounded
- * numeric lexer, including malformed adjacent tokens. No general member/string API.
+/** Bind authored unit variable names and two exact applicator accessors as scalars.
+ * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
+ * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
 bool BindCombatAccessors(const std::string& source, std::string& result)
 {
@@ -92,7 +92,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result)
 		const std::size_t start = pos;
 		while (pos < source.size() && nameChar(source[pos])) ++pos;
 		const std::string name = source.substr(start, pos - start);
-		if (name.compare(0, 8, "__combat") == 0) return false;
+		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0) return false;
 		if (name == "pMisc")
 		{
 			bool found = false;
@@ -106,11 +106,13 @@ bool BindCombatAccessors(const std::string& source, std::string& result)
 		}
 		else if (name == "sender" || name == "receiver")
 		{
-			const std::string suffix = name == "sender" ? ".vSpellPierce" : ".vSpellDef";
-			if (source.compare(pos, suffix.size(), suffix) != 0) return false;
-			pos += suffix.size();
-			if (pos < source.size() && nameChar(source[pos])) return false;
-			result += name == "sender" ? " __combat_SpellPierce " : " __combat_SpellDef ";
+			if (source.compare(pos, 2, ".v") != 0 || pos + 2 >= source.size() ||
+				source[pos + 2] < 'A' || source[pos + 2] > 'Z') return false;
+			pos += 2;
+			const std::size_t variableStart = pos;
+			while (pos < source.size() && nameChar(source[pos])) ++pos;
+			result += std::string(name == "sender" ? " __unitvar_s_" : " __unitvar_r_") +
+				source.substr(variableStart, pos - variableStart) + " ";
 		}
 		else result += name;
 	}
@@ -203,11 +205,11 @@ struct Context
 			if (!applicator) return false;
 			value = applicator->GetVariable(name.c_str() + 9); return true;
 		}
-		if (name == "__combat_SpellPierce" || name == "__combat_SpellDef")
+		if (name.compare(0, 12, "__unitvar_s_") == 0 || name.compare(0, 12, "__unitvar_r_") == 0)
 		{
-			const auto* unit = name == "__combat_SpellPierce" ? sender : target;
+			const auto* unit = name[10] == 's' ? sender : target;
 			if (!unit) return false;
-			value = unit->GetVariable(name.c_str() + 9); return true;
+			value = unit->GetVariable(name.c_str() + 12); return true;
 		}
 		if (name.size() > 1 && name[0] == 'c')
 		{

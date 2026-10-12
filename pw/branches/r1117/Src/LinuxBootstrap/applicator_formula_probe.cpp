@@ -478,7 +478,7 @@ static void DamageNotifications(Checks& check, PFWorld* world)
 	sender->RemoveEventListener(listener.GetPtr());
 }
 
-/** Bind only the authored combat accessors; the existing numeric parser owns grammar. */
+/** Retain authored combat accessors alongside the generalized unit-variable bindings. */
 static void CombatFormulaContext(Checks& check, PFWorld* world)
 {
 	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
@@ -521,9 +521,10 @@ static void CombatFormulaContext(Checks& check, PFWorld* world)
 	run("pMisc->GetVariable(\"isAutoAttack\") ? 0 : receiver.vSpellDef", .25f);
 	run("max(pMisc->GetVariable(\"damageDealed\"),0)*(1-rMaterialDamageDecrease*.01f)", 22.5f);
 	run("1 ? 3 : pMisc->GetVariable(\"damageDealed\")", 3);
+	run("sender.vSpellPierceOther", 0); run("receiver.vSpellPierce", 0);
+	run("sender.vOther", 0); run("1 ? 3 : sender.vOther", 3);
 	for (const char* bad : {"pMisc->GetVariable(\"unknown\")", "pMisc->GetVariable(\"damageDealed\",1)",
-		"xpMisc->GetVariable(\"damageDealed\")", "sender.vSpellPierceOther", "receiver.vSpellPierce",
-		"sender.vOther", "receiver.vSpellDef()", "sender.vSpellPierce=1", "1 ? 3 : sender.vOther", "__combat_damageDealed"})
+		"xpMisc->GetVariable(\"damageDealed\")", "receiver.vSpellDef()", "sender.vSpellPierce=1", "__combat_damageDealed"})
 		check(!LinuxBootstrap::EvaluateApplicatorNumericFormula(bad, *app).Succeeded(), "unsupported combat access fails closed");
 	check(!LinuxBootstrap::EvaluateUnitNumericFormula("pMisc->GetVariable(\"damageDealed\")", sender, receiver).Succeeded(),
 		"ordinary formula has no applicator variables");
@@ -1273,6 +1274,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ability_lifecycle_b10_07_channel_tests.inc"
 #include "creep_combat_b11_tests.inc"
 #include "creep_formula_b12_tests.inc"
+#include "unit_variables_b12_tests.inc"
 #include "creep_route_b11_tests.inc"
 #include "creep_registration_b11_tests.inc"
 #include "creep_evade_b11_tests.inc"
@@ -1386,6 +1388,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			AbilityChannelCompletionB10(check, world);
 			CommonCreepCombatB11(check, world);
 			UnitKindFormulasB12(check, world);
+			UnitVariableFormulasB12(check, world);
 			ShopIdentityB12(check, world);
 			ShopPurchaseBoundsB12(check, world);
 			ShopPaymentCallbacksB12(check, world);
