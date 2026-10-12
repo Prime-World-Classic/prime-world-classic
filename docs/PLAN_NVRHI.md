@@ -137,8 +137,19 @@ copy/blit, bind-texture, set-constants, readback, enumerate-adapters.
 
 ### 2.1.1 D3DX-математика: что реально живо (уточнено)
 
-`Render/SHCoeffs.cpp` + `Scene/SHGridCalculator.cpp` — единственные места
-D3DX-математики. Разбор по вызовам:
+**Замер по импортам собранного x64 `PW_Game.exe` (2026-10-12) — утверждение
+про «единственные места» было неверным.** Всего в exe импортируется 17 функций
+`d3dx9_43.dll`:
+
+| группа | функции | чем заменяется |
+|---|---|---|
+| матрицы/векторы | `MatrixMultiply`(14), `MatrixLookAtLH`(4), `MatrixInverse`(3), `MatrixTranspose`, `MatrixTranslation`, `MatrixPerspectiveLH`, `MatrixOrthoLH`, `MatrixOrthoOffCenterLH`, `Vec3TransformCoord`(4), `Vec3TransformCoordArray`(9), `Vec3TransformNormal`(2), `Vec2TransformNormalArray`, `Vec3Normalize`(3) | своя математика; **осторожно с `MatrixMultiply`**: порядок операций влияет на биты, а матрицы уходят и в игровые трансформации — менять только с проверкой |
+| загрузка текстур | `CreateTextureFromFileInMemoryEx`(3), `CreateCubeTextureFromFileInMemoryEx`, константы `D3DX_DEFAULT*`, `D3DX_FILTER_*`, `D3DXIFF_DDS`, `D3DX_SKIP_DDS_MIP_LEVELS`, `D3DXBUFFER` | нужен собственный DDS/TGA/PNG-загрузчик с фильтрацией и мипами — это отдельная работа этапа 3/4, не «мелочь» |
+| поверхность | `LoadSurfaceFromSurface`, `SaveSurfaceToFile`(5), `SaveSurfaceToFileInMemory`(3) | свёрнуто в `Renderer::SaveScreenshotToFile` (этап 1) |
+| типы | `D3DXVECTOR3`(105), `D3DXMATRIX`(26), `D3DXPLANE`(7), `D3DXMACRO`, `D3DX_PI` | только заголовок `d3dx9math.h`; типы меняются на `CVec3`/свою матрицу |
+| SH | `SHEvalDirectionalLight` | **заменено своей реализацией** (этап 1, см. ниже) |
+
+Разбор по вызовам (старый, дополнен таблицей выше):
 
 | D3DX-вызов | Статус |
 |---|---|
