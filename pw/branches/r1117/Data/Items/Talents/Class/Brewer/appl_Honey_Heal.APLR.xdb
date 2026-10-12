@@ -108,29 +108,27 @@
 							<spell href="/Items/Talents/Class/Brewer/appl_Honey_Heal.APLR" id="FA83B7FD-0F2C-4FFE-A78A-7456448A5F87">
 								<Spell>
 									<applicators>
-										<Item href="/Items/Talents/Class/Brewer/appl_Honey_Heal.APLR" id="93E15113-ED2E-4EEF-A7CC-D31A4541D3E2">
-											<DamageApplicator>
-												<applyTarget>ApplicatorTarget</applyTarget>
-												<cancelInvisibility>false</cancelInvisibility>
-												<caption>отнимаем хп</caption>
-												<damage>
-													<compiledString>FTAAAAAHAAAASwAAAGgAAACqAAAA7wAAAAQBAAAeAQAAYAEAAEFkZExpZmUAQWRkTGlmZQBBZGRMaWZlAEFkZExpZmUAQWRkTGlmZQBBZGRMaWZlAFWL7IPsZItFDIsQi00MiwL/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d+P/Qi00MUYtVCFJoCAAAAItFEIsQi00Qi0JQ3V3w/9CLTQyLEYtNDItCDN1d6P/Qi00MixGLTQyLAt1d4P/Q3G3g3E3oi00MUYtVCFJoEAAAAItFEIsQi00Qi0JQ3V3Y/9CLTQyLEYtNDItCDN1d0P/Q3EXQ3H3Y3G3w3F343+D2xEF1GotNDIsRi00MiwL/0NwlnQEAAN1dyOmVAAAAi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ/9CLTQxRi1UIUmggAAAAi0UQixCLTRCLQlDdXcD/0ItNDIsRi00Mi0IM3V24/9CLTQyLEYtNDIsC3V2w/9DcbbDcTbiLTQxRi1UIUmgoAAAAi0UQixCLTRCLQlDdXaj/0ItNDIsRi00Mi0IM3V2g/9DcRaDcfajcbcDdXcjdRcjZXZzZRZyL5V3DAAAAAAAA8D8=</compiledString>
+										<Item href="/Items/Talents/Class/Brewer/appl_Honey_Heal.APLR" id="78A8BD0F-ED5A-45E6-B747-11E9B0DEE6B3">
+											<HealApplicator>
+												<amount>
+													<compiledString>FTAAAAAGAAAASwAAAGgAAACqAAAAAgEAAEEBAAB0AQAAQWRkTGlmZQBBZGRMaWZlAEFkZExpZmUAQWRkTGlmZQBBZGRMaWZlAEFkZExpZmUAVYvsg+xki0UMixCLTQyLAv/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V34/9CLTQxRi1UIUmgIAAAAi0UQixCLTRCLQlDdXfD/0ItNDIsRi00Mi0IM3V3o/9CLTQyLEYtNDIsC3V3g/9DcbeDcTeiLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXdj/0ItNDIsRi00Mi0IM3V3Q/9DcRdDcfdjcbfDcXfjf4PbEAXUYi00MixGLTQyLAv/Q2eje4d1dyOmVAAAAi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ/9CLTQyLEYtNDItCDN1dwP/Qi00MixGLTQyLAt1duP/Q3G243E3Ai00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ3V2w/9CLTQyLEYtNDItCDN1dqP/Q3EWo3H2wi00MUYtVCFJoKAAAAItFEIsQi00Qi0JQ3V2g/9DcbaDdXcjdRcjZXZzZRZyL5V3DAAAAAAAA8D8=</compiledString>
 													<returnType>float</returnType>
-													<sString>(rLife &lt; cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))) ? rLife - 1 : cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))</sString>
-												</damage>
-												<damageMode>0</damageMode>
-												<damageType>Pure</damageType>
+													<sString>(rLife &lt;= cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))) ? 1 - rLife : (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife)) - cAddLife</sString>
+												</amount>
+												<applyTarget>ApplicatorTarget</applyTarget>
+												<caption>отнимаем хп (отрицательный хил, не прерывает канал)</caption>
 												<enabled>
 													<compiledString></compiledString>
 													<returnType>bool</returnType>
 													<sString>true</sString>
 												</enabled>
 												<formulaName></formulaName>
+												<healTarget>Health</healTarget>
+												<ignoreHealingMods>true</ignoreHealingMods>
 												<LoggingEvent>-1</LoggingEvent>
 												<providerName></providerName>
-												<timeLimiter>-1</timeLimiter>
 												<uiEvent href="" />
-											</DamageApplicator>
+											</HealApplicator>
 										</Item>
 										<Item href="/Items/Talents/Class/Brewer/appl_Honey_Heal.APLR" id="5D4767D2-26A7-43F7-BB0E-FD363E67EEC5">
 											<HealApplicator>
