@@ -134,6 +134,11 @@ pw/branches/r1117/Tools/ClientCMake/*.cmd
 pw/branches/r1117/Tools/ClientCMake/*.out
 pw/branches/r1117/Tools/ClientCMake/gen/
 pw/branches/r1117/Tools/ClientCMake/build/
+# fp_smoke: в ветке только исходник, скрипты прогона и golden_x64.txt; собранные
+# .exe и дампы проб — артефакты прогона (run_fp_smoke.sh / fp_smoke.cmd)
+pw/branches/r1117/Tools/ClientCMake/fp_smoke/out/
+pw/branches/r1117/Tools/ClientCMake/fp_smoke/*.obj
+pw/branches/r1117/Tools/ClientCMake/fp_smoke/*.exe
 pw/branches/r1117/Src/_Modern*/
 pw/branches/r1117/Src/Game/PF/UniServer/build_linux_test/
 

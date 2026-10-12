@@ -1,0 +1,11 @@
+# golden_x64.txt — эталон побитового смоука трансцендентных x64.
+# Режим: /fp:strict + _set_FMA3_enable(0) — то же, что в клиенте.
+# Обновление: Tools/ClientCMake/fp_smoke/run_fp_smoke.sh --update
+# ВНИМАНИЕ: эталон привязан к CRT. Под Wine ucrtbase — реализация
+# Wine; на Windows значения обязан подтверждать прогон fp_smoke.cmd
+# на реальной машине (и сверка между двумя машинами).
+# Справочно (не сверяется): cpuFMA3=1 cpuAVX=1 cpuAVX2=1 cpuAVX512F=0 | crt: ucrtbase 10.0.14393.2247 | fp_smoke: cl _MSC_VER=1944 /fp=strict режим=FMA3-диспетч выключен
+SAMPLES=119
+FP-HASH=90E0C6759B58BCF8
+FP-CTRL=9EBF75776F38CA33
+FP-DIFF=30D6BA6214EBD45A

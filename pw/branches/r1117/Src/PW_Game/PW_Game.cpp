@@ -231,6 +231,32 @@ static void FastfailLogLine(const char *line)
   CloseHandle(f);
 }
 
+#ifdef _WIN64
+// FP-детерминизм x64. Авторитет состояния держится на консенсусе клиентов, поэтому
+// биты неточных FP-операций обязаны совпадать на любом CPU. FMA3-диспетч CRT
+// выключается хуком в .CRT$XCT (Src/System/FpDeterminism.cpp) ещё до WinMain;
+// вызов ниже — страховка плюс стартовая строка побитовой самопроверки: её hash
+// сравнивается с золотым эталоном Tools/ClientCMake/fp_smoke/golden_x64.txt, и
+// «чужую» машину видно по логу ДО того, как игрок дойдёт до рассинхрона.
+extern "C" {
+  void __cdecl PwFpInstall();
+  int PwFpReport(char * buf, int cap);
+}
+
+static void LogFpSelfTest()
+{
+  PwFpInstall();
+  char buf[192];
+  int n = PwFpReport(buf, sizeof(buf) - 1);
+  if (n <= 0)
+    return;
+  if (n > (int)sizeof(buf) - 1)
+    n = (int)sizeof(buf) - 1;
+  buf[n] = 0;
+  FastfailLogLine(buf);   // PwFpReport сам заканчивает строку переводом
+}
+#endif
+
 static void __cdecl MyInvalidParamHandler(const wchar_t *exp, const wchar_t *file,
                                           unsigned line, unsigned column, uintptr_t reserved)
 {
@@ -346,6 +372,9 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, char * lpCm
   _set_invalid_parameter_handler( (_invalid_parameter_handler)MyInvalidParamHandler );
   _set_purecall_handler( MyPurecallHandler );
   FastfailLogLine( "handlers installed\n" );
+#ifdef _WIN64
+  LogFpSelfTest();
+#endif
 	SetProcessDPIAware();
 
 #ifndef DO_NOT_USE_DLLMAIN

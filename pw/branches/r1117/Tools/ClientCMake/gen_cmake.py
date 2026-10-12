@@ -98,8 +98,23 @@ def q(p):
 X64_EXTRA_SRC = {
     # FormulaVM — парсер DSL формул + байткод-машина (этап 3 плана
     # PLAN_client_modern.md); в vcproj его нет, чтобы x86-клиент не менялся
-    "Foundation": ["System/FormulaVM.cpp"],
+    "Foundation": ["System/FormulaVM.cpp",
+                   # FP-детерминизм x64 (консенсус клиентов = авторитет):
+                   # _set_FMA3_enable(0) в .CRT$XCT + побитовая самопроверка.
+                   # В vcproj тоже нет — x86 (msvcr90/x87) не затронут.
+                   "System/FpDeterminism.cpp"],
 }
+
+# --- x64: политика FP (см. Src/System/FpDeterminism.cpp) --------------------
+# Консенсус клиентов держится на том, что одинаковый код даёт одинаковые биты.
+# /fp:strict запрещает cl менять семантику FP (реассоциация, x*0→0, x/x→1,
+# «безобидные» перестановки), т.е. фиксирует кодогенерацию. Дефолт cl —
+# /fp:precise, он такого не запрещает. /arch: НЕ добавляем: базовый x64-кодген
+# (SSE2) работает на любом x86-64, а AVX/FMA в наш кодген и так не попадает
+# (без /fp:fast cl не сокращает a*b+c в FMA).
+# Переопределение: PW_FP_MODEL=precise|fast|off (A/B-замеры различия битов),
+# либо обычный PW_EXTRA_OPTS=/fp:... (он идёт ПОСЛЕ — cl берёт последнее).
+X64_FP_MODEL_DEFAULT = "strict"
 
 X64_LIB_RENAME = {
     "fmodex_vc": "fmodex64_vc",
@@ -312,6 +327,12 @@ class Proj:
         # C4519 — консервативное предупреждение MSVC 9 (легальный C++), при /WX
         # ломает RpcArgs.h, добавленный Linux-портом. Совпадает с драйвером.
         self.opts.append("/wd4519")
+        # x64: FP-политика (см. X64_FP_MODEL_DEFAULT) — ДО PW_EXTRA_OPTS, чтобы
+        # PW_EXTRA_OPTS=/fp:precise мог перекрыть её без правки генератора.
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            fm = os.environ.get("PW_FP_MODEL", X64_FP_MODEL_DEFAULT).strip().lower()
+            if fm and fm != "off":
+                self.opts.append("/fp:" + fm)
         # доп. флаги cl из окружения (аналог PW_EXTRA_OPTS в build_client.py):
         # этапы 2-3 (современный компилятор) — /std:c++17, /wdNNNN, /WX-.
         # Добавляются ПОСЛЕ vcproj-флагов: cl берёт последнее вхождение (/WX-
