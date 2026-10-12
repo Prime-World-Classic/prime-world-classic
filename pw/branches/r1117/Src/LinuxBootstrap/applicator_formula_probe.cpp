@@ -16,6 +16,7 @@
 #include "../PF_GameLogic/PFState.h"
 #include "../PF_GameLogic/PFHeroStates.h"
 #include "../PF_GameLogic/PFMainBuilding.h"
+#include "../PF_GameLogic/PFTower.h"
 #include "../PF_GameLogic/PFPet.h"
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
 #include "../PF_GameLogic/DBHeroesList.h"
@@ -1297,6 +1298,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "dispatch_b11_07_reset_tests.inc"
 #include "dispatch_teleport_b11_tests.inc"
 #include "state_world_b11_tests.inc"
+#include "stationary_world_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1385,6 +1387,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ShopPurchaseBoundsB12(check, world);
 			ShopPaymentCallbacksB12(check, world);
 			CreepDamageFormulaB12(check);
+			StationaryWorldB12(check);
+			StationaryCombatB12(check);
 			CommonCreepRouteB11(check, world);
 			CommonCreepRegistrationB11(check, world);
 			CreepEvadeAdmissionB11(check, world);

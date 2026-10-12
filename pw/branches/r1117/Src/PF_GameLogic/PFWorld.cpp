@@ -533,6 +533,16 @@ bool PFWorld::Step(float dtInSeconds, float)
 		return true;
 	}
 	vector<CObj<PFDispatch> > detachedDispatches;
+	vector<CObj<PFBaseUnit> > stationaryUnits;
+	auto collectStationary = [&](PF_Core::WorldObjectBase& object) {
+		PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(&object);
+		if (unit && unit->GetWorld() == this && !unit->IsDead() && !unit->IsObjectDead()
+			&& !dynamic_cast<PFBaseMovingUnit*>(unit))
+			stationaryUnits.push_back(CObj<PFBaseUnit>(unit));
+	};
+	// Keep stationary gameplay in the existing registry; moving units retain their movement owner.
+	// A strong pre-tick snapshot allows callback removal and defers newborn objects to the next tick.
+	ForAllObjectsBeingStepped(collectStationary);
 	auto collectDispatch = [&](PF_Core::WorldObjectBase& object) {
 		PFDispatch* dispatch = dynamic_cast<PFDispatch*>(&object);
 		if (dispatch && dispatch->GetWorld() == this && !dispatch->IsObjectDead()
@@ -614,6 +624,15 @@ bool PFWorld::Step(float dtInSeconds, float)
       }
     }
   }
+	for (vector<CObj<PFBaseUnit> >::iterator it = stationaryUnits.begin(); it != stationaryUnits.end(); ++it)
+	{
+		// Flush callback removals before checking live membership; snapshots still exclude newborns.
+		ProcessAddRemove();
+		PFBaseUnit* unit = it->GetPtr();
+		if (IsValid(unit) && !unit->IsDead() && !unit->IsObjectDead() && unit->GetWorld() == this
+			&& IsSubscribed(unit) && FindLinuxUnitByObjectId(unit->GetObjectId()) == unit)
+			unit->Step(dtInSeconds);
+	}
 	for (vector<CObj<PFDispatch> >::iterator it = detachedDispatches.begin(); it != detachedDispatches.end(); ++it)
 	{
 		// Callbacks may cancel siblings, flush registration, or transfer ownership during this phase.

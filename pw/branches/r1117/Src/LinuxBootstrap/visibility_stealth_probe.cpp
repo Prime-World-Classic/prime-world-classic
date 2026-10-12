@@ -473,9 +473,11 @@ void TickOwnership(Checks& checks)
 	moving->SetMoveFlags(moving->GetMoveFlags() | MOVE_FLAG_OVERRIDE_SPEED);
 	checks.Check(moving->MoveTo(CVec2(24, 20), 0, 0), "real detector movement requested");
 	const int gameplayBefore = moving->gameplay;
+	const int stationaryGameplayBefore = stationary->gameplay;
 	a.Tick(1);
 	checks.Check(moving->GetPosition().x < 30, "real movement enters detector sight range");
-	checks.Check(moving->gameplay == gameplayBefore + 1 && stationary->gameplay == 0, "moving gameplay once; stationary gameplay not stepped");
+	checks.Check(moving->gameplay == gameplayBefore + 1 && stationary->gameplay == stationaryGameplayBefore + 1,
+		"moving and stationary gameplay each step once through their world owners");
 	checks.Check(stationary->reveals == stationaryBefore + 1 && moving->reveals == movingBefore + 1, "positive world tick refreshes moving and stationary once");
 	checks.Check(stationary->IsVisibleForEnemy(-1), "reveal phase consumes post-movement detector position");
 	checks.Check(moving->TeleportTo(CVec2(60, 20), false, false), "detector teleports out of range");
