@@ -1521,6 +1521,8 @@ static void LinuxStepResource(Value& pool, Maximum& cachedMaximum, float maximum
 
 bool PFBaseUnit::Step(float dtInSeconds)
 {
+	UpdatePriorityTargets(dtInSeconds);
+
   if (HasBehaviour() && Behaviour()->IsEnabled())
     Behaviour()->OnStep(dtInSeconds);
 
@@ -2467,9 +2469,58 @@ void PFBaseUnit::StepLastAttackData(float dtInSeconds)
 	advance(lastHeroAttack.timePassed);
 	advance(lastDamage.timeOver);
 }
-void PFBaseUnit::AddToPriorityTargets(const CPtr<PFBaseUnit>& pTarget) { if (pTarget) priorityTargets[pTarget->GetObjectId()] = PriorityTarget(pTarget, pTarget->GetObjectId(), 0.0f); }
-void PFBaseUnit::UpdatePriorityTargets(float) {}
-bool PFBaseUnit::IsPriorityTarget(const CPtr<PFBaseUnit>& pTarget) const { return pTarget && priorityTargets.find(pTarget->GetObjectId()) != priorityTargets.end(); }
+/** Retain the original alpha-master identity with the current authored timeout. */
+void PFBaseUnit::AddToPriorityTargets(const CPtr<PFBaseUnit>& pTarget)
+{
+	PFWorld* world = GetWorld();
+	if (!world || !IsValid(pTarget) || pTarget->GetWorld() != world)
+		return;
+	const CPtr<PFBaseUnit>& target = pTarget->IsAlphaSummon() ? pTarget->GetMasterUnit() : pTarget;
+	if (!IsValid(target) || target->GetWorld() != world || target->GetObjectId() < 0)
+		return;
+	const NDb::UnitTargetingParameters* params = GetTargetingParamsPtr();
+	if (!params || !std::isfinite(params->maxTimeFromAttack))
+		return;
+
+	const int id = target->GetObjectId();
+	TPriorityTargets::iterator it = priorityTargets.find(id);
+	if (it == priorityTargets.end() || it->second.pTarget != target || it->second.objectId != id)
+		priorityTargets[id] = PriorityTarget(target, id, params->maxTimeFromAttack);
+	else
+		it->second.timeOut = params->maxTimeFromAttack;
+}
+
+/** Use the original two-phase erase without extending or poisoning simulation clocks. */
+void PFBaseUnit::UpdatePriorityTargets(float dt)
+{
+	if (!std::isfinite(dt) || dt < 0.0f)
+		return;
+	list<int> toDelete;
+	for (TPriorityTargets::iterator it = priorityTargets.begin(); it != priorityTargets.end(); ++it)
+	{
+		PriorityTarget& record = it->second;
+		// Compare before subtraction so expired finite values cannot overflow negatively.
+		if (!std::isfinite(record.timeOut) || record.timeOut <= dt || !GetWorld() ||
+			!IsValid(record.pTarget) || record.pTarget->GetWorld() != GetWorld() ||
+			it->first < 0 || record.objectId != it->first || record.pTarget->GetObjectId() != it->first)
+			toDelete.push_back(it->first);
+		else
+			record.timeOut -= dt;
+	}
+	for (list<int>::const_iterator it = toDelete.begin(); it != toDelete.end(); ++it)
+		priorityTargets.erase(*it);
+}
+
+/** Membership is exact; only insertion, not this query, resolves alpha summons. */
+bool PFBaseUnit::IsPriorityTarget(const CPtr<PFBaseUnit>& pTarget) const
+{
+	if (!GetWorld() || !IsValid(pTarget) || pTarget->GetWorld() != GetWorld() || pTarget->GetObjectId() < 0)
+		return false;
+	const int id = pTarget->GetObjectId();
+	TPriorityTargets::const_iterator it = priorityTargets.find(id);
+	return it != priorityTargets.end() && it->second.objectId == id && it->second.pTarget == pTarget &&
+		std::isfinite(it->second.timeOut);
+}
 void PFBaseUnit::RemoveLastAttackData() { lastAttack.Clear(); }
 void PFBaseUnit::RemoveLastHeroAttackData() { lastHeroAttack.Clear(); }
 void PFBaseUnit::OnBecameIdle() {}
