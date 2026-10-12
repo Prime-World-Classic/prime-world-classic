@@ -698,7 +698,8 @@ void PFApplStatus::CompareByPower(PFApplStatus*) {}
 void PFApplStatus::MergeByValue() {}
 bool PFApplStatus::Start()
 {
-  if (!IsValid(pReceiver) || !RetrieveParam(GetDB().startCondition, true))
+	// Buff Start owns checked condition evaluation and balanced activation accounting.
+  if (!IsValid(pReceiver))
   {
     PFApplBuff::Start();
     return true;
@@ -753,17 +754,24 @@ void PFApplStatus::Stop()
   mergeApplicators.clear();
   PFApplBuff::Stop();
 }
-bool PFApplStatus::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
-void PFApplStatus::OnNotification(PFBaseApplicator&, NDb::EParentNotification note)
+bool PFApplStatus::Step(float dtInSeconds)
 {
-  if (note == NDb::PARENTNOTIFICATION_STOP && GetDB().stopBehaviour != NDb::STOPBEHAVIOUR_STOPBYTIME && m_applicatorCount > 0)
-  {
-    --m_applicatorCount;
-    if (m_applicatorCount <= 0)
-      Stop();
-  }
+	if (PFApplBuff::Step(dtInSeconds)) return true;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return false;
+	return m_applicatorCount <= 0 && GetDB().stopBehaviour != NDb::STOPBEHAVIOUR_STOPBYTIME;
 }
-float PFApplStatus::GetModifiedDuration(float original) const { return original; }
+void PFApplStatus::OnNotification(PFBaseApplicator& app, NDb::EParentNotification note)
+{
+	PFApplBuff::OnNotification(app, note);
+	// Original policy defers parent completion to Step, after sibling creation has finished.
+	if (note == NDb::PARENTNOTIFICATION_STOP && m_applicatorCount > 0)
+		--m_applicatorCount;
+}
+float PFApplStatus::GetModifiedDuration(float original) const
+{
+	return original > 0 && GetAbility() && GetAbility()->GetData()
+		? GetAbility()->GetData()->GetModifiedValue(original, NDb::ABILITYMODMODE_DURATION) : original;
+}
 void PFApplStatus::ForceUpdateLifetime(float newLifetime, float newDuration) { SetLifetime(newLifetime); SetDuration(newDuration); }
 const NDb::Texture* PFApplStatus::GetStatusImage() const { return GetDB().image; }
 
