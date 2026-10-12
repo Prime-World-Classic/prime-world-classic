@@ -369,10 +369,22 @@ color-correct начинают получать настоящие веса) —
 - [ ] **Генератор `MaterialSpec.{h,cpp}` из `MaterialSpec.xml` — отсутствует.**
       Нужен, только если меняется набор пинов материала (например, убрать
       `R2VBPinValue`). Пока пины не меняются — не блокер.
-- [ ] `tools/nvrhi_probe/` — вне графа клиента: NVRHI статикой под MSVC 14.44
-      `/MT` + C++17; **смоук Vulkan** на `HWND` клиента; прогон под Wine
-      (нативный `winevulkan`) и на tiny10. DX12 — только проверить, что
-      компилируется (запуск позже).
+- [x] **`tools/nvrhi_probe/` — сделано (2026-10-12).** NVRHI `6b96fb03`
+      собирается cl 14.44 под Wine, C++17, статика, **`/MT`** — без ошибок,
+      линкуется с приложением. Найденные при этом факты API (важнее самого
+      запуска): swapchain-абстракции **нет вообще** (бэк-буфер оборачивается
+      через `createHandleForNativeTexture`); при статике NVRHI даёт **четыре**
+      либы (`nvrhi`, `nvrhi_d3d11`, `nvrhi_d3d12`, `nvrhi_vk`); при статике же
+      NVRHI **не** инициализирует диспетчер Vulkan-Hpp — это обязанность хоста;
+      `d3d11::DeviceDesc` принимает только `context`; ни VkInstance, ни VkDevice,
+      ни surface NVRHI не создаёт. Итоговые размеры статики и список «что
+      осталось на tiny10» — `tools/nvrhi_probe/README.md`.
+- [ ] **Runtime-смоук Vulkan/D3D11 — НЕ сделан.** В этом Wine-префиксе нет
+      адаптера: `D3D11CreateDevice` → `DXGI_ERROR_NOT_FOUND`, `vkCreateInstance`
+      → `VK_ERROR_EXTENSION_NOT_PRESENT` (winevulkan есть, surface-расширения
+      нет; хостовый llvmpipe-ICD через `VK_ICD_FILENAMES` не помог). Делать на
+      tiny10: instance+surface, `VkSwapchainKHR`, `createHandleForNativeTexture`,
+      clear+present в окне клиента.
 - [ ] Зафиксировать: `d3dcompiler_47` vs DXC для SPIR-V; размер прироста;
       какие DXGI/Vulkan-зависимости появляются.
 - [x] Счётчики уникальных VS/PS/пар переведены на `USE_RENDER_SHADER_STATS`
@@ -496,7 +508,18 @@ color-correct начинают получать настоящие веса) —
 
 ---
 
-### 3.x GAP: occlusion-запросов в NVRHI нет
+### 3.x GAP: swapchain
+
+В NVRHI `6b96fb03` **нет ни `ISwapchain`, ни `createSwapchain`** (проверено
+по `include/` и по `doc/Tutorial.md`). Приложение само создаёт DXGI swapchain /
+`VkSwapchainKHR`, пересоздаёт при ресайзе, и оборачивает бэк-буфер через
+`IDevice::createHandleForNativeTexture`. Т.е. в плане это не «бэкенд сам всё
+сделает», а отдельный кусок работы: перечисление адаптеров, создание
+странического представления, получение кадров, обработка
+`VK_ERROR_OUT_OF_DATE_KHR` / `DXGI_STATUS_OC_RESIZED`. Это же — единственная
+часть, где придётся держать нативный Vulkan/DXGI код в обход NVRHI.
+
+### 3.y GAP: occlusion-запросов в NVRHI нет
 
 Проверено по исходникам NVRHI (`6b96fb03`, 2026-10-05): в `nvrhi.h` есть
 только `IEventQuery` и `ITimerQuery` (`beginTimerQuery/endTimerQuery/
