@@ -1299,6 +1299,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "dispatch_teleport_b11_tests.inc"
 #include "state_world_b11_tests.inc"
 #include "stationary_world_b12_tests.inc"
+#include "moving_world_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1389,6 +1390,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CreepDamageFormulaB12(check);
 			StationaryWorldB12(check);
 			StationaryCombatB12(check);
+			MovingWorldB12(check, false);
+			MovingWorldB12(check, true);
 			CommonCreepRouteB11(check, world);
 			CommonCreepRegistrationB11(check, world);
 			CreepEvadeAdmissionB11(check, world);

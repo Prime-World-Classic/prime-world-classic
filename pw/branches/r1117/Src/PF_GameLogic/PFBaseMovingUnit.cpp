@@ -231,19 +231,29 @@ float MovingUnit::CheckStraightMove(CVec2 const& target, int mapModeFlags)
 PathMap* MovingUnit::BuildPathMap(float) { return 0; }
 void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionResolver*, TileMap*, float timeDelta)
 {
-  if (timeDelta <= 0.0f)
+	if (!std::isfinite(timeDelta) || timeDelta <= 0.0f)
     return;
 
-  vector<PFBaseMovingUnit*> units;
-  PFBaseMovingUnit::GetAllUnits(pVoxelMap, units, false);
-  for (int i = 0; i < units.size(); ++i)
-  {
-    if (units[i] && !units[i]->IsDead())
-    {
-		units[i]->world.PreStep(timeDelta);
-      units[i]->Step(timeDelta);
-    }
-  }
+	vector<PFBaseMovingUnit*> candidates;
+	PFBaseMovingUnit::GetAllUnits(pVoxelMap, candidates, false);
+	vector<CObj<PFBaseMovingUnit> > units;
+	for (int i = 0; i < candidates.size(); ++i)
+		if (IsValid(candidates[i])) units.push_back(CObj<PFBaseMovingUnit>(candidates[i]));
+	// Callbacks may remove other units or create children; retain only this tick's snapshot.
+	for (int i = 0; i < units.size(); ++i)
+	{
+		PFBaseMovingUnit* unit = units[i].GetPtr();
+		PFWorld* ownerWorld = unit->GetWorld();
+		if (ownerWorld)
+		{
+			ownerWorld->ProcessAddRemove();
+			if (!ownerWorld->IsSubscribed(unit) || ownerWorld->FindLinuxUnitByObjectId(unit->GetObjectId()) != unit)
+				continue;
+		}
+		if (!IsValid(unit) || unit->IsDead() || unit->IsObjectDead()) continue;
+		unit->world.PreStep(timeDelta);
+		unit->Step(timeDelta);
+	}
 }
 void MovingUnit::Step(float timeDelta)
 {
