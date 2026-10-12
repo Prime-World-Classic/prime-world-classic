@@ -25,6 +25,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 2/50 COMPLETE (`0.49.1`): native shop commands retain the exact registered live hero and shop across serialization/admission/execution. Remove missing-reference hero/first-shop substitution and slot-encoded actor identity; preserve original bot/leaver scheduler ownership. Actual packed-command, foreign-world, death, unregistration and control-loss fixtures reproduce 24 failures, then 5,483 checks/0, 28 CTests, six builds and extended retained-Windows/shared audits pass. Bounded helper draft reviewed and integrated; evidence `/tmp/pw-b12-c2-{before,after,build,ctest,windows}.log`, helper `/tmp/pw-b12-shop/01-*`. Stock/range/payment validation follows separately, not claimed here.
 
+- Chunk 3/50 COMPLETE (`0.49.2`): bound shop stock and explicit/automatic inventory slots, enforce authored center-distance range and interaction eligibility, and recheck funds/offer before payment. Reserve the quoted debit before inventory callbacks, revalidate identity/stock/price/destination after payment hooks, and refund only the actual debit on pre-grant rejection. Obtained callbacks observe paid inventory and cannot reprice the completed grant or reuse unpaid funds. Production command/payment/event fixtures reproduce 45 failures; final 5,568 checks/0, 28 CTests, six builds and Windows/shared audit pass. Evidence `/tmp/pw-b12-c3-{before,after,build,ctest,windows}.log`. Keep Windows-style immediate purchases; reject the helper queued-approach experiment because the original purchase path has no such state. Global PFShop API radius parity is still separate.
+
 <!-- B12 next checkpoint -->
 
 ### Batch B11

@@ -145,6 +145,73 @@ namespace NWorld
 			(player->GetUserID() == clientId || player->IsBot() || !player->IsPlaying());
 	}
 
+	/** Match the original shop's center-distance rule, not the native always-near stub. */
+	static bool IsLinuxShopInRange(PFBaseHero* hero, PFShop* shop)
+	{
+		const CVec3& a = hero->GetPosition();
+		const CVec3& b = shop->GetPosition();
+		const double radius = shop->GetInteractionRadius();
+		const double x = double(a.x) - b.x, y = double(a.y) - b.y, z = double(a.z) - b.z;
+		return std::isfinite(radius) && radius >= 0 && std::isfinite(x) && std::isfinite(y) &&
+			std::isfinite(z) && x*x + y*y + z*z <= radius*radius;
+	}
+
+	/** Resolve bounded authored stock and a usable destination before checking or reserving funds. */
+	static const NDb::Consumable* LinuxShopConsumable(PFWorld* world, PFBaseHero* hero,
+		PFShop* shop, int index, int slot, int clientId)
+	{
+		if (!CanUseLinuxShopActor(world, hero, shop, clientId) ||
+			hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT) || shop->GetHiddenCounter() > 0 ||
+			index < 0 || index >= shop->GetNumConsumables() || slot < -1 || slot >= hero->GetSlotCount() ||
+			!IsLinuxShopInRange(hero, shop)) return nullptr;
+		const NDb::Consumable* db = shop->GetConsumableDesc(index);
+		if (!db || !(slot == -1 ? hero->CanTakeConsumable(db, 1) : hero->CanPutConsumableIntoSlot(db, 1, slot)))
+			return nullptr;
+		const float cost = hero->GetConsumableCost(db);
+		return std::isfinite(cost) && cost >= 0 ? db : nullptr;
+	}
+
+	/** Keep CanExecute read-only; Execute rechecks the same authored offer and current funds. */
+	static bool CanBuyLinuxShopConsumable(PFWorld* world, PFBaseHero* hero, PFShop* shop,
+		int index, int slot, int clientId)
+	{
+		return LinuxShopConsumable(world, hero, shop, index, slot, clientId) && shop->CanBuyConsumable(hero, index);
+	}
+
+	/** Debit the quote before inventory callbacks; refund only our reservation on pre-grant failure.
+	 * TakeConsumable is the commit boundary: its passive/obtained callbacks observe paid inventory.
+	 * Callback changes after that boundary are gameplay effects, not a reason to reprice the purchase.
+	 */
+	static void BuyLinuxShopConsumable(PFWorld* world, PFBaseHero* hero, PFShop* shop,
+		int index, int slot, int clientId)
+	{
+		auto& diagnostic = g_linuxHeroGameplayCommandDiagnostics;
+		diagnostic.buyConsumableCanBuy = 0;
+		diagnostic.buyConsumableTook = 0;
+		if (!CanBuyLinuxShopConsumable(world, hero, shop, index, slot, clientId)) return;
+		NDb::Ptr<NDb::Consumable> db = shop->GetConsumableDesc(index);
+		const int destination = slot == -1 ? hero->GetSlotForConsumable(db, 1) : slot;
+		const float cost = hero->GetConsumableCost(db);
+		diagnostic.buyConsumableCanBuy = 1;
+		diagnostic.buyConsumableHeroPlayerId = hero->GetPlayerId();
+		diagnostic.buyConsumableHeroUserId = hero->GetPlayer()->GetUserID();
+		diagnostic.buyConsumableSlotCountBefore = hero->GetSlotCount();
+		const float paid = hero->TakeGold(cost);
+		if (paid != cost || LinuxShopConsumable(world, hero, shop, index, destination, clientId) != db.GetPtr() ||
+			hero->GetConsumableCost(db) != cost || !hero->TakeConsumable(db, 1, NDb::CONSUMABLEORIGIN_SHOP, destination))
+		{
+			if (std::isfinite(paid) && paid > 0) hero->AddGold(paid, false);
+			return;
+		}
+		diagnostic.buyConsumableTook = 1;
+		diagnostic.buyConsumableSlotCountAfter = hero->GetSlotCount();
+		diagnostic.buyConsumableResultSlotIndex = destination;
+		diagnostic.buyConsumableResultSlotType = -1;
+		const PFConsumable* item = hero->GetConsumable(destination);
+		diagnostic.buyConsumableResultSlotQuantity = item ? item->GetQuantity() : 0;
+		++diagnostic.buyConsumableActionAccepted;
+	}
+
 	/** Recheck inventory admission at both command boundaries. */
 	static bool CanUseLinuxConsumableCommand(PFBaseMaleHero* hero, int slot)
 	{
@@ -1380,8 +1447,8 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = IsValid(pHero) ? pHero->GetObjectId() : -1;
-		const bool accepted = CanUseLinuxShopActor(IsValid(pHero) ? pHero->GetWorld() : nullptr,
-			pHero, pShop, GetId());
+		const bool accepted = CanBuyLinuxShopConsumable(IsValid(pHero) ? pHero->GetWorld() : nullptr,
+			pHero, pShop, index, slotIndex, GetId());
 #else
     const bool accepted = IsValid(pHero) && IsValid(pShop) && !pHero->IsDead();
 #endif
@@ -1412,31 +1479,15 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId = IsValid(hero) ? hero->GetObjectId() : -1;
 		g_linuxHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld = 0;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = commandSlotIndex;
-		if (!CanUseLinuxShopActor(world, hero, shop, GetId())) return;
+		BuyLinuxShopConsumable(world, hero, shop, index, slotIndex, GetId());
 #else
     hero = pHero;
     shop = pShop;
-#endif
     if (!IsValid(hero) || !IsValid(shop) || hero->IsDead() || !shop->CanBuyConsumable(hero, consumableIndex))
     {
-#if defined(PW_LINUX_NULL_RENDER)
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanBuy = 0;
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(shop) ? shop->GetObjectId() : -1;
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = consumableIndex;
-#endif
       return;
     }
 
-#if defined(PW_LINUX_NULL_RENDER)
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanBuy = 1;
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = shop->GetObjectId();
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = consumableIndex;
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroPlayerId = hero->GetPlayerId();
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = -1;
-    if (const PFPlayer* player = hero->GetPlayer())
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = player->GetUserID();
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountBefore = hero->GetSlotCount();
-#endif
 
     const NDb::Consumable* consumable = shop->GetConsumableDesc(consumableIndex);
     if (!consumable)
@@ -1446,22 +1497,7 @@ namespace NWorld
 
     if (hero->TakeConsumable(consumable, 1, NDb::CONSUMABLEORIGIN_SHOP, commandSlotIndex))
     {
-#if defined(PW_LINUX_NULL_RENDER)
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableTook = 1;
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountAfter = hero->GetSlotCount();
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex = commandSlotIndex >= 0 ? commandSlotIndex : hero->GetSlotCount() - 1;
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotType = -1;
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = 0;
-      if (PFConsumable const* pBoughtConsumable = hero->GetConsumable(g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex))
-        g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = pBoughtConsumable->GetQuantity();
-      ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableActionAccepted;
-#endif
       hero->TakeGold(hero->GetConsumableCost(consumable));
-    }
-#if defined(PW_LINUX_NULL_RENDER)
-    else
-    {
-      g_linuxHeroGameplayCommandDiagnostics.buyConsumableTook = 0;
     }
 #endif
   }
