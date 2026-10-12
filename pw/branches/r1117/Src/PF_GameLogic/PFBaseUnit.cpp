@@ -768,6 +768,8 @@ PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _db
   summonedUnits[NDb::SUMMONTYPE_PRIMARY] = new PFBehaviourGroup(_pWorld);
   summonedUnits[NDb::SUMMONTYPE_SECONDARY] = new PFBehaviourGroup(_pWorld);
   summonedUnits[NDb::SUMMONTYPE_PET] = new PFBehaviourGroup(_pWorld);
+	// Match Windows construction: authored slots and the global cooldown belong to every unit.
+	if (_dbUnitDesc) CreateAbilities(this, *_dbUnitDesc);
   LinuxRegisterBootstrapUnit(this);
 }
 

@@ -1351,6 +1351,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "microai_b12_tests.inc"
 #include "selector_request_lifetime_b12_tests.inc"
 #include "tower_help_b12_tests.inc"
+#include "unit_abilities_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1484,6 +1485,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			MicroAIB12(check);
 			SelectorRequestLifetimeB12(check);
 			TowerHelpB12(check);
+			UnitAbilitiesB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

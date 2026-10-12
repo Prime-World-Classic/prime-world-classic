@@ -24,7 +24,7 @@ void PFUnitAbilities::CreateAbilities(PFBaseUnit* pOwner, const NDb::Unit& unitD
     if (*it)
     {
       abilities[curAbility].pAbility =
-        new PFAbilityData(pOwner, *it, NDb::EAbilityTypeId(NDb::ABILITYTYPEID_ABILITY0 + curAbility), false);
+        new PFAbilityData(pOwner, *it, NDb::EAbilityTypeId(NDb::ABILITYTYPEID_ABILITY0 + curAbility));
     }
   }
 
