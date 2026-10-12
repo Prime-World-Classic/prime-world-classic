@@ -13,19 +13,23 @@
 	// Пока не зажата клавиша voice_overlay_unlock, оверлей не ловит мышь и клики
 	// уходят в игру. С зажатой клавишей: клик по игроку — заглушить/включить,
 	// клик по себе — микрофон, колесо — громкость игрока, перетаскивание — позиция.
+	//
+	// width/height оверлея не используются: у созданных кодом TextField движок
+	// держит рамку по умолчанию (~100x100) даже у скрытых, размеры считаем сами.
 	public class VoiceOverlay extends Sprite
 	{
 		public static const COMMAND:String = "VoiceOverlayCmd";
 
-		// Пока игрок не перетащил оверлей, он стоит под панелями героев слева и
-		// масштабируется вместе с ними (панели подгоняются под разрешение).
-		private static const SCALE:Number = 1.5;
-		private static const ANCHOR_GAP:Number = 8;
+		// Пока игрок не перетащил оверлей, он стоит под панелью союзников слева
+		// и масштабируется вместе с ней (панели подгоняются под разрешение).
+		private static const SCALE:Number = 1.25;
+		private static const ANCHOR_GAP:Number = 10;
+		private static const HINT_SIZE:int = 10;
 		private static const DRAG_THRESHOLD:Number = 4;
 		private static const VOLUME_STEP:int = 5;
 
 		private var playersSource:Function;
-		private var anchorsSource:Function;
+		private var anchorSource:Function;
 		private var anchored:Boolean = true;
 		private var rows:Array = [];
 		private var meRow:VoiceOverlayRow;
@@ -35,6 +39,8 @@
 		private var interactive:Boolean = false;
 		private var posX:Number = 0;
 		private var posY:Number = 0;
+		private var contentWidth:Number = 0;
+		private var contentHeight:Number = 0;
 
 		private var pressRow:VoiceOverlayRow = null;
 		private var pressStageX:Number = 0;
@@ -44,12 +50,11 @@
 		private var dragging:Boolean = false;
 
 		// playersSource(): Array of PlayerStatisticData — для портретов героев.
-		// anchorsSource(): Array of DisplayObject (панели героев, соседи по родителю) —
-		// оверлей встаёт под ними и берёт их масштаб.
-		public function VoiceOverlay(_playersSource:Function, _anchorsSource:Function)
+		// anchorSource(): DisplayObject — панель союзников (сосед по родителю).
+		public function VoiceOverlay(_playersSource:Function, _anchorSource:Function)
 		{
 			playersSource = _playersSource;
-			anchorsSource = _anchorsSource;
+			anchorSource = _anchorSource;
 			visible = false;
 			mouseEnabled = false;
 			mouseChildren = false;
@@ -57,7 +62,7 @@
 			frame = new Shape();
 			addChild(frame);
 
-			hint = VoiceOverlayRow.CreateText(10, 0xDBDEE1, false);
+			hint = VoiceOverlayRow.CreateText(HINT_SIZE, 0xDBDEE1, false, 400);
 			hint.visible = false;
 			addChild(hint);
 
@@ -97,6 +102,8 @@
 
 		public function SetInteractive(value:Boolean):void
 		{
+			if (interactive == value)
+				return;
 			interactive = value;
 			mouseChildren = value;
 			if (!value)
@@ -141,8 +148,6 @@
 			rows = keep;
 
 			Layout();
-			if (!dragging)
-				ApplyPosition();
 		}
 
 		private function FindRow(id:int):VoiceOverlayRow
@@ -183,17 +188,16 @@
 		private function Layout():void
 		{
 			var y:Number = 0;
-			var width:Number = 0;
+			var width:Number = meRow.RowWidth;
 
 			meRow.y = y;
 			y += VoiceOverlayRow.HEIGHT;
-			width = Math.max(width, meRow.width);
 
 			for each (var row:VoiceOverlayRow in rows)
 			{
 				row.y = y;
 				y += VoiceOverlayRow.HEIGHT;
-				width = Math.max(width, row.width);
+				width = Math.max(width, row.RowWidth);
 			}
 
 			hint.visible = interactive;
@@ -201,19 +205,27 @@
 			{
 				hint.text = Localization.VoiceOverlay_Hint;
 				hint.x = 4;
-				hint.y = y + 2;
-				y = hint.y + hint.height + 2;
-				width = Math.max(width, hint.x + hint.width + 4);
+				hint.y = y + 1;
+				y = hint.y + HINT_SIZE + 6;
+				width = Math.max(width, hint.x + VoiceOverlayRow.EstimateTextWidth(hint.text, HINT_SIZE) + 4);
 			}
+
+			// NaN в координатах фигуры вешает тесселятор движка (бесконечная рекурсия
+			// Tesselator::curve) — рисуем только из проверенных чисел.
+			contentWidth = Finite(width, 120);
+			contentHeight = Finite(y, VoiceOverlayRow.HEIGHT);
 
 			frame.graphics.clear();
 			if (interactive)
 			{
 				frame.graphics.lineStyle(1, 0xFFFFFF, 0.35);
 				frame.graphics.beginFill(0x000000, 0.25);
-				frame.graphics.drawRoundRect(-3, -3, width + 6, y + 6, 10, 10);
+				frame.graphics.drawRoundRect(-3, -3, contentWidth + 6, contentHeight + 6, 10, 10);
 				frame.graphics.endFill();
 			}
+
+			if (!dragging)
+				ApplyPosition();
 		}
 
 		private function ApplyPosition():void
@@ -221,32 +233,44 @@
 			if (stage == null)
 				return;
 
-			// getBounds в движке не реализован — низ панелей считаем по y + height.
-			var uiScale:Number = 0;
-			var left:Number = 4;
-			var bottom:Number = 0;
-			var anchors:Array = anchorsSource != null ? anchorsSource() : null;
-			for each (var anchor:DisplayObject in anchors)
-			{
-				if (anchor == null || !anchor.visible || anchor.parent != parent)
-					continue;
-				if (uiScale == 0)
-				{
-					uiScale = anchor.scaleY;
-					left = anchor.x;
-				}
-				bottom = Math.max(bottom, anchor.y + anchor.height);
-			}
-			if (uiScale <= 0)
+			var anchor:DisplayObject = anchorSource != null ? anchorSource() as DisplayObject : null;
+			var usable:Boolean = anchor != null && anchor.parent == parent;
+			var uiScale:Number = usable ? Finite(anchor.scaleY, 1) : 1;
+			if (uiScale <= 0.1 || uiScale > 10)
 				uiScale = 1;
 			scaleX = scaleY = SCALE * uiScale;
 
-			var targetX:Number = anchored ? left + 4 : posX * stage.stageWidth;
-			var targetY:Number = anchored ? bottom + ANCHOR_GAP * uiScale : posY * stage.stageHeight;
-			var maxX:Number = Math.max(0, stage.stageWidth - width);
-			var maxY:Number = Math.max(0, stage.stageHeight - height);
-			x = Math.round(Math.min(maxX, Math.max(0, targetX)));
-			y = Math.round(Math.min(maxY, Math.max(0, targetY)));
+			var targetX:Number;
+			var targetY:Number;
+			if (anchored && usable)
+			{
+				targetX = Finite(anchor.x, 0) + 6 * uiScale;
+				targetY = Finite(anchor.y, 0) + Finite(anchor.height, stage.stageHeight * 0.4) + ANCHOR_GAP * uiScale;
+			}
+			else if (anchored)
+			{
+				targetX = 6;
+				targetY = stage.stageHeight * 0.45;
+			}
+			else
+			{
+				targetX = posX * stage.stageWidth;
+				targetY = posY * stage.stageHeight;
+			}
+			MoveClamped(targetX, targetY);
+		}
+
+		private function MoveClamped(targetX:Number, targetY:Number):void
+		{
+			var maxX:Number = Math.max(0, stage.stageWidth - contentWidth * scaleX);
+			var maxY:Number = Math.max(0, stage.stageHeight - contentHeight * scaleY);
+			x = Math.round(Math.min(maxX, Math.max(0, Finite(targetX, 0))));
+			y = Math.round(Math.min(maxY, Math.max(0, Finite(targetY, 0))));
+		}
+
+		private static function Finite(value:Number, fallback:Number):Number
+		{
+			return isNaN(value) || !isFinite(value) ? fallback : value;
 		}
 
 		private function OnStageResize(e:Event):void
@@ -291,10 +315,7 @@
 			if (!dragging && Math.abs(dx) + Math.abs(dy) < DRAG_THRESHOLD)
 				return;
 			dragging = true;
-			var maxX:Number = Math.max(0, stage.stageWidth - width);
-			var maxY:Number = Math.max(0, stage.stageHeight - height);
-			x = Math.round(Math.min(maxX, Math.max(0, pressSelfX + dx)));
-			y = Math.round(Math.min(maxY, Math.max(0, pressSelfY + dy)));
+			MoveClamped(pressSelfX + dx, pressSelfY + dy);
 		}
 
 		private function OnStageMouseUp(e:MouseEvent):void

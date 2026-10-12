@@ -253,11 +253,11 @@
 				addChild(myIcoDrag);
 				DnDController.iconObject = myIcoDrag;
 				
-				// Оверлей войса: под панелями героев слева и слоем выше них.
+				// Оверлей войса: под панелью союзников слева и слоем выше неё.
 				voiceOverlay = new VoiceOverlay(
 					function():Array { return This.Players; },
-					function():Array { return [heroInfo_mc, teamInfoFrendly_mc]; });
-				addChildAt(voiceOverlay, Math.max(getChildIndex(heroInfo_mc), getChildIndex(teamInfoFrendly_mc)) + 1);
+					function():DisplayObject { return teamInfoFrendly_mc; });
+				addChildAt(voiceOverlay, getChildIndex(teamInfoFrendly_mc) + 1);
 				
 				selectionCharStats_mc.ChangeSelectionCharStatTooltipCommands(true);
 				
