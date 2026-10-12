@@ -184,9 +184,9 @@ void PFBaseApplicator::SetBlocked(bool isBlocked) { isBlocked ? flags |= FLAG_BL
 void PFBaseApplicator::SetChanged(bool isChanged) { isChanged ? flags |= FLAG_CHANGED : flags &= ~FLAG_CHANGED; }
 
 /** Empty authored conditions retain the original true default; unsupported bytecode cannot enable effects. */
-static bool LinuxApplicatorEnabled(const PFBaseApplicator& app)
+static bool LinuxApplicatorEnabled(const PFBaseApplicator& app, const NDb::Ptr<NDb::BaseApplicator>& db)
 {
-	const NDb::Ptr<NDb::BaseApplicator>& db = app.GetDBBase();
+	// GetDBBase unwraps typed effect data; enabled belongs to the original outer descriptor.
 	if (!db) return true;
 	const auto& condition = db->enabled;
 	if (condition.sString.empty() && condition.compiledString.empty()) return true;
@@ -201,7 +201,7 @@ bool PFBaseApplicator::Start()
   if (IsValid(pParent))
     pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_START);
 
-  const bool isEnabled = IsDelegated() || LinuxApplicatorEnabled(*this);
+  const bool isEnabled = IsDelegated() || LinuxApplicatorEnabled(*this, pDBAppl);
   SetEnabled(isEnabled);
   return !isEnabled;
 }
@@ -222,7 +222,7 @@ void PFBaseApplicator::Stop()
 bool PFBaseApplicator::Step(float)
 {
 	if (!IsAlive()) return true;
-	bool enabled = IsBlocked() ? IsEnabled() : LinuxApplicatorEnabled(*this);
+	bool enabled = IsBlocked() ? IsEnabled() : LinuxApplicatorEnabled(*this, pDBAppl);
 	if (IsValid(pOwner) && pOwner->IsDead()) enabled = enabled && !NeedToDisableOnDeath();
 	if (enabled == IsEnabled()) return false;
 	SetEnabled(enabled);
