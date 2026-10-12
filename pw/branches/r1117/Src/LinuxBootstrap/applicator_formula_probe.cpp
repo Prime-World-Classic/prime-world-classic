@@ -1315,6 +1315,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "stat_buff_b12_tests.inc"
 #include "map_force_b12_tests.inc"
 #include "cursor_dispatch_b12_tests.inc"
+#include "cancel_dispatch_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1419,6 +1420,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CursorDispatchB12(check, world);
 			CursorCommandB12(check);
 			CursorPersistentB12(check, world);
+			CancelDispatchB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

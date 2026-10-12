@@ -1906,7 +1906,40 @@ void PFBaseUnit::CancelAbilities()
 
   DropAbilitiesProgress();
 }
-void PFBaseUnit::CancelAllDispatchFromUnit(const PFBaseUnit*) {}
+/** Preserve Windows sender selection while target-drop callbacks mutate the rings. */
+void PFBaseUnit::CancelAllDispatchFromUnit(const PFBaseUnit* unit)
+{
+	if (!unit)
+		return;
+
+	CObj<PFBaseUnit> attacker;
+	for (ring::Range<AttackersRing> it(attackersRing); it; ++it)
+	{
+		if (&*it == unit)
+		{
+			attacker = &*it;
+			break;
+		}
+	}
+	if (attacker && attacker->GetCurrentTarget() == this)
+		attacker->DropTarget();
+
+	// Attacker callbacks precede this snapshot, as in the original two-phase traversal.
+	vector<CObj<PFDispatch> > pending;
+	for (ring::Range<UnitDispatchesRing> it(inboundDispatches); it; ++it)
+	{
+		PFDispatchUniformLinearMove* dispatch = &*it;
+		if (dispatch->GetSender() == unit)
+			pending.push_back(CObj<PFDispatch>(dispatch));
+	}
+	for (const auto& retained : pending)
+	{
+		PFDispatchUniformLinearMove* dispatch = dynamic_cast<PFDispatchUniformLinearMove*>(retained.GetPtr());
+		if (dispatch && !dispatch->IsObjectDead() && dispatch->GetSender() == unit &&
+			dispatch->GetTarget().IsUnit() && dispatch->GetTarget().GetUnit() == this)
+			dispatch->DropTarget();
+	}
+}
 void PFBaseUnit::KillUnit(const CPtr<PFBaseUnit>& pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { OnUnitDie(pKiller, flags, pDamageDesc); }
 void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
 {
