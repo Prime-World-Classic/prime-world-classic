@@ -9,6 +9,8 @@
 	import Controllers.TextFieldFormater;
 	import Datas.PlayerStatisticData;
 	import flash.display.MovieClip;
+	import flash.display.Shape;
+	import flash.utils.getDefinitionByName;
 	import flash.events.Event;
 	import flash.text.TextField;
 	import Interfaces.IMate;
@@ -50,6 +52,16 @@
 		public var redBack:MovieClip;
 		
 		private var _partyMarkerTooltip:TooltipSender;
+
+		// Иконка рейтинга аккаунта над иконкой рейтинга героя, на золотистой подложке как на
+		// экране загрузки (PWFrames/raitingBackAcc: #F0FC31, 30%). Создаётся кодом из того же
+		// символа, что и elitHeroIcon; подложка — отдельный Shape (graphics самого спрайта
+		// движок не рисует).
+		private static const RANK_ICON_SIZE:Number = 23;
+		private static const ACC_BACK_COLOR:uint = 0xF0FC31;
+		private static const ACC_BACK_ALPHA:Number = 0.3;
+		private var accRankIcon:HeroRankIconHolder;
+		private var accRankBack:Shape;
 		private var _muteTooltip:TooltipSender;
 		
 		public function StatisticsBarPlayers()
@@ -263,6 +275,77 @@
 			elitHeroIcon.Icon = rankIcon;
 			elitHeroIcon.TooltipText = rankTooltip;
 		}
+
+		private static function RankLine(template:String, rankName:String, rating:Number):String
+		{
+			return template.replace("{0}", rankName != null ? rankName : "").replace("{1}", int(rating).toString());
+		}
+
+		// Подсказки: у иконки героя — его ранг и рейтинг; у иконки аккаунта — ранг и рейтинг
+		// аккаунта, ниже — ранг и рейтинг героя.
+		private function SetRankTooltips(playerData:PlayerStatisticData):void
+		{
+			var heroLine:String = "";
+			if (playerData.HeroRankIcon != null && playerData.HeroRankIcon.length != 0)
+			{
+				heroLine = RankLine(Localization.StatBar_HeroRankTooltip, playerData.HeroRankTooltip, playerData.HeroRaiting);
+				elitHeroIcon.TooltipText = heroLine;
+			}
+
+			var hasAccount:Boolean = playerData.AccRankIcon != null && playerData.AccRankIcon.length != 0;
+			if (!hasAccount)
+			{
+				if (accRankIcon != null)
+				{
+					accRankIcon.visible = false;
+					accRankBack.visible = false;
+				}
+				return;
+			}
+
+			if (!CreateAccRankIcon())
+				return;
+
+			accRankIcon.visible = true;
+			accRankBack.visible = true;
+			accRankIcon.Icon = playerData.AccRankIcon;
+			var text:String = RankLine(Localization.StatBar_AccountRankTooltip, playerData.AccRankName, playerData.AccRaiting);
+			if (heroLine.length != 0)
+				text += "<br>" + heroLine;
+			accRankIcon.TooltipText = text;
+		}
+
+		private function CreateAccRankIcon():Boolean
+		{
+			if (accRankIcon != null)
+				return true;
+			try
+			{
+				var iconClass:Class = getDefinitionByName("statBarEliteHeroIcon") as Class;
+				accRankIcon = new iconClass() as HeroRankIconHolder;
+			}
+			catch (e:Error)
+			{
+				accRankIcon = null;
+			}
+			if (accRankIcon == null)
+				return false;
+
+			accRankIcon.x = elitHeroIcon.x;
+			accRankIcon.y = elitHeroIcon.y - RANK_ICON_SIZE - 3;
+
+			accRankBack = new Shape();
+			accRankBack.graphics.beginFill(ACC_BACK_COLOR, ACC_BACK_ALPHA);
+			accRankBack.graphics.drawRoundRect(-2, -2, RANK_ICON_SIZE + 4, RANK_ICON_SIZE + 4, 8, 8);
+			accRankBack.graphics.endFill();
+			accRankBack.x = accRankIcon.x;
+			accRankBack.y = accRankIcon.y;
+
+			var index:int = getChildIndex(elitHeroIcon);
+			addChildAt(accRankBack, index);
+			addChildAt(accRankIcon, index + 1);
+			return true;
+		}
 		
 		public function SetPremium(isPremium:Boolean, originalFraction:int,playerName:String):void 
 		{
@@ -277,6 +360,7 @@
 			playerName.textColor = playerData.HeroNameColor;
 			
 			SetHeroRang(playerData.HeroRankIcon, playerData.HeroRankTooltip);
+			SetRankTooltips(playerData);
 			SetPremium(playerData.IsPremium, playerData.OriginalFraction, playerData.PlayerName);
 			SetHeroGameProgress(playerData);
 			playerNameHolder.Text = playerData.PlayerName;

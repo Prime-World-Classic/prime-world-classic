@@ -6516,6 +6516,17 @@ bool AdventureScreen::LockActionBar(const int &lock)
   return true;
 }
 
+bool AdventureScreen::GetAccountRating( int playerId, float & rating ) const
+{
+  for ( int i = 0; i < playersStartInfo.size(); ++i )
+    if ( playersStartInfo[i].playerID == playerId )
+    {
+      rating = playersStartInfo[i].playerInfo.ratingAccCurrent;
+      return rating > 0.f;
+    }
+  return false;
+}
+
 bool AdventureScreen::VoiceOverlayUnlock(const int &unlock)
 {
   if ( pLogic )

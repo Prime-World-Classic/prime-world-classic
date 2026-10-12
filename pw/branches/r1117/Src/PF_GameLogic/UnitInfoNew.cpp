@@ -14,6 +14,7 @@
 #include "DBHeroRanks.h"
 
 #include "ClientVisibilityHelper.h"
+#include "AdventureScreen.h"
 
 namespace NGameX
 {
@@ -67,6 +68,19 @@ HeroInfoNew::HeroInfoNew( AdventureFlashInterface* _flashInterface, NWorld::PFBa
   flashInterface->SetHeroChatMuted(
     heroId,
     hero->GetPlayer()->IsChatMuted());
+
+  // Account rating: the same rank table as the hero rating (as on the loading screen).
+  float accountRating = 0.f;
+  if ( AdventureScreen * screen = AdventureScreen::Instance() )
+    if ( !hero->GetPlayer()->IsBot() && screen->GetAccountRating( heroId, accountRating ) )
+    {
+      const NDb::Rank & accountRank = heroRankCalculator->GetRank( static_cast<int>( accountRating ) );
+      flashInterface->SetHeroAccountRank(
+        heroId,
+        accountRating,
+        heroRankCalculator->GetRankIcon( originalFaction, accountRank ),
+        heroRankCalculator->GetRankName( originalFaction, accountRank ) );
+    }
 
   if (hero->HasCustomEnergy())
   {

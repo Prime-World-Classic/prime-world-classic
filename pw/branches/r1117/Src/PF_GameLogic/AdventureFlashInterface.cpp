@@ -110,6 +110,12 @@ void AdventureFlashInterface::SetHeroChatMuted(int heroID, bool chatMuted)
   CallMethod("SetHeroChatMuted", heroID, chatMuted);
 }
 
+//public function SetHeroAccountRank(heroID:int, rating:Number, rankIcon:String, rankName:String):void
+void AdventureFlashInterface::SetHeroAccountRank(int heroID, float rating, const char * rankIcon, const wstring & rankName)
+{
+  CallMethod("SetHeroAccountRank", heroID, rating, rankIcon, rankName);
+}
+
 //public function SetHeroCustomEnergy(heroID:int, name:String, color:uint):void
 void AdventureFlashInterface::SetHeroCustomEnergy(int heroID, const wstring& name, const unsigned color)
 {

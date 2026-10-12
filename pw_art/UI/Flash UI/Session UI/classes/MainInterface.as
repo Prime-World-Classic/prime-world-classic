@@ -2226,6 +2226,23 @@
 				mainWindow.statisticsBar_mc.allStats_mc.SetHeroIdentity(player);
 		}
 		
+		// Рейтинг аккаунта игрока (PF_GameLogic/UnitInfoNew.cpp), как на экране загрузки.
+		public function SetHeroAccountRank(heroID:int, rating:Number, rankIcon:String, rankName:String):void
+		{
+			var player:PlayerStatisticData = GetPlayer(heroID);
+			if (player == null)
+				return;
+
+			player.AccRaiting = rating;
+			player.AccRankIcon = rankIcon != null ? rankIcon : "";
+			player.AccRankName = rankName != null ? rankName : "";
+
+			if (mainWindow.finalStat.batleStatistic != null)
+				mainWindow.finalStat.batleStatistic.SetHeroIdentity(player);
+			else
+				mainWindow.statisticsBar_mc.allStats_mc.SetHeroIdentity(player);
+		}
+
 		public function SetFirstWin(iconPath:String, tooltip:String):void
 		{
 			mainWindow.finalStat.personalStat.SetFirstWin(iconPath, tooltip);

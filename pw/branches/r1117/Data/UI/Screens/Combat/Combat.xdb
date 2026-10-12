@@ -1230,6 +1230,14 @@
 						<propertyName>ShortcutsMenu_VoiceOverlayUnlock</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_222_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>StatBar_AccountRankTooltip</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_223_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>StatBar_HeroRankTooltip</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_224_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />

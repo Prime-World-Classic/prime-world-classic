@@ -812,6 +812,8 @@ struct GSClientSettings
 
     ObjectsInfo2dLogic * GetObjInfo2d(  ) const { return objectsInfo2d; }
     PlayerDataManager* GetPlayerDataMan() const { return playersInfo; }
+    // Account rating from the server's player data (not part of the world state); false if unknown.
+    bool GetAccountRating( int playerId, float & rating ) const;
     Minimap* GetMinimap() const { return minimap; }
 
     QueueSoundPlayer* GetAnnouncementSoundPlayer() { return announcementSoundPlayer; }

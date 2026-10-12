@@ -177,6 +177,7 @@ public:
   void SetFriendship(int heroID, bool areFriends, bool requestSent);
 
   void SetHeroChatMuted(int heroID, bool chatMuted);
+  void SetHeroAccountRank(int heroID, float rating, const char * rankIcon, const wstring & rankName);
   void SetHeroCustomEnergy(int heroID, const wstring& name, const unsigned color);
 
   //selection info
