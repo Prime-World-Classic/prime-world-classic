@@ -6,6 +6,7 @@
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
 #include "PFAbilityData.h"
+#include "TargetSelectorFormulaPars.h"
 
 namespace NWorld
 {
@@ -238,19 +239,110 @@ PFApplAbilityUpgrade::Ring const & PFBaseUnit::GetAbilityUpgradeApplicators() co
   return abilitiesUpgrades;
 }
 
-IMiscFormulaPars const* PFBaseUnit::FindApplicator(const char*, IMiscFormulaPars const* pMisc, ApplicatorSearchType) const
+IMiscFormulaPars const* PFBaseUnit::FindApplicator(const char* name, IMiscFormulaPars const* pMisc, ApplicatorSearchType searchType) const
 {
-  return pMisc;
+	return FindApplicator(name, pMisc, searchType, 0);
 }
 
-const IMiscFormulaPars* PFBaseUnit::FindApplicator(const char*, const IMiscFormulaPars* pMisc, ApplicatorSearchType, int) const
+/** Preserve Windows named-ring order and context fallback, including disabled live effects. */
+const IMiscFormulaPars* PFBaseUnit::FindApplicator(const char* name, const IMiscFormulaPars* pMisc, ApplicatorSearchType searchType, int idx) const
 {
-  return pMisc;
+	const IMiscFormulaPars* pOrigMisc = pMisc;
+	if (!name) return pOrigMisc;
+	const TargetSelectorFormulaPars* pTSPars = dynamic_cast<const TargetSelectorFormulaPars*>(pMisc);
+	if (pTSPars) pMisc = pTSPars->GetMisc();
+	const PFBaseApplicator* pMiscAppl = dynamic_cast<const PFBaseApplicator*>(pMisc);
+	const PFAbilityData* pMiscAblt = dynamic_cast<const PFAbilityData*>(pMisc);
+	if (searchType != GLOBAL)
+	{
+		if (pMiscAblt)
+		{
+			// An ability formula has no particular cast or dispatch; Windows falls back to GLOBAL.
+			if (searchType != UNIT && searchType != UNIT_AND_SUMMONS) searchType = GLOBAL;
+		}
+		else if (!pMiscAppl) return pMisc;
+	}
+	CPtr<PFBaseUnit> pMiscAbilityOwner = searchType == GLOBAL ? 0
+		: (pMiscAblt ? pMiscAblt->GetOwner() : pMiscAppl->GetAbilityOwner());
+	int foundCount = 0;
+	for (ring::Range<PFBaseApplicator::NamedRing> it(namedApplicators); it;)
+	{
+		PFBaseApplicator* pApplicator = &(*it);
+		++it;
+		// Windows Stop unlinks NamedRing; native history can still retain that stopped entry.
+		if (!pApplicator->IsAlive()) continue;
+		if (pApplicator->GetApplicatorName().compare(name)) continue;
+		bool found = false;
+		if (searchType == UNIT)
+			found = pApplicator->GetAbilityOwner() == pMiscAbilityOwner;
+		else if (searchType == ABILITY)
+			found = pApplicator->GetAbility() == pMiscAppl->GetAbility();
+		else if (searchType == DISPATCH)
+			found = pApplicator->GetDispatch() == pMiscAppl->GetDispatch();
+		else if (searchType == UNIT_AND_SUMMONS)
+		{
+			const CPtr<PFBaseUnit> owner = pApplicator->GetAbilityOwner();
+			found = owner == pMiscAbilityOwner || (IsValid(owner) && owner->GetMasterUnit() == pMiscAbilityOwner);
+		}
+		else found = true;
+		if (found)
+		{
+			if (foundCount >= idx) return pApplicator;
+			++foundCount;
+		}
+	}
+	return pOrigMisc;
 }
 
-int PFBaseUnit::CountApplicators(const char*, const IMiscFormulaPars*, ApplicatorSearchType) const
+/** Count uses the same receiver-local scope as Find, but only enabled named effects qualify. */
+int PFBaseUnit::CountApplicators(const char* name, const IMiscFormulaPars* pMisc, ApplicatorSearchType searchType) const
 {
-  return 0;
+	if (!name) return 0;
+	const TargetSelectorFormulaPars* pTSPars = dynamic_cast<const TargetSelectorFormulaPars*>(pMisc);
+	if (pTSPars) pMisc = pTSPars->GetMisc();
+	const PFBaseApplicator* pMiscAppl = dynamic_cast<const PFBaseApplicator*>(pMisc);
+	const PFAbilityData* pMiscAblt = dynamic_cast<const PFAbilityData*>(pMisc);
+	if (searchType != GLOBAL)
+	{
+		if (pMiscAblt)
+		{
+			if (searchType != UNIT && searchType != UNIT_AND_SUMMONS) searchType = GLOBAL;
+		}
+		else if (!pMiscAppl) return 0;
+	}
+	CPtr<PFBaseUnit> pMiscAbilityOwner = searchType == GLOBAL ? 0
+		: (pMiscAblt ? pMiscAblt->GetOwner() : pMiscAppl->GetAbilityOwner());
+	int result = 0;
+	for (ring::Range<PFBaseApplicator::NamedRing> it(namedApplicators); it;)
+	{
+		PFBaseApplicator* pApplicator = &(*it);
+		++it;
+		if (!pApplicator->IsAlive()) continue;
+		const string& applName = pApplicator->GetApplicatorName();
+		if (!pApplicator->IsEnabled() || applName.compare(name)) continue;
+		switch (searchType)
+		{
+		case UNIT:
+			if (pApplicator->GetAbilityOwner() == pMiscAbilityOwner) ++result;
+			break;
+		case ABILITY:
+			if (pApplicator->GetAbility() == pMiscAppl->GetAbility()) ++result;
+			break;
+		case DISPATCH:
+			if (pApplicator->GetDispatch() == pMiscAppl->GetDispatch()) ++result;
+			break;
+		case UNIT_AND_SUMMONS:
+		{
+			const CPtr<PFBaseUnit> owner = pApplicator->GetAbilityOwner();
+			if (owner == pMiscAbilityOwner || (IsValid(owner) && owner->GetMasterUnit() == pMiscAbilityOwner)) ++result;
+			break;
+		}
+		case GLOBAL:
+			++result;
+			break;
+		}
+	}
+	return result;
 }
 
 IMiscFormulaPars const* PFBaseUnit::GetAblt(AbilityID abilityId) const

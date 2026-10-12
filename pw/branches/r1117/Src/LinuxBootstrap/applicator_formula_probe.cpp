@@ -5,6 +5,7 @@
 #include "../PF_GameLogic/PFApplInstant.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
+#include "../PF_GameLogic/TargetSelectorFormulaPars.h"
 #include "../PF_GameLogic/PFDispatchFactory.h"
 #include "../PF_GameLogic/PFDispatchStrike1.h"
 #include "../PF_GameLogic/PFDispatchCursor.h"
@@ -1352,6 +1353,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "selector_request_lifetime_b12_tests.inc"
 #include "tower_help_b12_tests.inc"
 #include "unit_abilities_b12_tests.inc"
+#include "applicator_queries_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1486,6 +1488,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			SelectorRequestLifetimeB12(check);
 			TowerHelpB12(check);
 			UnitAbilitiesB12(check);
+			ApplicatorQueriesB12(check);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);
