@@ -78,6 +78,7 @@
 			commandNames["self_cast_on"] = Localization.ShortcutsMenu_SelfCast;
 			commandNames["cmd_portal"] = Localization.ShortcutsMenu_Portal;
 			commandNames["actionbar_lock_off"] = Localization.ShortcutsMenu_ActionBarLockOff;
+			commandNames["voice_overlay_unlock_on"] = Localization.ShortcutsMenu_VoiceOverlayUnlock;
 			
 			commandNames["cmd_move"] = Localization.ShortcutsMenu_Move;
 			commandNames["cmd_attack"] = Localization.ShortcutsMenu_Attack;
@@ -171,6 +172,7 @@
 				CreateBindItem("self_cast_on");
 				CreateBindItem("cmd_portal");
 				CreateBindItem("actionbar_lock_off");
+				CreateBindItem("voice_overlay_unlock_on");
 				
 				scrollableHight += verticalSpaceHeaderPrev;
 				
@@ -321,6 +323,10 @@
 					if (command == "actionbar_lock_off")
 					{
 						FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "rebind !actionbar_lock_on " + item.GetRebindString());
+					}
+					if (command == "voice_overlay_unlock_on")
+					{
+						FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "rebind !voice_overlay_unlock_off " + item.GetRebindString());
 					}
 					if (command == "self_cast_on")
 					{

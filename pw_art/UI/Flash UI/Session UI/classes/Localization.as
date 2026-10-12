@@ -198,6 +198,7 @@
 		public static var ShortcutsMenu_SelfCast:String = "Использовать на себя";
 		public static var ShortcutsMenu_Portal:String = "Портал";
 		public static var ShortcutsMenu_ActionBarLockOff:String = "Временно разблокировать ячейки";
+		public static var ShortcutsMenu_VoiceOverlayUnlock:String = "Управление войс-оверлеем (зажать)";
 		
 		public static var ShortcutsMenu_GameActionHeader:String = "Бой";
 		public static var ShortcutsMenu_Move:String = "Двигаться без атаки";
@@ -295,6 +296,9 @@
 		static public var SmartChat_Cancel:String = "Отмена";
 		//Smart Chat button tooltip
 		static public var Tooltip_chatBtn:String = "Краткие сообщения (V)";
+		
+		// Voice overlay
+		public static var VoiceOverlay_Hint:String = "Клик — заглушить · колесо — громкость · тащите, чтобы переместить";
 		
 		// Chat messages
 		public static var ChatMessage_Ignore:String = "Игрок {0} добавлен в список игнорируемы";

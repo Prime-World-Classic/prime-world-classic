@@ -964,6 +964,14 @@
 					RelativePath=".\VotingForSurrenderController.h"
 					>
 				</File>
+				<File
+					RelativePath=".\VoiceOverlayController.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\VoiceOverlayController.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="AdventureScreenFacets"

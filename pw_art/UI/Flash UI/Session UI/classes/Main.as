@@ -80,6 +80,7 @@
 	import flash.events.TimerEvent;
 	
 	import Strokes.HeroOvertipStroke;
+	import VoiceChat.VoiceOverlay;
 	
 	public class Main extends MovieClip
 	{
@@ -151,6 +152,8 @@
 		private var miniGameOpened:Boolean = false;
 		
 		private var fpsCounter:FPSCounter;
+		
+		public var voiceOverlay:VoiceOverlay;
 		
 		public var finalStat:FinalStatisticsBar;
 		public var LeavedPlayers:Array = [];
@@ -249,6 +252,13 @@
 				myIcoDrag.visible = false;
 				addChild(myIcoDrag);
 				DnDController.iconObject = myIcoDrag;
+				
+				// Оверлей войса: над окнами, но под тултипом.
+				voiceOverlay = new VoiceOverlay(function():Array { return This.Players; });
+				if (tooltip != null && tooltip.parent == This)
+					addChildAt(voiceOverlay, getChildIndex(tooltip));
+				else
+					addChild(voiceOverlay);
 				
 				selectionCharStats_mc.ChangeSelectionCharStatTooltipCommands(true);
 				

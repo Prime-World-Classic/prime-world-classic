@@ -567,6 +567,7 @@ struct GSClientSettings
     void TargetZoneUpdate(CVec3 const *pPos = 0);
 
     bool LockActionBar(const int &lock);
+    bool VoiceOverlayUnlock(const int &unlock);
        
     bool CmdActionBarHotKey( const int & slotIndex );
 

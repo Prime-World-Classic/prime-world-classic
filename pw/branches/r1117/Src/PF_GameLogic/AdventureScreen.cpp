@@ -648,6 +648,9 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
   eventsUI.AddActivationHandler( "actionbar_lock_off",   &AdventureScreen::LockActionBar, 0);
   eventsUI.AddActivationHandler( "actionbar_lock_on",    &AdventureScreen::LockActionBar, 1);
 
+  eventsUI.AddActivationHandler( "voice_overlay_unlock_on",  &AdventureScreen::VoiceOverlayUnlock, 1);
+  eventsUI.AddActivationHandler( "voice_overlay_unlock_off", &AdventureScreen::VoiceOverlayUnlock, 0);
+
   if ( IsSpectator() )
   {
     eventsUI.AddActivationHandler( "cmd_spectate_player1", &AdventureScreen::StartSpectate, SPECTATE_PLAYER1_IDX );
@@ -5572,6 +5575,14 @@ bool AdventureScreen::LockActionBar(const int &lock)
 
   if ( IsValid( flashInterface ) )
     flashInterface->TempUnlockActionBar(! ((bool)lock));
+
+  return true;
+}
+
+bool AdventureScreen::VoiceOverlayUnlock(const int &unlock)
+{
+  if ( pLogic )
+    pLogic->SetVoiceOverlayUnlocked( unlock != 0 );
 
   return true;
 }

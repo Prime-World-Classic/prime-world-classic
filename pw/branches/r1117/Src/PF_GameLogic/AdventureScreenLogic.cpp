@@ -68,6 +68,7 @@
 #include "PFAIWorld.h"
 #include "AIWorldFacets/VotingForSurrenderLogic.h"
 #include "VotingForSurrenderController.h"
+#include "VoiceOverlayController.h"
 #include "IgnoreListController.h"
 #include "IgnoreListStorage.h"
 #include "DBGameLogic.h"
@@ -393,6 +394,8 @@ void AdventureScreenLogic::SetOwner( NGameX::AdventureScreen * owner, const NDb:
     }
   }
 
+  voiceOverlayController = new VoiceOverlayController( flashWnd, "mainInterface" );
+
   InitErrorMessages(flashInterface, uiData);
 
   bool isMuted = false;
@@ -628,6 +631,8 @@ void AdventureScreenLogic::DoCustomEvents( float deltaTime )
   selectionInfo->Update();
   statisticsController->Update();
   votingForSurrenderController->Update(deltaTime);
+  if ( voiceOverlayController )
+    voiceOverlayController->Update( deltaTime );
   dialogController->Update( deltaTime );
 
   if (cteController)
@@ -643,6 +648,12 @@ void AdventureScreenLogic::DoCustomEvents( float deltaTime )
 }
 
 
+
+void AdventureScreenLogic::SetVoiceOverlayUnlocked( bool unlocked )
+{
+  if ( voiceOverlayController )
+    voiceOverlayController->SetUnlocked( unlocked );
+}
 
 void AdventureScreenLogic::CloseAdventureScreen()
 {

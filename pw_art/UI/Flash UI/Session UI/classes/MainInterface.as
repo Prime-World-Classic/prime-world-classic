@@ -1463,6 +1463,27 @@
 			mainWindow.actionBarContainer.actionBar_mc.ShowPanel(show);
 		}
 
+		// Оверлей войса (PF_GameLogic/VoiceOverlayController.cpp).
+		public function ShowVoiceOverlay(show:Boolean):void
+		{
+			mainWindow.voiceOverlay.Show(show);
+		}
+		
+		public function SetVoiceOverlayPosition(x:Number, y:Number):void
+		{
+			mainWindow.voiceOverlay.SetPosition(x, y);
+		}
+		
+		public function SetVoiceOverlayInteractive(interactive:Boolean):void
+		{
+			mainWindow.voiceOverlay.SetInteractive(interactive);
+		}
+		
+		public function SetVoiceOverlayState(micState:int, meSpeaking:Boolean, myName:String, ids:Array, flags:Array, volumes:Array, names:Array):void
+		{
+			mainWindow.voiceOverlay.SetState(micState, meSpeaking, myName, ids, flags, volumes, names);
+		}
+		
 		public function TempUnlockActionBar(unlock:Boolean):void
 		{
 			mainWindow.actionBarContainer.actionBar_mc.TempUnlockActionBar(unlock);

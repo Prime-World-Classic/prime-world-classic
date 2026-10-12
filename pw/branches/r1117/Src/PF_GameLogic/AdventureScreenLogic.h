@@ -56,6 +56,7 @@ namespace NGameX
   class  CommonCombatController;
   class  HeroTitleCalculator;
   class  VotingForSurrenderController;
+  class  VoiceOverlayController;
   class  DialogController;
   class  CTE_Controller;
   class  FriendsController;
@@ -163,6 +164,7 @@ namespace NGameX
     Strong<AwardsController>          awardsController;
     Strong<CommonCombatController>    commonCombatController;
     Strong<VotingForSurrenderController> votingForSurrenderController;
+    Strong<VoiceOverlayController>    voiceOverlayController;
     Strong<DialogController>          dialogController;
     Strong<QuestsController>          questsController;
     Strong<CTE_Controller>            cteController;
@@ -271,6 +273,7 @@ namespace NGameX
    
     ActionBarController * GetActionBarController() {return actionBarController;}
     AdventureFlashInterface * GetFlashInterface() {return flashInterface;}
+    void SetVoiceOverlayUnlocked( bool unlocked );
     ShopController * GetShopController() {return shopController;}
     InventoryController * GetInventoryController() {return inventoryController;}
     EscMenuController * GetEscMenuController() {return escMenuController;}
