@@ -53,6 +53,7 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset_CastRange/TECH_FormCapacity" />
+				<Item href="/Items/Talents/TalentKits/Redset_CastRange/const_Redset_CastRange_Bonus" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -88,12 +89,13 @@
 	</manaCost>
 	<marker></marker>
 	<microAI href="" />
-	<minLevel>4</minLevel>
+	<minLevel>5</minLevel>
 	<minUseRangeCorrection>0</minUseRangeCorrection>
 	<naftaCost>-1</naftaCost>
 	<name textref="/Items/Talents/Level6/G791_RangePotential.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
+		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_Bonus.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_FormCounter.APLR" />
 		<Item href="/Items/Talents/Level6/G791_RangePotential.TALENT" id="E797E574-1993-4EEC-8A0C-C8B7A75FF80B">
 			<PermanentStatModApplicator>

@@ -148,7 +148,7 @@
 							<renderState>
 								<alphaTest>Off</alphaTest>
 								<alphaTestRef>127</alphaTestRef>
-								<blendMode>Off</blendMode>
+								<blendMode>AddColorMulAlpha</blendMode>
 								<culling>On</culling>
 							</renderState>
 							<scale>0</scale>

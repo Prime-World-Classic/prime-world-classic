@@ -13,6 +13,11 @@ namespace PF_Core
   class BasicEffectAttached;
 }
 
+namespace NScene
+{
+  class SceneObject;
+}
+
 namespace NGameX
 {
 class AdventureCameraController;
@@ -171,6 +176,11 @@ private:
   float timerBattleSound;
 
   float timerIdle;
+
+  // ability range scale already applied to the range-scaled FX components of the scene object below
+  float rangeScaleApplied;
+  const NScene::SceneObject * pRangeScaledSceneObject;
+  void UpdateRangeScaledComponents();
   // Functor
   struct UnitBattleFunctor : public NonCopyable
   {

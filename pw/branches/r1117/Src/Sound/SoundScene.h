@@ -67,6 +67,7 @@ namespace NSoundScene
 	// sound
 	// int AddAmbientSound( const string &_project, const string &_group, const string &_event, CVec3 const *_pPosition, const int objectId );
 	int AddAmbientSound( const SoundDescription& soundDescription, CVec3 const &position, float* time, const int objectId  );
+	bool PrecacheSound( const SoundDescription& soundDescription ); // loads a 2d sound file now (e.g. while the map is loading)
 	int PlaySound( const SoundDescription& soundDescription, float* time );
 	int PlaySound( const SoundDescription& soundDescription, float* time, float startPos );
 	int PlaySound( const SoundDescription& soundDescription, CVec3 const &position, float* time );

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "PFClientHero.h"
+#include "../Scene/SceneObject.h"
 
 #include "PFClientObjectHelpers.h"
 #include "PFAIWorld.h"
@@ -29,6 +30,46 @@ namespace
   Render::Color green( 0, 255, 0, 255 );
 
   typedef vector<NDb::Ptr<NDb::DBSoundSceneComponent> > TDBFMODEventInstance;
+
+  // FX of the hero's scene object (attached in its SOBJ, shown by animation events) that draw an ability
+  // along the hero's forward axis (-Y): their length follows the hero's ability range scale.
+  // Matched by the file of the component (lowercase, '/' separators), so all skins are covered.
+  const char * const s_rangeScaledComponents[] =
+  {
+    "heroes/demonolog/fxability1.prxy",    // Demonolog: Mental Whip - the whip
+    "heroes/demonolog/fxability1end.prxy", // Demonolog: Mental Whip - the hit at its end
+  };
+
+  bool IsRangeScaledComponent( const NScene::SceneComponent * pComp )
+  {
+    nstl::string fileName = pComp->GetDBID().GetFileName();
+    for ( int i = 0; i < fileName.size(); ++i )
+    {
+      if ( fileName[i] >= 'A' && fileName[i] <= 'Z' )
+        fileName[i] = fileName[i] - 'A' + 'a';
+      else if ( fileName[i] == '\\' )
+        fileName[i] = '/';
+    }
+    for ( int i = 0; i < sizeof( s_rangeScaledComponents ) / sizeof( s_rangeScaledComponents[0] ); ++i )
+      if ( strstr( fileName.c_str(), s_rangeScaledComponents[i] ) )
+        return true;
+    return false;
+  }
+
+  struct RangeScaleTraverser : public NScene::FullTraverser, private NonCopyable
+  {
+    float ratio;
+    int count;
+    explicit RangeScaleTraverser( float _ratio ) : ratio( _ratio ), count( 0 ) {}
+    void operator()( NScene::SceneComponent * pComp )
+    {
+      if ( !IsRangeScaledComponent( pComp ) )
+        return;
+      // outermost stretch along the hero's forward axis: positions and sizes along Y are multiplied by ratio
+      pComp->AddBase( CVec3( 0.0f, 0.0f, 0.0f ), QNULL, CVec3( 1.0f, ratio, 1.0f ) );
+      ++count;
+    }
+  };
 }
 
 namespace NGameX
@@ -42,6 +83,8 @@ PFBaseClientHero::PFBaseClientHero( PF_Core::WorldObjectRef pWO, const CreatePar
 , unsubscribeMinigameWorldStep(0)
 , timerBattleSound(-1.f)
 , timerIdle(-1.f)
+, rangeScaleApplied(1.0f)
+, pRangeScaledSceneObject(0)
 {    
 	const NWorld::PFBaseHero* pWorldObject = WorldObject();
 	NI_ASSERT(pScene && pWorldObject, "Invalid initialization of client object");
@@ -113,6 +156,8 @@ void PFBaseClientHero::Update( float timeDiff )
 
   UpdateAsks(timeDiff);
 
+  UpdateRangeScaledComponents();
+
   //TODO: SimonK remove this to a better place like easelPlayerClientObject or so
   if ( const_cast<NWorld::PFBaseMaleHero*>(WorldObject())->GetMinigames() )
     const_cast<NWorld::PFBaseMaleHero*>(WorldObject())->GetMinigames()->UpdateM( timeDiff );
@@ -123,6 +168,28 @@ void PFBaseClientHero::Update( float timeDiff )
     const_cast<NWorld::PFBaseMaleHero*>(WorldObject())->ForceLeaveMinigame();
     unsubscribeMinigameAfterReconnect = false;
   }
+}
+
+void PFBaseClientHero::UpdateRangeScaledComponents()
+{
+  NScene::SceneObject * pSO = GetSceneObject();
+  if ( !pSO )
+    return;
+
+  if ( pSO != pRangeScaledSceneObject )
+  {
+    // a new scene object (skin, transformation...) comes unscaled
+    pRangeScaledSceneObject = pSO;
+    rangeScaleApplied = 1.0f;
+  }
+
+  const float scale = NWorld::PFBaseHero::GetAbilityRangeScale( WorldObject() );
+  if ( fabs( scale - rangeScaleApplied ) < 0.001f )
+    return;
+
+  RangeScaleTraverser traverser( scale / rangeScaleApplied );
+  pSO->Traverse( traverser );
+  rangeScaleApplied = scale;
 }
 
 void PFBaseClientHero::RenderDebug()

@@ -115,6 +115,7 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
   flashInterface = new LoadingFlashInterface( flashWnd, "LoaderWindowInterface" );
 
   preferencesProcessor = new UI::PreferencesProcessor( flashWnd, "PreferencesInterface" );
+  preferencesProcessor->SetAdvancedPageEnabled( false ); // pwl.swf has no "Advanced" page
   preferencesProcessor->Init( *UI::GetUIRoot()->preferences );
 
   if ( isSpectator )

@@ -403,6 +403,14 @@ void AOERenderer::SetAreaPosition(ChannelType channelId, CVec3 const& pos, CVec3
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void AOERenderer::SetAreaColor(ChannelType channelId, HDRColor const& color)
+{
+  NI_VERIFY(0 <= channelId && channelId < _NUM_CHANNELS, NStr::StrFmt("Invalid AOE index %i of %i maximum", channelId, _NUM_CHANNELS), return);
+  channels[channelId].color = color;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void AOERenderer::ResetArea(ChannelType channelId)
 {
   NI_ASSERT(0 <= channelId && channelId < _NUM_CHANNELS, NStr::StrFmt("Invalid AOE index %i of %i maximum", channelId, _NUM_CHANNELS));

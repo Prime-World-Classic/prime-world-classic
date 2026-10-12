@@ -298,6 +298,21 @@ public:
   virtual void AddMessage(NDb::EChatChannel channel, const wstring & playerName, const wstring & message, const int playerId);
   virtual void SetDefaultChannel(NDb::EChatChannel channelID);
   virtual void SetChatVisible(bool visible);
+  void SetChatCentered( bool centered, float raise ); // Dota-like chat in the screen center; raise = part of the screen height
+  // ping wheel and floating ping texts (coordinates are 0..1 parts of the screen)
+  void ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale );
+  void HighlightPingWheel( int index );
+  void HidePingWheel();
+  void PreloadPingWheel(); // loads the wheel textures (call before the game start)
+  void SetMinimapAlertSound( bool enabled ); // the old Flash sound of minimap signals
+  void SetTalentSmartCast( int column, int raw, int mode ); // smart-cast checkbox of a talent: 0 none, 1 off, 2 on
+  void RefreshSmartCastBoxes();
+  void ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,
+                   const string & targetIcon, const wstring & targetName, int targetColor, int amount );
+  void SetPraisePanel( int id, float slide, float row, float alpha, float top ); // slide 0..1 (1 = hidden to the right), top: part of the screen height; alpha <= 0 removes
+  void PreloadPingImage( const string & path ); // loads a texture for ping markers now (before the game start)
+  void SetPingMarkerHero( int id, const string & iconPath ); // hero icon above the marker, call before its first SetPingMarker
+  void SetPingMarker( int id, int type, const wstring & text, int color, float nx, float ny, float gx, float gy, float alpha ); // icon at nx,ny, beam down to gx,gy; alpha <= 0 removes it
   virtual void SetChatOff(bool isChatOff);
   virtual void SetPlayerIcon(const int playerId, const string& path);
   virtual void SetPlayerHeroId(const int playerId, const int heroId, const int teamId);

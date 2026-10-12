@@ -439,6 +439,11 @@ void LocalGameContext::OnCombatScreenStarted( NCore::IWorldBase * _world, const 
   transceiver->SetWorld( _world );
   transceiver->RecordMapStart( mapStartInfo );
 
+  // Local game has no server to confirm protection magic: the transceiver never polls protection
+  // results here, so the protection result queue (2048 items) overflows after ~3.5 minutes and
+  // spams "Queue capacity exceeded" asserts every step. Switch protection queries off for local games.
+  _world->SetProtectionUpdateFrequency( 0, 0 );
+
   NI_ASSERT( !mapLoadingJob, "" );
   NI_ASSERT( mapDescription->IsSuccessfullyLoaded, "" );
   

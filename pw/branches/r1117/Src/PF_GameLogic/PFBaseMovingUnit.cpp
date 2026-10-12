@@ -82,6 +82,15 @@ static bool g_lockMove = false;							// debug: disable movement of WORLD unit (
 
 static bool g_reversePathOff = false;
 
+// Dota-like movement for heroes (see MovingUnit::directMove). GAME LOGIC: must be the same on all clients of a session.
+// Dev builds can switch it with 'hero_direct_move' (local tests only), shipping builds always use the default.
+DEV_VAR_STATIC bool g_heroDirectMove = true;
+static bool IsHeroDirectMoveEnabled()
+{
+  bool enabled = g_heroDirectMove; // non-const copy: avoids C4127 in shipping where the dev var is const
+  return enabled;
+}
+
 static const float BYPASSING_TIMEOUT = 0.5f;
 static const float BLOCKED_TIMEOUT   = 0.1f;
 //static const float MAX_MOVE_DELAY    = 0.5f;  // seconds
@@ -132,6 +141,8 @@ MovingUnit::MovingUnit(const CVec3 &pos, const CVec2 & direction, TileMap *pTile
 , chasing(false)
 , isFollowingForced(false)
 , ignoreCollision(false)
+, directMove(false)
+, vDirectTarget(VNULL2)
 {
 	splinePoint.resize(NUM_SPLINE_POINTS);
 	splineTiles.resize(NUM_SPLINE_POINTS * MAX_SPLINE_TILES);
@@ -764,6 +775,8 @@ struct PathChecker : public IPathValidator
 bool MovingUnit::MoveToShort(CVec2 dest)
 {
   MapModeChanger mode(mapModeAll, pMap);
+  const bool wasDirect = directMove;    // stale tile path after direct movement: rebuild it (see RecomputePath)
+  directMove = false;
 
   bool ret = true;
 	bool wasMarkedOnMap = isMarkedOnMap;
@@ -773,7 +786,7 @@ bool MovingUnit::MoveToShort(CVec2 dest)
   {
     NI_PROFILE_BLOCK( "RecalcPath" );
 
-	  if (!pPath)
+	  if (!pPath || wasDirect)
 	  {
 		  MoveTo(dest, 0, 0);
       needUpdate = true;
@@ -810,6 +823,10 @@ bool MovingUnit::MoveToShort(CVec2 dest)
 bool MovingUnit::RecomputePath(int allowedOverhead)
 {
 	MapModeChanger mode(mapModeAll, pMap);
+  // After straight (direct) movement the tile path was never advanced, its progress is far behind the unit:
+  // recalculating it would send the unit BACK along old tiles. Build a fresh path from the current position.
+  const bool wasDirect = directMove;
+  directMove = false; // path is rebuilt (collision, bypass, blocked line): follow it
 
 	bool ret;
 	bool wasMarkedOnMap = isMarkedOnMap;
@@ -818,7 +835,7 @@ bool MovingUnit::RecomputePath(int allowedOverhead)
   {
     NI_PROFILE_BLOCK( "RecalcPath" );
 
-	  if (!pPath)
+	  if (!pPath || wasDirect)
 	  {
       ret = CreatePath( GetRealOwner() ? GetRealOwner()->IsHero() : false );
 	  }
@@ -1161,10 +1178,19 @@ void MovingUnit::MoveToInternal( const CVec2& target, float _stopDistance, IPoin
 	// reject repeated MoveTo() commands when target is not changed
 	if ( ( moveState != MOVE_STATE_IDLE ) && ( realTarget == vLastMoveTarget ) )
   {
+    if ( directMove )
+    {
+      vDirectTarget = target;     // same tile: just aim the straight line at the new exact point
+      SyncDirectSpline();
+    }
     return;					              // already moving to this point
   }
 
 	stopDistance = _stopDistance;
+
+  const bool externalChecking = ( pointChecking != NULL );
+  const bool directHero       = IsHeroDirectMoveEnabled() && GetRealOwner() && GetRealOwner()->IsHero();
+  directMove = false;
 
 	CVec2 oldTarget = vFarTarget;
   vLastMoveTarget = realTarget;
@@ -1177,7 +1203,9 @@ void MovingUnit::MoveToInternal( const CVec2& target, float _stopDistance, IPoin
   }
 	pChecking = pointChecking;
 
-  if ( moveState == MOVE_STATE_MOVING )
+  // Heroes always rebuild the path from the current position: incremental update appends the new target to the
+  // END of the old path, so the hero first ran to old targets (cut corners when the cursor moves continuously).
+  if ( moveState == MOVE_STATE_MOVING && !directHero )
   {
     numIncrementalUpdates++;
     if ( numIncrementalUpdates < MAX_INCREMENTAL_TIMES )
@@ -1208,6 +1236,19 @@ void MovingUnit::MoveToInternal( const CVec2& target, float _stopDistance, IPoin
 
 		// We started moving
 		pOwner->EventHappened( PFBaseUnitEvent( NDb::BASEUNITEVENT_MOVE ) );
+
+    // Straight line to the exact point if static map allows it (dynamic units are checked while moving)
+    if ( directHero && !externalChecking )
+    {
+      const float lineToTarget = fabs( roundedTarget - pMap->GetPointByTile( pMap->GetTile( origin ) ) );
+      if ( CheckStraightMove( target, MAP_MODE_ALL_STATICS ) >= lineToTarget - 0.01f )
+      {
+        directMove    = true;
+        vDirectTarget = target;
+        UpdateMoveDir( target );
+        SyncDirectSpline();
+      }
+    }
 	}
 	else
 	{
@@ -1231,6 +1272,7 @@ void MovingUnit::Stop( bool notifyClient /* = true */ )
 	pPath       = NULL;
 	pStaticPath = NULL;
 	pBlocker    = NULL;
+  directMove  = false;
 
 	pUnitTarget = NULL;
 
@@ -1299,6 +1341,17 @@ bool MovingUnit::MoveToSpecial( const CPtr<PFBaseUnit>& target, bool notifyClien
 // Unit 'thinking'
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Collision resolver predicts unit movement by splinePoint[] (and then by pPath). During direct movement keep
+// the spline points on the real straight line, otherwise other units "see" us moving along stale tiles.
+void MovingUnit::SyncDirectSpline()
+{
+  splinePoint[0] = origin;
+  splinePoint[1] = origin;
+  splinePoint[2] = vDirectTarget;
+  splinePoint[3] = vDirectTarget;
+  splineIter     = 0;
+}
+
 void MovingUnit::TickMove(float timeDelta)
 {
   NI_PROFILE_FUNCTION
@@ -1314,7 +1367,47 @@ void MovingUnit::TickMove(float timeDelta)
 	UnmarkTiles();
 	CVec2 prevPos = origin;
 
-  while ( !IsColliding() )
+  // Dota-like straight movement (heroes), see directMove
+  bool directHandled = false;
+  if ( directMove && !IsColliding() )
+  {
+    const CVec2 delta = vDirectTarget - prevPos;   // prevPos == origin, plain CVec2
+    const float dist  = fabs( delta );
+    if ( dist < 0.001f || ( stopDistance > 0.0f && dist <= stopDistance ) )
+    {
+      Stop();                                   // reached the point (or the requested range)
+      directHandled = true;
+    }
+    else
+    {
+      const bool  lastPiece = ( dist <= toMove );
+      const CVec2 nextPos   = lastPiece ? vDirectTarget : prevPos + delta * ( toMove / dist );
+      if ( ValidatePos( nextPos ) )
+      {
+        SetOrigin( nextPos );
+        moveDir = delta;
+        Normalize( &moveDir );
+        if ( lastPiece )
+          Stop();
+        else
+          SyncDirectSpline();
+        directHandled = true;
+      }
+      else
+      {
+        // something is in the way: continue by the normal tile path from here
+        if ( RecomputePath() )                  // also clears directMove
+          vShortTarget = origin;
+        else
+        {
+          Stop();
+          directHandled = true;
+        }
+      }
+    }
+  }
+
+  while ( !directHandled && !IsColliding() )
 	{
     NI_VERIFY( recalcPathCounter <= MAX_RECALC_PATH_PER_STEP, 
       NStr::StrFmt( "Maximum(%d) path recalculations reached at [%f,%f]", 
@@ -2603,6 +2696,7 @@ void PFBaseMovingUnit::PlaceUnitWithPush(const CVec2& newPosition0, float pushRa
 
 ///////////////////////////////////////////////////////////////////////////////
 REGISTER_DEV_VAR("reverse_path_off", g_reversePathOff, STORAGE_NONE);
+REGISTER_DEV_VAR("hero_direct_move", g_heroDirectMove, STORAGE_NONE);
 
 REGISTER_DEV_VAR("lock_world_move", g_lockMove, STORAGE_NONE);
 // tune synchronization system

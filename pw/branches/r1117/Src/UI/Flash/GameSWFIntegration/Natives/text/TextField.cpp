@@ -98,19 +98,34 @@ void TextFieldObject::RemoveHTMLTags( const wchar_t * txt, nstl::wstring& target
   bool insideTag = false;
 
   const wchar_t * brTag = L"<br>";
+  // colored runs: '<style:#RRGGBB>' ... '</style>' are kept for read-only fields (chat lines etc.; not for edit boxes),
+  // NB: 'userInput' can't be used here - chat lines set it too (it only keeps the spaces of typed text)
+  // TextContainer::GetStyle turns them into a colored copy of the default font
+  const wchar_t * colorTagOpen  = L"<style:#";
+  const wchar_t * colorTagClose = L"</style>";
+  bool keptTag = false;
 
   for ( int i = 0; i < size; ++i )
   {
-    if ( txt[i] == L'<'  && !TextFollowedBy(txt, i, size, brTag))
+    if ( txt[i] == L'<' && !insideTag && !keptTag && data->ReadOnly
+         && ( TextFollowedBy( txt, i, size, colorTagOpen ) || TextFollowedBy( txt, i, size, colorTagClose ) ) )
+    {
+      keptTag = true; // copied as is below
+    }
+    else if ( txt[i] == L'<'  && !keptTag && !TextFollowedBy(txt, i, size, brTag))
     {
       insideTag = true;
       continue;
     }
 
-    if ( txt[i] == L'>'  && insideTag)
+    if ( txt[i] == L'>' )
     {
-      insideTag = false;
-      continue;
+      if ( insideTag )
+      {
+        insideTag = false;
+        continue;
+      }
+      keptTag = false;
     }
 
     if ( !insideTag )

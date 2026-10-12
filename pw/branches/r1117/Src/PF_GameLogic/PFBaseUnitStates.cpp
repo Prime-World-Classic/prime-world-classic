@@ -250,6 +250,13 @@ namespace NWorld
 
 		if ( pOwner->IsPositionInRange( target, range ) && !shouldMoveToSee )
     {
+      // Hero walked a short way along the tile grid and stopped: finish facing the clicked point
+      // instead of the last grid direction (visual only).
+      if ( initiatedMove && pOwner->IsHero() && !pOwner->IsPositionInRange( target, 0.3f ) )
+      {
+        if ( NGameX::PFClientBaseMovingUnit* pClient = pOwner->ClientObject() )
+          pClient->LookTo( target );
+      }
       return true;
     }
         

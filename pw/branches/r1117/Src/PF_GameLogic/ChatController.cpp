@@ -338,52 +338,56 @@ void ChatUiController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
 
       swscanf_s(p0, L"%d", &channelID);
 
-      wstring message(p1);
-
-      NStr::TrimBoth(message);
-
-      if (message.empty())
-        return;
-
-      if (isMuted || g_chatMuted || g_playerPwcChatMute)
-      {
-        DispatchMuteEvent(evAdminMuted);
-        return;
-      }
-
-      const NDb::EChatChannel channel = static_cast<NDb::EChatChannel>(channelID);
-
-      if (channel == NDb::CHATCHANNEL_BOTHTEAMS)
-      {
-        if (isLeaver || g_chatLeaverMuted)
-        {
-          DispatchMuteEvent(evLeaverMuted);
-          return;
-        }
-
-        if (isLeaverParty || g_chatLeaverPartyMuted)
-        {
-          DispatchMuteEvent(evLeaverPartyMuted);
-          return;
-        }
-      }
-
-      if (!g_sessionChatOff)
-      {
-        if (!chatClient)
-        {
-          //Send message to myself directly
-          AddMessageToChatOutput(message, channel, L"Very Local User", 0ULL);
-        }
-        else
-        {
-          chatClient->SendMsg(message, ChannelToChannelType(channel));
-        }
-      }
+      SendPlayerMessage(wstring(p1), static_cast<NDb::EChatChannel>(channelID));
 
       break;
     }
   }
+}
+
+void ChatUiController::SendPlayerMessage( const wstring & text, NDb::EChatChannel channel )
+{
+  wstring message(text);
+
+  NStr::TrimBoth(message);
+
+  if (message.empty())
+    return;
+
+  if (isMuted || g_chatMuted || g_playerPwcChatMute)
+  {
+    DispatchMuteEvent(evAdminMuted);
+    return;
+  }
+
+  if (channel == NDb::CHATCHANNEL_BOTHTEAMS)
+  {
+    if (isLeaver || g_chatLeaverMuted)
+    {
+      DispatchMuteEvent(evLeaverMuted);
+      return;
+    }
+
+    if (isLeaverParty || g_chatLeaverPartyMuted)
+    {
+      DispatchMuteEvent(evLeaverPartyMuted);
+      return;
+    }
+  }
+
+  if (!g_sessionChatOff)
+  {
+    if (!chatClient)
+    {
+      //Send message to myself directly
+      AddMessageToChatOutput(message, channel, L"Very Local User", 0ULL);
+    }
+    else
+    {
+      chatClient->SendMsg(message, ChannelToChannelType(channel));
+    }
+  }
+
 }
 
 void ChatUiController::AddChatMessage( const wstring & msg, NDb::EChatChannel channel)
