@@ -10,6 +10,10 @@ Vulkan, сколько весит.
 ./build_probe_wine.sh --run
 ./build_probe_linux.sh     # нативная Linux-сборка (g++) — ради Vulkan-смоука на хосте
 ./build_probe_linux.sh --run
+
+./build_loader_wine.sh     # свой vulkan-1.dll (Khronos Vulkan-Loader, /MT) — в tiny10
+                           # системный vulkan-1.dll вырезан, а в Mesa-сборке его нет
+./setup_tiny10_vulkan.sh   # раскладка Mesa lavapipe + загрузка в tiny10 + запуск пробы
 ```
 Артефакты: `build/nvrhi_probe.exe` (Windows), `build-linux/nvrhi_probe` (Linux).
 Windows-артефакт запускается на tiny10 так:
@@ -24,14 +28,38 @@ ssh pw-tiny10 'cd C:\tools & nvrhi_probe.exe'
 | Среда | D3D11 | Vulkan | Смоук «RT → clear → copy → readback» |
 |---|---|---|---|
 | Wine `~/.wine-vs` (домашняя) | FAIL `DXGI_ERROR_NOT_FOUND` (0x887A0004) | FAIL `VK_ERROR_EXTENSION_NOT_PRESENT` (winevulkan есть, surface-расширений нет) | — (среды запуска нет) |
-| **tiny10** (`ssh pw-tiny10`) | **PASS** — hardware не дал, взят **WARP**, feature level **11_0** | **FAIL: `vulkan-1.dll` в госте нет** (видео = `Microsoft Basic Display Adapter`, драйвер 10.0.17763.1) | **PASS** на D3D11: пиксель `(0,188,255,255)` |
+| **tiny10, как есть** | **PASS** — hardware не дал, взят **WARP**, feature level **11_0** | **FAIL: `vulkan-1.dll` в госте нет** (видео = `Microsoft Basic Display Adapter`, драйвер 10.0.17763.1) | **PASS** на D3D11: пиксель `(0,188,255,255)` |
+| **tiny10 + Mesa lavapipe** (`setup_tiny10_vulkan.sh`) | PASS (WARP) | **PASS полностью**: instance **со surface** → device → `createDevice` → `IEventQuery` → смоук → **окно → `VkSurfaceKHR` → `VkSwapchainKHR` (120x89, 2 картинки, B8G8R8A8) → `createHandleForNativeTexture` → clear → `vkQueuePresentKHR`** | **PASS**, пиксель тот же |
 | **Linux-хост** (g++, нативно) | — | **PASS**: instance → device → `nvrhi::vulkan::createDevice` → `IEventQuery` → смоук | **PASS**: пиксель `(0,188,255,255)`, pitch 64 |
 
-Вывод: **Vulkan сегодня проверяется только на Linux-хосте**, и то на
-**llvmpipe** (модули nvidia на хосте не загружены → RTX 3060 в перечне устройств
-не появляется, `ComputeQueue/Meshlets/RayTracing/VRS = 0`, производительность не
-измеряется). tiny10 годится как D3D11/WARP-эталон и стенд E2E клиента, но **не**
-как Vulkan-стенд.
+Вывод: **Vulkan проверяется на tiny10** — том же стенде, где гоняется E2E
+клиента — через software-стек: `vulkan-1.dll` (свой, `build_loader_wine.sh`) +
+ICD Mesa **lavapipe** (`vendor/mesa-win/vulkan_lvp.dll`, Mesa 26.2.4
+release-msvc). На хосте Vulkan тоже работает, но там доступен только llvmpipe
+(модули nvidia не загружены → RTX 3060 в перечне не появляется).
+**Производительность по-прежнему негде мерить** — и там и там растер CPU;
+для замеров нужно реальное GPU-железо (см. план, риски п.5).
+
+### Два обязательных условия Vulkan в tiny10 (без них — непонятные отказы)
+
+1. **ICD регистрируется в реестре**, а не через `VK_ICD_FILENAMES`:
+   `reg add "HKLM\SOFTWARE\Khronos\Vulkan\Drivers" /v
+   "C:\tools\vulkan\lvp_icd.x86_64.json" /t REG_DWORD /d 0 /f`.
+   Причина: проба из-под SSH идёт с правами администратора, и загрузчик печатает
+   «Loader is running with elevated permissions» **игнорируя** переменные
+   окружения; без реестра ICD не находится вовсе, а `vkCreateInstance` отвечает
+   `VK_ERROR_INCOMPATIBLE_DRIVER` (что выглядит как «драйвер несовместим», хотя
+   драйвера просто нет).
+2. **Запускать в интерактивной сессии** (задача `schtasks` без `/ru`, приём как с
+   `PwE2E`). Из сессии 0 (чистый SSH) окно, surface и swapchain создаются, но
+   `vkQueuePresentKHR` падает в `VK_ERROR_MEMORY_MAP_FAILED`: lavapipe делает
+   present через GDI DIB, а в неинтерактивной сессии его нет.
+
+Прочее по раскладке: все файлы в одном каталоге (`vulkan-1.dll`,
+`vulkan_lvp.dll`, `lvp_icd.x86_64.json`, `nvrhi_probe.exe`) — в ICD json
+`library_path": ".\vulkan_lvp.dll"`, т.е. относительно каталога. `vulkan_lvp.dll`
+(56 МБ) импортирует только системные DLL — VC++ runtime не нужен.
+`swci.imageUsage` для swapchain стоит ставить с `TRANSFER_SRC|TRANSFER_DST`.
 
 Сборка/линковка: NVRHI `6b96fb03` собирается cl 14.44 под Wine, C++17, статика,
 **`/MT`** — без ошибок (`-MT` виден в командной строке cl; нужен

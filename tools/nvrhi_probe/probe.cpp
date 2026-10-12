@@ -41,6 +41,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
@@ -94,6 +95,21 @@ namespace vkp
   PFN_vkCreateDevice CreateDevice = nullptr;
   PFN_vkDestroyDevice DestroyDevice = nullptr;
   PFN_vkGetDeviceQueue GetDeviceQueue = nullptr;
+#ifdef _WIN32
+  PFN_vkCreateWin32SurfaceKHR CreateWin32SurfaceKHR = nullptr;
+  PFN_vkDestroySurfaceKHR DestroySurfaceKHR = nullptr;
+  PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR = nullptr;
+  PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
+  PFN_vkGetPhysicalDeviceSurfaceFormatsKHR GetPhysicalDeviceSurfaceFormatsKHR = nullptr;
+  PFN_vkGetPhysicalDeviceSurfacePresentModesKHR GetPhysicalDeviceSurfacePresentModesKHR = nullptr;
+  PFN_vkCreateSwapchainKHR CreateSwapchainKHR = nullptr;
+  PFN_vkDestroySwapchainKHR DestroySwapchainKHR = nullptr;
+  PFN_vkGetSwapchainImagesKHR GetSwapchainImagesKHR = nullptr;
+  PFN_vkAcquireNextImageKHR AcquireNextImageKHR = nullptr;
+  PFN_vkQueuePresentKHR QueuePresentKHR = nullptr;
+  PFN_vkCreateSemaphore CreateSemaphore = nullptr;
+  PFN_vkDestroySemaphore DestroySemaphore = nullptr;
+#endif
 }
 
 static bool loadVulkanLoader()
@@ -163,6 +179,25 @@ static bool loadInstanceLevel(VkInstance instance)
   LOAD_INST(CreateDevice);
   LOAD_INST(DestroyDevice);
   LOAD_INST(GetDeviceQueue);
+#ifdef _WIN32
+  LOAD_INST(DestroySurfaceKHR);
+  LOAD_INST(GetPhysicalDeviceSurfaceSupportKHR);
+  LOAD_INST(GetPhysicalDeviceSurfaceCapabilitiesKHR);
+  LOAD_INST(GetPhysicalDeviceSurfaceFormatsKHR);
+  LOAD_INST(GetPhysicalDeviceSurfacePresentModesKHR);
+  LOAD_INST(CreateSwapchainKHR);
+  LOAD_INST(DestroySwapchainKHR);
+  LOAD_INST(GetSwapchainImagesKHR);
+  LOAD_INST(AcquireNextImageKHR);
+  LOAD_INST(QueuePresentKHR);
+  LOAD_INST(CreateSemaphore);
+  LOAD_INST(DestroySemaphore);
+  // surface-функции — instance-level (через инстанс), swapchain — device-level
+  // (через устройство): vkGetInstanceProcAddr(instance, "vkCreateSwapchainKHR")
+  // отдаёт trampoline, этого достаточно.
+  vkp::CreateWin32SurfaceKHR =
+      (PFN_vkCreateWin32SurfaceKHR)vkp::GetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
+#endif
 #undef LOAD_INST
   if (!vkp::DestroyInstance || !vkp::EnumeratePhysicalDevices || !vkp::CreateDevice ||
       !vkp::GetDeviceQueue)
@@ -244,6 +279,13 @@ static bool SmokeRender(nvrhi::IDevice* dev)
 }
 
 // ---------------------------------------------------------------- Vulkan probe
+
+#ifdef _WIN32
+static bool ProbeWin32Swapchain(nvrhi::vulkan::DeviceHandle nvrhiDevice, VkInstance instance,
+                                VkPhysicalDevice phys, VkDevice device, VkQueue queue,
+                                uint32_t queueFamily);
+#endif
+
 
 static bool ProbeVulkan()
 {
@@ -452,12 +494,233 @@ static bool ProbeVulkan()
     Print("vulkan: IEventQuery (замена D3DQUERYTYPE_EVENT)", true);
 
     SmokeRender(nvrhiDevice);
+#ifdef _WIN32
+    ProbeWin32Swapchain(nvrhiDevice, instance, phys, device, queue, graphicsFamily);
+#endif
   }
 
   nvrhiDevice = nullptr;
   vkp::DestroyDevice(device, nullptr);
   vkp::DestroyInstance(instance, nullptr);
   return ok;
+}
+
+// ------------------------------------------------- окно + surface + swapchain
+
+// Единственное место пробы, где приходится писать нативный Vulkan/Win32 в обход
+// NVRHI: в NVRHI 6b96fb03 нет ни surface, ни swapchain (см. §3.x плана).
+// Проверяет ровно то, что понадобится клиенту: окно -> VkSurfaceKHR ->
+// VkSwapchainKHR -> обёртка бэк-буфера -> clear -> present.
+static LRESULT CALLBACK ProbeWndProc(HWND h, UINT m, WPARAM w, LPARAM l)
+{
+  return DefWindowProcA(h, m, w, l);
+}
+
+static bool ProbeWin32Swapchain(nvrhi::vulkan::DeviceHandle nvrhiDevice, VkInstance instance,
+                                VkPhysicalDevice phys, VkDevice device, VkQueue queue,
+                                uint32_t queueFamily)
+{
+  if (!vkp::CreateWin32SurfaceKHR || !vkp::CreateSwapchainKHR)
+  {
+    Print("win32: surface/swapchain точки", false);
+    return false;
+  }
+
+  const char clsName[] = "nvrhi_probe_wnd";
+  WNDCLASSEXA wc = {};
+  wc.cbSize = sizeof(wc);
+  wc.lpfnWndProc = ProbeWndProc;
+  wc.hInstance = GetModuleHandleA(nullptr);
+  wc.lpszClassName = clsName;
+  RegisterClassExA(&wc);
+  HWND hwnd = CreateWindowExA(0, clsName, "nvrhi_probe", WS_OVERLAPPEDWINDOW, 0, 0, 128, 128,
+                              nullptr, nullptr, wc.hInstance, nullptr);
+  if (!hwnd)
+  {
+    Print("win32: CreateWindowExA", false);
+    return false;
+  }
+  ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+  UpdateWindow(hwnd);
+  Print("win32: окно 128x128", true);
+
+  VkWin32SurfaceCreateInfoKHR sci = {};
+  sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  sci.hinstance = wc.hInstance;
+  sci.hwnd = hwnd;
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  if (vkp::CreateWin32SurfaceKHR(instance, &sci, nullptr, &surface) != VK_SUCCESS)
+  {
+    Print("win32: vkCreateWin32SurfaceKHR", false);
+    DestroyWindow(hwnd);
+    return false;
+  }
+  Print("win32: VkSurfaceKHR", true);
+
+  VkBool32 supported = VK_FALSE;
+  vkp::GetPhysicalDeviceSurfaceSupportKHR(phys, queueFamily, surface, &supported);
+  if (!supported)
+  {
+    Print("win32: surface supported", false);
+    goto done_surface;
+  }
+  Print("win32: vkGetPhysicalDeviceSurfaceSupportKHR", true);
+
+  {
+    VkSurfaceCapabilitiesKHR caps = {};
+    vkp::GetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &caps);
+
+    uint32_t fmtCount = 0;
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, nullptr);
+    VkSurfaceFormatKHR fmts[16] = {};
+    if (fmtCount > 16)
+      fmtCount = 16;
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, fmts);
+    if (fmtCount == 0)
+    {
+      Print("win32: surface formats", false);
+      goto done_surface;
+    }
+    // Предпочтение: BGRA8 UNORM sRGB (то, что даёт nvrhi::Format::SBGRA8_UNORM).
+    VkSurfaceFormatKHR chosen = fmts[0];
+    for (uint32_t i = 0; i < fmtCount; ++i)
+      if (fmts[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
+          fmts[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+      {
+        chosen = fmts[i];
+        break;
+      }
+
+    uint32_t pmCount = 0;
+    vkp::GetPhysicalDeviceSurfacePresentModesKHR(phys, surface, &pmCount, nullptr);
+    VkPresentModeKHR pms[16] = {};
+    if (pmCount > 16)
+      pmCount = 16;
+    vkp::GetPhysicalDeviceSurfacePresentModesKHR(phys, surface, &pmCount, pms);
+    VkPresentModeKHR pm = VK_PRESENT_MODE_FIFO_KHR; // обязан быть по спецификации
+    bool pmFound = false;
+    for (uint32_t i = 0; i < pmCount; ++i)
+      if (pms[i] == VK_PRESENT_MODE_FIFO_KHR)
+        pmFound = true;
+    if (!pmFound && pmCount)
+      pm = pms[0];
+
+    uint32_t width = caps.currentExtent.width != 0xFFFFFFFFu
+                         ? caps.currentExtent.width
+                         : 128;
+    uint32_t height = caps.currentExtent.height != 0xFFFFFFFFu
+                          ? caps.currentExtent.height
+                          : 128;
+    if (width < caps.minImageExtent.width) width = caps.minImageExtent.width;
+    if (height < caps.minImageExtent.height) height = caps.minImageExtent.height;
+
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (caps.maxImageCount && imageCount > caps.maxImageCount)
+      imageCount = caps.maxImageCount;
+
+    VkSwapchainCreateInfoKHR swci = {};
+    swci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swci.surface = surface;
+    swci.minImageCount = imageCount;
+    swci.imageFormat = chosen.format;
+    swci.imageColorSpace = chosen.colorSpace;
+    swci.imageExtent = { width, height };
+    swci.imageArrayLayers = 1;
+    // TRANSFER_SRC|DST не просто так: lavapipe на Windows реализует swapchain
+    // через собственный host-буфер и блит на present, и без transfer-флага
+    // present падает в VK_ERROR_MEMORY_MAP_FAILED (проверено на tiny10).
+    swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                      VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swci.preTransform = caps.currentTransform;
+    swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swci.presentMode = pm;
+    swci.clipped = VK_TRUE;
+
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    VkResult r = vkp::CreateSwapchainKHR(device, &swci, nullptr, &swapchain);
+    if (r != VK_SUCCESS)
+    {
+      Print("win32: vkCreateSwapchainKHR", false, nvrhi::vulkan::resultToString(r));
+      goto done_surface;
+    }
+    char d[96];
+    snprintf(d, sizeof(d), "%ux%u, картинок %u, формат %d", width, height, imageCount,
+             (int)chosen.format);
+    Print("win32: VkSwapchainKHR", true, d);
+
+    {
+      uint32_t imgCount = 0;
+      vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, nullptr);
+      std::vector<VkImage> images(imgCount);
+      vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, images.data());
+
+      nvrhi::Format nf = (chosen.format == VK_FORMAT_B8G8R8A8_UNORM)
+                             ? nvrhi::Format::SBGRA8_UNORM
+                             : nvrhi::Format::SRGBA8_UNORM;
+      nvrhi::TextureHandle back = nvrhiDevice->createHandleForNativeTexture(
+          nvrhi::ObjectTypes::VK_Image, nvrhi::Object(images[0]),
+          nvrhi::TextureDesc()
+              .setDimension(nvrhi::TextureDimension::Texture2D)
+              .setFormat(nf)
+              .setWidth(width).setHeight(height)
+              .setIsRenderTarget(true)
+              .setInitialState(nvrhi::ResourceStates::RenderTarget)
+              .setKeepInitialState(true)
+              .setDebugName("probe-swapchain-image"));
+      if (!back)
+      {
+        Print("win32: createHandleForNativeTexture(бэк-буфер)", false);
+      }
+      else
+      {
+        Print("win32: createHandleForNativeTexture(бэк-буфер)", true);
+
+        nvrhi::FramebufferHandle fb = nvrhiDevice->createFramebuffer(
+            nvrhi::FramebufferDesc().addColorAttachment(back));
+        nvrhi::CommandListHandle cl = nvrhiDevice->createCommandList();
+        cl->open();
+        cl->clearTextureFloat(back, nvrhi::TextureSubresourceSet(), nvrhi::Color(1.f, 0.f, 0.f, 1.f));
+        cl->close();
+        nvrhiDevice->executeCommandList(cl);
+
+        VkSemaphore acquired = VK_NULL_HANDLE;
+        VkSemaphoreCreateInfo semci = {};
+        semci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        vkp::CreateSemaphore(device, &semci, nullptr, &acquired);
+        uint32_t imageIndex = 0;
+        r = vkp::AcquireNextImageKHR(device, swapchain, ~0ull, acquired, VK_NULL_HANDLE, &imageIndex);
+        if (r == VK_SUCCESS)
+        {
+          // Порядок для Vulkan: бэк-буфер после acquire лежит в Undefined;
+          // NVRHI-трек состояний об этом не знает, поэтому переход делает
+          // clear+sync2 (в probe initialState выставлен вручную).
+          nvrhiDevice->waitForIdle();
+          VkPresentInfoKHR pi = {};
+          pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+          pi.waitSemaphoreCount = 1;
+          pi.pWaitSemaphores = &acquired;
+          pi.swapchainCount = 1;
+          pi.pSwapchains = &swapchain;
+          pi.pImageIndices = &imageIndex;
+          r = vkp::QueuePresentKHR(queue, &pi);
+          Print("win32: vkQueuePresentKHR (clear красный)", r == VK_SUCCESS,
+                r == VK_SUCCESS ? "" : nvrhi::vulkan::resultToString(r));
+        }
+        else
+        {
+          Print("win32: vkAcquireNextImageKHR", false, nvrhi::vulkan::resultToString(r));
+        }
+        if (acquired)
+          vkp::DestroySemaphore(device, acquired, nullptr);
+        vkp::DestroySwapchainKHR(device, swapchain, nullptr);
+      }
+    }
+  }
+
+done_surface:
+  vkp::DestroySurfaceKHR(instance, surface, nullptr);
+  DestroyWindow(hwnd);
+  return true;
 }
 
 // ---------------------------------------------------------------- D3D11 (Windows)

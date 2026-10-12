@@ -401,8 +401,19 @@ color-correct начинают получать настоящие веса) —
       `initialState` + `keepInitialState`; без этого NVRHI падает в assert /
       SIGSEGV. В доках NVRHI об этом нет ни строки — детали в
       `tools/nvrhi_probe/README.md`.
-- [ ] `VkSurfaceKHR`/`VkSwapchainKHR` + present в настоящем окне — **не сделано**
-      (нет среды, где есть и Vulkan-драйвер, и окно).
+- [x] **`VkSurfaceKHR`/`VkSwapchainKHR` + present — сделано (2026-10-12).**
+      В tiny10 поднят software-Vulkan: `vulkan-1.dll` (свой, из
+      `vendor/vulkan-loader`, `/MT`) + ICD Mesa **lavapipe** 26.2.4
+      (`vendor/mesa-win/vulkan_lvp.dll`); ставится одной командой —
+      `tools/nvrhi_probe/setup_tiny10_vulkan.sh`. Проверено на госте: окно →
+      `VkSurfaceKHR` → surface supported → `VkSwapchainKHR` (120x89, 2 картинки,
+      B8G8R8A8 sRGB) → `createHandleForNativeTexture` → clear →
+      `vkQueuePresentKHR` — всё PASS. Два обязательных условия (реестр вместо
+      `VK_ICD_FILENAMES` из-за elevated-режима загрузчика; запуск только в
+      интерактивной сессии, иначе present = `VK_ERROR_MEMORY_MAP_FAILED`) —
+      в `tools/nvrhi_probe/README.md`.
+      **Оговорка:** растер CPU → на этом стенде проверяется только
+      *корректность*, но не производительность.
 - [ ] Зафиксировать: `d3dcompiler_47` vs DXC для SPIR-V; размер прироста;
       какие DXGI/Vulkan-зависимости появляются.
 - [x] Счётчики уникальных VS/PS/пар переведены на `USE_RENDER_SHADER_STATS`
@@ -585,6 +596,11 @@ getTimerQueryTime`); **`IQuery`/occlusion-типа нет нигде** (ни в 
    NVRHI-D3D11 проходит.winevulkan на домашней машине есть, но surface-расширений
    не даёт (`VK_ERROR_EXTENSION_NOT_PRESENT`), т.е. под Wine Vulkan-окно не
    поднять.
+   **Решение (2026-10-12): выбран вариант (б)** — Mesa lavapipe в tiny10
+   (`tools/nvrhi_probe/setup_tiny10_vulkan.sh`), т.е. Vulkan-путь проверяется на
+   том же стенде, что и E2E клиента. Ограничение остаётся: растер CPU, поэтому
+   **замеры производительности (этап 3) на этом стенде невозможны** — для них
+   понадобится реальное GPU-железо (варианты (a)/(c)).
    Рабочая среда Vulkan-смоука на сегодня — **нативный Linux домашней машины**
    (`tools/nvrhi_probe/build-linux`, g++): NVRHI-Vulkan поднимается, смоук
    «createTexture → clear → copy → readback» даёт эталонный пиксель
