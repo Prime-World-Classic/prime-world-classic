@@ -46,6 +46,9 @@
 		// Значок рисуется под радиус BADGE_BASE и масштабируется под портрет.
 		private static const BADGE_BASE:Number = 9;
 		private var button:Sprite;
+		// Движок не рисует graphics самого Sprite (видны только дети) — фон и значок
+		// кнопки рисуются в дочерний Shape.
+		private var buttonShape:Shape;
 		private var buttonText:TextField;
 
 		private var speaking:Boolean = false;
@@ -79,6 +82,8 @@
 			button.visible = false;
 			button.buttonMode = true;
 			button.mouseChildren = false;
+			buttonShape = new Shape();
+			button.addChild(buttonShape);
 			buttonText = CreateText(TEXT_SIZE, 0xFFFFFF, 80);
 			button.addChild(buttonText);
 			mate.addChild(button);
@@ -277,7 +282,7 @@
 			button.x = Math.round(frameX + (frameSize - width) / 2);
 			button.y = Math.round(statsBottom + 2);
 
-			var g:* = button.graphics;
+			var g:* = buttonShape.graphics;
 			g.clear();
 			g.lineStyle(1, 0xFFFFFF, 0.25);
 			g.beginFill(BUTTON_COLOR, 0.88);
@@ -366,6 +371,7 @@
 		private function OnButtonDown(e:MouseEvent):void
 		{
 			e.stopPropagation();
+			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg click " + (isMe ? "me" : "peer " + peerId) + " interactive " + interactive + " inCall " + inCall);
 			if (!interactive || !inCall)
 				return;
 			if (isMe)
@@ -381,6 +387,7 @@
 
 		private function OnWheel(e:MouseEvent):void
 		{
+			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg wheel " + (isMe ? "me" : "peer " + peerId) + " delta " + e.delta + " interactive " + interactive);
 			if (!interactive || !inCall || isMe || e.delta == 0)
 				return;
 			e.stopPropagation();
