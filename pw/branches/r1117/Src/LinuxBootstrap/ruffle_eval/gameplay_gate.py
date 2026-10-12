@@ -157,8 +157,8 @@ def replay(stdout):
 	return storage['commands'][0], capture['bytesRead'][0], last
 
 
-def hero_execution(stdout):
-	'''Require ground identity, a new last-use step and cooldown, not submission messages.'''
+def hero_execution(stdout, client_log):
+	'''Require exact local execution events; world-wide last-command records can belong to bots.'''
 	line = record(stdout, 'Final hero gameplay command execution', ': ')
 	names = ('useUnit', 'activate', 'useTalent', 'portal', 'consumable', 'buy', 'raise', 'init', 'pickup')
 	parts = re.split(r'(?<!\S)(' + '|'.join(names) + r')=', line)
@@ -168,15 +168,27 @@ def hero_execution(stdout):
 		count, space, rest = body.partition(' ')
 		require(space and re.fullmatch(r'[0-9]+/[0-9]+/[0-9]+/[0-9]+', count), f'{name}: malformed counts')
 		sections[name] = (count, fields(rest, '='))
-	count, bought = sections['activate']
-	require(set(bought) == {'can', 'slot', 'progress', 'dev', 'gold'}, 'purchase fields')
-	require(count == '2/2/1/1' and bought['can'] == '1' and pair(bought['gold'], '->') == (400, 100), 'purchase execution')
+	for name in ('activate', 'useTalent'):
+		checks, accepted, executions, actions = map(integer, sections[name][0].split('/'))
+		require(checks >= accepted >= 1 and executions >= actions >= 1, f'{name}: no world execution')
+	identity = tuple(integer(record(client_log, 'finalLiveHero' + key, '='))
+		for key in ('ObjectId', 'PlayerId', 'UserId'))
+	storage = fields(record(stdout, 'Final replay storage', ': '), '=')
+	require(identity[2] == integer(storage['client']), 'local player differs from replay client')
+
+	def local_event(name, schema):
+		'''Bind a unique actual execution event to the independently sampled selected hero.'''
+		result = fields(record(stdout, 'Native local talent ' + name, ': '), '=', 'hero player user ' + schema)
+		require(tuple(integer(result[key]) for key in ('hero', 'player', 'user')) == identity, 'local talent actor mismatch')
+		return result
+
+	bought = local_event('purchase', 'activated slot progress dev gold')
+	require(bought['activated'] == '1' and pair(bought['gold'], '->') == (400, 100), 'purchase execution')
 	require(bought['slot'] == '0,0', 'Plane purchase slot must be 0,0')
 	for key in ('progress', 'dev'):
 		pair(bought[key], '->')
-	count, used = sections['useTalent']
-	require(set(used) == {'can', 'target', 'talentState'}, 'talent execution fields')
-	require(count == '2/2/1/1' and used['can'] == '1', 'useTalent execution counts')
+	used = local_event('cast', 'slot target talentState')
+	require(used['slot'] == bought['slot'], 'purchased and cast talent differ')
 	target = used['target'].split('/')
 	require(target == ['2', '-1', '-1'], 'talent target must be a ground position without unit identity')
 	state = used['talentState'].split('/')
@@ -235,7 +247,7 @@ def validate(stdout, client_log, mode):
 			for key, value in expected.items():
 				require(ruffle[key] == value, f'Ruffle {key}: expected {value}, got {ruffle[key]}')
 	if mode == 'targeting':
-		cast_step = hero_execution(stdout)
+		cast_step = hero_execution(stdout, client_log)
 		require(cast_step <= step, 'cast execution is ahead of the world')
 		talent_payment(stdout, cast_step)
 	return {'mode': mode, 'world_step': step, 'replay_commands': commands}
@@ -246,7 +258,7 @@ def validate_interactive(stdout, client_log, seconds, min_cast_step=0):
 	require(math.isfinite(seconds) and seconds > 0 and isinstance(min_cast_step, int) and min_cast_step >= 0,
 		'invalid interactive evidence boundaries')
 	result = validate(stdout, client_log, 'targeting')
-	cast_step = hero_execution(stdout)
+	cast_step = hero_execution(stdout, client_log)
 	require(cast_step >= min_cast_step, 'cast executed before the requested late-session boundary')
 	clock = fields(record(client_log, 'finalInteractiveClock', '='), ':',
 		'ticks pumps pendingSeconds discardedSeconds')

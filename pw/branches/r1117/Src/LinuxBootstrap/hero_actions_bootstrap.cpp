@@ -91,6 +91,18 @@ namespace NWorld
   static LinuxHeroMoveCommandDiagnostics g_linuxHeroMoveCommandDiagnostics = {};
   static LinuxHeroGameplayCommandDiagnostics g_linuxHeroGameplayCommandDiagnostics = {};
 
+	/** Bind human evidence to the command client as well as the exact actor/world.
+	 * The shell leaves IsLocal unset and can schedule non-bot disconnected players through AI.
+	 */
+	static bool IsLinuxHumanTalentActor(const PFBaseMaleHero* hero, int clientId)
+	{
+		const PFPlayer* player = IsValid(hero) ? hero->GetPlayer() : nullptr;
+		return IsValid(player) && !player->IsBot() && player->GetUserID() == clientId &&
+			player->GetHero() == hero && hero->GetWorld() &&
+			hero->GetWorld()->GetPlayerByUID(player->GetUserID()) == player &&
+			hero->GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero;
+	}
+
   static PFBaseHero* ResolveLinuxBootstrapCommandHero(
     PFWorld* world,
     PFBaseHero* preferredHero,
@@ -495,9 +507,9 @@ namespace NWorld
 	{
 	public:
 		LinuxTalentCommandState(PFBaseMaleHero* hero, PFTalent* talent, const Target& target,
-			int level, int slot, bool recordPayment, bool portalCommand = false)
+			int level, int slot, int clientId, bool recordPayment, bool portalCommand = false)
 			: PFHeroUseTalentState(hero, talent, target), commandTalent(talent),
-			level(level), slot(slot), recordPayment(recordPayment), portalCommand(portalCommand) {}
+			level(level), slot(slot), clientId(clientId), recordPayment(recordPayment), portalCommand(portalCommand) {}
 	protected:
 		bool OnStep(float dt) override
 		{
@@ -533,6 +545,12 @@ namespace NWorld
 				diagnostic.useTalentActiveInstancesAfter = commandTalent->GetActiveInstancesCount();
 				diagnostic.useTalentCooldownBefore = beforeCooldown;
 				diagnostic.useTalentCooldownAfter = commandTalent->GetCurrentCooldown();
+				if (IsLinuxHumanTalentActor(hero, clientId))
+					fprintf(stdout, "Native local talent cast: hero=%d player=%d user=%d slot=%d,%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f\n",
+						hero->GetObjectId(), hero->GetPlayerId(), hero->GetPlayer()->GetUserID(), level, slot,
+						diagnostic.useTalentTargetType, diagnostic.useTalentTargetObjectId, diagnostic.useTalentTargetFaction,
+						beforeStep, diagnostic.useTalentLastUseStepAfter, beforeInstances, diagnostic.useTalentActiveInstancesAfter,
+						beforeCooldown, diagnostic.useTalentCooldownAfter);
 				if (recordPayment && pAbilityInstance->IsActivated())
 					fprintf(stdout, "Native talent formula payment: slot=%d,%d range=%.6g cost=%.6g pool=%s before=%.6g after=%.6g step=%d\n",
 						level, slot, range, cost,
@@ -543,7 +561,7 @@ namespace NWorld
 		}
 	private:
 		CPtr<PFTalent> commandTalent;
-		int level, slot;
+		int level, slot, clientId;
 		bool recordPayment, portalCommand;
 	};
 #endif
@@ -1159,6 +1177,12 @@ namespace NWorld
     {
       const bool activated = hero->ActivateTalent(level, slot);
 #if defined(PW_LINUX_NULL_RENDER)
+			if (IsLinuxHumanTalentActor(hero, GetId()))
+				fprintf(stdout, "Native local talent purchase: hero=%d player=%d user=%d activated=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d\n",
+					hero->GetObjectId(), hero->GetPlayerId(), hero->GetPlayer()->GetUserID(), activated ? 1 : 0, level, slot,
+					g_linuxHeroGameplayCommandDiagnostics.activateTalentHeroLevelBefore, hero->GetNaftaLevel(),
+					g_linuxHeroGameplayCommandDiagnostics.activateTalentDevPointsBefore, hero->GetDevPoints(),
+					g_linuxHeroGameplayCommandDiagnostics.activateTalentGoldBefore, hero->GetGold());
       if (activated)
         ++g_linuxHeroGameplayCommandDiagnostics.activateTalentActionAccepted;
 #endif
@@ -1240,7 +1264,7 @@ namespace NWorld
     if (canUse)
     {
 			hero->EnqueueState(new LinuxTalentCommandState(hero, talent, resolvedTarget,
-				level, slot, manualGround), true);
+				level, slot, GetId(), manualGround), true);
     }
 #else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(level, slot);
@@ -1308,7 +1332,7 @@ namespace NWorld
     {
 #if defined(PW_LINUX_NULL_RENDER)
 			hero->EnqueueState(new LinuxTalentCommandState(hero, hero->GetPortal(), resolvedTarget,
-				-1, -2, false, true), true);
+				-1, -2, GetId(), false, true), true);
 #else
       hero->UseTalent(hero->GetPortal(), target);
 #endif

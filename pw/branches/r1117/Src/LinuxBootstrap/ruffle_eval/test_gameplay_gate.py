@@ -23,6 +23,10 @@ Session effects unit-chain runtime: db=yes units=yes spell=no/no/1.00->1.00 prox
 '''
 
 PAYMENT = 'Native talent formula payment: slot=0,0 range=14 cost=70 pool=mana before=725 after=655 step=496\n'
+LOCAL_PURCHASE = ('Native local talent purchase: hero=7502 player=2 user=1984 activated=1 '
+	'slot=0,0 progress=1->2 dev=1->2 gold=400->100\n')
+LOCAL_CAST = ('Native local talent cast: hero=7502 player=2 user=1984 slot=0,0 '
+	'target=2/-1/-1 talentState=-1->496/0->0/0.00->10.00\n')
 
 
 def fixture(mode='targeting'):
@@ -50,12 +54,42 @@ def fixture(mode='targeting'):
 		'portal=0/0/0/0 can=0 consumable=0/0/0/0 can=0 buy=0/0/0/0 can=0 '
 		'raise=0/0/0/0 can=0 init=0/0/0/0 can=0 pickup=0/0/0/0 can=0 object=0\n'
 		'Prime World Linux client shell finished.\n')
-	stdout = SESSION_EFFECTS + ('Selected lineup hero: Plane (plane)\n' + PAYMENT if mode == 'targeting' else '') + stdout
+	if mode == 'targeting':
+		client += 'finalLiveHeroObjectId=7502\nfinalLiveHeroPlayerId=2\nfinalLiveHeroUserId=1984\n'
+	stdout = SESSION_EFFECTS + ('Selected lineup hero: Plane (plane)\n' + PAYMENT + LOCAL_PURCHASE + LOCAL_CAST if mode == 'targeting' else '') + stdout
 	return stdout, client
 
 
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
+
+	def test_bot_commands_cannot_overwrite_local_execution(self):
+		'''Local event identity replaces the obsolete assumption of a bot-free world.'''
+		stdout, client = fixture()
+		changed = stdout.replace('activate=2/2/1/1 can=1 slot=0,0 progress=1->2 dev=1->2 gold=400->100',
+			'activate=10/10/9/9 can=0 slot=2,3 progress=3->4 dev=5->6 gold=900->400')
+		changed = changed.replace('useTalent=2/2/1/1 can=1 target=2/-1/-1 talentState=-1->496/0->0/0.00->10.00',
+			'useTalent=76/40/39/3 can=1 target=0/7887/2 talentState=703->813/0->1/0.00->10.00')
+		self.assertEqual(gate.validate(changed, client, 'targeting')['world_step'], 1000)
+		for event in (LOCAL_PURCHASE, LOCAL_CAST):
+			for replacement in ('', event + event, event.replace('hero=7502', 'hero=7887'),
+				event.replace('player=2', 'player=9'), event.replace('user=1984', 'user=-9'),
+				event.rstrip() + ' extra=1\n'):
+				with self.subTest(event=event, replacement=replacement), self.assertRaises(gate.EvidenceError):
+					gate.validate(changed.replace(event, replacement), client, 'targeting')
+
+	def test_local_execution_identity_and_outcomes_fail_closed(self):
+		'''Bot success, missing local events and contradictory HUD ownership never prove a cast.'''
+		stdout, client = fixture()
+		for event in (LOCAL_PURCHASE, LOCAL_CAST):
+			for token in event.split(': ', 1)[1].split():
+				for replacement in ('', token + ' ' + token):
+					with self.subTest(token=token, replacement=replacement), self.assertRaises(gate.EvidenceError):
+						gate.validate(stdout.replace(event, event.replace(token, replacement)), client, 'targeting')
+		for before, after in (('activated=1', 'activated=0'), ('hero=7502', 'hero=-1'),
+			('player=2', 'player=-1'), ('user=1984', 'user=0'), ('hero=7502', 'hero=nan')):
+			with self.subTest(before=before, after=after), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace(before, after), client, 'targeting')
 
 	def test_startup_failure_cannot_be_masked_by_successful_cast(self):
 		'''Pinned mock records reproduce cost-native's regression with an otherwise good tail.'''
@@ -118,7 +152,7 @@ class GameplayGateTests(unittest.TestCase):
 			PAYMENT.replace('before=725', 'before=0') + PAYMENT):
 			with self.subTest(replacement=replacement), self.assertRaises(gate.EvidenceError):
 				gate.validate(stdout.replace(PAYMENT, replacement), client, 'targeting')
-		for old, new in (('(plane)', '(other)'), ('activate=2/2/1/1 can=1 slot=0,0', 'activate=2/2/1/1 can=1 slot=0,1')):
+		for old, new in (('(plane)', '(other)'), ('activated=1 slot=0,0', 'activated=1 slot=0,1')):
 			with self.subTest(old=old, new=new), self.assertRaises(gate.EvidenceError):
 				gate.validate(stdout.replace(old, new), client, 'targeting')
 
