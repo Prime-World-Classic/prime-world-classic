@@ -1312,6 +1312,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "buff_timing_b12_tests.inc"
 #include "permanent_stat_b12_tests.inc"
 #include "stat_buff_b12_tests.inc"
+#include "map_force_b12_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1412,6 +1413,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			BuffTimingB12(check);
 			PermanentStatB12(check, world);
 			StatBuffB12(check, world);
+			MapForceB12(check, world);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);
 			CommonCreepRouteB11(check, world);

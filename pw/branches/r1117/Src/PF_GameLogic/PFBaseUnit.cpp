@@ -548,9 +548,30 @@ static void LinuxUpgradeUnitStats(PFBaseUnit* unit, const int oldLevel, const in
   TLinuxUnitStats& stats = GetLinuxUnitStats(unit);
   TLinuxUnitStatUpgrades& upgrades = GetLinuxUnitStatUpgrades(unit);
   const int statCount = Min(static_cast<int>(stats.size()), static_cast<int>(upgrades.size()));
+	const PFStatContainer* container = unit->GetStatContainer();
+	const PFAIWorld* ai = unit->GetWorld() ? unit->GetWorld()->GetAIWorld() : nullptr;
   for (int i = 0; i < statCount; ++i)
   {
-    const float increment = LinuxGetStatUpgradeIncrement(upgrades[i], static_cast<unsigned>(Max(oldLevel, 0)), static_cast<unsigned>(count)) * fraction;
+		float increment = LinuxGetStatUpgradeIncrement(upgrades[i], static_cast<unsigned>(Max(oldLevel, 0)), static_cast<unsigned>(count)) * fraction;
+		// Windows weights the computed increment, not its authored threshold table.
+		const NDb::StatBudget* budget = container && ai ?
+			PFStatContainer::GetStatBudget(&ai->GetAIParameters(), NDb::EStat(i)) : nullptr;
+		if (budget && budget->upgradesWithForce)
+		{
+			const float force = container->GetIncrementForceModifier();
+			if (!std::isfinite(force) || force <= 0 || !std::isfinite(increment))
+				continue;
+			const double weighted = double(increment) * force;
+			if (!std::isfinite(weighted) || std::fabs(weighted) > std::numeric_limits<float>::max())
+				continue;
+			increment = static_cast<float>(weighted);
+			const float core = stats[i].GetCoreValue();
+			if (!std::isfinite(core))
+				continue;
+			const double next = double(core) + increment;
+			if (!std::isfinite(next) || std::fabs(next) > std::numeric_limits<float>::max())
+				continue;
+		}
     if (increment != 0.0f)
       stats[i].SetCoreValue(stats[i].GetCoreValue() + increment);
   }
@@ -849,7 +870,60 @@ void PFBaseUnit::Initialize(InitData const& data)
 	OpenWarFog();
 }
 
-void PFBaseUnit::ModifyStatsByForce(const NDb::MapForceStatModifierApplication) {}
+/** Apply the Windows faction/budget policy without modifying resources or levels. */
+void PFBaseUnit::ModifyStatsByForce(const NDb::MapForceStatModifierApplication application)
+{
+	if (application <= NDb::MAPFORCESTATMODIFIERAPPLICATION_NONE ||
+		application > NDb::MAPFORCESTATMODIFIERAPPLICATION_ALL || !GetWorld() || !GetWorld()->GetAIWorld())
+		return;
+	const PFAIWorld& ai = *GetWorld()->GetAIWorld();
+	const PFAIWorld::StatsCoeffs& coeffs = ai.GetStatsCoeffs();
+	const int faction = GetFaction();
+	if (faction < 0 || static_cast<unsigned>(faction) >= coeffs.coeffsByFaction.capacity())
+		return;
+	const float statModifier = coeffs.coeffsByFaction[faction];
+	if (!std::isfinite(statModifier) || statModifier <= 0)
+		return;
+
+	if (application & NDb::MAPFORCESTATMODIFIERAPPLICATION_BASE)
+	{
+		if (!ai.GetAIParameters().statsBudget)
+			return;
+#ifndef _SHIPPING
+		const float oldStatModifier = stats ? stats->GetIncrementForceModifier() : 1.0f;
+		if (!std::isfinite(oldStatModifier) || oldStatModifier <= 0)
+			return;
+#endif
+		const vector<NDb::StatBudget>& budgets = ai.GetAIParameters().statsBudget->stats;
+		for (vector<NDb::StatBudget>::const_iterator it = budgets.begin(); it != budgets.end(); ++it)
+		{
+			if (!it->upgradesWithForce)
+				continue;
+			StatValueWithModifiers* stat = GetStat(it->stat);
+			if (!stat || !std::isfinite(stat->GetCoreValue()))
+				continue;
+			// Preserve Windows float multiply/divide rounding, checking before narrowing.
+			const double product = double(stat->GetCoreValue()) * statModifier;
+			if (!std::isfinite(product) || std::fabs(product) > std::numeric_limits<float>::max())
+				continue;
+			float scaled = static_cast<float>(product);
+#ifndef _SHIPPING
+			const double reapplied = double(scaled) / oldStatModifier;
+			if (!std::isfinite(reapplied) || std::fabs(reapplied) > std::numeric_limits<float>::max())
+				continue;
+			scaled = static_cast<float>(reapplied);
+#endif
+			stat->SetCoreValue(scaled);
+		}
+	}
+	if (application & NDb::MAPFORCESTATMODIFIERAPPLICATION_LEVELUP)
+	{
+		// Native stat values live in the unit cache; retain force in the original engine field.
+		if (!stats)
+			stats = new PFStatContainer(GetWorld());
+		stats->SetIncrementForceModifier(statModifier);
+	}
+}
 StatValueWithModifiers* PFBaseUnit::GetStat(NDb::EStat const stat)
 {
   if (stat < 0 || stat >= NDb::KnownEnum<NDb::EStat>::SizeOf())
