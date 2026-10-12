@@ -6,6 +6,8 @@
 #include "PFAIWorld.h"
 #include "PFBaseUnitStates.h"
 #include "TileMap.h"
+#include <cmath>
+#include <limits>
 
 namespace
 {
@@ -254,10 +256,30 @@ PFCommonCreep::PFCommonCreep(PFWorld* pWorld, const NDb::AdvMapCreep& creepObj, 
   }
 }
 
+/** Match Windows spawn power: upgrade, scale stat cores, then refill resources. */
 void PFCommonCreep::SetPower(int level, const vector<float>& statFactors)
 {
-  (void)statFactors;
-  DoLevelups(Max(0, level - GetNaftaLevel()));
+	if (level > GetNaftaLevel())
+		DoLevelups(level - GetNaftaLevel());
+
+	const int statCount = NDb::KnownEnum<NDb::EStat>::SizeOf();
+	if (statFactors.size() == statCount)
+	{
+		for (int statId = 0; statId < statCount; ++statId)
+		{
+			const float factor = statFactors[statId];
+			if (!std::isfinite(factor) || factor <= EPS_VALUE)
+				continue;
+			StatValueWithModifiers* stat = GetStat(NDb::EStat(statId));
+			if (!stat || !std::isfinite(stat->GetCoreValue()))
+				continue;
+			// Validate in double before narrowing; skip bad entries like Windows NI_VERIFY.
+			const double scaled = double(stat->GetCoreValue()) * factor;
+			if (std::isfinite(scaled) && std::fabs(scaled) <= std::numeric_limits<float>::max())
+				stat->SetCoreValue(static_cast<float>(scaled));
+		}
+	}
+	InitializeLifeEnergy();
 }
 
 void PFCommonCreep::OnInvalidPath() {}

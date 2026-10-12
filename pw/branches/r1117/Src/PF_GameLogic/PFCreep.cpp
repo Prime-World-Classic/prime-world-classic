@@ -10,6 +10,8 @@ namespace NWorld
 {
 PFBaseCreep::PFBaseCreep(PFWorld* pWorld, const NDb::Creature& creepObj, NDb::EFaction faction, NDb::EUnitType unitType, int playerId, const Placement& placement, float interval, int increment, bool, const NDb::MapForceStatModifierApplication mapForceStatModifierApplication) : PFCreature(pWorld, placement.pos, placement.Get2DDirection(), creepObj), timeBeforeActivate(-1.0f), levelUpInfo(interval, increment), levelUpTimer(interval), warfogFaction(faction)
 {
+	// Windows starts at zero and applies the authored level-one increment below.
+	naftaLevel = 0;
   InitData data;
   data.faction = faction;
   data.type = unitType;
