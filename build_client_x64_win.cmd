@@ -4,6 +4,10 @@ REM Python output (gen_cmake.py, check_exe.py) is UTF-8; the OEM console codepag
 REM mangles it, so switch the console and tell Python explicitly.
 chcp 65001 >nul
 set "PYTHONIOENCODING=utf-8"
+REM NOTE: cmd SHIFT shifts %0 as well, so %~dp0 is only trustworthy BEFORE the
+REM argument loop - capture it here (with any argument the repo used to resolve to
+REM the current directory; Wine cmd does not shift %0, so this never showed up there).
+set "SELF=%~dp0"
 REM =============================================================================
 REM build_client_x64_win.cmd - native Windows build of ShippingSingleExe x64
 REM (PW_Game.exe, cl 14.44, /MT). TWIN of build_client_x64_wine.sh: it calls the
@@ -62,7 +66,9 @@ REM   steam_api -> steam_api64, Lib/x86 -> Lib/x64, redistributable_bin ->
 REM   redistributable_bin/win64.
 REM
 REM Hooks for PLAN_client_build_speedup.md (PCH + object cache):
-REM   PW_PCH=<projects|all>          consumed by gen_cmake.py, passed by env
+REM   PW_PCH=<projects|all|off>    consumed by gen_cmake.py, passed by env. ON by
+REM     default (=all); PW_PCH=off builds without PCH - do that for release
+REM     artifacts, whose bytes must match the baseline (see BUILD_CLIENT_X64.md).
 REM   PW_CACHE_LAUNCHER=<sccache/pwcache>  -> -DCMAKE_CXX_COMPILER_LAUNCHER.
 REM       Works HERE and not in the Wine script: ninja.exe (Windows) cannot
 REM       launch a Linux launcher binary (plan section 2, route A/B).
@@ -112,7 +118,7 @@ shift
 goto args
 :argsdone
 
-set "REPO=%~dp0"
+set "REPO=%SELF%"
 for %%i in ("%REPO%") do set "REPO=%%~fi"
 set "BR=%REPO%pw\branches\r1117"
 set "WCB=%BR%\Tools\WineClientBuild"
@@ -209,6 +215,19 @@ REM PW_EXTRA_OPTS ADDS to the toolchain defaults, it does not replace them:
 REM silently losing /WX- and /MT makes the build fail for reasons unrelated to
 REM the edit under test (see the vs2022 notes in the pw-client skill).
 set "PW_EXTRA_OPTS=%PW_DEFAULT_OPTS% %PW_EXTRA_OPTS%"
+REM PCH is ON by default: the gate passed (E2E on tiny10, golden unitstats byte-identical,
+REM -43% TU time). pw_rules.py reads an EMPTY PW_PCH as "off", so switching it off must
+REM remove the variable instead of writing "off".
+if "%PW_PCH%"=="" set "PW_PCH=all"
+if /i "%PW_PCH%"=="off" set "PW_PCH="
+if /i "%PW_PCH%"=="none" set "PW_PCH="
+if /i "%PW_PCH%"=="no" set "PW_PCH="
+if /i "%PW_PCH%"=="0" set "PW_PCH="
+if "%PW_PCH%"=="" (echo == PCH: OFF ^<release mode^>) else (echo == PCH: %PW_PCH%)
+if not "%PW_PCH%"=="" if not "%PW_CACHE_LAUNCHER%"=="" (
+    echo !! PCH + cache: sccache marks compiles with /Fp and /Yc as non-cacheable
+    echo    ^("Non-cacheable reasons: /Fp, /Yc"^) - the cache will not help here
+)
 set "DBGFMT="
 if "%PW_PDB%"=="1" set "DBGFMT=ProgramDatabase"
 echo == extra cl flags: %PW_EXTRA_OPTS%

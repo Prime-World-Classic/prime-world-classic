@@ -22,12 +22,16 @@
 #   PW_EXTRA_OPTS / PW_EXTRA_DEFS / PW_EXTRA_LINK_OPTS — см. ниже
 #
 # Хуки плана PLAN_client_build_speedup.md (PCH + кэш объектов):
-#   PW_PCH=<список проектов|all>  — уходит в gen_cmake.py через окружение
+#   PW_PCH=<список проектов|all|off> — уходит в gen_cmake.py через окружение;
+#     ПО УМОЛЧАНИЮ ВКЛЮЧЁН (=all). Выключить: PW_PCH=off (релизный артефакт
+#     собирается без PCH и без кэша — он отличается от базового байтами).
 #   PW_NINJA_STATS=1              — ninja -d stats в лог
 #   PW_WINE_SYNC=fsync|esync      — WINEFSYNC/WINEESYNC (замер по плану, §3)
-#   Кэш объектов (PW_CACHE_LAUNCHER) в этом скрипте НЕ работает: ninja.exe —
-#   windows-бинарь, он не может запустить linux-лаунчер (план, §2 маршруты A/B);
-#   для кэша — нативный путь build_client_x64_win.cmd.
+#   PW_CACHE_LAUNCHER=<sccache.exe> — кэш объектов; под Wine работает только
+#     WINDOWS-бинарь (sccache.exe), linux-лаунчер wine-ninja не запустит. Но
+#     нативный путь (build_client_x64_win.cmd) того же cl даёт ~7× быстрее, так
+#     что кэш имеет смысл там; с PCH кэш бессилен (sccache: /Fp и /Yc —
+#     non-cacheable).
 #
 # Мишень жёстко X64 (PW_MACHINE=X64), конфигурация ShippingSingleExe|Win32
 # (Win32 — имя конфигурации в vcproj, разрядность задаёт /MACHINE:X64).
@@ -166,6 +170,21 @@ export PW_MACHINE=X64
 # снимаются /WX- и /MT, и сборка падает по причинам, к правке не относящимся).
 PW_EXTRA_OPTS="${PW_DEFAULT_OPTS} ${PW_EXTRA_OPTS:-}"
 export PW_EXTRA_OPTS PW_DROP_LIBS PW_DROP_NODEFAULT
+# PCH по умолчанию ВКЛЮЧЁН: гейт пройден (E2E на tiny10, золотые unitstats
+# байт-в-байт против базы, −43% времени TU). pw_rules.py трактует пустое
+# значение как «выключено», поэтому off снимает переменную, а не пишет «off».
+# Релизный артефакт собирается с PW_PCH=off (байт-отличия от базы, см.
+# BUILD_CLIENT_X64.md).
+case "${PW_PCH:-}" in
+    "")            PW_PCH=all ;;
+    off|none|no|0) PW_PCH="" ;;
+esac
+export PW_PCH
+echo "== PCH: ${PW_PCH:-ВЫКЛЮЧЕН (релизный режим)}"
+if [ -n "$PW_PCH" ] && [ -n "${PW_CACHE_LAUNCHER:-}" ]; then
+    echo "!! PCH + кэш: sccache помечает компиляции с /Fp и /Yc как non-cacheable"
+    echo "   (sccache --show-stats: 'Non-cacheable reasons: /Fp, /Yc') — кэш не ускорит"
+fi
 # замеры по плану §3: режим синхронизации Wine и статистика ninja включаются
 # только явно — по умолчанию поведение не меняется
 if [ -n "${PW_WINE_SYNC:-}" ]; then
