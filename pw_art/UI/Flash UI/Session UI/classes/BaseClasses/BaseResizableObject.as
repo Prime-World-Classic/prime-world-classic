@@ -30,6 +30,17 @@
 		protected var isAddedToStage:Boolean = false;
 		
 		protected var useWidthScale:Boolean = false;
+		// Дополнительное увеличение размера (не позиции): панели портретов в бою.
+		protected var sizeBoost:Number = 1;
+
+		public function SetSizeBoost(value:Number):void
+		{
+			if (isNaN(value) || value <= 0 || value == sizeBoost)
+				return;
+			sizeBoost = value;
+			if (stage != null)
+				BaseBarObjectResize();
+		}
 		
 		private var scaleCoef:Number = 1;
 		private var _isNeedToShowBackAfterCinematic:Boolean;
@@ -159,8 +170,8 @@
 						
 			scale *= scaleCoef;
 			
-			this.scaleX = scale;
-			this.scaleY = scale;
+			this.scaleX = scale * sizeBoost;
+			this.scaleY = scale * sizeBoost;
 			this.width = Math.floor(this.width);
 			this.height = Math.floor(this.height);
 		}

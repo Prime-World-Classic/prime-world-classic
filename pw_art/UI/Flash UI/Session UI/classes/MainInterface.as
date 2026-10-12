@@ -1701,6 +1701,13 @@
 			this.mainWindow.chatBar.SetCentered(param1,param2);
 		}
 		
+		// Размер панелей портретов команд (настройки «Дополнительно», team_portraits_scale), 1 = исходный.
+		public function SetTeamPortraitsScale(scale:Number):void
+		{
+			mainWindow.teamInfoFrendly_mc.SetSizeBoost(scale);
+			mainWindow.teamInfoEnemy_mc.SetSizeBoost(scale);
+		}
+
 		public function SetChatVisible(value:Boolean):void
 		{
 			mainWindow.chatBar.DisableInput(!value);

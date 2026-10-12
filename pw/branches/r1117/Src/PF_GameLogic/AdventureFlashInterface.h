@@ -300,6 +300,7 @@ public:
   virtual void SetDefaultChannel(NDb::EChatChannel channelID);
   virtual void SetChatVisible(bool visible);
   void SetChatCentered( bool centered, float raise ); // Dota-like chat in the screen center; raise = part of the screen height
+  void SetTeamPortraitsScale( float scale ); // team portrait panels size, 1 = original
   // ping wheel and floating ping texts (coordinates are 0..1 parts of the screen)
   void ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale );
   void HighlightPingWheel( int index );

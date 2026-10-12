@@ -29,6 +29,7 @@
 		private static const MUTED_COLOR:uint = 0xED4245;
 		private static const BUTTON_COLOR:uint = 0x1E1F22;
 		private static const OFF_COLOR:uint = 0x949BA4;
+		private static const MIC_COLOR:uint = 0xC9CDD4;
 		private static const TEXT_SIZE:int = 11;
 		// Движок рисует текст у верха поля: поправка ~0.35 кегля вниз (замер в игре).
 		private static const TEXT_DROP:Number = 0.35;
@@ -293,7 +294,7 @@
 			var cy:Number = height / 2;
 			var iconX:Number = label.length > 0 ? 5 : (width - 11) / 2;
 			if (isMe)
-				DrawMic(g, iconX, cy, micState == 1 ? 0xFFFFFF : (micState == 0 ? OFF_COLOR : MUTED_COLOR), micState != 1);
+				DrawMic(g, iconX, cy, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
 			else
 				DrawSpeaker(g, iconX, cy, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
 
@@ -342,7 +343,7 @@
 			else if (kind == 2)
 				DrawSpeaker(g, -6.5, 0, MUTED_COLOR, true);
 			else
-				DrawMic(g, -5.5, 0, kind == 3 ? MUTED_COLOR : OFF_COLOR, true);
+				DrawMic(g, -5.5, 0, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
 
 			var size:Number = Math.max(BADGE_BASE, frameSize * 0.15);
 			badge.scaleX = badge.scaleY = size / BADGE_BASE;
@@ -394,23 +395,36 @@
 			FSCommands.Send(VoiceTeamOverlay.COMMAND, "vol " + peerId + " " + (e.delta > 0 ? 5 : -5));
 		}
 
-		private static function DrawMic(g:*, x:Number, cy:Number, color:uint, crossed:Boolean):void
+		// Микрофон в рамке 11x13 (x — левый край, cy — центр) по образцу 200x200:
+		// капсула 50x105, держатель — полукруг радиусом 70, ножка 30; выключен — диагональ
+		// с зазором цвета фона.
+		private static function DrawMic(g:*, x:Number, cy:Number, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
 		{
+			var s:Number = 13 / 200;
+			var ox:Number = x + 5.5 - 100 * s;
+			var oy:Number = cy - 100 * s;
+			var stroke:Number = Math.max(1.2, 16 * s);
+
 			g.lineStyle(0, 0, 0);
 			g.beginFill(color);
-			g.drawRoundRect(x + 3, cy - 6, 5, 8, 5, 5);
+			g.drawRoundRect(ox + 75 * s, oy + 8 * s, 50 * s, 105 * s, 50 * s, 50 * s);
 			g.endFill();
-			g.lineStyle(1.5, color, 1);
-			g.moveTo(x + 1, cy - 1);
-			g.curveTo(x + 1, cy + 4, x + 5.5, cy + 4);
-			g.curveTo(x + 10, cy + 4, x + 10, cy - 1);
-			g.moveTo(x + 5.5, cy + 4);
-			g.lineTo(x + 5.5, cy + 6);
+
+			g.lineStyle(stroke, color, 1);
+			g.moveTo(ox + 32 * s, oy + 92 * s);
+			g.curveTo(ox + 32 * s, oy + 162 * s, ox + 100 * s, oy + 162 * s);
+			g.curveTo(ox + 168 * s, oy + 162 * s, ox + 168 * s, oy + 92 * s);
+			g.moveTo(ox + 100 * s, oy + 162 * s);
+			g.lineTo(ox + 100 * s, oy + 196 * s);
+
 			if (crossed)
 			{
-				g.lineStyle(2, MUTED_COLOR, 1);
-				g.moveTo(x, cy + 6);
-				g.lineTo(x + 11, cy - 6);
+				g.lineStyle(Math.max(1.5, 14 * s) + 2, BUTTON_COLOR, 1);
+				g.moveTo(ox + 24 * s, oy + 180 * s);
+				g.lineTo(ox + 180 * s, oy + 24 * s);
+				g.lineStyle(Math.max(1.5, 14 * s), slashColor, 1);
+				g.moveTo(ox + 24 * s, oy + 180 * s);
+				g.lineTo(ox + 180 * s, oy + 24 * s);
 			}
 			g.lineStyle(0, 0, 0);
 		}

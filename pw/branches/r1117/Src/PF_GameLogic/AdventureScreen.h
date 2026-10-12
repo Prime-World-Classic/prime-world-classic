@@ -423,6 +423,7 @@ struct GSClientSettings
     int                 flashMinimapAlertSent;      // options last pushed to the Flash UI of this battle (-1 = not yet)
     int                 flashChatCenteredSent;
     float               flashChatRaiseSent;
+    float               flashPortraitsScaleSent;
 
     bool         isPlayingMinigame;
 

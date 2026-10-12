@@ -721,6 +721,11 @@ void AdventureFlashInterface::SetChatCentered( bool centered, float raise )
   CallMethod( "SetChatCentered", centered, raise );
 }
 
+void AdventureFlashInterface::SetTeamPortraitsScale( float scale )
+{
+  CallMethod( "SetTeamPortraitsScale", scale );
+}
+
 void AdventureFlashInterface::ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale )
 {
   CallMethod( "ShowPingWheel", nx, ny, labels, colors, bgAlpha, scale );

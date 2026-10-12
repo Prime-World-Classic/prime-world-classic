@@ -9,7 +9,7 @@
 	import Controllers.TextFieldFormater;
 	import Datas.PlayerStatisticData;
 	import flash.display.MovieClip;
-	import flash.display.Shape;
+	import flash.geom.ColorTransform;
 	import flash.utils.getDefinitionByName;
 	import flash.events.Event;
 	import flash.text.TextField;
@@ -53,15 +53,15 @@
 		
 		private var _partyMarkerTooltip:TooltipSender;
 
-		// Иконка рейтинга аккаунта над иконкой рейтинга героя, на золотистой подложке как на
-		// экране загрузки (PWFrames/raitingBackAcc: #F0FC31, 30%). Создаётся кодом из того же
-		// символа, что и elitHeroIcon; подложка — отдельный Shape (graphics самого спрайта
-		// движок не рисует).
+		// Иконка рейтинга аккаунта зеркальна иконке рейтинга героя относительно горизонтали
+		// через центр портрета (как флаг слева сверху и уровень слева снизу). Создаётся кодом
+		// из того же символа, что и elitHeroIcon; картинка ранга слегка тонируется в золото.
+		// Размеры — из main.fla (statBarEliteHeroIcon 23x23, портрет sttisticsMate_mc 73x73):
+		// width/height движка у таких клипов ненадёжны.
 		private static const RANK_ICON_SIZE:Number = 23;
-		private static const ACC_BACK_COLOR:uint = 0xF0FC31;
-		private static const ACC_BACK_ALPHA:Number = 0.3;
+		private static const PORTRAIT_CENTER_Y:Number = 36.5;
+		private static const ACC_GOLD_TINT:ColorTransform = new ColorTransform(1, 0.92, 0.55, 1, 70, 22, 0, 0);
 		private var accRankIcon:HeroRankIconHolder;
-		private var accRankBack:Shape;
 		private var _muteTooltip:TooltipSender;
 		
 		public function StatisticsBarPlayers()
@@ -281,25 +281,17 @@
 			return template.replace("{0}", rankName != null ? rankName : "").replace("{1}", int(rating).toString());
 		}
 
-		// Подсказки: у иконки героя — его ранг и рейтинг; у иконки аккаунта — ранг и рейтинг
-		// аккаунта, ниже — ранг и рейтинг героя.
+		// Подсказки: у иконки героя — ранг и рейтинг героя, у иконки аккаунта — аккаунта.
 		private function SetRankTooltips(playerData:PlayerStatisticData):void
 		{
-			var heroLine:String = "";
 			if (playerData.HeroRankIcon != null && playerData.HeroRankIcon.length != 0)
-			{
-				heroLine = RankLine(Localization.StatBar_HeroRankTooltip, playerData.HeroRankTooltip, playerData.HeroRaiting);
-				elitHeroIcon.TooltipText = heroLine;
-			}
+				elitHeroIcon.TooltipText = RankLine(Localization.StatBar_HeroRankTooltip, playerData.HeroRankTooltip, playerData.HeroRaiting);
 
 			var hasAccount:Boolean = playerData.AccRankIcon != null && playerData.AccRankIcon.length != 0;
 			if (!hasAccount)
 			{
 				if (accRankIcon != null)
-				{
 					accRankIcon.visible = false;
-					accRankBack.visible = false;
-				}
 				return;
 			}
 
@@ -307,12 +299,8 @@
 				return;
 
 			accRankIcon.visible = true;
-			accRankBack.visible = true;
 			accRankIcon.Icon = playerData.AccRankIcon;
-			var text:String = RankLine(Localization.StatBar_AccountRankTooltip, playerData.AccRankName, playerData.AccRaiting);
-			if (heroLine.length != 0)
-				text += "<br>" + heroLine;
-			accRankIcon.TooltipText = text;
+			accRankIcon.TooltipText = RankLine(Localization.StatBar_AccountRankTooltip, playerData.AccRankName, playerData.AccRaiting);
 		}
 
 		private function CreateAccRankIcon():Boolean
@@ -331,19 +319,15 @@
 			if (accRankIcon == null)
 				return false;
 
+			var centerY:Number = teamMateStat_mc.y + PORTRAIT_CENTER_Y;
 			accRankIcon.x = elitHeroIcon.x;
-			accRankIcon.y = elitHeroIcon.y - RANK_ICON_SIZE - 3;
+			accRankIcon.y = 2 * centerY - (elitHeroIcon.y + RANK_ICON_SIZE);
+			if (accRankIcon.eliteHero_mc != null)
+				accRankIcon.eliteHero_mc.transform.colorTransform = ACC_GOLD_TINT;
 
-			accRankBack = new Shape();
-			accRankBack.graphics.beginFill(ACC_BACK_COLOR, ACC_BACK_ALPHA);
-			accRankBack.graphics.drawRoundRect(-2, -2, RANK_ICON_SIZE + 4, RANK_ICON_SIZE + 4, 8, 8);
-			accRankBack.graphics.endFill();
-			accRankBack.x = accRankIcon.x;
-			accRankBack.y = accRankIcon.y;
-
-			var index:int = getChildIndex(elitHeroIcon);
-			addChildAt(accRankBack, index);
-			addChildAt(accRankIcon, index + 1);
+			// В том же углу символа стоят значок премиума, отметка группы и мут чата —
+			// иконка ниже их по слою, чтобы мут оставался кликабельным.
+			addChildAt(accRankIcon, getChildIndex(elitHeroIcon) + 1);
 			return true;
 		}
 		

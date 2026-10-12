@@ -231,6 +231,9 @@ static NSoundScene::SoundDescription PingSoundDesc( int type )
 static bool  g_chatCentered          = false;
 static float g_chatCenterRaise       = 20.0f; // percent of the screen height above the default chat position
 
+// Size of the team portrait panels (allies top-left, enemies top-right), percent; "Advanced" settings page
+static float g_teamPortraitsScale    = 100.0f;
+
 // Own hero (or the mount it controls) under the cursor must not block move orders:
 // the action click goes "through" it to the ground, like in Dota.
 static bool IsOwnHeroPick( NWorld::PFBaseHero const * pHero, PF_Core::WorldObjectBase const * pObj )
@@ -612,6 +615,7 @@ AdventureScreen::AdventureScreen()
 , flashMinimapAlertSent(-1)
 , flashChatCenteredSent(-1)
 , flashChatRaiseSent(-1.0f)
+, flashPortraitsScaleSent(-1.0f)
 , pingMarkerNextId(1)
 , isPlayingMinigame(false)
 , isSelectedOfSameFaction(false)
@@ -2395,6 +2399,13 @@ void AdventureScreen::CommonStep( bool bAppActive )
         flashChatRaiseSent    = g_chatCenterRaise;
       }
     }
+  }
+
+  // push the team portraits size to Flash when it changes (settings page or console)
+  if ( flashPortraitsScaleSent != g_teamPortraitsScale && pLogic && pLogic->GetFlashInterface() )
+  {
+    pLogic->GetFlashInterface()->SetTeamPortraitsScale( Min( Max( g_teamPortraitsScale, 50.0f ), 200.0f ) * 0.01f );
+    flashPortraitsScaleSent = g_teamPortraitsScale;
   }
 
   // Update scene & scene objects in it
@@ -8384,3 +8395,4 @@ REGISTER_VAR( "praise_panel_top", g_praisePanelTop, STORAGE_NONE );
 REGISTER_VAR( "ping_sound_volume", g_pingSoundVolume, STORAGE_USER );
 REGISTER_VAR( "ping_sound_min_interval", g_pingSoundMinInterval, STORAGE_NONE );
 REGISTER_VAR( "chat_center_raise", g_chatCenterRaise, STORAGE_USER );
+REGISTER_VAR( "team_portraits_scale", g_teamPortraitsScale, STORAGE_USER );

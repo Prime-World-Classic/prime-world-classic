@@ -406,6 +406,7 @@ static const AdvancedVarDesc s_advancedVars[] =
   { "adv_hdr_interface", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0418\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441" },
   { "adv_chat_centered", "chat_centered", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442 \u043f\u043e \u0446\u0435\u043d\u0442\u0440\u0443 \u044d\u043a\u0440\u0430\u043d\u0430" },
   { "adv_chat_center_raise", "chat_center_raise", ADV_SLIDER, 0.0f, 50.0f, 11, L"%.0f%%", "adv_chat_centered", L"\u0412\u044b\u0441\u043e\u0442\u0430 \u0447\u0430\u0442\u0430, % \u044d\u043a\u0440\u0430\u043d\u0430" },
+  { "adv_team_portraits_scale", "team_portraits_scale", ADV_SLIDER, 50.0f, 200.0f, 16, L"%.0f%%", "", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u043e\u0432 \u043a\u043e\u043c\u0430\u043d\u0434" },
   { "adv_page_comm", "", ADV_PAGE, 1.0f, 0.0f, 0, L"", "", L"" },
   { "adv_hdr_ping_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b" },
   { "adv_ping_middle_mouse", "ping_middle_mouse", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b \u043d\u0430 \u0441\u0440\u0435\u0434\u043d\u044e\u044e \u043a\u043d\u043e\u043f\u043a\u0443 \u043c\u044b\u0448\u0438" },
