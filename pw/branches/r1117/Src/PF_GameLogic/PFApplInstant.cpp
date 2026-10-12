@@ -17,6 +17,7 @@
 #include "PFTargetSelector.h"
 #include "PFWorld.h"
 #include "LinuxBootstrap/formula_context.h"
+#include <limits>
 
 namespace NWorld
 {
@@ -273,11 +274,20 @@ bool PFApplDispell::Start()
 {
   PFBaseApplicator::Start();
   effectsDispelled = 0;
+	// Preserve absent=1, but never turn an invalid authored count into one removed effect.
+	const auto& expression = GetDB().maxEffectsToDispell;
+	const auto result = expression.sString.empty() && expression.compiledString.empty()
+		? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 1.f}
+		: LinuxBootstrap::EvaluateApplicatorNumericFormula(expression.sString.c_str(), *this);
+	if (!result.Succeeded() || result.value <= 0 || double(result.value) > std::numeric_limits<int>::max()) return true;
+	int effects2Dispell = static_cast<int>(result.value);
+	if (effects2Dispell <= 0) return true;
 
   vector<const PFBaseUnit*> targetsToDispell;
   if (GetDB().targets)
   {
     CObj<PFTargetSelector> pTargetSelector = GetDB().targets->Create(GetWorld());
+	if (!pTargetSelector) return true;
     PFTargetSelector::TargetsCollector<const PFBaseUnit> targetsCollector(targetsToDispell);
     PFTargetSelector::RequestParams rp(*this, GetTarget());
     pTargetSelector->EnumerateTargets(targetsCollector, rp);
@@ -287,7 +297,6 @@ bool PFApplDispell::Start()
     targetsToDispell.push_back(pReceiver.GetPtr());
   }
 
-  int effects2Dispell = RetrieveParam(GetDB().maxEffectsToDispell, 1);
   if (targetsToDispell.empty() || effects2Dispell <= 0)
     return true;
 

@@ -1335,6 +1335,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "status_stacking_b12_tests.inc"
 #include "cast_dispel_b12_tests.inc"
 #include "dispel_lifetime_b12_tests.inc"
+#include "dispel_count_b12_tests.inc"
 #include "ability_cache_b12_tests.inc"
 #include "unit_flags_b12_tests.inc"
 #include "custom_energy_b12_tests.inc"
@@ -1466,6 +1467,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			StatusStackingB12(check, world);
 			CastDispelB12(check, world);
 			DispelLifetimeB12(check, world);
+			DispelCountB12(check, world);
 			AbilityModCacheDependencyB12(check, world);
 			AbilityCacheB12(check, world);
 			UnitFlagsB12(check);
