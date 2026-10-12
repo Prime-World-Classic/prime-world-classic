@@ -29,10 +29,46 @@
 	import StatisticBars.CurrentGameStatistics;
 	import flashx.textLayout.formats.Float;
 	import Utils.GameTimeGlobalUtils;
+	import Controllers.SoundController;
+	import EscMenu.ShortcutItem;
+	import Effects.AttentionEffect;
+	import ActionBar.ActionButton;
+	import flash.display.Graphics;
+	import flash.display.Loader;
+	import flash.display.Sprite;
+	import flash.net.URLRequest;
 
 	public class MainInterface
 	{
 		private var mainWindow:Main;
+		
+		// ping wheel + floating ping texts (created at runtime, driven by C++ AdventureScreen)
+		private var pingLayer:Sprite;
+		
+		private var pingWheel:Sprite;
+		
+		private var pingWheelItems:Array;
+		
+		private var pingWheelHighlights:Array;
+		
+		private var pingWheelLabels:Array;
+		
+		private var pingWheelColors:Array;
+		
+		private var pingWheelText:ShortcutItem;
+		
+		private var pingMarkers:Object;
+		
+		private var pingWheelBg:Loader;
+		
+		private var pingPreloaded:Array;
+		
+		private var pingMarkerHeroes:Object;
+		
+		private var praisePanels:Object;
+		
+		private var smartCastModes:Object;
+		
 
 		private var friendlyTeamController:MateInfoController;
 		private var enemyTeamController:MateInfoController;
@@ -620,9 +656,18 @@
 			
 			mainWindow.inventoriesBar_mc.Prime = prime;
 		}
-		public function AddSignal(X:Number, Y:Number, color:uint = 0xFFFCC2, lifeTime:Number = 0):void
+		// silent: no old minimap alert sound - the ping has its own sound (C++ AdventureScreen)
+		public function AddSignal(X:Number, Y:Number, color:uint = 0xFFFCC2, lifeTime:Number = 0, silent:Boolean = false):void
 		{
-			mainWindow.miniMap_mc.AddSignal(X, Y, color, lifeTime);
+			SoundController.muteMinimapAlert = silent;
+			try
+			{
+				mainWindow.miniMap_mc.AddSignal(X, Y, color, lifeTime);
+			}
+			catch (e:Error)
+			{
+			}
+			SoundController.muteMinimapAlert = false;
 		}
 		
 		public function SetMinimapTargetZoneColor(value:uint):void
@@ -1049,6 +1094,607 @@
 			mainWindow.finalStat.personalStat.SetStatisticExperienceBar(curExp, earnedExp,premiumExp, levelsTabel);
 		
 		}
+		
+		private function GetPingLayer() : Sprite
+		{
+			if(this.pingLayer == null)
+			{
+				this.pingLayer = new Sprite();
+				this.pingLayer.mouseEnabled = false;
+				this.pingLayer.mouseChildren = false;
+				this.pingMarkers = new Object();
+				this.mainWindow.addChild(this.pingLayer);
+			}
+			this.mainWindow.setChildIndex(this.pingLayer,this.mainWindow.numChildren - 1);
+			return this.pingLayer;
+		}
+		
+		private function CreatePingLabel(param1:String, param2:uint) : ShortcutItem
+		{
+			var _loc3_:ShortcutItem = new ShortcutItem();
+			_loc3_.SetName(param1);
+			_loc3_.SetBind("");
+			_loc3_.mouseEnabled = false;
+			_loc3_.mouseChildren = false;
+			_loc3_.valueFrame.visible = false;
+			_loc3_.value.visible = false;
+			_loc3_.text.textColor = param2;
+			return _loc3_;
+		}
+		
+		// textures: Data/UI/Styles/Icons/PingWheel (wheel 256x256, icons 64x64)
+		private static const PING_TEX:String = "/UI/Styles/Icons/PingWheel/";
+		
+		private static const PING_ICON_SCALE:Number = 0.72;
+		
+		private static const PING_SLOT_RADIUS:Number = 84;
+		
+		private function LoadPingImage(param1:String) : Loader
+		{
+			var _loc2_:Loader = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.PING_TEX + param1));
+			return _loc2_;
+		}
+		
+		private function PlacePingIcon(param1:Loader, param2:int, param3:Number) : void
+		{
+			var _loc4_:Number = (-90 + param2 * 72) * Math.PI / 180;
+			param1.scaleX = param3;
+			param1.scaleY = param3;
+			param1.x = Math.floor(Math.cos(_loc4_) * MainInterface.PING_SLOT_RADIUS - 32 * param3);
+			param1.y = Math.floor(Math.sin(_loc4_) * MainInterface.PING_SLOT_RADIUS - 32 * param3);
+		}
+		
+		private function CreatePingWheel() : void
+		{
+			var _loc1_:int = 0;
+			var _loc2_:Loader = null;
+			this.pingWheel = new Sprite();
+			this.pingWheel.mouseEnabled = false;
+			this.pingWheel.mouseChildren = false;
+			_loc2_ = this.LoadPingImage("wheel_bg.dds");
+			_loc2_.x = -128;
+			_loc2_.y = -128;
+			this.pingWheel.addChild(_loc2_);
+			this.pingWheelBg = _loc2_;
+			this.pingWheelHighlights = [];
+			this.pingWheelItems = [];
+			_loc1_ = 0;
+			while(_loc1_ < 5)
+			{
+				_loc2_ = this.LoadPingImage("wheel_hl" + _loc1_ + ".dds");
+				_loc2_.x = -128;
+				_loc2_.y = -128;
+				_loc2_.visible = false;
+				this.pingWheel.addChild(_loc2_);
+				this.pingWheelHighlights.push(_loc2_);
+				_loc1_++;
+			}
+			_loc1_ = 0;
+			while(_loc1_ < 5)
+			{
+				_loc2_ = this.LoadPingImage("ping_icon" + _loc1_ + ".dds");
+				this.PlacePingIcon(_loc2_,_loc1_,MainInterface.PING_ICON_SCALE);
+				this.pingWheel.addChild(_loc2_);
+				this.pingWheelItems.push(_loc2_);
+				_loc1_++;
+			}
+			this.pingWheelText = this.CreatePingLabel("",16777215);
+			this.pingWheel.addChild(this.pingWheelText);
+			this.pingWheel.visible = false;
+			this.GetPingLayer().addChild(this.pingWheel);
+		}
+		
+		// called by C++ while the map is loading: textures must not be loaded after the game start
+		public function PreloadPingWheel() : void
+		{
+			var _loc1_:int = 0;
+			var _loc2_:Loader = null;
+			var _loc3_:Sprite = this.GetPingLayer();
+			if(this.pingWheel == null)
+			{
+				this.CreatePingWheel();
+			}
+			if(this.pingPreloaded == null)
+			{
+				// marker textures: beams of all ping types + the icon of the ordinary ping (kept hidden, only to load them now)
+				this.pingPreloaded = [];
+				_loc1_ = 0;
+				while(_loc1_ < 6)
+				{
+					_loc2_ = this.LoadPingImage("ping_beam" + _loc1_ + ".dds");
+					_loc2_.visible = false;
+					_loc3_.addChild(_loc2_);
+					this.pingPreloaded.push(_loc2_);
+					_loc1_++;
+				}
+				_loc2_ = this.LoadPingImage("ping_icon5.dds");
+				_loc2_.visible = false;
+				_loc3_.addChild(_loc2_);
+				this.pingPreloaded.push(_loc2_);
+				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_off.dds");
+				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_on.dds");
+				this.PreloadPingImage(MainInterface.PRAISE_TEX + "praise_bg.dds");
+				this.PreloadPingImage(MainInterface.PRAISE_TEX + "prime_drop.dds");
+			}
+		}
+		
+		// nx, ny: 0..1 of the screen; labels and colors (hex RRGGBB) separated by '|', item 0 at the top, clockwise;
+		// bgAlpha: background opacity 0..1, scale: wheel size (1 = 256 px)
+		public function ShowPingWheel(param1:Number, param2:Number, param3:String, param4:String, param5:Number, param6:Number) : void
+		{
+			var _loc5_:int = 0;
+			var _loc6_:Array = null;
+			this.GetPingLayer();
+			if(this.pingWheel == null)
+			{
+				this.CreatePingWheel();
+			}
+			this.pingWheelLabels = param3.split("|");
+			_loc6_ = param4.split("|");
+			this.pingWheelColors = [];
+			_loc5_ = 0;
+			while(_loc5_ < _loc6_.length)
+			{
+				this.pingWheelColors.push(uint(parseInt(_loc6_[_loc5_],16)));
+				_loc5_++;
+			}
+			this.pingWheel.x = Math.floor(param1 * this.mainWindow.stage.stageWidth);
+			this.pingWheel.y = Math.floor(param2 * this.mainWindow.stage.stageHeight);
+			if(this.pingWheelBg != null)
+			{
+				this.pingWheelBg.alpha = param5;
+			}
+			this.pingWheel.scaleX = param6;
+			this.pingWheel.scaleY = param6;
+			this.HighlightPingWheel(-1);
+			this.pingWheel.visible = true;
+		}
+		
+		// highlighted sector + its name under the wheel; -1 = nothing
+		public function HighlightPingWheel(param1:int) : void
+		{
+			var _loc2_:int = 0;
+			var _loc3_:Number = NaN;
+			var _loc4_:Boolean = false;
+			if(this.pingWheel == null)
+			{
+				return;
+			}
+			_loc2_ = 0;
+			while(_loc2_ < this.pingWheelItems.length)
+			{
+				_loc4_ = false;
+				if(_loc2_ == param1)
+				{
+					_loc4_ = true;
+				}
+				Loader(this.pingWheelHighlights[_loc2_]).visible = _loc4_;
+				_loc3_ = MainInterface.PING_ICON_SCALE;
+				if(_loc4_)
+				{
+					_loc3_ = MainInterface.PING_ICON_SCALE * 1.18;
+				}
+				this.PlacePingIcon(Loader(this.pingWheelItems[_loc2_]),_loc2_,_loc3_);
+				_loc2_++;
+			}
+			if(param1 < 0 || this.pingWheelLabels == null || param1 >= this.pingWheelLabels.length)
+			{
+				this.pingWheelText.visible = false;
+				return;
+			}
+			this.pingWheelText.SetName(String(this.pingWheelLabels[param1]));
+			this.pingWheelText.text.textColor = uint(this.pingWheelColors[param1]);
+			this.pingWheelText.x = Math.floor(0 - this.pingWheelText.text.x - this.pingWheelText.text.textWidth / 2);
+			this.pingWheelText.y = Math.floor(136 - this.pingWheelText.text.y);
+			this.pingWheelText.visible = true;
+		}
+		
+		public function HidePingWheel() : void
+		{
+			if(this.pingWheel != null)
+			{
+				this.pingWheel.visible = false;
+			}
+		}
+		
+		// loads a texture now (absolute path, e.g. a hero minimap icon): files must not be loaded after the game start
+		public function PreloadPingImage(param1:String) : void
+		{
+			var _loc2_:Sprite = this.GetPingLayer();
+			var _loc3_:Loader = null;
+			if(param1 == null || param1.length == 0)
+			{
+				return;
+			}
+			if(this.pingPreloaded == null)
+			{
+				this.pingPreloaded = [];
+			}
+			_loc3_ = new Loader();
+			_loc3_.mouseEnabled = false;
+			_loc3_.visible = false;
+			_loc3_.load(new URLRequest(param1));
+			_loc2_.addChild(_loc3_);
+			this.pingPreloaded.push(_loc3_);
+		}
+		
+		// hero icon (path) shown above the marker id; called before the first SetPingMarker of that id
+		public function SetPingMarkerHero(param1:int, param2:String) : void
+		{
+			if(this.pingMarkerHeroes == null)
+			{
+				this.pingMarkerHeroes = new Object();
+			}
+			this.pingMarkerHeroes[String(param1)] = param2;
+		}
+		
+		// ping marker: light beam standing on the ground point (gx, gy) + icon (+ text) at its top (nx, ny); all 0..1 of the screen;
+		// alpha <= 0 removes it
+		public function SetPingMarker(param1:int, param2:int, param3:String, param4:uint, param5:Number, param6:Number, param7:Number, param8:Number, param9:Number) : void
+		{
+			var _loc10_:Sprite = this.GetPingLayer();
+			var _loc11_:String = String(param1);
+			var _loc12_:Sprite = this.pingMarkers[_loc11_] as Sprite;
+			var _loc13_:Loader = null;
+			var _loc14_:Loader = null;
+			var _loc15_:ShortcutItem = null;
+			var _loc16_:Number = 0;
+			var _loc17_:Number = 0;
+			var _loc18_:Number = 0;
+			var _loc19_:Number = 0;
+			var _loc20_:Number = 0;
+			var _loc21_:Loader = null;
+			var _loc22_:String = "";
+			var _loc23_:Number = 0;
+			var _loc24_:Number = 0;
+			if(param9 <= 0)
+			{
+				if(_loc12_ != null)
+				{
+					if(_loc12_.parent != null)
+					{
+						_loc12_.parent.removeChild(_loc12_);
+					}
+					delete this.pingMarkers[_loc11_];
+				}
+				if(this.pingMarkerHeroes != null)
+				{
+					delete this.pingMarkerHeroes[_loc11_];
+				}
+				return;
+			}
+			if(_loc12_ == null)
+			{
+				_loc12_ = new Sprite();
+				_loc12_.mouseEnabled = false;
+				_loc12_.mouseChildren = false;
+				_loc13_ = this.LoadPingImage("ping_beam" + param2 + ".dds");
+				_loc12_.addChild(_loc13_);
+				_loc14_ = this.LoadPingImage("ping_icon" + param2 + ".dds");
+				_loc14_.scaleX = 0.75;
+				_loc14_.scaleY = 0.75;
+				_loc12_.addChild(_loc14_);
+				if(this.pingMarkerHeroes != null && this.pingMarkerHeroes[_loc11_] != null)
+				{
+					_loc22_ = String(this.pingMarkerHeroes[_loc11_]);
+				}
+				_loc21_ = new Loader();
+				_loc21_.mouseEnabled = false;
+				if(_loc22_.length > 0)
+				{
+					_loc21_.load(new URLRequest(_loc22_));
+				}
+				else
+				{
+					_loc21_.visible = false;
+				}
+				_loc12_.addChild(_loc21_);
+				if(param3.length > 0)
+				{
+					_loc15_ = this.CreatePingLabel(param3,param4);
+					_loc12_.addChild(_loc15_);
+				}
+				_loc10_.addChild(_loc12_);
+				this.pingMarkers[_loc11_] = _loc12_;
+			}
+			_loc13_ = Loader(_loc12_.getChildAt(0));
+			_loc14_ = Loader(_loc12_.getChildAt(1));
+			_loc21_ = Loader(_loc12_.getChildAt(2));
+			_loc16_ = Math.floor(param7 * this.mainWindow.stage.stageWidth);
+			_loc17_ = Math.floor(param8 * this.mainWindow.stage.stageHeight);
+			_loc18_ = Math.floor(param6 * this.mainWindow.stage.stageHeight);
+			_loc19_ = _loc17_ - _loc18_;
+			_loc12_.x = _loc16_;
+			_loc12_.y = _loc17_;
+			if(_loc19_ > 6)
+			{
+				_loc13_.visible = true;
+				_loc13_.x = -16;
+				_loc13_.y = 0 - _loc19_;
+				_loc13_.scaleY = _loc19_ / 128;
+			}
+			else
+			{
+				_loc13_.visible = false;
+			}
+			_loc20_ = 0 - _loc19_ - 40;
+			_loc14_.x = -24;
+			_loc14_.y = _loc20_;
+			// hero icon above the ping icon, ~28 px whatever the texture size is
+			_loc24_ = _loc20_;
+			if(_loc21_.visible)
+			{
+				_loc23_ = 0;
+				if(_loc21_.scaleX > 0)
+				{
+					_loc23_ = _loc21_.width / _loc21_.scaleX;
+				}
+				if(!(_loc23_ > 1))
+				{
+					_loc23_ = 20;
+				}
+				_loc21_.scaleX = 28 / _loc23_;
+				_loc21_.scaleY = 28 / _loc23_;
+				_loc21_.x = -14;
+				_loc21_.y = _loc20_ - 30;
+				_loc24_ = _loc20_ - 30;
+			}
+			if(_loc12_.numChildren > 3)
+			{
+				_loc15_ = ShortcutItem(_loc12_.getChildAt(3));
+				_loc15_.x = Math.floor(0 - _loc15_.text.x - _loc15_.text.textWidth / 2);
+				_loc15_.y = Math.floor(_loc24_ - 20 - _loc15_.text.y);
+			}
+			_loc12_.alpha = param9;
+		}
+		
+		// the old sharp minimap alert sound of pings (off while the new ping sounds are on)
+		public function SetMinimapAlertSound(param1:Boolean) : void
+		{
+			AttentionEffect.soundEnabled = param1;
+		}
+		
+		// ---------------------------------------------------------------- smart-cast checkboxes on the action bar buttons
+		private static const SMARTCAST_TEX:String = "/UI/Styles/Icons/SmartCast/";
+		
+		// mode of the talent (column = slot, raw = level): 0 no checkbox, 1 off, 2 on
+		public function SetTalentSmartCast(param1:int, param2:int, param3:int) : void
+		{
+			if(this.smartCastModes == null)
+			{
+				this.smartCastModes = new Object();
+			}
+			this.smartCastModes[param1.toString() + " " + param2.toString()] = param3;
+		}
+		
+		private function CreateSmartCastBox() : Sprite
+		{
+			var _loc1_:Sprite = new Sprite();
+			var _loc2_:Loader = null;
+			_loc1_.mouseEnabled = false;
+			_loc1_.mouseChildren = false;
+			_loc2_ = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.SMARTCAST_TEX + "smartcast_off.dds"));
+			_loc2_.scaleX = ActionButton.SMART_BOX_SIZE / 32;
+			_loc2_.scaleY = ActionButton.SMART_BOX_SIZE / 32;
+			_loc1_.addChild(_loc2_);
+			_loc2_ = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.SMARTCAST_TEX + "smartcast_on.dds"));
+			_loc2_.scaleX = ActionButton.SMART_BOX_SIZE / 32;
+			_loc2_.scaleY = ActionButton.SMART_BOX_SIZE / 32;
+			_loc1_.addChild(_loc2_);
+			_loc1_.x = ActionButton.SMART_BOX_X;
+			_loc1_.y = ActionButton.SMART_BOX_Y;
+			return _loc1_;
+		}
+		
+		// puts the checkboxes on the buttons that hold talents now (talents can be dragged between the buttons)
+		public function RefreshSmartCastBoxes() : void
+		{
+			var _loc1_:int = 0;
+			var _loc2_:ActionButton = null;
+			var _loc3_:String = null;
+			var _loc4_:int = 0;
+			var _loc5_:Sprite = null;
+			var _loc6_:TalentShortCut = null;
+			var _loc7_:Talent = null;
+			_loc1_ = 0;
+			while(_loc1_ < 24)
+			{
+				_loc2_ = this.mainWindow.actionBarContainer.actionBar_mc.GetActionBarItem(_loc1_) as ActionButton;
+				if(_loc2_ != null)
+				{
+					_loc3_ = null;
+					_loc4_ = 0;
+					_loc6_ = _loc2_.Shortcut as TalentShortCut;
+					if(_loc6_ != null)
+					{
+						_loc7_ = _loc6_.TalentObj;
+						if(_loc7_ != null)
+						{
+							_loc3_ = _loc7_.column.toString() + " " + _loc7_.raw.toString();
+							if(this.smartCastModes != null && this.smartCastModes[_loc3_] != null)
+							{
+								_loc4_ = int(this.smartCastModes[_loc3_]);
+							}
+						}
+					}
+					_loc5_ = ActionButton.smartBoxes[String(_loc1_)] as Sprite;
+					if(_loc4_ <= 0)
+					{
+						if(_loc5_ != null)
+						{
+							_loc5_.visible = false;
+						}
+					}
+					else
+					{
+						if(_loc5_ == null)
+						{
+							_loc5_ = this.CreateSmartCastBox();
+							_loc2_.addChild(_loc5_);
+							ActionButton.smartBoxes[String(_loc1_)] = _loc5_;
+						}
+						_loc2_.setChildIndex(_loc5_,_loc2_.numChildren - 1);
+						ActionButton.smartKeys[String(_loc1_)] = _loc3_;
+						_loc5_.getChildAt(0).visible = _loc4_ == 1;
+						_loc5_.getChildAt(1).visible = _loc4_ == 2;
+						_loc5_.visible = true;
+					}
+				}
+				_loc1_++;
+			}
+		}
+		
+		// ---------------------------------------------------------------- praise notifications (right edge of the screen)
+		private static const PRAISE_TEX:String = "/UI/Styles/Icons/Praise/";
+		
+		private static const PRAISE_W:Number = 320;
+		
+		private static const PRAISE_H:Number = 100;
+		
+		private static const PRAISE_PORTRAIT:Number = 60;
+		
+		private function CreatePraisePortrait(param1:String, param2:Number) : Loader
+		{
+			var _loc3_:Loader = new Loader();
+			_loc3_.mouseEnabled = false;
+			_loc3_.x = param2;
+			_loc3_.y = 10;
+			if(param1 != null && param1.length > 0)
+			{
+				_loc3_.load(new URLRequest(param1));
+			}
+			else
+			{
+				_loc3_.visible = false;
+			}
+			return _loc3_;
+		}
+		
+		// portrait textures may have any size: fit them into the 60x60 slot
+		private function FitPraisePortrait(param1:Loader) : void
+		{
+			var _loc2_:Number = 0;
+			if(!param1.visible)
+			{
+				return;
+			}
+			if(param1.scaleX > 0)
+			{
+				_loc2_ = param1.width / param1.scaleX;
+			}
+			if(!(_loc2_ > 1))
+			{
+				_loc2_ = 128;
+			}
+			param1.scaleX = MainInterface.PRAISE_PORTRAIT / _loc2_;
+			param1.scaleY = MainInterface.PRAISE_PORTRAIT / _loc2_;
+		}
+		
+		private function PlacePraiseLabel(param1:ShortcutItem, param2:Number, param3:Number) : void
+		{
+			param1.x = Math.floor(param2 - param1.text.x - param1.text.textWidth / 2);
+			param1.y = Math.floor(param3 - param1.text.y);
+		}
+		
+		// children: 0 bg, 1 sender portrait, 2 target portrait, 3 title, 4 prime drop, 5 amount, 6 sender name, 7 target name
+		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int) : void
+		{
+			var _loc9_:Sprite = this.GetPingLayer();
+			var _loc10_:Sprite = null;
+			var _loc11_:Loader = null;
+			var _loc12_:ShortcutItem = null;
+			var _loc13_:ShortcutItem = null;
+			var _loc14_:Number = 0;
+			var _loc15_:Number = 0;
+			if(this.praisePanels == null)
+			{
+				this.praisePanels = new Object();
+			}
+			if(this.praisePanels[String(param1)] != null)
+			{
+				return;
+			}
+			_loc10_ = new Sprite();
+			_loc10_.mouseEnabled = false;
+			_loc10_.mouseChildren = false;
+			_loc11_ = new Loader();
+			_loc11_.mouseEnabled = false;
+			_loc11_.load(new URLRequest(MainInterface.PRAISE_TEX + "praise_bg.dds"));
+			_loc11_.scaleX = 0.625;
+			_loc11_.scaleY = 0.625;
+			_loc10_.addChild(_loc11_);
+			_loc10_.addChild(this.CreatePraisePortrait(param2,12));
+			_loc10_.addChild(this.CreatePraisePortrait(param5,248));
+			_loc12_ = this.CreatePingLabel("ХВАЛИТ",15784080);
+			_loc10_.addChild(_loc12_);
+			this.PlacePraiseLabel(_loc12_,160,14);
+			_loc11_ = new Loader();
+			_loc11_.mouseEnabled = false;
+			_loc11_.load(new URLRequest(MainInterface.PRAISE_TEX + "prime_drop.dds"));
+			_loc11_.scaleX = 0.42;
+			_loc11_.scaleY = 0.42;
+			_loc10_.addChild(_loc11_);
+			_loc13_ = this.CreatePingLabel("+" + String(param8),8382664);
+			_loc10_.addChild(_loc13_);
+			_loc14_ = 27 + 3 + _loc13_.text.textWidth;
+			_loc15_ = Math.floor(160 - _loc14_ / 2);
+			_loc11_.x = _loc15_;
+			_loc11_.y = 34;
+			_loc13_.x = Math.floor(_loc15_ + 30 - _loc13_.text.x);
+			_loc13_.y = Math.floor(39 - _loc13_.text.y);
+			_loc12_ = this.CreatePingLabel(param3,param4);
+			_loc10_.addChild(_loc12_);
+			this.PlacePraiseLabel(_loc12_,42,74);
+			_loc12_ = this.CreatePingLabel(param6,param7);
+			_loc10_.addChild(_loc12_);
+			this.PlacePraiseLabel(_loc12_,278,74);
+			_loc10_.visible = false;
+			_loc9_.addChild(_loc10_);
+			this.praisePanels[String(param1)] = _loc10_;
+		}
+		
+		// slide: 0 = in place, 1 = hidden behind the right edge; row: 0 = top panel; top: part of the stage height; alpha <= 0 removes
+		public function SetPraisePanel(param1:int, param2:Number, param3:Number, param4:Number, param5:Number) : void
+		{
+			var _loc6_:String = String(param1);
+			var _loc7_:Sprite = null;
+			if(this.praisePanels == null)
+			{
+				return;
+			}
+			_loc7_ = this.praisePanels[_loc6_] as Sprite;
+			if(_loc7_ == null)
+			{
+				return;
+			}
+			if(param4 <= 0)
+			{
+				if(_loc7_.parent != null)
+				{
+					_loc7_.parent.removeChild(_loc7_);
+				}
+				delete this.praisePanels[_loc6_];
+				return;
+			}
+			this.FitPraisePortrait(Loader(_loc7_.getChildAt(1)));
+			this.FitPraisePortrait(Loader(_loc7_.getChildAt(2)));
+			_loc7_.x = Math.floor(this.mainWindow.stage.stageWidth - MainInterface.PRAISE_W - 4 + param2 * (MainInterface.PRAISE_W + 12));
+			_loc7_.y = Math.floor(this.mainWindow.stage.stageHeight * param5 + param3 * (MainInterface.PRAISE_H + 6));
+			_loc7_.alpha = param4;
+			_loc7_.visible = true;
+		}
+		
+		public function SetChatCentered(param1:Boolean, param2:Number) : void
+		{
+			this.mainWindow.chatBar.SetCentered(param1,param2);
+		}
+		
 		public function SetChatVisible(value:Boolean):void
 		{
 			mainWindow.chatBar.DisableInput(!value);
