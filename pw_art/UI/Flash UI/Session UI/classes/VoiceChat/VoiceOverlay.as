@@ -1,6 +1,7 @@
 ﻿package VoiceChat
 {
 	import Datas.PlayerStatisticData;
+	import flash.display.DisplayObject;
 	import flash.display.Shape;
 	import flash.display.Sprite;
 	import flash.events.Event;
@@ -16,21 +17,24 @@
 	{
 		public static const COMMAND:String = "VoiceOverlayCmd";
 
-		// Позиция по умолчанию (доля экрана), пока игрок не перетащил оверлей.
-		private static const DEFAULT_X:Number = 0.004;
-		private static const DEFAULT_Y:Number = 0.36;
+		// Пока игрок не перетащил оверлей, он стоит под панелями героев слева и
+		// масштабируется вместе с ними (панели подгоняются под разрешение).
+		private static const SCALE:Number = 1.5;
+		private static const ANCHOR_GAP:Number = 8;
 		private static const DRAG_THRESHOLD:Number = 4;
 		private static const VOLUME_STEP:int = 5;
 
 		private var playersSource:Function;
+		private var anchorsSource:Function;
+		private var anchored:Boolean = true;
 		private var rows:Array = [];
 		private var meRow:VoiceOverlayRow;
 		private var frame:Shape;
 		private var hint:TextField;
 
 		private var interactive:Boolean = false;
-		private var posX:Number = DEFAULT_X;
-		private var posY:Number = DEFAULT_Y;
+		private var posX:Number = 0;
+		private var posY:Number = 0;
 
 		private var pressRow:VoiceOverlayRow = null;
 		private var pressStageX:Number = 0;
@@ -40,9 +44,12 @@
 		private var dragging:Boolean = false;
 
 		// playersSource(): Array of PlayerStatisticData — для портретов героев.
-		public function VoiceOverlay(_playersSource:Function)
+		// anchorsSource(): Array of DisplayObject (панели героев, соседи по родителю) —
+		// оверлей встаёт под ними и берёт их масштаб.
+		public function VoiceOverlay(_playersSource:Function, _anchorsSource:Function)
 		{
 			playersSource = _playersSource;
+			anchorsSource = _anchorsSource;
 			visible = false;
 			mouseEnabled = false;
 			mouseChildren = false;
@@ -83,6 +90,7 @@
 			{
 				posX = x;
 				posY = y;
+				anchored = false;
 			}
 			ApplyPosition();
 		}
@@ -212,10 +220,33 @@
 		{
 			if (stage == null)
 				return;
+
+			// getBounds в движке не реализован — низ панелей считаем по y + height.
+			var uiScale:Number = 0;
+			var left:Number = 4;
+			var bottom:Number = 0;
+			var anchors:Array = anchorsSource != null ? anchorsSource() : null;
+			for each (var anchor:DisplayObject in anchors)
+			{
+				if (anchor == null || !anchor.visible || anchor.parent != parent)
+					continue;
+				if (uiScale == 0)
+				{
+					uiScale = anchor.scaleY;
+					left = anchor.x;
+				}
+				bottom = Math.max(bottom, anchor.y + anchor.height);
+			}
+			if (uiScale <= 0)
+				uiScale = 1;
+			scaleX = scaleY = SCALE * uiScale;
+
+			var targetX:Number = anchored ? left + 4 : posX * stage.stageWidth;
+			var targetY:Number = anchored ? bottom + ANCHOR_GAP * uiScale : posY * stage.stageHeight;
 			var maxX:Number = Math.max(0, stage.stageWidth - width);
 			var maxY:Number = Math.max(0, stage.stageHeight - height);
-			x = Math.round(Math.min(maxX, Math.max(0, posX * stage.stageWidth)));
-			y = Math.round(Math.min(maxY, Math.max(0, posY * stage.stageHeight)));
+			x = Math.round(Math.min(maxX, Math.max(0, targetX)));
+			y = Math.round(Math.min(maxY, Math.max(0, targetY)));
 		}
 
 		private function OnStageResize(e:Event):void
@@ -278,6 +309,7 @@
 			{
 				if (stage != null && stage.stageWidth > 0 && stage.stageHeight > 0)
 				{
+					anchored = false;
 					posX = x / stage.stageWidth;
 					posY = y / stage.stageHeight;
 					FSCommands.Send(COMMAND, "pos " + posX.toFixed(4) + " " + posY.toFixed(4));
