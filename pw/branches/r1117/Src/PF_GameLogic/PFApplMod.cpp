@@ -19,6 +19,8 @@
 #include "PFTargetSelector.h"
 #include "PFWorld.h"
 #include "libdb/ClonedPtr.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
 
 namespace NWorld
 {
@@ -170,24 +172,33 @@ bool PFApplStatMod::GetStatModConstant(float& value) const
   return false;
 }
 
+/** Apply checked authored coefficients to the base value only after complete finite arithmetic. */
 bool PFApplPermanentStatMod::Start()
 {
-  if (PFBaseApplicator::Start())
-    return true;
+	if (PFBaseApplicator::Start() || !IsValid(pReceiver))
+		return true;
 
-  if (!IsValid(pReceiver))
-    return true;
+	const auto mul = LinuxBootstrap::EvaluateApplicatorNumericFormula(GetDB().modifier.multValue.sString.c_str(), *this);
+	if (!mul.Succeeded())
+		return true;
+	const auto add = LinuxBootstrap::EvaluateApplicatorNumericFormula(GetDB().modifier.addValue.sString.c_str(), *this);
+	if (!add.Succeeded())
+		return true;
 
-  string const& name = GetDB().modifier.variable;
-  ValueWithModifiers* stat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
-  if (stat)
-  {
-    const float mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
-    const float add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
-    stat->SetBaseValue(mul * stat->GetBaseValue() + add);
-  }
+	string const& name = GetDB().modifier.variable;
+	ValueWithModifiers* stat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
+	if (!stat)
+		return true;
 
-  return true;
+	// Preserve Windows float arithmetic and base-only mutation, never the core.
+	const float base = stat->GetBaseValue();
+	const float product = mul.value * base;
+	if (!std::isfinite(base) || !std::isfinite(product))
+		return true;
+	const float result = product + add.value;
+	if (std::isfinite(result))
+		stat->SetBaseValue(result);
+	return true;
 }
 
 void PFApplPermanentStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
