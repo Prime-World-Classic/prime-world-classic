@@ -33,79 +33,183 @@ int LinuxModifierProvider(CPtr<PFBaseUnit> const& unit)
 {
   return IsValid(unit) ? unit->GetObjectId() : 0;
 }
+
+/** Publish neither coefficient unless both authored formulas succeed. */
+bool LinuxStatModParameters(const NDb::Modifier& db, const PFBaseApplicator& app, float& mul, float& add)
+{
+	const auto nextMul = LinuxBootstrap::EvaluateApplicatorNumericFormula(db.multValue.sString.c_str(), app);
+	if (!nextMul.Succeeded())
+		return false;
+	const auto nextAdd = LinuxBootstrap::EvaluateApplicatorNumericFormula(db.addValue.sString.c_str(), app);
+	if (!nextAdd.Succeeded())
+		return false;
+	mul = nextMul.value;
+	add = nextAdd.value;
+	return true;
+}
+
+/** Preserve the engine's core/cheat semantics while staging a modifier off-target. */
+StatValueWithModifiers LinuxStatModCopy(const ValueWithModifiers& stat)
+{
+	if (const auto* typed = dynamic_cast<const StatValueWithModifiers*>(&stat))
+		return *typed;
+	StatValueWithModifiers copy;
+	static_cast<ValueWithModifiers&>(copy) = stat;
+	return copy;
+}
+
+/** Check CalculateValue's float intermediates before its clamp can mask overflow.
+ * This is only a stat-applicator admission check; the existing engine still owns
+ * modifier storage, ordering, constraints, and the actual resulting value.
+ */
+bool LinuxStatModFinite(const StatValueWithModifiers& candidate)
+{
+	const float base = candidate.GetUnmodifiedValue();
+	if (!std::isfinite(base))
+		return false;
+	float mul = 1, add = 0, topMul = 1, topAdd = 0;
+	for (const auto& modifier : candidate.GetModifiers())
+	{
+		if (!modifier.active)
+			continue;
+		if (!std::isfinite(modifier.mulValue) || !std::isfinite(modifier.addValue))
+			return false;
+		if (modifier.constraint == NDb::STATCONSTRAINT_LOWERLIMIT || modifier.constraint == NDb::STATCONSTRAINT_UPPERLIMIT)
+		{
+			const float product = base * modifier.mulValue;
+			if (!std::isfinite(product) || !std::isfinite(product + modifier.addValue))
+				return false;
+		}
+		else
+		{
+			float& multiplier = modifier.top ? topMul : mul;
+			float& addition = modifier.top ? topAdd : add;
+			multiplier *= modifier.mulValue;
+			addition += modifier.addValue;
+			if (!std::isfinite(multiplier) || !std::isfinite(addition))
+				return false;
+		}
+	}
+	const float product = base * mul;
+	const float sum = product + add;
+	const float topProduct = sum * topMul;
+	return std::isfinite(product) && std::isfinite(sum) && std::isfinite(topProduct) && std::isfinite(topProduct + topAdd);
+}
+
+/** Validate the exact insertion/update ordering without consuming a live modifier ID. */
+bool LinuxStatModCanApply(const ValueWithModifiers& stat, int id, float mul, float add,
+	bool top, NDb::EStatConstraint constraint)
+{
+	StatValueWithModifiers candidate = LinuxStatModCopy(stat);
+	if (id == INVALID_MODIFIER_ID)
+		candidate.AddModifier(mul, add, 0, top, constraint);
+	else
+	{
+		if (!candidate.Retrieve(id))
+			return false;
+		candidate.UpdateModifier(id, mul, add);
+	}
+	return LinuxStatModFinite(candidate);
+}
 }
 
 bool PFApplStatMod::Start()
 {
-  if (!IsValid(pReceiver))
-    return true;
+	if (!IsValid(pReceiver))
+		return true;
 
-  string const& name = GetDB().modifier.variable;
-  pStat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
-  if (!pStat)
-    return true;
+	string const& name = GetDB().modifier.variable;
+	pStat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
+	if (!pStat)
+		return true;
 
-  if (GetDB().dontUpdate)
-  {
-    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
-    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
-    if (!GetStatModName().empty())
-      statModConstant = GetConstant(GetStatModName().c_str(), pOwner, pReceiver);
-  }
+	if (GetDB().dontUpdate)
+	{
+		float nextMul, nextAdd, nextConstant = 0;
+		bool valid = LinuxStatModParameters(GetDB().modifier, *this, nextMul, nextAdd);
+		if (valid && !GetStatModName().empty())
+		{
+			const NDb::UnitConstant* constant = GetConstant(GetStatModName().c_str());
+			if (!constant)
+				valid = false;
+			else
+			{
+				const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(constant->var.sString.c_str(), *this);
+				valid = result.Succeeded();
+				nextConstant = result.value;
+			}
+		}
+		if (!valid)
+		{
+			// A rejected static start must not expose constructor defaults as a preview.
+			pStat = 0;
+			// Activation still calls Stop: balance ownership without entering buff Enable.
+			PFBaseApplicator::Start();
+			SetEnabled(false);
+			return true;
+		}
+		mul = nextMul;
+		add = nextAdd;
+		statModConstant = nextConstant;
+	}
 
-  return PFApplBuff::Start();
+	return PFApplBuff::Start();
 }
 
 void PFApplStatMod::Enable()
 {
-  PFApplBuff::Enable();
-  if (!pStat)
-    return;
+	if (!pStat || modifierID != INVALID_MODIFIER_ID)
+		return;
 
-  if (!GetDB().dontUpdate)
-  {
-    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
-    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
-  }
+	float nextMul = mul, nextAdd = add;
+	if (!GetDB().dontUpdate && !LinuxStatModParameters(GetDB().modifier, *this, nextMul, nextAdd))
+		return;
+	if (!LinuxStatModCanApply(*pStat, INVALID_MODIFIER_ID, nextMul, nextAdd,
+		GetDB().modifier.topModifier, GetDB().constraint))
+		return;
 
-  modifierID = pStat->AddModifier(
-    mul,
-    add,
-    LinuxModifierProvider(GetAbilityOwner()),
-    GetDB().modifier.topModifier,
-    GetDB().constraint);
+	mul = nextMul;
+	add = nextAdd;
+	modifierID = pStat->AddModifier(mul, add, LinuxModifierProvider(GetAbilityOwner()),
+		GetDB().modifier.topModifier, GetDB().constraint);
+	PFApplBuff::Enable();
 }
 
 void PFApplStatMod::Disable()
 {
-  if (pStat && modifierID != INVALID_MODIFIER_ID)
-    pStat->RemoveModifier(modifierID);
-  modifierID = INVALID_MODIFIER_ID;
-  PFApplBuff::Disable();
+	if (pStat && modifierID != INVALID_MODIFIER_ID)
+		pStat->RemoveModifier(modifierID);
+	modifierID = INVALID_MODIFIER_ID;
+	PFApplBuff::Disable();
 }
 
 bool PFApplStatMod::Step(float dtInSeconds)
 {
-  if (PFApplBuff::Step(dtInSeconds))
-    return true;
+	if (PFApplBuff::Step(dtInSeconds))
+		return true;
+	if (!pStat || !IsEnabled() || GetDB().dontUpdate)
+		return false;
+	if (modifierID == INVALID_MODIFIER_ID)
+	{
+		// An enabled dynamic buff may recover after its initial formula failed.
+		Enable();
+		return false;
+	}
 
-  if (!pStat || !IsEnabled() || modifierID == INVALID_MODIFIER_ID || GetDB().dontUpdate)
-    return false;
-
-  const ValueWithModifiers::Modifier* oldModifier = pStat->Retrieve(modifierID);
-  const float oldMul = oldModifier ? oldModifier->mulValue : 0.0f;
-  const float oldAdd = oldModifier ? oldModifier->addValue : 0.0f;
-  const float newMul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
-  const float newAdd = RetrieveParam(GetDB().modifier.addValue, 0.0f);
-
-  pStat->UpdateModifier(modifierID, newMul, newAdd);
-  if (oldMul != newMul || oldAdd != newAdd)
-  {
-    SetChanged(true);
-    if (IsValid(pParent))
-      pParent->SetChanged(true);
-  }
-  return false;
+	float nextMul, nextAdd;
+	if (!LinuxStatModParameters(GetDB().modifier, *this, nextMul, nextAdd) ||
+		!LinuxStatModCanApply(*pStat, modifierID, nextMul, nextAdd, GetDB().modifier.topModifier, GetDB().constraint))
+		return false;
+	const ValueWithModifiers::Modifier* oldModifier = pStat->Retrieve(modifierID);
+	const bool changed = oldModifier->mulValue != nextMul || oldModifier->addValue != nextAdd;
+	pStat->UpdateModifier(modifierID, nextMul, nextAdd);
+	if (changed)
+	{
+		SetChanged(true);
+		if (IsValid(pParent))
+			pParent->SetChanged(true);
+	}
+	return false;
 }
 
 void PFApplStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
@@ -130,46 +234,55 @@ float PFApplStatMod::GetVariable(const char* sVariableName) const
 
 float PFApplStatMod::GetAbsModification()
 {
-  if (!pStat)
-    return 0.0f;
+	if (!pStat)
+		return 0.0f;
+	float nextMul = mul, nextAdd = add;
+	if (!GetDB().dontUpdate && !LinuxStatModParameters(GetDB().modifier, *this, nextMul, nextAdd))
+		return 0.0f;
 
-  if (!GetDB().dontUpdate)
-  {
-    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
-    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
-  }
+	// Preview on a copy so failure cannot remove the live modifier or consume IDs.
+	StatValueWithModifiers candidate = LinuxStatModCopy(*pStat);
+	const bool wasApplied = modifierID != INVALID_MODIFIER_ID;
+	if (wasApplied)
+	{
+		if (!candidate.Retrieve(modifierID))
+			return 0.0f;
+		candidate.RemoveModifier(modifierID);
+	}
+	if (!LinuxStatModFinite(candidate))
+		return 0.0f;
+	const float valueBefore = candidate.GetValue();
+	candidate.AddModifier(nextMul, nextAdd, LinuxModifierProvider(GetAbilityOwner()),
+		GetDB().modifier.topModifier, GetDB().constraint);
+	if (!LinuxStatModFinite(candidate))
+		return 0.0f;
+	const float difference = candidate.GetValue() - valueBefore;
+	if (!std::isfinite(difference))
+		return 0.0f;
 
-  const bool wasApplied = modifierID != INVALID_MODIFIER_ID;
-  if (wasApplied)
-    pStat->RemoveModifier(modifierID);
-
-  const float valueBefore = pStat->GetValue();
-  const int tempModifierID = pStat->AddModifier(
-    mul,
-    add,
-    LinuxModifierProvider(GetAbilityOwner()),
-    GetDB().modifier.topModifier,
-    GetDB().constraint);
-  const float valueAfter = pStat->GetValue();
-
-  if (wasApplied)
-    modifierID = tempModifierID;
-  else
-    pStat->RemoveModifier(tempModifierID);
-
-  return fabs(valueAfter - valueBefore);
+	mul = nextMul;
+	add = nextAdd;
+	if (wasApplied)
+	{
+		// Preserve Windows' dynamic preview refresh, but only after full validation.
+		pStat->RemoveModifier(modifierID);
+		modifierID = pStat->AddModifier(mul, add, LinuxModifierProvider(GetAbilityOwner()),
+			GetDB().modifier.topModifier, GetDB().constraint);
+	}
+	return fabs(difference);
 }
 
 string const& PFApplStatMod::GetStatModName() const { return GetDB().statModName; }
 
 bool PFApplStatMod::GetStatModConstant(float& value) const
 {
-  if (GetDB().dontUpdate && !GetStatModName().empty())
-  {
-    value = statModConstant;
-    return true;
-  }
-  return false;
+	// Failed static starts clear pStat and must not publish an uninitialized cache.
+	if (pStat && GetDB().dontUpdate && !GetStatModName().empty())
+	{
+		value = statModConstant;
+		return true;
+	}
+	return false;
 }
 
 /** Apply checked authored coefficients to the base value only after complete finite arithmetic. */
