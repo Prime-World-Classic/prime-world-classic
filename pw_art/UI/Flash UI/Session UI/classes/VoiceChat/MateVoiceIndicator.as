@@ -51,11 +51,12 @@
 		// Движок не рисует graphics самого Sprite (видны только дети) — фон и значок
 		// кнопки рисуются в дочерний Shape.
 		private var buttonShape:Shape;
-		// Значок кнопки и значок в углу рисуются только заливками в координатах 200x200 и
-		// уменьшаются масштабом слоя: движок не рисует контуры (lineTo/curveTo с lineStyle)
-		// и теряет мелкие скругления (видно в бою — пустая кнопка).
-		private var buttonIcon:Shape;
-		private var badgeIcon:Shape;
+		// Значки рисуются только примитивами, которые движок точно показывает (drawRect,
+		// drawRoundRect, drawCircle — как штатный интерфейс): ни контуров lineTo/curveTo, ни
+		// заливок-многоугольников он не рисует. Координаты 200x200, слой масштабируется;
+		// наклонные полосы — отдельные повёрнутые Shape (graphics самого Sprite не рисуется).
+		private var buttonIcon:Sprite;
+		private var badgeIcon:Sprite;
 		private var buttonText:TextField;
 
 		private var speaking:Boolean = false;
@@ -84,7 +85,7 @@
 			badge = new Shape();
 			badge.visible = false;
 			mate.addChild(badge);
-			badgeIcon = new Shape();
+			badgeIcon = CreateIcon();
 			badgeIcon.visible = false;
 			mate.addChild(badgeIcon);
 
@@ -94,7 +95,7 @@
 			button.mouseChildren = false;
 			buttonShape = new Shape();
 			button.addChild(buttonShape);
-			buttonIcon = new Shape();
+			buttonIcon = CreateIcon();
 			button.addChild(buttonIcon);
 			buttonText = CreateText(TEXT_SIZE, 0xFFFFFF, 80);
 			button.addChild(buttonText);
@@ -270,13 +271,9 @@
 		private function DrawRing():void
 		{
 			var thickness:Number = Math.max(2, frameSize * 0.05);
-			var cx:Number = frameX + frameSize / 2;
-			var cy:Number = frameY + frameSize / 2;
-			var outer:Number = frameSize / 2 + thickness + 1;
 			ring.graphics.clear();
-			ring.graphics.beginFill(SPEAKING_COLOR, 1);
-			Annulus(ring.graphics, cx, cy, outer, outer - thickness, 0, 360, 48);
-			ring.graphics.endFill();
+			ring.graphics.lineStyle(thickness, SPEAKING_COLOR, 1);
+			ring.graphics.drawCircle(frameX + frameSize / 2, frameY + frameSize / 2, frameSize / 2 + thickness / 2 + 1);
 		}
 
 		private function DrawButton():void
@@ -288,7 +285,7 @@
 
 			Measure();
 
-			var height:Number = Math.max(14, Math.round(frameSize * 0.24));
+			var height:Number = Math.max(18, Math.round(frameSize * 0.28));
 			var iconSize:Number = height - 4;
 			var iconWidth:Number = iconSize + 2;
 			var label:String = isMe ? "" : volume + "%";
@@ -303,16 +300,14 @@
 			g.beginFill(0xFFFFFF, 0.25);
 			g.drawRoundRect(-1, -1, width + 2, height + 2, 9, 9);
 			g.endFill();
-			g.beginFill(BUTTON_COLOR, 0.92);
+			g.beginFill(BUTTON_COLOR, 1);
 			g.drawRoundRect(0, 0, width, height, 8, 8);
 			g.endFill();
 
-			var ig:* = buttonIcon.graphics;
-			ig.clear();
 			if (isMe)
-				DrawMic(ig, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
+				DrawMic(buttonIcon, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
 			else
-				DrawSpeaker(ig, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
+				DrawSpeaker(buttonIcon, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
 			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_BOX;
 			buttonIcon.x = label.length > 0 ? 4 : (width - iconSize) / 2;
 			buttonIcon.y = (height - iconSize) / 2;
@@ -347,8 +342,6 @@
 
 			badge.visible = kind != 0;
 			badgeIcon.visible = kind != 0;
-			var ig:* = badgeIcon.graphics;
-			ig.clear();
 			if (kind == 0)
 				return;
 
@@ -357,19 +350,19 @@
 			g.beginFill(0xFFFFFF, 0.3);
 			g.drawCircle(0, 0, r + 8);
 			g.endFill();
-			g.beginFill(BUTTON_COLOR, 0.92);
+			g.beginFill(BUTTON_COLOR, 1);
 			g.drawCircle(0, 0, r);
 			g.endFill();
 
 			if (kind == 1)
-				DrawHeadset(ig, OFF_COLOR);
+				DrawHeadset(badgeIcon, OFF_COLOR);
 			else if (kind == 2)
-				DrawSpeaker(ig, MUTED_COLOR, true);
+				DrawSpeaker(badgeIcon, MUTED_COLOR, true);
 			else
-				DrawMic(ig, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
+				DrawMic(badgeIcon, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
 
 			// радиус значка на экране: не меньше 9, растёт с портретом
-			var radius:Number = Math.max(9, frameSize * 0.15);
+			var radius:Number = Math.max(11, frameSize * 0.17);
 			badge.scaleX = badge.scaleY = radius / BADGE_BASE;
 			badge.x = Math.round(frameX + frameSize - radius * 0.8);
 			badge.y = Math.round(frameY + radius * 0.8);
@@ -381,14 +374,22 @@
 		}
 
 		// Перечёркнутая гарнитура — «нет в войсе».
-		private static function DrawHeadset(g:*, color:uint):void
+		private static function DrawHeadset(icon:Sprite, color:uint):void
 		{
+			var g:* = ClearIcon(icon);
+			// дуга оголовья: кольцо, нижняя половина закрыта фоном
 			g.beginFill(color, 1);
-			Annulus(g, 100, 112, 82, 64, 180, 360, 18);
-			g.drawRoundRect(14, 104, 36, 66, 14, 14);
-			g.drawRoundRect(150, 104, 36, 66, 14, 14);
+			g.drawCircle(100, 112, 84);
 			g.endFill();
-			Slash(g, MUTED_COLOR);
+			g.beginFill(BUTTON_COLOR, 1);
+			g.drawCircle(100, 112, 64);
+			g.drawRect(0, 112, 200, 90);
+			g.endFill();
+			g.beginFill(color, 1);
+			g.drawRoundRect(12, 100, 40, 72, 16, 16);
+			g.drawRoundRect(148, 100, 40, 72, 16, 16);
+			g.endFill();
+			SetSlash(icon, 1, 100, 100, -45, 230, 22, MUTED_COLOR, true);
 		}
 
 		private function OnButtonDown(e:MouseEvent):void
@@ -419,86 +420,86 @@
 
 		// Микрофон по образцу: капсула, держатель-полукольцо, ножка; выключен — диагональ
 		// с зазором цвета фона.
-		private static function DrawMic(g:*, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
+		private static function DrawMic(icon:Sprite, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
 		{
+			var g:* = ClearIcon(icon);
+			// держатель: кольцо, верхняя половина закрыта фоном
 			g.beginFill(color, 1);
-			Annulus(g, 100, 96, 80, 62, 0, 180, 18);
-			g.drawRoundRect(70, 4, 60, 118, 60, 60);
-			g.drawRect(91, 172, 18, 26);
+			g.drawCircle(100, 96, 80);
+			g.endFill();
+			g.beginFill(BUTTON_COLOR, 1);
+			g.drawCircle(100, 96, 60);
+			g.drawRect(0, 0, 200, 96);
+			g.endFill();
+			g.beginFill(color, 1);
+			g.drawRoundRect(70, 4, 60, 120, 60, 60);
+			g.drawRect(90, 172, 20, 26);
 			g.endFill();
 			if (crossed)
-				Slash(g, slashColor);
+				SetSlash(icon, 1, 100, 100, -45, 240, 22, slashColor, true);
 		}
 
-		private static function DrawSpeaker(g:*, color:uint, crossed:Boolean):void
+		private static function DrawSpeaker(icon:Sprite, color:uint, crossed:Boolean):void
 		{
+			var g:* = ClearIcon(icon);
+			// корпус и раструб ступенькой (многоугольники движок не рисует)
 			g.beginFill(color, 1);
-			g.moveTo(18, 70);
-			g.lineTo(62, 70);
-			g.lineTo(116, 24);
-			g.lineTo(116, 176);
-			g.lineTo(62, 130);
-			g.lineTo(18, 130);
-			g.lineTo(18, 70);
+			g.drawRoundRect(16, 70, 44, 60, 10, 10);
+			g.drawRoundRect(56, 46, 24, 108, 8, 8);
+			g.drawRoundRect(76, 22, 30, 156, 10, 10);
 			g.endFill();
 			if (crossed)
 			{
-				g.beginFill(color, 1);
-				ThickLine(g, 136, 72, 188, 128, 18);
-				ThickLine(g, 136, 128, 188, 72, 18);
+				SetSlash(icon, 1, 160, 100, 45, 78, 20, color, false);
+				SetSlash(icon, 2, 160, 100, -45, 78, 20, color, false);
+			}
+		}
+
+		// Контейнер значка: основа (0) и две наклонные полосы (1, 2).
+		private static function CreateIcon():Sprite
+		{
+			var icon:Sprite = new Sprite();
+			icon.mouseEnabled = false;
+			icon.mouseChildren = false;
+			for (var i:int = 0; i < 3; i++)
+				icon.addChild(new Shape());
+			return icon;
+		}
+
+		private static function ClearIcon(icon:Sprite):*
+		{
+			for (var i:int = 0; i < icon.numChildren; i++)
+			{
+				var child:Shape = icon.getChildAt(i) as Shape;
+				child.graphics.clear();
+				child.rotation = 0;
+				child.x = child.y = 0;
+			}
+			return Shape(icon.getChildAt(0)).graphics;
+		}
+
+		// Наклонная полоса длиной len и толщиной t с центром (cx, cy); gap — зазор цвета фона.
+		private static function SetSlash(icon:Sprite, index:int, cx:Number, cy:Number, angle:Number, len:Number, t:Number, color:uint, gap:Boolean):void
+		{
+			var bar:Shape = icon.getChildAt(index) as Shape;
+			var g:* = bar.graphics;
+			g.clear();
+			if (gap)
+			{
+				g.beginFill(BUTTON_COLOR, 1);
+				g.drawRect(-len / 2 - 4, -t / 2 - 10, len + 8, t + 20);
 				g.endFill();
 			}
-		}
-
-		// Диагональ «выключено» с зазором цвета фона вокруг.
-		private static function Slash(g:*, color:uint):void
-		{
-			g.beginFill(BUTTON_COLOR, 1);
-			ThickLine(g, 20, 186, 186, 20, 40);
-			g.endFill();
 			g.beginFill(color, 1);
-			ThickLine(g, 20, 186, 186, 20, 20);
+			g.drawRect(-len / 2, -t / 2, len, t);
 			g.endFill();
+			bar.x = cx;
+			bar.y = cy;
+			bar.rotation = angle;
 		}
 
-		// Полоса толщиной t от (x1,y1) до (x2,y2) — четырёхугольник (заливка, без контура).
-		private static function ThickLine(g:*, x1:Number, y1:Number, x2:Number, y2:Number, t:Number):void
-		{
-			var dx:Number = x2 - x1;
-			var dy:Number = y2 - y1;
-			var len:Number = Math.sqrt(dx * dx + dy * dy);
-			if (len <= 0)
-				return;
-			var nx:Number = -dy / len * t / 2;
-			var ny:Number = dx / len * t / 2;
-			g.moveTo(x1 + nx, y1 + ny);
-			g.lineTo(x2 + nx, y2 + ny);
-			g.lineTo(x2 - nx, y2 - ny);
-			g.lineTo(x1 - nx, y1 - ny);
-			g.lineTo(x1 + nx, y1 + ny);
-		}
 
-		// Сектор кольца от угла a0 до a1 (градусы, 0 — вправо, 90 — вниз) ломаной из n отрезков.
-		private static function Annulus(g:*, cx:Number, cy:Number, outer:Number, inner:Number, a0:Number, a1:Number, n:int):void
-		{
-			var i:int;
-			var a:Number;
-			for (i = 0; i <= n; i++)
-			{
-				a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
-				if (i == 0)
-					g.moveTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
-				else
-					g.lineTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
-			}
-			for (i = n; i >= 0; i--)
-			{
-				a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
-				g.lineTo(cx + inner * Math.cos(a), cy + inner * Math.sin(a));
-			}
-			a = a0 * Math.PI / 180;
-			g.lineTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
-		}
+
 
 		private static function CreateText(size:int, color:uint, fieldWidth:Number):TextField
 		{
