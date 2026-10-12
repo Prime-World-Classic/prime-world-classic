@@ -44,12 +44,18 @@
 
 		private var ring:Shape;
 		private var badge:Shape;
-		// Значок рисуется под радиус BADGE_BASE и масштабируется под портрет.
-		private static const BADGE_BASE:Number = 9;
+		// Значок в углу: круг радиусом BADGE_BASE (в своих единицах), масштабируется под портрет.
+		private static const BADGE_BASE:Number = 100;
+		private static const ICON_BOX:Number = 200;
 		private var button:Sprite;
 		// Движок не рисует graphics самого Sprite (видны только дети) — фон и значок
 		// кнопки рисуются в дочерний Shape.
 		private var buttonShape:Shape;
+		// Значок кнопки и значок в углу рисуются только заливками в координатах 200x200 и
+		// уменьшаются масштабом слоя: движок не рисует контуры (lineTo/curveTo с lineStyle)
+		// и теряет мелкие скругления (видно в бою — пустая кнопка).
+		private var buttonIcon:Shape;
+		private var badgeIcon:Shape;
 		private var buttonText:TextField;
 
 		private var speaking:Boolean = false;
@@ -78,6 +84,9 @@
 			badge = new Shape();
 			badge.visible = false;
 			mate.addChild(badge);
+			badgeIcon = new Shape();
+			badgeIcon.visible = false;
+			mate.addChild(badgeIcon);
 
 			button = new Sprite();
 			button.visible = false;
@@ -85,6 +94,8 @@
 			button.mouseChildren = false;
 			buttonShape = new Shape();
 			button.addChild(buttonShape);
+			buttonIcon = new Shape();
+			button.addChild(buttonIcon);
 			buttonText = CreateText(TEXT_SIZE, 0xFFFFFF, 80);
 			button.addChild(buttonText);
 			mate.addChild(button);
@@ -112,6 +123,8 @@
 				ring.parent.removeChild(ring);
 			if (badge.parent != null)
 				badge.parent.removeChild(badge);
+			if (badgeIcon.parent != null)
+				badgeIcon.parent.removeChild(badgeIcon);
 			if (button.parent != null)
 				button.parent.removeChild(button);
 		}
@@ -257,12 +270,13 @@
 		private function DrawRing():void
 		{
 			var thickness:Number = Math.max(2, frameSize * 0.05);
-			var size:Number = frameSize + thickness + 2;
-			var left:Number = frameX + (frameSize - size) / 2;
-			var top:Number = frameY + (frameSize - size) / 2;
+			var cx:Number = frameX + frameSize / 2;
+			var cy:Number = frameY + frameSize / 2;
+			var outer:Number = frameSize / 2 + thickness + 1;
 			ring.graphics.clear();
-			ring.graphics.lineStyle(thickness, SPEAKING_COLOR, 1);
-			ring.graphics.drawRoundRect(left, top, size, size, size, size);
+			ring.graphics.beginFill(SPEAKING_COLOR, 1);
+			Annulus(ring.graphics, cx, cy, outer, outer - thickness, 0, 360, 48);
+			ring.graphics.endFill();
 		}
 
 		private function DrawButton():void
@@ -275,7 +289,8 @@
 			Measure();
 
 			var height:Number = Math.max(14, Math.round(frameSize * 0.24));
-			var iconWidth:Number = 14;
+			var iconSize:Number = height - 4;
+			var iconWidth:Number = iconSize + 2;
 			var label:String = isMe ? "" : volume + "%";
 			var textWidth:Number = label.length > 0 ? EstimateTextWidth(label, TEXT_SIZE) + 4 : 0;
 			var width:Number = Math.max(height + 6, 6 + iconWidth + textWidth + 4);
@@ -285,18 +300,22 @@
 
 			var g:* = buttonShape.graphics;
 			g.clear();
-			g.lineStyle(1, 0xFFFFFF, 0.25);
-			g.beginFill(BUTTON_COLOR, 0.88);
+			g.beginFill(0xFFFFFF, 0.25);
+			g.drawRoundRect(-1, -1, width + 2, height + 2, 9, 9);
+			g.endFill();
+			g.beginFill(BUTTON_COLOR, 0.92);
 			g.drawRoundRect(0, 0, width, height, 8, 8);
 			g.endFill();
-			g.lineStyle(0, 0, 0);
 
-			var cy:Number = height / 2;
-			var iconX:Number = label.length > 0 ? 5 : (width - 11) / 2;
+			var ig:* = buttonIcon.graphics;
+			ig.clear();
 			if (isMe)
-				DrawMic(g, iconX, cy, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
+				DrawMic(ig, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
 			else
-				DrawSpeaker(g, iconX, cy, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
+				DrawSpeaker(ig, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
+			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_BOX;
+			buttonIcon.x = label.length > 0 ? 4 : (width - iconSize) / 2;
+			buttonIcon.y = (height - iconSize) / 2;
 
 			buttonText.visible = label.length > 0;
 			buttonText.text = label;
@@ -327,46 +346,49 @@
 				kind = 4;
 
 			badge.visible = kind != 0;
+			badgeIcon.visible = kind != 0;
+			var ig:* = badgeIcon.graphics;
+			ig.clear();
 			if (kind == 0)
 				return;
 
 			Measure();
 			var r:Number = BADGE_BASE;
-			g.lineStyle(1, 0xFFFFFF, 0.3);
-			g.beginFill(BUTTON_COLOR, 0.9);
-			g.drawRoundRect(-r, -r, r * 2, r * 2, r * 2, r * 2);
+			g.beginFill(0xFFFFFF, 0.3);
+			g.drawCircle(0, 0, r + 8);
 			g.endFill();
-			g.lineStyle(0, 0, 0);
+			g.beginFill(BUTTON_COLOR, 0.92);
+			g.drawCircle(0, 0, r);
+			g.endFill();
 
 			if (kind == 1)
-				DrawHeadset(g, -6, 1, OFF_COLOR);
+				DrawHeadset(ig, OFF_COLOR);
 			else if (kind == 2)
-				DrawSpeaker(g, -6.5, 0, MUTED_COLOR, true);
+				DrawSpeaker(ig, MUTED_COLOR, true);
 			else
-				DrawMic(g, -5.5, 0, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
+				DrawMic(ig, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
 
-			var size:Number = Math.max(BADGE_BASE, frameSize * 0.15);
-			badge.scaleX = badge.scaleY = size / BADGE_BASE;
-			badge.x = Math.round(frameX + frameSize - size * 0.8);
-			badge.y = Math.round(frameY + size * 0.8);
+			// радиус значка на экране: не меньше 9, растёт с портретом
+			var radius:Number = Math.max(9, frameSize * 0.15);
+			badge.scaleX = badge.scaleY = radius / BADGE_BASE;
+			badge.x = Math.round(frameX + frameSize - radius * 0.8);
+			badge.y = Math.round(frameY + radius * 0.8);
+			// значок занимает ~1.3 радиуса круга, центр совпадает
+			var iconSize:Number = radius * 1.3;
+			badgeIcon.scaleX = badgeIcon.scaleY = iconSize / ICON_BOX;
+			badgeIcon.x = badge.x - iconSize / 2;
+			badgeIcon.y = badge.y - iconSize / 2;
 		}
 
 		// Перечёркнутая гарнитура — «нет в войсе».
-		private static function DrawHeadset(g:*, x:Number, cy:Number, color:uint):void
+		private static function DrawHeadset(g:*, color:uint):void
 		{
-			g.lineStyle(1.6, color, 1);
-			g.moveTo(x + 1, cy + 2);
-			g.curveTo(x + 1, cy - 6, x + 6, cy - 6);
-			g.curveTo(x + 11, cy - 6, x + 11, cy + 2);
-			g.lineStyle(0, 0, 0);
-			g.beginFill(color);
-			g.drawRoundRect(x, cy, 3, 5, 2, 2);
-			g.drawRoundRect(x + 9, cy, 3, 5, 2, 2);
+			g.beginFill(color, 1);
+			Annulus(g, 100, 112, 82, 64, 180, 360, 18);
+			g.drawRoundRect(14, 104, 36, 66, 14, 14);
+			g.drawRoundRect(150, 104, 36, 66, 14, 14);
 			g.endFill();
-			g.lineStyle(2, color, 1);
-			g.moveTo(x - 1, cy + 6);
-			g.lineTo(x + 13, cy - 7);
-			g.lineStyle(0, 0, 0);
+			Slash(g, MUTED_COLOR);
 		}
 
 		private function OnButtonDown(e:MouseEvent):void
@@ -395,61 +417,87 @@
 			FSCommands.Send(VoiceTeamOverlay.COMMAND, "vol " + peerId + " " + (e.delta > 0 ? 5 : -5));
 		}
 
-		// Микрофон в рамке 11x13 (x — левый край, cy — центр) по образцу 200x200:
-		// капсула 50x105, держатель — полукруг радиусом 70, ножка 30; выключен — диагональ
+		// Микрофон по образцу: капсула, держатель-полукольцо, ножка; выключен — диагональ
 		// с зазором цвета фона.
-		private static function DrawMic(g:*, x:Number, cy:Number, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
+		private static function DrawMic(g:*, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
 		{
-			var s:Number = 13 / 200;
-			var ox:Number = x + 5.5 - 100 * s;
-			var oy:Number = cy - 100 * s;
-			var stroke:Number = Math.max(1.2, 16 * s);
-
-			g.lineStyle(0, 0, 0);
-			g.beginFill(color);
-			g.drawRoundRect(ox + 75 * s, oy + 8 * s, 50 * s, 105 * s, 50 * s, 50 * s);
+			g.beginFill(color, 1);
+			Annulus(g, 100, 96, 80, 62, 0, 180, 18);
+			g.drawRoundRect(70, 4, 60, 118, 60, 60);
+			g.drawRect(91, 172, 18, 26);
 			g.endFill();
-
-			g.lineStyle(stroke, color, 1);
-			g.moveTo(ox + 32 * s, oy + 92 * s);
-			g.curveTo(ox + 32 * s, oy + 162 * s, ox + 100 * s, oy + 162 * s);
-			g.curveTo(ox + 168 * s, oy + 162 * s, ox + 168 * s, oy + 92 * s);
-			g.moveTo(ox + 100 * s, oy + 162 * s);
-			g.lineTo(ox + 100 * s, oy + 196 * s);
-
 			if (crossed)
-			{
-				g.lineStyle(Math.max(1.5, 14 * s) + 2, BUTTON_COLOR, 1);
-				g.moveTo(ox + 24 * s, oy + 180 * s);
-				g.lineTo(ox + 180 * s, oy + 24 * s);
-				g.lineStyle(Math.max(1.5, 14 * s), slashColor, 1);
-				g.moveTo(ox + 24 * s, oy + 180 * s);
-				g.lineTo(ox + 180 * s, oy + 24 * s);
-			}
-			g.lineStyle(0, 0, 0);
+				Slash(g, slashColor);
 		}
 
-		private static function DrawSpeaker(g:*, x:Number, cy:Number, color:uint, crossed:Boolean):void
+		private static function DrawSpeaker(g:*, color:uint, crossed:Boolean):void
 		{
-			g.lineStyle(0, 0, 0);
-			g.beginFill(color);
-			g.moveTo(x, cy - 2.5);
-			g.lineTo(x + 3, cy - 2.5);
-			g.lineTo(x + 7, cy - 6);
-			g.lineTo(x + 7, cy + 6);
-			g.lineTo(x + 3, cy + 2.5);
-			g.lineTo(x, cy + 2.5);
-			g.lineTo(x, cy - 2.5);
+			g.beginFill(color, 1);
+			g.moveTo(18, 70);
+			g.lineTo(62, 70);
+			g.lineTo(116, 24);
+			g.lineTo(116, 176);
+			g.lineTo(62, 130);
+			g.lineTo(18, 130);
+			g.lineTo(18, 70);
 			g.endFill();
 			if (crossed)
 			{
-				g.lineStyle(2, color, 1);
-				g.moveTo(x + 9, cy - 3);
-				g.lineTo(x + 13, cy + 3);
-				g.moveTo(x + 13, cy - 3);
-				g.lineTo(x + 9, cy + 3);
+				g.beginFill(color, 1);
+				ThickLine(g, 136, 72, 188, 128, 18);
+				ThickLine(g, 136, 128, 188, 72, 18);
+				g.endFill();
 			}
-			g.lineStyle(0, 0, 0);
+		}
+
+		// Диагональ «выключено» с зазором цвета фона вокруг.
+		private static function Slash(g:*, color:uint):void
+		{
+			g.beginFill(BUTTON_COLOR, 1);
+			ThickLine(g, 20, 186, 186, 20, 40);
+			g.endFill();
+			g.beginFill(color, 1);
+			ThickLine(g, 20, 186, 186, 20, 20);
+			g.endFill();
+		}
+
+		// Полоса толщиной t от (x1,y1) до (x2,y2) — четырёхугольник (заливка, без контура).
+		private static function ThickLine(g:*, x1:Number, y1:Number, x2:Number, y2:Number, t:Number):void
+		{
+			var dx:Number = x2 - x1;
+			var dy:Number = y2 - y1;
+			var len:Number = Math.sqrt(dx * dx + dy * dy);
+			if (len <= 0)
+				return;
+			var nx:Number = -dy / len * t / 2;
+			var ny:Number = dx / len * t / 2;
+			g.moveTo(x1 + nx, y1 + ny);
+			g.lineTo(x2 + nx, y2 + ny);
+			g.lineTo(x2 - nx, y2 - ny);
+			g.lineTo(x1 - nx, y1 - ny);
+			g.lineTo(x1 + nx, y1 + ny);
+		}
+
+		// Сектор кольца от угла a0 до a1 (градусы, 0 — вправо, 90 — вниз) ломаной из n отрезков.
+		private static function Annulus(g:*, cx:Number, cy:Number, outer:Number, inner:Number, a0:Number, a1:Number, n:int):void
+		{
+			var i:int;
+			var a:Number;
+			for (i = 0; i <= n; i++)
+			{
+				a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
+				if (i == 0)
+					g.moveTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
+				else
+					g.lineTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
+			}
+			for (i = n; i >= 0; i--)
+			{
+				a = (a0 + (a1 - a0) * i / n) * Math.PI / 180;
+				g.lineTo(cx + inner * Math.cos(a), cy + inner * Math.sin(a));
+			}
+			a = a0 * Math.PI / 180;
+			g.lineTo(cx + outer * Math.cos(a), cy + outer * Math.sin(a));
 		}
 
 		private static function CreateText(size:int, color:uint, fieldWidth:Number):TextField

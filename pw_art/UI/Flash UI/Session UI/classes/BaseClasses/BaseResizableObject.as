@@ -38,8 +38,10 @@
 			if (isNaN(value) || value <= 0 || value == sizeBoost)
 				return;
 			sizeBoost = value;
-			if (stage != null)
-				BaseBarObjectResize();
+			// Только масштаб: полный BaseBarObjectResize пишет width/height, а у панели союзников
+			// с войсом движок отдаёт кривую ширину (рамка TextField по умолчанию) — панель пропадала.
+			this.scaleX = scale * sizeBoost;
+			this.scaleY = scale * sizeBoost;
 		}
 		
 		private var scaleCoef:Number = 1;
@@ -172,8 +174,14 @@
 			
 			this.scaleX = scale * sizeBoost;
 			this.scaleY = scale * sizeBoost;
-			this.width = Math.floor(this.width);
-			this.height = Math.floor(this.height);
+			// Округление размера, только если движок вернул разумную ширину/высоту.
+			var w:Number = this.width;
+			var h:Number = this.height;
+			if (!isNaN(w) && isFinite(w) && w >= 1 && !isNaN(h) && isFinite(h) && h >= 1 && sizeBoost == 1)
+			{
+				this.width = Math.floor(w);
+				this.height = Math.floor(h);
+			}
 		}
 		
 		

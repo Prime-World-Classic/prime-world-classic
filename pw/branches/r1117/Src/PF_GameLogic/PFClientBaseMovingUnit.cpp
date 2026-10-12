@@ -753,8 +753,8 @@ void PFClientBaseMovingUnit::SetRotation( CQuat const &quat )
 REGISTER_DEV_VAR("use_smooth_turns", g_smoothTurnsEnabled,    STORAGE_NONE);
 REGISTER_DEV_VAR("smooth_turns_threshold", g_smoothTurnsThreshold,    STORAGE_NONE);
 REGISTER_DEV_VAR("smooth_turns_speedmul", g_smoothTurnsSpeedMul,    STORAGE_NONE);
-REGISTER_VAR("dota_turns", g_dotaTurnsEnabled,    STORAGE_USER);
-REGISTER_VAR("dota_turn_max_speed", g_dotaTurnMaxSpeed,    STORAGE_USER);
+REGISTER_VAR("dota_turns", g_dotaTurnsEnabled,    STORAGE_NONE);
+REGISTER_VAR("dota_turn_max_speed", g_dotaTurnMaxSpeed,    STORAGE_NONE);
 REGISTER_VAR("dota_turn_min_speed", g_dotaTurnMinSpeed,    STORAGE_USER);
-REGISTER_VAR("dota_turn_ease", g_dotaTurnEase,    STORAGE_USER);
+REGISTER_VAR("dota_turn_ease", g_dotaTurnEase,    STORAGE_NONE);
 REGISTER_VAR("move_smooth_lag", g_moveSmoothLag,    STORAGE_USER);

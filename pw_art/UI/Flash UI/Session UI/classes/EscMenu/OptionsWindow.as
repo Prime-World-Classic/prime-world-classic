@@ -67,10 +67,20 @@
 		
 		private static var shownPage:int = -1;
 		
-		private static const PAGE_NAMES:Array = ["Дополнительно","Общение"];
+		// Названия и заголовки страниц — из Localization (Combat.xdb, ru + en).
+		private static function get PAGE_NAMES():Array
+		{
+			return [Localization.Options_AdvancedPage, Localization.Options_CommunicationPage];
+		}
 		
-		private static const PAGE_TITLES:Array = ["Дополнительные настройки","Общение"];
+		private static function get PAGE_TITLES():Array
+		{
+			return [Localization.Options_AdvancedTitle, Localization.Options_CommunicationTitle];
+		}
 		
+		private static const PAGE_BUTTON_SCALE:Number = 0.88;
+		private static const PAGE_BUTTON_GAP:Number = 6;
+
 		private static const ADV_SLIDER_WIDTH:Number = 140;
 		
 		private static const ADV_VALUE_WIDTH:Number = 50;
@@ -149,17 +159,24 @@
 				OptionsWindow.pageButtons.push(_loc3_);
 				_loc1_++;
 			}
-			// the "Keys" button and the page buttons in one centered row
-			_loc3_ = OptionsWindow.pageButtons[0];
-			this.tab1.x -= (_loc3_.width + 8) * OptionsWindow.pageButtons.length / 2;
-			var _loc4_:Number = this.tab1.x + this.tab1.width + 8;
+			// the "Keys" button and the page buttons in one centered row; all of them a bit smaller
+			// so that the row fits into the options window
+			var centerX:Number = this.tab1.x + this.tab1.width / 2;
+			var centerY:Number = this.tab1.y + this.tab1.height / 2;
+			this.tab1.scaleX = this.tab1.scaleY = PAGE_BUTTON_SCALE;
+			var buttonWidth:Number = this.tab1.width;
+			var rowWidth:Number = buttonWidth * (OptionsWindow.pageButtons.length + 1) + PAGE_BUTTON_GAP * OptionsWindow.pageButtons.length;
+			this.tab1.x = Math.round(centerX - rowWidth / 2);
+			this.tab1.y = Math.round(centerY - this.tab1.height / 2);
+			var _loc4_:Number = this.tab1.x + buttonWidth + PAGE_BUTTON_GAP;
 			_loc1_ = 0;
 			while(_loc1_ < OptionsWindow.pageButtons.length)
 			{
 				_loc3_ = OptionsWindow.pageButtons[_loc1_];
-				_loc3_.x = _loc4_;
+				_loc3_.scaleX = _loc3_.scaleY = PAGE_BUTTON_SCALE;
+				_loc3_.x = Math.round(_loc4_);
 				_loc3_.y = this.tab1.y;
-				_loc4_ += _loc3_.width + 8;
+				_loc4_ += buttonWidth + PAGE_BUTTON_GAP;
 				this.SetPageButtonText(_loc1_,OptionsWindow.PAGE_NAMES[_loc1_]);
 				_loc3_.addEventListener("Up",this.PageButtonClick);
 				addChild(_loc3_);
