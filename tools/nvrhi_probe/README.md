@@ -135,6 +135,15 @@ Vulkan-бэкенд дорогой по коду из-за шаблонного 
   очистка явная (`clearTextureFloat` / `clearTextureUInt` /
   `clearDepthStencilTexture`).
 
+## Лимиты, замеренные пробой (lavapipe Mesa 26, tiny10)
+
+`maxPerStageDescriptorSampledImages` = `...Samplers` = `...UniformBuffers`
+≈ 1 015 808 (фактически без лимита), `maxImageDimension2D` = 16384,
+`maxColorAttachments` = 8, `maxVertexInputAttributes` = 32,
+**`maxBoundDescriptorSets` = 8** ← единственное реальное ограничение, оно
+проектирующее для макета `IBindingLayout` клиента (16 сэмплеров + 261 указатель
+текстур + CB виртуальных регистров `c0..c255`). На реальном GPU бывает 7.
+
 ## Что осталось
 
 - `VkSurfaceKHR` + `VkSwapchainKHR` + `createHandleForNativeTexture` + present в

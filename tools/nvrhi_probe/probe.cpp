@@ -467,6 +467,19 @@ static bool ProbeVulkan()
   VkQueue queue = VK_NULL_HANDLE;
   vkp::GetDeviceQueue(device, graphicsFamily, 0, &queue);
 
+  // Лимиты, которые определяют форму будущего NVRHI-бэкенда клиента:
+  // клиент использует до 16 PS-сэмплеров и массив из 261 указателя текстур
+  // (Render/sampler.h, GlobalMasks.h), плюс 2 цвета + depth в RT.
+  printf("       limits: sampledImages/stage=%u samplers/stage=%u uniformBuffers/stage=%u\n"
+         "               boundDescriptorSets=%u maxTex2D=%u colorAttachments=%u\n"
+         "               vertexInputAttributes=%u maxSamplerArray=%u\n",
+         props.limits.maxPerStageDescriptorSampledImages,
+         props.limits.maxPerStageDescriptorSamplers,
+         props.limits.maxPerStageDescriptorUniformBuffers,
+         props.limits.maxBoundDescriptorSets, props.limits.maxImageDimension2D,
+         props.limits.maxColorAttachments, props.limits.maxVertexInputAttributes,
+         props.limits.maxDescriptorSetSampledImages);
+
   nvrhi::vulkan::DeviceDesc dd;
   dd.instance = instance;
   dd.physicalDevice = phys;
@@ -505,6 +518,7 @@ static bool ProbeVulkan()
   return ok;
 }
 
+#ifdef _WIN32
 // ------------------------------------------------- окно + surface + swapchain
 
 // Единственное место пробы, где приходится писать нативный Vulkan/Win32 в обход
@@ -722,6 +736,8 @@ done_surface:
   DestroyWindow(hwnd);
   return true;
 }
+
+#endif // _WIN32 (окно/swapchain)
 
 // ---------------------------------------------------------------- D3D11 (Windows)
 
