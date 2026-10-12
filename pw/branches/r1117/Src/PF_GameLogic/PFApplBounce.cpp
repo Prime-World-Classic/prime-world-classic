@@ -153,7 +153,8 @@ void PFApplBounce::OnDispatchTargetDropped(const PFDispatch* pDroppedDispatch)
     return;
   }
 
-  PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, Target(pDroppedDispatch->GetCurrentPosition()));
+	const Target requester(pDroppedDispatch->GetCurrentPosition());
+	PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, requester);
   if (!pTargetSelector->FindTarget(params, currentTarget))
   {
     finished = true;

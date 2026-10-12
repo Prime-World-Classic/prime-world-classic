@@ -210,7 +210,8 @@ void PFRoadFlagpole::FindOwners()
   CObj<PFTargetSelector> ownersSelector = db->ownerTowers->Create(GetWorld());
   if (ownersSelector)
   {
-    PFTargetSelector::RequestParams params(this, 0, Target(CPtr<PFBaseUnit>(this)));
+	const Target requester(CPtr<PFBaseUnit>(this));
+	PFTargetSelector::RequestParams params(this, 0, requester);
     ownersSelector->EnumerateTargets(enumerator, params);
   }
 

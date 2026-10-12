@@ -687,7 +687,12 @@ bool PFApplForAllTargets::Start()
   
   CObj<PFTargetSelector> pTargetSelector = dbDesc.targets->Create( GetWorld() );
 
+#if defined(PW_LINUX_NULL_RENDER)
+	const Target requester(pReceiver);
+	PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, requester);
+#else
   PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, Target(pReceiver));
+#endif
 
   targets.reserve(10);
   RememberTargets remember(targets);

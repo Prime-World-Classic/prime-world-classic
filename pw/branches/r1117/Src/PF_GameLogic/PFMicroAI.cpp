@@ -153,7 +153,9 @@ bool PFTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITargetConditi
   if (!IsValid(unit))
     return false;
 
-  PFTargetSelector::RequestParams rp(unit, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), Target(unit), condition);
+	// RequestParams borrows its requester across both normal and debug selector calls.
+	const Target requester(unit);
+	PFTargetSelector::RequestParams rp(unit, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), requester, condition);
   bool hasTarget = pTargetSelector->FindTarget(rp, target);
 
   if (hasTarget && g_dump_micro_ai_ts)
