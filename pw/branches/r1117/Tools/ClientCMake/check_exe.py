@@ -30,6 +30,10 @@ def _u32(d, o):
     return struct.unpack_from("<I", d, o)[0]
 
 
+def _u64(d, o):
+    return struct.unpack_from("<Q", d, o)[0]
+
+
 def pe_info(path):
     d = open(path, "rb").read()
     pe = _u32(d, 0x3C)
@@ -145,6 +149,62 @@ def vs_versioninfo(d, off, size):
     return out
 
 
+def imports(path):
+    """Импорт-таблица: [(dll, [имена символов])]. Снимок базы (план, M0) и
+    гейт PCH/кэша: набор импортируемых DLL/символов при PCH меняться не должен."""
+    d = open(path, "rb").read()
+    pe = _u32(d, 0x3C)
+    magic = _u16(d, pe + 24)
+    dd = pe + 24 + (112 if magic == 0x20B else 96)
+    rva, size = struct.unpack_from("<II", d, dd + 8 * 1)
+    sh = pe + 24 + _u16(d, pe + 20)
+    secs = []
+    for i in range(_u16(d, pe + 6)):
+        o = sh + 40 * i
+        vsz, va, praw, prawptr = struct.unpack_from("<IIII", d, o + 8)
+        secs.append((va, max(vsz, praw), praw, prawptr))
+
+    def off(rva):
+        for va, span, praw, prawptr in sorted(secs, reverse=True):
+            if va <= rva < va + span:
+                p = prawptr + (rva - va)
+                return p if 0 <= p < len(d) else None
+        return None
+
+    def cstr(p):
+        if p is None:
+            return "?"
+        e = d.find(b"\0", p)
+        return d[p:e].decode("ascii", "replace")
+
+    out = []
+    i = off(rva)
+    for _ in range(200):
+        if i is None or i + 20 > len(d):
+            break
+        oft, _ts, _fc, name, ft = struct.unpack_from("<IIIII", d, i)
+        if name == 0 and ft == 0:
+            break
+        tl = off(oft or ft)
+        names = []
+        for k in range(4000):
+            if tl is None or tl + (8 if magic == 0x20B else 4) * (k + 1) > len(d):
+                break
+            ent = _u64(d, tl + 8 * k) if magic == 0x20B else _u32(d, tl + 4 * k)
+            if ent == 0:
+                break
+            if ent & (0x8000000000000000 if magic == 0x20B else 0x80000000):
+                names.append("#ordinal%d" % (ent & 0xFFFF))
+                continue
+            no = off(ent)
+            if no is None:
+                break
+            names.append(cstr(no + 2))
+        out.append((cstr(off(name)), names))
+        i += 20
+    return out
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__, file=sys.stderr)
@@ -153,13 +213,15 @@ def main():
         sys.stdout.reconfigure(errors="replace")
     except (AttributeError, ValueError):
         pass
-    if len(sys.argv) > 2 and sys.argv[2] == "--count-obj":
+    flags = {a for a in sys.argv[1:] if a.startswith("--")}
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--count-obj" in flags:
         import glob
-        n = len(glob.glob(os.path.join(sys.argv[1], "CMakeFiles", "**", "*.obj"),
+        n = len(glob.glob(os.path.join(args[0], "CMakeFiles", "**", "*.obj"),
                           recursive=True))
         print(f"   скомпилировано .obj: {n}")
         return 0
-    exe = sys.argv[1]
+    exe = args[0]
     i = pe_info(exe)
     mach = {0x8664: "x64", 0x14C: "x86"}.get(i["mach"], f"0x{i['mach']:04x}")
     print(f"   размер: {os.path.getsize(exe)} байт")
@@ -179,10 +241,15 @@ def main():
 
     fv = i["version"].get("FileVersion") or ".".join(str(x) for x in i["version"].get("_file", ()))
     print(f"   FileVersion в exe: {fv or 'НЕТ'}")
+    if "--imports" in flags:
+        imps = imports(exe)
+        for dll, names in imps:
+            print(f"   import {dll}: {len(names)}")
+        print("   итого DLL: %d" % len(imps))
     want = None
-    if len(sys.argv) > 2:
+    if len(args) > 1:
         try:
-            vh = open(sys.argv[2], encoding="utf-8", errors="replace").read()
+            vh = open(args[1], encoding="utf-8", errors="replace").read()
             # Src/Version.rc: FILEVERSION и "FileVersion" =
             # MAJOR, MINOR, PATCH, REVISION_PATCHED (BUILD в версию файла не входит)
             v = {}

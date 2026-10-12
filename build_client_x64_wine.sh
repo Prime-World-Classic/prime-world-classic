@@ -70,7 +70,10 @@ WCB="$BR/Tools/WineClientBuild"
 CCT="$BR/Tools/ClientCMake"
 CFG="${PW_CFG:-ShippingSingleExe|Win32}"
 TOOLCHAIN="vs2022"
-TC_TAG="x64-wine"
+# тег gen/build-каталогов и cmd-обёртки. PW_BUILD_TAG позволяет держать НЕСКОЛЬКО
+# графов одновременно (x64-wine — база, x64-wine-pch — с PCH): сравнение по
+# build_time.py и инкрементальные прогоны не затирают базовый каталог.
+TC_TAG="${PW_BUILD_TAG:-x64-wine}"
 WINEPREFIX="${WINEPREFIX:-}"
 JOBS="${PW_BUILD_JOBS:-8}"
 CMAKE_DIR="${PW_CMAKE_DIR:-$HOME/pwbuild/wintools/cmake-3.31.6-windows-x86_64}"
@@ -175,6 +178,14 @@ if [ -n "${PW_WINE_SYNC:-}" ]; then
 fi
 NSTATS=""
 if [ "${PW_NINJA_STATS:-}" = 1 ]; then NSTATS="-d stats"; fi
+# Маршрут A кэша объектов (план §2): лаунчер под Wine обязан быть WINDOWS-экзешником
+# (wine-ninja не запускает linux-бинарь — поэтому pwcache только в нативном пути,
+# а здесь — sccache.exe). Значение — путь к sccache.exe или имя в PATH.
+LAUNCHER=""
+if [ -n "${PW_CACHE_LAUNCHER:-}" ]; then
+    LAUNCHER="$PW_CACHE_LAUNCHER"      # unix-путь; Z:-префикс добавит python-блок
+    echo "== кэш объектов: launcher $PW_CACHE_LAUNCHER (маршрут A, план §2)"
+fi
 echo "== мишень: /MACHINE:X64, конфигурация: $CFG"
 echo "== доп. флаги cl: ${PW_EXTRA_OPTS}"
 echo "== снимаемые из линковки .lib: $PW_DROP_LIBS (+ x64-подмены генератора)"
@@ -211,17 +222,18 @@ cmake -G Ninja -DPW_SRC=__SRC_FWD__ -DR1117=__R1117_FWD__ ^
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_TRY_COMPILE_CONFIGURATION=Release ^
   "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=" ^
   -DCMAKE_EXE_LINKER_FLAGS=/MANIFEST:NO ^
-  -DCMAKE_MAKE_PROGRAM=__NINJA_FWD__ ^
+  -DCMAKE_MAKE_PROGRAM=__NINJA_FWD__ __LAUNCHER__ ^
   __GEN_FWD__
 if errorlevel 1 exit /b 1
 cmake --build . -- __KEEP__ __NSTATS__ -j__JOBS__
 CMDEOF
 # подстановка путей отдельным прогоном: в heredoc не смешивать $-расширения
 python3 - "$CCT/$TC_TAG.cmd" "$BR/Src" "$BR" "$GEN" "$BUILD" "$CMAKE_DIR/bin" \
-          "$NINJA" "$KEEP" "$NSTATS" "$JOBS" "$CL_PATH" "$CL_INC" "$CL_LIB" <<'PY'
+          "$NINJA" "$KEEP" "$NSTATS" "$JOBS" "$CL_PATH" "$CL_INC" "$CL_LIB" \
+          "$LAUNCHER" <<'PY'
 import os, sys
 (p, src, r1117, gen, build, cmakedir, ninja,
- keep, nstats, jobs, clpath, clinc, cllib) = sys.argv[1:14]
+ keep, nstats, jobs, clpath, clinc, cllib, launcher) = sys.argv[1:15]
 
 
 def w(x):        # windows-путь для cmd (set / cd /d): wine требует букву диска
@@ -233,10 +245,12 @@ def f(x):        # путь для аргументов cmake (обратный 
 
 
 s = open(p, encoding="utf-8").read()
+launcher_flag = ("-DCMAKE_CXX_COMPILER_LAUNCHER=" + f(launcher)) if launcher else ""
 for k, v in {"__CMAKE_WIN__": w(cmakedir), "__NINJADIR_WIN__": w(os.path.dirname(ninja)),
              "__CL_PATH__": clpath, "__CL_INC__": clinc, "__CL_LIB__": cllib,
              "__BUILD_WIN__": w(build), "__SRC_FWD__": f(src), "__R1117_FWD__": f(r1117),
              "__GEN_FWD__": f(gen), "__NINJA_FWD__": f(ninja),
+             "__LAUNCHER__": launcher_flag,
              "__KEEP__": keep, "__NSTATS__": nstats, "__JOBS__": jobs}.items():
     s = s.replace(k, v)
 open(p, "w", encoding="utf-8").write(s)

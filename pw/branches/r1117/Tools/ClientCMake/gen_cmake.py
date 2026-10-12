@@ -38,6 +38,8 @@ import os
 import re
 import sys
 
+import pch_rules
+
 CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
 # Буква/корень, под которым дерево репозитория видно КОМПИЛЯТОРУ. Нужен для
 # #include внутри PCH-обёрток (это C++, CMake там не работает).
@@ -159,6 +161,34 @@ def x64_libdir(rel, R1117):
     if os.path.isdir(os.path.join(R1117, cand)):
         return cand
     return r
+
+
+def rc_header_deps(abs_rc):
+    """Заголовки, которые .rc тянет через `#include "..."` (рекурсивно).
+
+    Нужны для DEPENDS кастомной команды: без них ресурс МОЛЧИТ при правке
+    заголовка. Реальный прецедент (план, §3): Src/Version.rc включает
+    Version.h, а DEPENDS был только на сам .rc -> экз с Version.h 2.16.1
+    показывал FileVersion 2.16.0.0. Угловые `#include <...>` (системные)
+    пропускаем."""
+    out, seen, stack = [], set(), [os.path.abspath(abs_rc)]
+    while stack:
+        p = stack.pop()
+        rp = os.path.normpath(p)
+        if rp in seen or not os.path.isfile(rp):
+            continue
+        seen.add(rp)
+        try:
+            txt = open(rp, "r", encoding="cp1251", errors="replace").read()
+        except OSError:
+            continue
+        for m in re.finditer(r'^\s*#\s*include\s+"([^"]+)"', txt, re.M):
+            d = os.path.dirname(rp)
+            h = case_resolve(d, m.group(1)) or os.path.normpath(os.path.join(d, m.group(1)))
+            if os.path.isfile(h):
+                out.append(h)
+                stack.append(h)
+    return out
 
 
 def rel_to(base, target):
@@ -322,6 +352,9 @@ class Proj:
         self.srcs, self.res, self.per_file, self.res_out = [], [], {}, []
         self.pch_through = (cl.get("PrecompiledHeaderThrough") or "stdafx.h").strip()
         self.pch_on = cl.get("UsePrecompiledHeader", "0")
+        # PCH (см. Tools/ClientCMake/pch_rules.py): консьюмеры и Create-TU по
+        # through-header'ам; plan() вызовется в конце __init__ и только при PW_PCH
+        self.pch_cons, self.pch_create, self.pch_pairs = {}, {}, {}
         self.wrappers = {}
         for f in m["files"]:
             absf, low = f["abs"], f["rel"].lower()
@@ -343,10 +376,10 @@ class Proj:
             # (в include-путях есть Src/Server и Src/Game/PF) -> в TU нет
             # контекста проекта, DBStats.h: "ExecutableFloatString undeclared".
             up = per.get("UsePrecompiledHeader", "")
+            inc_abs = [os.path.normpath(os.path.join(SRC, i)) for i in self.includes]
             if not low.endswith(".c") and self.pch_on == "2" and up not in ("0", "1"):
                 th = (per.get("PrecompiledHeaderThrough") or self.pch_through or "stdafx.h").strip()
-                th_abs = resolve_through(self.dir, absf, th,
-                                         [os.path.normpath(os.path.join(SRC, i)) for i in self.includes])
+                th_abs = resolve_through(self.dir, absf, th, inc_abs)
                 if th_abs:
                     base = os.path.splitext(os.path.basename(absf))[0]
                     wrel = f"pch/{self.name}/{base}.cpp"
@@ -354,12 +387,21 @@ class Proj:
                                           '#include "%s"' + chr(10)) % (
                                           winpath(th_abs), winpath(absf), winpath(absf))
                     self.srcs.append(("wrapper", wrel))
+                    self.pch_cons.setdefault(th_abs, []).append(("wrapper", wrel))
                 else:
                     print(f"  !! {self.name}: cannot resolve through header {th!r} for {f['rel']}",
                           file=sys.stderr)
                     self.srcs.append(("src", rel))
             else:
                 self.srcs.append(("src", rel))
+                # Create-TU (UsePrecompiledHeader=1) — будущий продюсер .pch; в
+                # графе он пока обычный источник, pch_rules.plan() обернёт его,
+                # если PW_PCH включён (spelling /Yc = текст #include в обёртке).
+                if up == "1" and self.pch_on == "2" and not low.endswith(".c"):
+                    th_c = (per.get("PrecompiledHeaderThrough") or self.pch_through or "stdafx.h").strip()
+                    th_abs_c = resolve_through(self.dir, absf, th_c, inc_abs)
+                    if th_abs_c:
+                        self.pch_create[th_abs_c] = (rel, absf)
             # пофайловые переопределения из vcproj (WarningLevel,
             # ExceptionHandling, свои /D, AdditionalOptions)
             o, d = [], []
@@ -387,6 +429,9 @@ class Proj:
                     print(f"  !! {name}: нет x64-источника {rel}", file=sys.stderr)
 
         self.rc_incs_prefixed = ["/i${PW_SRC}/" + x for x in self.rc_includes]
+        # PCH-пары считаем всегда (дёшево), но флаги/обёртки добавляются только
+        # при PW_PCH — при выключенном env граф остаётся байт-в-байт прежним
+        pch_rules.plan(self, winpath)
 
         link = m["tools"].get("VCLinkerTool", {})
         # AdditionalDependencies содержит и вендорные .lib, и .lib самих проектов
@@ -470,7 +515,11 @@ class Proj:
                 "${PW_SRC}/" + r]
             L.append("add_custom_command(OUTPUT " + out_res)
             L.append("  COMMAND " + " ".join(cmd))
-            L.append(f"  DEPENDS ${{PW_SRC}}/{r}")
+            # DEPENDS: сам .rc ПЛЮС его #include-заголовки (иначе ресурс
+            # протухает — см. rc_header_deps, план §3)
+            rdeps = ["${PW_SRC}/" + r] + ["${PW_SRC}/" + rel_to(SRC, h)
+                                         for h in rc_header_deps(os.path.join(SRC, r))]
+            L.append("  DEPENDS " + " ".join(rdeps))
             # CWD = каталог ПРОЕКТА (как в build_client.py), а не каталог .rc:
             # Foundation/Profiler3UI.rc лежит в System/InlineProfiler3, а
             # error.ico/exclamation.ico — в System/
@@ -479,11 +528,14 @@ class Proj:
         for entry, (o, d) in self.per_file.items():
             parts = []
             if o:
-                parts.append(f"COMPILE_OPTIONS \"{' '.join(o)}\"")
+                # ; = CMake-список: каждый флаг отдельным элементом (через пробел
+                # cl получил бы один аргумент «/W3 /EHsc»; с /Yu"..." это критично)
+                parts.append("COMPILE_OPTIONS \"" + ";".join(o) + "\"")
             if d:
                 parts.append(f"COMPILE_DEFINITIONS \"{' '.join(d)}\"")
             L.append(f"set_source_files_properties({self.cmake_path(entry)} PROPERTIES " +
                      " ".join(parts) + ")")
+        L += pch_rules.cmake_lines(self)
         return "\n".join(L) + "\n"
 
 
