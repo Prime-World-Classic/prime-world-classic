@@ -410,12 +410,15 @@ int PFApplDispell::DispellOneEffect(const int dispellFactionFlags, const vector<
   if (potentialStatuses2Remove == 0)
     return 0;
 
-  for (int i = 0, count = appls2Remove.size(); i < count; ++i)
+	// Search returns borrowed pointers. Stop removes ring ownership and can also remove siblings.
+	vector<CObj<PFBaseApplicator>> retained;
+	for (auto* status : appls2Remove) if (status) retained.push_back(status);
+	for (const auto& status : retained)
   {
-    if (appls2Remove[i] && appls2Remove[i]->IsAlive())
+    if (IsValid(status) && status->IsAlive())
     {
-      appls2Remove[i]->Stop();
-      MemorizeApplicator(appls2Remove[i]);
+      status->Stop();
+      MemorizeApplicator(status);
     }
   }
 
