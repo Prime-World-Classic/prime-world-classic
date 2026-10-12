@@ -15,6 +15,12 @@ namespace
 
 #if defined( PW_LINUX_DB_BOOTSTRAP )
 
+#include "PFBehaviour.h"
+#include "PFCreature.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
+#include <limits>
+
 namespace NWorld
 {
 
@@ -22,6 +28,21 @@ void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
 
 namespace
 {
+	/** Preserve absent=false and existing boolean spellings without losing formula errors. */
+	static LinuxBootstrap::NumericFormulaResult LinuxMicroCondition(const ExecutableBoolString& expression,
+		const PFBaseUnit* owner, const PFBaseUnit* target, const PFAbilityData* ability)
+	{
+		using namespace LinuxBootstrap;
+		if (expression.sString.size() > NumericFormulaMaxLength) return {NumericFormulaError::LimitExceeded};
+		if (expression.sString.empty())
+			return expression.compiledString.empty() ? NumericFormulaResult{NumericFormulaError::None, 0} :
+				NumericFormulaResult{NumericFormulaError::UnsupportedSyntax};
+		const char* literal = SkipExecutableStringSpaces(expression.sString.c_str());
+		if (!strcmp(literal, "True") || !strcmp(literal, "TRUE")) return {NumericFormulaError::None, 1};
+		if (!strcmp(literal, "False") || !strcmp(literal, "FALSE")) return {NumericFormulaError::None, 0};
+		return EvaluateUnitNumericFormula(expression.sString.c_str(), owner, target, ability);
+	}
+
   static void AddUniqueUnit(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* unit)
   {
     if (!unit)
@@ -43,20 +64,27 @@ namespace
 
 bool PFBasicMicroAI::CheckConditions() const
 {
-  if (!IsValid(pAbility) || !pAbility->GetDBDesc())
-    return false;
-  if (!pAbility->CanBeUsed())
-    return false;
-  if (pAbility->GetType() == NDb::ABILITYTYPE_PASSIVE ||
-      pAbility->GetType() == NDb::ABILITYTYPE_AUTOCASTABLE ||
-      pAbility->GetType() == NDb::ABILITYTYPE_SIMPLE)
-    return false;
+	if (!GetDBBase() || !IsValid(pAbility) || !pAbility->GetDBDesc()) return false;
+	const CPtr<PFBaseUnit>& unit = pAbility->GetOwner();
+	if (!IsUnitValid(unit) || !unit->GetWorld() || pAbility->GetWorld() != unit->GetWorld()) return false;
+	if (!pAbility->CanBeUsed()) return false;
+	if (pAbility->GetType() == NDb::ABILITYTYPE_PASSIVE ||
+		pAbility->GetType() == NDb::ABILITYTYPE_AUTOCASTABLE ||
+		pAbility->GetType() == NDb::ABILITYTYPE_SIMPLE) return false;
 
-  CPtr<PFBaseUnit> const& unit = pAbility->GetOwner();
-  if (!IsValid(unit))
-    return false;
+	// Windows requires behavior even when the optional idle-only gate is disabled.
+	if (!IsValid(unit->GetBehaviour()) || (GetDB().castWhenIdle && !unit->GetBehaviour()->IsInDefaultState())) return false;
+	const LinuxBootstrap::NumericFormulaResult condition = LinuxMicroCondition(GetDB().condition, unit, unit, pAbility);
+	if (!condition.Succeeded() || condition.value == 0) return false;
 
-  return GetDB().condition(unit.GetPtr(), unit.GetPtr(), static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), false);
+	const int abilityId = pAbility->GetAbilityTypeId() - NDb::ABILITYTYPEID_ABILITY0;
+	if (abilityId >= 1 && abilityId < NDb::KnownEnum<NDb::EAbility>::sizeOf)
+	{
+		const PFCreature* creature = dynamic_cast<const PFCreature*>(unit.GetPtr());
+		if (creature && (!creature->IsAbilityAvailable(abilityId) || !creature->CanUseAbility(abilityId) ||
+			creature->IsAbilityInProgress(abilityId))) return false;
+	}
+	return true;
 }
 
 bool PFBasicMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
@@ -147,54 +175,54 @@ PFMultipleTargetSelectorMicroAI::PFMultipleTargetSelectorMicroAI(CreateParams co
 
 bool PFMultipleTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
 {
-  if (!CheckConditions())
-    return false;
-  if (!IsValid(pTargetSelector))
-    return PFBasicMicroAI::GetTargetImpl(target, condition);
+	if (!CheckConditions()) return false;
+	if (!IsValid(pTargetSelector)) return PFBasicMicroAI::GetTargetImpl(target, condition);
 
-  CPtr<PFBaseUnit> const& owner = pAbility->GetOwner();
-  if (!IsValid(owner))
-    return false;
+	const CPtr<PFBaseUnit>& owner = pAbility->GetOwner();
+	const NDb::Ptr<NDb::UnitTargetingParameters> unitPars = owner->GetTargetingParamsPtr();
+	if (!unitPars || !std::isfinite(GetDB().minTargetWeight) || GetDB().minTargetCount < 0) return false;
 
-  struct Counter : public ITargetAction, public NonCopyable
-  {
-    Counter(PFBaseUnit const* owner_, PFAbilityData const* ability_, ExecutableBoolString const& filter_, const ITargetCondition* condition_, float minWeight_)
-      : owner(owner_), ability(ability_), filter(filter_), condition(condition_), minWeight(minWeight_), count(0) {}
+	/** Match Windows' filter -> CanSelectTarget -> strict authored-weight comparison. */
+	struct Counter : public ITargetAction, public NonCopyable
+	{
+		Counter(const PFBaseUnit* owner, const PFAbilityData* ability, const ExecutableBoolString& filter,
+			const ITargetCondition* condition, const NDb::UnitTargetingParameters& unitPars, float minWeight)
+			: owner(owner), ability(ability), filter(filter), condition(condition), unitPars(unitPars), minWeight(minWeight) {}
 
-    virtual void operator()(const Target& target)
-    {
-      if (!target.IsUnit())
-        return;
+		void operator()(const Target& target) override
+		{
+			if (invalid || !target.IsUnit()) return;
+			const CPtr<PFBaseUnit>& unit = target.GetUnit();
+			if (!IsUnitValid(unit) || unit->GetWorld() != owner->GetWorld()) return;
+			const LinuxBootstrap::NumericFormulaResult result = LinuxMicroCondition(filter, owner, unit, ability);
+			if (!result.Succeeded()) { invalid = true; return; }
+			if (result.value == 0 || !owner->CanSelectTarget(unit, true)) return;
+			// Retain the existing native caller-supplied target condition as an extra gate.
+			if (!CheckTargetCondition(target, condition, ability)) return;
+			const float weight = owner->GetTargetWeight(unit, unitPars, nullptr);
+			if (std::isfinite(weight) && weight > minWeight && count < std::numeric_limits<int>::max()) ++count;
+		}
 
-      CPtr<PFBaseUnit> const& unit = target.GetUnit();
-      if (!IsUnitValid(unit))
-        return;
-      if (!filter(owner, unit.GetPtr(), static_cast<const IMiscFormulaPars*>(ability)))
-        return;
-      if (!CheckTargetCondition(target, condition, ability))
-        return;
-      if (minWeight > 0.0f && owner && owner->GetTargetWeight(unit, owner->GetTargetingParams(), NULL) <= minWeight)
-        return;
-      ++count;
-    }
+		const PFBaseUnit* owner;
+		const PFAbilityData* ability;
+		const ExecutableBoolString& filter;
+		const ITargetCondition* condition;
+		const NDb::UnitTargetingParameters& unitPars;
+		float minWeight;
+		int count = 0;
+		bool invalid = false;
+	} counter(owner, pAbility, GetDB().unitFilter, condition, *unitPars, GetDB().minTargetWeight);
 
-    PFBaseUnit const* owner;
-    PFAbilityData const* ability;
-    ExecutableBoolString const& filter;
-    const ITargetCondition* condition;
-    float minWeight;
-    int count;
-  } counter(owner.GetPtr(), pAbility.GetPtr(), GetDB().unitFilter, condition, GetDB().minTargetWeight);
-
-  PFTargetSelector::RequestParams rp(owner, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), Target(owner), condition);
-  pTargetSelector->EnumerateTargets(counter, rp);
-
-  if (GetDB().minTargetCount == 0 ? counter.count == 0 : counter.count >= GetDB().minTargetCount)
-  {
-    target.SetUnit(owner);
-    return true;
-  }
-  return false;
+	// RequestParams borrows its requester; keep it alive through selector callbacks.
+	const Target requester(owner);
+	PFTargetSelector::RequestParams rp(owner, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), requester, condition);
+	pTargetSelector->EnumerateTargets(counter, rp);
+	if (!counter.invalid && (GetDB().minTargetCount == 0 ? counter.count == 0 : counter.count >= GetDB().minTargetCount))
+	{
+		target.SetUnit(owner);
+		return true;
+	}
+	return false;
 }
 
 } // namespace NWorld
