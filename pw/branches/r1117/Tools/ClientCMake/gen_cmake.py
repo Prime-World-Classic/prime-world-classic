@@ -39,8 +39,10 @@ import re
 import sys
 
 CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
-# wine-буква, под которой виден unix-корень (Z: = /). Нужна для #include внутри
-# PCH-обёрток (это C++, CMake там не работает).
+# Буква/корень, под которым дерево репозитория видно КОМПИЛЯТОРУ. Нужен для
+# #include внутри PCH-обёрток (это C++, CMake там не работает).
+#   Wine  (build_client_x64_wine.sh)  : Z: = unix-корень "/"        -> Z:/home/...
+#   native (build_client_x64_win.cmd) : PW_WIN_ROOT = диск репозитория -> C:/PW/...
 WINROOT = os.environ.get("PW_WIN_ROOT", "Z:")
 
 # имена проектов из модели (ставится в main) — чтобы исключить .lib самих
@@ -189,10 +191,15 @@ def parse_extra_options(opts):
 
 
 def winpath(p, root=WINROOT):
-    """linux path -> wine-путь (Z:\\...). CMake-строки не любят обратные слебы,
-    но они внутри кавычек C++ #include — там это экранирование C, поэтому
-    слебы прямые (как в PCH-обёртках build_client.py)."""
-    return root + q(os.path.normpath(p))
+    """путь дерева -> путь, который видит компилятор (в Wine: Z:\\...). CMake-
+    строки не любят обратные слебы, но они внутри кавычек C++ #include — там это
+    экранирование C, поэтому слебы прямые (как в PCH-обёртках build_client.py).
+    Под native-Windows сборкой PW_WIN_ROOT задаётся на диск репозитория, и тогда
+    winpath() = нормализованный нативный путь без подмены корня."""
+    n = q(os.path.normpath(p))
+    if n[1:2] == ":":             # native: путь уже с диском — виден компилятору как есть
+        return n
+    return root + n               # Wine: unix-путь, корень дерева для cl = Z:
 
 
 def resolve_through(proj_dir, src_abs, th, includes):
