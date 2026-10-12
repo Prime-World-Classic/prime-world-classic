@@ -80,8 +80,12 @@ namespace
 
   static bool LinuxUnitPasses(PFBaseUnit* unit, NDb::ESpellTarget targetFilter, const PFTargetSelector::RequestParams& pars, bool deadAllowed)
   {
-    if (!unit)
+	if (!IsValid(unit) || !IsValid(pars.pOwner) || unit->GetWorld() != pars.pOwner->GetWorld())
       return false;
+	if (unit->GetWorld() && unit->GetWorld()->FindLinuxUnitByObjectId(unit->GetObjectId()) != unit) return false;
+	const CVec3& position = unit->GetPosition();
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)
+		|| !std::isfinite(unit->GetObjectSize()) || unit->GetObjectSize() < 0) return false;
 
     Target target(unit);
     if (!LinuxTargetPasses(target, pars, deadAllowed))
@@ -403,6 +407,10 @@ void PFDblPointTargetSelector::ForAllTargets(ITargetAction &action, const Reques
 {
   if (!pars.pRequester || !pars.pRequester->IsValid(true))
     return;
+	if (!IsValid(pars.pOwner) || (pars.pRequester->IsObject()
+		&& pars.pRequester->GetObject()->GetWorld() != pars.pOwner->GetWorld())) return;
+	const CVec3 point = pars.pRequester->AcquirePosition();
+	if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) return;
 
   const CVec2 newPos = pars.pRequester->AcquirePosition().AsVec2D();
   if (runCount == 0)
@@ -421,6 +429,9 @@ void PFSectorTargetSelector::OnForAllTargets(ITargetAction &action, const Reques
   CVec2 endPos;
   MakePos(pars, GetDB().segmentBegin, beginPos);
   MakePos(pars, GetDB().segmentEnd, endPos);
+	if (!std::isfinite(beginPos.x) || !std::isfinite(beginPos.y) || !std::isfinite(endPos.x)
+		|| !std::isfinite(endPos.y) || !std::isfinite(GetDB().segmentDirectionOffset)
+		|| !std::isfinite(GetDB().angle) || GetDB().angle < 0 || !std::isfinite(fabs2(endPos - beginPos))) return;
 
   CVec2 dir = endPos - beginPos;
   if (!LinuxNormalizeVector(dir))
@@ -430,7 +441,9 @@ void PFSectorTargetSelector::OnForAllTargets(ITargetAction &action, const Reques
   if (GetDB().centerIsSegmentEnd)
     beginPos = endPos;
 
-  const float range = RetrieveParam(GetDB().range, pars);
+  const auto checkedRange = LinuxSelectorFormula(GetDB().range, pars);
+	if (!checkedRange.Succeeded() || checkedRange.value < 0) return;
+	const float range = checkedRange.value;
   const float limitAngle = ToRadian(GetDB().angle);
   const bool deadAllowed = LinuxSelectorDeadAllowed(this);
 
@@ -493,6 +506,9 @@ void PFCapsuleTargetSelector::OnForAllTargets(ITargetAction &action, const Reque
   {
     MakePos(pars, GetDB().segmentEnd, endPos);
   }
+	if ((GetDB().segmentEndTargetSelector && !pSegmentEndTargetSelector)
+		|| !std::isfinite(beginPos.x) || !std::isfinite(beginPos.y) || !std::isfinite(endPos.x)
+		|| !std::isfinite(endPos.y) || !std::isfinite(GetDB().segmentDirectionOffset)) return;
 
   if (fabs(GetDB().segmentDirectionOffset) > FLT_EPSILON)
   {
@@ -506,13 +522,16 @@ void PFCapsuleTargetSelector::OnForAllTargets(ITargetAction &action, const Reque
 
   CVec2 dir = endPos - beginPos;
   const float length = sqrt(fabs2(dir));
+	if (!std::isfinite(length)) return;
   if (length > EPS_VALUE)
     dir /= length;
   else
     dir = CVec2(1.0f, 0.0f);
 
-  const float range = RetrieveParam(GetDB().range, pars);
-  const float rangeFromOrigin = RetrieveParam(GetDB().rangeFromOwner, pars);
+	const auto checkedRange = LinuxSelectorFormula(GetDB().range, pars);
+	const auto checkedOrigin = LinuxSelectorFormula(GetDB().rangeFromOwner, pars);
+	if (!checkedRange.Succeeded() || checkedRange.value < 0 || !checkedOrigin.Succeeded()) return;
+	const float range = checkedRange.value, rangeFromOrigin = checkedOrigin.value;
   const bool deadAllowed = LinuxSelectorDeadAllowed(this);
   const bool cutoff = runCount <= 1 && GetDB().cutoffFirstSegment;
 
@@ -542,7 +561,11 @@ void PFNearestInAreaTargetSelector::ForAllTargets(ITargetAction &action, const R
     return;
 
   const CVec3 pos = pars.pRequester->AcquirePosition();
-  const float range = RetrieveParam(GetDB().range, pars);
+	if (!IsValid(pars.pOwner) || !std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)
+		|| (pars.pRequester->IsObject() && pars.pRequester->GetObject()->GetWorld() != pars.pOwner->GetWorld())) return;
+	const auto checkedRange = LinuxSelectorFormula(GetDB().range, pars);
+	if (!checkedRange.Succeeded() || checkedRange.value < 0) return;
+	const float range = checkedRange.value;
   vector<CPtr<PFBaseUnit> > units;
   LinuxCollectCandidateUnits(units, pars);
 
