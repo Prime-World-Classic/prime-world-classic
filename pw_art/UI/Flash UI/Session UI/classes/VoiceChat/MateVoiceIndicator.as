@@ -261,8 +261,9 @@
 
 		private function DrawButton():void
 		{
-			button.visible = interactive && inCall;
-			if (!button.visible)
+			var show:Boolean = interactive && inCall;
+			button.visible = show;
+			if (!show)
 				return;
 
 			Measure();
@@ -296,6 +297,9 @@
 			buttonText.textColor = (flags & 2) != 0 ? OFF_COLOR : 0xFFFFFF;
 			buttonText.x = 5 + iconWidth;
 			buttonText.y = (height - (TEXT_SIZE + 8)) / 2 + TEXT_SIZE * TEXT_DROP;
+
+			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg button " + (isMe ? "me" : "peer " + peerId) + " at " + button.x + "," + button.y + " size " + width + "x" + height
+				+ " frame " + frameX + "," + frameY + "/" + frameSize + " stats " + statsBottom + " parent " + (button.parent != null) + " mateVisible " + mate.visible);
 		}
 
 		private function DrawBadge():void

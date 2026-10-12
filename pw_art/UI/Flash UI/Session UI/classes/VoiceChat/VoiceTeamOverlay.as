@@ -49,8 +49,13 @@
 		public function SetInteractive(value:Boolean):void
 		{
 			interactive = value;
+			var count:int = 0;
 			for each (var indicator:MateVoiceIndicator in indicators)
+			{
 				indicator.SetInteractive(value);
+				count++;
+			}
+			FSCommands.Send(COMMAND, "dbg interactive " + value + " shown " + shown + " indicators " + count + " state " + (lastState != null) + " ourId " + (ourIdSource != null ? ourIdSource() : "-"));
 			Reapply();
 		}
 
@@ -79,6 +84,8 @@
 				me.SetMe(micState, meSpeaking);
 				keep[ourId] = true;
 			}
+			else if (interactive)
+				FSCommands.Send(COMMAND, "dbg no portrait for ourId " + ourId);
 
 			for (var i:int = 0; i < ids.length; i++)
 			{

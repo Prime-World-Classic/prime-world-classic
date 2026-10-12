@@ -3,6 +3,8 @@
 #include "NivalInput/Binds.h"
 
 #include <winsock2.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 #ifndef SIO_UDP_CONNRESET
 #define SIO_UDP_CONNRESET _WSAIOW( IOC_VENDOR, 12 )
@@ -22,6 +24,28 @@ namespace
   const int MAX_LINE = 512;
 
   const char szOverlayCommand[] = "VoiceOverlayCmd";
+
+  // Diagnostics: Bin\voice_overlay.log, rewritten every game start. Only rare events
+  // (unlock key, show/hide, Flash replies), never the 10 Hz polling.
+  void DebugLog( const char * format, ... )
+  {
+    static bool started = false;
+    FILE * file = fopen( "voice_overlay.log", started ? "a" : "w" );
+    if ( !file )
+      return;
+    started = true;
+
+    SYSTEMTIME time;
+    ::GetLocalTime( &time );
+    fprintf( file, "%02d:%02d:%02d.%03d ", time.wHour, time.wMinute, time.wSecond, time.wMilliseconds );
+
+    va_list args;
+    va_start( args, format );
+    vfprintf( file, format, args );
+    va_end( args );
+    fputc( '\n', file );
+    fclose( file );
+  }
 
   // Skips `count` space-separated fields; the rest of the line is a nick that may contain spaces.
   const char * SkipFields( const char * p, int count )
@@ -81,6 +105,8 @@ VoiceOverlayController::VoiceOverlayController( UI::FlashContainer2 * flashWnd, 
   hasCurrent( false )
 {
   flashWnd->AddFSListner( szOverlayCommand, this );
+  Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
+  DebugLog( "controller created, unlock bind %s", binds && binds->FindCommand( "voice_overlay_unlock_on" ) ? "present" : "MISSING" );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -101,6 +127,7 @@ void VoiceOverlayController::EnsureDefaultUnlockBind()
 
 void VoiceOverlayController::SetUnlocked( bool _unlocked )
 {
+  DebugLog( "unlock key %s (was %d, shown %d)", _unlocked ? "down" : "up", (int)unlocked, (int)shown );
   if ( unlocked == _unlocked )
     return;
   unlocked = _unlocked;
@@ -367,6 +394,7 @@ void VoiceOverlayController::ApplyState( const State & state )
     CallMethod( "SetVoiceOverlayInteractive", unlocked );
     CallMethod( "ShowVoiceOverlay", true );
     shown = true;
+    DebugLog( "show: mic %d, peers %d", state.micState, state.peers.size() );
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -377,6 +405,7 @@ void VoiceOverlayController::HideOverlay()
     return;
   CallMethod( "ShowVoiceOverlay", false );
   shown = false;
+  DebugLog( "hide" );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -407,6 +436,12 @@ void VoiceOverlayController::OnFSCommand( UI::FlashContainer2* _wnd, const char*
 {
   if ( strcmp( listenerID, szOverlayCommand ) != 0 || !args )
     return;
+
+  if ( strncmp( args, "dbg ", 4 ) == 0 )
+  {
+    DebugLog( "flash: %.200s", args + 4 );
+    return;
+  }
 
   // Flash builds the launcher command itself; pass through only the known ones.
   const bool known = strncmp( args, "mute ", 5 ) == 0
