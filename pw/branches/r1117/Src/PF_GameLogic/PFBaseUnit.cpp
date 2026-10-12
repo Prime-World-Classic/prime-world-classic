@@ -1394,6 +1394,30 @@ void PFBaseUnit::UpdateExternalAbilities(float dt)
 }
 void PFBaseUnit::WakeUp() { bSleep = false; }
 
+/** Preserve Windows pool proportions and signed regeneration without accepting invalid arithmetic. */
+template<class Value, class Maximum>
+static void LinuxStepResource(Value& pool, Maximum& cachedMaximum, float maximum,
+	float regeneration, float dt, float minimum, bool restore)
+{
+	const float oldMaximum = cachedMaximum;
+	float value = pool;
+	if (!std::isfinite(dt) || dt <= 0 || !std::isfinite(maximum) || maximum < minimum
+		|| !std::isfinite(oldMaximum) || oldMaximum < 0 || !std::isfinite(value)) return;
+	if (fabs(oldMaximum - maximum) > EPS_VALUE)
+	{
+		const float fraction = Clamp(oldMaximum > EPS_VALUE ? value / oldMaximum : 1.0f, 0.0f, 1.0f);
+		value = Max(0.0f, fraction * maximum);
+		cachedMaximum = maximum;
+	}
+	if (restore && std::isfinite(regeneration))
+	{
+		const float delta = dt * regeneration;
+		const float restored = value + delta;
+		if (std::isfinite(delta) && std::isfinite(restored)) value = Clamp(restored, minimum, maximum);
+	}
+	pool = value;
+}
+
 bool PFBaseUnit::Step(float dtInSeconds)
 {
   if (HasBehaviour() && Behaviour()->IsEnabled())
@@ -1405,7 +1429,13 @@ bool PFBaseUnit::Step(float dtInSeconds)
   UpdateExternalAbilities(dtInSeconds);
 
   if (!IsDead())
+  {
     AutoTarget(dtInSeconds);
+		LinuxStepResource(health, maxHealth, GetStatValue(NDb::STAT_LIFE), GetLifeRegenTotal(),
+			dtInSeconds, 1.0f, !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDLIFERESTORE));
+		LinuxStepResource(energy, maxEnergy, GetStatValue(NDb::STAT_ENERGY), GetEnergyRegenTotal(),
+			dtInSeconds, 0.0f, !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDENERGYRESTORE));
+  }
 
   if (!IsDead() &&
       !GetCurrentState() && !HasQueuedStates() &&
