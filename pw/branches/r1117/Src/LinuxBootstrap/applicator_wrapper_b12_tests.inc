@@ -11,7 +11,8 @@ static void ApplicatorWrapperB12(Checks& check, PFWorld* world)
 		NDb::ApplicatorNameOverrider* outer = new NDb::ApplicatorNameOverrider;
 		outer->applicator = inner; outer->enabled.sString = outerEnabled ? "true" : "false";
 		NDb::Ptr<NDb::BaseApplicator> db = outer;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 		CObj<Damage> app = new Damage(pars); receiver->SetHealth(1000);
 		check(app->Init() && app->GetDBBase().GetPtr() == inner && app->Run(), "wrapped damage uses typed inner effect data");
@@ -26,7 +27,8 @@ static void ApplicatorWrapperB12(Checks& check, PFWorld* world)
 		NDb::ApplicatorNameOverrider* outer = new NDb::ApplicatorNameOverrider;
 		outer->applicator = inner; outer->enabled.sString = "sender.vGate != 0";
 		NDb::Ptr<NDb::BaseApplicator> db = outer;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 		sender->GetVariableVWM("Gate")->SetBaseValue(0);
 		CObj<EnabledBuffB12> app = new EnabledBuffB12(pars);

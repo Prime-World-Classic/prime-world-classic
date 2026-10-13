@@ -46,7 +46,8 @@ struct AbilityModFixtureB12
 		raw->multValue.sString = mul; raw->addValue.sString = add;
 		raw->enabled.sString = "true"; raw->startCondition.sString = "true"; raw->lifeTime.sString = "-1";
 		db = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(hero.GetPtr()));
+		const Target target(hero.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pUpgraderAbilityData = source; pars.pDBAppl = db;
 		app = new AbilityModProbeB12(pars);
 		addName = mode == NDb::ABILITYMODMODE_COOLDOWN ? UnitVariables::szTalentsCdAdd : UnitVariables::szTalentsMcAdd;
@@ -132,7 +133,8 @@ static void AbilityModB12(Checks& check, PFWorld* world)
 	{
 		AbilityModFixtureB12 f(world, NDb::ABILITYMODMODE_MANACOST, ".5", "5");
 		CObj<PFAbilityInstance> cast = new PFAbilityInstance(f.source, Target(f.hero.GetPtr()), true);
-		PFApplCreatePars pars(cast, Target(f.hero.GetPtr())); pars.pDBAppl = f.db;
+		const Target target(f.hero.GetPtr());
+		PFApplCreatePars pars(cast, target); pars.pDBAppl = f.db;
 		CObj<AbilityModProbeB12> sibling = new AbilityModProbeB12(pars);
 		check(sibling->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(sibling.GetPtr()), cast), "real activation owns a persistent sibling");
 		f.Edit().multValue.sString = "cMissing";
@@ -150,7 +152,8 @@ static void AbilityModB12(Checks& check, PFWorld* world)
 	{
 		AbilityModFixtureB12 f(world, NDb::ABILITYMODMODE_MANACOST, ".5", "5");
 		CObj<PFAbilityInstance> cast = new PFAbilityInstance(f.source, Target(f.sender.GetPtr()), true);
-		PFApplCreatePars pars(cast, Target(f.sender.GetPtr())); pars.pDBAppl = f.db;
+		const Target target(f.sender.GetPtr());
+		PFApplCreatePars pars(cast, target); pars.pDBAppl = f.db;
 		CObj<AbilityModProbeB12> app = new AbilityModProbeB12(pars);
 		check(app->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(app.GetPtr()), cast), "nonhero is admitted to the original completion path");
 		check(!app->IsAlive() && !app->IsEnabled() && app->enables == 0 && cast->GetActiveApplicatorsCount() == 0,
@@ -264,7 +267,8 @@ static void AbilityModB12(Checks& check, PFWorld* world)
 		{
 			AbilityModFixtureB12 f(loaded.world, NDb::ABILITYMODMODE_MANACOST, ".5", "5");
 			CObj<PFAbilityInstance> cast = new PFAbilityInstance(f.source, Target(f.hero.GetPtr()), true);
-			PFApplCreatePars pars(cast, Target(f.hero.GetPtr())); pars.pDBAppl = f.db;
+			const Target target(f.hero.GetPtr());
+			PFApplCreatePars pars(cast, target); pars.pDBAppl = f.db;
 			f.app = new AbilityModProbeB12(pars);
 			check(f.app->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(f.app.GetPtr()), cast), "world-step fixture uses real ability activation");
 			CObj<PFTalent> existing = f.Talent();

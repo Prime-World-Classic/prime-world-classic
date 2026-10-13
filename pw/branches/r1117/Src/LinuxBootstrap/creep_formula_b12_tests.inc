@@ -89,7 +89,8 @@ static void CreepDamageFormulaB12(Checks& check)
 	const float life = receiver->GetHealth();
 	CObj<PFBaseAttackInstance> instance = new PFBaseAttackInstance(attacker->GetAttackAbility(), Target(receiver.GetPtr()));
 	check(instance->GetWorld() == world, "B12 base-attack instance inherits its real world context");
-	PFApplCreatePars pars(CObj<PFAbilityInstance>(instance.GetPtr()), Target(receiver.GetPtr())); pars.pDBAppl = damage;
+	const Target target(receiver.GetPtr());
+	PFApplCreatePars pars(CObj<PFAbilityInstance>(instance.GetPtr()), target); pars.pDBAppl = damage;
 	CObj<Damage> app = new Damage(pars);
 	check(app->Init(), "B12 authored creep damage initializes its receiver");
 	check(app->GetWorld() == world, "B12 base-attack damage inherits world RNG context");

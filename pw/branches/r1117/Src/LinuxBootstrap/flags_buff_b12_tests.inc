@@ -20,7 +20,8 @@ struct FlagBuffB12 : PFApplFlags
 
 static CObj<FlagBuffB12> FlagsB12(PFWorld* world, PFBaseUnit* unit, const NDb::FlagsApplicator* db)
 {
-	PFApplCreatePars pars{CObj<PFAbilityInstance>(), Target(unit)};
+	const Target target(unit);
+	PFApplCreatePars pars{CObj<PFAbilityInstance>(), target};
 	pars.pWorld = world; pars.pOwner = unit; pars.pDBAppl = db;
 	return new FlagBuffB12(pars);
 }

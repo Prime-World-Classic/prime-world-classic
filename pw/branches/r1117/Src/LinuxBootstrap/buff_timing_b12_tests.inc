@@ -26,7 +26,8 @@ static void BuffTimingB12(Checks& check)
 		raw->lifeTime.sString = lifetime; raw->startCondition.sString = condition;
 		if (compiled) raw->lifeTime.compiledString = "unsupported-bytecode";
 		NDb::Ptr<NDb::StatModApplicator> db = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 		CObj<TimedBuffB12> app = new TimedBuffB12(pars); app->durationScale = scale;
 		return app;

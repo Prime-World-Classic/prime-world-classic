@@ -49,7 +49,8 @@ struct StatusLifecycleFixtureB12
 			child->lifeTime.sString = "1"; raw->applicators.push_back(child);
 		}
 		db = raw;
-		PFApplCreatePars pars(instance, Target(hero.GetPtr())); pars.pDBAppl = db;
+		const Target target(hero.GetPtr());
+		PFApplCreatePars pars(instance, target); pars.pDBAppl = db;
 		app = new StatusLifecycleProbeB12(pars);
 	}
 	bool Begin() { return app->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(app.GetPtr()), instance); }
@@ -107,7 +108,8 @@ static void StatusLifecycleB12(Checks& check, PFWorld* world)
 		{
 			NDb::StatusApplicator* raw = new NDb::StatusApplicator; raw->lifeTime.sString = lifetime;
 			NDb::Ptr<NDb::StatusApplicator> db = raw;
-			PFApplCreatePars pars(instance, Target(modifier.hero.GetPtr())); pars.pDBAppl = db;
+			const Target target(modifier.hero.GetPtr());
+			PFApplCreatePars pars(instance, target); pars.pDBAppl = db;
 			CObj<StatusLifecycleProbeB12> app = new StatusLifecycleProbeB12(pars);
 			check(app->Initialize() && app->GetDuration() == (lifetime[0] == '1' ? 6.f : lifetime[0] == '0' ? 0.f : -1.f),
 				"positive status duration uses source ability modifiers while zero and infinite sentinels remain unchanged");

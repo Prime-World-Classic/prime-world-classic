@@ -33,7 +33,8 @@ static void ApplicatorEnabledB12(Checks& check, PFWorld* world)
 		if (test.compiled) raw->enabled.compiledString = "unsupported-bytecode";
 		raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
 		NDb::Ptr<NDb::DamageApplicator> db = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 		CObj<Damage> app = new Damage(pars); receiver->SetHealth(1000);
 		check(app->Init() && app->Run(), "conditional damage uses real target initialization and start");
@@ -54,7 +55,8 @@ static void ApplicatorEnabledTickB12(Checks& check)
 	raw->enabled.sString = "sender.vEnabled != 0"; raw->lifeTime.sString = "-1";
 	raw->behaviorFlags = NDb::BUFFBEHAVIOR_DONTSTOPONSENDERDEATH;
 	NDb::Ptr<NDb::BuffApplicator> db = raw;
-	PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+	const Target target(receiver.GetPtr());
+	PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 	pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
 	CObj<EnabledBuffB12> app = new EnabledBuffB12(pars);
 	check(app->Init() && ActivateApplicator(CObj<PFBaseApplicator>(app.GetPtr()), CObj<PFAbilityInstance>()), "dynamic buff joins real applied ring");

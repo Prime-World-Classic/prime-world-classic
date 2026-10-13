@@ -69,7 +69,8 @@ static void StatBuffB12(Checks& check, PFWorld* world)
 	{
 		StatBuffFixtureB12 f(world, true, false, "1", "3");
 		CObj<PFAbilityInstance> cast = new PFAbilityInstance(f.ability, Target(f.receiver.GetPtr()), true);
-		PFApplCreatePars pars(cast, Target(f.receiver.GetPtr()));
+		const Target target(f.receiver.GetPtr());
+		PFApplCreatePars pars(cast, target);
 		pars.pDBAppl = f.db;
 		CObj<StatBuffProbeB12> live = new StatBuffProbeB12(pars);
 		check(live->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(live.GetPtr()), cast),

@@ -71,7 +71,8 @@ struct StatusStackFixtureB12
 	}
 	CObj<StatusStackProbeB12> Begin(Checks& check, const NDb::StatusApplicator* db, int caster = 0)
 	{
-		PFApplCreatePars pars(instance[caster], Target(hero.GetPtr())); pars.pDBAppl = db;
+		const Target target(hero.GetPtr());
+		PFApplCreatePars pars(instance[caster], target); pars.pDBAppl = db;
 		CObj<StatusStackProbeB12> app = new StatusStackProbeB12(pars); apps.push_back(app);
 		check(app->Initialize() && ActivateApplicator(CObj<PFBaseApplicator>(app.GetPtr()), instance[caster]),
 			"loaded status starts through actual ability activation");

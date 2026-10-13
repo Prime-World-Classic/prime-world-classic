@@ -39,7 +39,8 @@ static void ApplicatorTerminalB12(Checks& check, PFWorld* world)
 		NDb::StatModApplicator* db = new NDb::StatModApplicator;
 		db->modifier.stat = NDb::STAT_STRENGTH;
 		db->modifier.multValue.sString = "1"; db->modifier.addValue.sString = "3"; db->lifeTime.sString = "-1";
-		PFApplCreatePars pars(cast, Target(receiver.GetPtr())); pars.pDBAppl = db;
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(cast, target); pars.pDBAppl = db;
 		CObj<TerminalParentB12> parent = new TerminalParentB12(pars);
 		pars.pParent = parent;
 		CObj<TerminalStatB12> first = new TerminalStatB12(pars), second = new TerminalStatB12(pars);
@@ -91,7 +92,8 @@ static void ApplicatorTerminalB12(Checks& check, PFWorld* world)
 		CObj<PFAbilityInstance> cast = new PFAbilityInstance(data, Target(receiver.GetPtr()), true);
 		NDb::StatModApplicator* db = new NDb::StatModApplicator;
 		db->modifier.stat = NDb::STAT_STRENGTH; db->modifier.multValue.sString = "1"; db->modifier.addValue.sString = "3";
-		PFApplCreatePars pars(cast, Target(receiver.GetPtr())); pars.pDBAppl = db;
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(cast, target); pars.pDBAppl = db;
 		CObj<TerminalParentB12> parent = new TerminalParentB12(pars); pars.pParent = parent;
 		CObj<TerminalStatB12> child = new TerminalStatB12(pars);
 		child->stopOnEnable = stopOnEnable;

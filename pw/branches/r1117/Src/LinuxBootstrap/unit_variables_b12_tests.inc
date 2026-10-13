@@ -53,7 +53,9 @@ static void UnitVariableFormulasB12(Checks& check, PFWorld* world)
 		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
 		raw->damage.sString = expression; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
 		NDb::Ptr<NDb::DamageApplicator> damageDb = raw;
-		PFApplCreatePars pars(CObj<PFAbilityInstance>(), Target(receiver.GetPtr()));
+		// Creation parameters borrow this target until the applicator copies it.
+		const Target target(receiver.GetPtr());
+		PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
 		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = damageDb; pars.pUpgraderAbilityData = ability;
 		CObj<Damage> app = new Damage(pars);
 		receiver->SetHealth(1000);
