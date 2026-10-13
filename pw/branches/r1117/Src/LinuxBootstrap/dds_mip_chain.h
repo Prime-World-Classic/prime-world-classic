@@ -26,4 +26,14 @@ struct DdsMipChain {
  * rgbaBytes conservatively accounts for all decoded levels before GPU admission.
  */
 DdsMipStatus InspectDdsMipChain(const void* data, std::size_t bytes, DdsMipChain& output) noexcept;
+/** Validated base level only, independent of the presence/validity of later mip bytes. */
+struct DdsBaseLevel {
+	DdsBlockFormat format=DdsBlockFormat::Bc1;
+	DdsMipLevel level;
+};
+/** Inspect BC1/2/3 base storage without claiming a valid mip chain. Accept known
+ * alpha-pixel and NVTT normal metadata flags, but do not relabel other codecs.
+ * Same dimension/source limits as full-chain inspection; clear output on failure.
+ */
+DdsMipStatus InspectDdsBaseLevel(const void* data, std::size_t bytes, DdsBaseLevel& output) noexcept;
 }

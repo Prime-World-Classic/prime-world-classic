@@ -9,6 +9,7 @@
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include <GL/gl.h>
+#include "LinuxDdsPreview.h"
 
 namespace NMainFrame
 {
@@ -140,26 +141,13 @@ bool LoadDdsTextureRgba(
   if (!pStream || !pStream->IsOk() || !NImage::RecognizeFormatDDS(pStream))
     return false;
 
-  CArray2D<DWORD> pixels;
-  if (!NImage::LoadImageDDS(&pixels, pStream) || pixels.IsEmpty())
+	LinuxDdsPreview::Image pixels;
+  if (!LinuxDdsPreview::Load(pStream,pixels))
     return false;
 
-  *width = static_cast<unsigned int>(pixels.GetSizeX());
-  *height = static_cast<unsigned int>(pixels.GetSizeY());
-  rgba->resize(static_cast<size_t>(*width) * static_cast<size_t>(*height) * 4U);
-
-  for (unsigned int y = 0; y < *height; ++y)
-  {
-    for (unsigned int x = 0; x < *width; ++x)
-    {
-      const DWORD argb = pixels[y][x];
-      const size_t pixelIndex = (static_cast<size_t>(y) * static_cast<size_t>(*width) + x) * 4U;
-      (*rgba)[pixelIndex + 0] = static_cast<unsigned char>((argb >> 16) & 0xFFU);
-      (*rgba)[pixelIndex + 1] = static_cast<unsigned char>((argb >> 8) & 0xFFU);
-      (*rgba)[pixelIndex + 2] = static_cast<unsigned char>(argb & 0xFFU);
-      (*rgba)[pixelIndex + 3] = static_cast<unsigned char>((argb >> 24) & 0xFFU);
-    }
-  }
+	*width=pixels.width; *height=pixels.height;
+	rgba->resize(pixels.rgba.size());
+	if (!pixels.rgba.empty()) memcpy(&(*rgba)[0],pixels.rgba.data(),pixels.rgba.size());
 
   return !rgba->empty();
 }

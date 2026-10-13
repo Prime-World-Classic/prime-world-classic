@@ -113,6 +113,7 @@
 #include "Render/LinuxBasicFx.h"
 #include "Render/LinuxPreviewSampler.h"
 #include "Render/LinuxPreviewOpaque.h"
+#include "Render/LinuxDdsPreview.h"
 #include <optional>
 #include <thread>
 #include "Render/FlashRendererInterface.h"
@@ -9628,8 +9629,8 @@ bool LoadDdsArtwork(const fs::path& path, LinuxLoadingArtwork* artwork, std::str
     return false;
   }
 
-  CArray2D<DWORD> pixels;
-  if (!NImage::LoadImageDDS(&pixels, streamPtr) || pixels.IsEmpty())
+	Render::LinuxDdsPreview::Image pixels;
+  if (!Render::LinuxDdsPreview::Load(streamPtr,pixels))
   {
     if (error)
     {
@@ -9638,22 +9639,8 @@ bool LoadDdsArtwork(const fs::path& path, LinuxLoadingArtwork* artwork, std::str
     return false;
   }
 
-  artwork->width = pixels.GetSizeX();
-  artwork->height = pixels.GetSizeY();
-  artwork->rgba.resize(static_cast<size_t>(artwork->width) * static_cast<size_t>(artwork->height) * 4U);
-
-  for (int y = 0; y < artwork->height; ++y)
-  {
-    for (int x = 0; x < artwork->width; ++x)
-    {
-      const DWORD argb = pixels[y][x];
-      const size_t pixelIndex = static_cast<size_t>(y * artwork->width + x) * 4U;
-      artwork->rgba[pixelIndex + 0] = static_cast<unsigned char>((argb >> 16) & 0xFFU);
-      artwork->rgba[pixelIndex + 1] = static_cast<unsigned char>((argb >> 8) & 0xFFU);
-      artwork->rgba[pixelIndex + 2] = static_cast<unsigned char>(argb & 0xFFU);
-      artwork->rgba[pixelIndex + 3] = static_cast<unsigned char>((argb >> 24) & 0xFFU);
-    }
-  }
+	artwork->width=static_cast<int>(pixels.width); artwork->height=static_cast<int>(pixels.height);
+	artwork->rgba=std::move(pixels.rgba);
 
   artwork->ready = artwork->width > 0 && artwork->height > 0 && !artwork->rgba.empty();
   if (!artwork->ready && error)

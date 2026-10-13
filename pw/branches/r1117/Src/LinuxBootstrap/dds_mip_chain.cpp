@@ -9,11 +9,12 @@ using DWORD=std::uint32_t;
 #undef MAKEFOURCC
 
 namespace LinuxBootstrap {
-DdsMipStatus InspectDdsMipChain(const void* data, std::size_t bytes, DdsMipChain& output) noexcept {
-	output={};
+namespace {
+/** Shared disk-layout checks; base-level and whole-chain extent policies stay separate. */
+bool ReadHeader(const void* data, std::size_t bytes, DDS_HEADER& header) noexcept {
 	static_assert(sizeof(DDS_HEADER)==124 && sizeof(DDS_PIXELFORMAT)==32,"Original DDS disk layout");
-	if (!data || bytes<128 || bytes>64*1024*1024) return DdsMipStatus::Invalid;
-	DWORD magic=0; DDS_HEADER header{};
+	if (!data || bytes<128 || bytes>64*1024*1024) return false;
+	DWORD magic=0;
 	std::memcpy(&magic,data,4);
 	std::memcpy(&header,static_cast<const unsigned char*>(data)+4,sizeof(header));
 	if (magic!=DDS_MAGIC || header.dwSize!=124 || header.ddspf.dwSize!=32 ||
@@ -21,11 +22,17 @@ DdsMipStatus InspectDdsMipChain(const void* data, std::size_t bytes, DdsMipChain
 		!(header.dwSurfaceFlags&DDS_SURFACE_FLAGS_TEXTURE) || header.dwCubemapFlags ||
 		(header.dwHeaderFlags&DDS_HEADER_FLAGS_VOLUME) || header.dwDepth>1 ||
 		!header.dwWidth || !header.dwHeight || header.dwWidth>4096 || header.dwHeight>4096)
-		return DdsMipStatus::Invalid;
+		return false;
 	const auto count=std::max(DWORD(1),header.dwMipMapCount);
 	unsigned maximum=1;
 	for (auto dimension=std::max(header.dwWidth,header.dwHeight);dimension>1;dimension/=2) ++maximum;
-	if (count>maximum) return DdsMipStatus::Invalid;
+	return count<=maximum;
+}
+}
+DdsMipStatus InspectDdsMipChain(const void* data, std::size_t bytes, DdsMipChain& output) noexcept {
+	output={}; DDS_HEADER header{};
+	if (!ReadHeader(data,bytes,header)) return DdsMipStatus::Invalid;
+	const auto count=std::max(DWORD(1),header.dwMipMapCount);
 	if (header.ddspf.dwFlags!=DDS_FOURCC) return DdsMipStatus::Unsupported;
 	DdsMipChain chain;
 	if (header.ddspf.dwFourCC==DDSPF_DXT1.dwFourCC) chain.format=DdsBlockFormat::Bc1;
@@ -44,6 +51,22 @@ DdsMipStatus InspectDdsMipChain(const void* data, std::size_t bytes, DdsMipChain
 	}
 	if (offset!=bytes) return DdsMipStatus::Invalid;
 	chain.count=count; output=chain;
+	return DdsMipStatus::Valid;
+}
+DdsMipStatus InspectDdsBaseLevel(const void* data, std::size_t bytes, DdsBaseLevel& output) noexcept {
+	output={}; DDS_HEADER header{};
+	if (!ReadHeader(data,bytes,header)) return DdsMipStatus::Invalid;
+	if (!(header.ddspf.dwFlags&DDS_FOURCC) || (header.ddspf.dwFlags&~DWORD(DDS_FOURCC|1u|0x80000000u)))
+		return DdsMipStatus::Unsupported;
+	DdsBaseLevel base;
+	if (header.ddspf.dwFourCC==DDSPF_DXT1.dwFourCC) base.format=DdsBlockFormat::Bc1;
+	else if (header.ddspf.dwFourCC==DDSPF_DXT3.dwFourCC) base.format=DdsBlockFormat::Bc2;
+	else if (header.ddspf.dwFourCC==DDSPF_DXT5.dwFourCC) base.format=DdsBlockFormat::Bc3;
+	else return DdsMipStatus::Unsupported;
+	const size_t block=base.format==DdsBlockFormat::Bc1 ? 8 : 16;
+	const size_t extent=size_t((header.dwWidth+3)/4)*((header.dwHeight+3)/4)*block;
+	if (extent>bytes-128) return DdsMipStatus::Invalid;
+	base.level={header.dwWidth,header.dwHeight,128,extent}; output=base;
 	return DdsMipStatus::Valid;
 }
 }

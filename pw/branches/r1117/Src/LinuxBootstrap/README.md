@@ -139,6 +139,22 @@ cached live hero poses preserve this policy per material slot. Transparent,
 emissive, runtime-opacity and overridden-state materials keep the legacy preview;
 this is not complete material, culling, sorting or original lighting parity.
 
+Native artwork and TextureManager decode DDS BC1/2/3 base images through the
+repository's MIT-licensed Squish decoder. This restores full 565 endpoint values,
+BC2/3 four-colour blocks, alpha indices and cropped tiny/odd-sized blocks. Base
+inspection is bounded separately from strict GPU mip-chain admission: shipped
+textures with missing unused mip tails remain readable without uploading an
+incomplete chain. RGB16/24/32 and aligned premultiplied DXT2/4 retain guarded legacy
+conversion. The shared Windows decoder, cursor/splash callers, texture filtering
+and original compressed GPU upload are unchanged. Portable tests cover malformed
+inputs and independent pixel fixtures; the engine probe checks both consumers
+and original hero textures against driver-decompressed pixels where available.
+Driver comparison allows one RGB unit and two units only for interpolated BC3
+alpha; alpha endpoints and explicit alpha remain exact. Independent CPU fixtures
+and every alpha pixel in the shipped BC3 fixtures verify exact integer division
+from the [BC3 definition](https://learn.microsoft.com/en-us/windows/win32/direct3d10/d3d10-graphics-programming-guide-resources-block-compression#bc3).
+The 2D loader rejects cubemaps/volumes; luminance-only DDS support remains absent.
+
 Native skeletal previews decode the original exporter `Render::Color` bone
 indices from BGRA storage into RGBA weight order before fragment palette lookup.
 Plain `UBYTE4` declarations retain their byte order. The
