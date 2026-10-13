@@ -233,6 +233,31 @@ static void DeadHeroesB13(Checks& check)
 	}
 }
 
+/** Direct hero calls must reject invalid time before touching respawn and corpse state. */
+static void DeadHeroTickGuardsB13(Checks& check)
+{
+	for (float dt : {0.f, -1.f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+	{
+		B8BehaviourForeignWorld fixture(check); if (!fixture.world) continue;
+		auto source = DeadCreatureDbB13(fixture.world);
+		auto* raw = new NDb::Hero;
+		raw->stats = source->stats; raw->targetingParams = source->targetingParams; raw->deathParameters = source->deathParameters;
+		PFBaseHero::SpawnInfo spawn; spawn.pHero = raw;
+		spawn.placement = Placement(CVec3(5,5,0), QNULL, CVec3(1,1,1));
+		CObj<DeadCreatureB13<B8BehaviourHero>> hero = new DeadCreatureB13<B8BehaviourHero>(fixture.world, spawn, NDb::FACTION_FREEZE);
+		hero->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+		fixture.world->Step(.125f, .125f);
+		const float respawn = hero->GetTimeToRespawn(), corpse = hero->CorpseTime();
+		const int hidden = hero->GetHiddenCounter();
+		hero->PFBaseHero::Step(dt);
+		check(hero->IsDead() && hero->GetTimeToRespawn() == respawn && hero->CorpseTime() == corpse
+			&& hero->GetHiddenCounter() == hidden, "nonadvancing direct hero tick preserves active respawn corpse and hide state");
+		fixture.world->Step(.125f, .125f);
+		check(hero->IsDead() && hero->GetTimeToRespawn() == respawn - .125f && hero->CorpseTime() == corpse - .125f,
+			"valid world tick after rejected hero time remains usable");
+	}
+}
+
 static void DeadWorldB13(Checks& check)
 {
 	DeadEffectsB13(check);
@@ -240,4 +265,5 @@ static void DeadWorldB13(Checks& check)
 	DeadSchedulingB13(check);
 	DeadTimerGuardsB13(check);
 	DeadHeroesB13(check);
+	DeadHeroTickGuardsB13(check);
 }

@@ -580,6 +580,10 @@ private:
   ValueWithModifiers* customEnergyValue;
   ValueWithModifiers* customEnergyMaximum;
   ValueWithModifiers* customEnergyRegeneration;
+#if defined(PW_LINUX_DB_BOOTSTRAP) || defined(PW_LINUX_NULL_RENDER)
+	/** Own only the corpse's hide contribution, including default/deserialized construction. */
+	bool nativeCorpseHidden = false;
+#endif
 
   friend void MakeTrueAsyncForTest( PFBaseHero *pHero );
 };

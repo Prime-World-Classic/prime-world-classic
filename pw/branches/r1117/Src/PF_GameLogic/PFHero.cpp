@@ -27,6 +27,8 @@ template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatisti
 #include "PFAIWorld.h"
 #include "PFPredefinedUnitVariables.h"
 #include "../Game/PF/Audit/ClientStubs.h"
+#include "../System/MemoryStream.h"
+#include "../System/BinChunkSerializerBase.h"
 
 namespace
 {
@@ -140,6 +142,8 @@ void PFBaseHero::Initialize(InitData const& data)
 void PFBaseHero::InitHero(const NDb::BaseHero *pDesc) { pDbHero = pDesc; InitializeCustomEnergyVariables(); }
 bool PFBaseHero::Step(float dtInSeconds)
 {
+	// Hero respawn work precedes the creature guard, so reject invalid time here too.
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0.0f) return false;
   if (IsDead())
   {
     if (advanceRespawnDelay >= 0.0f)
@@ -320,7 +324,22 @@ float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHeal
 }
 float PFBaseHero::GetTimeToRespawn() const { return respawnDelay; }
 void PFBaseHero::RecalculateRedeemCost() { redeemCost = 0.0f; }
-void PFBaseHero::RemoveCorpse() {}
+/** Ordinary heroes hide their corpse; clones retire their world object as on Windows. */
+void PFBaseHero::RemoveCorpse()
+{
+	PFCreature::RemoveCorpse();
+	if (isClone)
+	{
+		if (!IsObjectDead())
+			Die();
+		return;
+	}
+	if (!nativeCorpseHidden)
+	{
+		nativeCorpseHidden = true;
+		UpdateHiddenState(false);
+	}
+}
 void PFBaseHero::StartRespawnTimer()
 {
   if (forbidRespawn)
@@ -363,10 +382,16 @@ void PFBaseHero::StartRespawnTimer()
 }
 void PFBaseHero::AdvanceResurrect()
 {
-  RemoveCorpse();
+	// Zero is still an unretired corpse; a coarse native tick must not hide it after advance.
+	if (deadUnitLifeTime >= 0.0f)
+		RemoveCorpse();
   PFFsm::Cleanup();
   TeleportTo(ResurrectParams::Base == resurrectParams.resurrectAt ? spawnPos.AsVec2D() : GetPosition().AsVec2D(), false, false);
-  UpdateHiddenState(true);
+	if (nativeCorpseHidden)
+	{
+		nativeCorpseHidden = false;
+		UpdateHiddenState(true);
+	}
   advanceRespawnDelay = -1.0f;
 }
 void PFBaseHero::AddTalentActivatedWhileDead( CPtr<PFTalent> pTalent ) { activatedWhileLastDeathtime.push_back(pTalent); }
@@ -498,7 +523,14 @@ void PFBaseHero::AwardForKill(CPtr<PFBaseUnit> const& pVictim, const float money
 }
 void PFBaseHero::OnKill( CPtr<PFBaseUnit> const& pVictim, bool lastHit ) { (void)pVictim; (void)lastHit; }
 void PFBaseHero::DebugDie() { OnDie(); }
-void PFBaseHero::Resurrect( const ResurrectParams& params) { resurrectParams = params; DoResurrect(); }
+/** Keep native immediate revival while balancing the ordinary corpse hide before restoring life. */
+void PFBaseHero::Resurrect( const ResurrectParams& params)
+{
+	resurrectParams = params;
+	if (IsDead() && !IsClone() && !IsResurrecting())
+		AdvanceResurrect();
+	DoResurrect();
+}
 void PFBaseHero::OnScream( const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamType st ) { (void)pTarget; (void)st; }
 CVec3 PFBaseHero::GetPetEscortPosition() const { return GetPosition(); }
 void PFBaseHero::Emote(NDb::EEmotion emotion) { (void)emotion; }
@@ -524,6 +556,19 @@ void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& item)
 void PFBaseHero::OnSerialize(IBinSaver& f)
 {
 	if (f.IsReading() && customEnergy) InitializeCustomEnergyVariables();
+	// Only tagged native saves can extend this state without changing the shared chunkless protocol or CRC.
+	const bool tagged = dynamic_cast<BinChunkSaverBase*>(&f) != nullptr;
+	if (f.IsReading())
+	{
+		nativeCorpseHidden = false;
+		if (!tagged || f.CountChunks(44) == 0)
+		{
+			systemLog(NLogg::LEVEL_ERROR) << "Unsupported native hero saved state: corpse hide ownership is absent";
+			return;
+		}
+	}
+	if (tagged)
+		f.Add(44, &nativeCorpseHidden);
 }
 
 /** Rebind runtime pointers; existing serialized variables keep their values and modifiers. */
@@ -864,6 +909,12 @@ void PFBaseHero::OnIdle() {}
 void PFBaseHero::OnAfterSuspend(bool isLongSuspend) { (void)isLongSuspend; }
 void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc )
 {
+	// The original clone path does not enter ordinary hero respawn bookkeeping.
+	if (isClone)
+	{
+		PFCreature::OnUnitDie(pKiller, flags, pDamageDesc);
+		return;
+	}
   const bool isDeathDeferred = (flags & UNITDIEFLAGS_DEFERREDDEATH) != 0;
   DismountSpecial();
   respawnDelay = -1.0f;
