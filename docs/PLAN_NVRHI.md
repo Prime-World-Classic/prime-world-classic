@@ -303,6 +303,31 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
   Инкрементальный кэш `.codes` **фактически выключён**: в
   `UberShaderFileInfo::Read()` ранний `return` после `Reset()`, т.е. всегда
   полная компиляция всех пинов (вот откуда 49 966 пар в `BasicMaterial.shd`).
+  **Как вставить его в наш граф (снято 2026-10-12, конкретика для шага):**
+  проект в `Src/PF.sln` есть (строка 237), но `projects_from_sln()` из
+  `Tools/WineClientBuild/parse_vcproj.py` его не отдаёт: для
+  `ShippingSingleExe|Win32` у него **нет `Build.0`** (в `EXCLUDE` он тоже не
+  числится) — поэтому в `model.json` ровно 25 проектов. Конфигурации в
+  `ShaderCompiler.vcproj` только `Debug|Win32` / `Release|Win32` (+ третья),
+  x64 нет. Параметры `Release|Win32`: include `../..`,
+  `../../vendor/zlib/include`, `../../vendor/DirectX/Include`, `../`;
+  дефайны `WIN32;_WINDOWS;NDEBUG;_SHIPPING;_DO_ASSERT`; линкует
+  `zdll dxguid d3d9 d3dx9 dxerr`; **`ProjectReference` в vcproj нет** —
+  символы libdb (`XmlSaver.h`) в VS-сборке приходят из либы проекта libdb,
+  в нашем графе это `$<TARGET_OBJECTS:libdb>` + `Foundation` + `MemoryLib`
+  (+ `mballocator`). Исходники: `ShaderCompiler.cpp`, `UberShaderDesc.cpp`,
+  `crc_math.cpp`, `parse.cpp`, `multythread/mtworkerlite.cpp`, `stdafx.cpp`.
+  Порядок шагов: (1) в `parse_vcproj.py` — явный список «extra tools»
+  (`ShaderCompiler` из `Release|Win32`), в `gen_cmake.py` —
+  `add_executable(ShaderCompiler …)` с этими объектами (x64-подстановки
+  `X64_LIB_*` уже есть); (2) смоук паритета — перегенерировать
+  `Data/Shaders/UberShaders/*.shd` **тем же D3DX** и сверить побайтово с
+  текущими: это доказывает, что перенос тула в граф ничего не меняет;
+  (3) только потом `D3DXCompileShader` → `D3DCompile` (сначала с теми же
+  `vs_3_0/ps_3_0` — D3D9 не умеет SM5, так что SM3-выход обязан остаться),
+  затем SM5.0 + DXC→SPIR-V и новый `.shd` с несколькими блобами.
+  Для шага (1) под Wine нужен **x64** `d3dx9_43.dll` (в дереве только x86) —
+  он уже доставлен ради `tools/sh_math_test`.
   `MaterialSpec.{h,cpp}` этим генератором **не** создаются — их генератор
   (XML → C++-классы материала) в дереве действительно отсутствует;
   для смены набора пинов (например, убрать `R2VBPinValue`) он нужен.
@@ -515,14 +540,21 @@ color-correct начинают получать настоящие веса) —
 - [ ] Загрузка текстур через D3DX (`CreateTextureFromFileInMemoryEx`,
       `CreateCubeTextureFromFileInMemoryEx`, `D3DX_FILTER_*`, `D3DXIFF_DDS`) —
       нужен собственный DDS/TGA/PNG-загрузчик; это работа этапа 3/4, не этап 1.
-- Проверка (2026-10-12): x64-сборка без ошибок (`build/PW_Game.exe`,
-      15 190 016 Б, PE32+, LAA, FileVersion 2.16.1.0) + **полный E2E на tiny10
+- Проверка (2026-10-12, зачистка D3D9-утечек и SH-математики): x64-сборка без
+      ошибок (`build/PW_Game.exe`, 15 190 016 Б, PE32+, LAA, FileVersion
+      2.16.1.0) + **полный E2E на tiny10
       через `PwE2E64` ПРОЙДЕН**: login `Success(5) uid=131` → lobby →
       `gamesvc_00` → `mapload: all map objects loaded` → бой 3,5 мин →
       `Switch to EGameState::Finished by 3` → `finish <token>` в dev-бэкенде;
       дампов нет, `runtime error`/`shader`/`D3D`/`assert` в логе нет, набор
       `Unknown command or variable` = эталонный. Грабель про гейт версии
       (`PW_VERSION=2.16.1` для `client-modern`) — в скиле `pw-client`.
+- Проверка (2026-10-12, `a49b7d2b5` — удаление GPU-окклюзии, −616/+26):
+      x64-сборка 0 ошибок (`PW_Game.exe` 15 175 680 Б) + **E2E на tiny10
+      ПРОЙДЕН** (лог-папка `2026.10.12-22.19.19`): login `Success(5) uid=131`
+      → lobby → `gamesvc_00` → `mapload: all map objects loaded` → бой 3 мин →
+      `Switch to EGameState::Finished by 3` → `finish 2de87775…` в dev-бэкенде;
+      новых дампов нет, `assert`/`shader`/`query`-ошибок в логе нет.
 - **Проверка критерия (2026-10-12): в КОМПИЛИРУЕМОМ клиенте утечек не
   осталось — 0.** Оставшиеся 2 `GetDevice()` в `EditorNative/EditorRender.cpp`
   в сборку `PW_Game.exe` **не входят**: граф `Tools/ClientCMake` = 25
