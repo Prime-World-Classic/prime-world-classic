@@ -12,6 +12,7 @@
 #include "SkeletonWrapper.h"
 #include "smartrenderer.h"
 #include "LinuxPreviewSampler.h"
+#include "LinuxPreviewOpaque.h"
 
 namespace Render
 {
@@ -39,6 +40,7 @@ public:
   {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 	LinuxPreviewSampler::Clear();
+	LinuxPreviewOpaque::Clear();
 #endif
   }
 };
@@ -204,6 +206,7 @@ public:
     }
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 	LinuxPreviewSampler::Select(pDbMaterial.GetPtr());
+	LinuxPreviewOpaque::Select(pDbMaterial.GetPtr());
 #endif
   }
 

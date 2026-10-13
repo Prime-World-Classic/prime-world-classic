@@ -112,6 +112,7 @@
 #include "Render/sceneconstants.h"
 #include "Render/LinuxBasicFx.h"
 #include "Render/LinuxPreviewSampler.h"
+#include "Render/LinuxPreviewOpaque.h"
 #include <optional>
 #include <thread>
 #include "Render/FlashRendererInterface.h"
@@ -1460,7 +1461,7 @@ struct LinuxHeroMeshPreviewVertex
   float blendWeights[4];
   unsigned short blendIndices[4];
   size_t diffuseTextureIndex;
-  size_t samplerIndex=kLinuxHeroPreviewNoDiffuseTexture;
+  size_t materialIndex=kLinuxHeroPreviewNoDiffuseTexture;
   bool texCoordValid;
   bool normalValid;
   bool skinningValid;
@@ -1534,6 +1535,13 @@ struct LinuxHeroStaticGeometryPayloadPreview
   NDb::ESCOrientation orientation;
 };
 
+/** Material identity is independent of shared texture and pose-cache identity. */
+struct LinuxHeroMeshPreviewMaterial
+{
+	Render::LinuxPreviewSampler::Address address;
+	Render::LinuxPreviewOpaque::State opaque;
+};
+
 struct LinuxHeroMeshPreview
 {
   bool attempted;
@@ -1584,7 +1592,7 @@ struct LinuxHeroMeshPreview
   std::string sourceFile;
   std::vector<std::string> sourceFiles;
   std::vector<LinuxHeroMeshPreviewVertex> triangleVertices;
-  std::vector<Render::LinuxPreviewSampler::Address> samplerAddresses;
+	std::vector<LinuxHeroMeshPreviewMaterial> materials;
 
   LinuxHeroMeshPreview()
     : attempted(false),
@@ -17137,7 +17145,8 @@ bool ProbeLinuxHeroSkinMeshPayloadFile(
 	// Material slots may alias textures; bound metadata by already loaded DB references, not raw file counts.
 	const size_t materialSlots=materialReferences ? std::min<size_t>(header->materialCount,materialReferences->size()) : 0;
 	for (size_t i=0; i<materialSlots; ++i)
-		meshPreview->samplerAddresses.push_back(Render::LinuxPreviewSampler::Resolve((*materialReferences)[i].GetPtr()));
+		meshPreview->materials.push_back({Render::LinuxPreviewSampler::Resolve((*materialReferences)[i].GetPtr()),
+			Render::LinuxPreviewOpaque::Resolve((*materialReferences)[i].GetPtr())});
   meshPreview->jointsCount = header->jointsCount;
   meshPreview->vertexBufferBytes = header->commonVertexBufferSizeInBytes;
   meshPreview->indexBufferBytes = header->commonIndexBufferSizeInBytes;
@@ -17349,7 +17358,7 @@ bool ProbeLinuxHeroSkinMeshPayloadFile(
               }
             }
             vertices[corner].diffuseTextureIndex = diffuseTextureIndex;
-						vertices[corner].samplerIndex=fragment.materialID;
+						vertices[corner].materialIndex=fragment.materialID;
           }
 
           if (triangleValid)
@@ -17470,16 +17479,16 @@ void MergeLinuxHeroMeshPayloadPreview(
 
   MergeLinuxHeroMeshPreviewBounds(payloadPreview, meshPreview);
 	const size_t firstVertex=meshPreview->triangleVertices.size();
-	const size_t firstSampler=meshPreview->samplerAddresses.size();
-	meshPreview->samplerAddresses.insert(meshPreview->samplerAddresses.end(),
-		payloadPreview.samplerAddresses.begin(),payloadPreview.samplerAddresses.end());
+	const size_t firstMaterial=meshPreview->materials.size();
+	meshPreview->materials.insert(meshPreview->materials.end(),
+		payloadPreview.materials.begin(),payloadPreview.materials.end());
   meshPreview->triangleVertices.insert(
     meshPreview->triangleVertices.end(),
     payloadPreview.triangleVertices.begin(),
     payloadPreview.triangleVertices.end());
 	for (size_t i=firstVertex; i<meshPreview->triangleVertices.size(); ++i) {
-		auto& sampler=meshPreview->triangleVertices[i].samplerIndex;
-		sampler=sampler<payloadPreview.samplerAddresses.size() ? firstSampler+sampler : kLinuxHeroPreviewNoDiffuseTexture;
+		auto& material=meshPreview->triangleVertices[i].materialIndex;
+		material=material<payloadPreview.materials.size() ? firstMaterial+material : kLinuxHeroPreviewNoDiffuseTexture;
 	}
 }
 
@@ -54990,14 +54999,15 @@ void ApplyLinuxHeroPreviewVertexColor(
   bool textured,
   unsigned char accentR,
   unsigned char accentG,
-  unsigned char accentB
+  unsigned char accentB,
+	bool textureAlpha
 )
 {
   const float light = ComputeLinuxHeroPreviewNormalLight(vertex);
   if (textured)
   {
     const unsigned char color = ScaleHeroPreviewColor(255, light);
-    SetOpenGlColor(color, color, color, 238);
+    SetOpenGlColor(color, color, color, textureAlpha ? 255 : 238);
     return;
   }
 
@@ -55005,7 +55015,7 @@ void ApplyLinuxHeroPreviewVertexColor(
     ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentR, 0.95f), light),
     ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentG, 0.95f), light),
     ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentB, 0.95f), light),
-    232);
+    textureAlpha ? 255 : 232);
 }
 
 GLuint ResolveLinuxHeroPreviewDiffuseTexture(
@@ -55092,8 +55102,9 @@ bool DrawLinuxHeroMeshPreview(
 		return result;
 	});
   GLuint currentTexture = 0;
-  size_t currentSampler=kLinuxHeroPreviewNoDiffuseTexture;
+	size_t currentMaterial=kLinuxHeroPreviewNoDiffuseTexture;
   std::optional<Render::LinuxPreviewSampler::Scope> sampling;
+	std::optional<Render::LinuxPreviewOpaque::Scope> opaque;
   bool batchOpen = false;
   bool textureEnabled = false;
   for (size_t i = 0; i + 2 < meshPreview.triangleVertices.size(); i += 3)
@@ -55113,9 +55124,9 @@ bool DrawLinuxHeroMeshPreview(
     }
 
 		const GLuint diffuseTexture = textureIndex < diffuseTextures.size() ? diffuseTextures[textureIndex] : 0;
-		const size_t samplerIndex=a.samplerIndex==b.samplerIndex && a.samplerIndex==c.samplerIndex ?
-			a.samplerIndex : kLinuxHeroPreviewNoDiffuseTexture;
-    if (!batchOpen || currentTexture != diffuseTexture || currentSampler != samplerIndex)
+		const size_t materialIndex=a.materialIndex==b.materialIndex && a.materialIndex==c.materialIndex ?
+			a.materialIndex : kLinuxHeroPreviewNoDiffuseTexture;
+    if (!batchOpen || currentTexture != diffuseTexture || currentMaterial != materialIndex)
     {
       if (batchOpen)
       {
@@ -55123,7 +55134,8 @@ bool DrawLinuxHeroMeshPreview(
       }
 
       currentTexture = diffuseTexture;
-      currentSampler = samplerIndex;
+			currentMaterial = materialIndex;
+			opaque.reset();
       sampling.reset();
       if (currentTexture)
       {
@@ -55143,26 +55155,27 @@ bool DrawLinuxHeroMeshPreview(
           textureEnabled = false;
         }
       }
-			sampling.emplace(currentTexture,
-				currentSampler<meshPreview.samplerAddresses.size() ? meshPreview.samplerAddresses[currentSampler] : Render::LinuxPreviewSampler::Address{});
+			const auto material=currentMaterial<meshPreview.materials.size() ? meshPreview.materials[currentMaterial] : LinuxHeroMeshPreviewMaterial{};
+			sampling.emplace(currentTexture,material.address);
+			opaque.emplace(material.opaque);
       glBegin(GL_TRIANGLES);
       batchOpen = true;
     }
 
-    if (!sampling->Ok()) continue;
-    ApplyLinuxHeroPreviewVertexColor(a, currentTexture != 0, accentR, accentG, accentB);
+    if (!sampling->Ok() || !opaque->Ok()) continue;
+    ApplyLinuxHeroPreviewVertexColor(a, currentTexture != 0, accentR, accentG, accentB, opaque->TextureAlpha());
     if (currentTexture)
     {
       glTexCoord2f(a.u, a.v);
     }
     EmitLinuxHeroMeshPreviewVertex(meshPreview, a, scale);
-    ApplyLinuxHeroPreviewVertexColor(b, currentTexture != 0, accentR, accentG, accentB);
+    ApplyLinuxHeroPreviewVertexColor(b, currentTexture != 0, accentR, accentG, accentB, opaque->TextureAlpha());
     if (currentTexture)
     {
       glTexCoord2f(b.u, b.v);
     }
     EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
-    ApplyLinuxHeroPreviewVertexColor(c, currentTexture != 0, accentR, accentG, accentB);
+    ApplyLinuxHeroPreviewVertexColor(c, currentTexture != 0, accentR, accentG, accentB, opaque->TextureAlpha());
     if (currentTexture)
     {
       glTexCoord2f(c.u, c.v);
@@ -55173,6 +55186,7 @@ bool DrawLinuxHeroMeshPreview(
   {
     glEnd();
   }
+	opaque.reset();
   sampling.reset();
   if (textureEnabled)
   {

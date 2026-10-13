@@ -15,6 +15,7 @@
 #include <GL/gl.h>
 #include "LinuxBasicFx.h"
 #include "LinuxPreviewSampler.h"
+#include "LinuxPreviewOpaque.h"
 #endif
 
 namespace
@@ -199,7 +200,7 @@ namespace
       *z = (source.y - g_openGLPreviewCenterY) * g_openGLPreviewScale;
   }
 
-  void EmitOpenGLImmediateMeshColor(const CVec3& normal, bool normalValid, bool textured)
+  void EmitOpenGLImmediateMeshColor(const CVec3& normal, bool normalValid, bool textured, bool textureAlpha)
   {
     float light = 1.0f;
     if (normalValid)
@@ -214,7 +215,7 @@ namespace
     if (textured)
     {
       const unsigned char color = ScaleColorByte(255, light);
-      glColor4ub(color, color, color, 238);
+      glColor4ub(color, color, color, textureAlpha ? 255 : 238);
       return;
     }
 
@@ -222,7 +223,7 @@ namespace
       ScaleColorByte(74, light),
       ScaleColorByte(138, light),
       ScaleColorByte(210, light),
-      232);
+      textureAlpha ? 255 : 232);
   }
 
   bool BuildOpenGLImmediateMeshVertex(
@@ -408,6 +409,8 @@ namespace
 	GLint texture=0; glGetIntegerv(GL_TEXTURE_BINDING_2D,&texture);
 	Render::LinuxPreviewSampler::Scope sampling(textureEnabled ? unsigned(texture) : 0,Render::LinuxPreviewSampler::Current());
 	if (!sampling.Ok()) return;
+	Render::LinuxPreviewOpaque::Scope opaque(Render::LinuxPreviewOpaque::Current());
+	if (!opaque.Ok()) return;
     glBegin(GL_TRIANGLES);
     for (unsigned int triangleIndex = 0; triangleIndex < descr.primitiveCount; ++triangleIndex)
     {
@@ -449,7 +452,7 @@ namespace
           continue;
         }
 
-        EmitOpenGLImmediateMeshColor(normal, normalValid, textureEnabled && texCoordValid);
+        EmitOpenGLImmediateMeshColor(normal, normalValid, textureEnabled && texCoordValid, opaque.TextureAlpha());
         if (textureEnabled && texCoordValid)
           glTexCoord2f(u, v);
 
@@ -494,6 +497,7 @@ void SetOpenGLImmediateMeshDrawingEnabled(bool enabled)
   {
 	Render::LinuxBasicFx::ClearSelection();
 	Render::LinuxPreviewSampler::Clear();
+	Render::LinuxPreviewOpaque::Clear();
     g_openGLImmediateObjectMatrix = 0;
     g_openGLImmediateSkeletalMatrices = 0;
     g_openGLImmediateSkeletalMatrixCount = 0;

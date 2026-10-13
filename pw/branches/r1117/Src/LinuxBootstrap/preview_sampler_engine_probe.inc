@@ -88,14 +88,14 @@ bool RunLinuxPreviewSamplerEngineProbe()
 			"original skin payload loads with aliased texture slots");
 		std::set<size_t> slots; bool metadata=true, negativeV=false;
 		for (const auto& vertex : payload.triangleVertices) {
-			slots.insert(vertex.samplerIndex); negativeV=negativeV || vertex.v<0;
-			metadata=metadata && vertex.diffuseTextureIndex==0 && vertex.samplerIndex<2;
+			slots.insert(vertex.materialIndex); negativeV=negativeV || vertex.v<0;
+			metadata=metadata && vertex.diffuseTextureIndex==0 && vertex.materialIndex<2;
 		}
-		check(metadata && negativeV && slots.size()==2 && payload.samplerAddresses.size()==2 &&
-			payload.samplerAddresses[0].u==0 && payload.samplerAddresses[1].u==1,
+		check(metadata && negativeV && slots.size()==2 && payload.materials.size()==2 &&
+			payload.materials[0].address.u==0 && payload.materials[1].address.u==1,
 			"original fragment material IDs survive payload decoding independently of texture aliases");
 		check(ProbeLinuxHeroSkinMeshPayloadFile("../Data/Heroes/Plane/_.skin",&aliased,nullptr,10000,&payload,&warnings) &&
-			payload.samplerAddresses.empty(),"missing DB references retain legacy preview without allocation from raw material count");
+			payload.materials.empty(),"missing DB references retain legacy preview without allocation from raw material count");
 	}
 	std::array<GLint,16> owned{};
 	bool cacheValid=true;
@@ -188,12 +188,12 @@ bool RunLinuxPreviewSamplerEngineProbe()
 	asset.artwork.rgba.assign(rgba,rgba+sizeof(rgba)); hero.sceneAsset.skinDiffuseTextures.push_back(asset);
 	for (int side=0; side<2; ++side) {
 		Address address; address.selected=true; address.u=address.v=side;
-		mesh.samplerAddresses.push_back(address);
+		mesh.materials.push_back({address,{}});
 		for (int corner=0; corner<3; ++corner) {
 			LinuxHeroMeshPreviewVertex vertex;
 			vertex.x=(side ? .25f : -.25f)+(corner==0 ? -.2f : corner==1 ? .2f : 0);
 			vertex.z=corner==2 ? .9f : .1f; vertex.u=.25f; vertex.v=-.25f;
-			vertex.texCoordValid=true; vertex.diffuseTextureIndex=0; vertex.samplerIndex=side;
+			vertex.texCoordValid=true; vertex.diffuseTextureIndex=0; vertex.materialIndex=side;
 			mesh.triangleVertices.push_back(vertex);
 		}
 	}
@@ -208,9 +208,9 @@ bool RunLinuxPreviewSamplerEngineProbe()
 	}
 	check(poses.builds==1 && poses.hits==1 && overlay.heroPreviewDiffuseTextureCache.size()==1,"sampler identity does not duplicate texture or pose storage");
 	LinuxHeroMeshPreview merged; MergeLinuxHeroMeshPayloadPreview(mesh,&merged); MergeLinuxHeroMeshPayloadPreview(mesh,&merged);
-	check(merged.samplerAddresses.size()==4 && merged.triangleVertices.size()==12 &&
-		merged.triangleVertices[0].samplerIndex==0 && merged.triangleVertices[3].samplerIndex==1 &&
-		merged.triangleVertices[6].samplerIndex==2 && merged.triangleVertices[9].samplerIndex==3,
+	check(merged.materials.size()==4 && merged.triangleVertices.size()==12 &&
+		merged.triangleVertices[0].materialIndex==0 && merged.triangleVertices[3].materialIndex==1 &&
+		merged.triangleVertices[6].materialIndex==2 && merged.triangleVertices[9].materialIndex==3,
 		"merged skin payloads remap material identities independently of shared texture indices");
 	for (const auto& item : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&item.second.texture);
 	bindSampler(0,oldSampler); deleteSamplers(1,&host); glDeleteTextures(1,&texture);

@@ -129,7 +129,15 @@ the owning context releases the cache during shutdown. The renderer probe covers
 original Plane payloads, immediate renderer pixels, cold/warm hero pose caches,
 malformed inputs, nested scopes and context/thread/teardown boundaries. Filtering
 remains level-zero linear: this does not add original mip/anisotropic filtering,
-blend-state, culling, alpha-test or lighting parity, and UI textures are unchanged.
+and UI texture settings are unchanged.
+
+Ordinary opaque BasicMaterial previews disable output-zero blending and use the
+authored GEQUAL cutout threshold on texture alpha without preview attenuation.
+The scope restores host blend enable and alpha-test state, leaving depth, culling,
+blend factors and other outputs untouched. Both original immediate draws and
+cached live hero poses preserve this policy per material slot. Transparent,
+emissive, runtime-opacity and overridden-state materials keep the legacy preview;
+this is not complete material, culling, sorting or original lighting parity.
 
 Native skeletal previews decode the original exporter `Render::Color` bone
 indices from BGRA storage into RGBA weight order before fragment palette lookup.
