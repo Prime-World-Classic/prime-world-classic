@@ -16,6 +16,39 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 	check(map.sceneCatalog && !map.sceneCatalog->discovering, "original catalog finalized");
 	if (!map.sceneCatalog) return false;
 	const auto& catalog = *map.sceneCatalog;
+	const auto spawnTile = std::find_if(catalog.terrain.begin(), catalog.terrain.end(),
+		[](const auto& tile) { return tile.originalObjectIndex == 1187; });
+	check(spawnTile != catalog.terrain.end(), "original hero-spawn terrain tile exists");
+	if (spawnTile != catalog.terrain.end()) {
+		check(spawnTile->bakedTerrain && map.bakedTerrain && map.bakedTerrain->TileCount() == 1681,
+			"catalog references the validated original baked stream");
+		check(spawnTile->placement.pos == CVec3(0, 0, 0) && spawnTile->placement.scale == CVec3(1, 1, 1),
+			"baked terrain world positions must not receive editor placement again");
+		Render::AABB bounds;
+		bounds.Set(spawnTile->localBounds);
+		check(std::abs(bounds.center.z - 6.682475f) < .001f &&
+			std::abs(bounds.halfSize.z - .247755f) < .001f,
+			"local spawn ground uses the shipped deformed height bounds, not the flat editor mesh");
+		if (map.bakedTerrain) {
+			auto storage = std::make_shared<LinuxStaticMeshStorage>();
+			const auto* geometry = CreateLinuxBakedTerrainGeometry(*storage, map.bakedTerrain, 1187);
+			const auto* tile = map.bakedTerrain->GetTile(1187);
+			check(geometry && geometry->primitives.size() == 1 && geometry->triangleCount == tile->triangleCount,
+				"real baked tile builds one original visible triangle-list primitive");
+			check(storage->terrainVertices && storage->terrainIndices &&
+				storage->terrainVertices->storage.size() == tile->vertexCount * 44 &&
+				storage->terrainIndices->storage.size() == tile->indexCount * 4 &&
+				!std::memcmp(storage->terrainVertices->storage.begin(), map.bakedTerrain->VertexData(1187), tile->vertexCount * 44) &&
+				!std::memcmp(storage->terrainIndices->storage.begin(), map.bakedTerrain->IndexData(1187), tile->indexCount * 4),
+				"native buffers preserve every original position, UV, colour, mask and index byte");
+			std::weak_ptr<LinuxStaticMeshStorage> weak = storage;
+			std::shared_ptr<Render::StaticMesh> retained(storage, &storage->mesh);
+			storage.reset();
+			check(!weak.expired(), "retained mesh keeps its native terrain buffers alive");
+			retained.reset();
+			check(weak.expired(), "last retained mesh releases native terrain buffers and geometry");
+		}
+	}
 	check(map.staticSceneObjectScanCount == 7478 && !map.staticSceneObjectScanLimitHit,
 		"catalog traverses original objects beyond the former 2048 scan cap");
 	check(catalog.terrain.size() == 1681 && catalog.statics.size() > 256 && catalog.animated.size() > 48,

@@ -127,6 +127,7 @@
 #include "LinuxBootstrap/scene_window.h"
 #include <iostream>
 #include "LinuxBootstrap/baked_vertex_colors.h"
+#include "LinuxBootstrap/baked_terrain.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/map_view.h"
 #include "LinuxBootstrap/map_camera.h"
@@ -362,6 +363,9 @@ struct LinuxAnimatedMapResource
 struct LinuxStaticMeshStorage
 {
 	std::unique_ptr<IDirect3DVertexBuffer9> dayColors, nightColors;
+	std::unique_ptr<IDirect3DVertexBuffer9> terrainVertices;
+	std::unique_ptr<IDirect3DIndexBuffer9> terrainIndices;
+	std::unique_ptr<Render::MeshGeometry> terrainGeometry;
 	Render::StaticMesh mesh;
 };
 
@@ -2130,6 +2134,7 @@ struct LinuxTacticalMapPreview
 
 struct LinuxMapStaticGeometryPayloadPreview
 {
+	bool bakedTerrain = false;
 	// Original AdvMap identity, never the filtered payload/cache slot index.
 	bool hasBakedIdentity = false;
 	size_t originalObjectIndex = 0, bakedComponentIndex = 0;
@@ -2387,6 +2392,8 @@ struct LinuxSelectedMapPreview
 	LinuxBootstrap::SceneWindowMetrics sceneWindowMetrics;
 	size_t sceneWindowBuilds = 0;
 	LinuxBootstrap::BakedVertexColors::Ptr bakedVertexColors;
+	LinuxBootstrap::BakedTerrain::Ptr bakedTerrain;
+	std::string bakedTerrainFile;
   size_t selectedIndex;
   std::string descriptor;
   bool ready;
@@ -19484,6 +19491,8 @@ void ProbeSelectedMapTerrainNatureRoads(
   }
 }
 
+#include "LinuxBootstrap/baked_terrain_integration.inc"
+
 void RecordLinuxMapTerrainElementPayload(
   const LinuxClientEnvironment& environment,
   const NDb::TerrainElementInstance& terrainElement,
@@ -19491,6 +19500,10 @@ void RecordLinuxMapTerrainElementPayload(
   LinuxSelectedMapPreview* preview
 )
 {
+	if (preview && preview->bakedTerrain) {
+		RecordLinuxMapBakedTerrainElement(environment, terrainElement, originalElementIndex, *preview);
+		return;
+	}
   if (!preview || !IsValid(terrainElement.terrainObject))
   {
     return;
@@ -19576,6 +19589,8 @@ void ProbeSelectedMapTerrainElements(
 
   LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
   heightmap.terrainElementCount = terrain->geometry.terrainElements.size();
+	if (!LoadLinuxMapBakedTerrain(environment, *terrain, *preview))
+		preview->warnings.push_back("Original baked terrain unavailable; editor geometry remains an incomplete fallback");
   for (int i = 0; i < terrain->geometry.terrainElements.size(); ++i)
   {
     if (!preview->sceneCatalog && preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
@@ -20278,7 +20293,11 @@ void ProbeSelectedMapStaticSceneObjects(
   LinuxSelectedMapPreview* preview
 )
 {
-  if (preview) preview->bakedVertexColors.reset();
+	if (preview) {
+		preview->bakedVertexColors.reset();
+		preview->bakedTerrain.reset();
+		preview->bakedTerrainFile.clear();
+	}
   if (!preview || entry.descriptor.empty())
   {
     return;
@@ -53370,13 +53389,14 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
     }
 
 		auto* resource = overlay->staticMapResources[transparentGroup].Get(payloadIndex, payloads.size(), [&]() {
-			const auto* geometry = Render::RenderResourceManager::LoadStaticMeshGeometry(
-				nstl::string(payload.rootGeometryFile.c_str()), false);
+			auto storage = std::make_shared<LinuxStaticMeshStorage>();
+			const auto* geometry = payload.bakedTerrain
+				? CreateLinuxBakedTerrainGeometry(*storage, selectedMapPreview->bakedTerrain, payload.originalObjectIndex)
+				: Render::RenderResourceManager::LoadStaticMeshGeometry(nstl::string(payload.rootGeometryFile.c_str()), false);
 			if (!geometry || geometry->primitives.empty()) return std::unique_ptr<LinuxStaticMapResource>();
 			auto result = std::make_unique<LinuxStaticMapResource>();
 			payload.placement.GetMatrix(&result->world);
 			const auto materials = CreateLinuxStaticPreviewMaterials(payload.materialReferences, geometry);
-			auto storage = std::make_shared<LinuxStaticMeshStorage>();
 			result->mesh = std::shared_ptr<Render::StaticMesh>(storage, &storage->mesh);
 			result->mesh->Initialize(result->world, geometry, materials);
 			if (payload.hasBakedIdentity && selectedMapPreview->bakedVertexColors) {
