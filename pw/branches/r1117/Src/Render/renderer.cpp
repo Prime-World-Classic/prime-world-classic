@@ -77,6 +77,7 @@ const RenderMode& Renderer::GetCurrentRenderMode()
 Renderer::Renderer(HWND _hWnd) : 
 	pD3D(0), 
 	pDevice(0),
+	pBackend(0),
 	hWnd(_hWnd),
 	bDeviceLost(true),
   bResetDevice(false),
@@ -106,6 +107,8 @@ Renderer::~Renderer()
   NotifyDeviceLost();
   DeviceDeleteHandler::NotifyDeviceDelete();
   DumpDXResourcesLeaks();
+  delete pBackend;
+  pBackend = 0;
   if (pDevice)
     pDevice->Release();
   pDevice = 0;
@@ -430,6 +433,11 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
     }
   }
 
+  // Бэкенд пересоздаётся вместе с устройством: Reset() объект устройства
+  // не меняет (см. ResetDevice()), а вот CreateDevice() меняет.
+  delete pBackend;
+  pBackend = new D3D9Backend(pDevice);
+
   GetConfigManager()->CheckDeviceCaps(pDevice);
 #ifndef NI_DISABLE_CRASHRPT
   CrashRptWrapper::AddTagToReport( "DXcapsOEM",  NStr::StrFmt("%#X", GetConfigManager()->GetAllFeatures()) );
@@ -580,15 +588,7 @@ DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data)
 
 void Renderer::SetClipPlane(bool bEnable, CVec4 *pPlane)
 {
-	if (bEnable)
-  {
-		GetDevice()->SetRenderState(D3DRS_CLIPPLANEENABLE, 1);
-	  GetDevice()->SetClipPlane(0, (float*)pPlane);
-	}
-	else
-	{
-		GetDevice()->SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
-	}
+	pBackend->SetClipPlane(bEnable, (float*)pPlane);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -602,7 +602,7 @@ void Renderer::SetPixelShaderConstants(unsigned int startRegisterIndex, unsigned
 	constChecker.SetPixelShaderConstants(startRegisterIndex, registersCount);
 #endif
 
-  bool res = GetDevice()->SetPixelShaderConstantF(startRegisterIndex, (const float*)(data), registersCount) == D3D_OK;
+  bool res = pBackend->SetPixelShaderConstants(startRegisterIndex, registersCount, data) == D3D_OK;
 
 	NI_ASSERT(res, "SetPixelShaderConstants error!");
 }
@@ -618,7 +618,7 @@ void Renderer::SetVertexShaderConstants(unsigned int startRegisterIndex, unsigne
 		constChecker.SetVertexShaderConstants(startRegisterIndex, registersCount);
 #endif
 
-	bool res = GetDevice()->SetVertexShaderConstantF(startRegisterIndex, reinterpret_cast<CONST float*>(data), registersCount) == D3D_OK;
+	bool res = pBackend->SetVertexShaderConstants(startRegisterIndex, registersCount, data) == D3D_OK;
 
 	NI_ASSERT(res, "SetPixelShaderConstants error!");
 }
@@ -633,7 +633,7 @@ void Renderer::BeginScene()
     renderSceneLocked = true;
   }
 
-	HRESULT hr = GetDevice()->BeginScene();
+	HRESULT hr = pBackend->BeginScene();
   NI_DX_WARN(hr, "BeginScene");
 }
 
@@ -641,7 +641,7 @@ void Renderer::BeginScene()
 
 void Renderer::EndScene()
 {
-  HRESULT hr = GetDevice()->EndScene();
+  HRESULT hr = pBackend->EndScene();
 
   if ( renderSceneLocked )
   {
@@ -751,7 +751,7 @@ void Renderer::Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRec
     NI_PROFILE_BLOCK( "Present itself" )
 
     //HRESULT hr = GetDevice()->Present((const RECT*)sourceRect_, NULL, hWnd_, NULL);
-    hr = GetDevice()->Present((const RECT*)sourceRect_, (const RECT*)destRect_, hWnd_, NULL);
+    hr = pBackend->Present(hWnd_, (const RECT*)sourceRect_, (const RECT*)destRect_);
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
   }
@@ -811,7 +811,7 @@ void Renderer::RecoverFromDeviceLost( D3DPRESENT_PARAMETERS& pp )
 
 void Renderer::ClearDepthStencil()
 {
-  HRESULT hr = GetDevice()->Clear(0, 0, D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, 0, 1.0f, 0);
+  HRESULT hr = pBackend->Clear(bcZBuffer | bcStencil, 0, 1.0f, 0);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "ClearDepthStencil");
 }
@@ -820,7 +820,7 @@ void Renderer::ClearDepthStencil()
 
 void Renderer::Clear( Color color )
 {
-  HRESULT hr = GetDevice()->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL, color.Dummy, 1.0f, 0);
+  HRESULT hr = pBackend->Clear(bcTarget | bcZBuffer | bcStencil, color.Dummy, 1.0f, 0);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "Clear");
 }
@@ -829,7 +829,7 @@ void Renderer::Clear( Color color )
 
 void Renderer::ClearColorOnly( Color color )
 {
-	HRESULT hr = GetDevice()->Clear(0, 0, D3DCLEAR_TARGET, color.Dummy, 1.0f, 0);
+	HRESULT hr = pBackend->Clear(bcTarget, color.Dummy, 1.0f, 0);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "ClearColorOnly");
 }
@@ -857,14 +857,21 @@ void Renderer::StretchSurface(const DXSurfaceRef &pSrc, const DXSurfaceRef &pDst
 
 void Renderer::GetViewport(D3DVIEWPORT9 &vp)
 {
-  GetDevice()->GetViewport(&vp);
+  BackendViewport bvp;
+  pBackend->GetViewport(bvp);
+  vp.X = bvp.x;
+  vp.Y = bvp.y;
+  vp.Width = bvp.width;
+  vp.Height = bvp.height;
+  vp.MinZ = bvp.minZ;
+  vp.MaxZ = bvp.maxZ;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Renderer::SetScissorRect(const RECT *pRect)
 {
-  GetDevice()->SetScissorRect(pRect);
+  pBackend->SetScissorRect(pRect);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -892,7 +899,7 @@ void Renderer::StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
 
 void Renderer::EvictManagedResources()
 {
-  GetDevice()->EvictManagedResources();
+  pBackend->EvictManagedResources();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

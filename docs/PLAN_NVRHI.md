@@ -249,6 +249,28 @@ mipmap-цепочки до 12 уровней; DX10-заголовков, volume 
 этапа 2 закрывает остальной путь загрузки (DDS). До этого `IRenderBackend::CreateTexture` нельзя
 считать закрытым.
 
+### 2.8 Seam бэкенда: что уже перенесено (2026-10-13)
+
+`IRenderBackend` (`Src/Render/renderbackend.h`) + `D3D9Backend`
+(`d3d9backend.{h,cpp}`). Через бэкенд из `renderer.cpp` идут: `BeginScene`,
+`EndScene`, `Present`, `GetViewport`, `SetScissorRect`, `Clear` (три места,
+свои флаги `bcTarget/bcZBuffer/bcStencil` вместо `D3DCLEAR_*`),
+`SetVertexShaderConstants`, `SetPixelShaderConstants`, `SetClipPlane`
+(пара `D3DRS_CLIPPLANEENABLE` + `SetClipPlane(0,..)` спрятана внутри бэкенда),
+`EvictManagedResources`. Публичный API `Renderer` не менялся — вызывающий код
+не правился.
+
+Осознанные течи интерфейса: `HRESULT` (такой же контракт у NVRHI), `RECT` в
+`Present`/`SetScissorRect` (Win32, нужен и Vulkan-свопчейну), семантика
+`Present` (прямого swapchain-интерфейса у NVRHI нет — §3.1).
+
+Не перенесено (следующие шаги этапа 2): создание ресурсов
+(`CreateVertexShader`/`CreatePixelShader`/`CreateVertexDeclaration`),
+операции над поверхностями (`GetRenderTargetData`, `StretchRect`, `ColorFill`),
+запросы устройства (`GetDeviceCaps`, `GetDirect3D`, `GetCreationParameters`) и
+весь `smartrenderer.cpp` (27 вызовов `GetDevice()` — это и есть `DrawIndexed`,
+биндинги RT/depth и состояний, то есть основная часть интерфейса из чек-листа).
+
 ### 2.2 Реальный срез состояний (много меньше, чем кажется)
 
 - **`D3DRS_*`, используемые вне `renderstatesmanager.cpp`: 32 уникальных,
@@ -779,8 +801,15 @@ color-correct начинают получать настоящие веса) —
       InputLayoutKey, ShaderPairKey, RenderStateKey, samplers[], consts)`,
       `SetViewport/Scissor`, `BindRT/Depth`, `Clear`, `CopyRegion`,
       `CreateTexture/CreateBuffer/CreateShader`, `Present`, `Resize`.
+      **Начато 2026-10-13:** интерфейс положен, но файлы лежат плоско
+      (`Src/Render/renderbackend.h`), а не в каталоге `Backend/` — список
+      файлов `Render.vcproj` плоский, подкаталогов в нём нет, а из него
+      строится CMake-граф. Пока закрыта только ядро-часть (см. §2.8).
 - [ ] `D3D9Backend` — перенос `SmartRenderer`/`Renderer` **как есть**
-      (временно; удаляется на этапе 4).
+      (временно; удаляется на этапе 4). **Начато 2026-10-13:**
+      `Src/Render/d3d9backend.{h,cpp}`, у `Renderer` появился `pBackend`
+      (пересоздаётся вместе с `CreateDevice`, `Reset()` объекта устройства не
+      меняет). Перенесено 10 вызовов из `renderer.cpp`, осталось 12 (§2.8).
 - [ ] Кэш пайплайнов по ключу `sortId`-подобного хеша (§1.3) — размер и
       eviction по замерам этапа 0.
 - [ ] `ConstBlock` — «виртуальные регистры» c0..c255 одним буфером (§2.7),

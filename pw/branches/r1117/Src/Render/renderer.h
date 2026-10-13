@@ -7,6 +7,7 @@
 #include "renderstatesmanager.h"
 #include "dxutils.h"
 #include "renderformat.h"
+#include "d3d9backend.h"
 #include "TextureManager.h"
 #include "IQuery.h"
 #include "ConstantProtection.h"
@@ -33,6 +34,10 @@ struct Caps
 class Renderer
 {
 	static Renderer*      s_pInstance;
+
+  // Seam этапа 2 (docs/PLAN_NVRHI.md §Этап 2): сырые вызовы устройства идут
+  // через IRenderBackend. Создаётся вместе с устройством, живёт до его смерти.
+  D3D9Backend*        pBackend;
 
 	DeviceLostWrapper<RenderStatesManager> statesMan;
   LightsManager         lightsMan;
@@ -195,6 +200,7 @@ public:
 	LightsManager* GetLightsManager() { return &lightsMan; }
 
 	IDirect3DDevice9* GetDevice() { return pDevice; }
+  IRenderBackend*     GetBackend() { return pBackend; }
   IDirect3D9*       GetD3D() { return pD3D; }
   
 	bool IsRunningUnderPerfHUD() const { return isRunningUnderPerfHUD; }

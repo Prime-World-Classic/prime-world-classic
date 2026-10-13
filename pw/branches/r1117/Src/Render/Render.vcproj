@@ -433,6 +433,18 @@
 				>
 			</File>
 			<File
+				RelativePath=".\d3d9backend.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\d3d9backend.h"
+				>
+			</File>
+			<File
+				RelativePath=".\renderbackend.h"
+				>
+			</File>
+			<File
 				RelativePath=".\renderstats.h"
 				>
 			</File>
