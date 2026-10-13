@@ -427,9 +427,10 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
   `Pile file '...zzzresult.pile' found`. Регистрация файло систем в
   `PW_Client/Game.cpp` — pile **до** `WinFileSystem(Data/)`, так что положить
   шейдеры отдельными файлами в `Data/` нельзя: они перекроются pile.
-  E2E на tiny10 (лог `2026.10.13-03.21.11`): login → lobby → game service →
-  `mapload: all map objects loaded` → `Switch to EGameState::Finished by 3`,
-  дампов нет, ни одной строки про повреждённый pile/CRC/шейдеры.
+  E2E на tiny10 (логи `2026.10.13-03.21.11` и `2026.10.13-03.39.03`): login →
+  lobby → game service → `mapload: all map objects loaded` →
+  `Switch to EGameState::Finished by 3`, дампов нет, ни одной строки про
+  повреждённый pile/CRC/шейдеры; на бэкенде `[session] finish …`.
   Чем паковали: готовый `Tools/FilePileCompiler/FilePileCompiler.exe` на
   урезанной Windows бесполезен (x86, требует MSVCR90/MSVCP90/CrashRpt/zlib1 —
   на tiny10 их нет, старт молча не удаётся). Написан `tools/shader_pile/mkpile.py`
