@@ -180,6 +180,7 @@ bool RunLinuxBasicFxTransparentProbe(const NDb::BasicFXMaterial& authored, const
 			"map payload hook attributes only accepted deferred geometry");
 	}
 	check(glGetError() == GL_NO_ERROR, "transparent engine fixtures leave no GL errors");
+	check(RunLinuxStaticMapCacheProbe(authored, component), "persistent map resources retain original rendering and view ownership");
 	glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glPopAttrib();
 	fprintf(stdout, "BasicFX transparent summary: checks=%u failures=%u\n", checks, failures);
 	return failures == 0;

@@ -80,6 +80,14 @@ reserved before publishing batch links. Viewport, framebuffer and camera changes
 discard pending draws, and explicit flushing is once-only. Destruction discards
 without GL calls. Deferred counters count successful shader draws, not attempts.
 
+Static terrain and object meshes/materials are cached separately by payload index
+using the existing scene-resource cache. Payloads are immutable during a map's
+lifetime; selecting another map explicitly clears both groups, even when payload
+counts match. Failed loads stay cached until invalidation. A deferred view retains
+shared mesh ownership independently of cache eviction, then releases it on flush,
+view rejection or destruction. Both caches are cleared before render-resource
+shutdown. This does not add asset hot reload or change the existing preview limits.
+
 This is view-local ordering of the admitted **static** subset, not all scene
 transparency or per-triangle/intersection sorting. Water/road visualization stays
 an early underlay; unsupported materials, particles and skeletal transparency do
@@ -151,3 +159,8 @@ its own texture; it does not claim support for the sibling BasicMaterial slot or
 attached effects. When a capture path is supplied, `-opacity-flat03.png` records
 that slot alone. Family tests also cover partial-load cleanup, legacy/family
 replacement, missing registers and actual load-time versus draw-time GL calls.
+
+The engine cache probe draws opaque and transparent geometry through both map
+hooks for repeated frames, compares nonblank pixels, checks independent cache
+groups, evicts resources with pending batches, replaces a same-sized map and
+rejects a changed view. Missing geometry must not retry or reuse a stale mesh.

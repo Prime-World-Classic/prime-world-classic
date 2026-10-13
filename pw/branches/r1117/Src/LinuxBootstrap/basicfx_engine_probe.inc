@@ -3,6 +3,7 @@ bool CaptureLinuxOpenGlBackBufferPng(const std::string& path, int width, int hei
 size_t DrawLinuxHeroRendererStaticMeshPayloads(LinuxWindowOverlay*, const LinuxSelectedHeroDbPreview*,
 	const Render::SkeletonWrapper*, LinuxRendererMaterialSlotStats*, size_t*, size_t*, const pwshader::PreviewTransform&);
 
+#include "static_map_cache_engine_probe.inc"
 #include "transparent_engine_probe.inc"
 #include "opacity_engine_probe.inc"
 

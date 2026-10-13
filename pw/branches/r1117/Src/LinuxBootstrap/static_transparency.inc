@@ -1,4 +1,4 @@
-/** One view owns deferred static meshes until its explicit transparent flush.
+/** One view retains deferred static meshes until its explicit transparent flush.
  * Existing BatchQueue sorting is retained; no pointers into temporary queues escape.
  */
 class LinuxStaticTransparentPass
@@ -21,7 +21,7 @@ public:
 		}
 	};
 	struct Owner {
-		std::unique_ptr<Render::StaticMesh> mesh;
+		std::shared_ptr<Render::StaticMesh> mesh;
 		unsigned group = 0;
 		bool counted = false, depthValid = false;
 		float depth = 0;
@@ -97,6 +97,12 @@ public:
 
 	/** WORLD and DB bounds are copied/consumed while the submitting component is alive. */
 	Owner* Retain(std::unique_ptr<Render::StaticMesh> mesh, const Matrix43& world,
+		const NDb::AABB& bounds, unsigned group) {
+		return Retain(std::shared_ptr<Render::StaticMesh>(std::move(mesh)), world, bounds, group);
+	}
+
+	/** A map cache may be cleared while this view still owns deferred batches. */
+	Owner* Retain(std::shared_ptr<Render::StaticMesh> mesh, const Matrix43& world,
 		const NDb::AABB& bounds, unsigned group) {
 		if (!valid || flushed || !mesh || group >= counts.size() || owners.size() >= payloadLimit) return nullptr;
 		auto owner = std::make_unique<Owner>(); owner->mesh = std::move(mesh); owner->group = group;

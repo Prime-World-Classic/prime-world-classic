@@ -348,9 +348,17 @@ struct LinuxAnimatedMapResource
 	std::vector<size_t> slotTextureIndices;
 };
 
+/** A pending transparent pass may retain a mesh after its map cache is invalidated. */
+struct LinuxStaticMapResource
+{
+	std::shared_ptr<Render::StaticMesh> mesh;
+	Matrix43 world;
+};
+
 struct LinuxWindowOverlay
 {
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
+	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 2> staticMapResources;
 	std::size_t dynamicPoseBuilds = 0, dynamicPoseHits = 0;
   struct OpenGlTexture
   {
@@ -53346,7 +53354,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
   {
     *renderedTriangles = 0;
   }
-  if (!overlay || !selectedMapPreview || payloads.empty())
+  if (!overlay || !selectedMapPreview || payloads.empty() || transparentGroup >= overlay->staticMapResources.size())
   {
     return 0;
   }
@@ -53365,22 +53373,19 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
       continue;
     }
 
-    const Render::MeshGeometry* meshGeometry =
-      Render::RenderResourceManager::LoadStaticMeshGeometry(
-        nstl::string(payload.rootGeometryFile.c_str()),
-        false);
-    if (!meshGeometry || meshGeometry->primitives.empty())
-    {
-      continue;
-    }
-
-    Matrix43 worldMatrix;
-    payload.placement.GetMatrix(&worldMatrix);
-    vector<Render::BaseMaterial*> previewMaterials =
-      CreateLinuxStaticPreviewMaterials(payload.materialReferences, meshGeometry);
-    auto staticMesh = std::make_unique<Render::StaticMesh>();
-    staticMesh->Initialize(worldMatrix, meshGeometry, previewMaterials);
-		auto* retained = transparent.Retain(std::move(staticMesh), worldMatrix, payload.localBounds, transparentGroup);
+		auto* resource = overlay->staticMapResources[transparentGroup].Get(payloadIndex, payloads.size(), [&]() {
+			const auto* geometry = Render::RenderResourceManager::LoadStaticMeshGeometry(
+				nstl::string(payload.rootGeometryFile.c_str()), false);
+			if (!geometry || geometry->primitives.empty()) return std::unique_ptr<LinuxStaticMapResource>();
+			auto result = std::make_unique<LinuxStaticMapResource>();
+			payload.placement.GetMatrix(&result->world);
+			const auto materials = CreateLinuxStaticPreviewMaterials(payload.materialReferences, geometry);
+			result->mesh = std::make_shared<Render::StaticMesh>();
+			result->mesh->Initialize(result->world, geometry, materials);
+			return result;
+		});
+		if (!resource) continue;
+		auto* retained = transparent.Retain(resource->mesh, resource->world, payload.localBounds, transparentGroup);
 		if (!retained) continue;
 
     Render::BatchQueueSorter sorter(16, true);
@@ -68789,6 +68794,11 @@ void AppendRuntimeInputLog(
 	logFile << "  finalAnimatedMapCache=builds:" << overlay.animatedMapResources.builds
 		<< " hits:" << overlay.animatedMapResources.hits << " failures:" << overlay.animatedMapResources.failures
 		<< " entries:" << overlay.animatedMapResources.Size() << "\n";
+	for (unsigned group = 0; group < overlay.staticMapResources.size(); ++group) {
+		const auto& cache = overlay.staticMapResources[group];
+		logFile << "  finalStaticMapCache." << group << "=builds:" << cache.builds
+			<< " hits:" << cache.hits << " failures:" << cache.failures << " entries:" << cache.Size() << "\n";
+	}
 	logFile << "  finalDynamicPoseCache=builds:" << overlay.dynamicPoseBuilds
 		<< " hits:" << overlay.dynamicPoseHits << "\n";
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
@@ -72997,6 +73007,7 @@ int main(int argc, char** argv)
     if (previousSelectedIndex != mapBrowserState.selectedIndex)
     {
 			overlay.animatedMapResources.Clear();
+			for (auto& cache : overlay.staticMapResources) cache.Clear();
       ProbeSelectedMapPreview(environment, mapCatalog, mapBrowserState, &selectedMapPreview);
       if (!localMatchChanged)
       {
@@ -74783,6 +74794,7 @@ int main(int argc, char** argv)
   }
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
 	overlay.animatedMapResources.Clear();
+	for (auto& cache : overlay.staticMapResources) cache.Clear();
   ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);
