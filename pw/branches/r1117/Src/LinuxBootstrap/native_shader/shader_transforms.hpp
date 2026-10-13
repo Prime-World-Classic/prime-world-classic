@@ -37,4 +37,17 @@ bool BuildBasicFxTransformRegisters(
 	const PreviewTransform& preview,
 	BasicFxTransformRegisters& output) noexcept;
 
+/** Far-to-near queue key (-eye.z) from the authored local AABB center.
+ * Accepts ordered finite bounds, including flat bounds, and affine WORLD/model-view.
+ * Uses the drawing preview transform, not translation-only or projected depth.
+ * Rejects nonrepresentable intermediate points and preserves output on failure.
+ */
+bool BuildBasicFxSortDepth(
+	const std::array<float, 16>& worldRowMajor,
+	const std::array<float, 16>& modelViewColumnMajor,
+	const PreviewTransform& preview,
+	const std::array<float, 3>& minimum,
+	const std::array<float, 3>& maximum,
+	float& output) noexcept;
+
 }

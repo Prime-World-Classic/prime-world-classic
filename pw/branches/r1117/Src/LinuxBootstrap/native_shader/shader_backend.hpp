@@ -25,6 +25,8 @@ enum class IndexType { UInt16, UInt32 };
 enum class Winding { CounterClockwise, Clockwise };
 enum class AlphaTest { Disabled, GreaterEqual };
 enum class CullMode { Back, Disabled };
+/** Original BasicFX factors; non-Off modes preserve destination alpha and depth. */
+enum class BlendMode { Off, LerpByAlpha, PremultipliedLerp, AddColor, AddColorMulAlpha, MulColor, MulInvColor };
 
 /** Host identity plus a host-assigned monotonic lifetime, not a recycled GLX address alone. */
 struct ContextKey {
@@ -68,7 +70,9 @@ private:
  * Texture is a live level-0 2D name in the owning context. Sampling is explicitly Repeat/Linear.
  * Draw targets the caller's framebuffer, without clearing it. All modified GL state is restored.
  * Alpha testing uses final shader alpha; discarded pixels write neither color nor depth.
- * Accepted fragments use opaque RGBA writes and LEQUAL depth writes, without blending.
+ * All modes use LEQUAL depth testing. Off writes RGBA/depth without blending; other modes
+ * blend RGB only and leave destination alpha/depth unchanged. Non-Off requires OpenGL 4.0
+ * or ARB_draw_buffers_blend and its indexed entrypoints; otherwise Draw returns Unsupported.
  */
 struct IndexedDraw {
 	ByteView vertices, indexData;
@@ -83,6 +87,7 @@ struct IndexedDraw {
 	CullMode cullMode = CullMode::Back;
 	/** Original D3D byte reference, validated even when alpha testing is disabled. */
 	int alphaReference = 127;
+	BlendMode blendMode = BlendMode::Off;
 };
 
 /** Render-thread-only, noncopyable owner for one selected BasicFX pair.

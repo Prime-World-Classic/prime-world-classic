@@ -270,6 +270,63 @@ void BoundaryCases(Checks& checks)
 
 }
 
+/** Bounds-center oracle and invalid keys must never put NaN into the queue comparator. */
+void SortDepthCases(Checks& checks)
+{
+	using pwshader::BuildBasicFxSortDepth;
+	const Point minimum{-3, 7, 2}, maximum{1, 11, 2}, center{-1, 9, 2};
+	const Matrix camera{.8f, -.2f, .6f, 0, .3f, 1.1f, -.1f, 0,
+		-.5f, .4f, .9f, 0, 1.25f, -2, -7, 1};
+	for (const auto& view : {Identity, camera}) for (float scale : {.125f, 1.f, 4.f})
+		for (float reflection : {-1.f, 1.f}) {
+			Matrix world{reflection, .375f, -.5f, 2, -.625f, .875f, .25f, -3,
+				.125f, -.75f, 1.5f, 4, 0, 0, 0, 1};
+			PreviewTransform preview{3.5f, -6.25f, 2.125f, scale};
+			float depth = 123;
+			checks.Test(BuildBasicFxSortDepth(world, view, preview, minimum, maximum, depth), "affine bounds-center key accepted");
+			checks.Test(Near(depth, -Oracle(world, view, Identity, preview, center)[2]), "independent eye-depth oracle");
+		}
+	float first = 123, second = 123;
+	checks.Test(BuildBasicFxSortDepth(Identity, Identity, {}, {-1,-10,0}, {1,-8,0}, first) &&
+		BuildBasicFxSortDepth(Identity, Identity, {}, {-1,-4,0}, {1,-2,0}, second) && first > second,
+		"off-center bounds with equal placements sort far-to-near");
+	auto reverseCamera = Identity; reverseCamera[0] = reverseCamera[10] = -1;
+	checks.Test(BuildBasicFxSortDepth(Identity, reverseCamera, {}, {-1,-10,0}, {1,-8,0}, first) &&
+		BuildBasicFxSortDepth(Identity, reverseCamera, {}, {-1,-4,0}, {1,-2,0}, second) && first < second,
+		"camera reversal reverses order without changing placements");
+	auto reject = [&](Matrix world, Matrix view, PreviewTransform preview, Point low, Point high) {
+		float output = 123.5f;
+		checks.Test(!BuildBasicFxSortDepth(world, view, preview, low, high, output), "invalid sorting inputs rejected");
+		checks.Test(output == 123.5f, "invalid sorting key preserves caller output");
+	};
+	for (float bad : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
+		for (size_t i = 0; i < 16; ++i) {
+			auto world = Identity; world[i] = bad; reject(world, Identity, {}, minimum, maximum);
+			auto view = Identity; view[i] = bad; reject(Identity, view, {}, minimum, maximum);
+		}
+		for (size_t i = 0; i < 3; ++i) {
+			auto low = minimum, high = maximum; low[i] = bad; reject(Identity, Identity, {}, low, high);
+			low = minimum; high[i] = bad; reject(Identity, Identity, {}, low, high);
+		}
+		for (size_t i = 0; i < 4; ++i) {
+			PreviewTransform preview; float* fields[] = {&preview.centerX, &preview.centerY, &preview.minZ, &preview.scale};
+			*fields[i] = bad; reject(Identity, Identity, preview, minimum, maximum);
+		}
+	}
+	for (size_t i = 0; i < 3; ++i) {
+		auto high = maximum; high[i] = minimum[i] - 1; reject(Identity, Identity, {}, minimum, high);
+	}
+	for (float scale : {0.f, -1.f}) reject(Identity, Identity, {0,0,0,scale}, minimum, maximum);
+	auto projective = Identity; projective[12] = 1; reject(projective, Identity, {}, minimum, maximum);
+	projective = Identity; projective[3] = 1; reject(Identity, projective, {}, minimum, maximum);
+	const float largest = std::numeric_limits<float>::max();
+	auto huge = Identity; huge[5] = largest; reject(huge, Identity, {}, minimum, maximum);
+	reject(Identity, Identity, {0,0,0,largest}, minimum, maximum);
+	reject(Identity, huge, {}, minimum, maximum);
+	checks.Test(BuildBasicFxSortDepth(Identity, Identity, {}, {0,largest,0}, {0,largest,0}, first) && first == -largest,
+		"large finite midpoint avoids overflowing float bound sum");
+}
+
 int main()
 {
 	Checks checks;
@@ -313,6 +370,7 @@ int main()
 	}
 	BoundaryCases(checks);
 	InvalidCases(checks);
+	SortDepthCases(checks);
 	std::cout << "SUMMARY checks=" << checks.count << " failures=" << checks.failures << '\n';
 	return checks.failures ? 1 : 0;
 }

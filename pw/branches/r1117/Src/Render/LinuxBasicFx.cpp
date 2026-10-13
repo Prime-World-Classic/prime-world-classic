@@ -22,6 +22,8 @@ std::unique_ptr<pwshader::ShaderBackend> backend;
 pwshader::ProgramRef program;
 Statistics statistics;
 bool selected = false, attempted = false;
+bool transparentDrawing = false;
+NDb::BlendMode selectedBlend = NDb::BLENDMODE_OFF;
 bool selectedRasterValid = false;
 pwshader::AlphaTest alphaTest = pwshader::AlphaTest::Disabled;
 pwshader::CullMode cullMode = pwshader::CullMode::Back;
@@ -39,6 +41,22 @@ bool Reject(const char* message) {
 	if (++statistics.rejected == 1)
 		fprintf(stderr, "Native BasicFX draw rejected: %s\n", message);
 	return false;
+}
+/** Shared classification prevents the collector and material preparation from disagreeing. */
+const NDb::BasicFXMaterial* AdmittedMaterial(const NDb::Material* material) {
+	if (!material || material->GetObjectTypeID() != NDb::BasicFXMaterial::typeId) return nullptr;
+	const auto& m = *static_cast<const NDb::BasicFXMaterial*>(material);
+	const auto& sampler = m.DiffuseMap.samplerState;
+	if (m.SkeletalMeshPinValue != NDb::BOOLEANPIN_NONE ||
+		m.MultiplyVertexColorPinValue != NDb::BOOLEANPIN_NONE ||
+		m.OpacityAndEmissiveModePinValue != NDb::OPACITYANDEMISSIVEMODEPIN_SIMPLE ||
+		m.DistortionPinValue != NDb::DISTORTIONPIN_DISTORTNONE || m.ignoreRenderState || m.isBlendModeOverrided ||
+		m.opacity.IsAnimated() || m.opacity.GetValue(0) != 1 || m.masterOpacity != 1 ||
+		m.DiffuseMul.IsAnimated() || m.DiffuseAdd.IsAnimated() || m.uOffset.IsAnimated() || m.vOffset.IsAnimated() ||
+		sampler.addressU != NDb::TEXTUREADDRESSTYPE_WRAP || sampler.addressV != NDb::TEXTUREADDRESSTYPE_WRAP ||
+		sampler.minFilter != NDb::MINFILTERTYPE_LINEAR || sampler.magFilter != NDb::MAGFILTERTYPE_LINEAR) return nullptr;
+	// Selected malformed state must reach Draw's rejection, never the opaque preview fallback.
+	return &m;
 }
 bool Ready() {
 	if (!program.Empty()) return true;
@@ -65,10 +83,12 @@ bool BeginContext() {
 	if (backend || !glXGetCurrentContext() || lifetime == std::numeric_limits<uint64_t>::max()) return false;
 	++lifetime;
 	attempted = false;
+	transparentDrawing = false;
 	ClearSelection();
 	return true;
 }
 bool Shutdown() {
+	transparentDrawing = false;
 	ClearSelection();
 	if (backend) {
 		const auto result = backend->Shutdown();
@@ -86,25 +106,20 @@ bool Shutdown() {
 void ClearSelection() { selected = false; selectedRasterValid = false; selectedTexture = 0; }
 bool IsSelected() { return selected; }
 Statistics GetStatistics() { return statistics; }
+bool IsTransparentMaterial(const NDb::Material* material) {
+	const auto* m = AdmittedMaterial(material);
+	return m && m->renderState.blendMode != NDb::BLENDMODE_OFF;
+}
+void SetTransparentDrawingEnabled(bool enabled) { ClearSelection(); transparentDrawing = enabled; }
 
 void Select(const NDb::Material* material, const Texture* texture) {
 	ClearSelection();
 	if (!material || material->GetObjectTypeID() != NDb::BasicFXMaterial::typeId) return;
-	const auto& m = *static_cast<const NDb::BasicFXMaterial*>(material);
-	const auto& sampler = m.DiffuseMap.samplerState;
-	if (m.SkeletalMeshPinValue != NDb::BOOLEANPIN_NONE ||
-		m.MultiplyVertexColorPinValue != NDb::BOOLEANPIN_NONE ||
-		m.OpacityAndEmissiveModePinValue != NDb::OPACITYANDEMISSIVEMODEPIN_SIMPLE ||
-		m.DistortionPinValue != NDb::DISTORTIONPIN_DISTORTNONE || m.ignoreRenderState ||
-		m.renderState.blendMode != NDb::BLENDMODE_OFF || m.isBlendModeOverrided ||
-		m.opacity.IsAnimated() || m.opacity.GetValue(0) != 1 || m.masterOpacity != 1 ||
-		m.DiffuseMul.IsAnimated() || m.DiffuseAdd.IsAnimated() || m.uOffset.IsAnimated() || m.vOffset.IsAnimated() ||
-		sampler.addressU != NDb::TEXTUREADDRESSTYPE_WRAP || sampler.addressV != NDb::TEXTUREADDRESSTYPE_WRAP ||
-		sampler.minFilter != NDb::MINFILTERTYPE_LINEAR || sampler.magFilter != NDb::MAGFILTERTYPE_LINEAR) {
-		++statistics.unsupported;
-		return;
-	}
+	const auto* admitted = AdmittedMaterial(material);
+	if (!admitted) { ++statistics.unsupported; return; }
+	const auto& m = *admitted;
 	selected = true;
+	selectedBlend = m.renderState.blendMode;
 	// Malformed states stay selected so Draw rejects instead of using the old preview.
 	selectedRasterValid =
 		(m.renderState.alphaTest == NDb::ONOFFSTATE_OFF || m.renderState.alphaTest == NDb::ONOFFSTATE_ON) &&
@@ -124,6 +139,8 @@ void Select(const NDb::Material* material, const Texture* texture) {
 bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::PreviewTransform& preview) {
 	if (!selected || !world) return Reject("missing selected material or WORLD");
 	if (!selectedRasterValid) return Reject("invalid selected alpha-test or culling state");
+	if (selectedBlend != NDb::BLENDMODE_OFF && !transparentDrawing)
+		return Reject("transparent material outside the retained view pass");
 	if (GetRuntimePins().DoDepthOutValue != NDb::BOOLPIN_FALSE)
 		return Reject("BasicFX pair zero cannot render depth-output permutation");
 	std::array<float, 16> modelView{}, projection{};
@@ -151,6 +168,16 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 	draw.alphaTest = alphaTest;
 	draw.cullMode = cullMode;
 	draw.alphaReference = alphaReference;
+	switch (selectedBlend) {
+		case NDb::BLENDMODE_OFF: draw.blendMode = pwshader::BlendMode::Off; break;
+		case NDb::BLENDMODE_LERPBYALPHA: draw.blendMode = pwshader::BlendMode::LerpByAlpha; break;
+		case NDb::BLENDMODE_PREMULTIPLIEDLERP: draw.blendMode = pwshader::BlendMode::PremultipliedLerp; break;
+		case NDb::BLENDMODE_ADDCOLOR: draw.blendMode = pwshader::BlendMode::AddColor; break;
+		case NDb::BLENDMODE_ADDCOLORMULALPHA: draw.blendMode = pwshader::BlendMode::AddColorMulAlpha; break;
+		case NDb::BLENDMODE_MULCOLOR: draw.blendMode = pwshader::BlendMode::MulColor; break;
+		case NDb::BLENDMODE_MULINVCOLOR: draw.blendMode = pwshader::BlendMode::MulInvColor; break;
+		default: return Reject("invalid selected blend mode");
+	}
 	// Use the tested native preview winding, without a per-object determinant flip.
 	draw.frontFace = pwshader::Winding::CounterClockwise;
 	const auto result = backend->Draw(program, draw);

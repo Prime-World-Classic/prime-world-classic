@@ -1469,6 +1469,7 @@ struct LinuxHeroStaticGeometryPayloadPreview
   std::string rootGeometryFile;
   std::vector<size_t> materialDiffuseTextureIndices;
   std::vector<NDb::Ptr<NDb::Material> > materialReferences;
+	NDb::AABB localBounds;
   Placement placement;
   Placement originalPlacement;
   Placement locatorParentPlacement;
@@ -2105,6 +2106,7 @@ struct LinuxMapStaticGeometryPayloadPreview
   std::string rootGeometryFile;
   std::vector<size_t> materialDiffuseTextureIndices;
   std::vector<NDb::Ptr<NDb::Material> > materialReferences;
+	NDb::AABB localBounds;
   Placement placement;
 };
 
@@ -16110,6 +16112,7 @@ void RecordHeroSceneStaticGeometryPayload(
   const std::string& reference,
   const std::vector<size_t>& materialDiffuseTextureIndices,
   const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
+	const NDb::AABB& localBounds,
   const Placement& placement,
   const Placement& originalPlacement,
   const Placement& locatorParentPlacement,
@@ -16160,6 +16163,7 @@ void RecordHeroSceneStaticGeometryPayload(
   payloadPreview.locatorFlags = locatorFlags;
   payloadPreview.attachFlags = attachFlags;
   payloadPreview.orientation = orientation;
+	payloadPreview.localBounds = localBounds;
   preview->staticGeometryPayloads.push_back(payloadPreview);
 }
 
@@ -18826,6 +18830,7 @@ void RecordLinuxMapStaticGeometryPayload(
   const std::string& reference,
   const std::vector<size_t>& materialDiffuseTextureIndices,
   const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
+	const NDb::AABB& localBounds,
   const Placement& placement,
   LinuxSelectedMapPreview* preview
 )
@@ -18856,6 +18861,7 @@ void RecordLinuxMapStaticGeometryPayload(
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
   payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
+	payloadPreview.localBounds = localBounds;
   preview->staticGeometryPayloads.push_back(payloadPreview);
 }
 
@@ -19431,6 +19437,7 @@ void RecordLinuxMapTerrainElementPayload(
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
   payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
+	payloadPreview.localBounds = terrainElement.terrainObject->aabb;
   preview->terrainElementPayloads.push_back(payloadPreview);
 }
 
@@ -20044,6 +20051,7 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
       ToStdString(staticComponent->geometryFileName),
       materialDiffuseTextureIndices,
       materialReferences,
+			staticComponent->aabb,
       componentPlacement,
       preview);
   }
@@ -20350,6 +20358,7 @@ void ProbeHeroSceneComponentAsset(
       ToStdString(staticComponent->geometryFileName),
       materialDiffuseTextureIndices,
       materialReferences,
+			staticComponent->aabb,
       payloadPlacement,
       originalPlacement,
       parentPlacement,
@@ -52794,7 +52803,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t* creepMeshTriangles,
   size_t* selectedHeroBadges,
   bool* selectedHeroMarkerMatched,
-  int* selectedHeroMarkerPlayerId
+  int* selectedHeroMarkerPlayerId,
+	const std::function<void()>& afterOpaqueMeshes
 )
 {
   if (heroMarkers) *heroMarkers = 0;
@@ -52814,6 +52824,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (selectedHeroMarkerPlayerId) *selectedHeroMarkerPlayerId = -1;
   if (!selectedMapPreview || !world)
   {
+		if (afterOpaqueMeshes) afterOpaqueMeshes();
     return 0;
   }
 
@@ -52821,14 +52832,10 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   world->GetLinuxDynamicWorldMarkers(markers, 640);
   if (markers.empty())
   {
+		if (afterOpaqueMeshes) afterOpaqueMeshes();
     return 0;
   }
 
-  glDisable(GL_TEXTURE_2D);
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   size_t drawn = 0;
   size_t heroes = 0;
@@ -52866,6 +52873,121 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   {
     *selectedHeroMarkerPlayerId = matchedSelectedPlayerId;
   }
+
+	// Decide the existing mesh-pass gates from the same immutable marker snapshot.
+	bool anyHeroMesh = false, anyCreepMesh = false;
+	for (const auto& marker : markers) {
+		if (marker.dead || !ShouldDrawLinuxDynamicWorldMarkerOverlay(marker)) continue;
+		if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
+			ResolveLinuxMapHeroPreviewForMarker(marker, localMatchPreview, engineMapStartPreview, lineupHeroPreviews, selectedHeroPreview))
+			anyHeroMesh = true;
+		if (IsLinuxDynamicWorldCreepMarker(marker) && ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews))
+			anyCreepMesh = true;
+	}
+
+  if (heroMeshLayerReady && anyHeroMesh)
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for (size_t i = 0; i < markers.size() && heroMeshes < heroMeshLimit; ++i)
+    {
+      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+      if (marker.dead ||
+          marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+      {
+        continue;
+      }
+      const LinuxSelectedHeroDbPreview* markerHeroPreview = ResolveLinuxMapHeroPreviewForMarker(
+        marker,
+        localMatchPreview,
+        engineMapStartPreview,
+        lineupHeroPreviews,
+        selectedHeroPreview);
+      if (!markerHeroPreview)
+      {
+        continue;
+      }
+
+      unsigned char red = 0;
+      unsigned char green = 0;
+      unsigned char blue = 0;
+      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+      if (DrawLinuxMapHeroMeshReplica(
+            overlay,
+            selectedMapPreview,
+            markerHeroPreview,
+            marker,
+            centerX,
+            centerY,
+            scale,
+            elapsedSeconds,
+            red,
+            green,
+            blue, &poses))
+      {
+        ++heroMeshes;
+        heroMeshTriangleCount += markerHeroPreview->sceneAsset.meshPreview.drawnTriangleCount;
+      }
+    }
+  }
+
+  if (heroMeshLayerReady && anyCreepMesh)
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for (size_t i = 0; i < markers.size() && creepMeshes < creepMeshLimit; ++i)
+    {
+      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+      if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
+      {
+        continue;
+      }
+
+      const LinuxSelectedHeroDbPreview* markerUnitPreview =
+        ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews);
+      if (!markerUnitPreview)
+      {
+        continue;
+      }
+
+      unsigned char red = 0;
+      unsigned char green = 0;
+      unsigned char blue = 0;
+      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+      if (DrawLinuxMapUnitMeshReplica(
+            overlay,
+            selectedMapPreview,
+            markerUnitPreview,
+            marker,
+            centerX,
+            centerY,
+            scale,
+            elapsedSeconds,
+            red,
+            green,
+            blue, &poses))
+      {
+        ++creepMeshes;
+        creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
+      }
+    }
+  }
+
+	if (afterOpaqueMeshes) afterOpaqueMeshes();
+	GLboolean previousDepthMask = GL_TRUE;
+	glGetBooleanv(GL_DEPTH_WRITEMASK, &previousDepthMask);
+	glDepthMask(GL_FALSE);
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   for (size_t i = 0; i < markers.size(); ++i)
   {
@@ -53060,103 +53182,11 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     ++drawn;
   }
 
-  if (heroMeshLayerReady && heroMeshCandidates > 0)
-  {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (size_t i = 0; i < markers.size() && heroMeshes < heroMeshLimit; ++i)
-    {
-      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-      if (marker.dead ||
-          marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
-      {
-        continue;
-      }
-      const LinuxSelectedHeroDbPreview* markerHeroPreview = ResolveLinuxMapHeroPreviewForMarker(
-        marker,
-        localMatchPreview,
-        engineMapStartPreview,
-        lineupHeroPreviews,
-        selectedHeroPreview);
-      if (!markerHeroPreview)
-      {
-        continue;
-      }
-
-      unsigned char red = 0;
-      unsigned char green = 0;
-      unsigned char blue = 0;
-      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
-      if (DrawLinuxMapHeroMeshReplica(
-            overlay,
-            selectedMapPreview,
-            markerHeroPreview,
-            marker,
-            centerX,
-            centerY,
-            scale,
-            elapsedSeconds,
-            red,
-            green,
-            blue, &poses))
-      {
-        ++heroMeshes;
-        heroMeshTriangleCount += markerHeroPreview->sceneAsset.meshPreview.drawnTriangleCount;
-      }
-    }
-  }
-
-  if (heroMeshLayerReady && creepMeshCandidates > 0)
-  {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LEQUAL);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (size_t i = 0; i < markers.size() && creepMeshes < creepMeshLimit; ++i)
-    {
-      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-      if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
-      {
-        continue;
-      }
-
-      const LinuxSelectedHeroDbPreview* markerUnitPreview =
-        ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews);
-      if (!markerUnitPreview)
-      {
-        continue;
-      }
-
-      unsigned char red = 0;
-      unsigned char green = 0;
-      unsigned char blue = 0;
-      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
-      if (DrawLinuxMapUnitMeshReplica(
-            overlay,
-            selectedMapPreview,
-            markerUnitPreview,
-            marker,
-            centerX,
-            centerY,
-            scale,
-            elapsedSeconds,
-            red,
-            green,
-            blue, &poses))
-      {
-        ++creepMeshes;
-        creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
-      }
-    }
-  }
 
   glLineWidth(1.0f);
   glDisable(GL_TEXTURE_2D);
   glEnable(GL_DEPTH_TEST);
+	glDepthMask(previousDepthMask);
   if (heroMarkers) *heroMarkers = heroes;
   if (commonCreepMarkers) *commonCreepMarkers = commonCreeps;
   if (neutralCreepMarkers) *neutralCreepMarkers = neutralCreeps;
@@ -53292,6 +53322,8 @@ size_t ResolveLinuxSkeletalRendererMaterialTextureIndex(
     primitiveIndex);
 }
 
+#include "../LinuxBootstrap/static_transparency.inc"
+
 size_t DrawLinuxMapRendererStaticMeshPayloadList(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedMapPreview* selectedMapPreview,
@@ -53301,7 +53333,9 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
   float scale,
   LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
-  size_t* renderedTriangles
+  size_t* renderedTriangles,
+	LinuxStaticTransparentPass& transparent,
+	unsigned transparentGroup
 )
 {
   if (drawnPayloads)
@@ -53344,12 +53378,14 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
     payload.placement.GetMatrix(&worldMatrix);
     vector<Render::BaseMaterial*> previewMaterials =
       CreateLinuxStaticPreviewMaterials(payload.materialReferences, meshGeometry);
-    Render::StaticMesh staticMesh;
-    staticMesh.Initialize(worldMatrix, meshGeometry, previewMaterials);
+    auto staticMesh = std::make_unique<Render::StaticMesh>();
+    staticMesh->Initialize(worldMatrix, meshGeometry, previewMaterials);
+		auto* retained = transparent.Retain(std::move(staticMesh), worldMatrix, payload.localBounds, transparentGroup);
+		if (!retained) continue;
 
     Render::BatchQueueSorter sorter(16, true);
     Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
-    staticMesh.RenderToQueue(queue);
+    retained->mesh->RenderToQueue(queue);
     if (CountLinuxRenderBatchQueueBatches(queue) == 0)
     {
       continue;
@@ -53363,6 +53399,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
         const size_t textureIndex = ResolveLinuxMapRendererMaterialTextureIndex(
           payload.materialDiffuseTextureIndices,
           batch->elementNumber);
+				if (transparent.Defer(*retained, *batch, textureIndex)) continue;
         const bool expectedDiffuseTexture =
           textureIndex != kLinuxHeroPreviewNoDiffuseTexture;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -53388,6 +53425,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 
     if (payloadBatches > 0)
     {
+			retained->counted = true;
       ++totalPayloads;
       totalBatches += payloadBatches;
     }
@@ -53419,7 +53457,8 @@ size_t DrawLinuxMapRendererTerrainElementPayloads(
   float scale,
   LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
-  size_t* renderedTriangles
+  size_t* renderedTriangles,
+	LinuxStaticTransparentPass& transparent
 )
 {
   if (!selectedMapPreview)
@@ -53444,7 +53483,7 @@ size_t DrawLinuxMapRendererTerrainElementPayloads(
     scale,
     materialStats,
     drawnPayloads,
-    renderedTriangles);
+    renderedTriangles, transparent, 0);
 }
 
 size_t DrawLinuxMapRendererStaticMeshPayloads(
@@ -53455,7 +53494,8 @@ size_t DrawLinuxMapRendererStaticMeshPayloads(
   float scale,
   LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
-  size_t* renderedTriangles
+  size_t* renderedTriangles,
+	LinuxStaticTransparentPass& transparent
 )
 {
   if (!selectedMapPreview)
@@ -53480,7 +53520,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloads(
     scale,
     materialStats,
     drawnPayloads,
-    renderedTriangles);
+    renderedTriangles, transparent, 1);
 }
 
 size_t DrawLinuxMapRendererAnimatedMeshPayloads(
@@ -53959,11 +53999,13 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewTerrainRoadSegments = terrainRoadSegments;
   }
 
+	LinuxStaticTransparentPass transparent(selectedMapPreview->terrainElementPayloads.size() +
+		selectedMapPreview->staticGeometryPayloads.size(), {centerX, centerY, 0, scale});
   size_t terrainElementPayloads = 0;
 	profile.Mark(Profile::Surface);
   size_t terrainElementTriangles = 0;
   LinuxRendererMaterialSlotStats terrainElementMaterialStats;
-  const size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
+  size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
     renderContext.overlay,
     selectedMapPreview,
     centerX,
@@ -53971,64 +54013,13 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     scale,
     &terrainElementMaterialStats,
     &terrainElementPayloads,
-    &terrainElementTriangles);
-  if (renderContext.screenRuntime)
-  {
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshDrawn =
-      terrainElementBatches > 0 && terrainElementTriangles > 0;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = terrainElementPayloads;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = terrainElementBatches;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = terrainElementTriangles;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshAuthoredMaterials =
-      terrainElementMaterialStats.authoredMaterials;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseSamplers =
-      terrainElementMaterialStats.diffuseSamplers;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseTextures =
-      terrainElementMaterialStats.diffuseTextures;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshFallbackMaterials =
-      terrainElementMaterialStats.fallbackMaterials;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshSmartRendererBinds =
-      terrainElementMaterialStats.smartRendererBinds;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackBinds =
-      terrainElementMaterialStats.manualFallbackBinds;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackOnlyBatches =
-      terrainElementMaterialStats.manualFallbackOnlyBatches;
-    renderContext.screenRuntime->mapPreviewTerrainElementMeshMissingGL =
-      terrainElementMaterialStats.missingGL;
-  }
-
+    &terrainElementTriangles, transparent);
 	profile.Mark(Profile::Terrain);
-	if (debugGeometry)
-	{
-  SetOpenGlColor(54, 83, 88, 150);
-  glBegin(GL_LINES);
-  const int gridLines = 12;
-  for (int i = -gridLines; i <= gridLines; ++i)
-  {
-    const float tx = extentX * static_cast<float>(i) / static_cast<float>(gridLines);
-    glVertex3f(tx, 0.05f, -extentZ);
-    glVertex3f(tx, 0.05f, extentZ);
-
-    const float tz = extentZ * static_cast<float>(i) / static_cast<float>(gridLines);
-    glVertex3f(-extentX, 0.05f, tz);
-    glVertex3f(extentX, 0.05f, tz);
-  }
-  glEnd();
-
-  SetOpenGlColor(108, 139, 141, 210);
-  glBegin(GL_LINE_LOOP);
-  glVertex3f(-extentX, 0.1f, -extentZ);
-  glVertex3f(extentX, 0.1f, -extentZ);
-  glVertex3f(extentX, 0.1f, extentZ);
-  glVertex3f(-extentX, 0.1f, extentZ);
-  glEnd();
-	}
-
   size_t staticPayloads = 0;
 	profile.Mark(Profile::Debug);
   size_t staticTriangles = 0;
   LinuxRendererMaterialSlotStats staticMaterialStats;
-  const size_t staticBatches = DrawLinuxMapRendererStaticMeshPayloads(
+  size_t staticBatches = DrawLinuxMapRendererStaticMeshPayloads(
     renderContext.overlay,
     selectedMapPreview,
     centerX,
@@ -54036,32 +54027,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     scale,
     &staticMaterialStats,
     &staticPayloads,
-    &staticTriangles);
-  if (renderContext.screenRuntime)
-  {
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshDrawn =
-      staticBatches > 0 && staticTriangles > 0;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshPayloads = staticPayloads;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshBatches = staticBatches;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshTriangles = staticTriangles;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshAuthoredMaterials =
-      staticMaterialStats.authoredMaterials;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseSamplers =
-      staticMaterialStats.diffuseSamplers;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseTextures =
-      staticMaterialStats.diffuseTextures;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshFallbackMaterials =
-      staticMaterialStats.fallbackMaterials;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshSmartRendererBinds =
-      staticMaterialStats.smartRendererBinds;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackBinds =
-      staticMaterialStats.manualFallbackBinds;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackOnlyBatches =
-      staticMaterialStats.manualFallbackOnlyBatches;
-    renderContext.screenRuntime->mapPreviewRendererStaticMeshMissingGL =
-      staticMaterialStats.missingGL;
-  }
-
+    &staticTriangles, transparent);
   size_t animatedPayloads = 0;
 	profile.Mark(Profile::Static);
   size_t animatedTriangles = 0;
@@ -54102,6 +54068,108 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   }
 
 	profile.Mark(Profile::Animated);
+	profile.Mark(Profile::Debug);
+  NWorld::PFWorld* dynamicWorld = renderContext.screenRuntime ?
+    dynamic_cast<NWorld::PFWorld*>(renderContext.screenRuntime->transceiverWorld.GetPtr()) :
+    0;
+  size_t dynamicHeroMarkers = 0;
+  size_t dynamicCommonCreepMarkers = 0;
+  size_t dynamicNeutralCreepMarkers = 0;
+  size_t dynamicTowerMarkers = 0;
+  size_t dynamicMainBuildingMarkers = 0;
+  size_t dynamicMovingMarkers = 0;
+  size_t dynamicHealthBars = 0;
+  size_t dynamicMoveDirectionArrows = 0;
+  size_t dynamicHeroMeshes = 0;
+  size_t dynamicHeroMeshTriangles = 0;
+  size_t dynamicCreepMeshes = 0;
+  size_t dynamicCreepMeshTriangles = 0;
+  size_t dynamicSelectedHeroBadges = 0;
+  bool dynamicSelectedHeroMarkerMatched = false;
+  int dynamicSelectedHeroMarkerPlayerId = -1;
+	// Opaque dynamic meshes precede this boundary; all diagnostic and health overlays follow it.
+	const auto afterOpaqueMeshes = [&]() {
+		transparent.Flush();
+		transparent.GetCounts(0).Accumulate(terrainElementPayloads, terrainElementBatches, terrainElementTriangles, terrainElementMaterialStats);
+		transparent.GetCounts(1).Accumulate(staticPayloads, staticBatches, staticTriangles, staticMaterialStats);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDrawn =
+      terrainElementBatches > 0 && terrainElementTriangles > 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = terrainElementPayloads;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = terrainElementBatches;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = terrainElementTriangles;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshAuthoredMaterials =
+      terrainElementMaterialStats.authoredMaterials;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseSamplers =
+      terrainElementMaterialStats.diffuseSamplers;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseTextures =
+      terrainElementMaterialStats.diffuseTextures;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshFallbackMaterials =
+      terrainElementMaterialStats.fallbackMaterials;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshSmartRendererBinds =
+      terrainElementMaterialStats.smartRendererBinds;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackBinds =
+      terrainElementMaterialStats.manualFallbackBinds;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackOnlyBatches =
+      terrainElementMaterialStats.manualFallbackOnlyBatches;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshMissingGL =
+      terrainElementMaterialStats.missingGL;
+  }
+
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDrawn =
+      staticBatches > 0 && staticTriangles > 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshPayloads = staticPayloads;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshBatches = staticBatches;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshTriangles = staticTriangles;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshAuthoredMaterials =
+      staticMaterialStats.authoredMaterials;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseSamplers =
+      staticMaterialStats.diffuseSamplers;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseTextures =
+      staticMaterialStats.diffuseTextures;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshFallbackMaterials =
+      staticMaterialStats.fallbackMaterials;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshSmartRendererBinds =
+      staticMaterialStats.smartRendererBinds;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackBinds =
+      staticMaterialStats.manualFallbackBinds;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackOnlyBatches =
+      staticMaterialStats.manualFallbackOnlyBatches;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshMissingGL =
+      staticMaterialStats.missingGL;
+  }
+
+		glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_CURRENT_BIT);
+		glDepthMask(GL_FALSE); glEnable(GL_DEPTH_TEST);
+	if (debugGeometry)
+	{
+  SetOpenGlColor(54, 83, 88, 150);
+  glBegin(GL_LINES);
+  const int gridLines = 12;
+  for (int i = -gridLines; i <= gridLines; ++i)
+  {
+    const float tx = extentX * static_cast<float>(i) / static_cast<float>(gridLines);
+    glVertex3f(tx, 0.05f, -extentZ);
+    glVertex3f(tx, 0.05f, extentZ);
+
+    const float tz = extentZ * static_cast<float>(i) / static_cast<float>(gridLines);
+    glVertex3f(-extentX, 0.05f, tz);
+    glVertex3f(extentX, 0.05f, tz);
+  }
+  glEnd();
+
+  SetOpenGlColor(108, 139, 141, 210);
+  glBegin(GL_LINE_LOOP);
+  glVertex3f(-extentX, 0.1f, -extentZ);
+  glVertex3f(extentX, 0.1f, -extentZ);
+  glVertex3f(extentX, 0.1f, extentZ);
+  glVertex3f(-extentX, 0.1f, extentZ);
+  glEnd();
+	}
+
 	if (debugGeometry)
 	{
   size_t scriptAreas = 0;
@@ -54238,25 +54306,9 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
 	}
 
-	profile.Mark(Profile::Debug);
-  NWorld::PFWorld* dynamicWorld = renderContext.screenRuntime ?
-    dynamic_cast<NWorld::PFWorld*>(renderContext.screenRuntime->transceiverWorld.GetPtr()) :
-    0;
-  size_t dynamicHeroMarkers = 0;
-  size_t dynamicCommonCreepMarkers = 0;
-  size_t dynamicNeutralCreepMarkers = 0;
-  size_t dynamicTowerMarkers = 0;
-  size_t dynamicMainBuildingMarkers = 0;
-  size_t dynamicMovingMarkers = 0;
-  size_t dynamicHealthBars = 0;
-  size_t dynamicMoveDirectionArrows = 0;
-  size_t dynamicHeroMeshes = 0;
-  size_t dynamicHeroMeshTriangles = 0;
-  size_t dynamicCreepMeshes = 0;
-  size_t dynamicCreepMeshTriangles = 0;
-  size_t dynamicSelectedHeroBadges = 0;
-  bool dynamicSelectedHeroMarkerMatched = false;
-  int dynamicSelectedHeroMarkerPlayerId = -1;
+		glPopAttrib();
+	};
+
   const size_t dynamicWorldMarkers = DrawLinuxMapDynamicWorldMarkerPreview(
     renderContext.overlay,
     selectedMapPreview,
@@ -54284,7 +54336,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     &dynamicCreepMeshTriangles,
     &dynamicSelectedHeroBadges,
     &dynamicSelectedHeroMarkerMatched,
-    &dynamicSelectedHeroMarkerPlayerId);
+    &dynamicSelectedHeroMarkerPlayerId, afterOpaqueMeshes);
   if (renderContext.screenRuntime)
   {
     renderContext.screenRuntime->mapPreviewDynamicWorldMarkersDrawn = dynamicWorldMarkers > 0;
@@ -55120,7 +55172,8 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
   const Render::SkeletonWrapper* skeletonWrapper,
   LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
-  size_t* renderedTriangles
+  size_t* renderedTriangles,
+	const pwshader::PreviewTransform& preview
 )
 {
   if (drawnPayloads)
@@ -55144,6 +55197,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
     return 0;
   }
 
+	LinuxStaticTransparentPass transparent(payloads.size(), preview);
   unsigned int beforeTriangles = 0;
   unsigned int beforeDips = 0;
   Render::SmartRenderer::GetTriangleAndDipCount(beforeTriangles, beforeDips);
@@ -55171,12 +55225,14 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
     ResolveLinuxHeroStaticPayloadPlacement(payload, skeletonWrapper).GetMatrix(&worldMatrix);
     vector<Render::BaseMaterial*> previewMaterials =
       CreateLinuxStaticPreviewMaterials(payload.materialReferences, meshGeometry);
-    Render::StaticMesh staticMesh;
-    staticMesh.Initialize(worldMatrix, meshGeometry, previewMaterials);
+		auto staticMesh = std::make_unique<Render::StaticMesh>();
+		staticMesh->Initialize(worldMatrix, meshGeometry, previewMaterials);
+		auto* retained = transparent.Retain(std::move(staticMesh), worldMatrix, payload.localBounds, 0);
+		if (!retained) continue;
 
     Render::BatchQueueSorter sorter(16, true);
     Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
-    staticMesh.RenderToQueue(queue);
+    retained->mesh->RenderToQueue(queue);
     if (CountLinuxRenderBatchQueueBatches(queue) == 0)
     {
       continue;
@@ -55190,6 +55246,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
         const size_t textureIndex = ResolveLinuxHeroRendererMaterialTextureIndex(
           payload.materialDiffuseTextureIndices,
           batch->elementNumber);
+				if (transparent.Defer(*retained, *batch, textureIndex)) continue;
         const bool expectedDiffuseTexture =
           textureIndex != kLinuxHeroPreviewNoDiffuseTexture;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -55215,21 +55272,24 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
 
     if (payloadBatches > 0)
     {
+			retained->counted = true;
       ++totalPayloads;
       totalBatches += payloadBatches;
     }
   }
 
+	// The legacy global counter counts attempted draws; rejected deferred geometry is not rendered.
+	unsigned int opaqueAfterTriangles = 0, opaqueAfterDips = 0;
+	Render::SmartRenderer::GetTriangleAndDipCount(opaqueAfterTriangles, opaqueAfterDips);
+	transparent.Flush();
+	size_t deferredTriangles = 0;
+	LinuxRendererMaterialSlotStats ignoredMaterials;
+	transparent.GetCounts(0).Accumulate(totalPayloads, totalBatches, deferredTriangles,
+		materialStats ? *materialStats : ignoredMaterials);
   Render::SmartRenderer::UnBindTexture(0u);
-  unsigned int afterTriangles = 0;
-  unsigned int afterDips = 0;
-  Render::SmartRenderer::GetTriangleAndDipCount(afterTriangles, afterDips);
   if (renderedTriangles)
   {
-    *renderedTriangles =
-      afterTriangles >= beforeTriangles ?
-      afterTriangles - beforeTriangles :
-      0;
+		*renderedTriangles = (opaqueAfterTriangles >= beforeTriangles ? opaqueAfterTriangles - beforeTriangles : 0) + deferredTriangles;
   }
   if (drawnPayloads)
   {
@@ -55363,11 +55423,10 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
 
   const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
   const float scale = 5.2f / assetHeight;
+	const pwshader::PreviewTransform staticPreview{
+		(meshPreview.minX + meshPreview.maxX) * .5f, (meshPreview.minY + meshPreview.maxY) * .5f, meshPreview.minZ, scale};
   Render::SmartRenderer::SetOpenGLImmediateMeshPreviewTransform(
-    (meshPreview.minX + meshPreview.maxX) * 0.5f,
-    (meshPreview.minY + meshPreview.maxY) * 0.5f,
-    meshPreview.minZ,
-    scale);
+		staticPreview.centerX, staticPreview.centerY, staticPreview.minZ, staticPreview.scale);
   Render::SmartRenderer::ResetTriangleAndDipCount();
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
 
@@ -55404,20 +55463,21 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
   size_t staticPayloads = 0;
   size_t staticTriangles = 0;
   LinuxRendererMaterialSlotStats staticMaterialStats;
+	unsigned int skeletalTriangles = 0, skeletalDips = 0;
+	Render::SmartRenderer::GetTriangleAndDipCount(skeletalTriangles, skeletalDips);
   const size_t staticBatches = DrawLinuxHeroRendererStaticMeshPayloads(
     overlay,
     heroPreview,
     skeletalMesh.GetSkeletonWrapper(),
     &staticMaterialStats,
     &staticPayloads,
-    &staticTriangles);
+    &staticTriangles, staticPreview);
   drawnBatches += staticBatches;
 
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
 
-  unsigned int renderedTriangles = 0;
-  unsigned int renderedDips = 0;
-  Render::SmartRenderer::GetTriangleAndDipCount(renderedTriangles, renderedDips);
+	const size_t renderedTriangles = skeletalTriangles + staticTriangles;
+	const size_t renderedDips = skeletalDips + staticBatches;
   if (screenRuntime)
   {
     screenRuntime->characterPreviewRendererMeshDrawn =

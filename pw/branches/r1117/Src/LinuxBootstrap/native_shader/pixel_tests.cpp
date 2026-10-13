@@ -43,6 +43,7 @@ struct Host {
 	Window window = 0;
 	GLXContext context = nullptr;
 	uint64_t lifetime;
+	unsigned hiddenBlendFunctions = 0, deniedBlendLookups = 0;
 	explicit Host(uint64_t life) : lifetime(life) {}
 	void Open() {
 		display = XOpenDisplay(nullptr);
@@ -66,7 +67,14 @@ struct Host {
 		const auto c = glXGetCurrentContext();
 		return {reinterpret_cast<uintptr_t>(c), c == h.context ? h.lifetime : 0};
 	}
-	static void* Lookup(const char* name, void*) {
+	static void* Lookup(const char* name, void* user) {
+		auto& host = *static_cast<Host*>(user);
+		const bool function = !std::strcmp(name, "glBlendFuncSeparatei") || !std::strcmp(name, "glBlendFuncSeparateiARB");
+		const bool equation = !std::strcmp(name, "glBlendEquationSeparatei") || !std::strcmp(name, "glBlendEquationSeparateiARB");
+		if ((function && (host.hiddenBlendFunctions & 1)) || (equation && (host.hiddenBlendFunctions & 2))) {
+			++host.deniedBlendLookups;
+			return nullptr;
+		}
 		return reinterpret_cast<void*>(glXGetProcAddressARB(reinterpret_cast<const GLubyte*>(name)));
 	}
 	ContextBinding Binding() { return {this, Current, Lookup}; }
@@ -78,6 +86,20 @@ struct Host {
 		if (display) XCloseDisplay(display);
 	}
 };
+
+/** Test capability discovery uses the actual context, including Mesa's 3.3 override runs. */
+bool IndexedBlendAvailable() {
+	GLint major = 0, extensions = 0;
+	glGetIntegerv(GL_MAJOR_VERSION, &major);
+	if (major >= 4) return true;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &extensions);
+	for (GLint i = 0; i < extensions; ++i)
+		if (!std::strcmp(reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, GLuint(i))), "GL_ARB_draw_buffers_blend")) return true;
+	return false;
+}
+
+const BlendMode BlendModes[] = {BlendMode::LerpByAlpha, BlendMode::PremultipliedLerp, BlendMode::AddColor,
+	BlendMode::AddColorMulAlpha, BlendMode::MulColor, BlendMode::MulInvColor};
 
 struct Target {
 	GLuint fbo = 0, color = 0, depth = 0;
@@ -226,11 +248,18 @@ std::vector<int64_t> Snapshot(GLuint borrowed) {
 	for (GLenum flag : {GL_DEPTH_TEST,GL_CULL_FACE,GL_BLEND,GL_ALPHA_TEST,GL_SCISSOR_TEST,GL_STENCIL_TEST,
 		GL_DITHER,GL_FRAMEBUFFER_SRGB,GL_RASTERIZER_DISCARD,GL_PROGRAM_POINT_SIZE,GL_POLYGON_OFFSET_FILL,
 		GL_PRIMITIVE_RESTART,GL_DEPTH_CLAMP,GL_COLOR_LOGIC_OP}) s.push_back(glIsEnabled(flag));
-	for (GLuint buffer : {0u, 1u}) {
+	GLint buffers = 0; glGetIntegerv(GL_MAX_DRAW_BUFFERS, &buffers);
+	for (GLuint buffer = 0; buffer < GLuint(buffers); ++buffer) {
 		GLboolean mask[4]; glGetBooleani_v(GL_COLOR_WRITEMASK, buffer, mask);
 		for (auto value : mask) s.push_back(value);
 		s.push_back(glIsEnabledi(GL_BLEND, buffer));
+		if (IndexedBlendAvailable()) for (GLenum query : {GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB,
+			GL_BLEND_SRC_ALPHA, GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB, GL_BLEND_EQUATION_ALPHA}) {
+			GLint value = 0; glGetIntegeri_v(query, buffer, &value); s.push_back(value);
+		}
 	}
+	GLfloat blendColor[4]; glGetFloatv(GL_BLEND_COLOR, blendColor);
+	for (float value : blendColor) { uint32_t bits; std::memcpy(&bits, &value, sizeof(bits)); s.push_back(bits); }
 	for (GLenum query : {GL_VIEWPORT,GL_SCISSOR_BOX,GL_COLOR_WRITEMASK}) {
 		GLint v[4]; glGetIntegerv(query,v); for (auto x : v) s.push_back(x);
 	}
@@ -383,6 +412,186 @@ void RasterTests(Checks& check, ShaderBackend& backend, const ProgramRef& progra
 	CleanRaster(); Registers(backend);
 }
 
+/** Independent RGB equations, not a copy of the production factor table. */
+Pixel Blended(BlendMode mode, Pixel source, Pixel destination) {
+	Pixel result = destination;
+	const double alpha = source[3] / 255.;
+	for (size_t i = 0; i < 3; ++i) {
+		const double s = source[i] / 255., d = destination[i] / 255.;
+		double value = 0;
+		switch (mode) {
+		case BlendMode::LerpByAlpha: value = s * alpha + d * (1 - alpha); break;
+		case BlendMode::PremultipliedLerp: value = s + d * (1 - alpha); break;
+		case BlendMode::AddColor: value = s + d; break;
+		case BlendMode::AddColorMulAlpha: value = s * alpha + d; break;
+		case BlendMode::MulColor: value = d * s; break;
+		case BlendMode::MulInvColor: value = d * (1 - s); break;
+		case BlendMode::Off: value = s; break;
+		}
+		result[i] = static_cast<unsigned char>(std::lround(std::clamp(value, 0., 1.) * 255));
+	}
+	return result;
+}
+
+void ClearBlendTarget(Target& target, Pixel destination, double depth = 1) {
+	target.Clear();
+	glClearColor(destination[0]/255.f, destination[1]/255.f, destination[2]/255.f, destination[3]/255.f);
+	glClearDepth(depth); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void SourceColor(ShaderBackend& backend, Pixel source, bool mirrored = false) {
+	auto world = Identity;
+	if (mirrored) world[0][0] = -1;
+	Registers(backend, world, Identity, {}, {}, {source[0]/255.f, source[1]/255.f, source[2]/255.f, source[3]/255.f});
+}
+
+void DepthIs(Checks& check, float expected, const char* name) {
+	float depth = 0; glReadPixels(32,32,1,1,GL_DEPTH_COMPONENT,GL_FLOAT,&depth);
+	check.Test(std::abs(depth - expected) < .00001f, name);
+}
+
+/** Exercise all equations against nontrivial destination color/alpha and hostile indexed state. */
+void BlendTests(Checks& check, ShaderBackend& backend, const ProgramRef& program, Target& target, const Bytes& archive) {
+	Mesh mesh; Texture white(true);
+	const Pixel destination{47,89,131,73};
+	auto draw = mesh.Draw(white.name);
+	check.Test(draw.blendMode == BlendMode::Off, "default blend mode preserves opaque API");
+	if (IndexedBlendAvailable()) {
+		GLint major = 0; glGetIntegerv(GL_MAJOR_VERSION, &major);
+		const auto function = reinterpret_cast<PFNGLBLENDFUNCSEPARATEIPROC>(glXGetProcAddressARB(
+			reinterpret_cast<const GLubyte*>(major >= 4 ? "glBlendFuncSeparatei" : "glBlendFuncSeparateiARB")));
+		const auto equation = reinterpret_cast<PFNGLBLENDEQUATIONSEPARATEIPROC>(glXGetProcAddressARB(
+			reinterpret_cast<const GLubyte*>(major >= 4 ? "glBlendEquationSeparatei" : "glBlendEquationSeparateiARB")));
+		if (!function || !equation) throw std::runtime_error("test context advertised incomplete indexed blending");
+		{
+			Foreign foreign(archive, mesh);
+			for (BlendMode mode : BlendModes) for (int alpha : {0,64,128,255}) {
+				CleanRaster(); ClearBlendTarget(target, destination);
+				const Pixel source{61,103,149,static_cast<unsigned char>(alpha)};
+				SourceColor(backend, source); draw.blendMode = mode;
+				GLint buffers = 0; glGetIntegerv(GL_MAX_DRAW_BUFFERS, &buffers);
+				for (GLuint i = 0; i < GLuint(buffers); ++i) {
+					function(i, i % 2 ? GL_CONSTANT_COLOR : GL_DST_COLOR, GL_ONE_MINUS_DST_COLOR,
+						GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA);
+					equation(i, i % 2 ? GL_MAX : GL_FUNC_REVERSE_SUBTRACT, GL_MIN);
+					glColorMaski(i, i % 2, GL_TRUE, GL_FALSE, GL_TRUE);
+					if (i % 2) glDisablei(GL_BLEND, i); else glEnablei(GL_BLEND, i);
+				}
+				glBlendColor(.13f,.27f,.39f,.51f);
+				glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
+				glEnable(GL_ALPHA_TEST); glAlphaFunc(GL_NEVER,.731f);
+				glDepthFunc(GL_GREATER); glDepthMask(GL_TRUE); glDepthRange(.2,.8);
+				glUseProgram(foreign.program); glBindVertexArray(foreign.vao);
+				const auto state = Snapshot(white.name);
+				check.Good(backend.Draw(program, draw), "six-mode blend draw mode=" + std::to_string(int(mode)) + " alpha=" + std::to_string(alpha));
+				PixelIs(check,32,32,Blended(mode,source,destination),"original RGB equation preserves destination alpha");
+				DepthIs(check,1,"transparent draw preserves depth");
+				check.Test(Snapshot(white.name) == state,"all indexed factors/equations/enables/masks and foreign program restored");
+			}
+		}
+		CleanRaster();
+		for (BlendMode mode : BlendModes) {
+			draw = mesh.Draw(white.name); draw.blendMode = mode;
+			const Pixel source{223,179,241,192}, bright{191,211,173,37};
+			SourceColor(backend, source); ClearBlendTarget(target, bright);
+			check.Good(backend.Draw(program,draw),"blend equation saturation draw");
+			PixelIs(check,32,32,Blended(mode,source,bright),"blend saturation clamps RGB without changing alpha");
+			for (bool mirrored : {false,true}) for (CullMode cull : {CullMode::Back,CullMode::Disabled})
+				for (int alpha : {126,127}) {
+					const Pixel cutout{61,103,149,static_cast<unsigned char>(alpha)};
+					draw.cullMode = cull; draw.alphaTest = AlphaTest::GreaterEqual;
+					SourceColor(backend,cutout,mirrored); ClearBlendTarget(target,destination);
+					check.Good(backend.Draw(program,draw),"blend with mirrored culling and boundary alpha test");
+					const bool visible = alpha >= 127 && (!mirrored || cull == CullMode::Disabled);
+					PixelIs(check,32,32,visible ? Blended(mode,cutout,destination) : destination,"blend respects alpha and culling admission");
+					DepthIs(check,1,"mixed raster modes keep depth read-only");
+				}
+			// A real opaque occluder, followed by layers behind/on/in front of it.
+			Mesh opaque; opaque.Z(.5f,.5f);
+			ClearBlendTarget(target,ClearPixel); SourceColor(backend,destination);
+			check.Good(backend.Draw(program,opaque.Draw(white.name)),"opaque blend occluder");
+			const Pixel near{37,71,109,83};
+			Mesh layer; layer.Z(.75f,.75f); draw = layer.Draw(white.name); draw.blendMode = mode;
+			SourceColor(backend,near);
+			check.Good(backend.Draw(program,draw),"transparent layer behind occluder");
+			PixelIs(check,32,32,destination,"opaque depth rejects transparent layer");
+			layer.Z(.5f,.5f);
+			check.Good(backend.Draw(program,draw),"transparent layer at equal depth");
+			Pixel expected = Blended(mode,near,destination);
+			PixelIs(check,32,32,expected,"LEQUAL accepts coplanar transparency");
+			layer.Z(.1f,.1f);
+			check.Good(backend.Draw(program,draw),"near transparent layer");
+			expected = Blended(mode,near,expected);
+			PixelIs(check,32,32,expected,"near layer blends in submission order");
+			layer.Z(.3f,.3f);
+			check.Good(backend.Draw(program,draw),"farther layer after near transparency");
+			expected = Blended(mode,near,expected);
+			PixelIs(check,32,32,expected,"near transparent layer did not occlude later geometry");
+			DepthIs(check,.5f,"only opaque occluder writes depth");
+		}
+		// Failure after entering the state scope must also restore all indexed state.
+		GLuint undefined = 0; glGenTextures(1,&undefined); glBindTexture(GL_TEXTURE_2D,undefined);
+		draw = mesh.Draw(undefined); draw.blendMode = BlendMode::LerpByAlpha;
+		const auto state = Snapshot(white.name);
+		const auto draws = backend.GetDiagnostics().draws;
+		check.Test(backend.Draw(program,draw).code == Code::InvalidInput,"blend rejects undefined borrowed texture");
+		check.Test(Snapshot(white.name) == state && backend.GetDiagnostics().draws == draws,"blend failure restores indexed state without a draw");
+		glDeleteTextures(1,&undefined);
+	} else {
+		for (BlendMode mode : BlendModes) {
+			ClearBlendTarget(target,destination); SourceColor(backend,{61,103,149,128});
+			draw.blendMode = mode;
+			const auto state = Snapshot(white.name); const auto count = backend.GetDiagnostics().draws;
+			check.Test(backend.Draw(program,draw).code == Code::Unsupported,"3.3 without extension rejects blended draw");
+			check.Test(Snapshot(white.name) == state && backend.GetDiagnostics().draws == count,"unsupported blending does not mutate state or draw");
+			PixelIs(check,32,32,destination,"unsupported blending leaves destination untouched");
+		}
+	}
+	for (int invalid : {-1,7,INT32_MAX}) {
+		draw = mesh.Draw(white.name); draw.blendMode = static_cast<BlendMode>(invalid);
+		ClearBlendTarget(target,destination); SourceColor(backend,{61,103,149,128});
+		const auto state = Snapshot(white.name); const auto count = backend.GetDiagnostics().draws;
+		check.Test(backend.Draw(program,draw).code == Code::InvalidInput,"invalid blend mode rejected");
+		check.Test(Snapshot(white.name) == state && backend.GetDiagnostics().draws == count,"invalid blend mode preserves GL state and draw count");
+		PixelIs(check,32,32,destination,"invalid blend mode leaves pixels untouched");
+	}
+	CleanRaster(); Registers(backend);
+}
+
+/** Hide real context entrypoints only through the existing host callback, not a production flag. */
+void BlendCapabilityTests(Checks& check, Host& host, const Bytes& archive) {
+	Target target; Texture white(true); Mesh mesh;
+	for (unsigned hidden : {1u,2u,3u}) {
+		host.hiddenBlendFunctions = hidden; host.deniedBlendLookups = 0;
+		Result status; auto backend = ShaderBackend::Create(host.Binding(),{},status);
+		check.Good(status,"missing optional blend entrypoints do not prevent backend creation");
+		if (!backend) continue;
+		ProgramRef program;
+		check.Good(backend->LoadBasicFxPair0({archive.data(),archive.size()},program),"opaque pair loads with missing optional entrypoints");
+		SourceColor(*backend,{61,103,149,128});
+		for (BlendMode mode : BlendModes) {
+			auto draw = mesh.Draw(white.name); draw.blendMode = mode;
+			target.Clear(); const auto state = Snapshot(white.name); const auto count = backend->GetDiagnostics().draws;
+			check.Test(backend->Draw(program,draw).code == Code::Unsupported,"incomplete blend entrypoints reject non-Off draw");
+			check.Test(Snapshot(white.name) == state && backend->GetDiagnostics().draws == count,"missing entrypoint rejection is state-atomic");
+			PixelIs(check,32,32,ClearPixel,"missing entrypoint cannot produce opaque fallback");
+			DepthIs(check,1,"missing entrypoint leaves depth untouched");
+		}
+		if (IndexedBlendAvailable()) check.Test(host.deniedBlendLookups > 0,"host actually withheld indexed blend entrypoint");
+		for (bool mirrored : {false,true}) {
+			auto draw = mesh.Draw(white.name); draw.cullMode = mirrored ? CullMode::Disabled : CullMode::Back;
+			draw.alphaTest = AlphaTest::GreaterEqual;
+			SourceColor(*backend,{61,103,149,128},mirrored); target.Clear();
+			check.Good(backend->Draw(program,draw),"Off with alpha/culling works without optional blend entrypoints");
+			PixelIs(check,32,32,{61,103,149,128},"Off retains RGBA output");
+			DepthIs(check,.25f,"Off retains opaque depth write");
+		}
+		check.Good(backend->Shutdown(),"missing-entrypoint backend shutdown");
+		check.Test(backend->GetDiagnostics().liveBytes == 0,"missing-entrypoint backend balances allocations");
+	}
+	host.hiddenBlendFunctions = 0; CleanRaster();
+}
+
 void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	Target target; Texture texture, white(true); Mesh mesh;
 	Result status;
@@ -430,6 +639,7 @@ void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	float depth = 0; glReadPixels(32,32,1,1,GL_DEPTH_COMPONENT,GL_FLOAT,&depth);
 	check.Test(std::abs(depth-.25f)<0.00001f,"D3D depth .25 maps to window depth .25");
 	RasterTests(check, *backend, program, target);
+	BlendTests(check, *backend, program, target, archive);
 
 	Registers(*backend,Identity,Identity,{0,0,0,0},{.5f,.25f,.75f,.5f},{.1f,.2f,.3f,.1f}); target.Clear();
 	check.Good(backend->Draw(program,draw),"diffuse mul/add draw");
@@ -665,6 +875,7 @@ int main(int argc, char** argv) {
 			Host host(1); host.Open();
 			std::cout << "GL renderer=" << glGetString(GL_RENDERER) << " version=" << glGetString(GL_VERSION) << '\n';
 			Run(check,host,archive,late);
+			BlendCapabilityTests(check,host,archive);
 		}
 		check.Test(glXGetCurrentContext()==nullptr,"host GL context destroyed before late reference release");
 		{

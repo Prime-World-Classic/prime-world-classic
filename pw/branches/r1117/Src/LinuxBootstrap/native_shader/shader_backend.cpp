@@ -53,6 +53,32 @@ struct Budget {
 
 void Enable(GLenum state, bool value) { if (value) glEnable(state); else glDisable(state); }
 
+/** Optional per-context functions; their absence must not disable the GL 3.3 opaque path. */
+struct IndexedBlendFunctions {
+	PFNGLBLENDFUNCSEPARATEIPROC function = nullptr;
+	PFNGLBLENDEQUATIONSEPARATEIPROC equation = nullptr;
+	void Load(const ContextBinding& owner, GLint major) {
+		const bool core = major >= 4;
+		bool supported = core;
+		if (!core) {
+			GLint count = 0; glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+			for (GLint i = 0; i < count; ++i) {
+				const auto* name = glGetStringi(GL_EXTENSIONS, GLuint(i));
+				if (name && !std::strcmp(reinterpret_cast<const char*>(name), "GL_ARB_draw_buffers_blend")) {
+					supported = true;
+					break;
+				}
+			}
+		}
+		if (!supported) return;
+		function = reinterpret_cast<PFNGLBLENDFUNCSEPARATEIPROC>(
+			owner.lookup(core ? "glBlendFuncSeparatei" : "glBlendFuncSeparateiARB", owner.user));
+		equation = reinterpret_cast<PFNGLBLENDEQUATIONSEPARATEIPROC>(
+			owner.lookup(core ? "glBlendEquationSeparatei" : "glBlendEquationSeparateiARB", owner.user));
+	}
+	bool Available() const { return function && equation; }
+};
+
 /** Only private VAO state is modified; global state and the borrowed texture are restored. */
 struct GlState {
 	GLint program = 0, vao = 0, array = 0, element = 0, active = 0, texture = 0, sampler = 0;
@@ -69,7 +95,11 @@ struct GlState {
 	static constexpr GLenum Parameters[] = {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_MIN_FILTER,
 		GL_TEXTURE_MAG_FILTER, GL_TEXTURE_BASE_LEVEL, GL_TEXTURE_MAX_LEVEL};
 	GLint parameters[6]{};
-	GlState() {
+	const IndexedBlendFunctions* indexedBlend;
+	static constexpr GLenum BlendParameters[] = {GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB,
+		GL_BLEND_SRC_ALPHA, GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB, GL_BLEND_EQUATION_ALPHA};
+	GLint blendParameters[6]{};
+	explicit GlState(const IndexedBlendFunctions* functions = nullptr) : indexedBlend(functions) {
 		glGetIntegerv(GL_CURRENT_PROGRAM, &program);
 		glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
 		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &array);
@@ -89,6 +119,8 @@ struct GlState {
 		glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
 		glGetBooleani_v(GL_COLOR_WRITEMASK, 0, colorMask);
 		blend = glIsEnabledi(GL_BLEND, 0);
+		if (indexedBlend) for (size_t i = 0; i < std::size(BlendParameters); ++i)
+			glGetIntegeri_v(BlendParameters[i], 0, &blendParameters[i]);
 		glGetDoublev(GL_DEPTH_RANGE, depthRange);
 		for (size_t i = 0; i < std::size(Flags); ++i) flags[i] = glIsEnabled(Flags[i]);
 	}
@@ -123,6 +155,11 @@ struct GlState {
 		glDepthMask(depthMask);
 		glDepthRange(depthRange[0], depthRange[1]);
 		glColorMaski(0, colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+		if (indexedBlend) {
+			indexedBlend->function(0, GLenum(blendParameters[0]), GLenum(blendParameters[1]),
+				GLenum(blendParameters[2]), GLenum(blendParameters[3]));
+			indexedBlend->equation(0, GLenum(blendParameters[4]), GLenum(blendParameters[5]));
+		}
 		if (blend) glEnablei(GL_BLEND, 0); else glDisablei(GL_BLEND, 0);
 		glCullFace(GLenum(cullMode));
 		glFrontFace(GLenum(face));
@@ -218,6 +255,7 @@ struct ShaderBackend::Impl {
 	std::thread::id thread = std::this_thread::get_id();
 	uint64_t generation = NextGeneration.fetch_add(1), serial = 0, draws = 0;
 	Budget budget;
+	IndexedBlendFunctions blend;
 	MOJOSHADER_glContext* context = nullptr;
 	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0;
 	bool registered = false, closed = false, ready = false;
@@ -260,6 +298,7 @@ std::unique_ptr<ShaderBackend> ShaderBackend::Create(ContextBinding owner, Limit
 		impl->owner = owner; impl->key = key; impl->budget.limits = limits;
 		result.reset(new ShaderBackend(std::move(impl)));
 		auto& p = *result->impl_;
+		p.blend.Load(owner, major);
 		GlState state;
 		p.context = MOJOSHADER_glCreateContext(MOJOSHADER_PROFILE_GLSL120, owner.lookup, owner.user,
 			Budget::Allocate, Budget::Free, &p.budget);
@@ -370,6 +409,21 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		(d.cullMode != CullMode::Back && d.cullMode != CullMode::Disabled) ||
 		d.alphaReference < 0 || d.alphaReference > 255)
 		return Fail(Code::InvalidInput, "invalid alpha-test or culling state");
+	// Original RenderStatesManager factors; the transparent pass preserves alpha and depth.
+	GLenum sourceFactor = GL_ONE, destinationFactor = GL_ZERO;
+	switch (d.blendMode) {
+	case BlendMode::Off: break;
+	case BlendMode::LerpByAlpha: sourceFactor = GL_SRC_ALPHA; destinationFactor = GL_ONE_MINUS_SRC_ALPHA; break;
+	case BlendMode::PremultipliedLerp: destinationFactor = GL_ONE_MINUS_SRC_ALPHA; break;
+	case BlendMode::AddColor: destinationFactor = GL_ONE; break;
+	case BlendMode::AddColorMulAlpha: sourceFactor = GL_SRC_ALPHA; destinationFactor = GL_ONE; break;
+	case BlendMode::MulColor: sourceFactor = GL_ZERO; destinationFactor = GL_SRC_COLOR; break;
+	case BlendMode::MulInvColor: sourceFactor = GL_ZERO; destinationFactor = GL_ONE_MINUS_SRC_COLOR; break;
+	default: return Fail(Code::InvalidInput, "invalid blend mode");
+	}
+	const bool blended = d.blendMode != BlendMode::Off;
+	if (blended && !p.blend.Available())
+		return Fail(Code::Unsupported, "blending requires GL 4.0 or ARB_draw_buffers_blend with indexed entrypoints");
 	try {
 		std::vector<uint32_t> indices(d.indexCount);
 		const size_t available = d.vertices.size - d.streamOffset;
@@ -401,7 +455,7 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			glGetIntegerv(GL_DRAW_BUFFER0 + i, &buffer);
 			if (buffer != GL_NONE) return Fail(Code::Unsupported, "BasicFX requires a single color output");
 		}
-		GlState state;
+		GlState state(blended ? &p.blend : nullptr);
 		MojoScope scope(p.context, p.vao);
 		state.Borrow(d.texture);
 		GLint width = 0, height = 0;
@@ -433,11 +487,15 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			glAlphaFunc(GL_GEQUAL, d.alphaReference / 255.f);
 			glEnable(GL_ALPHA_TEST);
 		}
-		glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE); glDepthRange(0, 1);
+		glDepthFunc(GL_LEQUAL); glDepthMask(blended ? GL_FALSE : GL_TRUE); glDepthRange(0, 1);
 		glCullFace(GL_BACK);
 		glFrontFace(d.frontFace == Winding::CounterClockwise ? GL_CCW : GL_CW);
-		glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-		glDisablei(GL_BLEND, 0);
+		glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, blended ? GL_FALSE : GL_TRUE);
+		if (blended) {
+			p.blend.function(0, sourceFactor, destinationFactor, GL_ONE, GL_ZERO);
+			p.blend.equation(0, GL_FUNC_ADD, GL_FUNC_ADD);
+			glEnablei(GL_BLEND, 0);
+		} else glDisablei(GL_BLEND, 0);
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glViewport(d.viewportX, d.viewportY, d.viewportWidth, d.viewportHeight);
 		MOJOSHADER_glProgramReady();
