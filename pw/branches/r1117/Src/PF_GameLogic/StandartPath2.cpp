@@ -7,7 +7,11 @@
 
 #include "../System/Bresenham.h"
 #include "../System/InlineProfiler.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "CommonPathFinder.h"
+#else
 #include "CommonpathFinder.h"
+#endif
 
 namespace
 {
@@ -264,7 +268,12 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
   //попробуем разрешить коллизию просто явным образом
   if ( !IsValid(pFoundStaticPath ) || (mDistance( pStaticPath->GetFinishTile(), pFoundStaticPath->GetFinishTile() ) > 2 && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile()) )
   {
+#if defined(PW_LINUX_NULL_RENDER)
+		// Native routing has no dynamic tile layer; retain the caller's ghost mask.
+		MapModeChanger mode(pMap->GetMode(), pMap);
+#else
     MapModeChanger mode(MAP_MODE_ALL_STATICS, pMap);
+#endif
 
     if ( pathFinder->CreatePath( nBoundTileRadius, nBoundTileRadiusDyn, startTile, endTile,
       IsValidTile( vLastKnownGoodTile ) ? vLastKnownGoodTile : pathTiles[nLastPathTile], pointChecking, pStaticPath->GetLength(), numSteps ) )
@@ -616,5 +625,7 @@ void CStandartPath2::Reset()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if !defined(PW_LINUX_NULL_RENDER)
 BASIC_REGISTER_CLASS( NWorld::IPointChecking )
+#endif
 REGISTER_WORLD_OBJECT_NM( CStandartPath2, NWorld );

@@ -105,6 +105,9 @@ void CCommonPathFinder::Init()
 CCommonPathFinder::CCommonPathFinder( NWorld::TileMap * _tileMap ) : tileMap(_tileMap)
 {
 	Init();
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!IsValid(tileMap) || !IsSupportedMapSize(tileMap->GetSizeX(), tileMap->GetSizeY())) return;
+#endif
 
   const int nMaxSize = Max( tileMap->GetSizeX(), tileMap->GetSizeY() );
   if ( nMaxSize > mapBuf.GetSizeX() )
@@ -1074,6 +1077,22 @@ bool CCommonPathFinder::CreatePath( const int tileRadius, const int tileRadiusDy
                                    NWorld::IPointChecking* checking, const int referenceLength, int numSteps )
 {
   NI_PROFILE_FUNCTION
+#if defined(PW_LINUX_NULL_RENDER)
+	// Reject before tile indexing, query-state mutation or float-to-int narrowing.
+	if (!IsValid(tileMap) || !IsSupportedMapSize(tileMap->GetSizeX(), tileMap->GetSizeY())
+		|| mapBuf.GetSizeX() < Max(tileMap->GetSizeX(), tileMap->GetSizeY())
+		|| tileRadius < 1 || tileRadius > NWorld::MAX_UNIT_SIZE
+		|| tileRadiusDyn < 1 || tileRadiusDyn > NWorld::MAX_UNIT_SIZE
+		|| start.x < 0 || start.y < 0 || start.x >= tileMap->GetSizeX() || start.y >= tileMap->GetSizeY()
+		|| finish.x < 0 || finish.y < 0 || finish.x >= tileMap->GetSizeX() || finish.y >= tileMap->GetSizeY()
+		|| lastGoodTile.x < 0 || lastGoodTile.y < 0 || lastGoodTile.x >= tileMap->GetSizeX() || lastGoodTile.y >= tileMap->GetSizeY()
+		|| numSteps < 0 || numSteps > Max(tileMap->GetSizeX(), tileMap->GetSizeY())
+		|| referenceLength > LONG_PATH_LENGTH || !std::isfinite(g_pathUpperLimitFactor)) return false;
+	// Reject same-thread CreatePath callback reentry; shared finder state is not thread-safe.
+	static thread_local bool querying = false;
+	if (querying) return false;
+	struct QueryScope { bool& flag; QueryScope(bool& f) : flag(f) { flag = true; } ~QueryScope() { flag = false; } } scope(querying);
+#endif
 
   int maxLength = LONG_PATH_LENGTH;
 
@@ -1082,7 +1101,13 @@ bool CCommonPathFinder::CreatePath( const int tileRadius, const int tileRadiusDy
     // Set max length to be a multiplier of the referenceLength, so we will be able to build a roundabout way.
     // referenceLength is set to a static path length, when we calculate the next path portion, while going.
     // Obviously, the length should be something much shorter than LONG_PATH_LENGTH if our static path is only few tiles long.
+#if defined(PW_LINUX_NULL_RENDER)
+		const double scaled = double(referenceLength) * g_pathUpperLimitFactor;
+		if (!std::isfinite(scaled) || scaled < INT_MIN || scaled > INT_MAX) return false;
+		maxLength = Clamp<int>(static_cast<int>(scaled), 1, LONG_PATH_LENGTH);
+#else
     maxLength = Clamp<int>(referenceLength * g_pathUpperLimitFactor, 1, LONG_PATH_LENGTH);
+#endif
   }
 
   SetPathParameters(tileRadius, tileRadiusDyn, start, finish, lastGoodTile);

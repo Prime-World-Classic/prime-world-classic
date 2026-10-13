@@ -609,7 +609,6 @@ template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, COb
 
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(NWorld::PFHeroStatistics)
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(PF_Minigames::IMinigamesMain)
-PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::CCommonPathFinder)
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::RoutePathFinder)
 
 #undef PW_LINUX_BOOTSTRAP_OBJECT_CASTS

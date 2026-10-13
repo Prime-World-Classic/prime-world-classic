@@ -100,6 +100,10 @@ private:
   int TurnLeft( const SVector & blockPoint, SVector & turnPoint);
   CCommonPathFinder() {}
 public:
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Square scratch allocation and the underlying signed array product are bounded. */
+	static bool IsSupportedMapSize(int x, int y) { return x > 0 && y > 0 && x <= 4096 && y <= 4096; }
+#endif
   CCommonPathFinder( NWorld::TileMap * _tileMap );
 	void Init();
 

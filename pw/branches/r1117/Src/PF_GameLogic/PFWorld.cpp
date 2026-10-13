@@ -17,6 +17,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 #include "DBHeroesList.h"
 #include "DBSessionRoots.h"
 #include "TileMap.h"
+#include "CommonPathFinder.h"
 #include "PFPlayer.h"
 #include "WarFog.h"
 #include "PFWorldProtection.h"
@@ -282,6 +283,23 @@ void WorldChecker::Load() {}
 
 bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const NDb::AdventureCameraSettings*, const NCore::TPlayersStartInfo& playersInfo, LoadingProgress* progress, bool, const NWorld::PFResourcesCollection::TalentMap& talents)
 {
+	// The original finder uses max(width,height)^2, not the tile-map area.
+	if (_advMapDescription && IsValid(_advMapDescription->map) && IsValid(_advMapDescription->map->terrain))
+	{
+		const NDb::Terrain* terrain = _advMapDescription->map->terrain;
+		if (terrain->elemXCount <= 0 || terrain->elemYCount <= 0 || terrain->tilesPerElement <= 0) return false;
+		const int64_t x = int64_t(terrain->elemXCount) * terrain->tilesPerElement;
+		const int64_t y = int64_t(terrain->elemYCount) * terrain->tilesPerElement;
+		if (x > INT_MAX || y > INT_MAX || !Pathfinding::CCommonPathFinder::IsSupportedMapSize(int(x), int(y))) return false;
+		if ((x + 1) * (y + 1) > INT_MAX / int64_t(sizeof(DWORD))) return false;
+	}
+	// Replacing geometry under live units would invalidate their map and path ownership.
+	if (pAIWorld)
+	{
+		vector<PFBaseMovingUnit*> units;
+		PFBaseMovingUnit::GetAllUnits(pAIWorld, units, false);
+		if (!units.empty()) return false;
+	}
   advMapDescription = _advMapDescription;
   humanPlayersCount = 0;
   players.clear();
@@ -335,6 +353,7 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
     if (!pTileMap)
       pTileMap = new TileMap(this);
     pTileMap->Prepare(tilesX, tilesY, metersPerTile);
+		pathFinder = new Pathfinding::CCommonPathFinder(pTileMap);
     if (!pAIWorld)
     {
       pAIWorld = new PFAIWorld(this);

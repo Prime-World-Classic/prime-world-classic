@@ -615,6 +615,9 @@ add_executable(
   ../PF_GameLogic/PlayerBehaviourTracker.cpp
   ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
+	../PF_GameLogic/CommonPathFinder.cpp
+	../PF_GameLogic/StaticPathInternal.cpp
+	../PF_GameLogic/StandartPath2.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/PFWorldNatureMap.cpp
   ../PF_GameLogic/PFStatistics.cpp
@@ -1108,6 +1111,9 @@ add_library(
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFWorld.cpp
+	../PF_GameLogic/CommonPathFinder.cpp
+	../PF_GameLogic/StaticPathInternal.cpp
+	../PF_GameLogic/StandartPath2.cpp
   ../PF_GameLogic/PFAIContainer.cpp
   ../PF_GameLogic/CollisionResolver.cpp
   ../PF_GameLogic/PFSummoned.cpp
@@ -1283,6 +1289,9 @@ add_library(
   ../PF_GameLogic/PlayerBehaviourTracker.cpp
   ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
+	../PF_GameLogic/CommonPathFinder.cpp
+	../PF_GameLogic/StaticPathInternal.cpp
+	../PF_GameLogic/StandartPath2.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/TriggerMarkerHandler.cpp
   ../PF_GameLogic/PFVoxelMap.cpp
@@ -1839,6 +1848,9 @@ set_source_files_properties(
   ../PF_GameLogic/PFUnitAbilities.cpp
   ../PF_GameLogic/PFPredefinedUnitVariables.cpp
   ../PF_GameLogic/PFWorld.cpp
+	../PF_GameLogic/CommonPathFinder.cpp
+	../PF_GameLogic/StaticPathInternal.cpp
+	../PF_GameLogic/StandartPath2.cpp
   ../PF_GameLogic/PFWorldNatureMap.cpp
   PROPERTIES
     COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP"
@@ -1952,6 +1964,9 @@ set_source_files_properties(
   ../PF_GameLogic/PlayerBehaviourTracker.cpp
   ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
+	../PF_GameLogic/CommonPathFinder.cpp
+	../PF_GameLogic/StaticPathInternal.cpp
+	../PF_GameLogic/StandartPath2.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/TileMap.cpp
   ../PF_GameLogic/TriggerMarkerHandler.cpp
