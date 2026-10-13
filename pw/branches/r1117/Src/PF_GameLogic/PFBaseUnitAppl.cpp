@@ -6,8 +6,10 @@
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
 #include "PFAbilityData.h"
+#include "PFApplInstant.h"
 #include "TargetSelectorFormulaPars.h"
 #include <cmath>
+#include <limits>
 
 namespace NWorld
 {
@@ -394,8 +396,71 @@ IMiscFormulaPars const* PFBaseUnit::GetAblt(AbilityID abilityId) const
   return PFLogicObject::GetAblt(abilityId);
 }
 
-float PFBaseUnit::GetDamageTaken(float) const { return 0.0f; }
-float PFBaseUnit::GetDamageDealt(float) const { return 0.0f; }
+namespace
+{
+/** Windows accumulates actual PFApplDamage amounts in int, truncating after each float addition. */
+struct DamageCalculator
+{
+	DamageCalculator() : amount(0), valid(true) {}
+	void operator()(const PFBaseApplicator* app)
+	{
+		const PFApplDamage* damage = dynamic_cast<const PFApplDamage*>(app);
+		if (!damage || !valid) return;
+		const float value = damage->GetDamageDealed();
+		const float next = static_cast<float>(amount) + value;
+		// Compare in double: float(INT_MAX) rounds up to an unsafe conversion boundary.
+		if (!std::isfinite(value) || !std::isfinite(next)
+			|| static_cast<double>(next) < std::numeric_limits<int>::min()
+			|| static_cast<double>(next) > std::numeric_limits<int>::max())
+		{
+			valid = false;
+			return;
+		}
+		amount = static_cast<int>(next);
+	}
+	int amount;
+	bool valid;
+};
+
+/** A newest-first suffix ends at the first expired entry, even if that entry is not damage. */
+struct RecentApplicator
+{
+	float now;
+	float interval;
+	bool valid;
+	bool operator()(const PFBaseApplicator* app)
+	{
+		const float marker = app->GetMarkerTime();
+		const float age = now - marker;
+		valid = std::isfinite(marker) && marker >= 0.f && std::isfinite(age) && age >= 0.f;
+		return valid && age < interval;
+	}
+};
+
+/** Reuse the owning engine traversal without CheckApplicatorTime's borrowed comparator. */
+template<class Ring>
+float CalculateRecentDamage(Ring& history, const PFWorld* world, float interval)
+{
+	if (!world || !std::isfinite(interval) || interval <= 0.f) return 0.f;
+	const float now = world->GetTimeElapsed();
+	if (!std::isfinite(now) || now < 0.f) return 0.f;
+	DamageCalculator calc;
+	RecentApplicator recent = {now, interval, true};
+	PFBaseApplicator::ForallRingSafeWhileBack(history, calc, recent);
+	// A malformed visited record invalidates the whole result, not just its contribution.
+	return calc.valid && recent.valid ? static_cast<float>(calc.amount) : 0.f;
+}
+}
+
+float PFBaseUnit::GetDamageTaken(float dt) const
+{
+	return CalculateRecentDamage(appliedApplicatorsHistory, GetWorld(), dt);
+}
+
+float PFBaseUnit::GetDamageDealt(float dt) const
+{
+	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt);
+}
 float PFBaseUnit::GetDamageTakenEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
 float PFBaseUnit::GetDamageDealtEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
 int PFBaseUnit::CountStatusesForDispel(const IUnitFormulaPars*) const { return 0; }
