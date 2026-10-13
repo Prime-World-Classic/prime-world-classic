@@ -1362,6 +1362,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "applicator_history_b13_tests.inc"
 #include "damage_history_b13_tests.inc"
 #include "damage_formula_b13_tests.inc"
+#include "damage_extended_b13_tests.inc"
 #include "death_cleanup_b13_tests.inc"
 #include "dead_world_b13_tests.inc"
 #include "hero_corpses_b13_tests.inc"
@@ -1519,6 +1520,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeadWorldB13(check);
 	HeroCorpsesB13(check);
 	ScreamTargetsB13(check);
+	DamageExtendedB13(check);
 	NatureOverrideB13(check);
 	TerrainFormulasB13(check);
 	if (dataRoot && *dataRoot) TerrainFormulasAuthoredB13(check, dataRoot);

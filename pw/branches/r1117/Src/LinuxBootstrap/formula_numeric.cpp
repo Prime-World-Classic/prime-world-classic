@@ -165,6 +165,15 @@ bool IsHistoryFunction(const std::string& name)
 	return name == "__history_s_taken" || name == "__history_s_dealt" ||
 		name == "__history_r_taken" || name == "__history_r_dealt";
 }
+
+/** Reserved context transport; authored member syntax is checked by formula_context. */
+bool IsExtendedHistoryFunction(const std::string& name)
+{
+	return name == "__history_s_taken_ex" || name == "__history_s_dealt_ex" ||
+		name == "__history_r_taken_ex" || name == "__history_r_dealt_ex" ||
+		name == "__history_s_taken_ex_misc" || name == "__history_s_dealt_ex_misc" ||
+		name == "__history_r_taken_ex_misc" || name == "__history_r_dealt_ex_misc";
+}
 double ResolveOne(void* data, double a)
 {
 	return ResolveFunction(*static_cast<FunctionBinding*>(data), &a, 1);
@@ -316,7 +325,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					translated += "(" + symbol("sTerrainType") + "==" + symbol("sFctn") + "?";
 					pendingNativeTerrain = true;
 				}
-				else if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name))
+				else if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name) || IsExtendedHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -384,7 +393,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					if (frame.arguments != 1) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveOne, frame.context, false);
 				}
-				else if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero")
+				else if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero" || IsExtendedHistoryFunction(frame.context->name))
 				{
 					if (frame.arguments != 2) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);

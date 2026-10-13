@@ -346,6 +346,26 @@ void ContextFunctions()
 			Check(!EvaluateNumericFormula("0 ? nt" + std::string(suffix) + " : 2", terrain, history).Succeeded()
 				&& reads == 2 && calls == 1, "terrain arity is validated before resolving getters");
 	}
+	for (const char* name : {"__history_s_taken_ex", "__history_s_dealt_ex", "__history_r_taken_ex", "__history_r_dealt_ex",
+		"__history_s_taken_ex_misc", "__history_s_dealt_ex_misc", "__history_r_taken_ex_misc", "__history_r_dealt_ex_misc"})
+	{
+		int calls = 0;
+		const std::string prefix(name);
+		const NumericFunctionResolver extended = [&](const std::string& call, const double* args, std::size_t count, double& value) {
+			++calls; if (call != name || count != 2) return false;
+			value = args[0] + args[1]; return true;
+		};
+		Check(EvaluateNumericFormula(prefix + "(min(2,3),4)", {}, extended).value == 6 && calls == 1,
+			"extended history transport preserves its two numeric arguments");
+		for (const char* suffix : {"()", "(1)", "(1,2,3)", "(1,,2)", "(,2)"})
+			Check(!EvaluateNumericFormula("0 ? " + prefix + suffix + " : 9", {}, extended).Succeeded() && calls == 1,
+				"extended history arity and missing arguments are validated in skipped branches");
+		Check(EvaluateNumericFormula("1 || " + prefix + "(1/0,missing)", {}, extended).value == 1 && calls == 1,
+			"extended history remains lazy under logical lowering");
+		Check(!EvaluateNumericFormula(prefix + "(1/0,4)", {}, extended).Succeeded() && calls == 1,
+			"invalid selected extended argument fails before callback");
+		Check(!EvaluateNumericFormula(prefix + "(1,2)").Succeeded(), "selected extended transport requires a resolver");
+	}
 	for (const char* name : {"__history_s_taken", "__history_s_dealt", "__history_r_taken", "__history_r_dealt"})
 	{
 		int calls = 0;

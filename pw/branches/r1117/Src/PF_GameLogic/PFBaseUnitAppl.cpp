@@ -7,6 +7,7 @@
 #include "PFBaseAttackData.h"
 #include "PFAbilityData.h"
 #include "PFApplInstant.h"
+#include "PFTalent.h"
 #include "TargetSelectorFormulaPars.h"
 #include <cmath>
 #include <limits>
@@ -437,15 +438,57 @@ struct RecentApplicator
 	}
 };
 
+/** Original Ex classification: any selected bit matches after optional ability-data identity. */
+struct DamageCalculatorEx : DamageCalculator
+{
+	DamageCalculatorEx(const PFAbilityData* ability, unsigned selected) : ability(ability), mask(selected) {}
+	void operator()(const PFBaseApplicator* app)
+	{
+		if (!valid || app->GetTypeId() != PFApplDamage::typeId) return;
+		if (mask & DMG_UNIT) { DamageCalculator::operator()(app); return; }
+		const PFAbilityData* data = app->GetAbilityData();
+		if ((mask & DMG_APPLICATOR_ABILITY) && data != ability) return;
+		if (!data) { valid = false; return; }
+		unsigned flags = DMG_APPLICATOR_ABILITY;
+		switch (data->GetAbilityTypeId())
+		{
+		case NDb::ABILITYTYPEID_BASEATTACK: flags |= DMG_ABILITY_ATTACK; break;
+		case NDb::ABILITYTYPEID_ABILITY0: flags |= DMG_ABILITY1; break;
+		case NDb::ABILITYTYPEID_ABILITY1: flags |= DMG_ABILITY2; break;
+		case NDb::ABILITYTYPEID_ABILITY2: flags |= DMG_ABILITY3; break;
+		case NDb::ABILITYTYPEID_ABILITY3: flags |= DMG_ABILITY4; break;
+		case NDb::ABILITYTYPEID_ABILITY4: flags |= DMG_ABILITY5; break;
+		case NDb::ABILITYTYPEID_SPECIAL: flags |= DMG_ABILITY_SPECIAL; break;
+		case NDb::ABILITYTYPEID_TALENT:
+		{
+			const auto* talent = dynamic_cast<const PFTalent*>(data);
+			if (!talent || !talent->GetTalentDesc()) { valid = false; return; }
+			flags |= DMG_TALENT;
+			const unsigned rarityFlags[] = {DMG_TALENT_CLASS, DMG_TALENT_ORDINARY, DMG_TALENT_GOOD,
+				DMG_TALENT_EXCELLENT, DMG_TALENT_MAGNIFICENT, DMG_TALENT_EXCLUSIVE, DMG_TALENT_OUTSTANDING};
+			const unsigned tierFlags[] = {DMG_TALENT_TIER1, DMG_TALENT_TIER2, DMG_TALENT_TIER3,
+				DMG_TALENT_TIER4, DMG_TALENT_TIER5, DMG_TALENT_TIER6};
+			const int rarity = talent->GetTalentDesc()->rarity, tier = data->GetTalentLevel();
+			if (rarity >= NDb::TALENTRARITY_CLASS && rarity <= NDb::TALENTRARITY_OUTSTANDING) flags |= rarityFlags[rarity];
+			if (tier >= NDb::TALENTLEVEL_ID0 && tier <= NDb::TALENTLEVEL_ID5) flags |= tierFlags[tier];
+			break;
+		}
+		default: break;
+		}
+		if (flags & mask) DamageCalculator::operator()(app);
+	}
+	const PFAbilityData* ability;
+	unsigned mask;
+};
+
 /** Reuse the owning engine traversal without CheckApplicatorTime's borrowed comparator. */
-template<class Ring>
-bool CalculateRecentDamage(Ring& history, const PFWorld* world, float interval, float& result)
+template<class Ring, class Calculator>
+bool CalculateRecentDamage(Ring& history, const PFWorld* world, float interval, float& result, Calculator& calc)
 {
 	if (!world || !std::isfinite(interval)) return false;
 	const float now = world->GetTimeElapsed();
 	if (!std::isfinite(now) || now < 0.f) return false;
 	if (interval <= 0.f) { result = 0; return true; }
-	DamageCalculator calc;
 	RecentApplicator recent = {now, interval, true};
 	PFBaseApplicator::ForallRingSafeWhileBack(history, calc, recent);
 	// A malformed visited record invalidates the whole result, not just its contribution.
@@ -470,14 +513,42 @@ float PFBaseUnit::GetDamageDealt(float dt) const
 }
 bool PFBaseUnit::TryGetDamageTaken(float dt, float& result) const
 {
-	return CalculateRecentDamage(appliedApplicatorsHistory, GetWorld(), dt, result);
+	DamageCalculator calc;
+	return CalculateRecentDamage(appliedApplicatorsHistory, GetWorld(), dt, result, calc);
 }
 bool PFBaseUnit::TryGetDamageDealt(float dt, float& result) const
 {
-	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt, result);
+	DamageCalculator calc;
+	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt, result, calc);
 }
-float PFBaseUnit::GetDamageTakenEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
-float PFBaseUnit::GetDamageDealtEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
+bool PFBaseUnit::TryGetDamageDealtEx(float dt, unsigned mask, const IMiscFormulaPars* context, float& result) const
+{
+	const PFAbilityData* ability = nullptr;
+	if ((mask & DMG_APPLICATOR_ABILITY) && !(mask & DMG_UNIT))
+	{
+		const auto* app = dynamic_cast<const PFBaseApplicator*>(context);
+		if (!app || !(ability = app->GetAbilityData())) return false;
+	}
+	DamageCalculatorEx calc(ability, mask);
+	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt, result, calc);
+}
+bool PFBaseUnit::TryGetDamageTakenEx(float dt, unsigned mask, const IMiscFormulaPars* context, float& result) const
+{
+	// Both original Ex APIs traverse sent history, unlike the simple Taken getter.
+	return TryGetDamageDealtEx(dt, mask, context, result);
+}
+float PFBaseUnit::GetDamageTakenEx(float dt, const unsigned mask, const IMiscFormulaPars* const context) const
+{
+	float result = 0;
+	TryGetDamageTakenEx(dt, mask, context, result);
+	return result;
+}
+float PFBaseUnit::GetDamageDealtEx(float dt, const unsigned mask, const IMiscFormulaPars* const context) const
+{
+	float result = 0;
+	TryGetDamageDealtEx(dt, mask, context, result);
+	return result;
+}
 int PFBaseUnit::CountStatusesForDispel(const IUnitFormulaPars*) const { return 0; }
 
 }

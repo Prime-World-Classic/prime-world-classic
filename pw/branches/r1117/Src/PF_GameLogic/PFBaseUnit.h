@@ -1166,6 +1166,9 @@ public:
 	/** Checked native history queries preserve result on malformed context/records, not a false zero. */
 	bool TryGetDamageTaken(float dt, float& result) const;
 	bool TryGetDamageDealt(float dt, float& result) const;
+	/** Original Ex getters both use sent history; masks select ability identity/category. */
+	bool TryGetDamageTakenEx(float dt, unsigned mask, const IMiscFormulaPars* context, float& result) const;
+	bool TryGetDamageDealtEx(float dt, unsigned mask, const IMiscFormulaPars* context, float& result) const;
 #endif
   virtual float GetDamageTakenEx(float dt, const unsigned mask, const IMiscFormulaPars* const pMisc) const;
   virtual float GetDamageDealtEx(float dt, const unsigned mask, const IMiscFormulaPars* const pMisc) const;

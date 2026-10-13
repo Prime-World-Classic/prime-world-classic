@@ -22,7 +22,11 @@ namespace LinuxBootstrap
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited
  * records fail rather than becoming no-damage predicates. Unselected calls stay lazy;
- * no extended mask queries, arbitrary object paths or generic virtual fallback is added.
+ * Extended TakenEx/DealtEx(dt, mask[, pMisc]) both use original sent history. Masks
+ * accept exact FormulaPars DMG_* names/aliases joined by single | (at most 64 terms),
+ * not numeric masks, arbitrary expressions or generic bitwise operators. The optional
+ * third argument is exactly pMisc; ability-identity selection requires a real applicator.
+ * No arbitrary object paths or generic virtual fallback is added.
  * pMisc->GetVariable("damageDealed") and pMisc->GetVariable("isAutoAttack")
  * are the only applicator accessors and require an applicator context.
  * Unknown properties or selected missing units fail, never silently substitute zero.

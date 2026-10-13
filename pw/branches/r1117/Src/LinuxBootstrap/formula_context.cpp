@@ -78,13 +78,105 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"BaseWill", &IUnitFormulaPars::GetBaseWill}
 };
 
+/** Authored Ex masks are exact FormulaPars names joined by single '|', not general C++.
+ * Bound the small structural translation; muParser still evaluates the interval expression.
+ */
+bool BindDamageMask(const std::string& source, unsigned& result)
+{
+	static const struct { const char* name; unsigned value; } masks[] = {
+		{"DMG_UNIT", DMG_UNIT},
+		{"DMG_APPLICATOR_ABILITY", DMG_APPLICATOR_ABILITY},
+		{"DMG_ABILITY_ATTACK", DMG_ABILITY_ATTACK},
+		{"DMG_ABILITY_SPECIAL", DMG_ABILITY_SPECIAL},
+		{"DMG_ABILITY1", DMG_ABILITY1},
+		{"DMG_ABILITY2", DMG_ABILITY2},
+		{"DMG_ABILITY3", DMG_ABILITY3},
+		{"DMG_ABILITY4", DMG_ABILITY4},
+		{"DMG_ABILITY5", DMG_ABILITY5},
+		{"DMG_TALENT", DMG_TALENT},
+		{"DMG_TALENT_CLASS", DMG_TALENT_CLASS},
+		{"DMG_TALENT_ORDINARY", DMG_TALENT_ORDINARY},
+		{"DMG_TALENT_GOOD", DMG_TALENT_GOOD},
+		{"DMG_TALENT_EXCELLENT", DMG_TALENT_EXCELLENT},
+		{"DMG_TALENT_MAGNIFICENT", DMG_TALENT_MAGNIFICENT},
+		{"DMG_TALENT_EXCLUSIVE", DMG_TALENT_EXCLUSIVE},
+		{"DMG_TALENT_OUTSTANDING", DMG_TALENT_OUTSTANDING},
+		{"DMG_TALENT_TIER1", DMG_TALENT_TIER1},
+		{"DMG_TALENT_TIER2", DMG_TALENT_TIER2},
+		{"DMG_TALENT_TIER3", DMG_TALENT_TIER3},
+		{"DMG_TALENT_TIER4", DMG_TALENT_TIER4},
+		{"DMG_TALENT_TIER5", DMG_TALENT_TIER5},
+		{"DMG_TALENT_TIER6", DMG_TALENT_TIER6},
+		{"DMG_APPL_ABLT", DMG_APPL_ABLT},
+		{"DMG_ATTACK", DMG_ATTACK},
+		{"DMG_SPECIAL", DMG_SPECIAL},
+		{"DMG_ABLT1", DMG_ABLT1},
+		{"DMG_ABLT2", DMG_ABLT2},
+		{"DMG_ABLT3", DMG_ABLT3},
+		{"DMG_ABLT4", DMG_ABLT4},
+		{"DMG_ABLT5", DMG_ABLT5},
+		{"DMG_TAL", DMG_TAL},
+		{"DMG_CLASS", DMG_CLASS},
+		{"DMG_ORDINARY", DMG_ORDINARY},
+		{"DMG_GOOD", DMG_GOOD},
+		{"DMG_EXCELLENT", DMG_EXCELLENT},
+		{"DMG_MAGNIFICENT", DMG_MAGNIFICENT},
+		{"DMG_EXCLUSIVE", DMG_EXCLUSIVE},
+		{"DMG_OUTSTANDING", DMG_OUTSTANDING},
+		{"DMG_TAL1", DMG_TAL1},
+		{"DMG_TAL2", DMG_TAL2},
+		{"DMG_TAL3", DMG_TAL3},
+		{"DMG_TAL4", DMG_TAL4},
+		{"DMG_TAL5", DMG_TAL5},
+		{"DMG_TAL6", DMG_TAL6},
+	};
+	result = 0;
+	std::size_t start = 0, terms = 0;
+	for (;;)
+	{
+		if (++terms > NumericFormulaMaxSymbols) return false;
+		const std::size_t end = source.find('|', start);
+		const std::string part = source.substr(start, end == std::string::npos ? end : end - start);
+		const auto first = part.find_first_not_of(" \t\r\n");
+		if (first == std::string::npos) return false;
+		const std::string name = part.substr(first, part.find_last_not_of(" \t\r\n") - first + 1);
+		bool found = false;
+		for (const auto& mask : masks)
+			if (name == mask.name) { result |= mask.value; found = true; break; }
+		if (!found) return false;
+		if (end == std::string::npos) return true;
+		start = end + 1;
+	}
+}
+
+/** Split only one known method's argument boundaries, retaining nested numeric syntax verbatim. */
+bool DamageArguments(const std::string& source, std::size_t& pos, std::vector<std::string>& args)
+{
+	std::size_t depth = 1, start = ++pos;
+	for (; pos < source.size(); ++pos)
+	{
+		if (source[pos] == '(' && ++depth > NumericFormulaMaxNesting) return false;
+		if (source[pos] == ')' && --depth == 0)
+		{
+			args.push_back(source.substr(start, pos - start)); ++pos;
+			return args.size() == 2 || args.size() == 3;
+		}
+		if (source[pos] == ',' && depth == 1)
+		{
+			args.push_back(source.substr(start, pos - start)); start = pos + 1;
+			if (args.size() > 2) return false;
+		}
+	}
+	return false;
+}
+
 /** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
-bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext)
+bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext, unsigned nesting = 0)
 {
-	if (source.size() > NumericFormulaMaxLength) return false;
+	if (source.size() > NumericFormulaMaxLength || nesting > NumericFormulaMaxNesting) return false;
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
 	for (std::size_t pos = 0; pos < source.size();)
 	{
@@ -115,15 +207,34 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		{
 			const bool pointer = name == "pFirst" || name == "pSecond";
 			bool history = false;
-			for (const char* method : {"GetDamageTaken", "GetDamageDealt"})
+			for (const char* method : {"GetDamageTakenEx", "GetDamageDealtEx", "GetDamageTaken", "GetDamageDealt"})
 			{
 				const std::string suffix = std::string(pointer ? "->" : ".") + method;
 				if (source.compare(pos, suffix.size(), suffix) != 0) continue;
 				std::size_t open = pos + suffix.size();
 				while (open < source.size() && (source[open] == ' ' || source[open] == '\t' || source[open] == '\r' || source[open] == '\n')) ++open;
 				if (open == source.size() || source[open] != '(') return false;
-				result += std::string(name == "sender" || name == "pFirst" ? " __history_s_" : " __history_r_") +
-					(std::string(method) == "GetDamageTaken" ? "taken" : "dealt");
+				const std::string methodName(method);
+				const std::string boundName = std::string(name == "sender" || name == "pFirst" ? " __history_s_" : " __history_r_") +
+					(methodName.compare(0, 14, "GetDamageTaken") == 0 ? "taken" : "dealt");
+				if (methodName == "GetDamageTakenEx" || methodName == "GetDamageDealtEx")
+				{
+					std::vector<std::string> args;
+					if (!DamageArguments(source, open, args)) return false;
+					unsigned mask;
+					if (!BindDamageMask(args[1], mask)) return false;
+					if (args.size() == 3)
+					{
+						const auto first = args[2].find_first_not_of(" \t\r\n");
+						if (first == std::string::npos || args[2].substr(first,
+							args[2].find_last_not_of(" \t\r\n") - first + 1) != "pMisc") return false;
+					}
+					std::string interval;
+					if (!BindCombatAccessors(args[0], interval, positionContext, nesting + 1)) return false;
+					result += boundName + (args.size() == 3 ? "_ex_misc(" : "_ex(") + interval + "," + std::to_string(mask) + ")";
+					pos = open; history = true; break;
+				}
+				result += boundName;
 				pos = open; history = true; break;
 			}
 			if (history) continue;
@@ -169,6 +280,21 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "__history_s_taken_ex" || name == "__history_s_dealt_ex" ||
+			name == "__history_r_taken_ex" || name == "__history_r_dealt_ex" ||
+			name == "__history_s_taken_ex_misc" || name == "__history_s_dealt_ex_misc" ||
+			name == "__history_r_taken_ex_misc" || name == "__history_r_dealt_ex_misc")
+		{
+			if (count != 2 || !std::isfinite(args[0]) || std::fabs(args[0]) > std::numeric_limits<float>::max() ||
+				!std::isfinite(args[1]) || args[1] < 0 || args[1] > std::numeric_limits<unsigned>::max() || std::floor(args[1]) != args[1]) return false;
+			const auto* unit = dynamic_cast<const NWorld::PFBaseUnit*>(name.compare(0, 12, "__history_s_") == 0 ? sender : target);
+			if (!unit) return false;
+			float result;
+			const auto* context = name.find("_misc") != std::string::npos ? applicator : nullptr;
+			// Original TakenEx and DealtEx both read sent history with the same classification.
+			if (!unit->TryGetDamageDealtEx(static_cast<float>(args[0]), static_cast<unsigned>(args[1]), context, result)) return false;
+			value = result; return true;
+		}
 		if (name == "__history_s_taken" || name == "__history_s_dealt" ||
 			name == "__history_r_taken" || name == "__history_r_dealt")
 		{
