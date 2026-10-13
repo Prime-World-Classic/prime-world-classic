@@ -251,7 +251,10 @@ struct Context
 			if (nature < TERR_N || nature > TERR_B) return false;
 			value = nature; return true;
 		}
-		if (position && name == "TERR_N") { value = TERR_N; return true; }
+		// FormulaPars terrain constants are valid in ordinary unit formulas too.
+		if (name == "TERR_N") { value = TERR_N; return true; }
+		if (name == "TERR_A") { value = TERR_A; return true; }
+		if (name == "TERR_B") { value = TERR_B; return true; }
 		if (name == "__combat_damageDealed" || name == "__combat_isAutoAttack")
 		{
 			if (!applicator) return false;
@@ -282,6 +285,14 @@ struct Context
 		const auto* unit = name[0] == 's' ? sender : target;
 		if (!unit) return false;
 		const auto property = name.substr(1);
+		if (property == "TerrainType")
+		{
+			// Read the original unit cache, not a fresh position query or the owner's terrain.
+			const int nature = unit->GetTerrainType();
+			if (nature < TERR_N || nature > TERR_B) return false;
+			value = nature;
+			return true;
+		}
 		if (property == "Fctn")
 		{
 			value = unit->GetFctn();

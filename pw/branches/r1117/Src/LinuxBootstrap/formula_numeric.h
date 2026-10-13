@@ -73,6 +73,9 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * ut_bldg/ut_hero pass two evaluated arguments to the receiver-kind context callback.
  * Like FormulaBuilder's SwitchByBool, their arguments are eager unless the entire
  * call is in an unselected ?: branch. This layer does not classify game units.
+ * nt(native, other) preserves the original lazy macro: sTerrainType == sFctn
+ * selects one branch. The injected getters share the symbol budget/cache, and
+ * each nt counts toward the conditional limit. Arity remains checked when unused.
  * Four reserved __history_{s,r}_{taken,dealt} calls pass one evaluated argument;
  * the engine context emits them from an exact member whitelist and rejects direct
  * source injection. This scalar layer does not inspect or retain unit history.

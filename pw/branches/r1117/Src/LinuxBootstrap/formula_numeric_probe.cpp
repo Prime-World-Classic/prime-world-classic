@@ -323,6 +323,29 @@ void NumericFunctions()
 /** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
 void ContextFunctions()
 {
+	// Original nt is a lazy macro, including when branches contain context calls.
+	for (const bool native : {false, true})
+	{
+		int reads = 0, calls = 0;
+		const NumericSymbolResolver terrain = [&](const std::string& name, double& value) {
+			++reads;
+			value = name == "sTerrainType" ? (native ? 1 : 2) : 1;
+			return name == "sTerrainType" || name == "sFctn";
+		};
+		const NumericFunctionResolver history = [&](const std::string& name, const double* args, std::size_t count, double& value) {
+			++calls; value = args[0]; return name == "__history_s_taken" && count == 1;
+		};
+		const std::string live = "__history_s_taken(9)", bad = "__history_s_taken(1/0)";
+		const std::string expression = native ? "nt(" + live + "," + bad + ")" : "nt(" + bad + "," + live + ")";
+		Check(EvaluateNumericFormula(expression, terrain, history).value == 9 && reads == 2 && calls == 1,
+			"terrain macro evaluates only the selected history branch");
+		reads = 0; calls = 0;
+		Check(EvaluateNumericFormula(expression + "+nt(2,3)+sTerrainType", terrain, history).value == (native ? 12 : 14)
+			&& reads == 2 && calls == 1, "injected terrain getters share the source symbol snapshot");
+		for (const char* suffix : {"()", "(1)", "(1,2,3)", "(,1)", "(1,)"})
+			Check(!EvaluateNumericFormula("0 ? nt" + std::string(suffix) + " : 2", terrain, history).Succeeded()
+				&& reads == 2 && calls == 1, "terrain arity is validated before resolving getters");
+	}
 	for (const char* name : {"__history_s_taken", "__history_s_dealt", "__history_r_taken", "__history_r_dealt"})
 	{
 		int calls = 0;

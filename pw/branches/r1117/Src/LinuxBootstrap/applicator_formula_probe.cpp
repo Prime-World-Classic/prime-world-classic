@@ -1364,6 +1364,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "death_cleanup_b13_tests.inc"
 #include "dead_world_b13_tests.inc"
 #include "nature_override_b13_tests.inc"
+#include "terrain_formulas_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 {
@@ -1515,6 +1516,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeathCleanupDeferredB13(check);
 	DeadWorldB13(check);
 	NatureOverrideB13(check);
+	TerrainFormulasB13(check);
+	if (dataRoot && *dataRoot) TerrainFormulasAuthoredB13(check, dataRoot);
 	NatureQueriesB13(check);
 	if (dataRoot && *dataRoot) NatureQueriesAuthoredB13(check, dataRoot);
 	if (dataRoot) NatureOverrideAuthoredB13(check, dataRoot);

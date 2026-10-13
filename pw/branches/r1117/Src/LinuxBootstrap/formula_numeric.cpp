@@ -190,6 +190,7 @@ struct Parenthesis
 {
 	bool function;
 	FunctionBinding* context;
+	bool nativeTerrain;
 	std::size_t arguments = 1;
 };
 
@@ -249,6 +250,19 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 	std::vector<Parenthesis> functionParentheses;
 	bool pendingFunction = false;
 	FunctionBinding* pendingContext = nullptr;
+	bool pendingNativeTerrain = false;
+	// Macro-injected getters share the same lazy snapshot and symbol limit as source names.
+	const auto symbol = [&](const std::string& name) {
+		auto binding = bindings.find(name);
+		if (binding == bindings.end())
+		{
+			if (bindings.size() >= NumericFormulaMaxSymbols) throw Error::LimitExceeded;
+			const std::string token = "pw_symbol_" + std::to_string(bindings.size());
+			binding = bindings.emplace(name, Binding{&resolver, name, token}).first;
+			parser.DefineFunUserData(token, Resolve, &binding->second, false);
+		}
+		return binding->second.token + "() ";
+	};
 	for (std::size_t pos = 0; pos < expression.size();)
 	{
 		const char ch = expression[pos];
@@ -293,7 +307,16 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
 			if (next < expression.size() && expression[next] == '(')
 			{
-				if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name))
+				if (name == "nt")
+				{
+					// FormulaPars is a two-argument ?: macro, NOT eager SwitchByBool.
+					// The existing separator stack supplies argument parentheses; muParser
+					// still validates/evaluates the resulting lazy conditional expression.
+					if (++conditionals > NumericFormulaMaxNesting) throw Error::LimitExceeded;
+					translated += "(" + symbol("sTerrainType") + "==" + symbol("sFctn") + "?";
+					pendingNativeTerrain = true;
+				}
+				else if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -313,15 +336,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 				translated += name + " ";
 				continue;
 			}
-			auto binding = bindings.find(name);
-			if (binding == bindings.end())
-			{
-				if (bindings.size() >= NumericFormulaMaxSymbols) throw Error::LimitExceeded;
-				const std::string token = "pw_symbol_" + std::to_string(bindings.size());
-				binding = bindings.emplace(name, Binding{&resolver, name, token}).first;
-				parser.DefineFunUserData(token, Resolve, &binding->second, false);
-			}
-			translated += binding->second.token + "() ";
+			translated += symbol(name);
 			continue;
 		}
 
@@ -347,15 +362,21 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		if (ch == '(')
 		{
 			if (++depth > NumericFormulaMaxNesting) throw Error::LimitExceeded;
-			functionParentheses.push_back({pendingFunction, pendingContext});
+			functionParentheses.push_back({pendingFunction, pendingContext, pendingNativeTerrain});
 			pendingFunction = false;
 			pendingContext = nullptr;
+			pendingNativeTerrain = false;
 		}
 		else if (ch == ')')
 		{
 			if (depth == 0) throw Error::InvalidExpression;
 			--depth;
 			const auto& frame = functionParentheses.back();
+			if (frame.nativeTerrain)
+			{
+				if (frame.arguments != 2) throw Error::InvalidExpression;
+				translated += ')';
+			}
 			if (frame.context)
 			{
 				if (IsHistoryFunction(frame.context->name))
@@ -380,6 +401,13 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		{
 			if (functionParentheses.empty() || !functionParentheses.back().function) throw Error::UnsupportedSyntax;
 			++functionParentheses.back().arguments;
+			if (functionParentheses.back().nativeTerrain)
+			{
+				if (functionParentheses.back().arguments != 2) throw Error::InvalidExpression;
+				translated += "):(";
+				++pos;
+				continue;
+			}
 		}
 		else if (ch == '?')
 		{

@@ -10,6 +10,9 @@ namespace LinuxBootstrap
 {
 /** Resolve the supported s/t/r unit properties through existing live engine getters.
  * r is the authored receiver prefix; t remains a compatibility alias.
+ * TerrainType reads the existing unit cache, with exact TERR_N/A/B constants;
+ * invalid cached terrain fails. nt(native, other) lazily compares sender terrain
+ * with sender faction, including neutral equality, without a fresh grid query.
  * UnitKind and Fctn bind the integer engine enums. ut_bldg/ut_hero use the receiver's
  * original UnitCheck and float-argument SwitchByBool, including eager arguments.
  * sender.vName and receiver.vName bind live GetVariable values; Name follows
