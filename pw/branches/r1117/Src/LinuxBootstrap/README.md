@@ -10,7 +10,7 @@ of the shared network/replay version.
 
 ## Default Build
 
-Requirements: a C++17 toolchain, CMake, pthreads, and development files for X11,
+Requirements: a C++17 toolchain, CMake, Python 3, pthreads, and development files for X11,
 OpenGL, FreeType, JPEG, PNG and zlib. Runtime requires an accessible X11 display,
 an OpenGL driver and the repository's game Data directory. The checked formula
 parser is vendored; see its [provenance and license](third_party/muparser/PROVENANCE.md).
@@ -32,6 +32,20 @@ Several maintained probes are compile-only object targets, not runnable programs
 The client CTests include actual engine formula, resource, cooldown, world-grid,
 fog/stealth, bounded voxel traversal, packed-command policy and scheduler-draining fixtures. Passing them
 does not establish a complete match.
+
+`LinuxDispatchFactoryAbi` compiles an owning-return assertion using the generated
+flags for all 27 factory/caller builds in the client, runtime and gameplay probes.
+It includes the compile-only gameplay target: its declarations must agree with
+the factory even though no executable links that object library. The check uses
+the standard [CMake compilation database](https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html)
+and Python's standard library; no additional Python package is required.
+
+Native dispatch factories return an owning handle across synchronous callbacks.
+Instance holders remain weak: delayed work without another owner is cancelled
+and rejected before activation. Registered-world and payload-owned casts retain
+their existing behavior; this does not add a worldless scheduler. Native attack
+admission reports failure to `DoAttack`, avoiding queued work and cooldown on
+factory rejection while preserving successful immediate completion.
 
 Run from the game Bin directory so asset paths resolve:
 

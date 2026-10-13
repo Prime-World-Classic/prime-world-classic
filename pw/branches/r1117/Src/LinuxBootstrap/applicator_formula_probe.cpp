@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <limits>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace
@@ -1308,6 +1309,8 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "shop_b12_03_api_tests.inc"
 #include "collision_reach_b11_tests.inc"
 #include "dispatch_b11_01_factory_tests.inc"
+#include "dispatch_factory_lifetime_b13_tests.inc"
+#include "dispatch_orphan_admission_b13_tests.inc"
 #include "dispatch_b11_common_tests.inc"
 #include "dispatch_b11_02_immediate_tests.inc"
 #include "dispatch_b11_08_attack_tests.inc"
@@ -1574,6 +1577,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 			TalentPurchaseB11(check, world);
 			CollisionReachB11(check, world);
 			DispatchFactoryB11(check, world);
+			DispatchFactoryLifetimeB13(check, world);
+			DispatchOrphanAdmissionB13(check, world);
 			DispatchImmediateB11(check, world);
 			DispatchAttackB11(check, world, 3);
 			DispatchWorldImmediateB11(check);

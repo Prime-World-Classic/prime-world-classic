@@ -23,7 +23,7 @@ CObj<PFBaseApplicator> CreateApplicator(PFApplCreatePars const &cp)
   return pAppl;
 }
 
-PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
+CObj<PFDispatch> CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
                            CPtr<PFBaseApplicator> const& pParent,
                            Target const &source,
                            Target const &target,
@@ -42,7 +42,8 @@ PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
 	dcp.clientStartDelay = startDelay;
 
 	// Missing descriptors retain bootstrap compatibility; unsupported authored types fail closed.
-	PFDispatch* pDispatch = dcp.pDBDispatch ? dcp.pDBDispatch->Create(dcp) : new PFDispatch(dcp);
+	// Instant applicators can release their dispatch reference before Start returns.
+	CObj<PFDispatch> pDispatch = dcp.pDBDispatch ? dcp.pDBDispatch->Create(dcp) : new PFDispatch(dcp);
   if (pDispatch && pSpell)
   {
     pDispatch->AddApplicators(pSpell->applicators);

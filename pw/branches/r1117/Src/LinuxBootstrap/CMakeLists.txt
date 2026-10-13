@@ -5,6 +5,13 @@ file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PW_LINUX_PORT_VERSION LIMIT_C
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
 project(PrimeWorldLinuxBootstrap VERSION "${PW_LINUX_PORT_VERSION}" LANGUAGES C CXX)
 
+# The ABI test consumes actual per-source definitions, including object-only probes.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+find_program(PW_LINUX_PYTHON3 NAMES python3)
+if(NOT PW_LINUX_PYTHON3)
+	message(FATAL_ERROR "python3 is required for the native dispatch ABI test")
+endif()
+
 find_package(Threads REQUIRED)
 
 file(
@@ -906,6 +913,10 @@ add_executable(
 )
 
 enable_testing()
+add_test(NAME LinuxDispatchFactoryAbi COMMAND "${PW_LINUX_PYTHON3}" -B
+	"${CMAKE_CURRENT_SOURCE_DIR}/dispatch_factory_abi_test.py"
+	"${CMAKE_BINARY_DIR}/compile_commands.json")
+set_tests_properties(LinuxDispatchFactoryAbi PROPERTIES TIMEOUT 120)
 # Isolate the checked parser from legacy engine precompiled headers and flags.
 add_library(PrimeWorldLinuxNumericFormula STATIC
 	formula_numeric.cpp
@@ -2240,6 +2251,10 @@ set_source_files_properties(applicator_formula_probe.cpp PROPERTIES
 	COMPILE_DEFINITIONS "PW_LINUX_DB_BOOTSTRAP;VISUAL_CUTTED")
 set_source_files_properties(../PF_GameLogic/RegionPointChecker.cpp PROPERTIES
 	COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP")
+
+# These callers also build in the gameplay object probe, without client target flags.
+set_property(SOURCE ../PF_GameLogic/PFAbilityInstance.cpp ../PF_GameLogic/PFBaseAttackData.cpp
+	APPEND PROPERTY COMPILE_DEFINITIONS PW_LINUX_NULL_RENDER)
 
 set_property(
   SOURCE ../PF_GameLogic/PFBaseUnit.cpp

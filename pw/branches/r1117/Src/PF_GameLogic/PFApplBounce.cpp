@@ -107,7 +107,7 @@ bool PFApplBounce::ExecuteNext()
 
   CPtr<PFBaseUnit> const& pAbilityOwner = GetAbilityOwner();
   bool const trackDispatchArrival = IsValid(pAbilityOwner) && pAbilityOwner->GetWorld();
-  PFDispatch* pCreatedDispatch = 0;
+	CObj<PFDispatch> pCreatedDispatch;
 
   if ((GetDB().flags & NDb::BOUNCEFLAGS_STARTFROMOWNER) == 0 || targetCounter > 0)
   {
@@ -191,8 +191,8 @@ void PFApplBounce::SetNewTarget(const Target& target)
   else
   {
     CPtr<PFBaseUnit> const& pAbilityOwner = GetAbilityOwner();
-    PFDispatch* pCreatedDispatch = CreateDispatch(pAbility, this, currentTarget, target, GetDB().spell);
-    pDispatch = IsValid(pAbilityOwner) && pAbilityOwner->GetWorld() ? pCreatedDispatch : 0;
+		CObj<PFDispatch> pCreatedDispatch = CreateDispatch(pAbility, this, currentTarget, target, GetDB().spell);
+		pDispatch = IsValid(pAbilityOwner) && pAbilityOwner->GetWorld() ? pCreatedDispatch.GetPtr() : 0;
   }
 
   currentTarget = target;

@@ -19,30 +19,38 @@ PFBaseAttackInstance::PFBaseAttackInstance(CObj<PFBaseAttackData> const& pAttack
 {
 }
 
-void PFBaseAttackInstance::ApplyAttack()
+bool PFBaseAttackInstance::ApplyAttack()
 {
 	// Explicit cancellation and completed launch are terminal, including repeated public calls.
 	if (isAttackFinished)
-		return;
+		return false;
   PFBaseAttackData const* pAttackData = static_cast<PFBaseAttackData const*>(GetData());
   if (!pAttackData || !pAttackData->GetDBDesc())
-    return;
+    return false;
 
   Target const source(pAttackData->GetOwner());
   NDb::Spell const* pSpell = pAttackData->GetDBDesc();
 
-  PFDispatch* pDispatch =
+	CObj<PFDispatch> pDispatch =
     CreateDispatch(this, NULL, source, target, pSpell, PFBaseApplicator::FLAG_BASE_ATTACK, false, rawAttackDelay);
   if (!pDispatch)
   {
     isAttackFinished = true;
-    return;
+    return false;
   }
 
-  dispatch.Attach(pDispatch);
+	// A delayed weak holder needs another owner, normally its registered world or payload.
+	if (attackDelay >= EPS_VALUE && pDispatch->GetObjCount() <= 1)
+	{
+		pDispatch->Cancel();
+		Cancel();
+		return false;
+	}
+  dispatch.Attach(pDispatch.GetPtr());
 
   if (attackDelay < EPS_VALUE)
     DoAttack();
+	return true;
 }
 
 void PFBaseAttackInstance::DoAttack()
@@ -133,7 +141,8 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
     return false;
 
   CObj<PFBaseAttackInstance> pInst = new PFBaseAttackInstance( this, target, allowAllies );
-  pInst->ApplyAttack();
+	if (!pInst->ApplyAttack())
+		return false;
   rgAttackInstances.push_back(pInst);
   AddInstance(pInst.GetPtr());
 

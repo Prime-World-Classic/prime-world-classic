@@ -144,11 +144,18 @@ bool PFAbilityInstance::ApplyToTarget()
     return false;
 
   Target const source( pOwner );
-  PFDispatch *pDispatch = CreateDispatch( this, NULL, source, target, pAbilityData->GetDBDesc(), 0, false, clientActivateDelay );
+	CObj<PFDispatch> pDispatch = CreateDispatch( this, NULL, source, target, pAbilityData->GetDBDesc(), 0, false, clientActivateDelay );
   if ( !pDispatch )
     return false;
 
-  dispatch.Attach(pDispatch);
+	// The weak holder cannot keep orphaned delayed work alive after this handle is released.
+	if (activateDelay >= EPS_VALUE && pDispatch->GetObjCount() <= 1)
+	{
+		pDispatch->Cancel();
+		Cancel();
+		return false;
+	}
+  dispatch.Attach(pDispatch.GetPtr());
 	// Keep immediate and delayed payment/event/effect ordering in the original activation hook.
 	if (activateDelay < EPS_VALUE)
 		Activate();

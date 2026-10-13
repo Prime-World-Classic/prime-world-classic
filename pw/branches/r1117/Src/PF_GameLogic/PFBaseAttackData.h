@@ -23,7 +23,12 @@ public:
   void                        Cancel();
 
   virtual bool                Update(float dt);
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Report admission separately from immediate completion so rejected attacks do not start cooldowns. */
+	bool ApplyAttack();
+#else
   void                        ApplyAttack();
+#endif
   void                        DoAttack();
   bool                        IsAttackFinished() const { return isAttackFinished; }
   bool                        IsReadyToDie() const;
