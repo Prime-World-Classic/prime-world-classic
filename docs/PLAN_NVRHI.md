@@ -1179,6 +1179,62 @@ float4** (Vulkan требует, `VUID-FragCoord-FragCoord-04212`).
 спайк B: нарисовать один SPIR-V-шейдер через NVRHI на lavapipe и сравнить
 пиксели с D3D9.
 
+### 3.x Спайк B0: SPIR-V через NVRHI, пиксели против CPU-эталона (сделано 2026-10-13)
+
+Нарисован один «материал» в диалекте клиента
+(`tools/spirv_probe/shaders/b0_probe.hlsl`: `register(cN)`, `sampler2D`, `tex2D`,
+`: POSITION`/`: COLOR`, `clip()`, `mul( float4(pos,1), WorldXf )`), переведён
+прослойкой + DXC в SPIR-V и отрисован через NVRHI в 64x64 RGBA8; кадр сверен с
+эталоном, посчитанным на CPU. Итог: **4096/4096 пикселей совпали** — и на хосте
+(llvmpipe), и на tiny10 (lavapipe). Отдельный кейс с ненулевой `WorldXf`
+(масштаб 0.5 + перенос в 4-й строке) — тоже 4096/4096.
+
+По пути измерены пять вещей, которые определяют этап 3. Все они — **молчаливые**
+отказы: вызовы возвращают успех/`nullptr` без сообщения, по логам не находятся.
+
+1. **Имя точки входа.** DXC оставляет в SPIR-V имя HLSL-функции
+   (`MainPass_VSMain`), NVRHI по умолчанию ищет `main` →
+   `createGraphicsPipeline` = `nullptr`, а прямой
+   `vkCreateGraphicsPipelines` отдаёт `VK_ERROR_UNKNOWN` (−13).
+   Обязателен `ShaderDesc::setEntryName`.
+2. **Динамический рендеринг.** NVRHI строит пайплайны с
+   `renderPass = VK_NULL_HANDLE` (рендер-пассов в его API нет; есть
+   `beginRenderPass`/`endRenderPass` поверх `vkCmdBeginRendering`). Одной
+   фичи `VkPhysicalDeviceVulkan13Features.dynamicRendering` на Mesa **мало** —
+   нужно включённое расширение `VK_KHR_dynamic_rendering` при создании
+   устройства, иначе пайплайн не создаётся.
+3. **Смещения binding'ов.** По умолчанию
+   `VulkanBindingOffsets = {t:0, s:128, b:256, uav:384}` — слоты `s*` уходят в
+   binding 128+, `b*` в 256+. DXC в нашей сборке раздаёт binding'и сам (0,1,2)
+   → дескрипторы не совпадают с шейдером, выборка возвращает нули, кадр чёрный
+   при полностью успешных вызовах. Лечится либо обнулением смещений в
+   `BindingLayoutDesc`, либо генерацией SPIR-V с регистрами, согласованными с
+   offsets. Для клиента второй и правильнее: `s0..s15` → 128..143,
+   `b0..b13` → 256+, `t*` → 0+ (это и есть план раскладки `GlobalMasks.h`).
+4. **Намотка.** NVRHI отдаёт viewport с отрицательной высотой
+   (`VKViewportWithDXCoords`), т.е. Y развёрнут как в D3D9 — и из-за этого
+   треугольники с намоткой D3D9 оказываются **тыльными**: при
+   `cullMode=Back, frontCounterClockwise=false` не рисуется ничего
+   (замер: 0 пикселей против 3072 при `frontCounterClockwise=true`).
+   Этап 3: `frontCounterClockwise=true` во всех пайплайнах (или иная смена
+   намотки, но одна и та же во всех).
+5. **Раскладка матриц.** DXC по умолчанию кладёт `float4x4` в SPIR-V
+   **столбцами**: матрицы клиента (D3D9: строки, перенос в `_41.._43`) читаются
+   транспонированными, `mul(v, M)` теряет перенос (замер: квадрат уезжает в
+   центр вместо правого верхнего квадранта). DXC-флаг `-Zpr` оставляет память
+   строчной — и `mul(v, M)` совпадает с D3D9 пиксель в пиксель. `-Zpr` зашит в
+   генератор (`gen_b0_shader.py`).
+
+Что B0 **не** проверял (дальше по этапу 3): sampler-state на слот (в пробе один
+сэмплер на всё), mipmap-фильтрацию и offset-формы `tex2D`, MRT
+(`BasicMaskMaterial` — цвет + глубина), раскладку `GlobalMasks.h` в
+uniform-буферы (16 сэмплеров, таблица из 261 текстуры), Y-инверсию при рендере
+в RT с последующим чтением (пост-обработка клиента).
+
+Запуск: `tools/nvrhi_probe/build_probe_linux.sh` (хост) /
+`build_probe_wine.sh` + `setup_tiny10_vulkan.sh` (tiny10). Регенерация SPIR-V и
+заголовка: `tools/spirv_probe/gen_b0_shader.py`.
+
 ### 3.y Решение: GPU-окклюзии не будет (принято 2026-10-12)
 
 **Факт по NVRHI** (`6b96fb03`): в `nvrhi.h` есть только `IEventQuery` и
@@ -1361,6 +1417,20 @@ build-каталога под инструментальные сборки ск
 **Что не сделано:** репозиторные `Data/Shaders/UberShaders/*.shd` по-прежнему
 старые (перегенерированный контент живёт только на стенде). Решение, куда их
 класть (репо vs контентный пайплайн `content_pwc`/`pwc-gitupdates`), не принято.
+
+### Сделано (спайк B0: SPIR-V через NVRHI, 2026-10-13)
+
+- `tools/spirv_probe/shaders/b0_probe.hlsl` — тестовый материал в диалекте
+  клиента; `gen_b0_shader.py` — прослойка + DXC (`-Zpr`) + разбор SPIR-V +
+  генерация `tools/nvrhi_probe/b0_shader_spv.h`.
+- `tools/nvrhi_probe/probe.cpp` — `SmokeShaderPipeline`: пайплайн из SPIR-V,
+  вершинный буфер, uniform, текстура 8x8, сэмплер, отрисовка, readback и
+  сравнение с CPU-эталоном; плюс лестница `b0bare`/`b0vb`/`b0tex`/`b0triv`,
+  кейс ненулевой матрицы `b0xfm` и замер намотки `b0cull`.
+- Результат: 4096/4096 пикселей совпали (host llvmpipe и tiny10 lavapipe);
+  найденные молчаливые отказы и обязательные настройки — в §3.x (имя точки
+  входа, `VK_KHR_dynamic_rendering`, `VulkanBindingOffsets`,
+  `frontCounterClockwise=true`, `-Zpr`).
 
 ### Сознательные отклонения от «картинка не меняется»
 

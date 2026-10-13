@@ -31,7 +31,7 @@ REG_ANY = re.compile(r"\s*:\s*register\s*\([^)]*\)")
 
 _TEXCOORD_CTR = [200]
 
-def rewrite(src, stage=None, ps_ret_structs=()):
+def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
     notes = []
     _TEXCOORD_CTR[0] = 100   # счётчик — на файл, иначе семантика уезжает за лимит
     # 1. combined-сэмплеры -> ресурс; сам SamplerState один общий
@@ -77,7 +77,21 @@ def rewrite(src, stage=None, ps_ret_structs=()):
     #    POSITION на выходе VS -> SV_POSITION;
     #    COLOR на выходе PS    -> SV_TARGET, а в структурах (вход/выход) —
     #    в нейтральную TEXCOORDn: в SM6 COLOR в профиле ps недопустим.
-    src, n_pos = re.subn(r":\s*POSITION\b", ": SV_POSITION", src)
+    # POSITION -> SV_POSITION только у структуры, которой возвращает себя VS:
+    # у входа VS POSITION — это атрибут, и системной семантикой он быть не
+    # должен (в 67/70 выше грубое правило не ломало сборку, но оставлять его
+    # нельзя: DXC трактует SV_POSITION на входе как пользовательскую семантику).
+    n_pos = 0
+    for st in vs_ret_structs:
+        sm = re.search(r"struct\s+%s\s*\{(.*?)\n\s*\};" % st, src, re.S)
+        if sm:
+            newbody, k = re.subn(r":\s*POSITION\b", ": SV_POSITION", sm.group(1))
+            src = src[:sm.start(1)] + newbody + src[sm.end(1):]
+            n_pos += k
+    mret = re.search(r"(\w+_VSMain\s*\([^)]*\))\s*:\s*POSITION\b", src)
+    if mret:
+        src = src[:mret.end() - 8] + "SV_POSITION" + src[mret.end():]
+        n_pos += 1
     # семантика возврата самой точки входа (у материала их может быть несколько —
     # по одному на проход)
     if stage == "ps":

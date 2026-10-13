@@ -222,3 +222,8 @@ pw/branches/r1117/Tools/VendorX64/vendor_env.cmd
 
 # рабочая папка редактора (Tools/EditorBuild/build_editor.ps1): Bin + локальная копия Profiles
 pw/branches/r1117/_EditorRun/
+
+# spirv_probe: копия дерева шейдеров с прослойкой (probe.py кладёт её рядом с
+# Shaders/, чтобы #include "../GlobalMasks.h" продолжал работать) — артефакт
+# прогона, в ветке не нужен
+pw/branches/r1117/Src/Render/zzz_probe_shaders_*/

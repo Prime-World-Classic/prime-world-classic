@@ -83,3 +83,36 @@ PASS: 67   FAIL: 3
 Следующий шаг — **спайк B**: нарисовать один SPIR-V-шейдер через NVRHI на
 lavapipe и сравнить пиксели с D3D9-кадром. Он и отвечает на вопрос про
 семантику.
+
+## Спайк B0: один материал через NVRHI, пиксели против CPU-эталона
+
+`shaders/b0_probe.hlsl` — тестовый материал в диалекте клиента (`register(cN)`,
+`sampler2D`, `tex2D`, `: POSITION`/`: COLOR`, `clip()`, `mul(float4(pos,1), M)`).
+`gen_b0_shader.py` прогоняет его через прослойку + DXC, разбирает SPIR-V
+(binding'и, location'ы, точки входа) и пишет
+`../nvrhi_probe/b0_shader_spv.h` — SPIR-V как C-массивы. Рендерит и сверяет
+`tools/nvrhi_probe` (`SmokeShaderPipeline`).
+
+Регенерация:
+
+    python3 gen_b0_shader.py          # пишет ../nvrhi_probe/b0_shader_spv.h
+
+Флаги DXC для SPIR-V (`-Zpr` обязателен, см. ниже; доп. — через
+`PW_DXC_EXTRA="..."`):
+
+    DXC=$(pwd)/vendor/dxc/bin/dxc
+    $DXC -T vs_6_0 -E MainPass_VSMain -spirv -Od -Zpr -Vd -I <shim-каталог> \
+         <shimmed>.hlsl -Fo out.spv
+
+Что показал B0 (подробный разбор — `docs/PLAN_NVRHI.md` §3.x):
+
+* **4096/4096 пикселей** совпали с CPU-эталоном (host llvmpipe и tiny10
+  lavapipe): UV-ориентация, POINT+Clamp, `clip()` → discard, location'ы
+  VS→PS, uniform-буфер, вершинные атрибуты;
+* **`-Zpr` обязателен**: без него DXC кладёт `float4x4` столбцами, матрицы
+  клиента (D3D9, перенос в `_41.._43`) читаются транспонированными и
+  `mul(v, M)` теряет перенос;
+* имя точки входа в SPIR-V = имя HLSL-функции (`MainPass_VSMain`), не `main`;
+* `register(...)` в прослойке снят, но NVRHI живёт со смещениями
+  `VulkanBindingOffsets = {t:0, s:128, b:256, uav:384}` — раскладка клиента
+  обязана им соответствовать (или смещения надо обнулять в `BindingLayoutDesc`).

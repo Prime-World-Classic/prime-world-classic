@@ -153,3 +153,38 @@ Vulkan-бэкенд дорогой по коду из-за шаблонного 
 - замеры на реальном GPU (на llvmpipe бессмысленны);
 - `IEventQuery` как замена `D3DQUERYTYPE_EVENT` в `Renderer::Synchronize()` —
   работает, проверено.
+
+## Спайк B0: SPIR-V-пайплайн и сверка пикселей с CPU-эталоном
+
+`probe.cpp::SmokeShaderPipeline` строит полноценный пайплайн из SPIR-V,
+сгенерированного `../spirv_probe/gen_b0_shader.py` (материал в диалекте
+клиента: `register(cN)`, `sampler2D`, `tex2D`, `clip()`, `mul(v, M)`):
+
+* RT 64x64 RGBA8 + framebuffer;
+* VS/PS из SPIR-V (`setEntryName` — **обязательно**, DXC оставляет имя HLSL-
+  функции, NVRHI ищет `main` и молча возвращает `nullptr`);
+* input layout (порядок атрибутов = location'ы; имена Vulkan не использует);
+* VB (2 треугольника), uniform (`float4x4` + `float4`), текстура 8x8 с
+  асимметричным содержимым, сэмплер POINT/Clamp;
+* binding layout **с обнулёнными `VulkanBindingOffsets`** — дефолтные
+  `{t:0, s:128, b:256}` не совпадают с тем, что раздаёт DXC, и тогда выборка
+  возвращает нули при полностью успешных вызовах (чёрный кадр без ошибок);
+* отрисовка, readback, сравнение с эталоном, посчитанным на CPU.
+
+Дополнительные кейсы: `b0bare` (треугольник из `SV_VertexID`, без ресурсов),
+`b0vb` (вершинные данные без ресурсов — по каналу B видно долетевшее UV),
+`b0tex` (загрузка текстуры через readback), `b0triv` (чистый SM6 с теми же
+биндингами), `b0xfm` (ненулевая `WorldXf`: перенос в 4-й строке — проверяет
+конвенцию `mul(v, M)` и `-Zpr`), `b0cull` (замер намотки).
+
+Итог: **4096/4096 пикселей совпали** на host (llvmpipe) и на tiny10
+(lavapipe). Замеренные обязательности этапа 3: `VK_KHR_dynamic_rendering` при
+создании устройства (одной фичи 1.3 на Mesa мало), `setEntryName`,
+согласование `VulkanBindingOffsets`, `frontCounterClockwise=true` (с
+viewport'ом NVRHI геометрия D3D9-намотки оказывается тыльной — при
+`cullMode=Back` не рисуется ничего).
+
+Запуск:
+
+    ./build_probe_linux.sh && ./build-linux/nvrhi_probe       # хост
+    ./build_probe_wine.sh && ./setup_tiny10_vulkan.sh         # tiny10

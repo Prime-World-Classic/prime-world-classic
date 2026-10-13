@@ -39,9 +39,10 @@ SHIM = "--shim" in sys.argv
 SHIM_DIR = None  # задаётся в build_shim_tree(stage)
 
 PS_RET = ()
+VS_RET = ()
 
 def build_shim_tree(stage):
-    global PS_RET
+    global PS_RET, VS_RET
     if stage == "ps":
         names = set()
         for fn in os.listdir(SH):
@@ -51,6 +52,16 @@ def build_shim_tree(stage):
                     if m.group(1) not in ("float4", "float3", "float", "half4", "half3", "half"):
                         names.add(m.group(1))
         PS_RET = tuple(sorted(names))
+    if stage == "vs":
+        names = set()
+        for fn in os.listdir(SH):
+            if fn.endswith(".hlsl"):
+                t = open(os.path.join(SH, fn), encoding="utf-8", errors="replace").read()
+                for m in re.finditer(r"^\s*(\w+)\s+\w+_VSMain\s*\(", t, re.M):
+                    if m.group(1) not in ("float4", "float3", "float", "VS_OUT", "VS_OUTPUT"):
+                        names.add(m.group(1))
+                    names.add(m.group(1))
+        VS_RET = tuple(sorted(names))
     # Прослойка должна применяться и к включаемым файлам (_common.hlsl и др.),
     # поэтому копируем каталог шейдеров целиком: zzz_probe_shaders лежит рядом
     # с Shaders, так что #include "../GlobalMasks.h" продолжает работать.
@@ -62,7 +73,7 @@ def build_shim_tree(stage):
         if not os.path.isfile(src):
             continue
         if fn.endswith(".hlsl"):
-            out, _st, _n = shim.rewrite(open(src, encoding="utf-8", errors="replace").read(), stage, PS_RET)
+            out, _st, _n = shim.rewrite(open(src, encoding="utf-8", errors="replace").read(), stage, PS_RET, VS_RET)
             open(os.path.join(SHIM_DIR, fn), "w", encoding="utf-8").write(out)
         elif fn.endswith(".h"):
             open(os.path.join(SHIM_DIR, fn), "wb").write(open(src, "rb").read())
