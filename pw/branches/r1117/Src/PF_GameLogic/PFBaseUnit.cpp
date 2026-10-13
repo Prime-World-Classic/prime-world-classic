@@ -2230,6 +2230,7 @@ void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamage
       GetWorld()->StoreDeadUnit(this);
   }
 }
+/** Match original endpoint death/full-removal policies, then release local combat/history bookkeeping. */
 void PFBaseUnit::CleanupAfterDeath(bool fullCleanup)
 {
   if (IsValid(pAttackAbility))
@@ -2247,8 +2248,18 @@ void PFBaseUnit::CleanupAfterDeath(bool fullCleanup)
         (*it)->ApplyPassivePart(false);
     }
     externalPassiveAbilities.clear();
+		RemoveAppliedApplicators();
+		RemoveSentApplicators();
     DestroyAbilities();
   }
+	else
+	{
+		RemoveAppliedApplicatorsOnDeath();
+		RemoveSentApplicatorsOnDeath();
+	}
+	CleanupTauntApplicatorsStack();
+	ClearAttackSectors();
+	CleanupHistoryApplicators();
 }
 bool PFBaseUnit::DoAttack(bool allowAllies)
 {
