@@ -26,6 +26,8 @@ public:
 
   void Update( float timeDelta );
   void SetUnlocked( bool unlocked );
+  // Smart cast switched on the action bar: the launcher saves it into the build (back end).
+  void NotifySmartCast( const char * talentId, bool on );
 
   // Must run before AdventureScreen registers its handlers: a handler resolves its
   // command by name once, at registration, and never sees a command bound later.

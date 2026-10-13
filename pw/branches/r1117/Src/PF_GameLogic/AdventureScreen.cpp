@@ -1827,6 +1827,7 @@ void AdventureScreen::OnSessionStart( lobby::TGameId _sessionId, bool inReconnec
 {
   isSessionStarted = true;
   sessionId = _sessionId;
+  LoadSmartCastOverrides();
   bindsController->SetEnabled(BindsController::Lua,true);
   bindsController->SetEnabled(BindsController::Chat,true);
   
@@ -5337,6 +5338,49 @@ void AdventureScreen::OnTalentSmartCastToggle( int level, int slot )
 
   smartCastOverride[level][slot] = IsTalentSmartCast( pTalent, level, slot ) ? 0 : 1;
   smartCastRefreshTimer = 0.0f; // show it right now
+
+  SaveSmartCastOverrides();
+  if ( pLogic && pTalent->GetTalentDesc() )
+    pLogic->NotifySmartCast( pTalent->GetTalentDesc()->persistentId.c_str(), smartCastOverride[level][slot] == 1 );
+}
+
+static string SmartCastSessionFile()
+{
+  return NProfile::GetFullFilePath( "smartcast_session.txt", NProfile::FOLDER_USER );
+}
+
+void AdventureScreen::SaveSmartCastOverrides() const
+{
+  if ( !sessionId )
+    return;
+  FILE * file = 0;
+  if ( fopen_s( &file, SmartCastSessionFile().c_str(), "w" ) != 0 || !file )
+    return;
+  fprintf( file, "session %llu\n", (unsigned long long)sessionId );
+  for ( int level = 0; level < 8; ++level )
+    for ( int slot = 0; slot < 8; ++slot )
+      if ( smartCastOverride[level][slot] >= 0 )
+        fprintf( file, "%d %d %d\n", level, slot, (int)smartCastOverride[level][slot] );
+  fclose( file );
+}
+
+void AdventureScreen::LoadSmartCastOverrides()
+{
+  if ( !sessionId )
+    return;
+  FILE * file = 0;
+  if ( fopen_s( &file, SmartCastSessionFile().c_str(), "r" ) != 0 || !file )
+    return;
+  unsigned long long savedSession = 0;
+  if ( fscanf_s( file, "session %llu", &savedSession ) == 1 && savedSession == (unsigned long long)sessionId )
+  {
+    int level = 0, slot = 0, value = 0;
+    while ( fscanf_s( file, "%d %d %d", &level, &slot, &value ) == 3 )
+      if ( level >= 0 && level < 8 && slot >= 0 && slot < 8 && ( value == 0 || value == 1 ) )
+        smartCastOverride[level][slot] = (signed char)value;
+    smartCastRefreshTimer = 0.0f;
+  }
+  fclose( file );
 }
 
 // checkbox modes for Flash: 0 none, 1 off, 2 on; the boxes follow the talents dragged between the action bar buttons

@@ -1072,6 +1072,10 @@ struct GSClientSettings
     bool TryPraiseHero( NWorld::PFBaseHero * pTarget );
     // click on the smart-cast checkbox of an action bar button (level/slot of the talent)
     void OnTalentSmartCastToggle( int level, int slot );
+    // Switches made on the panel survive a reconnect to the same battle: the game server keeps the
+    // player data of the session start, so they are kept locally per session id.
+    void SaveSmartCastOverrides() const;
+    void LoadSmartCastOverrides();
     // executed by CmdPraise on every client
     void OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBaseHero const * pTarget, int amount );
 

@@ -655,6 +655,12 @@ void AdventureScreenLogic::SetVoiceOverlayUnlocked( bool unlocked )
     voiceOverlayController->SetUnlocked( unlocked );
 }
 
+void AdventureScreenLogic::NotifySmartCast( const char * talentId, bool on )
+{
+  if ( voiceOverlayController )
+    voiceOverlayController->NotifySmartCast( talentId, on );
+}
+
 void AdventureScreenLogic::CloseAdventureScreen()
 {
 	if ( closeTag == CLOSE_NO )

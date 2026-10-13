@@ -125,6 +125,21 @@ void VoiceOverlayController::EnsureDefaultUnlockBind()
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void VoiceOverlayController::NotifySmartCast( const char * talentId, bool on )
+{
+  if ( !talentId || !*talentId || strlen( talentId ) > 64 )
+    return;
+  for ( const char * p = talentId; *p; ++p )
+    if ( !( ( *p >= 'a' && *p <= 'z' ) || ( *p >= 'A' && *p <= 'Z' ) || ( *p >= '0' && *p <= '9' ) || *p == '_' || *p == '-' ) )
+      return;
+  OpenSocket();
+  char text[96];
+  _snprintf_s( text, sizeof( text ), _TRUNCATE, "smartcast %s %d", talentId, on ? 1 : 0 );
+  Send( text );
+  DebugLog( "smartcast %s %d", talentId, on ? 1 : 0 );
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void VoiceOverlayController::SetUnlocked( bool _unlocked )
 {
   DebugLog( "unlock key %s (was %d, shown %d)", _unlocked ? "down" : "up", (int)unlocked, (int)shown );

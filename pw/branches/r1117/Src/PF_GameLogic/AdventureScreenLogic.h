@@ -274,6 +274,7 @@ namespace NGameX
     ActionBarController * GetActionBarController() {return actionBarController;}
     AdventureFlashInterface * GetFlashInterface() {return flashInterface;}
     void SetVoiceOverlayUnlocked( bool unlocked );
+    void NotifySmartCast( const char * talentId, bool on );
     ShopController * GetShopController() {return shopController;}
     InventoryController * GetInventoryController() {return inventoryController;}
     EscMenuController * GetEscMenuController() {return escMenuController;}
