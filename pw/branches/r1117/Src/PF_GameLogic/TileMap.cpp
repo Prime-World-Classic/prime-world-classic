@@ -3,6 +3,9 @@
 #include "System/ImageTGA.h"
 #include "System/LogFileName.h"
 #include "System/InlineProfiler.h"
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+#include "System/ScopedArray.h"
+#endif
 
 
 
@@ -501,7 +504,12 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
   // compute float->int scales
   // Vint = Vfloat * Va + Vb
   float Xa = 0, Xb = 0, Ya = 0, Yb = 0;     // can be uninitialized, but silly compiler flags ...
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	// The reusable mask is allocated with new[] both initially and on growth.
+	static ScopedArray<bool> expandedMask;
+#else
   static AutoPtr<bool> expandedMask(NULL);  // static to not reallocate every time
+#endif
   static int expandedMaskSize = 0;
   bool *xMask = Get(expandedMask);
 
