@@ -126,8 +126,9 @@ class Dump(object):
             name_rva = struct.unpack_from("<I", self.d, off + 20)[0]
             nm = ""
             if name_rva:
+                # MINIDUMP_STRING.Length — в БАЙТАХ (без завершающего нуля), не в символах
                 ln = struct.unpack_from("<I", self.d, name_rva)[0]
-                nm = self.d[name_rva + 4:name_rva + 4 + ln * 2].decode("utf-16-le", "replace")
+                nm = self.d[name_rva + 4:name_rva + 4 + ln].decode("utf-16-le", "replace")
             out.append((base, msize, nm))
             off += 108
         return out
@@ -263,7 +264,10 @@ def main():
             mark = "   <== поток исключения"
         print("  tid=%-7d stack=%#x..%#x (%d Б)  ctx=%s%s"
               % (tid, sb, sb + ss, ss, "есть" if ctx else "НЕТ", mark))
-        if exc and tid == exc[0] and r2:
+        # CONTEXT потока в ThreadList — состояние на момент записи дампа (внутри
+        # обработчика), а не на момент исключения; берём его, только если в
+        # Exception stream контекста нет.
+        if exc and tid == exc[0] and r2 and not regs:
             regs = r2
 
     if regs and args.hex:
