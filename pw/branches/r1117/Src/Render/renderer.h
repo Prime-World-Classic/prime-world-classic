@@ -7,7 +7,6 @@
 #include "renderstatesmanager.h"
 #include "dxutils.h"
 #include "renderformat.h"
-#include "d3d9backend.h"
 #include "TextureManager.h"
 #include "IQuery.h"
 #include "ConstantProtection.h"
@@ -31,13 +30,19 @@ struct Caps
 	bool  bSupportSM30;
 };
 
+// Seam этапа 2 (docs/PLAN_NVRHI.md §2.8): сырые вызовы устройства идут через
+// IRenderBackend. Здесь только прямое объявление: renderbackend.h подключается
+// в тех TU, которые реально дергают бэкенд (Render/*.cpp). Иначе любое касание
+// интерфейса пересобирает полмира — renderer.h включается почти везде.
+class IRenderBackend;
+
 class Renderer
 {
 	static Renderer*      s_pInstance;
 
-  // Seam этапа 2 (docs/PLAN_NVRHI.md §Этап 2): сырые вызовы устройства идут
-  // через IRenderBackend. Создаётся вместе с устройством, живёт до его смерти.
-  D3D9Backend*        pBackend;
+  // Создаётся вместе с устройством (реализация — D3D9Backend, см. renderer.cpp),
+  // живёт до его смерти.
+  IRenderBackend*       pBackend;
 
 	DeviceLostWrapper<RenderStatesManager> statesMan;
   LightsManager         lightsMan;

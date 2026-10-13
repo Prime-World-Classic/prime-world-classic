@@ -315,6 +315,87 @@ Vulkan (там instanced draw + per-instance атрибуты), схему ме�
 весь `smartrenderer.cpp` (27 вызовов `GetDevice()` — это и есть `DrawIndexed`,
 биндинги RT/depth и состояний, то есть основная часть интерфейса из чек-листа).
 
+### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
+
+`Src/Render/conststore.{h,cpp}`. D3D9 применяет каждую запись сразу
+(`SetVertexShaderConstantF` по индексу регистра), Vulkan/D3D11 — один
+uniform-буфер на стадию, который надо собрать из записей. Мест записи констант
+в клиенте больше сотни (`FlashRenderer` 19, `PFRenderUtils` 14,
+`PFRenderInterface` 13, `ShadowMap` 8, `FullScreenFX` 7, `Minimap` 7,
+`Terrain` 6, `WaterMesh`/`WaterManager`/`AOERenderer` 6, …), но все они идут
+через две функции — `Renderer::Set{Vertex,Pixel}ShaderConstants` (проверено:
+прямых вызовов `Set*ShaderConstantF` в дереве больше нет, все convenience
+обёртки — `...Vector4`, `...Matrix`, `...Matrix43`, `...Float`, `...HDRColor` —
+зовут их). Поэтому полное состояние регистров держится в тени: вызов идёт
+«сквозь» в устройство как раньше (порядок и поведение не меняются), тень
+обновляется рядом, `NvrhiBackend` на биндинге берёт из неё один блок.
+Переписывать 100+ мест не придётся.
+
+Второй смысл — измеримая раскладка вместо догадки по `GlobalMasks.h`: какие
+диапазоны `c0..c255` реально пишутся за бой и сколько регистров живые
+(`FirstUsed`/`LastUsed`/`ChangedSinceTurn`/`Writes`). Это вход для выбора
+размера и числа uniform-буферов при бюджете `maxBoundDescriptorSets = 8`
+(§2.6). Замер включается в тот же периодический `DebugTrace`-снимок, что и
+счётчики пар/`sortId` (`PW_RENDER_SHADER_STATS`).
+
+Реализация — свободная функция `Render::GetConstStore()`, а не член `Renderer`:
+`renderer.h` включается почти везде, и любое его касание стоит полной
+пересборки графа (см. §2.11).
+
+### 2.10 Инстансинг: что решать до этапа 3 (2026-10-13)
+
+Схема D3D9 (`SmartRenderer::EnableHardwareInstancing`, `ApplyStates`,
+`batch.cpp`): геометрийным потокам ставится
+`D3DSTREAMSOURCE_INDEXEDDATA | numInstances`, отдельному instance-потоку —
+`D3DSTREAMSOURCE_INSTANCEDATA | 1`; в вершинную декларацию добавляется элемент
+`SHORT2 BLENDINDICES` из потока 1 (`s_instancedVDecl`), сам поток —
+`s_pInstanceIndexVB` (stride 4, `pBuff[i] = i`). То есть один draw проигрывает
+геометрию `numInstances` раз, а instance-поток даёт индекс чанка геометрии.
+`SetStreamSourceFreq` — D3D9-специфичный механизм, аналога нет ни в NVRHI, ни
+в Vulkan, поэтому он и остался единственным прямым вызовом устройства в
+`ApplyStates`.
+
+Хорошая новость: HLSL уже читает индекс инстанса явно —
+`int InstanceId : BLENDINDICES0;` (`BasicMaterial.hlsl:61`), плюс
+`INSTANCE_DATA c20` и `MAX_INSTANCES_COUNT 19` в `GlobalMasks.h`. Значит
+переносимый путь существует: `drawIndexedInstanced` + индекс инстанса из
+системной семантики (`SV_InstanceID` / `gl_InstanceIndex`), а генератор шейдеров
+должна уметь отображать `BLENDINDICES0` instance-потока на эту семантику.
+
+Что это меняет (и почему решение нужно до того, как ручки станут настоящими):
+1. `IRenderBackend` нужен `DrawIndexedInstanced(type, ..., instanceCount)` —
+   иначе позже придётся ломать интерфейс;
+2. трюк с индексированием геометрийного потока (`INDEXEDDATA`) не переносится:
+   смещение чанка на инстанс обязано считаться в шейдере из индекса инстанса,
+   а это значит, что доступ к геометрии должен быть **по индексу** (index
+   buffer), а не «сырым» потоком — влияет на `BatchChunk`/`StaticMesh` и на
+   генератор;
+3. `s_instancedVDecl` (подмена декларации на лету) тогда не нужна вовсе.
+
+Вариант «развернуть инстансы в N отдельных draw» отклоняем: именно он
+съедает выигрыш батчинга, ради которого всё и делалось.
+
+### 2.11 Стоимость итерации (2026-10-13)
+
+Две правки, которые надо держать, иначе каждый шаг этапа 2 стоит 30–40 минут:
+
+1. **`renderbackend.h`/`d3d9backend.h` не должны попадать в `renderer.h`.**
+   В `renderer.h` — только forward-объявление `class IRenderBackend;` и поле
+   `IRenderBackend* pBackend`; реализацию (`D3D9Backend`) подключает
+   `renderer.cpp`, а `smartrenderer.cpp` подключает `d3d9backend.h` сам (ему
+   нужны `MakeBackendHandle`/`MakeBackendViewport`). Замерено: касание
+   `renderbackend.h` — **3 TU за 8 с**; до развязки любое касание интерфейса
+   тянуло за собой `renderer.h`, а его правка в этом же заходе давала полную
+   пересборку (~30 мин, 1160 TU).
+2. **`build_client_x64_wine.sh` разводит build/gen-каталоги по флагам.**
+   `PW_EXTRA_DEFS`/`PW_EXTRA_OPTS` попадают в командную строку каждой TU,
+   поэтому инструментальная сборка (например `-DPW_RENDER_SHADER_STATS`) в
+   общем каталоге сносила весь кэш и затем требовала полной пересборки
+   обычного артефакта. Теперь суффикс каталога берётся из `PW_BUILD_SUFFIX`, а
+   если он не задан — из хэша этих переменных (`x64-wine_a0a46f96`), и артефакт
+   пишется в `build/PW_Game<суффикс>.exe`, не затирая стендовый
+   `build/PW_Game.exe`.
+
 ### 2.2 Реальный срез состояний (много меньше, чем кажется)
 
 - **`D3DRS_*`, используемые вне `renderstatesmanager.cpp`: 32 уникальных,

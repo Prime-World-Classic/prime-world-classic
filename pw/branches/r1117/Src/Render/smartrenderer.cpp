@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#include "d3d9backend.h"   // seam этапа 2: MakeBackendHandle/MakeBackendViewport
+#include "conststore.h"
 
 #include "smartrenderer.h"
 
@@ -375,6 +377,11 @@ void OnFrameStart()
       (int)pairMapTotal.size(), (int)pairMap.size(), (int)vsMapTotal.size(),
       (int)vsMap.size(), (int)psMapTotal.size(), (int)psMap.size(),
       (int)sortMapTotal.size(), (int)sortMap.size() );
+    // Раскладка констант (docs/PLAN_NVRHI.md §2.7): какие c0..c255 реально
+    // пишутся — по этому выбирается размер/число uniform-буферов на этапе 3.
+    DebugTrace( "%s", GetConstStore().StatsLine() );
+    GetConstStore().Stage( csVertex ).Turn();
+    GetConstStore().Stage( csPixel ).Turn();
   }
   g_numPSu.SetValue( (int)psMap.size() );
   g_numVSu.SetValue( (int)vsMap.size() );

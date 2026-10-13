@@ -433,6 +433,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\conststore.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\conststore.h"
+				>
+			</File>
+			<File
 				RelativePath=".\d3d9backend.cpp"
 				>
 			</File>

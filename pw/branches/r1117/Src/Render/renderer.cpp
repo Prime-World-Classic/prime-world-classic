@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Vendor/DirectX/Include/DxErr.h"
+#include "d3d9backend.h"   // seam этапа 2: здесь единственном создаётся реализация
+#include "conststore.h"
 
 #include "System/AssertDumper.h"
 #include "System/InlineProfiler.h"
@@ -602,6 +604,10 @@ void Renderer::SetPixelShaderConstants(unsigned int startRegisterIndex, unsigned
 	constChecker.SetPixelShaderConstants(startRegisterIndex, registersCount);
 #endif
 
+  // Тень регистров (docs/PLAN_NVRHI.md §2.7): зеркало того, что ушло в
+  // устройство. Порядок не важен: для D3D9 источником состояния остаётся сама
+  // запись в устройство, а тень нужна этапу 3 (uniform-буфер) и замеру раскладки.
+  GetConstStore().Stage( csPixel ).Write( startRegisterIndex, registersCount, static_cast<const float*>(data) );
   bool res = pBackend->SetPixelShaderConstants(startRegisterIndex, registersCount, data) == D3D_OK;
 
 	NI_ASSERT(res, "SetPixelShaderConstants error!");
@@ -618,6 +624,7 @@ void Renderer::SetVertexShaderConstants(unsigned int startRegisterIndex, unsigne
 		constChecker.SetVertexShaderConstants(startRegisterIndex, registersCount);
 #endif
 
+	GetConstStore().Stage( csVertex ).Write( startRegisterIndex, registersCount, static_cast<const float*>(data) );
 	bool res = pBackend->SetVertexShaderConstants(startRegisterIndex, registersCount, data) == D3D_OK;
 
 	NI_ASSERT(res, "SetPixelShaderConstants error!");
