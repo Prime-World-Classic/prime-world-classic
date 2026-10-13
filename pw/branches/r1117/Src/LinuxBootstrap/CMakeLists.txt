@@ -1655,6 +1655,14 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
+add_subdirectory(native_shader)
+set_source_files_properties(../Render/LinuxBasicFx.cpp PROPERTIES
+	COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP")
+foreach(target PrimeWorldLinuxClient PrimeWorldLinuxClientRuntimeProbe)
+	target_sources(${target} PRIVATE ../Render/LinuxBasicFx.cpp)
+	target_link_libraries(${target} PRIVATE PrimeWorldLinuxShaderBackend)
+endforeach()
+
 option(PW_LINUX_OPTIMIZE_PRESENTATION "Optimize the native presentation without disabling assertions" ON)
 if(PW_LINUX_OPTIMIZE_PRESENTATION AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	# CPU vertex transforms/skinning are presentation code, not world simulation.

@@ -7,6 +7,7 @@
 #include "MaterialSpec.h"
 #include "renderer.h"
 #include "smartrenderer.h"
+#include "LinuxBasicFx.h"
 
 #include <algorithm>
 
@@ -30,6 +31,7 @@ public:
   NullStaticMeshMaterial()
     : BaseMaterial(NDb::MATERIALPRIORITY_MESHESOPAQUE, 0, -1)
   {
+	staticShaderIndex = 0;
   }
 
   virtual void PrepareRenderer()
@@ -196,6 +198,9 @@ public:
     return pDbMaterial.GetPtr();
   }
 
+	/// Preview textures/constants are not represented by Material's significant-part CRC.
+	virtual bool SkipIDEvaluation() const { return true; }
+
   virtual Render::Sampler* GetDiffuseMap()
   {
     return diffuseSamplerReady ? &diffuseMap : 0;
@@ -228,6 +233,10 @@ public:
       }
 #endif
     }
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	Render::LinuxBasicFx::Select(pDbMaterial.GetPtr(),
+		diffuseTextureReady && diffuseMap.Enabled() ? diffuseMap.GetTexture().GetPtr() : 0);
+#endif
   }
 
 private:

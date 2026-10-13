@@ -13,6 +13,7 @@
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include <GL/gl.h>
+#include "LinuxBasicFx.h"
 #endif
 
 namespace
@@ -375,6 +376,30 @@ namespace
     if (!positionElement || positionElement->type != static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT3))
       return;
 
+	if (Render::LinuxBasicFx::IsSelected())
+	{
+		// Keep raw positions and WORLD separate: the original bytecode performs both transforms.
+		if (!texCoordElement || texCoordElement->type != static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT2) ||
+			g_openGLImmediateSkeletalMatrices || descr.primitiveCount > UINT_MAX / 3 ||
+			(g_boundIndexBuffer->format != D3DFMT_INDEX16 && g_boundIndexBuffer->format != D3DFMT_INDEX32))
+			return;
+		pwshader::IndexedDraw draw;
+		draw.vertices = {g_boundVertexBuffer->storage.begin(), g_boundVertexBuffer->storage.size()};
+		draw.indexData = {g_boundIndexBuffer->storage.begin(), g_boundIndexBuffer->storage.size()};
+		draw.streamOffset = g_boundVertexOffset;
+		draw.stride = g_boundVertexStride;
+		draw.positionOffset = positionElement->offset;
+		draw.uvOffset = texCoordElement->offset;
+		draw.indexType = g_boundIndexBuffer->format == D3DFMT_INDEX16 ?
+			pwshader::IndexType::UInt16 : pwshader::IndexType::UInt32;
+		draw.firstIndex = descr.startIndex;
+		draw.indexCount = static_cast<size_t>(descr.primitiveCount) * 3;
+		draw.baseVertex = descr.baseVertexIndex;
+		Render::LinuxBasicFx::Draw(draw, g_openGLImmediateObjectMatrix,
+			{g_openGLPreviewCenterX, g_openGLPreviewCenterY, g_openGLPreviewMinZ, g_openGLPreviewScale});
+		return;
+	}
+
     const bool textureEnabled = glIsEnabled(GL_TEXTURE_2D) == GL_TRUE;
     glBegin(GL_TRIANGLES);
     for (unsigned int triangleIndex = 0; triangleIndex < descr.primitiveCount; ++triangleIndex)
@@ -460,6 +485,7 @@ void SetOpenGLImmediateMeshDrawingEnabled(bool enabled)
   g_openGLImmediateMeshDrawingEnabled = enabled;
   if (!enabled)
   {
+	Render::LinuxBasicFx::ClearSelection();
     g_openGLImmediateObjectMatrix = 0;
     g_openGLImmediateSkeletalMatrices = 0;
     g_openGLImmediateSkeletalMatrixCount = 0;

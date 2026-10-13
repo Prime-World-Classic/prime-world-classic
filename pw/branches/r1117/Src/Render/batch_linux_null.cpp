@@ -7,6 +7,7 @@
 #include "renderer.h"
 #include "batch.h"
 #include "DXManager.h"
+#include "LinuxBasicFx.h"
 
 namespace Render
 {
@@ -64,6 +65,9 @@ void Batch::SetWaterLevel(bool, float)
 
 void Batch::Prepare() const
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	LinuxBasicFx::ClearSelection();
+#endif
   if (!pMaterial)
   {
     return;

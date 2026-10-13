@@ -1,0 +1,29 @@
+--- a/vendor/mojoshader/mojoshader_opengl.c
++++ b/vendor/mojoshader/mojoshader_opengl.c
+@@ -2269,7 +2269,6 @@
+             goto link_program_fail;
+         lookup_samplers(retval, vshader, &bound);
+         lookup_outputs(retval, vshader);
+-        vshader->refcount++;
+     } // if
+ 
+     if (pshader != NULL)
+@@ -2278,7 +2277,6 @@
+             goto link_program_fail;
+         lookup_samplers(retval, pshader, &bound);
+         lookup_outputs(retval, pshader);
+-        pshader->refcount++;
+     } // if
+ 
+     if (!build_constants_lists(retval))
+@@ -2289,6 +2287,10 @@
+ 
+     ctx->profileFinalInitProgram(retval);
+ 
++    /* Acquire stage ownership only after all fallible link setup succeeds. */
++    if (vshader != NULL) vshader->refcount++;
++    if (pshader != NULL) pshader->refcount++;
++
+     return retval;
+ 
+ link_program_fail:

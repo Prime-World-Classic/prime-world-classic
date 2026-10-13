@@ -106,6 +106,7 @@
 #include "Render/SkeletonWrapper.h"
 #include "Render/smartrenderer.h"
 #include "Render/StaticMesh.h"
+#include "Render/LinuxBasicFx.h"
 #include "Render/FlashRendererInterface.h"
 #include "Render/TextureManager.h"
 #include "Render/uirenderer.h"
@@ -30417,10 +30418,11 @@ bool RunLinuxFlashViewportProbe(Render::IUIRenderer* uiRenderer, unsigned int wi
 }
 
 bool RunLinuxHeroMeshTextureProbe();
+bool RunLinuxBasicFxEngineProbe(const std::string& capturePath);
 
 // Exercises queued Flash commands through the native OpenGL UI renderer and checks
 // replay state, texturing, masking, fill morphing, and framebuffer output.
-bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
+bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height, const std::string& capturePath)
 {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
   if (!NMainFrame::MakeOpenGLContextCurrent())
@@ -31316,8 +31318,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
 	const bool viewportPassed = RunLinuxFlashViewportProbe(uiRenderer, width, height);
 	const bool heroTexturesPassed = RunLinuxHeroMeshTextureProbe();
+	const bool basicFxPassed = RunLinuxBasicFxEngineProbe(capturePath);
   uiRenderer->Release();
-	return passed && viewportPassed && heroTexturesPassed;
+	return passed && viewportPassed && heroTexturesPassed && basicFxPassed;
 #else
   (void)width;
   (void)height;
@@ -31371,6 +31374,8 @@ bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
   if (NMainFrame::InitOpenGLContext() && NMainFrame::MakeOpenGLContextCurrent())
   {
     overlay->openglReady = true;
+	if (!Render::LinuxBasicFx::BeginContext())
+		fprintf(stderr, "Native BasicFX context lifecycle initialization failed.\n");
     if (overlay->font)
     {
       overlay->fontDisplayListBase = glGenLists(256);
@@ -31888,6 +31893,11 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
 {
   if (overlay->openglReady && NMainFrame::MakeOpenGLContextCurrent())
   {
+	if (!Render::LinuxBasicFx::Shutdown())
+	{
+		fprintf(stderr, "Native BasicFX could not release its owning GL context.\n");
+		std::terminate();
+	}
     if (overlay->artworkTexture)
     {
       glDeleteTextures(1, &overlay->artworkTexture);
@@ -55005,6 +55015,8 @@ bool DrawLinuxHeroMeshPreview(
   return true;
 }
 
+#include "../LinuxBootstrap/basicfx_engine_probe.inc"
+
 /// Render two cold-cache materials through the actual preview draw path, then repeat warm.
 bool RunLinuxHeroMeshTextureProbe()
 {
@@ -71349,7 +71361,8 @@ int main(int argc, char** argv)
     {
       flashRendererProbePassed = RunLinuxFlashRendererProbe(
         static_cast<unsigned int>(settings.width),
-        static_cast<unsigned int>(settings.height)
+        static_cast<unsigned int>(settings.height),
+		settings.bootstrapFrameCapturePath
       );
     }
     else
