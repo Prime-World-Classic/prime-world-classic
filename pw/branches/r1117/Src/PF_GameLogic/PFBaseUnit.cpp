@@ -1110,11 +1110,15 @@ bool PFBaseUnit::IsAttackFinished() const
 
   return true;
 }
-/** Original Windows score composition, with selected-input bounds and native context guards.
- * Native BuildPathMap is not ported; an explicit path map is rejected, never approximated.
- * A rejected input returns the selector's -1 sentinel, not a selectable zero weight.
- */
+/** Keep the original selector API while exposing computation failure separately to signed-score consumers. */
 float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::UnitTargetingParameters& unitPars, PathMap* pPathMap) const
+{
+	float weight = -1;
+	return TryGetTargetWeight(pTarget, unitPars, weight, pPathMap) ? weight : -1;
+}
+
+/** Original Windows score arithmetic. Failure leaves result unchanged; authored -1 and leash-zero remain valid. */
+bool PFBaseUnit::TryGetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::UnitTargetingParameters& unitPars, float& result, PathMap* pPathMap) const
 {
 	struct Local
 	{
@@ -1154,11 +1158,11 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
 	if (!world || !world->GetAIWorld() || !IsUnitValid(pTarget) || pTarget->GetWorld() != world ||
 		!CanAttackTarget(pTarget) || pPathMap || !Local::PositionValid(this) || !Local::PositionValid(pTarget) ||
 		!std::isfinite(range) || range <= 0 || !std::isfinite(unitPars.rangeWeight) ||
-		!std::isfinite(unitPars.weightMaximumRangePersent)) return -1;
+		!std::isfinite(unitPars.weightMaximumRangePersent)) return false;
 
 	if (unitPars.ignoreSiblingTarget)
 	{
-		if (!dbUnitDesc) return -1;
+		if (!dbUnitDesc) return false;
 		struct SiblingChecker
 		{
 			const PFBaseUnit& owner;
@@ -1174,30 +1178,30 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
 			void operator()(const PFBaseUnit&) { found = true; }
 		} counter;
 		pTarget->ForAllAttackers(siblingChecker, counter);
-		if (counter.found) return -1;
+		if (counter.found) { result = -1; return true; }
 	}
 
 	const CPtr<PFBaseUnit> target = Local::Master(pTarget, !unitPars.isStationarySummon);
 	const CPtr<PFBaseUnit> current = Local::Master(pCurrentTarget, !unitPars.isStationarySummon);
-	if (!IsValid(target) || target->GetWorld() != world || !Local::PositionValid(target)) return -1;
+	if (!IsValid(target) || target->GetWorld() != world || !Local::PositionValid(target)) return false;
 	const int type = target->GetUnitType();
-	if (type < 0 || type >= NDb::KnownEnum<NDb::EUnitType>::SizeOf()) return -1;
+	if (type < 0 || type >= NDb::KnownEnum<NDb::EUnitType>::SizeOf()) return false;
 	float weight = 0;
 	bool useUnitTypeWeight = true;
 	const float distance = fabs(GetPosition() - target->GetPosition());
-	if (!std::isfinite(distance)) return -1;
+	if (!std::isfinite(distance)) return false;
 
 	if (current != target)
 	{
 		float aggroRange = unitPars.aggroRange;
-		if (!std::isfinite(aggroRange)) return -1;
+		if (!std::isfinite(aggroRange)) return false;
 		if (aggroRange < EPS_VALUE) aggroRange = range;
 		if (distance > aggroRange) weight += unitPars.OutOfAggroWeight;
 		if (unitPars.allyTargetWeight != 0)
 		{
 			const float screamRange = GetScreamRange();
 			if (!std::isfinite(screamRange) || screamRange < 0 || GetFaction() < 0 ||
-				GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return -1;
+				GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return false;
 			struct AllySameTarget
 			{
 				PFWorld* world;
@@ -1217,7 +1221,7 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
 
 	if (type == NDb::UNITTYPE_SUMMON)
 	{
-		if (!std::isfinite(unitPars.attackerHeroSummonWeight)) return -1;
+		if (!std::isfinite(unitPars.attackerHeroSummonWeight)) return false;
 		if (unitPars.attackerHeroSummonWeight > 0 && Local::AlliedAttack(this, target->GetMasterUnit(), unitPars, true))
 		{
 			weight += unitPars.attackerHeroSummonWeight;
@@ -1225,27 +1229,27 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
 		}
 	}
 
-	if (!std::isfinite(target->GetMaxLife()) || !std::isfinite(target->GetLife())) return -1;
+	if (!std::isfinite(target->GetMaxLife()) || !std::isfinite(target->GetLife())) return false;
 	if (target->GetMaxLife() >= EPS_VALUE && target->GetLife() >= EPS_VALUE)
 		weight += unitPars.healthWeight * (1.0f - Clamp(target->GetLife() / target->GetMaxHealth(), 0.0f, 1.0f));
 
 	if (IsUnitValid(pMaster))
 	{
-		if (pMaster->GetWorld() != world || !Local::PositionValid(pMaster)) return -1;
+		if (pMaster->GetWorld() != world || !Local::PositionValid(pMaster)) return false;
 		const PFSummonBehaviour* behaviour = dynamic_cast<const PFSummonBehaviour*>(GetBehaviour());
 		if (!behaviour || !behaviour->IsUnleashed())
 		{
 			const float leash = GetChaseRange() + GetAttackRange();
 			const float masterDistance2 = fabs2(GetPosition() - pMaster->GetPosition());
-			if (!std::isfinite(leash) || !std::isfinite(masterDistance2) || !std::isfinite(fabs2(leash))) return -1;
-			if (masterDistance2 > fabs2(leash)) return 0;
+			if (!std::isfinite(leash) || !std::isfinite(masterDistance2) || !std::isfinite(fabs2(leash))) return false;
+			if (masterDistance2 > fabs2(leash)) { result = 0; return true; }
 		}
 		if (target == pMaster->GetCurrentTarget()) weight += unitPars.masterTargetWeight;
 	}
 
 	const float denominator = unitPars.weightMaximumRangePersent < .9999f ?
 		range * (1.0f - unitPars.weightMaximumRangePersent) : range;
-	if (!std::isfinite(denominator) || denominator <= 0) return -1;
+	if (!std::isfinite(denominator) || denominator <= 0) return false;
 	weight += unitPars.rangeWeight * Clamp((range - distance) / denominator, 0.0f, 1.0f);
 	if (target == current) weight += Local::Table(unitPars.currentTargetWeight, type, unitPars.currentTargetTableWeight);
 
@@ -1283,19 +1287,21 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
 	}
 	if (IsValid(GetAttackAbilityData()))
 	{
-		if (GetAttackAbilityData()->GetOwner() != this) return -1;
+		if (GetAttackAbilityData()->GetOwner() != this) return false;
 		// Preserve Windows' actual candidate context, not its resolved alpha master.
 		if (!unitPars.customWeight.sString.empty())
 		{
 			const LinuxBootstrap::NumericFormulaResult result = LinuxBootstrap::EvaluateUnitNumericFormula(
 				unitPars.customWeight.sString.c_str(), this, pTarget.GetPtr(), GetAttackAbilityData().GetPtr());
-			if (!result.Succeeded()) return -1;
+			if (!result.Succeeded()) return false;
 			weight += result.value;
 		}
-		else if (!unitPars.customWeight.compiledString.empty()) return -1;
+		else if (!unitPars.customWeight.compiledString.empty()) return false;
 	}
 	if (IsPriorityTarget(target)) weight += unitPars.attackerNearbyHeroWeight;
-	return std::isfinite(weight) && IsUnitValid(pTarget) && pTarget->GetWorld() == world ? weight : -1;
+	if (!std::isfinite(weight) || !IsUnitValid(pTarget) || pTarget->GetWorld() != world) return false;
+	result = weight;
+	return true;
 }
 bool PFBaseUnit::IsRequireDirectSightToAttack() { return false; }
 bool PFBaseUnit::CanAttackFlying() const

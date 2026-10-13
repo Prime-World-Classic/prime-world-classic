@@ -1355,6 +1355,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "unit_abilities_b12_tests.inc"
 #include "applicator_queries_b12_tests.inc"
 #include "nature_query_b12_tests.inc"
+#include "target_weight_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 {
@@ -1491,6 +1492,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 			UnitAbilitiesB12(check);
 			ApplicatorQueriesB12(check);
 			NatureQueryB12(check);
+			TargetWeightErrorsB13(check);
+			TargetWeightCustomErrorsB13(check);
+			TargetWeightResultB13(check);
 			if (dataRoot) NatureQueryAuthoredB12(check, dataRoot);
 			ShopApiGeometryB12(check, world);
 			ShopApiEligibilityB12(check, world);

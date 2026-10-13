@@ -942,6 +942,11 @@ public:
   void                     Hide(bool hide);
 
   float                    GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::UnitTargetingParameters &unitPars, NWorld::PathMap* pPathMap = NULL) const;
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	/** Distinguish failed native scoring from any valid signed weight; failure leaves result unchanged. */
+	bool TryGetTargetWeight(const CPtr<PFBaseUnit>& target, const NDb::UnitTargetingParameters& params,
+		float& result, NWorld::PathMap* pathMap = NULL) const;
+#endif
   void                     DoScream( const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st );    // Scream to ally units to help me attack this target
   virtual void             OnScream( const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamType st );
 

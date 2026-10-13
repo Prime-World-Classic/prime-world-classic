@@ -201,8 +201,9 @@ bool PFMultipleTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITarge
 			if (result.value == 0 || !owner->CanSelectTarget(unit, true)) return;
 			// Retain the existing native caller-supplied target condition as an extra gate.
 			if (!CheckTargetCondition(target, condition, ability)) return;
-			const float weight = owner->GetTargetWeight(unit, unitPars, nullptr);
-			if (std::isfinite(weight) && weight > minWeight && count < std::numeric_limits<int>::max()) ++count;
+			float weight = 0;
+			if (!owner->TryGetTargetWeight(unit, unitPars, weight)) { invalid = true; return; }
+			if (weight > minWeight && count < std::numeric_limits<int>::max()) ++count;
 		}
 
 		const PFBaseUnit* owner;

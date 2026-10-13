@@ -17,6 +17,16 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
+### Batch B13
+
+- Authorized 2026-10-13: next 200 substantive checkpoints, commit/tag/push after each, large N/200 progress banners. Baseline `776ca086a` / `0.87.0`. This supersedes B12 stop instructions for this new batch only. Preserve native Linux calls and Windows compatibility, existing strict gates, and the three pre-existing untracked core dumps. Parent starts with checked targeting-score/MicroAI error separation; isolated helpers investigate original nature evolution and applicator-history lifecycle in `/tmp/pw-b13-nature` and `/tmp/pw-b13-applicator-history`. Reuse existing algorithms and regression-first engine tests; do not split work solely to inflate the count. Batch count is not playable-release progress.
+
+- Progress: **1/200 complete**, native version **0.87.1**.
+
+- **Chunk 1/200 (0.87.1): checked target-score errors in multiple MicroAI.** Separate success from the original signed float value through a native checked scoring API. Keep the legacy selector API and original finite -1 sibling/zero leash policies unchanged; reject malformed tables, arithmetic and custom formulas instead of interpreting the error sentinel as a valid negative weight or satisfying an exact-zero count. Tests cover mixed candidate orders, lazy filtered/ineligible candidates, caller-output preservation, signed authored scores and actual ability-owned custom expressions. Baseline 9,510 assertions / 42 failures; expanded final 9,524 / 0 (124 added checks). All six maintained targets, 30 CTests and retained Windows source audit pass; no Windows compiler run. Evidence `/tmp/pw-b13-c1-{before,after,build,ctest,windows}.log`. The full build caught and corrected declaration visibility for the native gameplay probe's DB_BOOTSTRAP configuration. Next parent checkpoint restores BasicMicroAI's original spatial range queries; helpers prepare dynamic nature and named-history lifecycle separately.
+
+<!-- B13 next checkpoint -->
+
 ### Batch B12
 
 - **Batch complete: 50/50 checkpoints, native version 0.87.0. Stop here.** This is the authorized batch count, not a percentage of the playable-game goal. Each checkpoint has its own commit, annotated native version tag and push. The final default build has Ruffle inspection OFF; the verified optional original-HUD binary is `/tmp/PrimeWorldLinuxClient-ruffle-controls`. See the final gates and remaining boundaries below before resuming.
