@@ -121,6 +121,16 @@ or duplicated final records; wait for the process to exit before validating logs
 
 ## Remaining Boundaries
 
+Native BasicMaterial previews preserve authored diffuse addressing independently
+of texture identity, including negative exporter UVs and shared-texture material
+slots. Private GL3.3 sampler objects are capped at sixteen address combinations;
+each scope restores the borrowed sampler, texture binding and active unit, and
+the owning context releases the cache during shutdown. The renderer probe covers
+original Plane payloads, immediate renderer pixels, cold/warm hero pose caches,
+malformed inputs, nested scopes and context/thread/teardown boundaries. Filtering
+remains level-zero linear: this does not add original mip/anisotropic filtering,
+blend-state, culling, alpha-test or lighting parity, and UI textures are unchanged.
+
 Native skeletal previews decode the original exporter `Render::Color` bone
 indices from BGRA storage into RGBA weight order before fragment palette lookup.
 Plain `UBYTE4` declarations retain their byte order. The

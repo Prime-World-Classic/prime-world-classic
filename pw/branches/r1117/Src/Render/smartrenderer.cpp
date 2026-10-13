@@ -14,6 +14,7 @@
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include <GL/gl.h>
 #include "LinuxBasicFx.h"
+#include "LinuxPreviewSampler.h"
 #endif
 
 namespace
@@ -404,6 +405,9 @@ namespace
 	}
 
     const bool textureEnabled = glIsEnabled(GL_TEXTURE_2D) == GL_TRUE;
+	GLint texture=0; glGetIntegerv(GL_TEXTURE_BINDING_2D,&texture);
+	Render::LinuxPreviewSampler::Scope sampling(textureEnabled ? unsigned(texture) : 0,Render::LinuxPreviewSampler::Current());
+	if (!sampling.Ok()) return;
     glBegin(GL_TRIANGLES);
     for (unsigned int triangleIndex = 0; triangleIndex < descr.primitiveCount; ++triangleIndex)
     {
@@ -489,6 +493,7 @@ void SetOpenGLImmediateMeshDrawingEnabled(bool enabled)
   if (!enabled)
   {
 	Render::LinuxBasicFx::ClearSelection();
+	Render::LinuxPreviewSampler::Clear();
     g_openGLImmediateObjectMatrix = 0;
     g_openGLImmediateSkeletalMatrices = 0;
     g_openGLImmediateSkeletalMatrixCount = 0;

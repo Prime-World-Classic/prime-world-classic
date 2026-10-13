@@ -11,6 +11,7 @@
 #include "SkeletalAnimationBlender.h"
 #include "SkeletonWrapper.h"
 #include "smartrenderer.h"
+#include "LinuxPreviewSampler.h"
 
 namespace Render
 {
@@ -36,6 +37,9 @@ public:
 
   virtual void PrepareRenderer()
   {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	LinuxPreviewSampler::Clear();
+#endif
   }
 };
 
@@ -198,6 +202,9 @@ public:
       }
 #endif
     }
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	LinuxPreviewSampler::Select(pDbMaterial.GetPtr());
+#endif
   }
 
 private:

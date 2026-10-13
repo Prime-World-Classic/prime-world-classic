@@ -1739,10 +1739,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 	endforeach()
 endif()
 add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxShaderFamilyCpuProbe)
-set_source_files_properties(../Render/LinuxBasicFx.cpp PROPERTIES
+set_source_files_properties(../Render/LinuxBasicFx.cpp ../Render/LinuxPreviewSampler.cpp PROPERTIES
 	COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP")
 foreach(target PrimeWorldLinuxClient PrimeWorldLinuxClientRuntimeProbe)
-	target_sources(${target} PRIVATE ../Render/LinuxBasicFx.cpp)
+	target_sources(${target} PRIVATE ../Render/LinuxBasicFx.cpp ../Render/LinuxPreviewSampler.cpp)
 	target_link_libraries(${target} PRIVATE PrimeWorldLinuxShaderBackend)
 endforeach()
 

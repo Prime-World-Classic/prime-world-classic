@@ -8,6 +8,7 @@
 #include "renderer.h"
 #include "smartrenderer.h"
 #include "LinuxBasicFx.h"
+#include "LinuxPreviewSampler.h"
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include "sceneconstants.h"
 #endif
@@ -39,6 +40,9 @@ public:
 
   virtual void PrepareRenderer()
   {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	LinuxPreviewSampler::Clear();
+#endif
   }
 };
 
@@ -239,6 +243,7 @@ public:
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 	Render::LinuxBasicFx::Select(pDbMaterial.GetPtr(),
 		diffuseTextureReady && diffuseMap.Enabled() ? diffuseMap.GetTexture().GetPtr() : 0);
+	Render::LinuxPreviewSampler::Select(pDbMaterial.GetPtr());
 #endif
   }
 

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "LinuxBasicFx.h"
+#include "LinuxPreviewSampler.h"
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include "DBRender.h"
@@ -152,12 +153,14 @@ bool Ready() {
 bool BeginContext() {
 	if (backend || !glXGetCurrentContext() || lifetime == std::numeric_limits<uint64_t>::max()) return false;
 	++lifetime;
+	LinuxPreviewSampler::Clear();
 	attempted = false;
 	transparentDrawing = false;
 	ClearSelection();
 	return true;
 }
 bool Shutdown() {
+	if (!LinuxPreviewSampler::Shutdown()) return false;
 	transparentDrawing = false;
 	ClearSelection();
 	if (backend) {
