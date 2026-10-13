@@ -966,9 +966,36 @@ color-correct начинают получать настоящие веса) —
 | `Render/sampler.h` | `MIN/MAX_VS_SAMPLER_INDEX` = PS-диапазон (было 257/260) → таблица биндингов 16 вместо 261. |
 | `Render/smartrenderer.cpp` | `lastTexturesPtrs` обход по `capacity()` (был off-by-one: 259 из 261); статистика шейдеров на `USE_RENDER_SHADER_STATS` + метрика уникальных пар (VS,PS). |
 | `Render/FullScreenFX.{h,cpp}` | R2VB-ветка удалена (`r2vbGlbEnable_Set`, `SetR2VBPin` вызывается с «есть ли coeff-текстура»), мёртвый `pVDecl` (он был под R2VB-стрим 15) удалён; coeff-текстура биндится в `POSTFX_COEFFSAMPLERINDEX`. |
-| `Render/Shaders/FullScreenMaterial.hlsl` | `coeffMap: register(s0)` → `register(s3)` (см. §2.7). **Пока не пересобран `FullScreenMaterial.shd`, правка инертна:** в готовом DXBC всё ещё `s0`, а C++ пишет коэффициенты в s3 → шейдер читает s0 (= DepthMap), как и раньше. Регресса нет, но и исправления нет до пересборки шейдеров. |
+| `Render/Shaders/FullScreenMaterial.hlsl` | `coeffMap: register(s0)` → `register(s3)` (см. §2.7). Инертна в **репозиторном контенте**: `Data/Shaders/UberShaders/*.shd` не перегенерированы. На тестовом стенде правка активна — там лежит перегнанный `FullScreenMaterial.shd` в `zzzresult.pile` (см. §2.6). |
 | `PF_GameLogic/PFPostFXParams.cpp` | гейт `!HasVT() && !HasR2VB()` убран (чтение текстур в VS гарантировано SM3.0); `TextureVtx::Sizes(1,1)`. |
 | `Render/renderer.cpp`, `shadercompiler.cpp`, `multishader.cpp` | SM2.0-путь удалён: `forceSM20Usage` dev-var, `#ifdef FORCE_SM20` клампы, `FORCE_SM20`/`ps_2_0`/`vs_2_0` в рантайм-компиляторе, суффикс `.shd2` в `MultiShader::OpenFile`. `bSupportSM30` оставлен — это гейт запуска (`PW_Client/Game.cpp::CheckHardwareCompatibility`), не путь рендера. |
+
+### Сделано (этап 1, шейдерный путь — закрыт 2026-10-13)
+
+| Область | Изменение |
+|---|---|
+| `Tools/WineClientBuild/parse_vcproj.py`, `Tools/ClientCMake/gen_cmake.py` | `ShaderCompiler` — 26-й проект CMake-графа (`EXTRA_TOOLS`/`TOOL_OBJS`, exe-цель `ShaderCompiler_tool` с `OUTPUT_NAME ShaderCompiler`, линковка как у `PW_Game` + свои либы). В `PW_Game` его объекты не попадают. |
+| `Src/ShaderCompiler/multythread/mtworkerlite.cpp` | `_asm mfence` → `MemoryBarrier()` (x64 не поддерживает inline `__asm`, C4235). |
+| `Src/ShaderCompiler/ShaderCompiler.cpp`, `UberShaderDesc.{h,cpp}` | генератор переведён с `D3DXCompileShader` на `D3DCompile`; `D3DCompile` грузится динамически (`d3dcompiler_47/48/50/43`) — SDK-`d3dcompiler.lib` привязывает к `D3DCOMPILER_43.dll`, которого на стенде нет. Без импорта D3D-DLL. |
+| `Src/ShaderCompiler/ShaderCompiler.cpp` | оба писателя `.shd` делают `fclose` (без него убитые прогоны оставляли 0-байтовые/обрезанные контейнеры); если хоть одна вариация не скомпилировалась — `.shd` целиком не пишется (иначе shipping-сборка падала на null-буфере). |
+| `Shaders/UIButtonMaterial.hlsl`, `UIFontMaterial.hlsl`, `UIGlassMaterial.hlsl` | `VS_OUTPUT Output = (VS_OUTPUT)0;` — fxc отвергает частично инициализированный `VS_OUTPUT` (X4000), старый D3DX пропускал. |
+| `Shaders/BasicMaskMaterial.hlsl` | `uvSpeed = 0;` (запись в register-глобал) → локальная тень `float2 uvSpeed = 0;`; fxc даёт X3025, флагом не снимается. |
+| `Shaders/FullScreenMaterial.hlsl` | `coeffMap` объявлен `sampler2D` (для `tex2Dlod` в VS). |
+| `tools/hlsl_compile_test/` | одиночный прогон `D3DCompile` (динамическая загрузка, свой `ID3DInclude`, `--def`/`--flags`) — показал, что текущие `.hlsl` компилируются современным `D3DCompile`, но не `d3dx9_43` (E5017 на `tex2Dlod` в `vs_3_0`). |
+| `tools/shader_pile/` | `gen_shaders.sh` (перегонка на стенде), `build_pile.sh`, `mkpile.py` — свой сборщик/читатель pile: готовый `FilePileCompiler.exe` (x86 VS2008, требует MSVCR90/MSVCP90/CrashRpt/zlib1) на урезанной Windows не запускается. |
+| Стенд tiny10 | `Packs\zzzresult.pile` (168 125 Б, 35 материалов) — имя не случайное: `ScanForPiles()` сортирует `*.pile` по убыванию, поиск до первого совпадения, поэтому `zzz*` перекрывает `result.pile`/`zpatch_fev.pile`. Отдельными файлами в `Data/` нельзя: `PileFileSystem` регистрируется раньше `WinFileSystem(Data)`. |
+
+Гейты: E2E на tiny10 с перегнанным контентом — login → lobby → game service →
+mapload → `Switch to EGameState::Finished by 3`, дампов нет, строк про
+битый pile/CRC/шейдеры нет (прогоны `2026.10.13-03.21.11`, `03.39.03`,
+`08.45.29`). Контрольный A/B: инвертированный байт в теле `BasicMaterial.shd`
+внутри нашего pile вешает клиент сразу после `Got login reply` (модалка
+`ShowMessageAndTerminate` из SSH не видна) — значит запись читается, новый DXBC
+принимается.
+
+**Что не сделано:** репозиторные `Data/Shaders/UberShaders/*.shd` по-прежнему
+старые (перегенерированный контент живёт только на стенде). Решение, куда их
+класть (репо vs контентный пайплайн `content_pwc`/`pwc-gitupdates`), не принято.
 
 ### Сознательные отклонения от «картинка не меняется»
 
@@ -988,8 +1015,12 @@ color-correct начинают получать настоящие веса) —
 - `Session.ROOT_*.shader3compatibilityError` (текст про SM3.0) — поле БД,
   оставлено: гейт `CheckHardwareCompatibility` жив, а менять xdb-раскладку
   ради мёртвого текста не нужно.
-- `ShaderCompiler` (`--sm20`, `.shd2`, D3DX9) не правился: он вне CMake-графа
-  клиента, переносится целиком на этапе 3.
-- `Render/SHCoeffs.cpp` → `D3DXSHEvalDirectionalLight`, `Scene/SHGridCalculator.cpp`
-  → `D3DXSHEvalDirection`/`D3DXVec3Normalize` — D3DX пока жив, это отдельная
-  задача этапа 1.
+- `ShaderCompiler` перенесён в граф и переведён на `D3DCompile` (см. выше);
+  `--sm20` в нём так и остался мёртвым кодом — на этапе 3 его логичнее удалить
+  целиком, когда появится SM5/SPIR-V путь.
+- `Render/SHCoeffs.cpp` → `D3DXSHEvalDirectionalLight` заменена своей
+  реализацией с бит-в-бит константами D3DX (замер против настоящего
+  `d3dx9_43.dll`: максимум ~1 ULP, см. `tools/sh_math_test`). Остальная
+  D3DX-математика (`D3DXMatrix*`, `D3DXVec3*`, `D3DXSHEvalDirection` в
+  `Scene/SHGridCalculator.cpp`) перенесена в этап 4: это зависимость от
+  `d3dx9_43.dll`, а не утечка D3D9-устройства, этапу 2/3 она не мешает.
