@@ -1355,6 +1355,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "unit_abilities_b12_tests.inc"
 #include "applicator_queries_b12_tests.inc"
 #include "nature_query_b12_tests.inc"
+#include "nature_queries_b13_tests.inc"
 #include "target_weight_b13_tests.inc"
 #include "microai_spatial_b13_tests.inc"
 #include "applicator_history_b13_tests.inc"
@@ -1512,6 +1513,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeathCleanupDeferredB13(check);
 	DeadWorldB13(check);
 	NatureOverrideB13(check);
+	NatureQueriesB13(check);
+	if (dataRoot && *dataRoot) NatureQueriesAuthoredB13(check, dataRoot);
 	if (dataRoot) NatureOverrideAuthoredB13(check, dataRoot);
 			if (dataRoot) NatureQueryAuthoredB12(check, dataRoot);
 			ShopApiGeometryB12(check, world);

@@ -153,7 +153,8 @@ int PFWorldNatureMap::GetNatureInPoint(int id) const
 bool PFWorldNatureMap::IsAtBase(float x, float y) const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return false;
+	// Reuse the guarded hex locator before the original stored attack-space test.
+	return LocateElement(x, y) >= 0 && pMap->IsAtBase(x, y);
 #else
   return pMap ? pMap->IsAtBase(x, y) : false;
 #endif
@@ -164,14 +165,28 @@ bool PFWorldNatureMap::IsAtBase(float x, float y) const
 float PFWorldNatureMap::GetNaturePercent(NDb::EFaction faction) const
 {
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (faction < NDb::FACTION_NEUTRAL || faction > NDb::FACTION_BURN) return 0.f;
+#endif
   if ( pDBTerrain && pDBTerrain->natureMap.editableNatureMap )
   {
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+		// Editable maps retain their original custom A/B/neutral query policy.
+		const float a = customNaturePercents.m[0], b = customNaturePercents.m[1];
+		if (!std::isfinite(a) || !std::isfinite(b) || a < 0.f || b < 0.f || a > 1.f || b > 1.f || a + b > 1.f) return 0.f;
+#endif
     return faction == NDb::FACTION_FREEZE ? customNaturePercents.m[0] : 
       ( faction == NDb::FACTION_BURN ? customNaturePercents.m[1] : 1.f - customNaturePercents.m[0] - customNaturePercents.m[1]  );
   }
 
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return 0.0f;
+	if (!pMap || faction == NDb::FACTION_NEUTRAL) return 0.f;
+	const NDb::DBNatureMap& db = pMap->GetDB();
+	if (!std::isfinite(db.baseAPercent) || !std::isfinite(db.baseBPercent)
+		|| db.baseAPercent < 0.f || db.baseBPercent < 0.f || db.baseAPercent > 100.f || db.baseBPercent > 100.f
+		|| db.baseAPercent + db.baseBPercent > 100.f) return 0.f;
+	const float result = pMap->GetNaturePercent((NDb::ENatureType)faction);
+	return std::isfinite(result) ? result : 0.f;
 #else
   return pMap ? pMap->GetNaturePercent((NDb::ENatureType)faction) : 0.0f;
 #endif
@@ -184,7 +199,10 @@ float PFWorldNatureMap::GetNaturePercent(NDb::EFaction faction, NDb::ENatureRoad
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::ENatureRoad>::sizeOf == 3, THERE_MUST_BE_THREE_ROADS);
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return 0.0f;
+	if (!pMap || (faction != NDb::FACTION_FREEZE && faction != NDb::FACTION_BURN)
+		|| roadIndex < NDb::NATUREROAD_TOP || roadIndex > NDb::NATUREROAD_BOTTOM) return 0.f;
+	const float result = pMap->GetNaturePercent((NDb::ENatureType)faction, roadIndex);
+	return std::isfinite(result) ? result : 0.f;
 #else
   return pMap ? pMap->GetNaturePercent((NDb::ENatureType)faction, roadIndex) : 0.0f;
 #endif
@@ -201,7 +219,7 @@ void PFWorldNatureMap::SetCustomNaturePercents( float freeze, float burn )
 int PFWorldNatureMap::GetNumSegments() const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return pDBTerrain ? pDBTerrain->natureMap.segmentCount : 0;
+	return pMap ? pMap->GetNumSegments() : 0;
 #else
   return pMap ? pMap->GetNumSegments() : 0;
 #endif
@@ -210,7 +228,17 @@ int PFWorldNatureMap::GetNumSegments() const
 
 void PFWorldNatureMap::GetNatureBorders(NDb::EFaction faction, CVec2 roadPoints[]) const
 {
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (!pMap || !roadPoints || (faction != NDb::FACTION_FREEZE && faction != NDb::FACTION_BURN)) return;
+	CVec2 candidate[3];
+	for (int road = 0; road < 3; ++road)
+	{
+		candidate[road] = pMap->GetNatureBound((NDb::ENatureType)faction, (NDb::ENatureRoad)road);
+		if (!std::isfinite(candidate[road].x) || !std::isfinite(candidate[road].y)) return;
+	}
+	// Invalid geometry must not partially replace the caller's three road points.
+	for (int road = 0; road < 3; ++road) roadPoints[road] = candidate[road];
+#else
   if (pMap)
   {
     NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
@@ -225,7 +253,10 @@ void PFWorldNatureMap::GetNatureBorders(NDb::EFaction faction, CVec2 roadPoints[
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::GetNatureSegment(CVec2 const &pos, NDb::ENatureRoad &road, int &segment) const
 {
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (pMap && std::isfinite(pos.x) && std::isfinite(pos.y))
+		pMap->GetNatureSegment(pos, road, segment);
+#else
   if (pMap)
     pMap->GetNatureSegment(pos, road, segment);
 #endif

@@ -1087,6 +1087,10 @@ float NatureMap::GetNaturePercent(NDb::ENatureType faction) const
 {
   int id = faction - 1;
   ASSERT(id == 0 || id == 1);
+#if defined(PW_LINUX_NULL_RENDER)
+	// A valid loaded grid can have no eligible roads; its share has no denominator.
+	if (validRoads.empty()) return 0.f;
+#endif
 
   
 
@@ -1124,7 +1128,17 @@ CVec2 NatureMap::GetNatureBound(NDb::ENatureType faction, NDb::ENatureRoad roadI
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void NatureMap::GetNatureSegment(CVec2 const &pos, NDb::ENatureRoad &road, int &segment) const
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!std::isfinite(pos.x) || !std::isfinite(pos.y)) return;
+#endif
   CVec2 _attackPos = attackSpace.FindCoordinatesAS(pos);
+#if defined(PW_LINUX_NULL_RENDER)
+	// Singular geometry or extreme extrapolation must not reach float-to-int UB.
+	// Keep the original truncation and base-side segment range for valid results.
+	if (!std::isfinite(_attackPos.x) || !std::isfinite(_attackPos.y)
+		|| double(_attackPos.x) < std::numeric_limits<int>::min()
+		|| double(_attackPos.x) > std::numeric_limits<int>::max()) return;
+#endif
 
   if (_attackPos.y < 2)
     road = NDb::NATUREROAD_BOTTOM;
