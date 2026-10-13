@@ -140,6 +140,10 @@ void BudgetsAndReuse()
 	Check(!active.Admit(SceneWindowKind::Terrain));
 	for (std::size_t i = 0; i < 48; ++i) Check(active.Admit(SceneWindowKind::Animated));
 	Check(!active.Admit(SceneWindowKind::Animated));
+	for (std::size_t i = 0; i < 64; ++i) Check(active.Admit(SceneWindowKind::Sky));
+	Check(!active.Admit(SceneWindowKind::Sky));
+	Check(!active.Admit(static_cast<SceneWindowKind>(4)));
+	Check(!active.HasRoom(static_cast<SceneWindowKind>(-1)));
 }
 }
 

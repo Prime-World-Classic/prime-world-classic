@@ -12,7 +12,7 @@
 namespace LinuxBootstrap
 {
 /// Native map presentation policy only; never a camera, loader or global cache.
-enum class SceneWindowKind { Static, Terrain, Animated };
+enum class SceneWindowKind { Static, Terrain, Animated, Sky };
 
 /// Inclusive world-space XY AABB. Z stays in the original placement/mesh payload.
 struct SceneWindowBounds
@@ -72,12 +72,14 @@ struct SceneWindowMetrics
 	std::size_t activeBudgetDrops = 0, textureBudgetDrops = 0, cumulativeDrops = 0;
 	std::size_t unsupportedDrops = 0, unavailableDrops = 0, textureLoads = 0, textureReuses = 0;
 	std::size_t admittedStatic = 0, admittedTerrain = 0, admittedAnimated = 0;
+	std::size_t admittedSky = 0;
 };
 
 /// Fixed presentation limits plus conservative process-lifetime asset admission limits.
 struct SceneWindowLimits
 {
 	static constexpr std::size_t staticCount = 256, terrainCount = 192, animatedCount = 48, textureCount = 96;
+	static constexpr std::size_t skyCount = 64;
 	static constexpr std::size_t catalogCandidates = 65536, catalogObjects = 262144, catalogComponents = 262144;
 	static constexpr std::size_t catalogTextures = 8192, catalogStringBytes = 32 * 1024 * 1024;
 	static constexpr std::size_t pathBytes = 4096, materialsPerPayload = 16, skinsPerPayload = 32;
@@ -90,11 +92,11 @@ struct SceneWindowLimits
 /// Count only after all dependent assets have been admitted successfully.
 struct SceneActiveBudget
 {
-	std::array<std::size_t, 3> counts{};
+	std::array<std::size_t, 4> counts{};
 	bool HasRoom(SceneWindowKind kind) const
 	{
 		const std::size_t limits[] = {SceneWindowLimits::staticCount, SceneWindowLimits::terrainCount,
-			SceneWindowLimits::animatedCount};
+			SceneWindowLimits::animatedCount, SceneWindowLimits::skyCount};
 		const auto slot = static_cast<std::size_t>(kind);
 		return slot < counts.size() && counts[slot] < limits[slot];
 	}
@@ -180,7 +182,7 @@ enum class SceneAssetAdmission { Accepted, InvalidAsset, ChangedAsset, Cumulativ
 /** Ledger for original global pools, which cannot evict individual mesh resources.
  * Keep for the process lifetime, including failed loads and map changes. This bounds
  * admitted unique inputs, NOT total renderer memory or unrelated hero/effect assets.
- * Source sizes are measured before loading; texture decoded cost is base-level RGBA.
+ * Source sizes are measured before loading; texture decoded cost includes admitted mip levels.
  * A rejected multi-asset transaction consumes nothing. Reuse consumes no new budget.
  */
 class SceneAssetLedger

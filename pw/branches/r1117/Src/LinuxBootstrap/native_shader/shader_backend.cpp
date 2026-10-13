@@ -22,6 +22,7 @@ constexpr unsigned RequiredPS[] = {20,21};
 constexpr unsigned RequiredOpacityPS[] = {6,20,21};
 constexpr unsigned RequiredBakedVS[] = {0,1,2,8,9,10,11,234};
 constexpr unsigned RequiredTerrainVS[] = {8,9,10,11,20,21,234};
+constexpr unsigned RequiredSkyVS[] = {0,1,2,8,9,10,11,20};
 constexpr std::array<size_t,3> FamilyIndices{{0,12,24}};
 constexpr std::array<size_t,8> TerrainIndices{{0,30,60,90,120,150,180,210}};
 std::atomic<uint64_t> NextGeneration{1};
@@ -275,6 +276,14 @@ Result TerrainDirectory(const Bytes& bytes, TerrainSpans& output) {
 	return CheckedDirectory(bytes,240,TerrainIndices,output);
 }
 
+/** Both authored entries are validated even though only pair0 is selected. */
+Result SkyDirectory(const Bytes& bytes, std::array<Span,2>& output) {
+	std::array<std::array<Span,2>,1> spans{};
+	const auto result=CheckedDirectory(bytes,2,std::array<size_t,1>{{0}},spans);
+	output=result?spans[0]:std::array<Span,2>{};
+	return result;
+}
+
 /** Convert only referenced colours; checked source and destination bounds precede allocation. */
 template<size_t N>
 Result StageColors(const std::array<Bgra8ColorStream,N>& streams,
@@ -345,6 +354,32 @@ bool ExactTerrainReflection(const MOJOSHADER_parseData* p, bool vertex, size_t s
 	return attr(p->attributes[0],MOJOSHADER_USAGE_TEXCOORD,0) && attr(p->attributes[1],MOJOSHADER_USAGE_COLOR,1) &&
 		attr(p->attributes[2],MOJOSHADER_USAGE_COLOR,0) && attr(p->attributes[3],MOJOSHADER_USAGE_TEXCOORD,1) &&
 		attr(p->outputs[0],MOJOSHADER_USAGE_COLOR,0);
+}
+
+/** Original SkyMaterial has shader-owned c3, and outputs UV before POSITION. */
+bool ExactSkyReflection(const MOJOSHADER_parseData* p, bool vertex) {
+	if (!p || p->error_count || p->major_ver!=3 || p->minor_ver || p->preshader ||
+		p->shader_type!=(vertex?MOJOSHADER_TYPE_VERTEX:MOJOSHADER_TYPE_PIXEL)) return false;
+	const auto* registers=vertex?RequiredSkyVS:RequiredPS;
+	const size_t count=vertex?std::size(RequiredSkyVS):std::size(RequiredPS);
+	if (p->uniform_count!=int(count) || !p->uniforms || !p->attributes || !p->outputs ||
+		p->attribute_count!=(vertex?2:1) || p->output_count!=(vertex?2:1) ||
+		p->sampler_count!=(vertex?0:1) || p->constant_count!=(vertex?1:0)) return false;
+	for (size_t i=0; i<count; ++i) {
+		const auto& u=p->uniforms[i];
+		if (u.type!=MOJOSHADER_UNIFORM_FLOAT || u.index!=int(registers[i]) || u.array_count || u.constant) return false;
+	}
+	const auto attr=[](const MOJOSHADER_attribute& a, MOJOSHADER_usage usage) { return a.usage==usage && a.index==0; };
+	if (vertex) {
+		if (!p->constants) return false;
+		const auto& c=p->constants[0];
+		return c.type==MOJOSHADER_UNIFORM_FLOAT && c.index==3 && c.value.f[0]==1 && c.value.f[1]==0 &&
+			c.value.f[2]==0 && c.value.f[3]==0 && attr(p->attributes[0],MOJOSHADER_USAGE_POSITION) &&
+			attr(p->attributes[1],MOJOSHADER_USAGE_TEXCOORD) && attr(p->outputs[0],MOJOSHADER_USAGE_TEXCOORD) &&
+			attr(p->outputs[1],MOJOSHADER_USAGE_POSITION);
+	}
+	return p->samplers && p->samplers[0].index==0 && p->samplers[0].type==MOJOSHADER_SAMPLER_2D && !p->samplers[0].texbem &&
+		attr(p->attributes[0],MOJOSHADER_USAGE_TEXCOORD) && attr(p->outputs[0],MOJOSHADER_USAGE_COLOR);
 }
 
 bool ExactReflection(const MOJOSHADER_parseData* p, bool vertex, bool opacity = false) {
@@ -425,8 +460,8 @@ struct ShaderBackend::Impl {
 	std::array<GLuint,5> terrainSamplers{};
 	bool registered = false, closed = false;
 	unsigned activeSlots = 0;
-	std::array<Pair, 12> pairs{};
-	Bytes archive, bakedArchive, terrainArchive;
+	std::array<Pair, 13> pairs{};
+	Bytes archive, bakedArchive, terrainArchive, skyArchive;
 	std::array<Float4, 256> vs{};
 	std::array<Float4, 224> ps{};
 	std::array<bool, 256> vsInit{};
@@ -502,24 +537,24 @@ ShaderBackend::~ShaderBackend() {
 
 Result ShaderBackend::LoadBasicFxPair0(ByteView source, ProgramRef& output) {
 	output.Reset();
-	std::array<ProgramRef, 12> programs;
-	const auto status = LoadPrograms(source, {}, {}, programs, 1);
+	std::array<ProgramRef, 13> programs;
+	const auto status = LoadPrograms(source, {}, {}, {}, programs, 1);
 	output = std::move(programs[0]);
 	return status;
 }
 
 Result ShaderBackend::LoadStaticFamily(ByteView source, ByteView bakedSource, StaticPrograms& output) {
 	output = {};
-	std::array<ProgramRef,12> programs;
-	const auto status = LoadPrograms(source,bakedSource,{},programs,4);
+	std::array<ProgramRef,13> programs;
+	const auto status = LoadPrograms(source,bakedSource,{},{},programs,4);
 	output = {{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
 	return status;
 }
 
 Result ShaderBackend::LoadSceneFamily(ByteView source, ByteView baked, ByteView terrain, ScenePrograms& output) {
 	output = {};
-	std::array<ProgramRef,12> programs;
-	const auto status = LoadPrograms(source,baked,terrain,programs,12);
+	std::array<ProgramRef,13> programs;
+	const auto status = LoadPrograms(source,baked,terrain,{},programs,12);
 	output.statics = {{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
 	for (size_t i=0; i<8; ++i) output.terrain[i]=std::move(programs[i+4]);
 	return status;
@@ -527,15 +562,25 @@ Result ShaderBackend::LoadSceneFamily(ByteView source, ByteView baked, ByteView 
 
 Result ShaderBackend::LoadBasicFxOpacityFamily(ByteView source, BasicFxOpacityPrograms& output) {
 	output = {};
-	std::array<ProgramRef, 12> programs;
-	const auto status = LoadPrograms(source, {}, {}, programs, 3);
+	std::array<ProgramRef, 13> programs;
+	const auto status = LoadPrograms(source, {}, {}, {}, programs, 3);
 	output = {std::move(programs[0]), std::move(programs[1]), std::move(programs[2])};
 	return status;
 }
 
+Result ShaderBackend::LoadSceneFamily(ByteView source, ByteView baked, ByteView terrain, ByteView sky, ScenePrograms& output) {
+	output = {};
+	std::array<ProgramRef,13> programs;
+	const auto status=LoadPrograms(source,baked,terrain,sky,programs,13);
+	output.statics={{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
+	for (size_t i=0; i<8; ++i) output.terrain[i]=std::move(programs[i+4]);
+	output.sky=std::move(programs[12]);
+	return status;
+}
+
 /** Stage every requested pair and ticket before committing the new load serial. */
-Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteView terrainSource,
-	std::array<ProgramRef,12>& output, size_t count) {
+Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteView terrainSource, ByteView skySource,
+	std::array<ProgramRef,13>& output, size_t count) {
 	output = {};
 	auto& p = *impl_;
 	auto status = p.Check();
@@ -545,7 +590,8 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteVi
 	const size_t cap = std::min(p.budget.limits.archiveBytes,size_t(4*1024*1024));
 	if (!source.data || source.size < 4 || source.size > cap ||
 		(count>=4 && (!bakedSource.data || bakedSource.size<4 || bakedSource.size>cap-source.size)) ||
-		(count==12 && (!terrainSource.data || terrainSource.size<4 || terrainSource.size>cap-source.size-bakedSource.size)))
+		(count>=12 && (!terrainSource.data || terrainSource.size<4 || terrainSource.size>cap-source.size-bakedSource.size)) ||
+		(count==13 && (!skySource.data || skySource.size<4 || skySource.size>cap-source.size-bakedSource.size-terrainSource.size)))
 		return Fail(Code::InvalidInput, "archive view out of bounds");
 	if (p.serial==std::numeric_limits<uint64_t>::max()) return Fail(Code::InvalidReference,"load serial exhausted");
 	try {
@@ -564,34 +610,43 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteVi
 		}
 		Bytes terrainArchive;
 		TerrainSpans terrainSpans{};
-		if(count==12) {
+		if(count>=12) {
 			const auto* first=static_cast<const unsigned char*>(terrainSource.data);
 			terrainArchive.assign(first,first+terrainSource.size);
 			status=TerrainDirectory(terrainArchive,terrainSpans);
 			if(!status) return status;
 		}
-		std::array<ProgramRef, 12> programs;
+		Bytes skyArchive;
+		std::array<Span,2> skySpans{};
+		if (count==13) {
+			const auto* first=static_cast<const unsigned char*>(skySource.data);
+			skyArchive.assign(first,first+skySource.size);
+			status=SkyDirectory(skyArchive,skySpans);
+			if (!status) return status;
+		}
+		std::array<ProgramRef, 13> programs;
 		for (size_t slot = 0; slot < count; ++slot)
 			programs[slot].ticket_ = std::make_shared<ProgramRef::Ticket>(
 				ProgramRef::Ticket{p.generation, p.serial + 1, static_cast<uint8_t>(slot)});
 		GlState state;
 		MojoScope scope(p.context, p.vao);
-		std::array<Pair, 12> candidates{};
+		std::array<Pair, 13> candidates{};
 		struct Cleanup {
-			std::array<Pair, 12>& pairs;
+			std::array<Pair, 13>& pairs;
 			~Cleanup() { for (auto& pair : pairs) pair.Clear(); }
 		} cleanup{candidates};
 		for (size_t slot = 0; slot < count; ++slot) {
 			auto& candidate = candidates[slot];
-			const auto& stage = slot>=4 ? terrainSpans[slot-4] : slot==3 ? bakedSpans : spans[slot];
-			const auto& bytes = slot>=4 ? terrainArchive : slot==3 ? bakedArchive : archive;
+			const auto& stage = slot==12 ? skySpans : slot>=4 ? terrainSpans[slot-4] : slot==3 ? bakedSpans : spans[slot];
+			const auto& bytes = slot==12 ? skyArchive : slot>=4 ? terrainArchive : slot==3 ? bakedArchive : archive;
 			candidate.vs = MOJOSHADER_glCompileShader(bytes.data() + stage[0].offset, unsigned(stage[0].size), nullptr, 0, nullptr, 0);
 			if (!candidate.vs) return Fail(Code::ShaderFailure, "vertex compilation failed");
 			candidate.ps = MOJOSHADER_glCompileShader(bytes.data() + stage[1].offset, unsigned(stage[1].size), nullptr, 0, nullptr, 0);
 			if (!candidate.ps) return Fail(Code::ShaderFailure, "pixel compilation failed");
 			const auto* vs = MOJOSHADER_glGetShaderParseData(candidate.vs);
 			const auto* ps = MOJOSHADER_glGetShaderParseData(candidate.ps);
-			const bool exact = slot>=4 ? ExactTerrainReflection(vs,true,slot-4) && ExactTerrainReflection(ps,false,slot-4) :
+			const bool exact = slot==12 ? ExactSkyReflection(vs,true) && ExactSkyReflection(ps,false) :
+				slot>=4 ? ExactTerrainReflection(vs,true,slot-4) && ExactTerrainReflection(ps,false,slot-4) :
 				slot==3 ? ExactBakedReflection(vs,true) && ExactBakedReflection(ps,false) :
 				count!=1 ? ExactFamilyReflection(vs,true,slot) && ExactFamilyReflection(ps,false,slot) :
 				ExactReflection(vs,true) && ExactReflection(ps,false);
@@ -606,6 +661,7 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteVi
 		p.archive = std::move(archive);
 		p.bakedArchive = std::move(bakedArchive);
 		p.terrainArchive = std::move(terrainArchive);
+		p.skyArchive = std::move(skyArchive);
 		++p.serial;
 		output = std::move(programs);
 		p.activeSlots = (1u << count)-1;
@@ -643,14 +699,16 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		reference.ticket_->slot >= p.pairs.size() || !(p.activeSlots & (1u << reference.ticket_->slot)))
 		return Fail(Code::InvalidReference, "empty, stale, foreign or failed-load program");
 	const size_t slot = reference.ticket_->slot;
-	const bool terrain = slot>=4, baked = slot==3, opacity = slot==1 || slot==2;
+	const bool sky = slot==12, terrain = slot>=4 && slot<12, baked = slot==3, opacity = slot==1 || slot==2;
+	if (sky && (!d.textureMipLevels || d.textureMipLevels>13)) return Fail(Code::InvalidInput,"sky mip count outside 1..13");
+	if (sky && d.blendMode!=BlendMode::Off) return Fail(Code::Unsupported,"sky supports only original Off blending");
 	const size_t layers = terrain ? (slot-4)/2+1 : 1;
 	if (terrain) for (size_t layer=0;layer<layers;++layer)
 		if (!d.terrainMipLevels[layer] || d.terrainMipLevels[layer]>13)
 			return Fail(Code::InvalidInput,"terrain mip count outside 1..13");
 	const bool hasUV = !terrain || (slot-4)%2!=0;
-	const unsigned* requiredVS = terrain ? RequiredTerrainVS : baked ? RequiredBakedVS : RequiredVS;
-	const size_t vsCount = terrain ? std::size(RequiredTerrainVS) : baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
+	const unsigned* requiredVS = sky ? RequiredSkyVS : terrain ? RequiredTerrainVS : baked ? RequiredBakedVS : RequiredVS;
+	const size_t vsCount = sky ? std::size(RequiredSkyVS) : terrain ? std::size(RequiredTerrainVS) : baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
 	const unsigned* requiredPS = opacity ? RequiredOpacityPS : RequiredPS;
 	const size_t psCount = opacity ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
 	for (size_t i=0;i<vsCount;++i) if (!p.vsInit[requiredVS[i]]) return Fail(Code::UninitializedRegisters, "required VS register missing");
@@ -734,7 +792,7 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		}
 		GlState state(blended ? &p.blend : nullptr,terrain?5:1);
 		MojoScope scope(p.context, p.vao);
-		const auto levelsAt=[&](size_t unit) { return terrain && unit<layers?d.terrainMipLevels[unit]:1u; };
+		const auto levelsAt=[&](size_t unit) { return sky?d.textureMipLevels:terrain && unit<layers?d.terrainMipLevels[unit]:1u; };
 		for (size_t unit=0; unit<(terrain?5:1); ++unit) {
 			if (terrain && unit>=layers && unit!=4) continue;
 			const bool borrowed=state.Borrow(textureAt(unit),unit);
@@ -764,9 +822,9 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			for (GLenum parameter : {GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
 			unsigned imageLevels=levels;
-			if (terrain) {
+			if (terrain || sky) {
 				// Texture level bounds are shared by aliases; per-unit sampler LOD is not.
-				for (size_t other=0;other<layers;++other)
+				for (size_t other=0;terrain && other<layers;++other)
 					if (textureAt(other)==textureAt(unit)) imageLevels=std::max(imageLevels,levelsAt(other));
 				const auto sampler=p.terrainSamplers[unit];
 				glSamplerParameteri(sampler,GL_TEXTURE_MIN_FILTER,levels>1?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
@@ -803,7 +861,8 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			glAlphaFunc(GL_GEQUAL, d.alphaReference / 255.f);
 			glEnable(GL_ALPHA_TEST);
 		}
-		glDepthFunc(GL_LEQUAL); glDepthMask(blended ? GL_FALSE : GL_TRUE); glDepthRange(0, 1);
+		glDepthFunc(GL_LEQUAL); glDepthMask(blended || sky ? GL_FALSE : GL_TRUE);
+		glDepthRange(sky && d.skyAtFarDepth ? 1 : 0, 1);
 		glCullFace(GL_BACK);
 		glFrontFace(d.frontFace == Winding::CounterClockwise ? GL_CCW : GL_CW);
 		glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, blended ? GL_FALSE : GL_TRUE);
@@ -854,6 +913,7 @@ Result ShaderBackend::Shutdown() {
 	p.archive.clear();
 	p.bakedArchive.clear();
 	p.terrainArchive.clear();
+	p.skyArchive.clear();
 	if (p.registered) {
 		Owners.erase(std::remove(Owners.begin(), Owners.end(), p.key), Owners.end());
 		p.registered = false;

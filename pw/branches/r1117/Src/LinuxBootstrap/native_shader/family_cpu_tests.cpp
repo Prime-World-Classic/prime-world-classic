@@ -182,14 +182,16 @@ void Run(Checks& check, const Bytes& archive) {
 
 #include "baked_cpu_tests.inc"
 #include "terrain_cpu_tests.inc"
+#include "sky_cpu_tests.inc"
 
 int main(int argc, char** argv) {
-	if (argc < 2 || argc > 4) return 2;
+	if (argc < 2 || argc > 5) return 2;
 	Checks check;
 	try {
 		Run(check, Read(argv[1]));
 		if (argc >= 3) BakedCpuTests(check, Read(argv[2]));
-		if (argc == 4) TerrainCpuTests(check, Read(argv[3]));
+		if (argc >= 4) TerrainCpuTests(check, Read(argv[3]));
+		if (argc == 5) SkyCpuTests(check, Read(argv[4]));
 	}
 	catch (const std::exception& error) { std::cerr << error.what() << '\n'; check.Test(false, "CPU exception"); }
 	std::cout << "SUMMARY checks=" << check.count << " failures=" << check.failed << '\n';

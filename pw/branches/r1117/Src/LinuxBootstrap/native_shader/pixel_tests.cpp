@@ -596,6 +596,7 @@ void BlendCapabilityTests(Checks& check, Host& host, const Bytes& archive) {
 #include "family_pixel_tests.inc"
 #include "baked_pixel_tests.inc"
 #include "terrain_pixel_tests.inc"
+#include "sky_pixel_tests.inc"
 
 void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	Target target; Texture texture, white(true); Mesh mesh;
@@ -873,7 +874,9 @@ int main(int argc, char** argv) {
 	const bool familyOnly = argc == 3 && !std::strcmp(argv[2],"--family-only");
 	const bool bakedOnly = argc == 4 && !std::strcmp(argv[3],"--baked-only");
 	const bool terrainOnly = argc == 5 && !std::strcmp(argv[4],"--terrain-only");
-	const bool withTerrain = (argc == 4 && !bakedOnly) || terrainOnly;
+	const bool skyOnly = argc == 6 && !std::strcmp(argv[5],"--sky-only");
+	const bool withSky = (argc == 5 && !terrainOnly) || skyOnly;
+	const bool withTerrain = (argc == 4 && !bakedOnly) || terrainOnly || withSky;
 	const bool withBaked = (argc == 3 && !familyOnly) || bakedOnly || withTerrain;
 	if ((argc != 2 && !familyOnly && !withBaked) || !std::getenv("PW_BACKEND_APPROVED_XVFB")) {
 		std::cerr << "run only using the parent-approved isolated wrapper\n"; return 2;
@@ -881,19 +884,21 @@ int main(int argc, char** argv) {
 	Checks check;
 	try {
 		const auto archive=Read(argv[1]); ProgramRef late; BasicFxOpacityPrograms lateFamily; StaticPrograms lateStatic;
-		ScenePrograms lateScene;
+		ScenePrograms lateScene; ProgramRef lateSky;
 		const auto baked = withBaked ? Read(argv[2]) : Bytes{};
 		const auto terrain = withTerrain ? Read(argv[3]) : Bytes{};
+		const auto sky = withSky ? Read(argv[4]) : Bytes{};
 		{
 			Host host(1); host.Open();
 			std::cout << "GL renderer=" << glGetString(GL_RENDERER) << " version=" << glGetString(GL_VERSION) << '\n';
-			if (!familyOnly && !bakedOnly && !terrainOnly) {
+			if (!familyOnly && !bakedOnly && !terrainOnly && !skyOnly) {
 				Run(check,host,archive,late);
 				BlendCapabilityTests(check,host,archive);
 			}
-			if (!bakedOnly && !terrainOnly) FamilyTests(check,host,archive,lateFamily);
-			if (withBaked && !terrainOnly) BakedTests(check,host,archive,baked,lateStatic);
-			if (withTerrain) TerrainTests(check,host,archive,baked,terrain,lateScene);
+			if (!bakedOnly && !terrainOnly && !skyOnly) FamilyTests(check,host,archive,lateFamily);
+			if (withBaked && !terrainOnly && !skyOnly) BakedTests(check,host,archive,baked,lateStatic);
+			if (withTerrain && !skyOnly) TerrainTests(check,host,archive,baked,terrain,lateScene);
+			if (withSky) SkyTests(check,host,archive,baked,terrain,sky,lateSky);
 		}
 		check.Test(glXGetCurrentContext()==nullptr,"host GL context destroyed before late reference release");
 		{
@@ -905,6 +910,8 @@ int main(int argc, char** argv) {
 				ProgramRef program;
 				check.Good(backend->LoadBasicFxPair0({archive.data(),archive.size()},program),"recreated host loads real pair");
 				Registers(*backend); target.Clear();
+				if (withSky) check.Test(backend->Draw(lateSky,mesh.Draw(texture.name)).code==Code::InvalidReference,
+					"prior destroyed-context sky ticket rejected");
 				check.Test(backend->Draw(late,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context ticket rejected");
 				for (const auto& ticket : FamilyTickets(lateFamily))
 					check.Test(backend->Draw(ticket,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context family ticket rejected");
@@ -918,8 +925,8 @@ int main(int argc, char** argv) {
 				check.Test(backend->GetDiagnostics().liveBytes==0,"recreated host ownership balanced");
 			}
 		}
-		std::thread release([reference=std::move(late),family=std::move(lateFamily),statics=std::move(lateStatic),scene=std::move(lateScene)]() mutable {
-			reference.Reset(); family = {}; statics = {}; scene = {};
+		std::thread release([reference=std::move(late),family=std::move(lateFamily),statics=std::move(lateStatic),scene=std::move(lateScene),sky=std::move(lateSky)]() mutable {
+			reference.Reset(); family = {}; statics = {}; scene = {}; sky.Reset();
 		}); release.join();
 		check.Test(true,"last CPU reference release without context/on other thread");
 	} catch (const std::exception& e) { check.Test(false,std::string("exception: ")+e.what()); }

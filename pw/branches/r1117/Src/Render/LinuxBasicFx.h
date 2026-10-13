@@ -5,7 +5,7 @@
 #include "../LinuxBootstrap/native_shader/shader_transforms.hpp"
 
 struct Matrix43;
-namespace NDb { struct Material; }
+namespace NDb { struct Material; struct SkyMaterial; }
 namespace Render {
 class Texture;
 class MeshVertexColors;
@@ -16,6 +16,7 @@ struct Statistics {
 	uint64_t selections = 0, unsupported = 0, draws = 0, rejected = 0, loads = 0;
 	uint64_t bakedSelections = 0, bakedUnsupported = 0, bakedDraws = 0, bakedRejected = 0;
 	uint64_t terrainDraws = 0, terrainRejected = 0;
+	uint64_t skyDraws = 0, skyRejected = 0;
 };
 
 /** Host lifecycle: call once after GLX creation, and shut down before destroying it. */
@@ -40,6 +41,11 @@ void Select(const NDb::Material* material, const Texture* texture);
  */
 void SelectBaked(const NDb::Material* material, const Texture* texture,
 	const MeshVertexColors* colors, float nightFraction);
+/** Explicit post-opaque sky selection; texture is already admitted/uploaded by the map.
+ * Original curve lookup/clamp/wrap is reused at the supplied presentation time. Invalid
+ * material/curve state stays selected and fails closed, never drawing opaque fallback.
+ */
+void SelectSky(const NDb::SkyMaterial& material, uint32_t texture, unsigned mipLevels, float elapsed);
 bool IsSelected();
 /** Classify the same BasicFX subset as Select, without loading textures or GL.
  * Malformed non-Off modes also require deferral so Draw can reject them without opaque fallback.

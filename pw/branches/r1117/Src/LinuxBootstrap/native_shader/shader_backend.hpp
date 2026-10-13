@@ -86,6 +86,8 @@ struct StaticPrograms {
 struct ScenePrograms {
 	StaticPrograms statics;
 	std::array<ProgramRef, 8> terrain;
+	/** Empty for the legacy three-archive loader. */
+	ProgramRef sky;
 };
 
 /** Borrowed packed BGRA8 colours, normalized by the backend, not predecoded lighting.
@@ -101,7 +103,7 @@ struct Bgra8ColorStream {
  * Texture is a live level-0 2D name in the owning context. Sampling is explicitly Repeat/Linear.
  * Draw targets the caller's framebuffer, without clearing it. All modified GL state is restored.
  * Alpha testing uses final shader alpha; discarded pixels write neither color nor depth.
- * All modes use LEQUAL depth testing. Off writes RGBA/depth without blending; other modes
+ * All modes use LEQUAL depth testing. Off writes RGBA/depth without blending (sky: read-only depth); other modes
  * blend RGB only and leave destination alpha/depth unchanged. Non-Off requires OpenGL 4.0
  * or ARB_draw_buffers_blend and its indexed entrypoints; otherwise Draw returns Unsupported.
  */
@@ -112,6 +114,12 @@ struct IndexedDraw {
 	size_t firstIndex = 0, indexCount = 0;
 	int32_t baseVertex = 0;
 	uint32_t texture = 0;
+	/** Sky-only authored diffuse levels; all earlier static programs retain level zero. */
+	unsigned textureMipLevels = 1;
+	/** Sky-only adaptation for orthographic preview cameras outside the authored enclosure.
+	 * Clamp window depth to one, still LEQUAL/read-only. False retains original shader depth.
+	 */
+	bool skyAtFarDepth = false;
 	int viewportX = 0, viewportY = 0, viewportWidth = 0, viewportHeight = 0;
 	Winding frontFace = Winding::CounterClockwise;
 	AlphaTest alphaTest = AlphaTest::Disabled;
@@ -171,6 +179,12 @@ public:
 	 */
 	Result LoadSceneFamily(ByteView basicFxArchive, ByteView basicMaterialArchive,
 		ByteView terrainArchive, ScenePrograms& output);
+	/** Atomic thirteen-program scene including original SkyMaterial pair0.
+	 * Sky consumes VS c0..2/c8..11/c20 and PS c20/c21. Off blending only;
+	 * depth remains read-only, matching the original post-opaque sky pass.
+	 */
+	Result LoadSceneFamily(ByteView basicFxArchive, ByteView basicMaterialArchive,
+		ByteView terrainArchive, ByteView skyArchive, ScenePrograms& output);
 	/** Rejected write invalidates all required initialization bits; reupload the full required set. */
 	Result SetFloat4(Stage stage, uint32_t firstRegister, Float4View values);
 	Result Draw(const ProgramRef& program, const IndexedDraw& draw);
@@ -183,8 +197,8 @@ public:
 	Diagnostics GetDiagnostics() const;
 private:
 	struct Impl;
-	Result LoadPrograms(ByteView basicFx, ByteView basicMaterial, ByteView terrain,
-		std::array<ProgramRef, 12>& output, size_t count);
+	Result LoadPrograms(ByteView basicFx, ByteView basicMaterial, ByteView terrain, ByteView sky,
+		std::array<ProgramRef, 13>& output, size_t count);
 	explicit ShaderBackend(std::unique_ptr<Impl> impl);
 	std::unique_ptr<Impl> impl_;
 };

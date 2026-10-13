@@ -384,7 +384,10 @@ struct LinuxStaticMapResource
 struct LinuxWindowOverlay
 {
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
-	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 2> staticMapResources;
+	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 3> staticMapResources;
+	std::weak_ptr<const void> skySceneOwner;
+	double skyStartSeconds = 0, skyLastSeconds = 0;
+	size_t skyDraws = 0, skyFailures = 0;
 	std::size_t bakedColorLookups = 0, bakedColorMatches = 0;
 	std::size_t bakedSelectedPayloads = 0, bakedDrawnPayloads = 0, bakedDrawCalls = 0;
 	std::size_t dynamicPoseBuilds = 0, dynamicPoseHits = 0;
@@ -2493,6 +2496,8 @@ struct LinuxSelectedMapPreview
   std::vector<LinuxMapPointLightPreview> pointLights;
   std::vector<LinuxMapStaticGeometryPayloadPreview> terrainElementPayloads;
   std::vector<LinuxMapStaticGeometryPayloadPreview> staticGeometryPayloads;
+	/// Original background geometry is never mixed into ordinary opaque/transparent queues.
+	std::vector<LinuxMapStaticGeometryPayloadPreview> skyGeometryPayloads;
   std::vector<LinuxMapAnimatedGeometryPayloadPreview> animatedGeometryPayloads;
   std::vector<std::string> staticDiffuseTextureFiles;
   std::vector<LinuxTextureAssetPreview> staticDiffuseTextures;
@@ -15844,6 +15849,8 @@ std::string ExtractLinuxMaterialDiffuseTextureFileName(const NDb::Material* mate
   {
     return ExtractLinuxSamplerTextureFileName(basicMaterial->DiffuseMap);
   }
+	if (const auto* sky = dynamic_cast<const NDb::SkyMaterial*>(material))
+		return ExtractLinuxSamplerTextureFileName(sky->DiffuseMap);
   if (const NDb::DropMaterial* dropMaterial = dynamic_cast<const NDb::DropMaterial*>(material))
   {
     return ExtractLinuxSamplerTextureFileName(dropMaterial->DiffuseMap);
@@ -32182,6 +32189,8 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
     overlay->mapPreviewDiffuseTextureSourceFiles.clear();
     overlay->mapPreviewDiffuseTextureFailedSourceFiles.clear();
 		DeleteOpenGlTexture(&overlay->terrainNatureTexture);
+		fprintf(stdout,"Native sky shutdown: draws=%zu rejected=%zu\n",overlay->skyDraws,overlay->skyFailures);
+		overlay->skySceneOwner.reset();
 		fprintf(stdout,"Native terrain shutdown: draws=%zu rejected=%zu natureUploads=%zu channels=%u\n",
 			overlay->terrainLayerDraws,overlay->terrainLayerFailures,overlay->terrainNatureUploads,overlay->terrainNatureMask.AllChannels());
 		overlay->terrainNatureMask.Clear(); overlay->terrainNatureGeometry.reset();
@@ -53386,6 +53395,7 @@ size_t ResolveLinuxSkeletalRendererMaterialTextureIndex(
 
 #include "../LinuxBootstrap/static_transparency.inc"
 #include "../LinuxBootstrap/terrain_render.inc"
+#include "../LinuxBootstrap/sky_render.inc"
 
 size_t DrawLinuxMapRendererStaticMeshPayloadList(
   LinuxWindowOverlay* overlay,
@@ -54167,6 +54177,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   int dynamicSelectedHeroMarkerPlayerId = -1;
 	// Opaque dynamic meshes precede this boundary; all diagnostic and health overlays follow it.
 	const auto afterOpaqueMeshes = [&]() {
+		DrawLinuxMapSky(*renderContext.overlay,*selectedMapPreview,{centerX,centerY,0,scale},renderContext.elapsedSeconds);
 		transparent.Flush();
 		transparent.GetCounts(0).Accumulate(terrainElementPayloads, terrainElementBatches, terrainElementTriangles, terrainElementMaterialStats);
 		transparent.GetCounts(1).Accumulate(staticPayloads, staticBatches, staticTriangles, staticMaterialStats);
@@ -68879,6 +68890,7 @@ void AppendRuntimeInputLog(
 	logFile << "  finalBakedMapColors=lookups:" << overlay.bakedColorLookups
 		<< " matches:" << overlay.bakedColorMatches << " selectedPayloads:" << overlay.bakedSelectedPayloads
 		<< " drawnPayloads:" << overlay.bakedDrawnPayloads << " drawCalls:" << overlay.bakedDrawCalls << "\n";
+	logFile << "  finalSkyPass=draws:" << overlay.skyDraws << " rejected:" << overlay.skyFailures << "\n";
 	logFile << "  finalLocalMapCamera=active:" << screenRuntime.localMapCamera
 		<< " follow:" << screenRuntime.localMapFollow << " updates:" << screenRuntime.localMapFocusUpdates
 		<< " focusHeight:" << screenRuntime.localMapFocusHeight << "\n";
@@ -68889,6 +68901,7 @@ void AppendRuntimeInputLog(
 		<< " static:" << selectedMapPreview.staticGeometryPayloads.size()
 		<< " terrain:" << selectedMapPreview.terrainElementPayloads.size()
 		<< " animated:" << selectedMapPreview.animatedGeometryPayloads.size()
+		<< " sky:" << selectedMapPreview.skyGeometryPayloads.size()
 		<< " textures:" << selectedMapPreview.staticDiffuseTextures.size()
 		<< " unsupported:" << selectedMapPreview.sceneWindowMetrics.unsupportedDrops
 		<< " cumulativeDrops:" << selectedMapPreview.sceneWindowMetrics.cumulativeDrops << "\n";

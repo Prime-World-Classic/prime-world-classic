@@ -63,6 +63,12 @@ static void FinalizeLinuxMapSceneCatalog(const LinuxClientEnvironment& environme
 		}
 	};
 	add(catalog.statics, LinuxBootstrap::SceneWindowKind::Static);
+	for (auto& candidate : catalog.candidates) {
+		const auto& materials=catalog.statics[candidate.payloadIndex].materialReferences;
+		if (!materials.empty() && std::all_of(materials.begin(),materials.end(),[](const auto& material) {
+			return dynamic_cast<const NDb::SkyMaterial*>(material.GetPtr())!=nullptr;
+		})) candidate.kind=LinuxBootstrap::SceneWindowKind::Sky;
+	}
 	add(catalog.terrain, LinuxBootstrap::SceneWindowKind::Terrain);
 	add(catalog.animated, LinuxBootstrap::SceneWindowKind::Animated);
 	catalog.discovering = false;
@@ -165,11 +171,10 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 	}
 	for (const auto index : ranked) {
 		const auto& candidate = catalog.candidates[index];
-		if (candidate.kind != SceneWindowKind::Animated) {
+		if (candidate.kind != SceneWindowKind::Animated && candidate.kind != SceneWindowKind::Sky) {
 			const auto& materials = candidate.kind == SceneWindowKind::Static
 				? catalog.statics[candidate.payloadIndex].materialReferences : catalog.terrain[candidate.payloadIndex].materialReferences;
-			// Sky needs its original background pass. The ordinary opaque fallback puts
-			// its giant sphere in front of the entire local view and consumes scenery slots.
+			// Mixed sky/non-sky components cannot use either ordinary fallback or the sky pass.
 			if (std::any_of(materials.begin(), materials.end(), [](const auto& material) {
 				return dynamic_cast<const NDb::SkyMaterial*>(material.GetPtr()) != nullptr;
 			})) { ++metrics.unsupportedDrops; continue; }
@@ -187,8 +192,8 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 				available = costOf(skin.geometryFile, SceneAssetKind::Geometry, "skin:", costs)
 					&& texturesFor(skin.materialReferences, ids) && available;
 		} else {
-			const auto& payload = candidate.kind == SceneWindowKind::Static
-				? catalog.statics[candidate.payloadIndex] : catalog.terrain[candidate.payloadIndex];
+			const auto& payload = candidate.kind == SceneWindowKind::Terrain
+				? catalog.terrain[candidate.payloadIndex] : catalog.statics[candidate.payloadIndex];
 			available = costOf(payload.geometryFile, SceneAssetKind::Geometry, "static:", costs)
 				&& texturesFor(payload.materialReferences, ids);
 		}
@@ -199,13 +204,14 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 	}
 	metrics.admittedStatic = budget.counts[0]; metrics.admittedTerrain = budget.counts[1];
 	metrics.admittedAnimated = budget.counts[2];
+	metrics.admittedSky = budget.counts[3];
 	++map->sceneWindowBuilds;
 	if (selected == map->sceneWindow.Selected() && map->sceneWindow.Revision() != 0) {
 		map->sceneWindow.Publish(request, selected);
 		map->sceneWindowMetrics = metrics;
 		return false;
 	}
-	std::vector<LinuxMapStaticGeometryPayloadPreview> statics, terrain;
+	std::vector<LinuxMapStaticGeometryPayloadPreview> statics, terrain, sky;
 	std::vector<LinuxMapAnimatedGeometryPayloadPreview> animated;
 	const auto remap = [&](auto& indices) {
 		for (auto& index : indices) {
@@ -219,9 +225,9 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 			animated.push_back(catalog.animated[candidate.payloadIndex]);
 			for (auto& skin : animated.back().skinGeometryPayloads) remap(skin.materialDiffuseTextureIndices);
 		} else {
-			auto& target = candidate.kind == SceneWindowKind::Static ? statics : terrain;
-			target.push_back(candidate.kind == SceneWindowKind::Static ? catalog.statics[candidate.payloadIndex]
-				: catalog.terrain[candidate.payloadIndex]);
+			auto& target = candidate.kind == SceneWindowKind::Sky ? sky : candidate.kind == SceneWindowKind::Static ? statics : terrain;
+			target.push_back(candidate.kind == SceneWindowKind::Terrain ? catalog.terrain[candidate.payloadIndex]
+				: catalog.statics[candidate.payloadIndex]);
 			remap(target.back().materialDiffuseTextureIndices);
 			for (auto& faction : target.back().terrainTextureIndices) remap(faction);
 		}
@@ -270,6 +276,7 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 	overlay->animatedMapResources.Clear();
 	for (auto& cache : overlay->staticMapResources) cache.Clear();
 	map->staticGeometryPayloads.swap(statics); map->terrainElementPayloads.swap(terrain);
+	map->skyGeometryPayloads.swap(sky);
 	map->animatedGeometryPayloads.swap(animated);
 	map->staticDiffuseTextures.swap(textures); map->staticDiffuseTextureFiles.swap(files);
 	map->terrainHeightmap.terrainLayers.swap(layers);
@@ -283,6 +290,7 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 	std::cout << "Native scene window: revision=" << map->sceneWindow.Revision() << " focus=" << request.focusX << ',' << request.focusY
 		<< " scanned=" << metrics.scanned << " outside=" << metrics.outsideWindow
 		<< " selected=" << metrics.admittedStatic << '/' << metrics.admittedTerrain << '/' << metrics.admittedAnimated
+		<< " sky=" << metrics.admittedSky
 		<< " textures=" << textureIds.size() << " loads=" << metrics.textureLoads << " reuses=" << metrics.textureReuses
 		<< " maxOriginalObject=" << maxObject << " drops=" << metrics.activeBudgetDrops << '/' << metrics.textureBudgetDrops
 		<< '/' << metrics.cumulativeDrops << '/' << metrics.unavailableDrops

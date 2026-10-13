@@ -25,6 +25,8 @@ pwshader::ScenePrograms programs;
 Statistics statistics;
 bool selected = false, attempted = false;
 bool selectedBaked = false, selectedBakedValid = false;
+bool selectedSky = false, selectedSkyValid = false;
+unsigned selectedMipLevels = 1;
 bool transparentDrawing = false;
 NDb::BlendMode selectedBlend = NDb::BLENDMODE_OFF;
 bool selectedRasterValid = false;
@@ -46,8 +48,9 @@ void* Lookup(const char* name, void*) {
 }
 bool Reject(const char* message) {
 	if (selectedBaked) ++statistics.bakedRejected;
+	if (selectedSky) ++statistics.skyRejected;
 	if (++statistics.rejected == 1)
-		fprintf(stderr, "Native %s draw rejected: %s\n", selectedBaked ? "baked BasicMaterial" : "BasicFX", message);
+		fprintf(stderr, "Native %s draw rejected: %s\n", selectedSky ? "SkyMaterial" : selectedBaked ? "baked BasicMaterial" : "BasicFX", message);
 	return false;
 }
 /** Shared classification prevents the collector and material preparation from disagreeing. */
@@ -120,13 +123,21 @@ bool Ready() {
 	pwshader::Result status;
 	backend = pwshader::ShaderBackend::Create({nullptr, Current, Lookup}, {}, status);
 	if (!backend) return Reject(status.message.c_str());
-	std::vector<unsigned char> bytes, baked, terrain;
+	std::vector<unsigned char> bytes, baked, terrain, sky;
 	const size_t limit = pwshader::Limits{}.archiveBytes;
 	if (!ReadArchive("Shaders/UberShaders/BasicFXMaterial.shd",limit,bytes) ||
 		!ReadArchive("Shaders/UberShaders/BasicMaterial.shd",limit-bytes.size(),baked)) return false;
-	if (ReadArchive("Shaders/UberShaders/TerrainElementMaterial.shd",limit-bytes.size()-baked.size(),terrain,true))
-		status = backend->LoadSceneFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},
-			{terrain.data(),terrain.size()},programs);
+	if (ReadArchive("Shaders/UberShaders/TerrainElementMaterial.shd",limit-bytes.size()-baked.size(),terrain,true)) {
+		if (ReadArchive("Shaders/UberShaders/SkyMaterial.shd",limit-bytes.size()-baked.size()-terrain.size(),sky,true))
+			status=backend->LoadSceneFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},
+				{terrain.data(),terrain.size()},{sky.data(),sky.size()},programs);
+		else status={pwshader::Code::InvalidInput,"sky archive missing, unreadable or oversized"};
+		if (!status) {
+			fprintf(stderr,"Native sky shaders unavailable: %s; retaining terrain/static shaders\n",status.message.c_str());
+			status=backend->LoadSceneFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},
+				{terrain.data(),terrain.size()},programs);
+		}
+	}
 	else status = {pwshader::Code::InvalidInput,"terrain archive missing, unreadable or oversized"};
 	if (!status) {
 		fprintf(stderr,"Native terrain shaders unavailable: %s; retaining static shaders\n",status.message.c_str());
@@ -165,6 +176,7 @@ bool Shutdown() {
 void ClearSelection() {
 	selected = false; selectedRasterValid = false; selectedOpacityValid = false; selectedTexture = 0;
 	selectedBaked = false; selectedBakedValid = false; dayColors = {}; nightColors = {}; night = {};
+	selectedSky = false; selectedSkyValid = false; selectedMipLevels = 1;
 }
 bool IsSelected() { return selected; }
 Statistics GetStatistics() { return statistics; }
@@ -237,10 +249,48 @@ void SelectBaked(const NDb::Material* material, const Texture* texture,
 	++statistics.selections; ++statistics.bakedSelections;
 }
 
+/** Validate before original iterator-based curve sampling, including unused UV components. */
+template<class Curve>
+static bool SampleSkyCurve(const Curve& curve, float elapsed, float& output) {
+	if (curve.Count()<1 || curve.Count()>4096 || !std::isfinite(curve.GetLength()) || curve.GetLength()<0) return false;
+	float previous=-1;
+	for (auto it=curve.begin(); it!=curve.end(); ++it) {
+		if (!std::isfinite(it->key) || !std::isfinite(it->value) || it->key<0 || it->key<=previous) return false;
+		previous=it->key;
+	}
+	if (curve.begin()->key!=0 || (curve.IsAnimated() && previous!=curve.GetLength())) return false;
+	auto left=curve.begin(), right=left;
+	const float key=curve.ShiftKey(elapsed,0,&left,&right);
+	output=curve.GetValue(key,left,right);
+	return std::isfinite(output);
+}
+
+void SelectSky(const NDb::SkyMaterial& m, uint32_t texture, unsigned mipLevels, float elapsed) {
+	ClearSelection(); selected=selectedSky=true; ++statistics.selections;
+	selectedTexture=texture; selectedMipLevels=mipLevels; selectedBlend=m.renderState.blendMode;
+	selectedOpacityValid=true;
+	const auto& sampler=m.DiffuseMap.samplerState;
+	selectedRasterValid=!m.ignoreRenderState && m.renderState.blendMode==NDb::BLENDMODE_OFF &&
+		(m.renderState.alphaTest==NDb::ONOFFSTATE_OFF || m.renderState.alphaTest==NDb::ONOFFSTATE_ON) &&
+		(m.renderState.culling==NDb::ONOFFSTATE_OFF || m.renderState.culling==NDb::ONOFFSTATE_ON) &&
+		m.renderState.alphaTestRef>=0 && m.renderState.alphaTestRef<=255;
+	alphaTest=m.renderState.alphaTest==NDb::ONOFFSTATE_ON?pwshader::AlphaTest::GreaterEqual:pwshader::AlphaTest::Disabled;
+	cullMode=m.renderState.culling==NDb::ONOFFSTATE_ON?pwshader::CullMode::Back:pwshader::CullMode::Disabled;
+	alphaReference=m.renderState.alphaTestRef;
+	multiply={m.outputMul.R,m.outputMul.G,m.outputMul.B,1}; add={m.outputAdd.R,m.outputAdd.G,m.outputAdd.B,0};
+	selectedSkyValid=sampler.addressU==NDb::TEXTUREADDRESSTYPE_WRAP && sampler.addressV==NDb::TEXTUREADDRESSTYPE_WRAP &&
+		sampler.minFilter==NDb::MINFILTERTYPE_LINEAR && sampler.magFilter==NDb::MAGFILTERTYPE_LINEAR &&
+		sampler.mipFilter==NDb::MIPFILTERTYPE_LINEAR && std::isfinite(elapsed) && elapsed>=0 &&
+		SampleSkyCurve(m.uOffset1,elapsed,uv[0]) && SampleSkyCurve(m.vOffset1,elapsed,uv[1]) &&
+		SampleSkyCurve(m.uOffset2,elapsed,uv[2]) && SampleSkyCurve(m.vOffset2,elapsed,uv[3]);
+}
+
 bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::PreviewTransform& preview) {
 	if (!selected || !world) return Reject("missing selected material or WORLD");
 	if (!selectedRasterValid) return Reject("invalid selected alpha-test or culling state");
 	if (!selectedOpacityValid) return Reject("invalid selected constant opacity or permutation");
+	if (selectedSky && (!selectedSkyValid || GetRuntimePins().InstancingValue!=NDb::BOOLEANPIN_NONE ||
+		GetRuntimePins().RenderModeValue!=NDb::RENDERMODEPIN_RENDERNORMAL)) return Reject("invalid sky curve/sampler or unsupported runtime permutation");
 	if (selectedBaked && (!selectedBakedValid || GetRuntimePins().InstancingValue != NDb::BOOLEANPIN_NONE ||
 		GetRuntimePins().RenderModeValue != NDb::RENDERMODEPIN_RENDERNORMAL))
 		return Reject("invalid baked colours/constants or unsupported runtime permutation");
@@ -259,11 +309,12 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 		return Reject("invalid WORLD or preview camera");
 	if (!Ready()) return false;
 	const pwshader::ProgramRef* program = &programs.statics.basicFx.simple;
-	if (selectedBaked) program = &programs.statics.bakedBasicMaterial;
+	if (selectedSky) program = &programs.sky;
+	else if (selectedBaked) program = &programs.statics.bakedBasicMaterial;
 	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_ADDITIVEOPACITY) program = &programs.statics.basicFx.additiveOpacity;
 	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY) program = &programs.statics.basicFx.blendOpacity;
 	for (const auto& result : {
-		backend->SetFloat4(pwshader::Stage::Vertex, 0, {registers.world.data(), selectedBaked ? size_t(3) : size_t(4)}),
+		backend->SetFloat4(pwshader::Stage::Vertex, 0, {registers.world.data(), selectedBaked || selectedSky ? size_t(3) : size_t(4)}),
 		backend->SetFloat4(pwshader::Stage::Vertex, 8, {registers.viewProjection.data(), 4}),
 		backend->SetFloat4(pwshader::Stage::Pixel, 20, {&multiply, 1}),
 		backend->SetFloat4(pwshader::Stage::Pixel, 21, {&add, 1})})
@@ -272,15 +323,23 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 		const auto result = backend->SetFloat4(pwshader::Stage::Vertex,234,{&night,1});
 		if (!result) return Reject(result.message.c_str());
 		draw.dayColors = dayColors; draw.nightColors = nightColors;
-	} else for (const auto& result : {
-		backend->SetFloat4(pwshader::Stage::Vertex,20,{&uv,1}),
-		backend->SetFloat4(pwshader::Stage::Pixel,6,{&opacityAndOthers,1})})
+	} else {
+		const auto result=backend->SetFloat4(pwshader::Stage::Vertex,20,{&uv,1});
 		if (!result) return Reject(result.message.c_str());
+		if (!selectedSky) {
+			const auto opacityResult=backend->SetFloat4(pwshader::Stage::Pixel,6,{&opacityAndOthers,1});
+			if (!opacityResult) return Reject(opacityResult.message.c_str());
+		}
+	}
 	GLint viewport[4]{};
 	glGetIntegerv(GL_VIEWPORT, viewport);
 	draw.viewportX = viewport[0]; draw.viewportY = viewport[1];
 	draw.viewportWidth = viewport[2]; draw.viewportHeight = viewport[3];
 	draw.texture = selectedTexture;
+	draw.textureMipLevels = selectedMipLevels;
+	// The orthographic preview can sit outside the authored sky enclosure. Keep its
+	// original geometry/UVs, but reserve sky fragments for untouched background depth.
+	draw.skyAtFarDepth = selectedSky;
 	draw.alphaTest = alphaTest;
 	draw.cullMode = cullMode;
 	draw.alphaReference = alphaReference;
@@ -294,12 +353,13 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 		case NDb::BLENDMODE_MULINVCOLOR: draw.blendMode = pwshader::BlendMode::MulInvColor; break;
 		default: return Reject("invalid selected blend mode");
 	}
-	// Use the tested native preview winding, without a per-object determinant flip.
+	// Retain preview winding; original perspective-camera presentation is separate.
 	draw.frontFace = pwshader::Winding::CounterClockwise;
 	const auto result = backend->Draw(*program, draw);
 	if (!result) return Reject(result.message.c_str());
 	++statistics.draws;
 	if (selectedBaked) ++statistics.bakedDraws;
+	if (selectedSky) ++statistics.skyDraws;
 	return true;
 }
 

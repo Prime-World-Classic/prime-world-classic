@@ -8,6 +8,31 @@ uses its existing DirectX renderer. No Wine or replacement shader is involved.
 See [vendor provenance](../third_party/mojoshader/README.md) for the exact pin,
 license and two allocation-failure fixes.
 
+## Original Sky Pass
+
+The four-archive `LoadSceneFamily` overload adds shipped `SkyMaterial.shd`
+pair0. It keeps the original WORLD/view projection, UV offsets and RGB
+multiply/add, leaving diffuse alpha unchanged. Sky draws test scene depth but
+never write it. The legacy three-archive overload still loads twelve programs.
+
+The map catalog places all-sky components in a separate 64-payload budget,
+sharing the existing geometry/texture ledger and 96-texture limit. Mixed
+sky/non-sky components remain unsupported. Original meshes draw after opaque
+units and before retained transparent scenery; no ordinary opaque fallback is
+allowed. The current orthographic preview can sit outside the authored enclosure,
+so it explicitly requests sky-only far window depth (`glDepthRange(1,1)`). This
+fills only untouched scene depth and leaves foreground geometry intact. The
+backend default still uses original shader depth; this preview adaptation is not
+a claim of original-camera parity. The pass supplies already-admitted textures, including
+authored DXT mip chains when supported, without material-factory texture loads.
+
+The bridge uses the original `Animated::ShiftKey` and interpolation logic for
+clamp/wrap curves after validating keys, values and presentation time. A shared
+map clock survives camera-window cache replacement. The shipped MOBA sky uses
+identity component timing; generalized scene-component time controllers,
+original perspective camera and complete sky/water appearance parity remain
+unported. The current early water underlay is unchanged.
+
 ## Ordinary Terrain Backend
 
 `LoadSceneFamily` atomically adds the eight shipped `TerrainElementMaterial.shd`
@@ -139,9 +164,10 @@ material CRC. This forces preparation for each queued batch even when sort IDs
 match. Sorted and unsorted queue tests cover distinct colours and a transition
 from an unsupported material back to a supported one.
 
-The renderer loads twelve scene programs once per context, with a combined 4 MiB
-archive cap. A missing or unsupported terrain archive is logged and explicitly
-falls back to the four static programs, leaving terrain tickets unavailable.
+The renderer loads thirteen scene programs once per context, with a combined 4 MiB
+archive cap. A missing or unsupported sky archive explicitly falls back to twelve
+programs; an unavailable terrain archive falls back to the four static programs.
+Unavailable families are logged and their tickets remain empty.
 Ticket switches do not compile or link shaders. A family reload publishes all
 its tickets or none; failed owning-context reloads invalidate the old tickets and
 register initialization. The standalone `LoadBasicFxPair0` API still compiles only pair zero
@@ -304,3 +330,14 @@ chains and the shipped ten-level Bank texture. The engine probe uploads that
 texture with hostile PBO/unpack state, then reads every compressed level back and
 compares its exact bytes. Terrain pixel tests distinguish minification, fractional
 trilinear LOD, independent alias limits and malformed late-mip rejection.
+
+Sky CPU tests validate both directory entries and the exact selected reflection.
+Pass a fourth `SkyMaterial.shd` path to the CPU/pixel probe for the full family,
+or append `--sky-only` to the pixel command for the focused GL suite. Regressions
+cover original RGB/alpha/UV arithmetic, read-only depth, opaque occlusion,
+authored mips, legacy reloads, wrong context/thread, aggregate size caps and
+late compile/link failures. The scene engine probe draws real MOBA sky meshes,
+checks nonblank textured coverage and unchanged depth, samples the authored
+350-second curve, rebuilds retained resources without restarting animation,
+rejects malformed material/curve/sampler inputs without preview fallback, and
+verifies that the actual enclosing mesh cannot cover nearer foreground depth.

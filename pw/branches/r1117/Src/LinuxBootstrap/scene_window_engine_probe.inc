@@ -1,4 +1,5 @@
 #include "terrain_texture_engine_probe.inc"
+#include "sky_engine_probe.inc"
 
 /** Original MOBA catalog integration: bounded nearby selection, stable identity and cache epochs. */
 static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environment)
@@ -18,6 +19,9 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 	check(map.sceneCatalog && !map.sceneCatalog->discovering, "original catalog finalized");
 	if (!map.sceneCatalog) return false;
 	const auto& catalog = *map.sceneCatalog;
+	check(std::count_if(catalog.candidates.begin(),catalog.candidates.end(),[](const auto& candidate) {
+		return candidate.kind==LinuxBootstrap::SceneWindowKind::Sky;
+	})==64,"all authored MOBA sky placements classified separately");
 	const auto spawnTile = std::find_if(catalog.terrain.begin(), catalog.terrain.end(),
 		[](const auto& tile) { return tile.originalObjectIndex == 1187; });
 	check(spawnTile != catalog.terrain.end(), "original hero-spawn terrain tile exists");
@@ -74,16 +78,18 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 		request.focusX = focus.x; request.focusY = focus.y;
 		request.bounds = {focus.x - 55, focus.y - 55, focus.x + 55, focus.y + 55};
 		check(UpdateLinuxMapSceneWindow(environment, request, &map, &overlay), "distant location publishes a new window");
-		check(overlay.staticMapResources[0].Size() == 0 && overlay.staticMapResources[1].Size() == 0 &&
+		check(overlay.staticMapResources[0].Size() == 0 && overlay.staticMapResources[1].Size() == 0 && overlay.staticMapResources[2].Size() == 0 &&
 			overlay.animatedMapResources.Size() == 0, "every indexed cache cleared before new payload publication");
 		check(!map.staticGeometryPayloads.empty() && map.staticGeometryPayloads.size() <= 256 &&
 			!map.terrainElementPayloads.empty() && map.terrainElementPayloads.size() <= 192 &&
 			map.animatedGeometryPayloads.size() <= 48 && map.staticDiffuseTextures.size() <= 96,
 			"each real window obeys unchanged active budgets");
+		check(!map.skyGeometryPayloads.empty() && map.skyGeometryPayloads.size()<=64 &&
+			map.sceneWindowMetrics.admittedSky==map.skyGeometryPayloads.size(),"overlapping sky admitted independently of scenery slots");
 		check(map.sceneWindowMetrics.cumulativeDrops == 0, "three local windows stay within process input limits");
 		const auto outer = request.bounds.Expanded(request.guardBand);
 		bool overlaps = true, identity = true, late = false;
-		size_t staticIndex = 0, terrainIndex = 0, animatedIndex = 0;
+		size_t staticIndex = 0, terrainIndex = 0, animatedIndex = 0, skyIndex = 0;
 		for (const auto index : map.sceneWindow.Selected()) {
 			const auto& candidate = catalog.candidates[index];
 			overlaps = overlaps && candidate.bounds.Overlaps(outer);
@@ -95,6 +101,8 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 					payload.geometryFile == original.geometryFile && payload.hasBakedIdentity == original.hasBakedIdentity;
 			} else if (candidate.kind == LinuxBootstrap::SceneWindowKind::Terrain) {
 				identity = identity && map.terrainElementPayloads[terrainIndex++].originalObjectIndex == candidate.objectIndex;
+			} else if (candidate.kind == LinuxBootstrap::SceneWindowKind::Sky) {
+				identity = identity && map.skyGeometryPayloads[skyIndex++].originalObjectIndex == candidate.objectIndex;
 			} else identity = identity && map.animatedGeometryPayloads[animatedIndex++].originalObjectIndex == candidate.objectIndex;
 			if (candidate.kind != LinuxBootstrap::SceneWindowKind::Terrain) {
 				late = late || candidate.objectIndex > 2048;
@@ -109,6 +117,11 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 		};
 		bool remapped = true;
 		for (const auto& payload : map.staticGeometryPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
+		for (const auto& payload : map.skyGeometryPayloads) {
+			remapped=validTextures(payload.materialDiffuseTextureIndices) && remapped;
+			check(payload.materialDiffuseTextureIndices.size()==1 && payload.materialDiffuseTextureIndices[0]!=kLinuxHeroPreviewNoDiffuseTexture,
+				"sky original diffuse passes the shared texture admission ledger");
+		}
 		for (const auto& payload : map.terrainElementPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
 		for (const auto& payload : map.terrainElementPayloads)
 			for (const auto& faction : payload.terrainTextureIndices) remapped=validTextures(faction) && remapped;
@@ -161,7 +174,8 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 		for (const auto& payload : map.staticGeometryPayloads)
 			for (const auto& material : payload.materialReferences)
 				hasSky = hasSky || dynamic_cast<const NDb::SkyMaterial*>(material.GetPtr()) != nullptr;
-		check(!hasSky, "unported sky spheres must not occlude the hero as opaque local scenery");
+		check(!hasSky, "sky spheres never enter the ordinary opaque local scenery list");
+		if (focus.x==384) CheckLinuxSkyDraw(overlay,map,check);
 		if (firstSelection.empty()) firstSelection = map.sceneWindow.Selected();
 		else check(firstSelection != map.sceneWindow.Selected(), "distant views cannot reuse the old first scene");
 		for (auto& cache : overlay.staticMapResources)
