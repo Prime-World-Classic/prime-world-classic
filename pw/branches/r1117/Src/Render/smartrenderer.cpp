@@ -29,9 +29,8 @@ REGISTER_DEV_VAR( "supressHWI", s_supressHWI, STORAGE_NONE );
 // (49966 пар в .shd) ничего не говорит о потребляемом множестве.
 // В shipping по умолчанию выключена (per-draw hash insert), включается сборкой
 // с -DPW_RENDER_SHADER_STATS (build_client_x64_wine.sh: PW_EXTRA_DEFS).
-#if !defined(_SHIPPING) || defined(PW_RENDER_SHADER_STATS)
-  #define USE_RENDER_SHADER_STATS 1
-#endif
+// Переключатель USE_RENDER_SHADER_STATS вынесен в Render/stdafx.h — он нужен и
+// batch.cpp (счётчик уникальных sortId).
 
 #ifdef USE_RENDER_SHADER_STATS
 
@@ -52,6 +51,17 @@ namespace
   struct PairHash { size_t operator()(UINT64 _k) const { return size_t(_k ^ (_k >> 32)); } };
   hash_set<UINT64, PairHash> pairMap, pairMapTotal;
   UINT64 lastBoundPair = 0;
+  // sortId = CRC материального состояния (техника + пины + сэмплеры +
+  // рендер-состояния). Вместе с парой (VS,PS) — полный ключ пайплайна.
+  struct IdHash { size_t operator()(unsigned int _k) const { return size_t(_k); } };
+  hash_set<unsigned int, IdHash> sortMap, sortMapTotal;
+}
+
+// Вызывается из Batch::Prepare() (см. Render/renderstats.h)
+void NoteSortId( unsigned int sortId )
+{
+  sortMap.insert( sortId );
+  sortMapTotal.insert( sortId );
 }
 
 #endif // USE_RENDER_SHADER_STATS
@@ -356,9 +366,10 @@ void OnFrameStart()
   static int s_statsTick = 0;
   if ( ++s_statsTick % 300 == 0 )
   {
-    DebugTrace( "ShaderStats: pairTotal=%d pairFrame=%d vsTotal=%d vsFrame=%d psTotal=%d psFrame=%d",
+    DebugTrace( "ShaderStats: pairTotal=%d pairFrame=%d vsTotal=%d vsFrame=%d psTotal=%d psFrame=%d sortTotal=%d sortFrame=%d",
       (int)pairMapTotal.size(), (int)pairMap.size(), (int)vsMapTotal.size(),
-      (int)vsMap.size(), (int)psMapTotal.size(), (int)psMap.size() );
+      (int)vsMap.size(), (int)psMapTotal.size(), (int)psMap.size(),
+      (int)sortMapTotal.size(), (int)sortMap.size() );
   }
   g_numPSu.SetValue( (int)psMap.size() );
   g_numVSu.SetValue( (int)vsMap.size() );
@@ -369,6 +380,7 @@ void OnFrameStart()
 
   psMap.clear(); vsMap.clear();
   pairMap.clear();
+  sortMap.clear();
 #endif // USE_RENDER_SHADER_STATS
   NullLastPointers();
 }

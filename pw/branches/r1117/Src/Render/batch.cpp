@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "renderstats.h"
 #include <algorithm>
 #include "renderer.h"
 #include "batch.h"
@@ -236,6 +237,8 @@ __forceinline void Batch::Prepare() const
   else
     pMaterial->PrepareRenderer();
 
+  // учёт уникальных материальных состояний — второй член ключа пайплайна
+  NoteSortId( pMaterial->GetSortId() );
   COUNT_MAT_SWITCHES;
 }
 

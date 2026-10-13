@@ -433,6 +433,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\renderstats.h"
+				>
+			</File>
+			<File
 				RelativePath=".\specific.h"
 				>
 			</File>
