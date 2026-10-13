@@ -1937,6 +1937,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFPickupable.cpp
+  ../PF_GameLogic/PFMicroAI.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp

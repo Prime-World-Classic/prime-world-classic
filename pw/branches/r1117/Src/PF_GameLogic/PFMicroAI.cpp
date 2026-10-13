@@ -24,8 +24,6 @@ namespace
 namespace NWorld
 {
 
-void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
-
 namespace
 {
 	/** Preserve absent=false and existing boolean spellings without losing formula errors. */
@@ -43,30 +41,26 @@ namespace
 		return EvaluateUnitNumericFormula(expression.sString.c_str(), owner, target, ability);
 	}
 
-  static void AddUniqueUnit(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* unit)
-  {
-    if (!unit)
-      return;
-    for (vector<CPtr<PFBaseUnit> >::const_iterator it = units.begin(); it != units.end(); ++it)
-      if (it->GetPtr() == unit)
-        return;
-    units.push_back(unit);
-  }
+	/** A live weak pointer alone does not prove membership in the current simulation. */
+	static bool LinuxMicroRegistered(const PFBaseUnit* unit)
+	{
+		return IsUnitValid(unit) && unit->GetWorld() &&
+			unit->GetWorld()->FindLinuxUnitByObjectId(unit->GetObjectId()) == unit;
+	}
 
-  static void CollectCandidateUnits(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* owner)
-  {
-    GetLinuxBootstrapUnits(units);
-    AddUniqueUnit(units, owner);
-    if (owner)
-      AddUniqueUnit(units, owner->GetCurrentTarget().GetPtr());
-  }
+	/** Preserve original voxel traversal order and retain candidates across caller callbacks. */
+	struct LinuxMicroCandidates
+	{
+		vector<CObj<PFLogicObject> > objects;
+		void operator()(PFLogicObject& object) { objects.push_back(&object); }
+	};
 }
 
 bool PFBasicMicroAI::CheckConditions() const
 {
 	if (!GetDBBase() || !IsValid(pAbility) || !pAbility->GetDBDesc()) return false;
 	const CPtr<PFBaseUnit>& unit = pAbility->GetOwner();
-	if (!IsUnitValid(unit) || !unit->GetWorld() || pAbility->GetWorld() != unit->GetWorld()) return false;
+	if (!LinuxMicroRegistered(unit) || pAbility->GetWorld() != unit->GetWorld()) return false;
 	if (!pAbility->CanBeUsed()) return false;
 	if (pAbility->GetType() == NDb::ABILITYTYPE_PASSIVE ||
 		pAbility->GetType() == NDb::ABILITYTYPE_AUTOCASTABLE ||
@@ -89,51 +83,51 @@ bool PFBasicMicroAI::CheckConditions() const
 
 bool PFBasicMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
 {
-  if (!CheckConditions())
-    return false;
-
-  CPtr<PFBaseUnit> const& owner = pAbility->GetOwner();
-  const NDb::ESpellTarget targetType = pAbility->GetTargetType();
-  if (targetType == 0 || targetType == NDb::SPELLTARGET_SELF)
-  {
-    target = Target(owner);
-    return CheckTargetCondition(target, condition, pAbility.GetPtr());
-  }
-
-  int factionFlags = 0;
-  if (targetType & NDb::SPELLTARGET_ALLY)
-    factionFlags |= 1 << owner->GetFaction();
-  if (targetType & NDb::SPELLTARGET_ENEMY)
-    factionFlags |= owner->GetOppositeFactionFlags();
-  if (!factionFlags)
-    factionFlags = owner->GetOppositeFactionFlags();
-
-  float useRange = pAbility->GetUseRange();
-  if (useRange <= 0.0f)
-    useRange = owner->GetVisibilityRange() > 0.0f ? owner->GetVisibilityRange() : 10000.0f;
-
-  vector<CPtr<PFBaseUnit> > units;
-  CollectCandidateUnits(units, owner.GetPtr());
-  UnitMaskingPredicate predicate(factionFlags, targetType);
-  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
-  {
-    PFBaseUnit* unit = it->GetPtr();
-    if (!IsUnitValid(unit) || unit == owner.GetPtr())
-      continue;
-    if (!owner->IsTargetInRange(unit, useRange))
-      continue;
-    if (!predicate(*unit))
-      continue;
-
-    Target candidate(unit);
-    if (!CheckTargetCondition(candidate, condition, pAbility.GetPtr()))
-      continue;
-
-    target = candidate;
-    return true;
-  }
-
-  return false;
+	if (!CheckConditions()) return false;
+	const CObj<PFBaseUnit> owner = pAbility->GetOwner().GetPtr();
+	PFWorld* const world = owner->GetWorld();
+	const NDb::ESpellTarget targetType = pAbility->GetTargetType();
+	if (targetType == 0 || targetType == NDb::SPELLTARGET_SELF)
+	{
+		const Target candidate(owner.GetPtr());
+		if (!CheckTargetCondition(candidate, condition, pAbility.GetPtr()) || !LinuxMicroRegistered(owner)) return false;
+		target = candidate;
+		return true;
+	}
+	if (!(targetType & (NDb::SPELLTARGET_ENEMY | NDb::SPELLTARGET_ALLY)) || !world->GetAIWorld()) return false;
+	const float useRange = pAbility->GetUseRange();
+	if (!std::isfinite(useRange) || useRange <= 0 || owner->GetFaction() < 0 ||
+		owner->GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return false;
+	int factionFlags = 0;
+	if (targetType & NDb::SPELLTARGET_ALLY) factionFlags |= 1 << owner->GetFaction();
+	if (targetType & NDb::SPELLTARGET_ENEMY) factionFlags |= owner->GetOppositeFactionFlags();
+	const UnitMaskingPredicate predicate(factionFlags, targetType);
+	const unsigned unitMask = NDb::SPELLTARGET_HEROMALE | NDb::SPELLTARGET_HEROFEMALE |
+		NDb::SPELLTARGET_CREEP | NDb::SPELLTARGET_SIEGECREEP | NDb::SPELLTARGET_ALLNEUTRALS |
+		NDb::SPELLTARGET_FACTIONCHAMPION;
+	const unsigned objectMask = NDb::SPELLTARGET_TOWER | NDb::SPELLTARGET_MAINBUILDING |
+		NDb::SPELLTARGET_BUILDING | NDb::SPELLTARGET_TREE;
+	LinuxMicroCandidates candidates;
+	if (targetType & unitMask)
+		world->GetAIWorld()->ForAllUnitsInRange(owner->GetPosition(), useRange, candidates, predicate);
+	else if (targetType & objectMask)
+		world->GetAIWorld()->ForAllObjectsInRange(owner->GetPosition(), useRange, candidates, predicate);
+	else return false;
+	for (const auto& object : candidates.objects)
+	{
+		if (!LinuxMicroRegistered(owner)) return false;
+		PFBaseUnit* const unit = dynamic_cast<PFBaseUnit*>(object.GetPtr());
+		if (!IsUnitValid(object) || object->GetWorld() != world || !object->ringField.isLinked() ||
+			(unit && !LinuxMicroRegistered(unit))) continue;
+		const Target candidate = unit ? Target(unit) : Target(object.GetPtr());
+		if (!CheckTargetCondition(candidate, condition, pAbility.GetPtr())) continue;
+		if (!LinuxMicroRegistered(owner)) return false;
+		if (!IsUnitValid(object) || object->GetWorld() != world || !object->ringField.isLinked() ||
+			(unit && !LinuxMicroRegistered(unit))) continue;
+		target = candidate;
+		return true;
+	}
+	return false;
 }
 
 PFTargetSelectorMicroAI::PFTargetSelectorMicroAI(CreateParams const &cp) : Base(cp)
