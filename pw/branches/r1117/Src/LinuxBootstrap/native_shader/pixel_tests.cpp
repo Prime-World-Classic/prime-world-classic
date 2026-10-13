@@ -592,6 +592,8 @@ void BlendCapabilityTests(Checks& check, Host& host, const Bytes& archive) {
 	host.hiddenBlendFunctions = 0; CleanRaster();
 }
 
+#include "family_pixel_tests.inc"
+
 void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	Target target; Texture texture, white(true); Mesh mesh;
 	Result status;
@@ -865,17 +867,20 @@ void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 
 int main(int argc, char** argv) {
 	std::cout << std::unitbuf;
-	if (argc!=2 || !std::getenv("PW_BACKEND_APPROVED_XVFB")) {
+	if ((argc!=2 && (argc!=3 || std::strcmp(argv[2],"--family-only"))) || !std::getenv("PW_BACKEND_APPROVED_XVFB")) {
 		std::cerr << "run only using the parent-approved isolated wrapper\n"; return 2;
 	}
 	Checks check;
 	try {
-		const auto archive=Read(argv[1]); ProgramRef late;
+		const auto archive=Read(argv[1]); ProgramRef late; BasicFxOpacityPrograms lateFamily;
 		{
 			Host host(1); host.Open();
 			std::cout << "GL renderer=" << glGetString(GL_RENDERER) << " version=" << glGetString(GL_VERSION) << '\n';
-			Run(check,host,archive,late);
-			BlendCapabilityTests(check,host,archive);
+			if (argc == 2) {
+				Run(check,host,archive,late);
+				BlendCapabilityTests(check,host,archive);
+			}
+			FamilyTests(check,host,archive,lateFamily);
 		}
 		check.Test(glXGetCurrentContext()==nullptr,"host GL context destroyed before late reference release");
 		{
@@ -888,13 +893,17 @@ int main(int argc, char** argv) {
 				check.Good(backend->LoadBasicFxPair0({archive.data(),archive.size()},program),"recreated host loads real pair");
 				Registers(*backend); target.Clear();
 				check.Test(backend->Draw(late,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context ticket rejected");
+				for (const auto& ticket : FamilyTickets(lateFamily))
+					check.Test(backend->Draw(ticket,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context family ticket rejected");
 				check.Good(backend->Draw(program,mesh.Draw(texture.name)),"recreated host draws");
 				PixelIs(check,32,32,{255,0,0,255},"recreated host exact pixel");
 				check.Good(backend->Shutdown(),"recreated host shutdown");
 				check.Test(backend->GetDiagnostics().liveBytes==0,"recreated host ownership balanced");
 			}
 		}
-		std::thread release([reference=std::move(late)]() mutable { reference.Reset(); }); release.join();
+		std::thread release([reference=std::move(late),family=std::move(lateFamily)]() mutable {
+			reference.Reset(); family = {};
+		}); release.join();
 		check.Test(true,"last CPU reference release without context/on other thread");
 	} catch (const std::exception& e) { check.Test(false,std::string("exception: ")+e.what()); }
 	return check.Finish();

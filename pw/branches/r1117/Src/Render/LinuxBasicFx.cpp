@@ -19,17 +19,19 @@ namespace Render { namespace LinuxBasicFx {
 namespace {
 uint64_t lifetime = 0;
 std::unique_ptr<pwshader::ShaderBackend> backend;
-pwshader::ProgramRef program;
+pwshader::BasicFxOpacityPrograms programs;
 Statistics statistics;
 bool selected = false, attempted = false;
 bool transparentDrawing = false;
 NDb::BlendMode selectedBlend = NDb::BLENDMODE_OFF;
 bool selectedRasterValid = false;
+bool selectedOpacityValid = false;
+NDb::OpacityAndEmissiveModePin selectedOpacity = NDb::OPACITYANDEMISSIVEMODEPIN_SIMPLE;
 pwshader::AlphaTest alphaTest = pwshader::AlphaTest::Disabled;
 pwshader::CullMode cullMode = pwshader::CullMode::Back;
 int alphaReference = 127;
 unsigned int selectedTexture = 0;
-pwshader::Float4 uv{}, multiply{}, add{};
+pwshader::Float4 uv{}, multiply{}, add{}, opacityAndOthers{};
 
 pwshader::ContextKey Current(void*) noexcept {
 	return {reinterpret_cast<uintptr_t>(glXGetCurrentContext()), lifetime};
@@ -49,9 +51,9 @@ const NDb::BasicFXMaterial* AdmittedMaterial(const NDb::Material* material) {
 	const auto& sampler = m.DiffuseMap.samplerState;
 	if (m.SkeletalMeshPinValue != NDb::BOOLEANPIN_NONE ||
 		m.MultiplyVertexColorPinValue != NDb::BOOLEANPIN_NONE ||
-		m.OpacityAndEmissiveModePinValue != NDb::OPACITYANDEMISSIVEMODEPIN_SIMPLE ||
+		m.OpacityAndEmissiveModePinValue == NDb::OPACITYANDEMISSIVEMODEPIN_EMISSIVE ||
 		m.DistortionPinValue != NDb::DISTORTIONPIN_DISTORTNONE || m.ignoreRenderState || m.isBlendModeOverrided ||
-		m.opacity.IsAnimated() || m.opacity.GetValue(0) != 1 || m.masterOpacity != 1 ||
+		m.opacity.IsAnimated() ||
 		m.DiffuseMul.IsAnimated() || m.DiffuseAdd.IsAnimated() || m.uOffset.IsAnimated() || m.vOffset.IsAnimated() ||
 		sampler.addressU != NDb::TEXTUREADDRESSTYPE_WRAP || sampler.addressV != NDb::TEXTUREADDRESSTYPE_WRAP ||
 		sampler.minFilter != NDb::MINFILTERTYPE_LINEAR || sampler.magFilter != NDb::MAGFILTERTYPE_LINEAR) return nullptr;
@@ -59,7 +61,7 @@ const NDb::BasicFXMaterial* AdmittedMaterial(const NDb::Material* material) {
 	return &m;
 }
 bool Ready() {
-	if (!program.Empty()) return true;
+	if (!programs.simple.Empty()) return true;
 	if (attempted) return false;
 	attempted = true;
 	pwshader::Result status;
@@ -72,7 +74,7 @@ bool Ready() {
 	std::vector<unsigned char> bytes(stream->GetSize());
 	if (stream->Read(bytes.data(), bytes.size()) != static_cast<int>(bytes.size()))
 		return Reject("short BasicFX shader archive read");
-	status = backend->LoadBasicFxPair0({bytes.data(), bytes.size()}, program);
+	status = backend->LoadBasicFxOpacityFamily({bytes.data(), bytes.size()}, programs);
 	if (!status) return Reject(status.message.c_str());
 	++statistics.loads;
 	return true;
@@ -99,11 +101,11 @@ bool Shutdown() {
 			static_cast<unsigned long>(backend->GetDiagnostics().liveBytes));
 		backend.reset();
 	}
-	program.Reset();
+	programs = {};
 	attempted = false;
 	return true;
 }
-void ClearSelection() { selected = false; selectedRasterValid = false; selectedTexture = 0; }
+void ClearSelection() { selected = false; selectedRasterValid = false; selectedOpacityValid = false; selectedTexture = 0; }
 bool IsSelected() { return selected; }
 Statistics GetStatistics() { return statistics; }
 bool IsTransparentMaterial(const NDb::Material* material) {
@@ -120,6 +122,18 @@ void Select(const NDb::Material* material, const Texture* texture) {
 	const auto& m = *admitted;
 	selected = true;
 	selectedBlend = m.renderState.blendMode;
+	// Authored opacity pins do not imply runtime ModifyOpacity or a different blend state.
+	selectedOpacity = m.OpacityAndEmissiveModePinValue;
+	const float opacity = m.opacity.GetValue(0);
+	selectedOpacityValid = std::isfinite(opacity) && std::isfinite(m.masterOpacity);
+	opacityAndOthers = {};
+	if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_ADDITIVEOPACITY ||
+		selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY) {
+		const double product = static_cast<double>(opacity) * m.masterOpacity;
+		selectedOpacityValid = selectedOpacityValid && std::isfinite(product) &&
+			std::fabs(product) <= std::numeric_limits<float>::max();
+		if (selectedOpacityValid) opacityAndOthers[0] = static_cast<float>(product);
+	} else if (selectedOpacity != NDb::OPACITYANDEMISSIVEMODEPIN_SIMPLE) selectedOpacityValid = false;
 	// Malformed states stay selected so Draw rejects instead of using the old preview.
 	selectedRasterValid =
 		(m.renderState.alphaTest == NDb::ONOFFSTATE_OFF || m.renderState.alphaTest == NDb::ONOFFSTATE_ON) &&
@@ -139,10 +153,11 @@ void Select(const NDb::Material* material, const Texture* texture) {
 bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::PreviewTransform& preview) {
 	if (!selected || !world) return Reject("missing selected material or WORLD");
 	if (!selectedRasterValid) return Reject("invalid selected alpha-test or culling state");
+	if (!selectedOpacityValid) return Reject("invalid selected constant opacity or permutation");
 	if (selectedBlend != NDb::BLENDMODE_OFF && !transparentDrawing)
 		return Reject("transparent material outside the retained view pass");
 	if (GetRuntimePins().DoDepthOutValue != NDb::BOOLPIN_FALSE)
-		return Reject("BasicFX pair zero cannot render depth-output permutation");
+		return Reject("BasicFX opacity family cannot render depth-output permutation");
 	std::array<float, 16> modelView{}, projection{};
 	glGetFloatv(GL_MODELVIEW_MATRIX, modelView.data());
 	glGetFloatv(GL_PROJECTION_MATRIX, projection.data());
@@ -153,10 +168,14 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 	if (!pwshader::BuildBasicFxTransformRegisters(rows, modelView, projection, preview, registers))
 		return Reject("invalid WORLD or preview camera");
 	if (!Ready()) return false;
+	const pwshader::ProgramRef* program = &programs.simple;
+	if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_ADDITIVEOPACITY) program = &programs.additiveOpacity;
+	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY) program = &programs.blendOpacity;
 	for (const auto& result : {
 		backend->SetFloat4(pwshader::Stage::Vertex, 0, {registers.world.data(), 4}),
 		backend->SetFloat4(pwshader::Stage::Vertex, 8, {registers.viewProjection.data(), 4}),
 		backend->SetFloat4(pwshader::Stage::Vertex, 20, {&uv, 1}),
+		backend->SetFloat4(pwshader::Stage::Pixel, 6, {&opacityAndOthers, 1}),
 		backend->SetFloat4(pwshader::Stage::Pixel, 20, {&multiply, 1}),
 		backend->SetFloat4(pwshader::Stage::Pixel, 21, {&add, 1})})
 		if (!result) return Reject(result.message.c_str());
@@ -180,7 +199,7 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 	}
 	// Use the tested native preview winding, without a per-object determinant flip.
 	draw.frontFace = pwshader::Winding::CounterClockwise;
-	const auto result = backend->Draw(program, draw);
+	const auto result = backend->Draw(*program, draw);
 	if (!result) return Reject(result.message.c_str());
 	++statistics.draws;
 	return true;

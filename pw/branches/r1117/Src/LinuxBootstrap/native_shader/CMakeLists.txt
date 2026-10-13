@@ -24,3 +24,10 @@ add_executable(PrimeWorldLinuxShaderPixelProbe pixel_tests.cpp)
 target_compile_features(PrimeWorldLinuxShaderPixelProbe PRIVATE cxx_std_17)
 target_link_libraries(PrimeWorldLinuxShaderPixelProbe PRIVATE PrimeWorldLinuxShaderBackend
 	PrimeWorldLinuxMojoShader OpenGL::GL ${X11_LIBRARIES} Threads::Threads)
+# Pure directory/reflection checks compile the implementation without initializing GL.
+add_executable(PrimeWorldLinuxShaderFamilyCpuProbe family_cpu_tests.cpp)
+target_compile_features(PrimeWorldLinuxShaderFamilyCpuProbe PRIVATE cxx_std_17)
+target_compile_options(PrimeWorldLinuxShaderFamilyCpuProbe PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(PrimeWorldLinuxShaderFamilyCpuProbe PRIVATE PrimeWorldLinuxMojoShader OpenGL::GL Threads::Threads)
+add_test(NAME linux_shader_family_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProbe
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicFXMaterial.shd)

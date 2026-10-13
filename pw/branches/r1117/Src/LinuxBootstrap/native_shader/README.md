@@ -1,6 +1,6 @@
 # Native BasicFX Shader Path
 
-The Linux renderer translates the shipped `BasicFXMaterial.shd` pair zero with
+The Linux renderer translates the shipped `BasicFXMaterial.shd` pairs 0, 12 and 24 with
 [MojoShader](https://github.com/icculus/mojoshader), then draws raw engine vertex
 and index buffers through `StaticMesh -> Batch -> SmartRenderer`. Windows still
 uses its existing DirectX renderer. No Wine or replacement shader is involved.
@@ -13,15 +13,23 @@ license and two allocation-failure fixes.
   The host begins a monotonically identified context lifetime and releases the
   shader backend before GLX destruction. A cleanup failure is not reported as
   successful shutdown.
-- BasicFX with optional alpha testing and backface culling, all four
-  authored pins and runtime depth-output pin at zero, constant diffuse/UV values,
-  opacity/masterOpacity one, and linear repeat sampling. Alpha testing compares
+- BasicFX Simple, AdditiveOpacity and BlendOpacity with optional alpha testing
+  and backface culling; skin, vertex-color, distortion and runtime depth-output
+  pins at zero; constant diffuse/UV/opacity values and linear repeat sampling.
+  AdditiveOpacity scales final source RGB and BlendOpacity scales final source
+  alpha by `opacity*masterOpacity`; neither chooses the fixed-function blend mode.
+  Both operands must be finite, and opacity-program products must fit a float.
+  Finite values outside 0..1 are not clamped. Simple ignores the product, including
+  a finite zero opacity: authored values do not imply a runtime `ModifyOpacity`
+  call, a different pin or a blend-state override. Alpha testing compares
   final shader alpha using `>= alphaTestRef / 255`, after texture/multiply/add;
-  discarded fragments write neither color nor depth. Culling-off is two-sided,
+  comparison precision follows the compatibility alpha test, including permitted
+  fixed-point conversion ([OpenGL 3.3, section 4.1.4](https://registry.khronos.org/OpenGL/specs/gl/glspec33.compatibility.pdf)).
+  Discarded fragments write neither color nor depth. Culling-off is two-sided,
   without automatic winding changes for reflected WORLD transforms.
   Unsupported materials keep the existing preview path. Invalid draws of an
   admitted material are skipped, never replaced with stale shader constants.
-  Malformed alpha/culling/blend enums and references outside 0..255 also fail
+  Malformed opacity/alpha/culling/blend enums and references outside 0..255 also fail
   closed, even when alpha testing is off.
 - Original Off, LerpByAlpha, PremultipliedLerp, AddColor, AddColorMulAlpha,
   MulColor and MulInvColor factors. Non-Off modes preserve destination alpha and
@@ -35,7 +43,8 @@ license and two allocation-failure fixes.
   indices, stream offsets, strides and signed base vertices. WORLD rows stay
   separate from preview/camera registers; vertices are not transformed twice.
 - VS c0-3 WORLD, c8-11 ViewProjection and c20 UV; PS c20 diffuse multiplier and
-  c21 addition. UV includes the original `vOffset + 1`. Depth conversion retains
+  c21 addition, plus c6 for the two opacity programs. UV includes the original
+  `vOffset + 1`. Depth conversion retains
   the native camera's clip range and perspective w.
 - Private VAO/buffers/program with borrowed texture ownership and restored host
   state. Only draw-buffer zero may be active: GLSL 1.20 `gl_FragColor` otherwise
@@ -47,6 +56,13 @@ Preview materials initialize their static shader identity and use the existing
 material CRC. This forces preparation for each queued batch even when sort IDs
 match. Sorted and unsorted queue tests cover distinct colours and a transition
 from an unsupported material back to a supported one.
+
+The renderer loads a fixed three-program family once per context. Ticket switches
+do not compile or link shaders. A family reload either publishes all three tickets
+or none; failed owning-context reloads invalidate the old tickets and register
+initialization. The standalone `LoadBasicFxPair0` API still compiles only pair zero
+and retains its original reflection/constant contract. The family API validates
+the complete reflected interface of all three original archive selections.
 
 ## Transparent Scene Pass
 
@@ -70,20 +86,23 @@ an early underlay; unsupported materials, particles and skeletal transparency do
 not join this pass.
 
 This is not a general permutation renderer. Skinning, animated
-material constants, lighting/shadows, instancing and full texture mip chains are
+material constants, runtime opacity/blend overrides, emissive, distortion,
+vertex colors, lighting/shadows, instancing and full texture mip chains are
 not implemented here. Texture sampling deliberately uses the existing native
 level-zero upload. Source reflection/bounds checks are not a signature or a
 sandbox for arbitrary replacement shader archives.
 
 ## Verification
 
-Build with the normal LinuxBootstrap CMake configuration. CPU transform tests
-are part of CTest; isolated GL tests are explicit so they cannot race shared
-client/HUD captures:
+Build with the normal LinuxBootstrap CMake configuration. CPU transform and family
+directory/reflection tests are part of CTest; isolated GL tests are explicit so
+they cannot race shared client/HUD captures. The CPU probe rejects malformed or
+different-layout archives before parsing or applying fixture-specific mutations:
 
 ```sh
-cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxShaderTransformProbe PrimeWorldLinuxShaderPixelProbe
+cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxShaderTransformProbe PrimeWorldLinuxShaderFamilyCpuProbe PrimeWorldLinuxShaderPixelProbe
 /tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderTransformProbe
+ctest --test-dir /tmp/primeworld-linux-bootstrap -R linux_shader_family_cpu --output-on-failure
 xvfb-run -a env PW_BACKEND_APPROVED_XVFB=1 LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
   /tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderPixelProbe \
   pw/branches/r1117/Data/Shaders/UberShaders/BasicFXMaterial.shd
@@ -121,3 +140,14 @@ flush and the actual map/character payload hooks. Defining `BACKEND_NEGATIVE_DRA
 `shader_backend.cpp` is a test-only no-draw control that must fail the pixel
 suite; never enable it in a deliverable client. Sanitizer evidence and exact
 checkpoint results are recorded in [the port plan](../LINUX_PORT_PLAN.md).
+
+Opacity regressions alternate all three programs and separate source RGB scaling
+from alpha scaling, final-alpha thresholds, independently authored blend modes,
+non-unit master opacity, invalid products/pins, runtime depth-output rejection
+and same-family queued materials with distinct constants. Animated opacity and
+emissive remain explicitly unsupported. The Flat03 fixture resolves the shipped
+mesh's material-slot map and draws only its original BlendOpacity 1.1 slot with
+its own texture; it does not claim support for the sibling BasicMaterial slot or
+attached effects. When a capture path is supplied, `-opacity-flat03.png` records
+that slot alone. Family tests also cover partial-load cleanup, legacy/family
+replacement, missing registers and actual load-time versus draw-time GL calls.

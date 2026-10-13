@@ -1658,6 +1658,7 @@ find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
 add_subdirectory(native_shader)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxShaderFamilyCpuProbe)
 set_source_files_properties(../Render/LinuxBasicFx.cpp PROPERTIES
 	COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP")
 foreach(target PrimeWorldLinuxClient PrimeWorldLinuxClientRuntimeProbe)

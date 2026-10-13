@@ -4,6 +4,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(LinuxWindowOverlay*, const LinuxS
 	const Render::SkeletonWrapper*, LinuxRendererMaterialSlotStats*, size_t*, size_t*, const pwshader::PreviewTransform&);
 
 #include "transparent_engine_probe.inc"
+#include "opacity_engine_probe.inc"
 
 /** Exercise authored geometry/texture through StaticMesh -> Batch -> SmartRenderer. */
 bool RunLinuxBasicFxEngineProbe(const std::string& capturePath)
@@ -227,6 +228,7 @@ bool RunLinuxBasicFxEngineProbe(const std::string& capturePath)
 		passed = good && passed;
 	}
 	passed = RunLinuxBasicFxTransparentProbe(*authored, quad, *component) && passed;
+	passed = RunLinuxBasicFxOpacityProbe(*authored, quad, capturePath) && passed;
 	Render::LinuxBasicFx::Select(authored, nullptr);
 	for (int sorted = 0; sorted < 2; ++sorted)
 		for (int unsupported = 0; unsupported < 2; ++unsupported)

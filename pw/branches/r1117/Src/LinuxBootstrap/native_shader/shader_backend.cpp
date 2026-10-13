@@ -19,6 +19,8 @@ Result Fail(Code code, const char* message) { return {code, message}; }
 using Bytes = std::vector<unsigned char>;
 constexpr unsigned RequiredVS[] = {0,1,2,3,8,9,10,11,20};
 constexpr unsigned RequiredPS[] = {20,21};
+constexpr unsigned RequiredOpacityPS[] = {6,20,21};
+constexpr size_t FamilyIndices[] = {0,12,24};
 std::atomic<uint64_t> NextGeneration{1};
 thread_local std::vector<ContextKey> Owners;
 
@@ -202,8 +204,9 @@ uint32_t Read32(const Bytes& b, size_t at) {
 		(uint32_t(b[at + 2]) << 16) | (uint32_t(b[at + 3]) << 24);
 }
 struct Span { size_t offset, size; };
+using FamilySpans = std::array<std::array<Span, 2>, 3>;
 
-Result Directory(const Bytes& b, Span (&selected)[2]) {
+Result Directory(const Bytes& b, FamilySpans& selected) {
 	if (b.size() < 4) return Fail(Code::InvalidInput, "short archive header");
 	const size_t pairs = Read32(b, 0);
 	if (pairs != 96 || pairs > (b.size() - 4) / 8)
@@ -224,28 +227,44 @@ Result Directory(const Bytes& b, Span (&selected)[2]) {
 		if (length < 8 || length > 1024 * 1024 || (length & 3) ||
 			Read32(b, o) != (i % 2 ? 0xffff0300U : 0xfffe0300U) || Read32(b, o + length - 4) != 0x0000ffffU)
 			return Fail(Code::InvalidInput, "invalid shader envelope");
-		if (i < 2) selected[i] = {o, length};
+		for (size_t slot = 0; slot < std::size(FamilyIndices); ++slot)
+			if (i / 2 == FamilyIndices[slot]) selected[slot][i % 2] = {o, length};
 	}
 	return {};
 }
 
-bool ExactReflection(const MOJOSHADER_parseData* p, bool vertex) {
+bool ExactReflection(const MOJOSHADER_parseData* p, bool vertex, bool opacity = false) {
 	if (!p || p->error_count || p->major_ver != 3 || p->minor_ver || p->preshader ||
 		p->shader_type != (vertex ? MOJOSHADER_TYPE_VERTEX : MOJOSHADER_TYPE_PIXEL)) return false;
-	const unsigned* registers = vertex ? RequiredVS : RequiredPS;
-	const size_t count = vertex ? std::size(RequiredVS) : std::size(RequiredPS);
-	if (p->uniform_count != int(count)) return false;
+	const unsigned* registers = vertex ? RequiredVS : opacity ? RequiredOpacityPS : RequiredPS;
+	const size_t count = vertex ? std::size(RequiredVS) : opacity ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
+	if (p->uniform_count != int(count) || !p->uniforms) return false;
 	for (size_t i = 0; i < count; ++i) {
 		const auto& u = p->uniforms[i];
 		if (u.type != MOJOSHADER_UNIFORM_FLOAT || u.array_count || u.constant || u.index != int(registers[i])) return false;
 	}
-	if (p->attribute_count != (vertex ? 2 : 1) || p->sampler_count != (vertex ? 0 : 1)) return false;
+	if (p->attribute_count != (vertex ? 2 : 1) || !p->attributes || p->sampler_count != (vertex ? 0 : 1)) return false;
 	if (vertex) {
 		return p->attributes[0].usage == MOJOSHADER_USAGE_POSITION && p->attributes[0].index == 0 &&
 			p->attributes[1].usage == MOJOSHADER_USAGE_TEXCOORD && p->attributes[1].index == 0;
 	}
-	return p->attributes[0].usage == MOJOSHADER_USAGE_TEXCOORD && p->attributes[0].index == 0 &&
+	return p->samplers && p->attributes[0].usage == MOJOSHADER_USAGE_TEXCOORD && p->attributes[0].index == 0 &&
 		p->samplers[0].index == 0 && p->samplers[0].type == MOJOSHADER_SAMPLER_2D && !p->samplers[0].texbem;
+}
+
+/** Family admission checks the complete selected interface, including shader-owned constants. */
+bool ExactFamilyReflection(const MOJOSHADER_parseData* p, bool vertex, size_t slot) {
+	if (slot >= std::size(FamilyIndices) || !ExactReflection(p, vertex, slot != 0) ||
+		p->output_count != (vertex ? 2 : 1) || !p->outputs) return false;
+	if (vertex) {
+		if (p->constant_count != 1 || !p->constants) return false;
+		const auto& c = p->constants[0];
+		return p->outputs[0].usage == MOJOSHADER_USAGE_POSITION && p->outputs[0].index == 0 &&
+			p->outputs[1].usage == MOJOSHADER_USAGE_TEXCOORD && p->outputs[1].index == 0 &&
+			c.type == MOJOSHADER_UNIFORM_FLOAT && c.index == 4 &&
+			c.value.f[0] == 1 && c.value.f[1] == 0 && c.value.f[2] == 0 && c.value.f[3] == 0;
+	}
+	return p->constant_count == 0 && p->outputs[0].usage == MOJOSHADER_USAGE_COLOR && p->outputs[0].index == 0;
 }
 }
 
@@ -258,8 +277,9 @@ struct ShaderBackend::Impl {
 	IndexedBlendFunctions blend;
 	MOJOSHADER_glContext* context = nullptr;
 	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0;
-	bool registered = false, closed = false, ready = false;
-	Pair pair;
+	bool registered = false, closed = false;
+	unsigned activeSlots = 0;
+	std::array<Pair, 3> pairs{};
 	Bytes archive;
 	std::array<Float4, 256> vs{};
 	std::array<Float4, 224> ps{};
@@ -325,41 +345,71 @@ ShaderBackend::~ShaderBackend() {
 
 Result ShaderBackend::LoadBasicFxPair0(ByteView source, ProgramRef& output) {
 	output.Reset();
+	std::array<ProgramRef, 3> programs;
+	const auto status = LoadPrograms(source, programs, false);
+	output = std::move(programs[0]);
+	return status;
+}
+
+Result ShaderBackend::LoadBasicFxOpacityFamily(ByteView source, BasicFxOpacityPrograms& output) {
+	output = {};
+	std::array<ProgramRef, 3> programs;
+	const auto status = LoadPrograms(source, programs, true);
+	output = {std::move(programs[0]), std::move(programs[1]), std::move(programs[2])};
+	return status;
+}
+
+/** Stage every requested pair and ticket before committing the new load serial. */
+Result ShaderBackend::LoadPrograms(ByteView source, std::array<ProgramRef, 3>& output, bool family) {
+	output = {};
 	auto& p = *impl_;
 	auto status = p.Check();
 	if (!status) return status;
-	p.ready = false;
+	p.activeSlots = 0;
 	p.InvalidateRegisters();
 	if (!source.data || source.size < 4 || source.size > p.budget.limits.archiveBytes || source.size > 4 * 1024 * 1024)
 		return Fail(Code::InvalidInput, "archive view out of bounds");
 	try {
 		const auto* begin = static_cast<const unsigned char*>(source.data);
 		Bytes archive(begin, begin + source.size);
-		Span spans[2]{};
+		FamilySpans spans{};
 		status = Directory(archive, spans);
 		if (!status) return status;
-		auto ticket = std::make_shared<ProgramRef::Ticket>(ProgramRef::Ticket{p.generation, p.serial + 1});
+		const size_t count = family ? p.pairs.size() : 1;
+		std::array<ProgramRef, 3> programs;
+		for (size_t slot = 0; slot < count; ++slot)
+			programs[slot].ticket_ = std::make_shared<ProgramRef::Ticket>(
+				ProgramRef::Ticket{p.generation, p.serial + 1, static_cast<uint8_t>(slot)});
 		GlState state;
 		MojoScope scope(p.context, p.vao);
-		Pair candidate;
-		struct Cleanup { Pair& pair; ~Cleanup() { pair.Clear(); } } cleanup{candidate};
-		candidate.vs = MOJOSHADER_glCompileShader(archive.data() + spans[0].offset, unsigned(spans[0].size), nullptr, 0, nullptr, 0);
-		if (!candidate.vs) return Fail(Code::ShaderFailure, "vertex compilation failed");
-		candidate.ps = MOJOSHADER_glCompileShader(archive.data() + spans[1].offset, unsigned(spans[1].size), nullptr, 0, nullptr, 0);
-		if (!candidate.ps) return Fail(Code::ShaderFailure, "pixel compilation failed");
-		if (!ExactReflection(MOJOSHADER_glGetShaderParseData(candidate.vs), true) ||
-			!ExactReflection(MOJOSHADER_glGetShaderParseData(candidate.ps), false))
-			return Fail(Code::Unsupported, "reflection differs from selected BasicFX pair0");
-		candidate.linked = MOJOSHADER_glLinkProgram(candidate.vs, candidate.ps);
-		if (!candidate.linked) return Fail(Code::ShaderFailure, "program link failed");
+		std::array<Pair, 3> candidates{};
+		struct Cleanup {
+			std::array<Pair, 3>& pairs;
+			~Cleanup() { for (auto& pair : pairs) pair.Clear(); }
+		} cleanup{candidates};
+		for (size_t slot = 0; slot < count; ++slot) {
+			auto& candidate = candidates[slot];
+			const auto& stage = spans[slot];
+			candidate.vs = MOJOSHADER_glCompileShader(archive.data() + stage[0].offset, unsigned(stage[0].size), nullptr, 0, nullptr, 0);
+			if (!candidate.vs) return Fail(Code::ShaderFailure, "vertex compilation failed");
+			candidate.ps = MOJOSHADER_glCompileShader(archive.data() + stage[1].offset, unsigned(stage[1].size), nullptr, 0, nullptr, 0);
+			if (!candidate.ps) return Fail(Code::ShaderFailure, "pixel compilation failed");
+			const auto* vs = MOJOSHADER_glGetShaderParseData(candidate.vs);
+			const auto* ps = MOJOSHADER_glGetShaderParseData(candidate.ps);
+			if (family ? (!ExactFamilyReflection(vs, true, slot) || !ExactFamilyReflection(ps, false, slot)) :
+				(!ExactReflection(vs, true) || !ExactReflection(ps, false)))
+				return Fail(Code::Unsupported, "reflection differs from selected BasicFX program");
+			candidate.linked = MOJOSHADER_glLinkProgram(candidate.vs, candidate.ps);
+			if (!candidate.linked) return Fail(Code::ShaderFailure, "program link failed");
+		}
 		if (glGetError() != GL_NO_ERROR) return Fail(Code::DriverFailure, "shader creation GL error");
-		p.pair.Clear();
-		p.pair = candidate;
-		candidate = {};
+		for (auto& pair : p.pairs) pair.Clear();
+		p.pairs = candidates;
+		candidates = {};
 		p.archive = std::move(archive);
 		++p.serial;
-		output.ticket_ = std::move(ticket);
-		p.ready = true;
+		output = std::move(programs);
+		p.activeSlots = family ? 7 : 1;
 		return {};
 	} catch (const std::bad_alloc&) { return Fail(Code::AllocationFailure, "archive/reference allocation failed"); }
 }
@@ -390,10 +440,14 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 	auto& p = *impl_;
 	auto status = p.Check();
 	if (!status) return status;
-	if (!p.ready || !reference.ticket_ || reference.ticket_->backend != p.generation || reference.ticket_->serial != p.serial)
+	if (!reference.ticket_ || reference.ticket_->backend != p.generation || reference.ticket_->serial != p.serial ||
+		reference.ticket_->slot >= p.pairs.size() || !(p.activeSlots & (1u << reference.ticket_->slot)))
 		return Fail(Code::InvalidReference, "empty, stale, foreign or failed-load program");
+	const size_t slot = reference.ticket_->slot;
+	const unsigned* requiredPS = slot ? RequiredOpacityPS : RequiredPS;
+	const size_t psCount = slot ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
 	for (unsigned i : RequiredVS) if (!p.vsInit[i]) return Fail(Code::UninitializedRegisters, "required VS register missing");
-	for (unsigned i : RequiredPS) if (!p.psInit[i]) return Fail(Code::UninitializedRegisters, "required PS register missing");
+	for (size_t i = 0; i < psCount; ++i) if (!p.psInit[requiredPS[i]]) return Fail(Code::UninitializedRegisters, "required PS register missing");
 	const size_t indexBytes = d.indexType == IndexType::UInt16 ? 2 : 4;
 	if ((d.indexType != IndexType::UInt16 && d.indexType != IndexType::UInt32) ||
 		!d.vertices.data || !d.indexData.data || !d.stride || d.stride > size_t(std::numeric_limits<GLsizei>::max()) ||
@@ -473,9 +527,9 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(d.vertices.size), d.vertices.data, GL_STREAM_DRAW);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p.indexBuffer);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(indices.size() * sizeof(uint32_t)), indices.data(), GL_STREAM_DRAW);
-		MOJOSHADER_glBindProgram(p.pair.linked);
+		MOJOSHADER_glBindProgram(p.pairs[slot].linked);
 		for (unsigned i : RequiredVS) MOJOSHADER_glSetVertexShaderUniformF(i, p.vs[i].data(), 1);
-		for (unsigned i : RequiredPS) MOJOSHADER_glSetPixelShaderUniformF(i, p.ps[i].data(), 1);
+		for (size_t i = 0; i < psCount; ++i) MOJOSHADER_glSetPixelShaderUniformF(requiredPS[i], p.ps[requiredPS[i]].data(), 1);
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_POSITION, 0, 3, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.positionOffset));
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_TEXCOORD, 0, 2, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
@@ -522,7 +576,7 @@ Result ShaderBackend::Shutdown() {
 		MOJOSHADER_glMakeContextCurrent(p.context);
 		glBindVertexArray(p.vao);
 		MOJOSHADER_glBindProgram(nullptr);
-		p.pair.Clear();
+		for (auto& pair : p.pairs) pair.Clear();
 		MOJOSHADER_glDestroyContext(p.context);
 		MOJOSHADER_glMakeContextCurrent(nullptr);
 		p.context = nullptr;
@@ -531,7 +585,7 @@ Result ShaderBackend::Shutdown() {
 	if (p.indexBuffer) glDeleteBuffers(1, &p.indexBuffer);
 	if (p.vao) glDeleteVertexArrays(1, &p.vao);
 	p.vertexBuffer = p.indexBuffer = p.vao = 0;
-	p.ready = false; p.closed = true;
+	p.activeSlots = 0; p.closed = true;
 	p.archive.clear();
 	if (p.registered) {
 		Owners.erase(std::remove(Owners.begin(), Owners.end(), p.key), Owners.end());

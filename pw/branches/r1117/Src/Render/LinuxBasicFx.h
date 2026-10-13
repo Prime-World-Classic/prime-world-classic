@@ -18,7 +18,10 @@ struct Statistics {
 bool BeginContext();
 bool Shutdown();
 /** Batch selection is cleared even for unsupported/null materials. No pointer is retained.
- * Pair-zero materials support byte GEQUAL alpha testing and optional backface culling.
+ * Constant Simple/AdditiveOpacity/BlendOpacity materials retain authored blend/alpha state.
+ * Simple ignores opacity; the other programs consume finite opacity*masterOpacity in PS c6.
+ * No animated constants, emissive, skin, vertex-color, distortion or runtime fade overrides.
+ * Family materials support byte GEQUAL alpha testing and optional backface culling.
  * Non-Off blend modes require the retained transparent pass and preserve alpha/depth.
  * Malformed admitted states remain selected but cannot draw or fall back to the old preview.
  */

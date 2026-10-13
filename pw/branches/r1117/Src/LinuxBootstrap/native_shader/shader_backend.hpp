@@ -61,9 +61,16 @@ public:
 	void Reset() noexcept { ticket_.reset(); }
 	bool Empty() const noexcept { return !ticket_; }
 private:
-	struct Ticket { uint64_t backend; uint64_t serial; };
+	struct Ticket { uint64_t backend; uint64_t serial; uint8_t slot; };
 	std::shared_ptr<const Ticket> ticket_;
 	friend class ShaderBackend;
+};
+
+/** CPU-only tickets for the three supported constant BasicFX opacity programs. */
+struct BasicFxOpacityPrograms {
+	ProgramRef simple;
+	ProgramRef additiveOpacity;
+	ProgramRef blendOpacity;
 };
 
 /** Borrowed buffers remain valid through Draw. Offsets/stride are in bytes; indices in elements.
@@ -90,7 +97,7 @@ struct IndexedDraw {
 	BlendMode blendMode = BlendMode::Off;
 };
 
-/** Render-thread-only, noncopyable owner for one selected BasicFX pair.
+/** Render-thread-only, noncopyable owner for pair zero or the fixed BasicFX opacity family.
  * Requires OpenGL 3.3 compatibility, and exclusive MojoShader use on its host context.
  * Call Shutdown successfully before the host destroys its context. The destructor attempts
  * Shutdown, then terminates on a lifetime-contract violation rather than pretending cleanup.
@@ -102,8 +109,15 @@ public:
 	ShaderBackend(const ShaderBackend&) = delete;
 	ShaderBackend& operator=(const ShaderBackend&) = delete;
 
-	/** Clears output even on failure; failed reload prevents old tickets from drawing. */
+	/** Clears output even on failure; owning-context reload invalidates all prior tickets.
+	 * Retains pair-zero-only compilation, reflection and register requirements.
+	 */
 	Result LoadBasicFxPair0(ByteView archive, ProgramRef& output);
+	/** Clears output on every call; publishes all three tickets only on success.
+	 * An owning-context attempt invalidates the previous set even on failure.
+	 * Wrong-context/thread calls leave backend state unchanged.
+	 */
+	Result LoadBasicFxOpacityFamily(ByteView archive, BasicFxOpacityPrograms& output);
 	/** Rejected write invalidates all required initialization bits; reupload the full required set. */
 	Result SetFloat4(Stage stage, uint32_t firstRegister, Float4View values);
 	Result Draw(const ProgramRef& program, const IndexedDraw& draw);
@@ -112,6 +126,7 @@ public:
 	Diagnostics GetDiagnostics() const;
 private:
 	struct Impl;
+	Result LoadPrograms(ByteView archive, std::array<ProgramRef, 3>& output, bool family);
 	explicit ShaderBackend(std::unique_ptr<Impl> impl);
 	std::unique_ptr<Impl> impl_;
 };
