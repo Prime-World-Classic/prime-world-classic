@@ -60,8 +60,10 @@
 		// не рисует вовсе). Генератор: pw_art/UI/Voice/gen_voice_icons.py (64x64 DDS).
 		private static const ICON_PATH:String = "/UI/Styles/Icons/Voice/";
 		private static const ICON_TEX:Number = 64;
-		// Кнопка под полосками в 2 раза крупнее базового размера.
-		private static const BUTTON_SCALE:Number = 2;
+		// Кнопка под полосками крупнее базового размера. Увеличиваются сами размеры и кегль,
+		// а не scaleX/scaleY слоя: масштабированный TextField движок обрезает по рамке.
+		private static const BUTTON_SCALE:Number = 1.6;
+		private var buttonTextSize:int = 0;
 		private var buttonIcon:Sprite;
 		private var badgeIcon:Sprite;
 		private var buttonText:TextField;
@@ -306,24 +308,28 @@
 
 			Measure();
 
-			var height:Number = Math.max(18, Math.round(frameSize * 0.28));
-			var iconSize:Number = height - 4;
-			var iconWidth:Number = iconSize + 2;
+			var k:Number = BUTTON_SCALE;
+			var textSize:int = Math.round(TEXT_SIZE * k);
+			var height:Number = Math.round(Math.max(18, frameSize * 0.28) * k);
+			var pad:Number = Math.round(2 * k);
+			var iconSize:Number = height - 2 * pad;
+			var iconWidth:Number = iconSize + pad;
 			var label:String = isMe ? "" : volume + "%";
-			var textWidth:Number = label.length > 0 ? EstimateTextWidth(label, TEXT_SIZE) + 4 : 0;
-			var width:Number = Math.max(height + 6, 6 + iconWidth + textWidth + 4);
+			var textWidth:Number = label.length > 0 ? EstimateTextWidth(label, textSize) + 2 * pad : 0;
+			var width:Number = Math.max(height + 3 * pad, 3 * pad + iconWidth + textWidth + 2 * pad);
+			var corner:Number = Math.round(8 * k);
 
-			button.scaleX = button.scaleY = BUTTON_SCALE;
-			button.x = Math.round(frameX + (frameSize - width * BUTTON_SCALE) / 2);
+			button.scaleX = button.scaleY = 1;
+			button.x = Math.round(frameX + (frameSize - width) / 2);
 			button.y = Math.round(statsBottom + 2);
 
 			var g:* = buttonShape.graphics;
 			g.clear();
 			g.beginFill(0xFFFFFF, 0.25);
-			g.drawRoundRect(-1, -1, width + 2, height + 2, 9, 9);
+			g.drawRoundRect(-1, -1, width + 2, height + 2, corner + 1, corner + 1);
 			g.endFill();
 			g.beginFill(BUTTON_COLOR, 1);
-			g.drawRoundRect(0, 0, width, height, 8, 8);
+			g.drawRoundRect(0, 0, width, height, corner, corner);
 			g.endFill();
 
 			if (isMe)
@@ -331,14 +337,23 @@
 			else
 				SetIconImage(buttonIcon, (flags & 2) != 0 ? "spk_muted" : ((flags & 8) != 0 ? "spk_off" : "spk_on"));
 			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_TEX;
-			buttonIcon.x = label.length > 0 ? 4 : (width - iconSize) / 2;
+			buttonIcon.x = label.length > 0 ? 2 * pad : (width - iconSize) / 2;
 			buttonIcon.y = (height - iconSize) / 2;
 
+			if (buttonTextSize != textSize)
+			{
+				buttonTextSize = textSize;
+				var format:TextFormat = buttonText.defaultTextFormat;
+				format.size = textSize;
+				buttonText.defaultTextFormat = format;
+				buttonText.width = Math.round(80 * k);
+				buttonText.height = textSize + 12;
+			}
 			buttonText.visible = label.length > 0;
 			buttonText.text = label;
 			buttonText.textColor = (flags & 2) != 0 ? OFF_COLOR : 0xFFFFFF;
-			buttonText.x = 5 + iconWidth;
-			buttonText.y = (height - (TEXT_SIZE + 8)) / 2 + TEXT_SIZE * TEXT_DROP;
+			buttonText.x = 2 * pad + iconWidth;
+			buttonText.y = Math.round((height - (textSize + 8)) / 2 + textSize * TEXT_DROP);
 
 			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg button " + (isMe ? "me" : "peer " + peerId) + " at " + button.x + "," + button.y + " size " + width + "x" + height
 				+ " frame " + frameX + "," + frameY + "/" + frameSize + " stats " + statsBottom + " parent " + (button.parent != null) + " mateVisible " + mate.visible);
