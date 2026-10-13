@@ -533,16 +533,17 @@ bool PFWorld::Step(float dtInSeconds, float)
 		return true;
 	}
 	vector<CObj<PFDispatch> > detachedDispatches;
-	vector<CObj<PFBaseUnit> > stationaryUnits;
-	auto collectStationary = [&](PF_Core::WorldObjectBase& object) {
+	vector<CObj<PFBaseUnit> > lifecycleUnits;
+	vector<CObj<PFBaseUnit> > movementSteppedUnits;
+	auto collectLifecycle = [&](PF_Core::WorldObjectBase& object) {
 		PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(&object);
-		if (unit && unit->GetWorld() == this && !unit->IsDead() && !unit->IsObjectDead()
-			&& !dynamic_cast<PFBaseMovingUnit*>(unit))
-			stationaryUnits.push_back(CObj<PFBaseUnit>(unit));
+		if (unit && unit->GetWorld() == this && !unit->IsObjectDead()
+			&& (unit->IsDead() || !dynamic_cast<PFBaseMovingUnit*>(unit)))
+			lifecycleUnits.push_back(CObj<PFBaseUnit>(unit));
 	};
-	// Keep stationary gameplay in the existing registry; moving units retain their movement owner.
+	// Effects, corpse timers and hero respawn still advance after death; living movement owns its ticks.
 	// A strong pre-tick snapshot allows callback removal and defers newborn objects to the next tick.
-	ForAllObjectsBeingStepped(collectStationary);
+	ForAllObjectsBeingStepped(collectLifecycle);
 	auto collectDispatch = [&](PF_Core::WorldObjectBase& object) {
 		PFDispatch* dispatch = dynamic_cast<PFDispatch*>(&object);
 		if (dispatch && dispatch->GetWorld() == this && !dispatch->IsObjectDead()
@@ -598,38 +599,19 @@ bool PFWorld::Step(float dtInSeconds, float)
       PFBaseMovingUnit::GetAllUnits(pAIWorld, movingUnits, false);
       pResolver->Resolve(movingUnits, dtInSeconds);
     }
-    MovingUnit::UpdateMovements(pAIWorld, pResolver, GetTileMap(), dtInSeconds);
+    MovingUnit::UpdateMovements(pAIWorld, pResolver, GetTileMap(), dtInSeconds, &movementSteppedUnits);
   }
-  if (dtInSeconds > 0.0f)
-  {
-    vector<CPtr<PFBaseHero> > deadHeroesWithRespawn;
-    TObjects& objects = GetObjects();
-    for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
-    {
-      PFBaseHero* hero = dynamic_cast<PFBaseHero*>(it->second.GetPtr());
-      if (hero && hero->IsDead() && hero->GetTimeToRespawn() >= 0.0f)
-      {
-        deadHeroesWithRespawn.push_back(hero);
-      }
-    }
-
-    for (vector<CPtr<PFBaseHero> >::iterator it = deadHeroesWithRespawn.begin(),
-         end = deadHeroesWithRespawn.end();
-         it != end;
-         ++it)
-    {
-      if (IsValid(*it) && (*it)->IsDead() && (*it)->GetTimeToRespawn() >= 0.0f)
-      {
-        (*it)->Step(dtInSeconds);
-      }
-    }
-  }
-	for (vector<CObj<PFBaseUnit> >::iterator it = stationaryUnits.begin(); it != stationaryUnits.end(); ++it)
+	for (vector<CObj<PFBaseUnit> >::iterator it = lifecycleUnits.begin(); it != lifecycleUnits.end(); ++it)
 	{
 		// Flush callback removals before checking live membership; snapshots still exclude newborns.
 		ProcessAddRemove();
 		PFBaseUnit* unit = it->GetPtr();
-		if (IsValid(unit) && !unit->IsDead() && !unit->IsObjectDead() && unit->GetWorld() == this
+		// A revived mover may already have stepped and died again within this same tick.
+		if (nstl::find(movementSteppedUnits.begin(), movementSteppedUnits.end(), *it) != movementSteppedUnits.end())
+			continue;
+		// A moving unit revived before this phase belongs to movement, never to both owners.
+		if (IsValid(unit) && !unit->IsObjectDead() && unit->GetWorld() == this
+			&& (unit->IsDead() || !dynamic_cast<PFBaseMovingUnit*>(unit))
 			&& IsSubscribed(unit) && FindLinuxUnitByObjectId(unit->GetObjectId()) == unit)
 			unit->Step(dtInSeconds);
 	}

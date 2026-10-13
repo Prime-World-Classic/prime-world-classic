@@ -4,6 +4,7 @@
 
 #include "PFCreature.h"
 #include "PFWorld.h"
+#include <cmath>
 
 #define PW_INLINE_NULL_CAST(TypeName) \
 template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
@@ -23,8 +24,43 @@ PFCreature::PFCreature(PFWorld* pWorld, const CVec3& pos, const CVec2& direction
 void PFCreature::Reset() { PFBaseMovingUnit::Reset(); }
 void PFCreature::OnAfterReset() { PFBaseMovingUnit::OnAfterReset(); }
 bool PFCreature::UpdateClientColor() { return PFBaseMovingUnit::UpdateClientColor(); }
-bool PFCreature::Step(float dtInSeconds) { PFBaseMovingUnit::Step(dtInSeconds); if (IsDead() && deadUnitLifeTime >= 0.0f && (deadUnitLifeTime -= dtInSeconds) < 0.0f) RemoveCorpse(); if (forcedAnimationTimeLeft > 0.0f) forcedAnimationTimeLeft -= dtInSeconds; return true; }
-void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc) { PFBaseMovingUnit::OnUnitDie(killer, flags, damageDesc); observingTimeOffset = 0.0f; deadUnitLifeTime = (flags & UNITDIEFLAGS_FORCEREMOVECORPSE) ? 0.0f : 1.0f; }
+/** Advance original simulation timers without requiring the unported corpse presentation. */
+bool PFCreature::Step(float dtInSeconds)
+{
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return true;
+	PFBaseMovingUnit::Step(dtInSeconds);
+	if (IsDead())
+	{
+		observingTimeOffset -= dtInSeconds;
+		if (unitFallUndergroundOffset >= 0) unitFallUndergroundOffset -= dtInSeconds;
+		if (deadUnitLifeTime >= 0 && (deadUnitLifeTime -= dtInSeconds) < 0) RemoveCorpse();
+	}
+	if (forcedAnimationTimeLeft > 0)
+	{
+		forcedAnimationTimeLeft -= dtInSeconds;
+		if (forcedAnimationTimeLeft < EPS_VALUE) StopForcedAnimation(false);
+	}
+	return true;
+}
+
+/** Preserve authored death/unsummon deadlines and immediate forced removal. */
+void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc)
+{
+	PFBaseMovingUnit::OnUnitDie(killer, flags, damageDesc);
+	const NDb::UnitDeathParameters* params = GetDeathParams();
+	if (!params) return;
+	observingTimeOffset = std::isfinite(params->observeOffset) ? params->observeOffset : -1;
+	if ((flags & UNITDIEFLAGS_FORCEREMOVECORPSE) == UNITDIEFLAGS_FORCEREMOVECORPSE)
+	{
+		RemoveCorpse();
+		return;
+	}
+	const float duration = (flags & UNITDIEFLAGS_UNSUMMON) ? params->unsummonTime : params->deathTime;
+	// Finite negative lifetimes retain their original disabled-timer meaning.
+	deadUnitLifeTime = std::isfinite(duration) ? duration : -1;
+	if (!(flags & (UNITDIEFLAGS_DONTPLAYDEATHANIMATION | UNITDIEFLAGS_DEFERREDDEATH | UNITDIEFLAGS_UNSUMMON)))
+		unitFallUndergroundOffset = std::isfinite(params->fallOffset) ? params->fallOffset : -1;
+}
 void PFCreature::OnRessurect() { deadUnitLifeTime = -1.0f; unitFallUndergroundOffset = -1.0f; observingTimeOffset = -1.0f; }
 void PFCreature::PlaceSkeleton(bool) {}
 int PFCreature::ReplaceAnimSet(NDb::Ptr<NDb::AnimSet>) { return -1; }
@@ -37,7 +73,8 @@ void PFCreature::OnAbilityDispatchStarted(PFAbilityData const*) const {}
 CObj<IPFState> PFCreature::InvokeAbility(int, Target const&) { return 0; }
 void PFCreature::ForceAnimation(const string&, int) { forcedAnimationTimeLeft = 1e10f; }
 void PFCreature::StopForcedAnimation(bool) { forcedAnimationTimeLeft = 0.0f; }
-void PFCreature::RemoveCorpse() { Die(); }
+/** Base corpse retirement is presentation/timer ownership; creep subclasses also retire the object. */
+void PFCreature::RemoveCorpse() { deadUnitLifeTime = -1; }
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFCreature, NWorld)

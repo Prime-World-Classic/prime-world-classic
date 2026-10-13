@@ -56,5 +56,6 @@ static void MovingWorldB12(Checks& check, bool invalidTicks)
 	first->callback = nullptr;
 	first->ChangeHealth(-first->GetHealth());
 	world->Step(.5f, .5f);
-	check(first->ticks == 2 && removed->ticks == 0, "B12 death or unregistration cannot resume moving gameplay");
+	check(first->ticks == 3 && first->GetPos().x == 7 && first->IsDead() && removed->ticks == 0,
+		"B13 death retains lifecycle ticking without movement; unregistration excludes all ticks");
 }

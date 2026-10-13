@@ -45,7 +45,7 @@ static void StationaryWorldB12(Checks& check)
 	first->callback = nullptr;
 	first->ChangeHealth(-first->GetHealth());
 	world->Step(.5f, .5f);
-	check(first->ticks == 2, "B12 dead stationary units do not resume gameplay");
+	check(first->ticks == 3 && first->IsDead(), "B13 dead stationary units retain lifecycle ticking without resurrection");
 }
 
 /** Stationary casts and real tower guards deliver through existing ability/dispatch ownership. */

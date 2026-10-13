@@ -69,7 +69,7 @@ bool PFBaseCreep::Step(float dtInSeconds)
 
   return PFCreature::Step(dtInSeconds);
 }
-void PFBaseCreep::RemoveCorpse() { PFCreature::RemoveCorpse(); }
+void PFBaseCreep::RemoveCorpse() { PFCreature::RemoveCorpse(); Die(); }
 void PFBaseCreep::OnDestroyContents()
 {
   PFFsm::Cleanup();

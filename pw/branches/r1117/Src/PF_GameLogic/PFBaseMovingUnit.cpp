@@ -229,8 +229,15 @@ float MovingUnit::CheckStraightMove(CVec2 const& target, int mapModeFlags)
     0);
 }
 PathMap* MovingUnit::BuildPathMap(float) { return 0; }
-void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionResolver*, TileMap*, float timeDelta)
+void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionResolver* resolver, TileMap* map, float timeDelta)
 {
+	UpdateMovements(pVoxelMap, resolver, map, timeDelta, nullptr);
+}
+
+void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionResolver*, TileMap*, float timeDelta,
+	vector<CObj<PFBaseUnit>>* steppedUnits)
+{
+	if (steppedUnits) steppedUnits->clear();
 	if (!std::isfinite(timeDelta) || timeDelta <= 0.0f)
     return;
 
@@ -252,6 +259,7 @@ void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionRes
 		}
 		if (!IsValid(unit) || unit->IsDead() || unit->IsObjectDead()) continue;
 		unit->world.PreStep(timeDelta);
+		if (steppedUnits) steppedUnits->push_back(CObj<PFBaseUnit>(unit));
 		unit->Step(timeDelta);
 	}
 }
@@ -684,7 +692,16 @@ bool PFBaseMovingUnit::TeleportTo(const CVec2& target, bool instantMove, bool no
 	return true;
 }
 void PFBaseMovingUnit::Stop(bool notifyClient) { if (!forbidStop) { world.Stop(notifyClient); OnStopped(); } }
-bool PFBaseMovingUnit::Step(float dtInSeconds) { random = (random + 1) % RANDOM_MAX; world.Step(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
+/** Dead units retain base lifecycle updates, not movement or movement-random updates. */
+bool PFBaseMovingUnit::Step(float dtInSeconds)
+{
+	if (!IsDead() && world.moveState != MOVE_STATE_DEAD)
+	{
+		random = (random + 1) % RANDOM_MAX;
+		world.Step(dtInSeconds);
+	}
+	return PFBaseUnit::Step(dtInSeconds);
+}
 void PFBaseMovingUnit::StepInvisibility() { PFBaseUnit::StepInvisibility(); }
 void PFBaseMovingUnit::MovingUnitStep(float worldTimeDelta) { world.MovingUnitStep(worldTimeDelta); position = world.GetCenter3(); }
 void PFBaseMovingUnit::NotifyMoving(bool) { if (!IsDead()) UpdateWarFog(); }

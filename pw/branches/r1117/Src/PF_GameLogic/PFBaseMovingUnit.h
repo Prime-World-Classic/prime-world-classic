@@ -122,6 +122,11 @@ public:
 	PathMap* BuildPathMap(float maxDist);
 
 	// collect and analyze collision between units, then update movement
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	/** Optionally retain identities actually stepped, for disjoint native world lifecycle phases. */
+	static void UpdateMovements(const PFVoxelMap *pVoxelMap, const CollisionResolver* pResolver, TileMap *pMap,
+		float worldTimeDelta, vector<CObj<PFBaseUnit>>* steppedUnits);
+#endif
 	static void UpdateMovements(const PFVoxelMap *pVoxelMap, const CollisionResolver* pResolver, TileMap *pMap, float worldTimeDelta);
 
 	void Reset( TileMap* _pMap );
