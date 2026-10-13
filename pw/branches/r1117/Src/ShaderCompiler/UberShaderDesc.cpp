@@ -95,7 +95,7 @@ void UberShaderFileInfo::Read( int isV20 )
   fclose(fpFile);*/
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void UberShaderFileInfo::Build( LPD3DXBUFFER *matrix )
+void UberShaderFileInfo::Build( ShaderBlob *matrix )
 {
   if (0 == matrix)
     return;

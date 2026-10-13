@@ -71,6 +71,11 @@ WINE_LINK_FLAGS = ["/MANIFEST:NO"]
 # собственные объекты инструмента.
 TOOL_OBJS = {"ShaderCompiler": ["ShaderCompiler", "libdb", "Foundation",
                                 "MemoryLib", "mballocator"]}
+# Либы, которых нет в vcproj, но которые нужны нашей версии инструмента. Сейчас пусто:
+# ShaderCompiler берёт D3DCompile динамически (LoadLibrary),
+# иначе exe привязан к одной версии d3dcompiler_XX.dll.
+TOOL_LIBS_EXTRA = {}
+
 
 
 def dedup(seq):
@@ -737,7 +742,7 @@ def main():
         # Foundation/libdb тянут за собой ту же системную обвязку, что и клиент
         # (DbgHelp, Psapi, Rpcrt4, Terabit/ACE), поэтому линкуем тот же набор,
         # что у PW_Game, плюс собственный из vcproj
-        libs_t = dedup(p.link_libs + pwg.link_libs)
+        libs_t = dedup(p.link_libs + TOOL_LIBS_EXTRA.get(t, []) + pwg.link_libs)
         dirs_t = dedup(p.link_dirs + pwg.link_dirs)
         nodef_t = dedup(p.nodefault + pwg.nodefault)
         if dirs_t:
