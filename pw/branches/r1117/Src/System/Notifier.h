@@ -8,6 +8,10 @@ _interface INotifyCallback
   virtual void Call( const TParam& param ) = 0;
   virtual bool Equals( INotifyCallback* other ) = 0;
   virtual bool OwnerByNotifier() const = 0;
+#if defined(__linux__)
+	/** Notifiers and ChangeablePtr also delete owned callbacks through this interface. */
+	virtual ~INotifyCallback() {}
+#endif
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<class T, class TParam, bool ownerByNotifier = false>
