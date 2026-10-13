@@ -6,6 +6,10 @@ _interface IFileWatcher;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 _interface IFileWatchFunctor
 {
+#if defined(__linux__)
+	/** The processor owns functors through this interface in every native translation unit. */
+	virtual ~IFileWatchFunctor() {}
+#endif
   virtual void Call( const string& fileName ) = 0;
   virtual bool Equals( IFileWatchFunctor* other ) = 0;
 };
