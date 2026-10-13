@@ -252,7 +252,11 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
 	const SVector &startTile = pathTiles[nLastPathTile];
 	const SVector &endTile   = vNextTile;
 
+#if !defined(PW_LINUX_NULL_RENDER)
 	pathFinder->SetChecking(pointChecking);
+#else
+	// Native CreatePath installs the predicate only after rejecting recursive searches.
+#endif
 
   CObj<CCommonStaticPath> pFoundStaticPath;
   if ( pathFinder->CreatePath( nBoundTileRadius, nBoundTileRadiusDyn, startTile, endTile,
@@ -355,7 +359,11 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
 	const SVector &startTile = pathTiles[nLastPathTile];
   const SVector &endTile   =  vDest;
 
+#if !defined(PW_LINUX_NULL_RENDER)
 	pathFinder->SetChecking(pointChecking);
+#else
+	// Native CreatePath installs the predicate only after rejecting recursive searches.
+#endif
 
   CObj<CCommonStaticPath> pFoundStaticPath;
   if ( pathFinder->CreatePath( nBoundTileRadius, nBoundTileRadiusDyn, startTile, endTile,

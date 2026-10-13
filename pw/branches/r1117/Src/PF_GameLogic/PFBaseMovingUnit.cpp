@@ -59,6 +59,40 @@ namespace NWorld
 static const int RANDOM_MAX = 1024;
 static CVec2 g_linuxUnitRangeSorterBase;
 
+/** Stack-local cancellation follows reentrant commands without changing saved movement layout. */
+class LinuxMoveAttempt
+{
+	MovingUnit* unit;
+	LinuxMoveAttempt* previous;
+	bool valid;
+	static thread_local LinuxMoveAttempt* current;
+public:
+	explicit LinuxMoveAttempt(MovingUnit* unit) : unit(unit), previous(current), valid(true) { current = this; }
+	~LinuxMoveAttempt() { current = previous; }
+	bool IsCurrent() const { return valid; }
+	static bool Contains(MovingUnit* unit)
+	{
+		for (auto* attempt = current; attempt; attempt = attempt->previous)
+			if (attempt->unit == unit) return true;
+		return false;
+	}
+	static void Cancel(MovingUnit* unit)
+	{
+		for (auto* attempt = current; attempt; attempt = attempt->previous)
+			if (attempt->unit == unit) attempt->valid = false;
+	}
+};
+thread_local LinuxMoveAttempt* LinuxMoveAttempt::current = nullptr;
+
+/** Flush callback removals before admitting another path or position commit. */
+static bool LinuxMoveRegistered(PFBaseMovingUnit* owner, PFWorld* world)
+{
+	if (!IsUnitValid(owner) || owner->IsObjectDead() || !world || owner->GetWorld() != world) return false;
+	world->ProcessAddRemove();
+	return IsUnitValid(owner) && !owner->IsObjectDead() && owner->GetWorld() == world
+		&& world->IsSubscribed(owner) && world->FindLinuxUnitByObjectId(owner->GetObjectId()) == owner;
+}
+
 static float LinuxUnitCollisionSize(const PFBaseMovingUnit* unit)
 {
   if (!unit)
@@ -251,7 +285,7 @@ MovingUnit::MovingUnit(const CVec3& pos, const CVec2& direction, TileMap* pTileM
 }
 
 void MovingUnit::Init(PFBaseMovingUnit* owner) { pOwner = owner; InitMapMode(); pathFindingSteps = GetPathFindingSteps(); MarkTiles(); }
-void MovingUnit::Reset(TileMap* map) { DetachUnit(); pPath = 0; pStaticPath = 0; pChecking = 0; pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pFollowed = 0; isFollowing = false; InitMapMode(); }
+void MovingUnit::Reset(TileMap* map) { LinuxMoveAttempt::Cancel(this); DetachUnit(); pPath = 0; pStaticPath = 0; pChecking = 0; pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pFollowed = 0; isFollowing = false; InitMapMode(); }
 /** The newest override terminates accumulation, as in the original ghost stack. */
 void MovingUnit::RecalculateGhostMode()
 {
@@ -262,7 +296,7 @@ void MovingUnit::RecalculateGhostMode()
 		curGhostMode |= ghostMode[i].mode;
 	}
 }
-void MovingUnit::ApplyGhostMode() { RecalculateGhostMode(); InitMapMode(); pPath = 0; pStaticPath = 0; }
+void MovingUnit::ApplyGhostMode() { LinuxMoveAttempt::Cancel(this); RecalculateGhostMode(); InitMapMode(); pPath = 0; pStaticPath = 0; }
 int MovingUnit::SetGhostMode(int mode, bool overrideMode) { ghostModeIndex++; ghostMode.push_back(GhostModeType(ghostModeIndex, mode, overrideMode)); ApplyGhostMode(); return ghostModeIndex; }
 void MovingUnit::ResetGhostMode(int index) { for (int i = 0; i < ghostMode.size(); ++i) if (ghostMode[i].index == index) { ghostMode.eraseByIndex(i); break; } ApplyGhostMode(); }
 /** Admit commands before integer conversion; path creation remains on the world tick. */
@@ -273,6 +307,7 @@ void MovingUnit::MoveTo(const CVec2& target, float stopDistance_, IPointChecking
 		|| !std::isfinite(stopDistance_) || stopDistance_ < 0
 		|| (LinuxStaticMoveMode(curGhostMode, moveFlags)
 			&& (!LinuxMappedMovePoint(pMap, origin) || !LinuxMappedMovePoint(pMap, target)))) { Stop(false); return; }
+	LinuxMoveAttempt::Cancel(this);
 	if (moveState != MOVE_STATE_MOVING || target != vFarTarget || pChecking.GetPtr() != pointChecking || stopDistance != stopDistance_)
 	{ pPath = 0; pStaticPath = 0; }
 	pUnitTarget = 0; vFarTarget = target; vShortTarget = target;
@@ -287,11 +322,13 @@ void MovingUnit::MoveTo(PFBaseUnit* target, float stopDistance_, IPointChecking*
 bool MovingUnit::TeleportTo(const CVec2& target, bool)
 {
 	if (!LinuxFiniteMovePoint(target)) return false;
+	LinuxMoveAttempt::Cancel(this);
 	pPath = 0; pStaticPath = 0; pChecking = 0; pUnitTarget = 0;
 	SetCenter(target); vFarTarget = target; vShortTarget = target; moveState = MOVE_STATE_IDLE; return true;
 }
 void MovingUnit::Stop(bool)
 {
+	LinuxMoveAttempt::Cancel(this);
 	pPath = 0; pStaticPath = 0; pChecking = 0; pUnitTarget = 0;
 	if (moveState != MOVE_STATE_MOUNTED && moveState != MOVE_STATE_DEAD) moveState = MOVE_STATE_IDLE;
 }
@@ -584,15 +621,18 @@ bool MovingUnit::UseRoutePathFinder(SVector const&, SVector const&) const { retu
 /** Copy the original finder prefix before another unit or reverse query reuses it. */
 CCommonStaticPath* MovingUnit::CreateStaticPath(const SVector& start, const SVector& end)
 {
-	auto* finder = GetPathFinder();
+	CObj<Pathfinding::CCommonPathFinder> finder = GetPathFinder();
+	CObj<IPointChecking> checker = pChecking;
+	CObj<PFWorld> world = IsValid(pOwner) ? pOwner->GetWorld() : nullptr;
+	CObj<TileMap> map = pMap.GetPtr();
 	if (!finder || !IsValid(pMap) || finder->GetTileMap() != pMap.GetPtr()
 		|| !LinuxMoveFootprintValid(pOwner) || !mapModeStatic) return nullptr;
-	MapModeChanger mode(mapModeStatic, pMap);
+	MapModeChanger mode(mapModeStatic, map);
 	if (!finder->CreatePath(pOwner->GetUnitRadius(), pOwner->GetUnitRadius(), start, end,
-		start, pChecking, -1, pathFindingSteps)) return nullptr;
+		start, checker, -1, pathFindingSteps)) return nullptr;
 	const int count = finder->GetPathLength();
 	if (count < 1 || count > 5000 || count > finder->GetCurrentPath().size()) return nullptr;
-	return new CCommonStaticPath(pOwner->GetWorld(), finder->GetCurrentPath(), count);
+	return new CCommonStaticPath(world, finder->GetCurrentPath(), count);
 }
 CStandartPath2* MovingUnit::CreateStandartPath()
 {
@@ -612,28 +652,45 @@ void MovingUnit::InitMapMode()
 /** Stage both original path objects; no stale or failed candidate becomes a live route. */
 bool MovingUnit::CreatePath(bool reverse)
 {
+	LinuxMoveAttempt attempt(this);
+	CObj<PFBaseMovingUnit> owner = pOwner.GetPtr();
+	CObj<PFWorld> world = IsValid(owner) ? owner->GetWorld() : nullptr;
+	CObj<TileMap> map = pMap.GetPtr();
+	CObj<Pathfinding::CCommonPathFinder> finder = GetPathFinder();
+	CObj<IPointChecking> checker = pChecking;
+	const CVec2 from = origin, goal = vFarTarget;
+	const unsigned flags = moveFlags;
+	const auto current = [&] {
+		return attempt.IsCurrent() && moveState == MOVE_STATE_MOVING && origin == from && vFarTarget == goal
+			&& moveFlags == flags && pChecking.GetPtr() == checker.GetPtr() && pMap.GetPtr() == map.GetPtr()
+			&& LinuxMoveRegistered(owner, world) && GetPathFinder() == finder.GetPtr()
+			&& attempt.IsCurrent();
+	};
+	if (!current()) return false;
 	if (!LinuxMappedMovePoint(pMap, origin) || !LinuxMappedMovePoint(pMap, vFarTarget)
 		|| !LinuxMoveFootprintValid(pOwner) || !mapModeStatic) return false;
 	pathFindingSteps = GetPathFindingSteps();
 	if (pathFindingSteps < 0 || pathFindingSteps > Max(pMap->GetSizeX(), pMap->GetSizeY())) return false;
 	const SVector start = pMap->GetTile(origin), finish = pMap->GetTile(vFarTarget);
 	CObj<CCommonStaticPath> candidate = CreateStaticPath(start, finish);
-	if (!IsValid(candidate)) return false;
+	if (!current() || !IsValid(candidate)) return false;
 	// Preserve hero reverse comparison when no asymmetric endpoint predicate is present.
 	if (reverse && !IsValid(pChecking))
 	{
 		CObj<CCommonStaticPath> backward = CreateStaticPath(candidate->GetFinishTile(), start);
+		if (!current()) return false;
 		if (IsValid(backward) && backward->GetFinishTile() == start && backward->GetLength() < candidate->GetLength())
 		{ backward->ReversePath(); candidate = backward; }
 	}
-	CObj<CCommonStaticPath> previous = pStaticPath;
-	pStaticPath = candidate;
-	CObj<CStandartPath2> cursor = CreateStandartPath();
-	pStaticPath = previous;
-	if (!IsValid(cursor) || !LinuxMappedMovePoint(pMap, cursor->GetFinishPoint())
+	// Keep staging private: a callback may install a replacement command in the live members.
+	MapModeChanger mode(mapModeStatic, map);
+	CObj<CStandartPath2> cursor = new CStandartPath2(finder, owner->GetObjectTileSize(),
+		owner->IsHero() ? owner->GetObjectDynamicTileSize() : owner->GetObjectTileSize(),
+		candidate, checker, from, goal, map, pathFindingSteps);
+	if (!current() || !IsValid(cursor) || !LinuxMappedMovePoint(pMap, cursor->GetFinishPoint())
 		|| cursor->GetFinishPoint() == origin || (!cursor->CanPeek(0) && cursor->IsFinished())) return false;
-	MapModeChanger mode(mapModeStatic, pMap);
 	cursor->Shift(1, pathFindingSteps);
+	if (!current()) return false;
 	pStaticPath = candidate; pPath = cursor; vLastMoveTarget = vFarTarget;
 	return true;
 }
@@ -646,7 +703,7 @@ bool MovingUnit::ValidatePath(bool) { return true; }
 bool MovingUnit::ValidatePos(CVec2) { return true; }
 bool MovingUnit::CheckSplineControlPoint() { return true; }
 bool MovingUnit::BypassPoint(CVec2 const&, int, float) { return false; }
-void MovingUnit::SetState(EMoveState state, float timeout) { moveState = state; stateTimeout = timeout; stateTime = 0.0f; }
+void MovingUnit::SetState(EMoveState state, float timeout) { LinuxMoveAttempt::Cancel(this); moveState = state; stateTimeout = timeout; stateTime = 0.0f; }
 void MovingUnit::StartMoving() { moveState = MOVE_STATE_MOVING; }
 void MovingUnit::BlockedBy(MovingUnit*) { moveState = MOVE_STATE_BLOCKED; }
 void MovingUnit::BypassingUnit(MovingUnit*) { moveState = MOVE_STATE_BYPASSING; }
@@ -661,6 +718,26 @@ void MovingUnit::ClearSpline() {}
 /** Consume original path points using one world-tick distance budget, without splines. */
 void MovingUnit::TickMove(float dt)
 {
+	// Recursive stepping from a predicate must not spend this tick's distance twice.
+	if (LinuxMoveAttempt::Contains(this)) { LinuxMoveAttempt::Cancel(this); return; }
+	LinuxMoveAttempt attempt(this);
+	CObj<PFBaseMovingUnit> owner = pOwner.GetPtr();
+	CObj<PFWorld> world = IsValid(owner) ? owner->GetWorld() : nullptr;
+	CObj<TileMap> map = pMap.GetPtr();
+	CObj<Pathfinding::CCommonPathFinder> finder = GetPathFinder();
+	CObj<IPointChecking> checker = pChecking;
+	CVec2 expectedOrigin = origin;
+	const CVec2 goal = vFarTarget;
+	const unsigned flags = moveFlags;
+	const float quotedSpeed = speed, quotedStopDistance = stopDistance;
+	const auto current = [&] {
+		return attempt.IsCurrent() && moveState == MOVE_STATE_MOVING && origin == expectedOrigin && vFarTarget == goal
+			&& moveFlags == flags && speed == quotedSpeed && stopDistance == quotedStopDistance
+			&& pChecking.GetPtr() == checker.GetPtr() && pMap.GetPtr() == map.GetPtr()
+			&& LinuxMoveRegistered(owner, world) && GetPathFinder() == finder.GetPtr()
+			&& attempt.IsCurrent();
+	};
+	if (!current()) return;
 	if (!IsValid(pMap)) { Stop(false); return; }
 	if (!LinuxFiniteMovePoint(origin) || !LinuxFiniteMovePoint(vFarTarget)
 		|| !std::isfinite(stopDistance) || stopDistance < 0) { Stop(false); return; }
@@ -668,10 +745,16 @@ void MovingUnit::TickMove(float dt)
 	if (staticMode && (!LinuxMappedMovePoint(pMap, origin) || !LinuxMappedMovePoint(pMap, vFarTarget)
 		|| !LinuxMoveFootprintValid(pOwner) || !GetPathFinder())) { Stop(false); return; }
 	// Predicate completion does not require a positive movement budget.
-	const double initialX = double(vFarTarget.x) - origin.x, initialY = double(vFarTarget.y) - origin.y;
-	if (sqrt(initialX * initialX + initialY * initialY) <= double(stopDistance) + EPS_VALUE
-		|| (IsValid(pChecking) && LinuxMappedMovePoint(pMap, origin) && pChecking->IsGoodTile(pMap->GetTile(origin))))
-	{ Stop(false); return; }
+	const auto checkArrival = [&](bool& arrived) {
+		const double dx = double(vFarTarget.x) - origin.x, dy = double(vFarTarget.y) - origin.y;
+		arrived = sqrt(dx * dx + dy * dy) <= double(stopDistance) + EPS_VALUE;
+		if (!arrived && IsValid(checker) && LinuxMappedMovePoint(map, origin))
+			arrived = checker->IsGoodTile(map->GetTile(origin));
+		return current();
+	};
+	bool arrived = false;
+	if (!checkArrival(arrived)) return;
+	if (arrived) { Stop(false); return; }
 	if (!std::isfinite(speed) || speed <= EPS_VALUE || !std::isfinite(dt) || dt <= 0) return;
 	const double distanceBudget = double(speed) * dt;
 	if (!std::isfinite(distanceBudget) || distanceBudget > FLT_MAX) return;
@@ -684,15 +767,16 @@ void MovingUnit::TickMove(float dt)
 	int searches = 0;
 	for (int points = 0; points < 10004 && moveState == MOVE_STATE_MOVING; ++points)
 	{
+		if (!checkArrival(arrived)) return;
+		if (arrived) { Stop(false); return; }
 		const double gx = double(vFarTarget.x) - origin.x, gy = double(vFarTarget.y) - origin.y;
-		const double goalDistance = sqrt(gx * gx + gy * gy);
-		if (goalDistance <= double(stopDistance) + EPS_VALUE
-			|| (IsValid(pChecking) && LinuxMappedMovePoint(pMap, origin) && pChecking->IsGoodTile(pMap->GetTile(origin))))
-		{ Stop(false); return; }
 		if (remaining <= EPS_VALUE) return;
 		if (staticMode && !direct && !IsValid(pPath) && pMap->GetTile(origin) != pMap->GetTile(vFarTarget))
 		{
-			if (++searches > 2 || !RecomputePath()) { Stop(false); return; }
+			if (++searches > 2) { Stop(false); return; }
+			const bool found = RecomputePath();
+			if (!current()) return;
+			if (!found) { Stop(false); return; }
 		}
 		const CVec2 target = IsValid(pPath)
 			? (pPath->IsFinished() ? pPath->GetFinishPoint() : pPath->PeekPoint(0)) : vFarTarget;
@@ -703,7 +787,10 @@ void MovingUnit::TickMove(float dt)
 		if (length <= EPS_VALUE)
 		{
 			if (!IsValid(pPath) || pPath->IsFinished()) { Stop(false); return; }
-			MapModeChanger mode(staticMode, pMap); pPath->Shift(1, pathFindingSteps); continue;
+			CObj<CStandartPath2> cursor = pPath;
+			MapModeChanger mode(staticMode, map); cursor->Shift(1, pathFindingSteps);
+			if (!current()) return;
+			continue;
 		}
 		const CVec2 direction(static_cast<float>(dx / length), static_cast<float>(dy / length));
 		double amount = Min(double(remaining), length);
@@ -740,17 +827,30 @@ void MovingUnit::TickMove(float dt)
 		}
 		if (safe + EPS_VALUE < wanted)
 		{
-			if (safe > EPS_VALUE) { SetCenter(origin + direction * safe); remaining -= safe; }
-			if (blockedStatic && ++searches <= 2 && RecomputePath()) continue;
+			if (safe > EPS_VALUE)
+			{
+				expectedOrigin = origin + direction * safe; SetCenter(expectedOrigin); remaining -= safe;
+				if (!current()) return;
+			}
+			if (blockedStatic && ++searches <= 2)
+			{
+				const bool found = RecomputePath();
+				if (!current()) return;
+				if (found) continue;
+			}
 			Stop(false); return;
 		}
-		SetCenter(desired); UpdateMoveDir(target); remaining -= wanted; timeStanding = 0;
+		expectedOrigin = desired; SetCenter(desired);
+		if (!current()) return;
+		UpdateMoveDir(target); remaining -= wanted; timeStanding = 0;
 		// The checked intersection is authoritative despite final float-position rounding.
 		if (arriving) { Stop(false); return; }
 		if (amount + EPS_VALUE >= length)
 		{
 			if (!IsValid(pPath) || pPath->IsFinished()) { Stop(false); return; }
-			pPath->Shift(1, pathFindingSteps);
+			CObj<CStandartPath2> cursor = pPath;
+			cursor->Shift(1, pathFindingSteps);
+			if (!current()) return;
 		}
 	}
 	// A degenerate/restored cursor must not make a world tick unbounded.
@@ -927,7 +1027,7 @@ int PFBaseMovingUnit::GetUnitRadius() const { return Max(1, GetObjectTileSize() 
 int PFBaseMovingUnit::GetUnitDynamicRadius() const { return Max(1, GetObjectDynamicTileSize() / 2); }
 bool PFBaseMovingUnit::MoveTo(const CVec2& target, float stopDistance, IPointChecking* pointChecking) { world.MoveTo(target, stopDistance, pointChecking); return world.IsMoving(); }
 bool PFBaseMovingUnit::MoveTo(PFBaseUnit* target, float stopDistance, IPointChecking* pointChecking) { if (!target) return false; world.MoveTo(target, stopDistance, pointChecking); return world.IsMoving(); }
-void PFBaseMovingUnit::SetMoveFlags(unsigned value) { world.moveFlags = value; }
+void PFBaseMovingUnit::SetMoveFlags(unsigned value) { LinuxMoveAttempt::Cancel(&world); world.moveFlags = value; }
 float PFBaseMovingUnit::SetUnitSpeed(float value) { world.SetUnitSpeed(value * world.speedScale); return world.GetUnitSpeed(); }
 /** Retain inbound payloads while authored target-loss callbacks may change their registration. */
 void PFBaseMovingUnit::NotifyDispatchesOnTargetTeleport()
