@@ -2,6 +2,8 @@
 {
 	import BaseClasses.MateInfoBase;
 	import flash.display.DisplayObject;
+	import flash.display.Loader;
+	import flash.net.URLRequest;
 	import flash.display.Shape;
 	import flash.display.Sprite;
 	import flash.events.Event;
@@ -53,10 +55,13 @@
 		// Движок не рисует graphics самого Sprite (видны только дети) — фон и значок
 		// кнопки рисуются в дочерний Shape.
 		private var buttonShape:Shape;
-		// Значки рисуются только примитивами, которые движок точно показывает (drawRect,
-		// drawRoundRect, drawCircle — как штатный интерфейс): ни контуров lineTo/curveTo, ни
-		// заливок-многоугольников он не рисует. Координаты 200x200, слой масштабируется;
-		// наклонные полосы — отдельные повёрнутые Shape (graphics самого Sprite не рисуется).
+		// Значки — текстуры, как у штатного интерфейса и колеса пингов: свою векторную графику
+		// движок растеризует грубо (круги ломаными, без сглаживания, контуры и многоугольники
+		// не рисует вовсе). Генератор: pw_art/UI/Voice/gen_voice_icons.py (64x64 DDS).
+		private static const ICON_PATH:String = "/UI/Styles/Icons/Voice/";
+		private static const ICON_TEX:Number = 64;
+		// Кнопка под полосками в 2 раза крупнее базового размера.
+		private static const BUTTON_SCALE:Number = 2;
 		private var buttonIcon:Sprite;
 		private var badgeIcon:Sprite;
 		private var buttonText:TextField;
@@ -308,7 +313,8 @@
 			var textWidth:Number = label.length > 0 ? EstimateTextWidth(label, TEXT_SIZE) + 4 : 0;
 			var width:Number = Math.max(height + 6, 6 + iconWidth + textWidth + 4);
 
-			button.x = Math.round(frameX + (frameSize - width) / 2);
+			button.scaleX = button.scaleY = BUTTON_SCALE;
+			button.x = Math.round(frameX + (frameSize - width * BUTTON_SCALE) / 2);
 			button.y = Math.round(statsBottom + 2);
 
 			var g:* = buttonShape.graphics;
@@ -321,10 +327,10 @@
 			g.endFill();
 
 			if (isMe)
-				DrawMic(buttonIcon, micState == 0 ? OFF_COLOR : MIC_COLOR, micState != 1, micState == 0 ? OFF_COLOR : MUTED_COLOR);
+				SetIconImage(buttonIcon, micState == 1 ? "mic_on" : (micState == 0 ? "mic_none" : "mic_off"));
 			else
-				DrawSpeaker(buttonIcon, (flags & 2) != 0 ? MUTED_COLOR : ((flags & 8) != 0 ? OFF_COLOR : 0xFFFFFF), (flags & 2) != 0);
-			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_BOX;
+				SetIconImage(buttonIcon, (flags & 2) != 0 ? "spk_muted" : ((flags & 8) != 0 ? "spk_off" : "spk_on"));
+			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_TEX;
 			buttonIcon.x = label.length > 0 ? 4 : (width - iconSize) / 2;
 			buttonIcon.y = (height - iconSize) / 2;
 
@@ -362,50 +368,38 @@
 				return;
 
 			Measure();
-			var r:Number = BADGE_BASE;
-			g.beginFill(0xFFFFFF, 0.3);
-			g.drawCircle(0, 0, r + 8);
-			g.endFill();
-			g.beginFill(BUTTON_COLOR, 1);
-			g.drawCircle(0, 0, r);
-			g.endFill();
+			// круглая подложка — внутри текстуры (b_*), векторный круг не нужен
+			badge.visible = false;
+			SetIconImage(badgeIcon, kind == 1 ? "b_headset_off" : (kind == 2 ? "b_spk_muted" : (kind == 3 ? "b_mic_off" : "b_mic_none")));
 
-			if (kind == 1)
-				DrawHeadset(badgeIcon, OFF_COLOR);
-			else if (kind == 2)
-				DrawSpeaker(badgeIcon, MUTED_COLOR, true);
-			else
-				DrawMic(badgeIcon, kind == 3 ? MIC_COLOR : OFF_COLOR, true, kind == 3 ? MUTED_COLOR : OFF_COLOR);
-
-			// радиус значка на экране: не меньше 9, растёт с портретом
+			// радиус значка на экране: не меньше 11, растёт с портретом
 			var radius:Number = Math.max(11, frameSize * 0.17);
-			badge.scaleX = badge.scaleY = radius / BADGE_BASE;
-			badge.x = Math.round(frameX + frameSize - radius * 0.8);
-			badge.y = Math.round(frameY + radius * 0.8);
-			// значок занимает ~1.3 радиуса круга, центр совпадает
-			var iconSize:Number = radius * 1.3;
-			badgeIcon.scaleX = badgeIcon.scaleY = iconSize / ICON_BOX;
-			badgeIcon.x = badge.x - iconSize / 2;
-			badgeIcon.y = badge.y - iconSize / 2;
+			var centerX:Number = Math.round(frameX + frameSize - radius * 0.8);
+			var centerY:Number = Math.round(frameY + radius * 0.8);
+			badgeIcon.scaleX = badgeIcon.scaleY = radius * 2 / ICON_TEX;
+			badgeIcon.x = centerX - radius;
+			badgeIcon.y = centerY - radius;
 		}
 
-		// Перечёркнутая гарнитура — «нет в войсе».
-		private static function DrawHeadset(icon:Sprite, color:uint):void
+
+		// Контейнер значка: один Loader; имя текущей текстуры хранится в name.
+		private static function CreateIcon():Sprite
 		{
-			var g:* = ClearIcon(icon);
-			// дуга оголовья: кольцо, нижняя половина закрыта фоном
-			g.beginFill(color, 1);
-			g.drawCircle(100, 112, 84);
-			g.endFill();
-			g.beginFill(BUTTON_COLOR, 1);
-			g.drawCircle(100, 112, 64);
-			g.drawRect(0, 112, 200, 90);
-			g.endFill();
-			g.beginFill(color, 1);
-			g.drawRoundRect(12, 100, 40, 72, 16, 16);
-			g.drawRoundRect(148, 100, 40, 72, 16, 16);
-			g.endFill();
-			SetSlash(icon, 1, 100, 100, -45, 230, 22, MUTED_COLOR, true);
+			var icon:Sprite = new Sprite();
+			icon.mouseEnabled = false;
+			icon.mouseChildren = false;
+			icon.addChild(new Loader());
+			return icon;
+		}
+
+		private static function SetIconImage(icon:Sprite, image:String):void
+		{
+			if (icon.name == image)
+				return;
+			icon.name = image;
+			var loader:Loader = icon.getChildAt(0) as Loader;
+			loader.unload();
+			loader.load(new URLRequest(ICON_PATH + image + ".dds"));
 		}
 
 		private function OnButtonDown(e:MouseEvent):void
@@ -434,85 +428,10 @@
 			FSCommands.Send(VoiceTeamOverlay.COMMAND, "vol " + peerId + " " + (e.delta > 0 ? 5 : -5));
 		}
 
-		// Микрофон по образцу: капсула, держатель-полукольцо, ножка; выключен — диагональ
-		// с зазором цвета фона.
-		private static function DrawMic(icon:Sprite, color:uint, crossed:Boolean, slashColor:uint = 0xED4245):void
-		{
-			var g:* = ClearIcon(icon);
-			// держатель: кольцо, верхняя половина закрыта фоном
-			g.beginFill(color, 1);
-			g.drawCircle(100, 96, 80);
-			g.endFill();
-			g.beginFill(BUTTON_COLOR, 1);
-			g.drawCircle(100, 96, 60);
-			g.drawRect(0, 0, 200, 96);
-			g.endFill();
-			g.beginFill(color, 1);
-			g.drawRoundRect(70, 4, 60, 120, 60, 60);
-			g.drawRect(90, 172, 20, 26);
-			g.endFill();
-			if (crossed)
-				SetSlash(icon, 1, 100, 100, -45, 240, 22, slashColor, true);
-		}
 
-		private static function DrawSpeaker(icon:Sprite, color:uint, crossed:Boolean):void
-		{
-			var g:* = ClearIcon(icon);
-			// корпус и раструб ступенькой (многоугольники движок не рисует)
-			g.beginFill(color, 1);
-			g.drawRoundRect(16, 70, 44, 60, 10, 10);
-			g.drawRoundRect(56, 46, 24, 108, 8, 8);
-			g.drawRoundRect(76, 22, 30, 156, 10, 10);
-			g.endFill();
-			if (crossed)
-			{
-				SetSlash(icon, 1, 160, 100, 45, 78, 20, color, false);
-				SetSlash(icon, 2, 160, 100, -45, 78, 20, color, false);
-			}
-		}
 
-		// Контейнер значка: основа (0) и две наклонные полосы (1, 2).
-		private static function CreateIcon():Sprite
-		{
-			var icon:Sprite = new Sprite();
-			icon.mouseEnabled = false;
-			icon.mouseChildren = false;
-			for (var i:int = 0; i < 3; i++)
-				icon.addChild(new Shape());
-			return icon;
-		}
 
-		private static function ClearIcon(icon:Sprite):*
-		{
-			for (var i:int = 0; i < icon.numChildren; i++)
-			{
-				var child:Shape = icon.getChildAt(i) as Shape;
-				child.graphics.clear();
-				child.rotation = 0;
-				child.x = child.y = 0;
-			}
-			return Shape(icon.getChildAt(0)).graphics;
-		}
 
-		// Наклонная полоса длиной len и толщиной t с центром (cx, cy); gap — зазор цвета фона.
-		private static function SetSlash(icon:Sprite, index:int, cx:Number, cy:Number, angle:Number, len:Number, t:Number, color:uint, gap:Boolean):void
-		{
-			var bar:Shape = icon.getChildAt(index) as Shape;
-			var g:* = bar.graphics;
-			g.clear();
-			if (gap)
-			{
-				g.beginFill(BUTTON_COLOR, 1);
-				g.drawRect(-len / 2 - 4, -t / 2 - 10, len + 8, t + 20);
-				g.endFill();
-			}
-			g.beginFill(color, 1);
-			g.drawRect(-len / 2, -t / 2, len, t);
-			g.endFill();
-			bar.x = cx;
-			bar.y = cy;
-			bar.rotation = angle;
-		}
 
 
 
