@@ -31,6 +31,51 @@ bool Range(std::size_t offset, std::size_t size, std::size_t end)
 {
 	return offset <= end && size <= end - offset;
 }
+
+using Point=BakedTerrain::Point;
+Point Subtract(const Point& a,const Point& b) { return {a[0]-b[0],a[1]-b[1],a[2]-b[2]}; }
+Point Cross(const Point& a,const Point& b) {
+	return {a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]};
+}
+double Dot(const Point& a,const Point& b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+bool Bounded(double value) { return std::isfinite(value) && std::abs(value)<=1e12; }
+
+/** Slab rejection is independent of triangle winding and includes degenerate-height boxes. */
+bool RayBox(const BakedTerrain::Tile& tile,const Point& origin,const Point& direction,double maximum) {
+	double near=0,far=maximum;
+	for (size_t axis=0; axis<3; ++axis) {
+		if (direction[axis]==0) {
+			if (origin[axis]<tile.minimum[axis] || origin[axis]>tile.maximum[axis]) return false;
+			continue;
+		}
+		double a=(tile.minimum[axis]-origin[axis])/direction[axis],b=(tile.maximum[axis]-origin[axis])/direction[axis];
+		if (a>b) std::swap(a,b);
+		near=std::max(near,a); far=std::min(far,b);
+		if (near>far) return false;
+	}
+	return true;
+}
+
+/** Original HeightsController.cpp::IntersectTrinagle (Moller-Trumbore), in double precision.
+ * Scale the parallel threshold with the ray/edges; retain two-sided collision semantics.
+ */
+bool RayTriangle(const Point& origin,const Point& direction,const Point& a,const Point& b,const Point& c,
+	double maximum,double& distance) {
+	const auto edge1=Subtract(b,a),edge2=Subtract(c,a),p=Cross(direction,edge2);
+	const double determinant=Dot(edge1,p),scale=Dot(edge1,edge1)*Dot(p,p);
+	if (!(scale>0) || determinant*determinant<=1e-24*scale) return false;
+	const double inverse=1/determinant;
+	const auto delta=Subtract(origin,a);
+	const double u=Dot(delta,p)*inverse;
+	constexpr double epsilon=1e-10;
+	if (u<-epsilon || u>1+epsilon) return false;
+	const auto q=Cross(delta,edge1);
+	const double v=Dot(direction,q)*inverse;
+	if (v<-epsilon || u+v>1+epsilon) return false;
+	const double t=Dot(edge2,q)*inverse;
+	if (!std::isfinite(t) || t<0 || t>maximum) return false;
+	distance=t; return true;
+}
 }
 
 bool BakedTerrain::Decode(Bytes&& bytes, std::size_t expected, Ptr& output,
@@ -122,5 +167,36 @@ const std::uint8_t* BakedTerrain::IndexData(std::size_t index) const noexcept
 {
 	const auto* tile = GetTile(index);
 	return tile ? bytes_.data() + tile->indexOffset : nullptr;
+}
+bool BakedTerrain::Trace(const Point& origin,const Point& direction,double maximum,SurfaceHit& output) const noexcept
+{
+	if (!Bounded(maximum) || maximum<=0 || direction==Point{}) return false;
+	for (size_t axis=0; axis<3; ++axis) if (!Bounded(origin[axis]) || !Bounded(direction[axis])) return false;
+	bool found=false; SurfaceHit nearest; nearest.distance=maximum;
+	for (size_t number=0; number<tiles_.size(); ++number) {
+		const auto& tile=tiles_[number];
+		if (!RayBox(tile,origin,direction,nearest.distance)) continue;
+		for (size_t triangle=0; triangle<tile.triangleCount; ++triangle) {
+			std::array<Point,3> vertices{};
+			for (size_t corner=0; corner<3; ++corner) {
+				const size_t at=tile.vertexOffset+size_t(U32(bytes_,tile.indexOffset+(triangle*3+corner)*4))*44;
+				for (size_t axis=0; axis<3; ++axis) vertices[corner][axis]=F32(bytes_,at+axis*4);
+			}
+			double distance=0;
+			if (!RayTriangle(origin,direction,vertices[0],vertices[1],vertices[2],nearest.distance,distance) ||
+				(found && distance>=nearest.distance)) continue;
+			nearest.distance=distance; nearest.tile=number; nearest.triangle=triangle; found=true;
+		}
+	}
+	if (!found) return false;
+	for (size_t axis=0; axis<3; ++axis) nearest.position[axis]=origin[axis]+nearest.distance*direction[axis];
+	output=nearest; return true;
+}
+bool BakedTerrain::Height(double x,double y,double& output) const noexcept
+{
+	// Decode bounds every authored coordinate to +/-1e6, so this segment spans the whole source.
+	SurfaceHit hit;
+	if (!Trace({x,y,1000001},{0,0,-1},2000002,hit)) return false;
+	output=hit.position[2]; return true;
 }
 }

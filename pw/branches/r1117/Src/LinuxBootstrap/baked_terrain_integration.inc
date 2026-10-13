@@ -3,6 +3,7 @@ static bool LoadLinuxMapBakedTerrain(const LinuxClientEnvironment& environment,
 	const NDb::Terrain& terrain, LinuxSelectedMapPreview& map)
 {
 	map.bakedTerrain.reset(); map.bakedTerrainFile.clear();
+	map.terrainHeightmap.bakedSurface.reset();
 	std::string path;
 	if (!ResolveLinuxDataPayloadFile(environment, ToStdString(terrain.geometry.bakedTerrainFileName), &path)) return false;
 	try {
@@ -18,10 +19,21 @@ static bool LoadLinuxMapBakedTerrain(const LinuxClientEnvironment& environment,
 			return false;
 		}
 		map.bakedTerrainFile = path;
+		map.terrainHeightmap.bakedSurface=map.bakedTerrain;
+		for (size_t i=0; i<map.bakedTerrain->TileCount(); ++i) {
+			const auto* tile=map.bakedTerrain->GetTile(i);
+			if (!i) {
+				map.terrainHeightmap.minHeight=tile->minimum[2];
+				map.terrainHeightmap.maxHeight=tile->maximum[2];
+			} else {
+				map.terrainHeightmap.minHeight=std::min(map.terrainHeightmap.minHeight,tile->minimum[2]);
+				map.terrainHeightmap.maxHeight=std::max(map.terrainHeightmap.maxHeight,tile->maximum[2]);
+			}
+		}
 		fprintf(stdout, "Original baked terrain: tiles=%zu vertices=%zu triangles=%zu bytes=%zu\n",
 			map.bakedTerrain->TileCount(), map.bakedTerrain->VertexCount(), map.bakedTerrain->TriangleCount(), map.bakedTerrain->SourceBytes());
 		return true;
-	} catch (const std::exception&) { map.bakedTerrain.reset(); return false; }
+	} catch (const std::exception&) { map.bakedTerrain.reset(); map.terrainHeightmap.bakedSurface.reset(); return false; }
 }
 
 /** Baked vertices include editor placement and deformation. Bounds and transform are world-space. */

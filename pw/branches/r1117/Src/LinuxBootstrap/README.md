@@ -121,6 +121,18 @@ or duplicated final records; wait for the process to exit before validating logs
 
 ## Remaining Boundaries
 
+The local native view now shares the immutable authored baked terrain between
+drawing, ground picking, camera focus and placement sampling. Ray queries adapt
+the original HeightsController triangle algorithm, reject tiles by their bounds,
+ignore hidden triangle indices and select the nearest bounded hit. Height queries
+select the upper surface at folded/overlapping geometry. No per-query allocations
+or GL readback are required. An available baked mesh never falls through to an
+invisible heightfield when a pick misses; maps without it retain sampled terrain,
+and the inspection overview retains its planar selection contract. Visual height
+sampling outside covered geometry still uses the old fallback. These are two-sided
+geometry queries, not alpha-mask, prop, road or complete Windows collision parity;
+they do not change simulation coordinates, navigation or the interim camera type.
+
 Native BasicMaterial previews preserve authored diffuse addressing independently
 of texture identity, including negative exporter UVs and shared-texture material
 slots. Private GL3.3 sampler objects are capped at sixteen address combinations;

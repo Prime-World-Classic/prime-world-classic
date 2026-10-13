@@ -2344,6 +2344,8 @@ struct LinuxMapPointLightPreview
 
 struct LinuxMapTerrainHeightmapPreview
 {
+	// Share the immutable rendered geometry with picking and all ground-placement consumers.
+	LinuxBootstrap::BakedTerrain::Ptr bakedSurface;
   bool ready;
   std::string dbid;
   std::string heightmapFile;
@@ -20362,6 +20364,7 @@ void ProbeSelectedMapStaticSceneObjects(
 	if (preview) {
 		preview->bakedVertexColors.reset();
 		preview->bakedTerrain.reset();
+		preview->terrainHeightmap.bakedSurface.reset();
 		preview->bakedTerrainFile.clear();
 	}
   if (!preview || entry.descriptor.empty())
@@ -49862,6 +49865,12 @@ float SampleLinuxMapTerrainHeightAtWorld(
   float worldY
 )
 {
+	if (!std::isfinite(worldX) || !std::isfinite(worldY)) return 0.f;
+	if (terrain.bakedSurface) {
+		double height=0;
+		if (terrain.bakedSurface->Height(worldX,worldY,height)) return static_cast<float>(height);
+		// Unsupported/uncovered geometry keeps the legacy visual fallback; live ray picking does not.
+	}
   if (!terrain.ready ||
       terrain.sampledWidth < 2 ||
       terrain.sampledHeight < 2 ||

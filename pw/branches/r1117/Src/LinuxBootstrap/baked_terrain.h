@@ -59,6 +59,22 @@ public:
 	std::size_t VertexCount() const noexcept { return vertices_; }
 	std::size_t TriangleCount() const noexcept { return triangles_; }
 
+	using Point = std::array<double, 3>;
+	/** Nearest original visible-prefix triangle, in world XYZ and ray parameter units. */
+	struct SurfaceHit {
+		Point position{};
+		double distance = 0;
+		std::size_t tile = 0, triangle = 0;
+	};
+	/** Allocation-free, two-sided geometry query using original collision ray/triangle math.
+	 * Ignore hidden triangles, bound the segment to [0,maximum], and keep output on failure.
+	 * Tile AABBs reject irrelevant geometry before decoding any triangle. No GL/readback,
+	 * alpha masks, props, roads or collision-world mutation. Input magnitudes are capped at 1e12.
+	 */
+	bool Trace(const Point& origin, const Point& direction, double maximum, SurfaceHit& output) const noexcept;
+	/** Highest visible-prefix triangle at XY; preserve output when no surface covers the point. */
+	bool Height(double x, double y, double& output) const noexcept;
+
 private:
 	std::vector<std::uint8_t> bytes_;
 	std::vector<Tile> tiles_;

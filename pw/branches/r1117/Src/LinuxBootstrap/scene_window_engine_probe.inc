@@ -1,5 +1,6 @@
 #include "terrain_texture_engine_probe.inc"
 #include "sky_engine_probe.inc"
+#include "baked_picking_engine_probe.inc"
 
 /** Original MOBA catalog integration: bounded nearby selection, stable identity and cache epochs. */
 static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environment)
@@ -18,6 +19,7 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 	ProbeSelectedMapStaticSceneObjects(environment, entry, &map);
 	check(map.sceneCatalog && !map.sceneCatalog->discovering, "original catalog finalized");
 	if (!map.sceneCatalog) return false;
+	check(RunLinuxBakedPickingEngineProbe(map),"authored terrain picking and placement contract");
 	const auto& catalog = *map.sceneCatalog;
 	check(std::count_if(catalog.candidates.begin(),catalog.candidates.end(),[](const auto& candidate) {
 		return candidate.kind==LinuxBootstrap::SceneWindowKind::Sky;
@@ -190,6 +192,14 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 			"stationary frames preserve counters, resources and input budget");
 	}
 	check(unionObjects.size() > 256, "camera traversal reaches more than the old fixed scene");
+	{
+		auto reloaded=map; const auto held=map.terrainHeightmap.bakedSurface;
+		LinuxMapCatalogEntry unavailable;
+		ProbeSelectedMapStaticSceneObjects(environment,unavailable,&reloaded);
+		check(!reloaded.bakedTerrain && !reloaded.terrainHeightmap.bakedSurface,"failed map replacement clears stale surface owners");
+		double height=0;
+		check(held && held==map.bakedTerrain && held->Height(385,165,height),"another retained map keeps its immutable surface after replacement");
+	}
 	DeleteOpenGlTexture(&overlay.terrainNatureTexture);
 	for (auto& texture : overlay.mapPreviewDiffuseTextures) DeleteOpenGlTexture(&texture);
 	fprintf(stdout, "Scene window engine: %u checks, %u failures, distinctObjects=%zu\n", checks, failures, unionObjects.size());

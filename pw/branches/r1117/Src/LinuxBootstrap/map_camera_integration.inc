@@ -25,8 +25,9 @@ static LinuxBootstrap::SceneWindowRequest ResolveLinuxMapSceneRequest(
 	request.focusX = camera.centerX - camera.panX / camera.scale;
 	request.focusY = camera.centerY - camera.panZ / camera.scale;
 	request.bounds = {DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX};
-	const double minHeight = map.terrainHeightmap.ready ? map.terrainHeightmap.minHeight : 0;
-	const double maxHeight = (map.terrainHeightmap.ready ? map.terrainHeightmap.maxHeight : 0) + 32;
+	const bool surfaceReady=map.terrainHeightmap.ready || map.terrainHeightmap.bakedSurface;
+	const double minHeight = surfaceReady ? map.terrainHeightmap.minHeight : 0;
+	const double maxHeight = (surfaceReady ? map.terrainHeightmap.maxHeight : 0) + 32;
 	for (const double x : {0., double(camera.width)})
 	for (const double y : {0., double(camera.height)}) {
 		LinuxBootstrap::MapCameraFrame::Point origin, direction;
@@ -94,9 +95,8 @@ static void UpdateLinuxLocalMapCamera(const LinuxClientLaunchSettings& settings,
 	runtime->mapPreviewRenderedYawDegrees = NormalizeLinuxPreviewYawValue(runtime->mapPreviewYawDegrees);
 }
 
-/** Nearest intersection with the exact two triangles emitted for each sampled cell.
- * This intentionally targets the rendered preview heightfield, not collision/road meshes.
- * Bounded by the existing sampled grid, with no GL readback or mutable mesh cache.
+/** Nearest intersection with authored baked geometry, or the legacy sampled fallback.
+ * Both are bounded, two-sided surface queries, not alpha/prop/road collision or GL readback.
  */
 static bool TraceLinuxMapCameraTerrain(const LinuxBootstrap::MapCameraFrame& camera,
 	const LinuxMapTerrainHeightmapPreview& terrain, double sx, double sy,
@@ -105,6 +105,12 @@ static bool TraceLinuxMapCameraTerrain(const LinuxBootstrap::MapCameraFrame& cam
 	using Point = LinuxBootstrap::MapCameraFrame::Point;
 	Point origin, direction;
 	if (!camera.Ray(sx, sy, origin, direction) || std::abs(direction.z) < 1e-12) return false;
+	if (terrain.bakedSurface) {
+		LinuxBootstrap::BakedTerrain::SurfaceHit surface;
+		if (!terrain.bakedSurface->Trace({origin.x,origin.y,origin.z},{direction.x,direction.y,direction.z},440,surface))
+			return false;
+		hit={surface.position[0],surface.position[1],surface.position[2]}; return true;
+	}
 	if (!terrain.ready) {
 		const double t = -origin.z / direction.z;
 		if (t < 0 || t > 440.) return false;
@@ -147,7 +153,7 @@ static bool TraceLinuxMapCameraTerrain(const LinuxBootstrap::MapCameraFrame& cam
 	return true;
 }
 
-/** Ground picks share the displayed local camera and sampled triangle surface. */
+/** Ground picks share the displayed local camera and selected terrain surface. */
 bool ProjectLinuxMapPreviewScreenToWorld(const LinuxClientLaunchSettings& settings,
 	const LinuxSelectedMapPreview& map, const LinuxBootstrapScreenRuntime& runtime,
 	int mouseX, int mouseY, float* worldX, float* worldY, bool clampToMap = true)
@@ -177,8 +183,9 @@ bool ProjectLinuxMapPreviewWorldToScreen(const LinuxClientLaunchSettings& settin
 	if (screenX) *screenX = 0;
 	if (screenY) *screenY = 0;
 	const auto camera = ResolveLinuxMapCameraFrame(settings, map, runtime);
-	const double height = runtime.localMapCamera && map.terrainHeightmap.ready
-		? SampleLinuxMapTerrainHeightAtWorld(map.terrainHeightmap, position.x, position.y) + .04 / camera.scale : 0.;
+	const double height = runtime.localMapCamera && (map.terrainHeightmap.ready || map.terrainHeightmap.bakedSurface)
+		? SampleLinuxMapTerrainHeightAtWorld(map.terrainHeightmap, position.x, position.y) +
+			(map.terrainHeightmap.bakedSurface ? 0 : .04 / camera.scale) : 0.;
 	double x = 0, y = 0;
 	if (!camera.Project({position.x, position.y, height}, x, y)) return false;
 	const auto ix = static_cast<int>(std::lround(x)), iy = static_cast<int>(std::lround(y));

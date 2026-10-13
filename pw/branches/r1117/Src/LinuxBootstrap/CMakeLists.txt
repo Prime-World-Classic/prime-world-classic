@@ -1681,6 +1681,13 @@ find_package(ZLIB REQUIRED)
 
 add_subdirectory(native_shader)
 add_library(PrimeWorldLinuxBakedTerrain STATIC baked_terrain.cpp)
+add_executable(PrimeWorldLinuxBakedSurfaceProbe baked_surface_tests.cpp)
+target_link_libraries(PrimeWorldLinuxBakedSurfaceProbe PRIVATE PrimeWorldLinuxBakedTerrain)
+target_compile_options(PrimeWorldLinuxBakedSurfaceProbe PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Werror)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxBakedSurfaceProbe)
+add_test(NAME LinuxBakedSurfaceMocks COMMAND PrimeWorldLinuxBakedSurfaceProbe)
+add_test(NAME LinuxBakedSurfaceOriginal COMMAND PrimeWorldLinuxBakedSurfaceProbe
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../Data/Maps/Multiplayer/MOBA/_.baked_terrain")
 add_library(PrimeWorldLinuxDdsMips STATIC dds_mip_chain.cpp)
 target_compile_features(PrimeWorldLinuxDdsMips PUBLIC cxx_std_17)
 target_compile_options(PrimeWorldLinuxDdsMips PRIVATE -Wall -Wextra -Werror)
@@ -1767,8 +1774,8 @@ endforeach()
 
 option(PW_LINUX_OPTIMIZE_PRESENTATION "Optimize the native presentation without disabling assertions" ON)
 if(PW_LINUX_OPTIMIZE_PRESENTATION AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-	# CPU vertex transforms/skinning are presentation code, not world simulation.
-	set_property(SOURCE ../PW_Client/Game.cpp ../Render/smartrenderer.cpp
+	# CPU transforms/skinning and immutable terrain queries are presentation, not world simulation.
+	set_property(SOURCE ../PW_Client/Game.cpp ../Render/smartrenderer.cpp baked_terrain.cpp
 		APPEND PROPERTY COMPILE_OPTIONS -O2)
 endif()
 
