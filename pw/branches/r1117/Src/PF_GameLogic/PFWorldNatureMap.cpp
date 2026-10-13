@@ -271,6 +271,10 @@ void PFWorldNatureMap::GetNatureSegment(CVec2 const &pos, NDb::ENatureRoad &road
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::SetDesiredPosition(NDb::EFaction faction, NDb::ENatureRoad road, int segment)
 {
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	// The terrain core validates the complete command before resetting slice progress.
+	if (pMap) pMap->SetDesiredPosition((NDb::ENatureType)faction, road, segment);
+#else
   NI_VERIFY(faction == 1 || faction == 2, "Invalid faction index", return;); 
   NI_VERIFY(road >= 0 && road <= 2, "Invalid road", return;);  
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
@@ -278,6 +282,7 @@ void PFWorldNatureMap::SetDesiredPosition(NDb::EFaction faction, NDb::ENatureRoa
 #if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)
     pMap->SetDesiredPosition((NDb::ENatureType)faction, road, segment);
+#endif
 #endif
 }
 

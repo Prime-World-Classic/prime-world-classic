@@ -420,6 +420,15 @@ NatureMapElementInfo const& NatureMap::GetElementInfo(NatureMapElementId id) con
 
 void NatureMap::SetDesiredPosition(NDb::ENatureType faction, NDb::ENatureRoad roadIndex, int segment)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Reject before enum logging, indexing or signed slice arithmetic; partial loads cannot evolve.
+	const int segments = attackSpace.GetNumSegments();
+	if ((faction != NDb::NATURETYPE_A && faction != NDb::NATURETYPE_B)
+		|| roadIndex < 0 || roadIndex >= ARRAY_SIZE(roads)
+		|| segments <= 0 || segments > 65536 || segment < -1 || segment > segments
+		|| attackSpace.GetNumStrips() != 5 || elemList.empty() || elemListSorted.size() != elemList.size()
+		|| quadToOffset.size() != 7 * (segments + 2) + 1) return;
+#endif
   systemLog( NLogg::LEVEL_DEBUG ) << "Nature map advance, " << NDb::EnumToString(faction) << " on " << NDb::EnumToString(roadIndex) << " targeted at " << segment << endl;
 
   // faction
