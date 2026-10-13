@@ -287,6 +287,11 @@ void ResetTriangleAndDipCount()
 }
 
 // Lazy states application system
+//
+// Здесь остаётся прямой вызов устройства: SetStreamSourceFreq — механизм
+// D3D9-инстансинга (частота потока), аналога нет ни в NVRHI, ни в Vulkan
+// (там instanced draw + per-instance атрибуты). Менять схему будем на этапе 3,
+// см. docs/PLAN_NVRHI.md §2.8.
 static void ApplyStates()
 {
   IDirect3DDevice9* const device = GetDevice();
@@ -426,7 +431,7 @@ void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buff
 
 	lastVertexBuffersPtrs[streamNumber] = buffer;
   lastVertexBuffersOffsets[streamNumber] = offset;
-	HRESULT hr = GetDevice()->SetStreamSource(streamNumber, buffer, offset, stride);
+	HRESULT hr = GetBackend()->SetStreamSource(streamNumber, MakeBackendHandle<HBuffer>(buffer), offset, stride);
   NI_DX_THROW(hr, "BindVertexBufferRaw");
 }
 
@@ -453,7 +458,7 @@ void UnBindVertexBufferRaw(unsigned int streamNumber)
 
   lastVertexBuffersPtrs[streamNumber] = 0;
   lastVertexBuffersOffsets[streamNumber] = 0;
-  GetDevice()->SetStreamSource(streamNumber, 0, 0, 0);
+  GetBackend()->SetStreamSource(streamNumber, HBuffer{}, 0, 0);
 }
 
 ///
@@ -537,7 +542,7 @@ void DrawIndexedPrimitive(const DipDescriptor& _descr)
 
   NI_VERIFY(_descr.numVertices, "null dip", return; );
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
-  HRESULT hr = GetDevice()->DrawIndexedPrimitive( ConvertPrimitiveType(_descr.primitiveType), 
+  HRESULT hr = GetBackend()->DrawIndexed( _descr.primitiveType,
     _descr.baseVertexIndex, _descr.minIndex, _descr.numVertices, _descr.startIndex, _descr.primitiveCount );
 
   //NI_ASSERT(hr == D3D_OK, NStr::StrFmt("DrawIndexedPrimitive() failed! code: 0x%08X, error: %s description: %s", hr, DXGetErrorStringA(hr), DXGetErrorDescriptionA(hr)) );
@@ -583,10 +588,9 @@ void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData,
 
   NI_VERIFY(_descr.numVertices, "null dip", return; );
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
-  HRESULT hr = GetDevice()->DrawIndexedPrimitiveUP(
-                  static_cast<D3DPRIMITIVETYPE>( ConvertPrimitiveType(_descr.primitiveType) ), 
+  HRESULT hr = GetBackend()->DrawIndexedUP( _descr.primitiveType,
                   _descr.minIndex, _descr.numVertices, _descr.primitiveCount,
-                  pIndexData, D3DFMT_INDEX16, pVertexStreamZeroData, VertexStreamZeroStride);
+                  pIndexData, true /* D3DFMT_INDEX16 */, pVertexStreamZeroData, VertexStreamZeroStride);
 
   if(s_DXWarnLevel)
     NI_DX_WARN(hr, "DrawIndexedPrimitiveUP");
@@ -616,8 +620,7 @@ void DrawPrimitive(const DipDescriptor& _descr)
 #endif // _DEBUG_VIEWPORT
 
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
-  HRESULT hr = GetDevice()->DrawPrimitive(
-    static_cast<D3DPRIMITIVETYPE>( ConvertPrimitiveType(_descr.primitiveType) ), 
+  HRESULT hr = GetBackend()->Draw( _descr.primitiveType,
     _descr.startIndex, _descr.primitiveCount );
 
   if(s_DXWarnLevel)
@@ -643,7 +646,7 @@ void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroD
 #endif // _SUPRESS_HWI
 
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
-  HRESULT hr = GetDevice()->DrawPrimitiveUP(static_cast<D3DPRIMITIVETYPE>(ConvertPrimitiveType(_descr.primitiveType)),
+  HRESULT hr = GetBackend()->DrawUP(_descr.primitiveType,
                                             _descr.primitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
   if(s_DXWarnLevel)
     NI_DX_WARN(hr, "DrawPrimitiveUP");
@@ -661,7 +664,7 @@ void BindIndexBuffer(IDirect3DIndexBuffer9* buffer)
 		return;
 
 	pLastIndexBuffer = buffer;
-	HRESULT hr = GetDevice()->SetIndices(pLastIndexBuffer);
+	HRESULT hr = GetBackend()->SetIndices(MakeBackendHandle<HBuffer>(pLastIndexBuffer));
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "BindIndexBuffer");
 }
@@ -683,7 +686,7 @@ void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
 	if(pLastVertexDeclaration == pDecl) 
 		return;
 
-  HRESULT hr = GetDevice()->SetVertexDeclaration(pDecl);
+  HRESULT hr = GetBackend()->SetInputLayout(MakeBackendHandle<HInputLayout>(pDecl));
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "BindVertexDeclarationRaw");
 	pLastVertexDeclaration = pDecl;
@@ -722,7 +725,7 @@ void BindTexture(unsigned int samplerIndex, const Texture* pTexture, bool bProte
 #ifdef _DEBUG
 	lastTexturesPtrs[samplerIndex].bProtected = bProtect;
 #endif
-  HRESULT hr = GetDevice()->SetTexture( samplerIndex, Get(pTexture->GetDXTexture()) );
+  HRESULT hr = GetBackend()->SetTexture( samplerIndex, MakeBackendHandle<HTexture>(Get(pTexture->GetDXTexture())) );
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "BindTexture");
 }
@@ -734,7 +737,7 @@ void UnBindTexture(unsigned int samplerIndex)
 		return;
 	
 	lastTexturesPtrs[samplerIndex].pTex = 0;
-	GetDevice()->SetTexture(samplerIndex, 0);
+	GetBackend()->SetTexture(samplerIndex, HTexture{});
 }
 
 ///
@@ -761,7 +764,7 @@ void BindVertexShader(IDirect3DVertexShader9 *shader)
 #endif // USE_RENDER_SHADER_STATS
 
   pLastVertexShader = shader;
-  GetDevice()->SetVertexShader(shader);
+  GetBackend()->SetVertexShader(MakeBackendHandle<HShader>(shader));
 
 #ifdef USE_RENDER_SHADER_STATS
   NoteShaderPair();
@@ -782,7 +785,7 @@ void BindPixelShader(IDirect3DPixelShader9 *shader)
 #endif // USE_RENDER_SHADER_STATS
 
 	pLastPixelShader = shader;
-	GetDevice()->SetPixelShader(shader);
+	GetBackend()->SetPixelShader(MakeBackendHandle<HShader>(shader));
 
 #ifdef USE_RENDER_SHADER_STATS
   NoteShaderPair();
@@ -794,7 +797,7 @@ void BindRenderTargetColor( unsigned int renderTargetIndex, IDirect3DSurface9* p
 {
   if ( pColorSurface != curColorSurface[renderTargetIndex] )
 	{
-    HRESULT hr = GetDevice()->SetRenderTarget( renderTargetIndex, pColorSurface );
+    HRESULT hr = GetBackend()->SetRenderTarget( renderTargetIndex, MakeBackendHandle<HSurface>(pColorSurface) );
     curColorSurface[renderTargetIndex] = pColorSurface;
     if(s_DXWarnLevel > 1)
       NI_DX_WARN(hr, "BindRenderTargetColor");
@@ -813,7 +816,7 @@ void BindRenderTargetDepth( IDirect3DSurface9* pDepthStencilSurface )
 {
 	if ( pDepthStencilSurface != curDepthSurface )
 	{
-    HRESULT hr = GetDevice()->SetDepthStencilSurface(pDepthStencilSurface);
+    HRESULT hr = GetBackend()->SetDepthStencil(MakeBackendHandle<HSurface>(pDepthStencilSurface));
 		curDepthSurface = pDepthStencilSurface;
     if(s_DXWarnLevel > 1)
       NI_DX_WARN(hr, "BindRenderTargetDepth");
@@ -848,7 +851,7 @@ void BindRenderTargetDefault()
 	BindRenderTargetDepth(pDefaultDepth);
 
   if(useViewport) {
-    HRESULT hr = GetDevice()->SetViewport( &viewport ); // smirnov [2009/7/15]: why set it here? why only here?
+    HRESULT hr = GetBackend()->SetViewport( MakeBackendViewport(viewport) ); // smirnov [2026-10-13] seam: viewport-кэш пока D3D9-типизирован, конвертация на месте
     if(s_DXWarnLevel > 1)
       NI_DX_WARN(hr, "BindRenderTargetDefault");
   }
@@ -992,22 +995,19 @@ void SetMainViewport( int x, int y, int width, int height ) // smirnov [2009/7/1
 
 void GetMainViewport( int& x, int& y, int& width, int& height )
 {
-  D3DVIEWPORT9 tempVP;
-  D3DVIEWPORT9 *pVP = &viewport;
-  if(!useViewport) {
-    GetDevice()->GetViewport(&tempVP);
-    pVP = &tempVP;
-  }
+  BackendViewport vp = MakeBackendViewport(viewport);
+  if(!useViewport)
+    GetBackend()->GetViewport(vp);
 
-  x = pVP->X;
-  y = pVP->Y;
-  width = pVP->Width;
-  height = pVP->Height;
+  x = vp.x;
+  y = vp.y;
+  width = vp.width;
+  height = vp.height;
 }
 
 void ResetMainViewport()
 {
-  HRESULT hr = GetDevice()->SetViewport( &viewport );
+  HRESULT hr = GetBackend()->SetViewport( MakeBackendViewport(viewport) );
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "ResetMainViewport");
 }
@@ -1019,7 +1019,7 @@ void FixViewport() // clip viewport size by depth-stencil's surface size
 
   const bool smallViewPort = (curColorSurfaceWidth > viewport.Width || curColorSurfaceHeight > viewport.Height);
   if(useViewport && smallViewPort) {
-    HRESULT hr = GetDevice()->SetViewport(&viewport);
+    HRESULT hr = GetBackend()->SetViewport(MakeBackendViewport(viewport));
     if(s_DXWarnLevel > 1)
       NI_DX_WARN(hr, "FixViewport");
   }

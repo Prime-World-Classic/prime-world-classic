@@ -264,6 +264,50 @@ mipmap-цепочки до 12 уровней; DX10-заголовков, volume 
 `Present`/`SetScissorRect` (Win32, нужен и Vulkan-свопчейну), семантика
 `Present` (прямого swapchain-интерфейса у NVRHI нет — §3.1).
 
+**Второй шаг (2026-10-13, тот же день) — `smartrenderer.cpp`: 27 → 9.**
+Через бэкенд теперь идут биндинги (`SetStreamSource`, `SetIndices`,
+`SetInputLayout`, `SetVertexShader`, `SetPixelShader`, `SetTexture`,
+`SetRenderTarget`, `SetDepthStencil`, `SetViewport`) и вывод
+(`DrawIndexed`, `Draw`, `DrawIndexedUP`, `DrawUP`), а также `GetViewport`.
+Тип примитива в интерфейсе — проектный `Render::ERenderPrimitiveType`
+(`renderprimitivetype.h`), перевод в `D3DPRIMITIVETYPE` делает бэкенд
+(`ConvertPrimitiveType`).
+
+Ручки ресурсов: `HBuffer`/`HTexture`/`HSurface`/`HShader`/`HInputLayout` —
+обёртки над указателем (`MakeBackendHandle<H>(ptr)`). На этапе 2 внутри —
+указатель на объект D3D9, но тип на каждый вид ресурса свой, чтобы этап 3
+подставил `nvrhi::BufferHandle` и т.п., не трогая вызывающий код, и чтобы
+`HTexture` нельзя было передать вместо `HBuffer`.
+
+Биндинги возвращают `HRESULT`, хотя у D3D9-бэкенда это проброс кода вызова:
+вызывающий код `SmartRenderer` логирует их по `s_DXWarnLevel` — терять эту
+диагностику нельзя, поэтому бэкенду этапа 3 (у NVRHI методы `void`) возвращать
+`S_OK`.
+
+Что осталось в `smartrenderer.cpp` (9 `GetDevice()`, всё осознанно):
+`CreateVertexDeclaration` (создание ресурса — этап 2, §чек-лист, ещё не закрыт);
+4 вызова в `RenderDeferred2D` (единственный фиксированный блок: `SetFVF`,
+`DrawPrimitiveUP` — план §1.4); `SetStreamSourceFreq` в `ApplyStates` —
+механизм D3D9-инстансинга по частоте потока, аналога нет ни в NVRHI, ни в
+Vulkan (там instanced draw + per-instance атрибуты), схему меняем на этапе 3;
+2 вызова внутри `#ifdef _DEBUG_VIEWPORT` (не компилируются); 1 — внутри
+закомментированного блока.
+
+Итог по `Render/`: `renderer.cpp` — 12 прямых вызовов устройства,
+`smartrenderer.cpp` — 9.
+
+**Гейт для рендер-правок (2026-10-13).** Логи и дампы не показывают, что
+картинка поехала: неверный порядок параметров draw, неверный вьюпорт или
+подставленный шейдер молча рисуют мусор. Поэтому кадр снимается с ВМС
+(`python3 vm7/vncshot.py 127.0.0.1 5918 /tmp/shot.ppm`), дальше
+`tools/render_shot/ppm_tools.py` (`diff` — доля отличающихся пикселей,
+`png` — чтобы посмотреть глазами). Первый прогон после переноса draw-пути:
+сцена боя отрисована целиком (ландшафт, юнит с полосой HP, партиклы, UI,
+миникарта), два кадра с интервалом 25 с отличаются на 4,9% пикселей — сцена
+анимируется, не залипла. Порог `--limit 0` уместен только для сравнения
+«до/после» одного и того же момента; сам по себе кадр боя не детерминирован
+(таймер, позиция юнита), так что это smoke, а не пиксельный эталон.
+
 Не перенесено (следующие шаги этапа 2): создание ресурсов
 (`CreateVertexShader`/`CreatePixelShader`/`CreateVertexDeclaration`),
 операции над поверхностями (`GetRenderTargetData`, `StretchRect`, `ColorFill`),

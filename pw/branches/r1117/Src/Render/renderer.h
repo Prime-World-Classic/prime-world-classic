@@ -233,6 +233,9 @@ inline Renderer* GetRenderer() { return Renderer::Get(); }
 
 inline IDirect3DDevice9* GetDevice() { return Renderer::Get()->GetDevice(); }
 
+// Seam этапа 2 (docs/PLAN_NVRHI.md §2.8): путь коду Render к бэкенду.
+inline IRenderBackend* GetBackend() { return Renderer::Get()->GetBackend(); }
+
 inline RenderStatesManager* GetStatesManager() { return Renderer::Get()->GetRenderStatesManager(); }
 
 inline LightsManager* GetLightsManager() { return Renderer::Get()->GetLightsManager(); } 

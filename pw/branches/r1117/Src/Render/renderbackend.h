@@ -9,6 +9,11 @@
 // в Renderer/DX*Ref — они закрываются вместе с NvrhiBackend на этапе 3,
 // иначе рефакторинг превращается в переписывание половины Render/ разом.
 //
+#include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
+
+namespace Render
+{
+
 // План предполагал каталог Src/Render/Backend/, но список файлов Render.vcproj
 // плоский (подкаталогов в нём нет), а из этого списка строится CMake-граф
 // клиента — поэтому файлы лежат рядом с остальными исходниками Render.
@@ -34,6 +39,25 @@ struct BackendViewport {
   unsigned x, y, width, height;
   float minZ, maxZ;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// Ручки ресурсов. На этапе 2 это указатели на объекты D3D9 (см. D3D9Backend),
+// но тип у каждого вида ресурса свой: этап 3 подставляет настоящие ручки
+// (nvrhi::BufferHandle и т.п.), не трогая вызывающий код. Отдельный тип на
+// вид ресурса нужен именно ради этого — перепутать HTexture и HBuffer на
+// этапе 3 должно быть невозможно.
+struct HBuffer      { void* p = 0; };
+struct HTexture     { void* p = 0; };
+struct HSurface     { void* p = 0; };
+struct HShader      { void* p = 0; };   // VS и PS: бэкенд знает, какой слот
+struct HInputLayout { void* p = 0; };
+
+template <class H, class P>
+inline H MakeBackendHandle(P* pObj) {
+  H h;
+  h.p = static_cast<void*>(pObj);
+  return h;
+}
 
 class IRenderBackend {
 public:
@@ -61,8 +85,43 @@ public:
   // спрятана внутри бэкенда).
   virtual void SetClipPlane(bool enable, const float* pPlaneEquation) = 0;
 
+  // --- биндинги ---
+  // stride/offset — в байтах; slot 0 — поток вершин, инстансинг бэкенд
+  // разворачивает сам (см. SmartRenderer::instancingEnabled).
+  //
+  // Возвращают HRESULT, хотя у D3D9-бэкенда это просто проброс кода вызова:
+  // вызывающий код SmartRenderer логирует их по s_DXWarnLevel. Бэкенду этапа 3
+  // (NVRHI, методы void) возвращать S_OK — терять эту диагностику нельзя.
+  virtual HRESULT SetStreamSource(unsigned slot, HBuffer vertexBuffer, unsigned byteOffset, unsigned stride) = 0;
+  virtual HRESULT SetIndices(HBuffer indexBuffer) = 0;
+  virtual HRESULT SetInputLayout(HInputLayout layout) = 0;
+  virtual HRESULT SetVertexShader(HShader shader) = 0;
+  virtual HRESULT SetPixelShader(HShader shader) = 0;
+  virtual HRESULT SetTexture(unsigned samplerIndex, HTexture texture) = 0;
+  virtual HRESULT SetRenderTarget(unsigned index, HSurface surface) = 0;
+  virtual HRESULT SetDepthStencil(HSurface surface) = 0;
+  virtual HRESULT SetViewport(const BackendViewport& vp) = 0;
+
+  // --- вывод ---
+  // Тип примитива — проектный ERenderPrimitiveType (renderformat.h), его
+  // перевод в D3DPRIMITIVETYPE/VkPrimitiveTopology делает бэкенд.
+  virtual HRESULT DrawIndexed(ERenderPrimitiveType type, unsigned baseVertexIndex, unsigned minIndex,
+                              unsigned indexedVertexCount, unsigned startIndex, unsigned primitiveCount) = 0;
+  virtual HRESULT Draw(ERenderPrimitiveType type, unsigned startVertex, unsigned primitiveCount) = 0;
+  // UP-версии (данные прямо из памяти вызывающего): у NVRHI аналога нет, их
+  // бэкенду этапа 3 придётся реализовывать через транзитный staging-буфер.
+  // minIndexValue/indexCount/vertexCount — ровно те же тройка, что уходит в
+  // D3D9 (сохраняем как есть, см. d3d9backend.cpp); index16 — формат индексов.
+  virtual HRESULT DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexValue, unsigned indexCount,
+                                unsigned vertexCount, const void* pIndexData, bool index16,
+                                const void* pVertexData, unsigned vertexStride) = 0;
+  virtual HRESULT DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
+                         const void* pVertexData, unsigned vertexStride) = 0;
+
   // --- прочее ---
   // D3D9-специфично (пул MANAGED); для бэкендов без managed-пула — пустая
   // функция, вызов остаётся на месте.
   virtual void EvictManagedResources() = 0;
 };
+
+} // namespace Render
