@@ -1,0 +1,95 @@
+/** Original MOBA catalog integration: bounded nearby selection, stable identity and cache epochs. */
+static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environment)
+{
+	unsigned checks = 0, failures = 0;
+	const auto check = [&](bool value, const char* message) {
+		++checks;
+		if (!value) { ++failures; fprintf(stderr, "Scene window: %s\n", message); }
+	};
+	LinuxMapCatalogEntry entry;
+	entry.descriptor = "Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb";
+	LinuxSelectedMapPreview map;
+	map.tactical.ready = true;
+	map.tactical.minX = map.tactical.minY = 0;
+	map.tactical.maxX = map.tactical.maxY = 410;
+	ProbeSelectedMapStaticSceneObjects(environment, entry, &map);
+	check(map.sceneCatalog && !map.sceneCatalog->discovering, "original catalog finalized");
+	if (!map.sceneCatalog) return false;
+	const auto& catalog = *map.sceneCatalog;
+	check(map.staticSceneObjectScanCount == 7478 && !map.staticSceneObjectScanLimitHit,
+		"catalog traverses original objects beyond the former 2048 scan cap");
+	check(catalog.terrain.size() == 1681 && catalog.statics.size() > 256 && catalog.animated.size() > 48,
+		"discovery is independent of active render budgets");
+	check(catalog.metadataDrops == 0 && catalog.candidates.size() <= LinuxBootstrap::SceneWindowLimits::catalogCandidates,
+		"shipped metadata fits the catalog budget");
+	check(map.staticDiffuseTextures.empty() && map.staticGeometryPayloads.empty(),
+		"metadata discovery never decodes textures or publishes an arbitrary first window");
+	LinuxWindowOverlay overlay;
+	std::set<size_t> unionObjects;
+	std::vector<size_t> firstSelection;
+	for (const auto focus : {CVec2(384, 164), CVec2(205, 205), CVec2(40, 245)}) {
+		LinuxBootstrap::SceneWindowRequest request;
+		request.focusX = focus.x; request.focusY = focus.y;
+		request.bounds = {focus.x - 55, focus.y - 55, focus.x + 55, focus.y + 55};
+		check(UpdateLinuxMapSceneWindow(environment, request, &map, &overlay), "distant location publishes a new window");
+		check(overlay.staticMapResources[0].Size() == 0 && overlay.staticMapResources[1].Size() == 0 &&
+			overlay.animatedMapResources.Size() == 0, "every indexed cache cleared before new payload publication");
+		check(!map.staticGeometryPayloads.empty() && map.staticGeometryPayloads.size() <= 256 &&
+			!map.terrainElementPayloads.empty() && map.terrainElementPayloads.size() <= 192 &&
+			map.animatedGeometryPayloads.size() <= 48 && map.staticDiffuseTextures.size() <= 96,
+			"each real window obeys unchanged active budgets");
+		check(map.sceneWindowMetrics.cumulativeDrops == 0, "three local windows stay within process input limits");
+		const auto outer = request.bounds.Expanded(request.guardBand);
+		bool overlaps = true, identity = true, late = false;
+		size_t staticIndex = 0, terrainIndex = 0, animatedIndex = 0;
+		for (const auto index : map.sceneWindow.Selected()) {
+			const auto& candidate = catalog.candidates[index];
+			overlaps = overlaps && candidate.bounds.Overlaps(outer);
+			if (candidate.kind == LinuxBootstrap::SceneWindowKind::Static) {
+				const auto& payload = map.staticGeometryPayloads[staticIndex++];
+				const auto& original = catalog.statics[candidate.payloadIndex];
+				identity = identity && payload.originalObjectIndex == candidate.objectIndex &&
+					payload.bakedSceneHash == original.bakedSceneHash && payload.bakedComponentIndex == original.bakedComponentIndex &&
+					payload.geometryFile == original.geometryFile && payload.hasBakedIdentity == original.hasBakedIdentity;
+			} else if (candidate.kind == LinuxBootstrap::SceneWindowKind::Terrain) {
+				identity = identity && map.terrainElementPayloads[terrainIndex++].originalObjectIndex == candidate.objectIndex;
+			} else identity = identity && map.animatedGeometryPayloads[animatedIndex++].originalObjectIndex == candidate.objectIndex;
+			if (candidate.kind != LinuxBootstrap::SceneWindowKind::Terrain) {
+				late = late || candidate.objectIndex > 2048;
+				unionObjects.insert(candidate.objectIndex);
+			}
+		}
+		check(overlaps && identity && late, "overlapping original late-map identities survive sorting and remapping");
+		const auto validTextures = [&](const auto& indices) {
+			for (const auto index : indices)
+				if (index != kLinuxHeroPreviewNoDiffuseTexture && index >= map.staticDiffuseTextures.size()) return false;
+			return true;
+		};
+		bool remapped = true;
+		for (const auto& payload : map.staticGeometryPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
+		for (const auto& payload : map.terrainElementPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
+		for (const auto& payload : map.animatedGeometryPayloads)
+			for (const auto& skin : payload.skinGeometryPayloads) remapped = validTextures(skin.materialDiffuseTextureIndices) && remapped;
+		check(remapped, "all active diffuse slots remap inside this window");
+		bool hasSky = false;
+		for (const auto& payload : map.staticGeometryPayloads)
+			for (const auto& material : payload.materialReferences)
+				hasSky = hasSky || dynamic_cast<const NDb::SkyMaterial*>(material.GetPtr()) != nullptr;
+		check(!hasSky, "unported sky spheres must not occlude the hero as opaque local scenery");
+		if (firstSelection.empty()) firstSelection = map.sceneWindow.Selected();
+		else check(firstSelection != map.sceneWindow.Selected(), "distant views cannot reuse the old first scene");
+		for (auto& cache : overlay.staticMapResources)
+			cache.Get(0, 1, [] { return std::make_unique<LinuxStaticMapResource>(); });
+		overlay.animatedMapResources.Get(0, 1, [] { return std::make_unique<LinuxAnimatedMapResource>(); });
+		const auto builds = map.sceneWindowBuilds, revision = map.sceneWindow.Revision();
+		const auto geometryBytes = LinuxMapSceneAssetLedger().GeometryBytes();
+		for (unsigned frame = 0; frame < 100; ++frame)
+			check(!UpdateLinuxMapSceneWindow(environment, request, &map, &overlay), "stationary window does no work");
+		check(builds == map.sceneWindowBuilds && revision == map.sceneWindow.Revision() &&
+			geometryBytes == LinuxMapSceneAssetLedger().GeometryBytes() && overlay.staticMapResources[0].Size() == 1,
+			"stationary frames preserve counters, resources and input budget");
+	}
+	check(unionObjects.size() > 256, "camera traversal reaches more than the old fixed scene");
+	fprintf(stdout, "Scene window engine: %u checks, %u failures, distinctObjects=%zu\n", checks, failures, unionObjects.size());
+	return failures == 0;
+}

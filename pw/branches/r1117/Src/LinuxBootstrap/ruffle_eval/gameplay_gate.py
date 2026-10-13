@@ -271,8 +271,22 @@ def validate_interactive(stdout, client_log, seconds, min_cast_step=0):
 	world = fields(record(stdout, 'Final game transceiver runtime', ': '), '=')
 	for key in ('heroStopCommands', 'heroAttackCommands', 'heroCancelCommands', 'heroUseUnitCommands', 'heroUseTalentCommands'):
 		require(integer(world.get(key, '')) == 0, f'native special key aliased {key}')
-	for name, expected in (('BaseYaw', -42), ('Pitch', 56), ('Zoom', 1.18)):
-		require(number(record(client_log, 'finalMap3DPreview' + name, '=')) == expected,
+	zoom = 1.18
+	local = record(client_log, 'finalLocalMapCamera', '=', optional=True)
+	if local is not None:
+		camera = fields(local, ':', 'active follow updates focusHeight')
+		require(integer(camera['active']) == 1 and integer(camera['follow']) == 1
+			and integer(camera['updates']) > 0, 'local camera lost its player follow')
+		number(camera['focusHeight'])
+		bounds = pair(record(client_log, 'mapTacticalBounds', '='), ' -> ', lambda value: pair(value, ',', number))
+		dx, dy = bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]
+		require(dx > 0 and dy > 0 and math.isfinite(max(dx, dy)), 'invalid camera map bounds')
+		zoom = min(64, max(0.55, (54 * 1.38) * max(1, dx, dy) / (37 * 92)))
+		require(integer(record(client_log, 'finalMap3DPreviewInputCount', '=')) == 0
+			and record(client_log, 'finalMap3DPreviewLastAction', '=') == 'local-hero-camera',
+			'native special key changed the local camera')
+	for name, expected in (('BaseYaw', -42), ('Pitch', 56), ('Zoom', zoom)):
+		require(abs(number(record(client_log, 'finalMap3DPreview' + name, '=')) - expected) <= 0.0001,
 			'native special key changed the camera')
 	result.update(cast_step=cast_step, clock_ticks=ticks)
 	return result

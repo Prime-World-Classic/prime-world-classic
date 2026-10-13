@@ -10,6 +10,7 @@
 #include "System/FileSystem/FileUtils.h"
 #include "System/FileSystem/WinFileSystem.h"
 #include "System/ImageDDS.h"
+#include "System/ImageFormatDDS.h"
 #include "System/HPTimer.h"
 #include "System/MainFrame.h"
 #include "System/ProfileManager.h"
@@ -123,9 +124,12 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "LinuxBootstrap/scene_window.h"
+#include <iostream>
 #include "LinuxBootstrap/baked_vertex_colors.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/map_view.h"
+#include "LinuxBootstrap/map_camera.h"
 #include "LinuxBootstrap/interactive_clock.h"
 #include "System/LinuxKeyInput.h"
 #include "LinuxBootstrap/world_hud_layout.h"
@@ -2129,6 +2133,7 @@ struct LinuxMapStaticGeometryPayloadPreview
 	// Original AdvMap identity, never the filtered payload/cache slot index.
 	bool hasBakedIdentity = false;
 	size_t originalObjectIndex = 0, bakedComponentIndex = 0;
+	size_t sceneWindowComponentIndex = 0;
 	std::uint32_t bakedSceneHash = 0;
   std::string geometryFile;
   std::string rootGeometryFile;
@@ -2148,6 +2153,8 @@ struct LinuxMapSkinGeometryPayloadPreview
 
 struct LinuxMapAnimatedGeometryPayloadPreview
 {
+	size_t originalObjectIndex = 0, sceneWindowComponentIndex = 0;
+	NDb::AABB localBounds;
   std::string skeletonFile;
   std::string skeletonRootFile;
   std::string animationFile;
@@ -2364,6 +2371,21 @@ struct LinuxMapTerrainHeightmapPreview
 
 struct LinuxSelectedMapPreview
 {
+	struct SceneCatalog
+	{
+		bool discovering = true;
+		size_t metadataDrops = 0, visitedComponents = 0, stringBytes = 0, fallbackBounds = 0;
+		std::vector<LinuxMapStaticGeometryPayloadPreview> statics, terrain;
+		std::vector<LinuxMapAnimatedGeometryPayloadPreview> animated;
+		std::vector<std::string> textures;
+		std::map<std::string, size_t> textureIndices;
+		std::vector<LinuxMapTerrainLayerPreview> terrainLayers;
+		std::vector<LinuxBootstrap::SceneWindowCandidate> candidates;
+	};
+	std::shared_ptr<SceneCatalog> sceneCatalog;
+	LinuxBootstrap::SceneWindowState sceneWindow;
+	LinuxBootstrap::SceneWindowMetrics sceneWindowMetrics;
+	size_t sceneWindowBuilds = 0;
 	LinuxBootstrap::BakedVertexColors::Ptr bakedVertexColors;
   size_t selectedIndex;
   std::string descriptor;
@@ -5355,6 +5377,11 @@ struct LinuxBootstrapScreenRuntime
   float mapPreviewZoom;
   float mapPreviewPanX;
   float mapPreviewPanZ;
+	bool localMapCamera = false, localMapFollow = true;
+	const NWorld::PFWorld* localMapCameraWorld = nullptr;
+	std::string localMapCameraDescriptor;
+	float localMapFocusHeight = 0.f;
+	size_t localMapFocusUpdates = 0;
   size_t mapPreviewInputCount;
   bool mapPreviewCommandMoveTargetDrawn;
   bool mapPreviewCommandMoveProofSent;
@@ -15744,7 +15771,7 @@ const size_t kLinuxHeroMeshPreviewMaxSkinPayloadFiles = 32;
 const size_t kLinuxHeroMeshPreviewMaxStaticPayloadFiles = 48;
 const size_t kLinuxHeroMeshPreviewMaxTriangles = 48000;
 const size_t kLinuxHeroMeshPreviewMaxDiffuseTextures = 16;
-const size_t kLinuxMapStaticPreviewMaxObjects = 2048;
+const size_t kLinuxMapStaticPreviewMaxObjects = LinuxBootstrap::SceneWindowLimits::catalogObjects;
 const size_t kLinuxMapStaticPreviewMaxPayloadFiles = 256;
 const size_t kLinuxMapAnimatedPreviewMaxPayloadFiles = 48;
 const size_t kLinuxMapTerrainElementPreviewMaxPayloadFiles = 192;
@@ -18733,6 +18760,23 @@ Placement ResolveLinuxHeroStaticPayloadPlacement(
     payload.orientation);
 }
 
+/// Metadata admission is independent of the small active render window.
+bool ReserveLinuxMapSceneMetadata(LinuxSelectedMapPreview* preview, size_t strings)
+{
+	if (!preview || !preview->sceneCatalog) return true;
+	auto& catalog = *preview->sceneCatalog;
+	const auto count = preview->staticGeometryPayloads.size() + preview->terrainElementPayloads.size()
+		+ preview->animatedGeometryPayloads.size();
+	if (count >= LinuxBootstrap::SceneWindowLimits::catalogCandidates
+		|| strings > LinuxBootstrap::SceneWindowLimits::catalogStringBytes - catalog.stringBytes)
+	{
+		++catalog.metadataDrops;
+		return false;
+	}
+	catalog.stringBytes += strings;
+	return true;
+}
+
 size_t RecordLinuxMapStaticDiffuseTexture(
   const LinuxClientEnvironment& environment,
   const std::string& textureFileName,
@@ -18743,6 +18787,23 @@ size_t RecordLinuxMapStaticDiffuseTexture(
   {
     return kLinuxHeroPreviewNoDiffuseTexture;
   }
+	if (preview->sceneCatalog && preview->sceneCatalog->discovering)
+	{
+		auto& catalog = *preview->sceneCatalog;
+		const auto found = catalog.textureIndices.find(textureFileName);
+		if (found != catalog.textureIndices.end()) return found->second;
+		if (textureFileName.size() > LinuxBootstrap::SceneWindowLimits::pathBytes
+			|| catalog.textureIndices.size() >= LinuxBootstrap::SceneWindowLimits::catalogTextures
+			|| !ReserveLinuxMapSceneMetadata(preview, textureFileName.size() * 2))
+		{
+			++catalog.metadataDrops;
+			return kLinuxHeroPreviewNoDiffuseTexture;
+		}
+		const auto index = preview->staticDiffuseTextureFiles.size();
+		catalog.textureIndices.emplace(textureFileName, index);
+		preview->staticDiffuseTextureFiles.push_back(textureFileName);
+		return index; // No texture decoding while discovering candidates.
+	}
 
   for (size_t i = 0; i < preview->staticDiffuseTextureFiles.size(); ++i)
   {
@@ -18877,7 +18938,7 @@ void RecordLinuxMapStaticGeometryPayload(
   }
 
   ++preview->staticScenePayloadResolvedCount;
-  if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
+  if (!preview->sceneCatalog && preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
   {
     preview->staticScenePayloadLimitHit = true;
     return;
@@ -18887,6 +18948,8 @@ void RecordLinuxMapStaticGeometryPayload(
   payloadPreview.geometryFile = resolvedFile;
   payloadPreview.rootGeometryFile =
     ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+	if (resolvedFile.size() > LinuxBootstrap::SceneWindowLimits::pathBytes
+		|| !ReserveLinuxMapSceneMetadata(preview, resolvedFile.size() + payloadPreview.rootGeometryFile.size())) return;
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
   payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
@@ -18968,7 +19031,7 @@ void RecordLinuxMapAnimatedGeometryPayload(
     return;
   }
 
-  if (preview->animatedGeometryPayloads.size() >= kLinuxMapAnimatedPreviewMaxPayloadFiles)
+  if (!preview->sceneCatalog && preview->animatedGeometryPayloads.size() >= kLinuxMapAnimatedPreviewMaxPayloadFiles)
   {
     preview->animatedScenePayloadLimitHit = true;
     return;
@@ -19003,15 +19066,32 @@ void RecordLinuxMapAnimatedGeometryPayload(
   }
 
   LinuxMapAnimatedGeometryPayloadPreview payloadPreview;
+	payloadPreview.localBounds = animated->aabb;
+	if (skeletonFile.size() > LinuxBootstrap::SceneWindowLimits::pathBytes ||
+		animationFile.size() > LinuxBootstrap::SceneWindowLimits::pathBytes) {
+		if (preview->sceneCatalog) ++preview->sceneCatalog->metadataDrops;
+		return;
+	}
   payloadPreview.skeletonFile = skeletonFile;
   payloadPreview.skeletonRootFile = skeletonRootFile;
   payloadPreview.animationFile = animationFile;
   payloadPreview.animationRootFile = animationRootFile;
   payloadPreview.placement = placement;
+	if (animated->skins.size() > static_cast<int>(LinuxBootstrap::SceneWindowLimits::skinsPerPayload))
+	{
+		if (preview->sceneCatalog) ++preview->sceneCatalog->metadataDrops;
+		return;
+	}
+	size_t stringBytes = skeletonFile.size() + skeletonRootFile.size() + animationFile.size() + animationRootFile.size();
 
   for (int skinIndex = 0; skinIndex < animated->skins.size(); ++skinIndex)
   {
     const NDb::SkinPart& skinPart = animated->skins[skinIndex];
+		if (skinPart.materialsReferences.size() > static_cast<int>(LinuxBootstrap::SceneWindowLimits::materialsPerPayload))
+		{
+			if (preview->sceneCatalog) ++preview->sceneCatalog->metadataDrops;
+			return;
+		}
     LinuxMapSkinGeometryPayloadPreview skinPreview;
     if (!ResolveLinuxMapAnimatedPayloadFile(
           environment,
@@ -19024,6 +19104,8 @@ void RecordLinuxMapAnimatedGeometryPayload(
       continue;
     }
 
+		if (skinPreview.geometryFile.size() > LinuxBootstrap::SceneWindowLimits::pathBytes) return;
+		stringBytes += skinPreview.geometryFile.size() + skinPreview.rootGeometryFile.size();
     skinPreview.materialDiffuseTextureIndices.reserve(skinPart.materialsReferences.size());
     skinPreview.materialReferences.reserve(skinPart.materialsReferences.size());
     for (int materialIndex = 0; materialIndex < skinPart.materialsReferences.size(); ++materialIndex)
@@ -19042,6 +19124,7 @@ void RecordLinuxMapAnimatedGeometryPayload(
     return;
   }
 
+	if (!ReserveLinuxMapSceneMetadata(preview, stringBytes)) return;
   preview->animatedGeometryPayloads.push_back(payloadPreview);
 }
 
@@ -19404,6 +19487,7 @@ void ProbeSelectedMapTerrainNatureRoads(
 void RecordLinuxMapTerrainElementPayload(
   const LinuxClientEnvironment& environment,
   const NDb::TerrainElementInstance& terrainElement,
+	size_t originalElementIndex,
   LinuxSelectedMapPreview* preview
 )
 {
@@ -19425,7 +19509,7 @@ void RecordLinuxMapTerrainElementPayload(
   }
 
   ++heightmap.terrainElementPayloadResolvedCount;
-  if (preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
+  if (!preview->sceneCatalog && preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
   {
     heightmap.terrainElementPayloadLimitHit = true;
     return;
@@ -19433,6 +19517,12 @@ void RecordLinuxMapTerrainElementPayload(
 
   std::vector<size_t> materialDiffuseTextureIndices;
   std::vector<NDb::Ptr<NDb::Material> > materialReferences;
+	if (terrainElement.terrainObject->materialsReferences.size() + (IsValid(terrainElement.material) ? 1 : 0)
+		> static_cast<int>(LinuxBootstrap::SceneWindowLimits::materialsPerPayload))
+	{
+		if (preview->sceneCatalog) ++preview->sceneCatalog->metadataDrops;
+		return;
+	}
   if (IsValid(terrainElement.material))
   {
     materialReferences.push_back(terrainElement.material);
@@ -19466,7 +19556,10 @@ void RecordLinuxMapTerrainElementPayload(
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
   payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
-	payloadPreview.localBounds = terrainElement.terrainObject->aabb;
+  payloadPreview.localBounds = terrainElement.terrainObject->aabb;
+	payloadPreview.originalObjectIndex = originalElementIndex;
+	if (resolvedFile.size() > LinuxBootstrap::SceneWindowLimits::pathBytes
+		|| !ReserveLinuxMapSceneMetadata(preview, resolvedFile.size() + payloadPreview.rootGeometryFile.size())) return;
   preview->terrainElementPayloads.push_back(payloadPreview);
 }
 
@@ -19485,7 +19578,7 @@ void ProbeSelectedMapTerrainElements(
   heightmap.terrainElementCount = terrain->geometry.terrainElements.size();
   for (int i = 0; i < terrain->geometry.terrainElements.size(); ++i)
   {
-    if (preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
+    if (!preview->sceneCatalog && preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
     {
       heightmap.terrainElementPayloadLimitHit = true;
       break;
@@ -19494,6 +19587,7 @@ void ProbeSelectedMapTerrainElements(
     RecordLinuxMapTerrainElementPayload(
       environment,
       terrain->geometry.terrainElements[i],
+			static_cast<size_t>(i),
       preview);
   }
 }
@@ -20026,6 +20120,15 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
   {
     return;
   }
+	if (preview->sceneCatalog)
+	{
+		if (preview->sceneCatalog->visitedComponents >= LinuxBootstrap::SceneWindowLimits::catalogComponents)
+		{
+			++preview->sceneCatalog->metadataDrops;
+			return;
+		}
+		++preview->sceneCatalog->visitedComponents;
+	}
 
   const std::string componentDbid = DescribeRawDbResource(component);
   if (visitedComponents && !componentDbid.empty())
@@ -20062,6 +20165,11 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
       dynamic_cast<const NDb::DBStaticSceneComponent*>(component))
   {
     ++preview->staticSceneComponentCount;
+		if (staticComponent->materialsReferences.size() > static_cast<int>(LinuxBootstrap::SceneWindowLimits::materialsPerPayload))
+		{
+			if (preview->sceneCatalog) ++preview->sceneCatalog->metadataDrops;
+			return;
+		}
     std::vector<size_t> materialDiffuseTextureIndices;
     std::vector<NDb::Ptr<NDb::Material> > materialReferences;
     materialDiffuseTextureIndices.reserve(staticComponent->materialsReferences.size());
@@ -20121,6 +20229,7 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
 
   ++preview->staticSceneObjectResolvedCount;
   const auto firstPayload = preview->staticGeometryPayloads.size();
+	const auto firstAnimatedPayload = preview->animatedGeometryPayloads.size();
   std::set<std::string> visitedComponents;
   for (int i = 0; i < sceneObject->attached.size(); ++i)
   {
@@ -20139,6 +20248,16 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
       &visitedComponents,
       preview);
   }
+	for (size_t i = firstPayload; i < preview->staticGeometryPayloads.size(); ++i)
+	{
+		preview->staticGeometryPayloads[i].originalObjectIndex = originalObjectIndex;
+		preview->staticGeometryPayloads[i].sceneWindowComponentIndex = i - firstPayload;
+	}
+	for (size_t i = firstAnimatedPayload; i < preview->animatedGeometryPayloads.size(); ++i)
+	{
+		preview->animatedGeometryPayloads[i].originalObjectIndex = originalObjectIndex;
+		preview->animatedGeometryPayloads[i].sceneWindowComponentIndex = i - firstAnimatedPayload;
+	}
 	// This first slice proves traversal index zero only for one childless static root.
 	const auto* root = sceneObject->attached.size() == 1
 		? dynamic_cast<const NDb::DBStaticSceneComponent*>(sceneObject->attached[0].component.GetPtr()) : nullptr;
@@ -20150,6 +20269,8 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
 		payload.bakedComponentIndex = 0;
 	}
 }
+
+#include "../LinuxBootstrap/scene_window.inc"
 
 void ProbeSelectedMapStaticSceneObjects(
   const LinuxClientEnvironment& environment,
@@ -20177,6 +20298,10 @@ void ProbeSelectedMapStaticSceneObjects(
     preview->warnings.push_back("Selected map static scene preview could not resolve map resource from DB");
     return;
   }
+	preview->sceneCatalog = std::make_shared<LinuxSelectedMapPreview::SceneCatalog>();
+	preview->sceneWindow = LinuxBootstrap::SceneWindowState();
+	preview->sceneWindowMetrics = {};
+	preview->sceneWindowBuilds = 0;
 
   if (IsValid(dbMap->terrain))
   {
@@ -20207,13 +20332,6 @@ void ProbeSelectedMapStaticSceneObjects(
   for (size_t objectIndex = 0; objectIndex < objectLimit; ++objectIndex)
   {
     ++preview->staticSceneObjectScanCount;
-    if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles &&
-        preview->animatedGeometryPayloads.size() >= kLinuxMapAnimatedPreviewMaxPayloadFiles)
-    {
-      preview->staticScenePayloadLimitHit = true;
-      preview->animatedScenePayloadLimitHit = true;
-      break;
-    }
 
     const NDb::AdvMapObject& mapObject = dbMap->objects[objectIndex];
     if (!IsValid(mapObject.gameObject))
@@ -20239,17 +20357,13 @@ void ProbeSelectedMapStaticSceneObjects(
         mapObject.offset.GetPlace(),
         objectIndex,
         preview);
-      if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
-      {
-        preview->staticScenePayloadLimitHit = true;
-        break;
-      }
     }
   }
 
   preview->staticSceneObjectScanLimitHit =
     preview->staticSceneObjectScanCount >= objectLimit &&
     objectLimit < static_cast<size_t>(dbMap->objects.size());
+	FinalizeLinuxMapSceneCatalog(environment, preview);
 }
 
 void ProbeHeroSceneComponentAsset(
@@ -33204,7 +33318,7 @@ void ClampLinuxMapPreviewCamera(LinuxBootstrapScreenRuntime* runtime)
   runtime->mapPreviewPitchDegrees =
     std::max(35.0f, std::min(72.0f, runtime->mapPreviewPitchDegrees));
   runtime->mapPreviewZoom =
-    std::max(0.55f, std::min(2.25f, runtime->mapPreviewZoom));
+    std::max(0.55f, std::min(64.0f, runtime->mapPreviewZoom));
   runtime->mapPreviewPanX =
     std::max(-48.0f, std::min(48.0f, runtime->mapPreviewPanX));
   runtime->mapPreviewPanZ =
@@ -33289,6 +33403,7 @@ void PanLinuxMapPreview(
 
   runtime->mapPreviewPanX += deltaX;
   runtime->mapPreviewPanZ += deltaZ;
+	if (runtime->localMapCamera) runtime->localMapFollow = false;
   ClampLinuxMapPreviewCamera(runtime);
   runtime->mapPreviewLastAction = action ? action : "pan";
   ++runtime->mapPreviewInputCount;
@@ -33304,6 +33419,10 @@ void ResetLinuxMapPreviewCamera(LinuxBootstrapScreenRuntime* runtime, const char
   runtime->mapPreviewYawDegrees = kLinuxMapPreviewDefaultYawDegrees;
   runtime->mapPreviewPitchDegrees = kLinuxMapPreviewDefaultPitchDegrees;
   runtime->mapPreviewZoom = kLinuxMapPreviewDefaultZoom;
+	if (runtime->localMapCamera) {
+		runtime->localMapCameraWorld = nullptr;
+		runtime->localMapFollow = true;
+	}
   runtime->mapPreviewPanX = 0.0f;
   runtime->mapPreviewPanZ = 0.0f;
   NormalizeLinuxMapPreviewYaw(runtime);
@@ -44422,220 +44541,7 @@ void TransformLinuxMapPreviewEyeVectorToMap(
   *z = rx * sy + rz * cy;
 }
 
-bool ProjectLinuxMapPreviewScreenToWorld(
-  const LinuxClientLaunchSettings& settings,
-  const LinuxSelectedMapPreview& selectedMapPreview,
-  const LinuxBootstrapScreenRuntime& runtime,
-  int mouseX,
-  int mouseY,
-  float* worldX,
-  float* worldY,
-	bool clampToMap = true
-)
-{
-  if (worldX) *worldX = 0.0f;
-  if (worldY) *worldY = 0.0f;
-  if (settings.width <= 0 || settings.height <= 0 || !selectedMapPreview.tactical.ready)
-  {
-    return false;
-  }
-
-  const LinuxTacticalMapPreview& tactical = selectedMapPreview.tactical;
-  const float rangeX = std::max(1.0f, tactical.maxX - tactical.minX);
-  const float rangeY = std::max(1.0f, tactical.maxY - tactical.minY);
-  const float mapRange = std::max(rangeX, rangeY);
-  const float scale = 92.0f / mapRange;
-  const float extentX = std::max(14.0f, rangeX * scale * 0.5f + 8.0f);
-  const float extentZ = std::max(14.0f, rangeY * scale * 0.5f + 8.0f);
-  const float previewZoom = std::max(0.55f, std::min(2.25f, runtime.mapPreviewZoom));
-  const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
-	const LinuxBootstrap::MapView view(viewExtent, settings.width, settings.height);
-  const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
-  const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
-
-  const float ndcX =
-    static_cast<float>(mouseX) * 2.0f / static_cast<float>(settings.width) - 1.0f;
-  const float ndcY =
-    1.0f - static_cast<float>(mouseY) * 2.0f / static_cast<float>(settings.height);
-  float originX = ndcX * view.halfWidth;
-  float originY = ndcY * view.halfHeight + 8.0f;
-  float originZ = 210.0f;
-  float dirX = 0.0f;
-  float dirY = 0.0f;
-  float dirZ = -1.0f;
-
-  TransformLinuxMapPreviewEyeVectorToMap(
-    runtime.mapPreviewRenderedPitchDegrees,
-    runtime.mapPreviewRenderedYawDegrees,
-    &originX,
-    &originY,
-    &originZ);
-  TransformLinuxMapPreviewEyeVectorToMap(
-    runtime.mapPreviewRenderedPitchDegrees,
-    runtime.mapPreviewRenderedYawDegrees,
-    &dirX,
-    &dirY,
-    &dirZ);
-
-  originX -= runtime.mapPreviewPanX;
-  originZ -= runtime.mapPreviewPanZ;
-  if (dirY > -0.0001f && dirY < 0.0001f)
-  {
-    return false;
-  }
-
-  const float t = -originY / dirY;
-  if (t < 0.0f)
-  {
-    return false;
-  }
-
-  const float mapX = originX + dirX * t;
-  const float mapZ = originZ + dirZ * t;
-  float projectedX = centerX + mapX / scale;
-  float projectedY = centerY + mapZ / scale;
-	if (!clampToMap && (!std::isfinite(projectedX) || !std::isfinite(projectedY) ||
-		projectedX < tactical.minX || projectedX >= tactical.maxX ||
-		projectedY < tactical.minY || projectedY >= tactical.maxY)) return false;
-  projectedX = std::max(tactical.minX, std::min(tactical.maxX, projectedX));
-  projectedY = std::max(tactical.minY, std::min(tactical.maxY, projectedY));
-
-  if (worldX) *worldX = projectedX;
-  if (worldY) *worldY = projectedY;
-  return true;
-}
-
-bool ProjectLinuxMapPreviewWorldToScreen(
-  const LinuxClientLaunchSettings& settings,
-  const LinuxSelectedMapPreview& selectedMapPreview,
-  const LinuxBootstrapScreenRuntime& runtime,
-  const CVec2& worldPosition,
-  int* screenX,
-  int* screenY
-)
-{
-  if (screenX) *screenX = 0;
-  if (screenY) *screenY = 0;
-  if (settings.width <= 0 || settings.height <= 0 || !selectedMapPreview.tactical.ready)
-  {
-    return false;
-  }
-
-  const int screenWidth = static_cast<int>(settings.width);
-  const int screenHeight = static_cast<int>(settings.height);
-  const float rangeX =
-    std::max(1.0f, selectedMapPreview.tactical.maxX - selectedMapPreview.tactical.minX);
-  const float rangeY =
-    std::max(1.0f, selectedMapPreview.tactical.maxY - selectedMapPreview.tactical.minY);
-  const float mapRange = std::max(rangeX, rangeY);
-  const float allowedError = std::max(1.5f, mapRange * 0.0125f);
-  float currentScreenX = static_cast<float>(screenWidth) * 0.5f;
-  float currentScreenY = static_cast<float>(screenHeight) * 0.5f;
-
-  for (int iteration = 0; iteration < 5; ++iteration)
-  {
-    const int sampleScreenX = static_cast<int>(currentScreenX + 0.5f);
-    const int sampleScreenY = static_cast<int>(currentScreenY + 0.5f);
-    float baseWorldX = 0.0f;
-    float baseWorldY = 0.0f;
-    if (!ProjectLinuxMapPreviewScreenToWorld(
-          settings,
-          selectedMapPreview,
-          runtime,
-          sampleScreenX,
-          sampleScreenY,
-          &baseWorldX,
-          &baseWorldY))
-    {
-      return false;
-    }
-
-    const float deltaWorldX = worldPosition.x - baseWorldX;
-    const float deltaWorldY = worldPosition.y - baseWorldY;
-    if (sqrtf(deltaWorldX * deltaWorldX + deltaWorldY * deltaWorldY) <= allowedError)
-    {
-      if (screenX) *screenX = sampleScreenX;
-      if (screenY) *screenY = sampleScreenY;
-      return true;
-    }
-
-    const int samplePixels = std::max(24, std::min(96, std::min(screenWidth, screenHeight) / 8));
-    const int sampleX2 = std::min(screenWidth - 1, sampleScreenX + samplePixels);
-    const int sampleY2 = std::min(screenHeight - 1, sampleScreenY + samplePixels);
-    if (sampleX2 == sampleScreenX || sampleY2 == sampleScreenY)
-    {
-      return false;
-    }
-
-    float worldX2 = 0.0f;
-    float worldY2 = 0.0f;
-    float worldX3 = 0.0f;
-    float worldY3 = 0.0f;
-    if (!ProjectLinuxMapPreviewScreenToWorld(
-          settings,
-          selectedMapPreview,
-          runtime,
-          sampleX2,
-          sampleScreenY,
-          &worldX2,
-          &worldY2) ||
-        !ProjectLinuxMapPreviewScreenToWorld(
-          settings,
-          selectedMapPreview,
-          runtime,
-          sampleScreenX,
-          sampleY2,
-          &worldX3,
-          &worldY3))
-    {
-      return false;
-    }
-
-    const float dxWorldX = worldX2 - baseWorldX;
-    const float dxWorldY = worldY2 - baseWorldY;
-    const float dyWorldX = worldX3 - baseWorldX;
-    const float dyWorldY = worldY3 - baseWorldY;
-    const float determinant = dxWorldX * dyWorldY - dxWorldY * dyWorldX;
-    if (fabs(determinant) <= 0.0001f)
-    {
-      return false;
-    }
-
-    const float scaleX = (deltaWorldX * dyWorldY - deltaWorldY * dyWorldX) / determinant;
-    const float scaleY = (dxWorldX * deltaWorldY - dxWorldY * deltaWorldX) / determinant;
-    currentScreenX += scaleX * static_cast<float>(sampleX2 - sampleScreenX);
-    currentScreenY += scaleY * static_cast<float>(sampleY2 - sampleScreenY);
-    currentScreenX = std::max(2.0f, std::min(static_cast<float>(screenWidth - 3), currentScreenX));
-    currentScreenY = std::max(2.0f, std::min(static_cast<float>(screenHeight - 3), currentScreenY));
-  }
-
-  const int finalScreenX = static_cast<int>(currentScreenX + 0.5f);
-  const int finalScreenY = static_cast<int>(currentScreenY + 0.5f);
-  float projectedWorldX = 0.0f;
-  float projectedWorldY = 0.0f;
-  if (!ProjectLinuxMapPreviewScreenToWorld(
-        settings,
-        selectedMapPreview,
-        runtime,
-        finalScreenX,
-        finalScreenY,
-        &projectedWorldX,
-        &projectedWorldY))
-  {
-    return false;
-  }
-
-  const float errorX = worldPosition.x - projectedWorldX;
-  const float errorY = worldPosition.y - projectedWorldY;
-  if (sqrtf(errorX * errorX + errorY * errorY) > allowedError)
-  {
-    return false;
-  }
-
-  if (screenX) *screenX = finalScreenX;
-  if (screenY) *screenY = finalScreenY;
-  return true;
-}
+#include "LinuxBootstrap/map_camera_integration.inc"
 
 bool SendLinuxMapPreviewMoveCommandFromScreen(
   const LinuxClientLaunchSettings& settings,
@@ -45929,6 +45835,15 @@ bool HandleLinuxMapPreviewInput(
             changed = true;
             break;
 
+          case XK_Home:
+					if (runtime->localMapCamera) {
+						runtime->localMapFollow = true;
+						runtime->mapPreviewLastAction = "recenter-local-hero";
+						++runtime->mapPreviewInputCount;
+						changed = true;
+					}
+					break;
+
           case XK_s:
           case XK_S:
           {
@@ -46449,11 +46364,15 @@ bool HandleLinuxMapPreviewInput(
       }
       if (runtime->mapPreviewPanMoved && (deltaX != 0 || deltaY != 0))
       {
-        const float panScale = 0.105f / std::max(0.55f, runtime->mapPreviewZoom);
+				const auto camera = ResolveLinuxMapCameraFrame(settings, selectedMapPreview, *runtime);
+				LinuxBootstrap::MapCameraFrame::Point a, b, direction;
+				if (!camera.Ray(0, 0, a, direction) || !camera.Ray(deltaX, deltaY, b, direction)) continue;
+				// Project the drag onto the ground, respecting current yaw, tilt and viewport.
+				const double dt = std::abs(direction.z) > 1e-12 ? (a.z - b.z) / direction.z : 0.;
         PanLinuxMapPreview(
           runtime,
-          static_cast<float>(deltaX) * panScale,
-          static_cast<float>(-deltaY) * panScale,
+					static_cast<float>((b.x + direction.x * dt - a.x) * camera.scale),
+					static_cast<float>((b.y + direction.y * dt - a.y) * camera.scale),
           "mouse-pan"
         );
         if (liveMapActive)
@@ -49884,9 +49803,9 @@ float SampleLinuxMapTerrainHeightAtWorld(
   const float h10 = terrain.sampledHeights[y0 * terrain.sampledWidth + x1];
   const float h01 = terrain.sampledHeights[y1 * terrain.sampledWidth + x0];
   const float h11 = terrain.sampledHeights[y1 * terrain.sampledWidth + x1];
-  const float h0 = h00 + (h10 - h00) * tx;
-  const float h1 = h01 + (h11 - h01) * tx;
-  return h0 + (h1 - h0) * ty;
+	// Match the two rendered triangles, including their anti-diagonal, rather than a bilinear patch.
+	return tx + ty <= 1.f ? h00 + (h10 - h00) * tx + (h01 - h00) * ty
+		: h11 + (h01 - h11) * (1.f - tx) + (h10 - h11) * (1.f - ty);
 }
 
 float ResolveLinuxMapWaterZonePreviewHeight(
@@ -51623,6 +51542,7 @@ void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings,
 			const auto& tactical = map.tactical;
 			const float scale = 92.0f / std::max(1.0f,
 				std::max(tactical.maxX - tactical.minX, tactical.maxY - tactical.minY));
+			runtime->localMapFollow = false;
 			runtime->mapPreviewPanX = ((tactical.minX + tactical.maxX) * 0.5f - target.x) * scale;
 			runtime->mapPreviewPanZ = ((tactical.minY + tactical.maxY) * 0.5f - target.y) * scale;
 			ClampLinuxMapPreviewCamera(runtime);
@@ -52334,7 +52254,7 @@ bool DrawLinuxMapHeroMeshReplica(
   unsigned char red,
   unsigned char green,
   unsigned char blue,
-	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses, bool localView
 )
 {
   if (!overlay ||
@@ -52350,13 +52270,16 @@ bool DrawLinuxMapHeroMeshReplica(
     selectedMapPreview->terrainHeightmap,
     marker.x,
     marker.y);
-  const float baseY = 1.10f + terrainHeight * scale;
+  const float baseY = (localView ? .04f : 1.10f) + terrainHeight * scale;
   const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
 
   glPushMatrix();
   glTranslatef(x, baseY, z);
   glRotatef(yaw, 0.0f, 1.0f, 0.0f);
-  glScalef(0.72f, 0.72f, 0.72f);
+	// Undo the inspection normalization so live units retain their authored world size.
+	const auto& bounds = heroPreview->sceneAsset.meshPreview;
+	const float meshScale = localView ? std::max(.1f, bounds.maxZ - bounds.minZ) * scale / 5.2f : .72f;
+	glScalef(meshScale, meshScale, meshScale);
   const bool drawn = DrawLinuxHeroMeshPreview(
     overlay,
     heroPreview,
@@ -52381,7 +52304,7 @@ bool DrawLinuxMapUnitMeshReplica(
   unsigned char red,
   unsigned char green,
   unsigned char blue,
-	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses, bool localView
 )
 {
   if (!overlay ||
@@ -52397,15 +52320,16 @@ bool DrawLinuxMapUnitMeshReplica(
     selectedMapPreview->terrainHeightmap,
     marker.x,
     marker.y);
-  const float baseY = 1.04f + terrainHeight * scale;
+  const float baseY = (localView ? .04f : 1.04f) + terrainHeight * scale;
   const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(
     marker,
     elapsedSeconds,
     marker.moving ? 24.0 : 9.0,
     0.051,
     0.027);
-  const float meshScale =
-    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? 0.50f : 0.42f;
+	const auto& bounds = unitPreview->sceneAsset.meshPreview;
+	const float meshScale = localView ? std::max(.1f, bounds.maxZ - bounds.minZ) * scale / 5.2f :
+		(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? .50f : .42f);
 
   glPushMatrix();
   glTranslatef(x, baseY, z);
@@ -52729,11 +52653,11 @@ bool DrawLinuxMapPreviewSelectedTarget(
     selectedMapPreview->terrainHeightmap,
     runtime->mapPreviewSelectedTargetX,
     runtime->mapPreviewSelectedTargetY);
-  const float targetY = 1.62f + targetHeight * scale;
+  const float targetY = (runtime->localMapCamera ? .08f : 1.62f) + targetHeight * scale;
   const bool hero =
     runtime->mapPreviewSelectedTargetKind == NWorld::LinuxDynamicWorldMarker::KIND_HERO;
   const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(elapsedSeconds * 8.5));
-  const float ringRadius =
+  const float ringRadius = runtime->localMapCamera ? (hero ? 2.f : 1.4f) * scale :
     std::max(hero ? 0.98f : 0.72f, (hero ? 15.0f : 8.8f) * scale + pulse * 0.22f);
 
   unsigned char red = 246;
@@ -52793,7 +52717,7 @@ bool DrawLinuxMapPreviewSelectedTarget(
   glVertex3f(targetX - ringRadius * 0.45f, targetY + 0.18f, targetZ + ringRadius * 0.45f);
   glEnd();
 
-  DrawLinuxBootstrap3DCuboid(
+	if (!runtime->localMapCamera) DrawLinuxBootstrap3DCuboid(
     targetX,
     targetY,
     targetZ,
@@ -52829,6 +52753,8 @@ void DrawLinuxMapDeadWorldMarkerOverlay(
   glLineWidth(1.0f);
 }
 
+#include "LinuxBootstrap/local_unit_overlay.inc"
+
 size_t DrawLinuxMapDynamicWorldMarkerPreview(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedMapPreview* selectedMapPreview,
@@ -52857,7 +52783,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t* selectedHeroBadges,
   bool* selectedHeroMarkerMatched,
   int* selectedHeroMarkerPlayerId,
-	const std::function<void()>& afterOpaqueMeshes
+	const std::function<void()>& afterOpaqueMeshes, bool debugGeometry = true, bool localView = false,
+	const LinuxBootstrap::MapCameraFrame* camera = nullptr
 )
 {
   if (heroMarkers) *heroMarkers = 0;
@@ -52883,6 +52810,18 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
 
   vector<NWorld::LinuxDynamicWorldMarker> markers;
   world->GetLinuxDynamicWorldMarkers(markers, 640);
+	if (localView && camera && camera->valid) {
+		const double focusX = camera->centerX - camera->panX / camera->scale;
+		const double focusY = camera->centerY - camera->panZ / camera->scale;
+		const auto distance = [&](const NWorld::LinuxDynamicWorldMarker& marker) {
+			const double dx = marker.x - focusX, dy = marker.y - focusY;
+			const double value = dx * dx + dy * dy;
+			return std::isfinite(value) ? value : std::numeric_limits<double>::infinity();
+		};
+		std::stable_sort(markers.begin(), markers.end(), [&](const auto& a, const auto& b) {
+			return distance(a) < distance(b);
+		});
+	}
   if (markers.empty())
   {
 		if (afterOpaqueMeshes) afterOpaqueMeshes();
@@ -52979,7 +52918,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
             elapsedSeconds,
             red,
             green,
-            blue, &poses))
+            blue, &poses, localView))
       {
         ++heroMeshes;
         heroMeshTriangleCount += markerHeroPreview->sceneAsset.meshPreview.drawnTriangleCount;
@@ -53024,7 +52963,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
             elapsedSeconds,
             red,
             green,
-            blue, &poses))
+            blue, &poses, localView))
       {
         ++creepMeshes;
         creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
@@ -53141,6 +53080,16 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     {
       ++creepMeshCandidates;
     }
+
+		if (!debugGeometry) {
+			const auto* actualPreview = drawHeroMesh ? markerHeroPreview : (drawUnitMesh ? markerUnitPreview : nullptr);
+			const float unitHeight = actualPreview ? std::max(.1f,
+				actualPreview->sceneAsset.meshPreview.maxZ - actualPreview->sceneAsset.meshPreview.minZ) * scale :
+				(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER ? 8.f : 3.f) * scale;
+			if (DrawLinuxLocalUnitOverlay(marker, x, z, .04f + terrainHeight * scale, unitHeight,
+				scale, selectedHeroMarker, !actualPreview, statusBars, selectedHeroBadgeCount)) ++drawn;
+			continue;
+		}
 
     SetOpenGlColor(red, green, blue, alpha);
     glLineWidth(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ? 2.0f : 1.25f);
@@ -53840,6 +53789,7 @@ struct LinuxOverlayUiRenderContext
 
 void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContext)
 {
+	if (!renderContext.screenRuntime || !renderContext.settings) return;
 	const auto* world = GetLinuxBootstrapRuntimeWorld(renderContext.screenRuntime);
 	const auto* dayNight = world ? world->GetDayNightController().GetPtr() : nullptr;
 	Render::SceneConstants::RetriveForModification().nightFraction = dayNight ? dayNight->GetNightFraction() : 0.f;
@@ -53959,11 +53909,13 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   const float scale = 92.0f / mapRange;
   const float extentX = std::max(14.0f, rangeX * scale * 0.5f + 8.0f);
   const float extentZ = std::max(14.0f, rangeY * scale * 0.5f + 8.0f);
-  const float previewZoom = renderContext.screenRuntime ?
-    std::max(0.55f, std::min(2.25f, renderContext.screenRuntime->mapPreviewZoom)) :
-    1.0f;
-  const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
-	const LinuxBootstrap::MapView view(viewExtent, width, height);
+	auto& runtime = *renderContext.screenRuntime;
+	runtime.mapPreviewRenderedPitchDegrees = (std::clamp)(runtime.mapPreviewPitchDegrees, 35.f, 72.f);
+	runtime.mapPreviewRenderedYawDegrees = NormalizeLinuxPreviewYawValue(runtime.mapPreviewYawDegrees +
+		(IsLinuxWorldPresentationActive(&runtime) || renderContext.settings->bootstrapInteractiveWorld
+			? 0.f : static_cast<float>(renderContext.elapsedSeconds * 4.5)));
+	const auto view = ResolveLinuxMapCameraFrame(*renderContext.settings, *selectedMapPreview, runtime);
+	if (!view.valid) return;
   const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
   const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
 
@@ -53988,34 +53940,10 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  glTranslatef(0.0f, -8.0f, 0.0f);
-  const float previewPitch = renderContext.screenRuntime ?
-    std::max(35.0f, std::min(72.0f, renderContext.screenRuntime->mapPreviewPitchDegrees)) :
-    kLinuxMapPreviewDefaultPitchDegrees;
-  if (renderContext.screenRuntime)
-  {
-    renderContext.screenRuntime->mapPreviewRenderedPitchDegrees = previewPitch;
-  }
-  glRotatef(previewPitch, 1.0f, 0.0f, 0.0f);
-  const float baseYaw = renderContext.screenRuntime ?
-    renderContext.screenRuntime->mapPreviewYawDegrees :
-    kLinuxMapPreviewDefaultYawDegrees;
-  const float mapYaw = NormalizeLinuxPreviewYawValue(
-    baseYaw + (renderContext.settings && renderContext.settings->bootstrapInteractiveWorld ?
-      0.0f : static_cast<float>(renderContext.elapsedSeconds * 4.5))
-  );
-  if (renderContext.screenRuntime)
-  {
-    renderContext.screenRuntime->mapPreviewRenderedYawDegrees = mapYaw;
-  }
-  glRotatef(mapYaw, 0.0f, 1.0f, 0.0f);
-  if (renderContext.screenRuntime)
-  {
-    glTranslatef(
-      renderContext.screenRuntime->mapPreviewPanX,
-      0.0f,
-      renderContext.screenRuntime->mapPreviewPanZ);
-  }
+	glTranslated(0., view.verticalShift, 0.);
+	glRotated(view.pitch, 1., 0., 0.);
+	glRotated(view.yaw, 0., 1., 0.);
+	glTranslated(view.panX, -view.focusHeight * view.scale, view.panZ);
 
   SetOpenGlColor(18, 37, 42, 210);
   glBegin(GL_QUADS);
@@ -54407,7 +54335,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     &dynamicCreepMeshTriangles,
     &dynamicSelectedHeroBadges,
     &dynamicSelectedHeroMarkerMatched,
-    &dynamicSelectedHeroMarkerPlayerId, afterOpaqueMeshes);
+    &dynamicSelectedHeroMarkerPlayerId, afterOpaqueMeshes, debugGeometry, runtime.localMapCamera, &view);
   if (renderContext.screenRuntime)
   {
     renderContext.screenRuntime->mapPreviewDynamicWorldMarkersDrawn = dynamicWorldMarkers > 0;
@@ -54455,6 +54383,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.localMatchPreview,
     renderContext.engineMapStartPreview,
     renderContext.screenRuntime);
+	if (debugGeometry) {
   DrawLinuxMapPreviewCommandMoveTarget(
     selectedMapPreview,
     renderContext.screenRuntime,
@@ -54469,6 +54398,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     centerY,
     scale,
     renderContext.elapsedSeconds);
+	}
 
   glDisable(GL_DEPTH_TEST);
 	profile.Mark(Profile::Overlays);
@@ -68870,7 +68800,19 @@ void AppendRuntimeInputLog(
 	logFile << "  finalBakedMapColors=lookups:" << overlay.bakedColorLookups
 		<< " matches:" << overlay.bakedColorMatches << " selectedPayloads:" << overlay.bakedSelectedPayloads
 		<< " drawnPayloads:" << overlay.bakedDrawnPayloads << " drawCalls:" << overlay.bakedDrawCalls << "\n";
+	logFile << "  finalLocalMapCamera=active:" << screenRuntime.localMapCamera
+		<< " follow:" << screenRuntime.localMapFollow << " updates:" << screenRuntime.localMapFocusUpdates
+		<< " focusHeight:" << screenRuntime.localMapFocusHeight << "\n";
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
+	logFile << "  finalSceneWindow=revision:" << selectedMapPreview.sceneWindow.Revision()
+		<< " builds:" << selectedMapPreview.sceneWindowBuilds
+		<< " catalog:" << (selectedMapPreview.sceneCatalog ? selectedMapPreview.sceneCatalog->candidates.size() : 0)
+		<< " static:" << selectedMapPreview.staticGeometryPayloads.size()
+		<< " terrain:" << selectedMapPreview.terrainElementPayloads.size()
+		<< " animated:" << selectedMapPreview.animatedGeometryPayloads.size()
+		<< " textures:" << selectedMapPreview.staticDiffuseTextures.size()
+		<< " unsupported:" << selectedMapPreview.sceneWindowMetrics.unsupportedDrops
+		<< " cumulativeDrops:" << selectedMapPreview.sceneWindowMetrics.cumulativeDrops << "\n";
 	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
 		<< " input:" << screenRuntime.profileInputMs << " update:" << screenRuntime.profileUpdateMs
@@ -73145,7 +73087,10 @@ int main(int argc, char** argv)
       }
     }
 
+		UpdateLinuxLocalMapCamera(settings, selectedMapPreview, &screenRuntime);
 		const auto assetsStart = ProfileClock::now();
+		UpdateLinuxMapSceneWindow(environment, ResolveLinuxMapSceneRequest(settings, selectedMapPreview, screenRuntime),
+			&selectedMapPreview, &overlay);
     ProbeLinuxDynamicWorldUnitMeshPreviews(
       environment,
       dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()),

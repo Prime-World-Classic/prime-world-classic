@@ -120,6 +120,60 @@ bool RunLinuxNativeInputProbe()
 				fabs(wx - x) < 3 && fabs(wy - 205) < 3, "resized map projection round trip");
 		}
 	}
+	// A local gameplay view must not be clamped back to whole-map inspection scale.
+	runtime.mapPreviewZoom = 8.f;
+	ClampLinuxMapPreviewCamera(&runtime);
+	check(runtime.mapPreviewZoom == 8.f, "local gameplay zoom survives camera clamp");
+	runtime.localMapCamera = true;
+	runtime.localMapFocusHeight = 12.f;
+	map.terrainHeightmap.ready = true;
+	map.terrainHeightmap.sampledWidth = map.terrainHeightmap.sampledHeight = 2;
+	map.terrainHeightmap.worldWidth = map.terrainHeightmap.worldHeight = 410;
+	map.terrainHeightmap.sampledHeights = {0.f, 20.f, 40.f, 120.f};
+	for (const auto size : {std::pair<int, int>{1280, 720}, {720, 1280}})
+	for (float yaw : {0.f, 42.f, 158.f, 270.f})
+	for (float pitch : {35.f, 56.f, 72.f})
+	for (const auto target : {CVec2(84, 103), CVec2(310, 344)}) {
+		settings.width = size.first; settings.height = size.second;
+		runtime.mapPreviewRenderedPitchDegrees = pitch;
+		runtime.mapPreviewRenderedYawDegrees = yaw;
+		runtime.mapPreviewPanX = (205.f - target.x) * (92.f / 410.f);
+		runtime.mapPreviewPanZ = (205.f - target.y) * (92.f / 410.f);
+		runtime.localMapFocusHeight = SampleLinuxMapTerrainHeightAtWorld(map.terrainHeightmap, target.x, target.y);
+		const auto frame = ResolveLinuxMapCameraFrame(settings, map, runtime);
+		map.terrainHeightmap.minHeight = 0;
+		map.terrainHeightmap.maxHeight = 120;
+		const auto window = ResolveLinuxMapSceneRequest(settings, map, runtime);
+		check(window.Valid() && std::abs(window.focusX - target.x) < .01 && std::abs(window.focusY - target.y) < .01,
+			"scene window tracks camera focus at every tested aspect and rotation");
+		double sx = -1, sy = -1;
+		const double ground = SampleLinuxMapTerrainHeightAtWorld(map.terrainHeightmap, target.x, target.y) + .04 / frame.scale;
+		check(frame.Project({target.x, target.y, ground}, sx, sy), "local ground projects at its true height");
+		LinuxBootstrap::MapCameraFrame::Point hit;
+		check(TraceLinuxMapCameraTerrain(frame, map.terrainHeightmap, sx, sy, hit) &&
+			std::abs(hit.x - target.x) < .001 && std::abs(hit.y - target.y) < .001 &&
+			std::abs(hit.z - ground) < .001, "rotated local camera hits the rendered triangle in both cell halves");
+		int ix = -1, iy = -1;
+		float wx = 0, wy = 0;
+		check(ProjectLinuxMapPreviewWorldToScreen(settings, map, runtime, target, &ix, &iy) &&
+			ProjectLinuxMapPreviewScreenToWorld(settings, map, runtime, ix, iy, &wx, &wy, false) &&
+			std::abs(wx - target.x) < .5 && std::abs(wy - target.y) < .5, "actual local integer picking round trip");
+		check(!frame.Project({-1000, -1000, 0}, sx, sy), "offscreen actor cannot be snapped to a viewport edge");
+	}
+	runtime.localMapFollow = true;
+	PanLinuxMapPreview(&runtime, 1, 1, "test-pan");
+	check(!runtime.localMapFollow, "manual pan detaches follow");
+	check(std::abs(SampleLinuxMapTerrainHeightAtWorld(map.terrainHeightmap, 102.5f, 102.5f) - 15.f) < .001f,
+		"ground sampler uses rendered triangle instead of bilinear height");
+	using Camera = LinuxBootstrap::MapCameraFrame;
+	for (const auto bad : {Camera(0, 0, 410, 410, 0, 720, 8, 56, 0, 0, 0, true, 0),
+		Camera(0, 0, 0, 410, 1280, 720, 8, 56, 0, 0, 0, true, 0),
+		Camera(0, 0, 410, 410, 1280, 720, 8, 0, 0, 0, 0, true, 0),
+		Camera(0, 0, 410, 410, 1280, 720, NAN, 56, 0, 0, 0, true, 0)}) {
+		double x = 123, y = 456;
+		check(!bad.valid && !bad.Project({205, 205, 0}, x, y) && x == 123 && y == 456,
+			"invalid camera preserves unpublished output");
+	}
 	fprintf(stdout, "Native input: %u checks, %u failures\n", checks, failures);
 	return failures == 0;
 }

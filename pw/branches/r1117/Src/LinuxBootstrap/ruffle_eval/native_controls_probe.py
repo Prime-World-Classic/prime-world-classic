@@ -87,10 +87,10 @@ def drive(window, wait, deadline=None):
 	wait('Ruffle ground target armed:', 1)
 	click(640, 100, 1)
 	wait('Ruffle ground target: rejected', 1)
-	# Fixed 1280x720 Plane setup: map center is valid terrain, outside the 14-unit range.
-	click(640, 360, 1)
+	# Fixed local 1280x720 view: lower ground lies outside Plane's 14-unit range.
+	click(640, 500, 1)
 	wait('Ruffle ground target: rejected', 2)
-	click(864, 519, 3)
+	click(640, 296, 3)
 	pause(1.5, deadline)
 	key('1')
 	wait('Ruffle ground target armed:', 2)
@@ -98,7 +98,8 @@ def drive(window, wait, deadline=None):
 	pause(1.5, deadline)
 	key('1')
 	wait('Ruffle ground target armed:', 3)
-	click(864, 519, 1)
+	# Follow places the hero's terrain anchor just above the middle of this viewport.
+	click(640, 296, 1)
 	wait('Ruffle ground target: submitted', 1)
 
 

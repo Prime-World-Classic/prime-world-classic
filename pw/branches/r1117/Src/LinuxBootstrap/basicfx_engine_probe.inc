@@ -7,6 +7,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(LinuxWindowOverlay*, const LinuxS
 #include "transparent_engine_probe.inc"
 #include "opacity_engine_probe.inc"
 #include "baked_engine_probe.inc"
+#include "scene_window_engine_probe.inc"
 
 /** Exercise authored geometry/texture through StaticMesh -> Batch -> SmartRenderer. */
 bool RunLinuxBasicFxEngineProbe(const std::string& capturePath, const LinuxClientEnvironment& environment)
@@ -308,5 +309,6 @@ bool RunLinuxBasicFxEngineProbe(const std::string& capturePath, const LinuxClien
 	glMatrixMode(GL_PROJECTION); glPopMatrix();
 	glPopClientAttrib(); glPopAttrib();
 	passed = RunLinuxBakedEngineProbe(capturePath, environment, *authored) && passed;
+	passed = RunLinuxSceneWindowEngineProbe(environment) && passed;
 	return passed && glGetError() == GL_NO_ERROR;
 }

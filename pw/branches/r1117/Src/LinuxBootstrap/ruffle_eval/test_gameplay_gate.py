@@ -219,6 +219,30 @@ class GameplayGateTests(unittest.TestCase):
 		client = '\n'.join(line for line in client.splitlines() if 'finalRuffleInspection' not in line) + '\n'
 		gate.validate(stdout, client, 'default')
 
+	def test_local_camera_interactive_contract(self):
+		'''The new hero view must remain unchanged by special-key alias tests.'''
+		stdout, client = fixture()
+		stdout = stdout.replace('replayBytes=50', 'replayBytes=50 heroStopCommands=0 heroAttackCommands=0 '
+			'heroCancelCommands=0 heroUseUnitCommands=0 heroUseTalentCommands=0')
+		client += ('finalInteractiveClock=ticks:1001 pumps:1800 pendingSeconds:0.05 discardedSeconds:0.1\n'
+			'finalMap3DPreviewBaseYaw=-42\nfinalMap3DPreviewPitch=56\nfinalMap3DPreviewZoom=8.14331\n'
+			'finalLocalMapCamera=active:1 follow:1 updates:447 focusHeight:7.28\n'
+			'mapTacticalBounds=19.0107,36.9693 -> 390.989,371.106\n'
+			'finalMap3DPreviewInputCount=0\nfinalMap3DPreviewLastAction=local-hero-camera\n')
+		self.assertEqual(gate.validate_interactive(stdout, client, 100)['cast_step'], 496)
+		for before, after in (('active:1', 'active:0'), ('follow:1', 'follow:0'), ('updates:447', 'updates:0'),
+			('focusHeight:7.28', 'focusHeight:nan'), ('Zoom=8.14331', 'Zoom=9.28'),
+			('InputCount=0', 'InputCount=1'), ('LastAction=local-hero-camera', 'LastAction=zoom-in'),
+			('390.989,371.106', '19,36'), ('390.989,371.106', 'nan,371.106')):
+			with self.subTest(before=before), self.assertRaises(gate.EvidenceError):
+				gate.validate_interactive(stdout, client.replace(before, after), 100)
+		for line in client.splitlines(keepends=True):
+			if not line.startswith(('finalLocal', 'mapTacticalBounds', 'finalMap3D')):
+				continue
+			for replacement in ('', line + line):
+				with self.subTest(line=line, replacement=replacement), self.assertRaises(gate.EvidenceError):
+					gate.validate_interactive(stdout, client.replace(line, replacement), 100)
+
 	def test_every_required_record_missing_or_duplicated(self):
 		'''A repeated final record cannot silently override an earlier failure.'''
 		original = fixture()

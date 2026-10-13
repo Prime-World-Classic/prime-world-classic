@@ -72,17 +72,17 @@ class NativeControlsTests(unittest.TestCase):
 				('tool', ('mousemove', '--window', '42', 640, 100)),
 				('tool', ('click', '--window', '42', 1)),
 				('wait', ('Ruffle ground target: rejected', 1)),
-				('tool', ('mousemove', '--window', '42', 640, 360)),
+				('tool', ('mousemove', '--window', '42', 640, 500)),
 				('tool', ('click', '--window', '42', 1)),
 				('wait', ('Ruffle ground target: rejected', 2)),
-				('tool', ('mousemove', '--window', '42', 864, 519)),
+				('tool', ('mousemove', '--window', '42', 640, 296)),
 				('tool', ('click', '--window', '42', 3)),
 				('tool', ('key', '--window', '42', '1')),
 				('wait', ('Ruffle ground target armed:', 2)),
 				('tool', ('key', '--window', '42', 'Escape')),
 				('tool', ('key', '--window', '42', '1')),
 				('wait', ('Ruffle ground target armed:', 3)),
-				('tool', ('mousemove', '--window', '42', 864, 519)),
+				('tool', ('mousemove', '--window', '42', 640, 296)),
 				('tool', ('click', '--window', '42', 1)),
 				('wait', ('Ruffle ground target: submitted', 1))])
 			moves = [call.args for call in tool.call_args_list if call.args[0] == 'mousemove']
@@ -90,7 +90,7 @@ class NativeControlsTests(unittest.TestCase):
 			self.assertTrue(all('--sync' not in args for args in moves))
 
 	def test_missing_range_rejection_stops_before_cancel_or_cast(self):
-		'''The center click must produce the second rejection while the first arm persists.'''
+		'''The lower off-map click must produce a second rejection while the first arm persists.'''
 		def wait(needle, count):
 			if (needle, count) == ('Ruffle ground target: rejected', 2):
 				raise probe.EvidenceError('second rejection missing')
