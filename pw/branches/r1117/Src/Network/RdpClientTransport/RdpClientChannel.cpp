@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RdpClientChannel.h"
+#include "Network/RUDP/UdpAddr.h"
 
 namespace rdp_transport
 {
@@ -24,7 +25,8 @@ timeout( defaultTimeout, this, &ClientChannel::OnTimeout )
 
 void ClientChannel::OnSvcRequestReply( const newLogin::ServiceReqReply & _reply )
 {
-  MessageTrace( "ClientChannel: Connection details arrived. code=%s(%d), svcid=%s, req_id=%d, addr=%s", newLogin::ESvcConnectionResult::ToString( _reply.code ), (int)_reply.code, _reply.svcId.c_str(), _reply.requestId, _reply.externalAddress );
+  char maskedAddr[64];
+  MessageTrace( "ClientChannel: Connection details arrived. code=%s(%d), svcid=%s, req_id=%d, addr=%s", newLogin::ESvcConnectionResult::ToString( _reply.code ), (int)_reply.code, _reply.svcId.c_str(), _reply.requestId, ni_udp::MaskAddrString( maskedAddr, sizeof( maskedAddr ), _reply.externalAddress.c_str() ) );
 
   threading::MutexLock lock( mutex );
 

@@ -1,6 +1,7 @@
 sources = [
     'Commands.h', 
     'Commands.cpp', 
+    'LogIpMode.h', 
 ] 
 
 components = [ 
