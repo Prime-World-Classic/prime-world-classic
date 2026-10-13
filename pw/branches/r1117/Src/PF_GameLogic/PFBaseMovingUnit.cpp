@@ -195,6 +195,8 @@ static bool LinuxCanOccupyPosition(
     return true;
 
 	if (!LinuxFiniteMovePoint(position)) return false;
+	// Original special movement checks world bounds even when all collisions are ignored.
+	if (owner->IsMovingSpecial() && !LinuxMappedMovePoint(map, position)) return false;
 	const int staticMode = LinuxStaticMoveMode(ghostMode, moveFlags) & (map ? map->GetMode() : MAP_MODE_ALL_STATICS);
   if (staticMode && map && map->GetSizeX() > 0 && map->GetSizeY() > 0)
   {
@@ -335,6 +337,9 @@ void MovingUnit::Stop(bool)
 bool MovingUnit::MoveToSpecial(const CVec2& target, bool)
 {
 	if (!LinuxFiniteMovePoint(target) || !LinuxFiniteMovePoint(origin) || moveState == MOVE_STATE_DEAD || moveState == MOVE_STATE_MOUNTED) return false;
+	// Keep finite off-map goals for boundary-stop behavior, but never normalize an invalid delta.
+	if (!LinuxMappedMovePoint(pMap, origin) || !std::isfinite(fabs(target - origin))) return false;
+	FollowTo(NULL); // Original throw policy breaks ordinary follow, not forced follow.
 	Stop(false); vFarTarget = target; vShortTarget = target; stopDistance = 0;
 	UpdateMoveDir(target); moveState = MOVE_STATE_SPECIAL_MOVE; return true;
 }
@@ -497,7 +502,8 @@ void MovingUnit::Step(float timeDelta)
     movingTarget,
     pFollowed.GetPtr());
 
-  if (safeDistance + EPS_VALUE < desiredDistance)
+	// Trace reconstruction can round a tiny outside endpoint onto the boundary.
+	if (safeDistance + EPS_VALUE < desiredDistance || !LinuxMappedMovePoint(pMap, desiredCenter))
   {
     const bool startBlockedByDynamic = !LinuxCanOccupyPosition(
       pOwner.GetPtr(),
@@ -520,10 +526,11 @@ void MovingUnit::Step(float timeDelta)
         moveFlags,
         movingTarget,
         pFollowed.GetPtr());
-      if (staticSafeDistance > EPS_VALUE)
+			const CVec2 fallbackCenter = origin + delta * Min(staticSafeDistance, desiredDistance);
+			if (staticSafeDistance > EPS_VALUE && LinuxMappedMovePoint(pMap, fallbackCenter))
       {
         const float fallbackDistance = Min(staticSafeDistance, desiredDistance);
-        SetCenter(origin + delta * fallbackDistance);
+				SetCenter(fallbackCenter);
         if (finishing && fallbackDistance + EPS_VALUE >= desiredDistance)
           moveState = MOVE_STATE_IDLE;
         timeStanding = 0.0f;
@@ -531,7 +538,7 @@ void MovingUnit::Step(float timeDelta)
         return;
       }
     }
-    if (safeDistance > EPS_VALUE)
+		if (safeDistance > EPS_VALUE && LinuxMappedMovePoint(pMap, origin + delta * safeDistance))
       SetCenter(origin + delta * safeDistance);
     Stop(false);
     UpdateAttachedMovement();

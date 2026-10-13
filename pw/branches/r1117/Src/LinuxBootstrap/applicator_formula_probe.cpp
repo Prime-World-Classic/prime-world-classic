@@ -1369,6 +1369,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "nature_override_b13_tests.inc"
 #include "terrain_formulas_b13_tests.inc"
 #include "pathfinding_b13_tests.inc"
+#include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
 #include "pathfinding_callbacks_b13_tests.inc"
 #include "permanent_nature_b13_tests.inc"
@@ -1528,6 +1529,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	ScreamTargetsB13(check);
 	DamageExtendedB13(check);
 	PathfindingB13(check);
+	SpecialMovementB13(check);
 	TileMaskOwnershipB13(check);
 	RoutingCallbacksB13(check);
 	PermanentNatureB13(check, dataRoot);
