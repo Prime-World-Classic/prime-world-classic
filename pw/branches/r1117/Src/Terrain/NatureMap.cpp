@@ -9,6 +9,7 @@
 #if defined(PW_LINUX_NULL_RENDER)
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #endif
 
 #define SLICES_PER_SEGMENT 10
@@ -488,6 +489,10 @@ void NatureMap::ApplyOverride(NatureOverrideElement const &ovr)
 void NatureMap::ExpireOverride(NatureOverrideElement const &ovr)
 {
   NatureMapElementInfo& info = GetElementInfo(ovr.id);
+#if defined(PW_LINUX_NULL_RENDER)
+	// A cancelled older wave must not restore base over a newer cell owner.
+	if (info.ownerData != ovr.data.ownerData) return;
+#endif
   info.natureOld = info.natureCur;
   info.natureCur = info.natureBase; // restore original, even if it's the same
   info.ownerData = 0;
@@ -498,6 +503,23 @@ void NatureMap::ExpireOverride(NatureOverrideElement const &ovr)
 
 void NatureMap::OverrideInternal(NatureMapElementId id, NDb::ENatureType faction, float timeToApply, float lifeTime, unsigned ownerData)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// The original delayed-start merge also applies to a zero-delay cell.
+	// Otherwise duplicate active entries can expire over a live newer owner.
+	if (timeToApply <= 0.f)
+		for (int i = 0; i < overrideElements.size(); ++i)
+		{
+			NatureOverrideElement& active = overrideElements[i];
+			if (active.id != id || active.timeToApply > 0.f) continue;
+			if (active.data.timeSpan > 0.f) active.inactiveStack.push_back(active.data);
+			active.data.nature = faction;
+			active.data.ownerData = ownerData;
+			active.data.timeSpan = lifeTime;
+			++overridesAdded;
+			ApplyOverride(active);
+			return;
+		}
+#endif
   NatureOverrideElement &ovr = overrideElements.push_back();
 
   ovr.id = id;
@@ -548,6 +570,20 @@ void NatureMap::UnOverrideInternal(NatureMapElementId id, unsigned ownerData)
 
 void NatureMap::Override(NDb::ENatureType faction, const CCircle & circle, float lifeTime, unsigned ownerData)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Validate before cancelling other owners or inserting any new state. Bound
+	// squared distances and summed radii used by the original circle arithmetic.
+	const double limit = sqrt(double(std::numeric_limits<float>::max())) * .25;
+	if (faction < NDb::NATURETYPE_N || faction > NDb::NATURETYPE_B || !ownerData
+		|| overrides.find(ownerData) != overrides.end() || !std::isfinite(lifeTime) || lifeTime <= 0.f
+		|| !std::isfinite(circle.r) || circle.r <= 0.f || circle.r > limit
+		|| !std::isfinite(circle.center.x) || !std::isfinite(circle.center.y)
+		|| fabs(double(circle.center.x)) > limit || fabs(double(circle.center.y)) > limit
+		|| worldSize.x > limit || worldSize.y > limit
+		|| !std::isfinite(1.f / dbNatureMap.gridStep)
+		|| !std::isfinite(dbNatureMap.overrideSpeed) || !std::isfinite(dbNatureMap.attackSpeed)
+		|| dbNatureMap.attackSpeed < 0.f) return;
+#endif
   NatureOverride newOverrideData;
   newOverrideData.faction = faction;
   newOverrideData.circle = circle;
@@ -575,6 +611,9 @@ void NatureMap::Override(NDb::ENatureType faction, const CCircle & circle, float
 
   // clip by world size
   rect.Intersect(CTRect<float>(VNULL2, worldSize.AsVec2D()));
+#if defined(PW_LINUX_NULL_RENDER)
+	if (rect.IsEmpty()) return;
+#endif
   rect *= 1.0f / dbNatureMap.gridStep;
 
   // some quick consts
@@ -591,10 +630,18 @@ void NatureMap::Override(NDb::ENatureType faction, const CCircle & circle, float
   // process all lines
   unsigned imin = Min(imins[0], imins[1]);
   unsigned imax = Max(imaxs[0], imaxs[1]);
+#if defined(PW_LINUX_NULL_RENDER)
+	if (imin >= yCount) return;
+	imax = Min(imax, yCount - 1);
+#endif
   for (unsigned i = imin; i <= imax; i++)
   {
     unsigned jmin = jmins[i & 1];
     unsigned jmax = jmaxs[i & 1];
+#if defined(PW_LINUX_NULL_RENDER)
+		if (jmin >= xCount) continue;
+		jmax = Min(jmax, xCount - 1);
+#endif
     NatureMapElementId id = LocateElement(i, jmin);
     for (unsigned j = jmin; j <= jmax; j++, id++)
     {
@@ -632,6 +679,9 @@ void NatureMap::UnOverride(NatureOverride overrideData, unsigned int id)
 
   // clip by world size
   rect.Intersect(CTRect<float>(VNULL2, worldSize.AsVec2D()));
+#if defined(PW_LINUX_NULL_RENDER)
+	if (rect.IsEmpty()) return;
+#endif
   rect *= 1.0f / dbNatureMap.gridStep;
 
   // some quick consts
@@ -648,10 +698,18 @@ void NatureMap::UnOverride(NatureOverride overrideData, unsigned int id)
   // process all lines
   unsigned imin = Min(imins[0], imins[1]);
   unsigned imax = Max(imaxs[0], imaxs[1]);
+#if defined(PW_LINUX_NULL_RENDER)
+	if (imin >= yCount) return;
+	imax = Min(imax, yCount - 1);
+#endif
   for (unsigned i = imin; i <= imax; i++)
   {
     unsigned jmin = jmins[i & 1];
     unsigned jmax = jmaxs[i & 1];
+#if defined(PW_LINUX_NULL_RENDER)
+		if (jmin >= xCount) continue;
+		jmax = Min(jmax, xCount - 1);
+#endif
     NatureMapElementId id = LocateElement(i, jmin);
     for (unsigned j = jmin; j <= jmax; j++, id++)
     {
@@ -735,7 +793,13 @@ bool NatureMap::OverrideStep(float dt)
       if ( elemConflict >= 0 )
       {
         // if nature changes remember this fact
+#if defined(PW_LINUX_NULL_RENDER)
+		// Equal visible nature still transfers ownership for later expiry.
+		if (overrideElements[elemConflict].data.nature != ovr.data.nature
+			|| overrideElements[elemConflict].data.ownerData != ovr.data.ownerData)
+#else
         if (overrideElements[elemConflict].data.nature != ovr.data.nature)
+#endif
         {
           changedOverrides.push_back(&overrideElements[elemConflict]);
           ++overridesChanged;
@@ -745,6 +809,10 @@ bool NatureMap::OverrideStep(float dt)
 
         // copy data from new override to active one
         overrideElements[elemConflict].data    = ovr.data;
+#if defined(PW_LINUX_NULL_RENDER)
+		// Expiry can happen later in this same tick, so transfer the cell owner now.
+		ApplyOverride(overrideElements[elemConflict]);
+#endif
 
         // Invalidate the new one
         ovr.id = NATUREMAPELEMENTID_BAD;
@@ -803,6 +871,10 @@ bool NatureMap::OverrideStep(float dt)
           TInactiveStak::iterator it = ovr.inactiveStack.end() - 1;
           ovr.data = *it;
           ovr.inactiveStack.pop_back();
+#if defined(PW_LINUX_NULL_RENDER)
+			// Restore both the visible value and ownership of the surviving entry.
+			ApplyOverride(ovr);
+#endif
           aliveOverrides.push_back(&ovr);
         }
         else
@@ -820,6 +892,10 @@ bool NatureMap::OverrideStep(float dt)
   // apply override overrides
   for (i = 0; i < changedOverrides.size(); ++i)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+		// The activation/expiry pass may already have removed this pending change.
+		if (changedOverrides[i]->data.timeSpan <= 0.f) continue;
+#endif
     ApplyOverride(*changedOverrides[i]);
   }
 
@@ -843,6 +919,12 @@ bool NatureMap::OverrideStep(float dt)
 
 bool NatureMap::OnStep(float dt)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Reject an unrepresentable slice count before mutating roads or timers.
+	const double slices = double(roadsStep) + double(dbNatureMap.attackSpeed) * double(dt) * SLICES_PER_SEGMENT;
+	if (!std::isfinite(dt) || dt < 0.f || !std::isfinite(dbNatureMap.attackSpeed)
+		|| dbNatureMap.attackSpeed < 0.f || !std::isfinite(slices) || slices < 0 || slices > 2147483000.0) return false;
+#endif
   dt = Max(0.0f, dt);
 
   float speed = dbNatureMap.attackSpeed;

@@ -1740,6 +1740,7 @@ static void LinuxStepResource(Value& pool, Maximum& cachedMaximum, float maximum
 bool PFBaseUnit::Step(float dtInSeconds)
 {
 	UpdatePriorityTargets(dtInSeconds);
+	UpdateNatureType();
 
   if (HasBehaviour() && Behaviour()->IsEnabled())
     Behaviour()->OnStep(dtInSeconds);

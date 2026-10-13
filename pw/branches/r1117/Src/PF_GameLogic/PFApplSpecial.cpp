@@ -26,6 +26,10 @@
 #include "SessionEventType.h"
 #include "GameLogicStatisticsTypes.h"
 #include "DayNightController.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
+#endif
 
 #ifndef VISUAL_CUTTED
 #include "AdventureScreen.h"
@@ -468,6 +472,28 @@ float PFApplNaftaTransfer::GetVariable(const char* sVariableName) const
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFApplModifyTerrain::Start()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Start first so rejected activation still owns its matching Stop notification.
+	if (PFBaseApplicator::Start() || !IsAlive() || IsBlocked()) return true;
+	PFWorldNatureMap* map = GetWorld() ? GetWorld()->GetNatureMap() : 0;
+	if (!map || GetObjectId() <= 0 || GetTarget().GetType() == Target::INVALID) return true;
+	const CVec3 position = GetTarget().AcquirePosition();
+	if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)) return true;
+	// Only absent source AND bytecode retain the original explicit defaults.
+	auto coefficient = [&](const auto& formula, float fallback, float& value) {
+		if (formula.sString.empty() && formula.compiledString.empty()) { value = fallback; return true; }
+		const auto checked = LinuxBootstrap::EvaluateApplicatorNumericFormula(formula.sString.c_str(), *this);
+		if (!checked.Succeeded()) return false;
+		value = checked.value;
+		return true;
+	};
+	float duration, faction, radius;
+	if (!coefficient(GetDB().durationTime, 0.f, duration) || !coefficient(GetDB().faction, 0.f, faction)
+		|| !coefficient(GetDB().modifRadius, 1.f, radius) || faction < 0.f || faction > 2.f || floorf(faction) != faction
+		|| duration <= 0.f || radius <= 0.f) return true;
+	map->Override(static_cast<NDb::EFaction>(int(faction)), CCircle(position.AsVec2D(), radius), duration, GetObjectId());
+	return !map->IsOverrideActive(GetObjectId());
+#else
 	if (PFBaseApplicator::Start())
 		return true;
 
@@ -483,11 +509,15 @@ bool PFApplModifyTerrain::Start()
   }
 
   return false;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFApplModifyTerrain::Step(float dtInSeconds)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!IsAlive()) return true;
+#endif
   PFWorld* const world = GetWorld();
   PFWorldNatureMap * pMap = world ? world->GetNatureMap() : 0;
   return pMap ? !pMap->IsOverrideActive(GetObjectId()) : true;

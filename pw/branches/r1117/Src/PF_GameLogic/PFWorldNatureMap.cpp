@@ -33,7 +33,16 @@ namespace
 		bool Load(const NDb::DBNatureMap& db, const CVec2& size)
 		{
 			const Terrain::NatureMapParams params = {&db, CVec3(size, 50.f)};
-			return Initialize(params, &modified);
+			const bool loaded = Initialize(params, &modified);
+			modified.clear();
+			return loaded;
+		}
+		bool Advance(float dt)
+		{
+			const bool changed = OnStep(dt);
+			// Headless worlds have no visual consumer to drain this transient list.
+			modified.clear();
+			return changed;
 		}
 	protected:
 		bool OnLoadAtRuntime(Stream*, int, bool) override { return false; }
@@ -247,7 +256,9 @@ void PFWorldNatureMap::Expand(NDb::EFaction faction, NDb::ENatureRoad roadIndex,
 void PFWorldNatureMap::Override(NDb::EFaction faction, const CCircle & circle, float lifeTime, unsigned ownerData)
 {
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (pMap) pMap->Override((NDb::ENatureType)faction, circle, lifeTime, ownerData);
+#else
   if (pMap)
     pMap->Override((NDb::ENatureType)faction, circle, lifeTime, ownerData);
 #endif
@@ -317,7 +328,7 @@ void PFWorldNatureMap::ChangeNature( const vector<CVec2>& polygon, NDb::ENatureT
 bool PFWorldNatureMap::IsOverrideActive(unsigned int ownerData) const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return false;
+	return pMap && pMap->IsOverrideActive(ownerData);
 #else
   return pMap ? pMap->IsOverrideActive(ownerData) : false;
 #endif
@@ -328,7 +339,17 @@ void PFWorldNatureMap::OnStep(float dt)
 {
   NI_PROFILE_FUNCTION
 
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (!pMap || !std::isfinite(dt) || dt < 0.f) return;
+	if (static_cast<LinuxNatureQuery*>(pMap)->Advance(dt) && GetWorld() && GetWorld()->GetAIWorld())
+	{
+		struct UpdateNature
+		{
+			void operator()(PFLogicObject& object) { object.UpdateNatureType(); }
+		} update;
+		GetWorld()->GetAIWorld()->ForAllObjects(update);
+	}
+#else
   if (pMap)                                                                                                                                        
   {
 #ifndef _SHIPPING
