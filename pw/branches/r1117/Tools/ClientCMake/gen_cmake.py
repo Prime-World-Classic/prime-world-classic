@@ -65,6 +65,23 @@ PASSTHROUGH = {"/Od", "/O1", "/O2", "/Os", "/OX", "/Ob1", "/Ob2", "/Oy-",
 # wine-специфика VS2008: PDB невозможны (C1902), mt.exe падает.
 WINE_LINK_FLAGS = ["/MANIFEST:NO"]
 
+# Инструменты-экзешники из model.json (EXTRA_TOOLS в parse_vcproj.py): какие
+# объектные библиотеки в них линкуются. В vcproj ProjectReference нет, в VS
+# либы проектов приходили неявно; здесь список явный. Без записи — только
+# собственные объекты инструмента.
+TOOL_OBJS = {"ShaderCompiler": ["ShaderCompiler", "libdb", "Foundation",
+                                "MemoryLib", "mballocator"]}
+
+
+def dedup(seq):
+    """уникальные элементы с сохранением порядка (для слияния линк-списков)"""
+    seen, out = set(), []
+    for x in seq:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
 
 def write_if_changed(path, content):
     """Пишет файл только если содержимое изменилось. gen/ пересоздаётся на каждый
@@ -304,6 +321,11 @@ class Proj:
         self.m = m
         self.dir = m["dir"]
         self.is_exe = m["type"] == "1"
+        # exe-проект, но НЕ PW_Game -> это инструмент сборки (ShaderCompiler):
+        # цель компиляции у него как у библиотек, но источники не входят в
+        # экзешник клиента
+        self.is_tool = self.is_exe and name != "PW_Game"
+        self.emits_target = (not self.is_exe) or self.is_tool
         cl = m["tools"].get("VCCLCompilerTool", {})
         self.opts = []
         opt = cl.get("Optimization", "0")
@@ -352,6 +374,14 @@ class Proj:
                 print(f"  !! {name}: unresolved include dir {inc!r}", file=sys.stderr)
                 continue
             self.includes.append(rel_to(SRC, real))
+
+        # инструменты: VS отдаёт cl каталог проекта как каталог поиска включений
+        # (в ShaderCompiler/multythread/mtworkerlite.cpp стоит #include "stdafx.h",
+        # а stdafx.h живёт на уровень выше) — без этого C1083
+        if self.is_tool:
+            d = rel_to(SRC, self.dir)
+            if d not in self.includes:
+                self.includes.append(d)
 
         rc = m["tools"].get("VCResourceCompilerTool", {})
         self.rc_defs = to_defs(rc.get("PreprocessorDefinitions", ""))
@@ -511,20 +541,20 @@ class Proj:
     def cmake(self, SRC, R1117):
         n = self.name
         L = []
-        if self.is_exe:
+        if self.is_exe and not self.is_tool:
             # exe-проект: целей add_library нет, его источники перечислены в
             # add_executable; сюда остаются только пофайловые свойства
             srcs = None
         else:
             srcs = " ".join(self.cmake_path(x) for x in self.srcs)
             L.append(f"add_library({n} OBJECT {srcs})")
-        if not self.is_exe and self.includes:
+        if self.emits_target and self.includes:
             L.append(f"target_include_directories({n} PRIVATE " +
                      " ".join(f"${{PW_SRC}}/{i}" for i in self.includes) + ")")
-        if not self.is_exe and self.defs:
+        if self.emits_target and self.defs:
             L.append(f"target_compile_definitions({n} PRIVATE " +
                      " ".join(self.defs) + ")")
-        if not self.is_exe:
+        if self.emits_target:
             L.append(f"target_compile_options({n} PRIVATE " + " ".join(self.opts) + ")")
         # .rc НЕ входят в OBJECT-цель: rc резолвит ICON/BITMAP/CURSOR-пути
         # относительно CWD (в VS это каталог проекта; у Ninja CWD = build-каталог,
@@ -574,10 +604,11 @@ def main():
     R1117 = os.path.dirname(SRC)
     os.makedirs(os.path.join(out, "projects"), exist_ok=True)
 
-    names = [n for n in model if n != "PW_Game"]
     global PROJ_NAMES
     PROJ_NAMES = set(model)
     projs = {n: Proj(n, model[n], SRC, R1117) for n in model}
+    tools = sorted(n for n in model if projs[n].is_tool)
+    names = [n for n in model if n != "PW_Game" and n not in tools]
 
     # порядок не важен для OBJECT-библиотек (линковка одна), но детерминизм полезен
     for n in sorted(model):
@@ -693,6 +724,34 @@ def main():
     lf += os.environ.get("PW_EXTRA_LINK_OPTS", "").split()
     top.append("target_link_options(PW_Game PRIVATE " + " ".join(lf) + ")")
     top.append("set_target_properties(PW_Game PROPERTIES OUTPUT_NAME PW_Game)")
+
+    # --- инструменты сборки (ShaderCompiler и др.) -------------------------
+    # Отдельный add_executable: их объекты не входят в $<TARGET_OBJECTS:...>
+    # клиента (см. names выше). Консольные (SubSystem=1 в vcproj).
+    for t in tools:
+        p = projs[t]
+        # цель экзешника называется <t>_tool: имя <t> уже занято OBJECT-целью
+        # из projects/<t>.cmake (CMP0002), а OUTPUT_NAME даёт нужный exe
+        objs_t = " ".join(f"$<TARGET_OBJECTS:{o}>" for o in TOOL_OBJS.get(t, [t]))
+        top.append(f"add_executable({t}_tool {objs_t})")
+        # Foundation/libdb тянут за собой ту же системную обвязку, что и клиент
+        # (DbgHelp, Psapi, Rpcrt4, Terabit/ACE), поэтому линкуем тот же набор,
+        # что у PW_Game, плюс собственный из vcproj
+        libs_t = dedup(p.link_libs + pwg.link_libs)
+        dirs_t = dedup(p.link_dirs + pwg.link_dirs)
+        nodef_t = dedup(p.nodefault + pwg.nodefault)
+        if dirs_t:
+            top.append("target_link_directories(" + t + "_tool PRIVATE " +
+                       " ".join(f"${{R1117}}/{d}" for d in dirs_t) + ")")
+        if libs_t:
+            top.append(f"target_link_libraries({t}_tool PRIVATE " + " ".join(libs_t) + ")")
+        lf_t = (["/MACHINE:" + os.environ.get("PW_MACHINE", "X86"), "/SUBSYSTEM:CONSOLE"]
+                + WINE_LINK_FLAGS)
+        lf_t += ["/NODEFAULTLIB:" + x for x in nodef_t]
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            lf_t += list(X64_LINK_ALTERNATES)
+        top.append(f"target_link_options({t}_tool PRIVATE " + " ".join(lf_t) + ")")
+        top.append(f"set_target_properties({t}_tool PROPERTIES OUTPUT_NAME {t})")
 
     write_if_changed(
         os.path.join(out, "CMakeLists.txt"),

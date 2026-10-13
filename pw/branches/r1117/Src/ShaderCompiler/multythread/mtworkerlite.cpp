@@ -158,7 +158,9 @@ void MTWorkerLite::ExecuteJob(void ** pUserData)
     SpinUntilZero(m_notReady2Start);
     // Start all threads
     m_endSem = SEM_CLOSED; // Close the end, so nobody will be able to loop twice
-    _asm mfence; //WriteBarrier(); 
+    MemoryBarrier(); // WriteBarrier(); x64 has no inline __asm (C4235),
+    // MemoryBarrier() from windows.h is the same full fence on both arches
+
     m_begSem = SEM_OPEN;   // Start all threads!
 
     // Call user function
@@ -168,7 +170,9 @@ void MTWorkerLite::ExecuteJob(void ** pUserData)
     SpinUntilZero(m_tasks2BeDone);
     // Open end semaphor to finish the cycle
     m_begSem = SEM_CLOSED;
-    _asm mfence; //WriteBarrier(); 
+    MemoryBarrier(); // WriteBarrier(); x64 has no inline __asm (C4235),
+    // MemoryBarrier() from windows.h is the same full fence on both arches
+
     m_endSem = SEM_OPEN;
   }
   else

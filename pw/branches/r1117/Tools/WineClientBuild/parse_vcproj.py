@@ -25,6 +25,13 @@ CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
 #   PWClassicSandbox  — падает и в оригинальной VS-сборке
 EXCLUDE = {"UniServerApp", "FilePileCompiler", "PWClassicSandbox"}
 
+# Инструменты сборки: в PW_Game.exe не входят, но граф у них общий с клиентом
+# (те же stdafx/System/libdb). В PF.sln у них нет Build.0 для клиентской
+# конфигурации — в VS они собираются вручную (Vendor/BuildUtils/CompileShaders.cmd
+# запускает Bin/ShaderCompiler.exe), поэтому через projects_from_sln() не
+# проходят. Добавляются явно: имя -> путь к vcproj относительно Src.
+EXTRA_TOOLS = {"ShaderCompiler": "ShaderCompiler/ShaderCompiler.vcproj"}
+
 
 def projects_from_sln(sln_path, cfg):
     """Имена проектов + их vcproj, которые собираются (Build.0) в конфигурации cfg."""
@@ -43,8 +50,13 @@ def projects_from_sln(sln_path, cfg):
             g = l.strip().split('.')[0].strip('{}').upper()
             build.add(g)
     out = []
+    have = set()
     for guid, (name, path, ptype) in guid2.items():
         if guid in build and name not in EXCLUDE and path.endswith('.vcproj'):
+            out.append((name, path))
+            have.add(name)
+    for name, path in EXTRA_TOOLS.items():
+        if name not in have and os.path.isfile(os.path.join(os.path.dirname(sln_path), path)):
             out.append((name, path))
     return sorted(out)
 
