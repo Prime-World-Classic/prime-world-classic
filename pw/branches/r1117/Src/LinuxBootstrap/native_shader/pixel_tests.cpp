@@ -119,9 +119,9 @@ void PixelIs(Checks& check, int x, int y, Pixel expected, const char* name) {
 
 struct Texture {
 	GLuint name = 0;
-	explicit Texture(bool white = false) {
+	explicit Texture(bool white = false, unsigned char alpha = 255) {
 		const unsigned char pixels[] = {255,0,0,255, 0,255,0,255, 0,0,255,255, 255,255,255,255};
-		const unsigned char one[] = {255,255,255,255};
+		const unsigned char one[] = {255,255,255,alpha};
 		glGenTextures(1, &name); glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, name);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, white ? 1 : 2, white ? 1 : 2, 0,
 			GL_RGBA, GL_UNSIGNED_BYTE, white ? one : pixels);
@@ -218,10 +218,14 @@ std::vector<int64_t> Snapshot(GLuint borrowed) {
 	for (GLenum query : {GL_CURRENT_PROGRAM, GL_VERTEX_ARRAY_BINDING, GL_ARRAY_BUFFER_BINDING,
 		GL_ELEMENT_ARRAY_BUFFER_BINDING, GL_ACTIVE_TEXTURE, GL_DEPTH_FUNC, GL_CULL_FACE_MODE, GL_FRONT_FACE,
 		GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB, GL_BLEND_SRC_ALPHA, GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB,
-		GL_BLEND_EQUATION_ALPHA, GL_DEPTH_WRITEMASK}) { GLint v; glGetIntegerv(query, &v); s.push_back(v); }
+		GL_BLEND_EQUATION_ALPHA, GL_DEPTH_WRITEMASK, GL_ALPHA_TEST_FUNC, GL_LOGIC_OP_MODE}) {
+		GLint v; glGetIntegerv(query, &v); s.push_back(v);
+	}
+	GLfloat alphaReference; glGetFloatv(GL_ALPHA_TEST_REF, &alphaReference);
+	uint32_t alphaBits; std::memcpy(&alphaBits, &alphaReference, sizeof(alphaBits)); s.push_back(alphaBits);
 	for (GLenum flag : {GL_DEPTH_TEST,GL_CULL_FACE,GL_BLEND,GL_ALPHA_TEST,GL_SCISSOR_TEST,GL_STENCIL_TEST,
 		GL_DITHER,GL_FRAMEBUFFER_SRGB,GL_RASTERIZER_DISCARD,GL_PROGRAM_POINT_SIZE,GL_POLYGON_OFFSET_FILL,
-		GL_PRIMITIVE_RESTART,GL_DEPTH_CLAMP}) s.push_back(glIsEnabled(flag));
+		GL_PRIMITIVE_RESTART,GL_DEPTH_CLAMP,GL_COLOR_LOGIC_OP}) s.push_back(glIsEnabled(flag));
 	for (GLuint buffer : {0u, 1u}) {
 		GLboolean mask[4]; glGetBooleani_v(GL_COLOR_WRITEMASK, buffer, mask);
 		for (auto value : mask) s.push_back(value);
@@ -308,8 +312,75 @@ struct Foreign {
 
 void CleanRaster() {
 	for (GLenum flag : {GL_BLEND,GL_DEPTH_TEST,GL_CULL_FACE,GL_ALPHA_TEST,GL_SCISSOR_TEST,GL_STENCIL_TEST,
-		GL_DITHER,GL_FRAMEBUFFER_SRGB,GL_RASTERIZER_DISCARD,GL_POLYGON_OFFSET_FILL}) glDisable(flag);
+		GL_DITHER,GL_FRAMEBUFFER_SRGB,GL_RASTERIZER_DISCARD,GL_POLYGON_OFFSET_FILL,GL_COLOR_LOGIC_OP}) glDisable(flag);
 	glColorMask(1,1,1,1); glDepthMask(1); glDepthRange(0,1); glViewport(0,0,64,64); glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+}
+
+/** Exercise final shader alpha, byte thresholds, discarded depth and explicit face policy. */
+void RasterTests(Checks& check, ShaderBackend& backend, const ProgramRef& program, Target& target) {
+	Mesh mesh, behind; behind.Z(.5f, .5f);
+	Texture white(true), translucent(true, 126);
+	auto draw = mesh.Draw(white.name);
+	draw.alphaTest = AlphaTest::GreaterEqual;
+	for (int reference : {0, 127, 255}) for (int alpha : {0, 126, 127, 128, 255}) {
+		draw.alphaReference = reference;
+		const bool visible = alpha >= reference;
+		Registers(backend, Identity, Identity, {}, {1,0,0,0}, {0,0,0,alpha / 255.f});
+		target.Clear();
+		glEnable(GL_ALPHA_TEST); glAlphaFunc(GL_LESS, .731f);
+		glEnable(GL_CULL_FACE); glCullFace(GL_FRONT); glFrontFace(GL_CW);
+		const auto before = Snapshot(white.name);
+		check.Good(backend.Draw(program, draw), "cutout threshold draw ref=" + std::to_string(reference) + " alpha=" + std::to_string(alpha));
+		check.Test(Snapshot(white.name) == before, "cutout restores alpha function/reference and culling");
+		PixelIs(check, 32, 32, visible ? Pixel{255,0,0,static_cast<unsigned char>(alpha)} : ClearPixel,
+			"final diffuse alpha uses greater-or-equal byte threshold");
+		float depth = 0; glReadPixels(32,32,1,1,GL_DEPTH_COMPONENT,GL_FLOAT,&depth);
+		check.Test(std::abs(depth - (visible ? .25f : 1.f)) < .00001f, "discarded fragments do not write depth");
+		Registers(backend, Identity, Identity, {}, {0,1,0,1});
+		check.Good(backend.Draw(program, behind.Draw(white.name)), "draw opaque surface behind cutout");
+		PixelIs(check, 32, 32, visible ? Pixel{255,0,0,static_cast<unsigned char>(alpha)} : Pixel{0,255,0,255},
+			"cutout holes expose later opaque geometry");
+	}
+	draw.alphaReference = 127;
+	draw.texture = translucent.name;
+	for (int added : {0, 2}) {
+		Registers(backend, Identity, Identity, {}, {1,0,0,1}, {0,0,0,added / 255.f}); target.Clear();
+		check.Good(backend.Draw(program, draw), "texture alpha combined with diffuse add");
+		PixelIs(check,32,32,added ? Pixel{255,0,0,128} : ClearPixel,"threshold sees texture alpha plus shader add");
+	}
+	draw.texture = white.name; draw.alphaTest = AlphaTest::Disabled;
+	Registers(backend, Identity, Identity, {}, {1,0,0,0}); target.Clear();
+	check.Good(backend.Draw(program, draw), "disabled alpha test accepts zero shader alpha");
+	PixelIs(check,32,32,{255,0,0,0},"alpha disabled remains opaque without blending");
+	for (bool mirrored : {false, true}) for (Winding face : {Winding::Clockwise, Winding::CounterClockwise})
+		for (CullMode cull : {CullMode::Back, CullMode::Disabled}) {
+			auto world = Identity; if (mirrored) world[0][0] = -1;
+			Registers(backend, world); target.Clear();
+			draw.frontFace = face; draw.cullMode = cull;
+			check.Good(backend.Draw(program, draw), "explicit culling with mirrored WORLD");
+			const bool visible = cull == CullMode::Disabled || (mirrored == (face == Winding::Clockwise));
+			PixelIs(check,32,32,visible ? Pixel{255,255,255,255} : ClearPixel,"two-sided and mirrored face policy");
+		}
+	draw = mesh.Draw(white.name); Registers(backend); target.Clear();
+	glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
+	const auto before = Snapshot(white.name);
+	check.Good(backend.Draw(program, draw), "opaque draw overrides foreign color logic operation");
+	PixelIs(check,32,32,{255,255,255,255},"foreign XOR cannot modify opaque shader output");
+	check.Test(Snapshot(white.name) == before,"color logic operation and alpha state restored");
+	CleanRaster();
+	for (int kind = 0; kind < 5; ++kind) {
+		auto invalid = draw;
+		if (kind == 0) invalid.alphaTest = static_cast<AlphaTest>(-1);
+		if (kind == 1) invalid.cullMode = static_cast<CullMode>(99);
+		if (kind >= 2) invalid.alphaReference = kind == 2 ? -1 : kind == 3 ? 256 : INT32_MAX;
+		target.Clear(); glEnable(GL_ALPHA_TEST); glAlphaFunc(GL_NOTEQUAL, .37f);
+		const auto state = Snapshot(white.name); const auto count = backend.GetDiagnostics().draws;
+		check.Test(backend.Draw(program, invalid).code == Code::InvalidInput, "invalid raster descriptor rejected");
+		check.Test(backend.GetDiagnostics().draws == count && Snapshot(white.name) == state,
+			"invalid raster descriptor preserves draw count and GL state");
+		PixelIs(check,32,32,ClearPixel,"invalid raster descriptor draws no fallback");
+	}
+	CleanRaster(); Registers(backend);
 }
 
 void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
@@ -358,6 +429,7 @@ void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	PixelIs(check,2,2,ClearPixel,"outside geometry untouched");
 	float depth = 0; glReadPixels(32,32,1,1,GL_DEPTH_COMPONENT,GL_FLOAT,&depth);
 	check.Test(std::abs(depth-.25f)<0.00001f,"D3D depth .25 maps to window depth .25");
+	RasterTests(check, *backend, program, target);
 
 	Registers(*backend,Identity,Identity,{0,0,0,0},{.5f,.25f,.75f,.5f},{.1f,.2f,.3f,.1f}); target.Clear();
 	check.Good(backend->Draw(program,draw),"diffuse mul/add draw");

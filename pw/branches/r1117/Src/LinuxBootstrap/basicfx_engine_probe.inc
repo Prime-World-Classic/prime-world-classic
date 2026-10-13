@@ -101,6 +101,126 @@ bool RunLinuxBasicFxEngineProbe(const std::string& capturePath)
 			passed = captured && passed;
 		}
 	}
+	// The cutout texture is shipped content; placing it on Stones is a test fixture,
+	// not a claim that the original animated TrapFlower asset is supported here.
+	const auto cutout = NDb::Get<NDb::BasicFXMaterial>(NDb::DBID("Effects/Debuffs/Roots/TrapFlower.MTRL"));
+	unsigned opaqueCoverage = 0, cutoutCoverage = 0;
+	for (int raster = 0; raster < 13; ++raster)
+	{
+		auto* material = new NDb::BasicFXMaterial(*authored);
+		NDb::Ptr<NDb::BasicFXMaterial> held(material);
+		material->DiffuseMul = decltype(material->DiffuseMul)(Render::HDRColor(0, 0, 0, 0));
+		material->DiffuseAdd = decltype(material->DiffuseAdd)(Render::HDRColor(.8f, .1f, .2f,
+			raster == 1 ? 126.f / 255 : raster == 3 ? 128.f / 255 : raster == 4 ? 0 : 127.f / 255));
+		if (raster >= 1 && raster <= 3) material->renderState.alphaTest = NDb::ONOFFSTATE_ON;
+		if (raster == 5) material->renderState.culling = NDb::ONOFFSTATE_OFF;
+		if (raster == 6) material->renderState.alphaTest = static_cast<NDb::OnOffState>(99);
+		if (raster == 7) material->renderState.culling = static_cast<NDb::OnOffState>(99);
+		if (raster == 8) material->renderState.alphaTestRef = -1;
+		if (raster == 9) material->renderState.alphaTestRef = 256;
+		if (raster >= 11 && cutout)
+		{
+			material->DiffuseMap = cutout->DiffuseMap;
+			material->DiffuseMul = decltype(material->DiffuseMul)(Render::HDRColor(0, 0, 0, 1));
+			material->DiffuseAdd = decltype(material->DiffuseAdd)(Render::HDRColor(.8f, .1f, .2f, 0));
+			material->renderState.alphaTest = raster == 11 ? NDb::ONOFFSTATE_ON : NDb::ONOFFSTATE_OFF;
+			material->renderState.culling = NDb::ONOFFSTATE_OFF;
+		}
+		vector<Render::BaseMaterial*> materials;
+		for (int i = 0; i < geometry->primitives.size(); ++i)
+			materials.push_back(Render::CreateLinuxStaticMeshPreviewMaterial(material));
+		Render::StaticMesh mesh; mesh.Initialize(world, geometry, materials);
+		Render::BatchQueueSorter sorter(16, false);
+		Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
+		mesh.RenderToQueue(queue);
+		glMatrixMode(GL_MODELVIEW); glLoadIdentity(); glRotatef(60, 1, 0, 0); glRotatef(20, 0, 1, 0);
+		glClearColor(0, 0, 0, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_ALPHA_TEST); glAlphaFunc(GL_NEVER, .731f);
+		Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
+		const auto before = Render::LinuxBasicFx::GetStatistics();
+		const auto depthPin = Render::GetRuntimePins().DoDepthOutValue;
+		if (raster == 10) Render::GetRuntimePins().DoDepthOutValue = NDb::BOOLPIN_TRUE;
+		queue.Render();
+		Render::GetRuntimePins().DoDepthOutValue = depthPin;
+		const auto after = Render::LinuxBasicFx::GetStatistics();
+		Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
+		GLint alphaFunction; GLfloat alphaReference;
+		glGetIntegerv(GL_ALPHA_TEST_FUNC, &alphaFunction); glGetFloatv(GL_ALPHA_TEST_REF, &alphaReference);
+		const bool restored = glIsEnabled(GL_ALPHA_TEST) && alphaFunction == GL_NEVER && alphaReference == .731f;
+		glDisable(GL_ALPHA_TEST);
+		std::vector<unsigned char> pixels(256 * 256 * 4);
+		glReadPixels(0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+		unsigned covered = 0, wrong = 0;
+		for (size_t i = 0; i < 256 * 256; ++i)
+		{
+			const auto* p = &pixels[i * 4];
+			if (!p[0] && !p[1] && !p[2]) continue;
+			++covered;
+			if (std::abs(int(p[0]) - 204) > 1 || std::abs(int(p[1]) - 26) > 1 || std::abs(int(p[2]) - 51) > 1)
+				++wrong;
+		}
+		if (raster == 0) opaqueCoverage = covered;
+		if (raster == 11) cutoutCoverage = covered;
+		const bool invalid = raster >= 6 && raster <= 10;
+		const bool good = restored && !wrong && cutout && glGetError() == GL_NO_ERROR &&
+			(invalid ? !covered && after.draws == before.draws && after.rejected > before.rejected :
+				after.draws > before.draws && (raster == 1 ? !covered : covered > 100)) &&
+			((raster != 2 && raster != 3 && raster != 4) || covered == opaqueCoverage) &&
+			(raster != 5 || covered >= opaqueCoverage) &&
+			(raster != 12 || (cutoutCoverage > 100 && cutoutCoverage < covered));
+		fprintf(stdout, "BasicFX raster probe: stage=%d draws=%llu pixels=%u wrong=%u restored=%d result=%s\n",
+			raster, static_cast<unsigned long long>(after.draws - before.draws), covered, wrong, restored, good ? "PASS" : "FAIL");
+		passed = good && passed;
+		if (!capturePath.empty() && raster >= 11)
+		{
+			std::string error;
+			passed = CaptureLinuxOpenGlBackBufferPng(capturePath + (raster == 11 ? "-cutout.png" : "-opaque.png"),
+				256, 256, &error) && passed;
+		}
+	}
+	// A one-sided mock quad makes the DB-to-backend culling mapping observable.
+	Render::MeshGeometry quad;
+	const float quadVertices[][5] = {{-3,-3,0,0,0}, {3,-3,0,1,0}, {3,3,0,1,1}, {-3,3,0,0,1}};
+	const WORD quadIndices[] = {0,1,2,0,2,3};
+	Render::VertexFormatDescriptor format;
+	format.AddVertexElement(Render::VertexElementDescriptor(0, 0, Render::VERTEXELEMENTTYPE_FLOAT3,
+		Render::VERETEXELEMENTUSAGE_POSITION, 0));
+	format.AddVertexElement(Render::VertexElementDescriptor(0, 12, Render::VERTEXELEMENTTYPE_FLOAT2,
+		Render::VERETEXELEMENTUSAGE_TEXCOORD, 0));
+	auto* primitive = new Render::Primitive;
+	quad.primitives.push_back(primitive);
+	quad.materialCount = quad.fragmentCount = 1; quad.triangleCount = 2; quad.materialID[0] = 0;
+	primitive->SetVertexDeclaration(Render::SmartRenderer::GetVertexFormatDeclaration(format));
+	primitive->SetVertexStream(Render::CreateVB(sizeof(quadVertices), Render::RENDER_POOL_MANAGED, quadVertices), sizeof(quadVertices[0]));
+	primitive->SetIndexBuffer(Render::CreateIB16(sizeof(quadIndices), Render::RENDER_POOL_MANAGED, quadIndices));
+	primitive->GetDipDescriptor() = Render::DipDescriptor(Render::RENDERPRIMITIVE_TRIANGLELIST, 0, 0, 4, 0, 2);
+	for (int mirrored = 0; mirrored < 2; ++mirrored) for (int culling = 0; culling < 2; ++culling)
+	{
+		auto* material = new NDb::BasicFXMaterial(*authored);
+		NDb::Ptr<NDb::BasicFXMaterial> held(material);
+		material->renderState.culling = culling ? NDb::ONOFFSTATE_ON : NDb::ONOFFSTATE_OFF;
+		material->DiffuseMul = decltype(material->DiffuseMul)(Render::HDRColor(0, 0, 0, 0));
+		material->DiffuseAdd = decltype(material->DiffuseAdd)(Render::HDRColor(0, 1, 0, 1));
+		Matrix43 placement; Identity(&placement); if (mirrored) placement._11 = -1;
+		vector<Render::BaseMaterial*> materials;
+		materials.push_back(Render::CreateLinuxStaticMeshPreviewMaterial(material));
+		Render::StaticMesh mesh; mesh.Initialize(placement, &quad, materials);
+		Render::BatchQueueSorter sorter(16, false);
+		Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32); mesh.RenderToQueue(queue);
+		glMatrixMode(GL_MODELVIEW); glLoadIdentity(); glRotatef(-90, 1, 0, 0);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
+		const auto before = Render::LinuxBasicFx::GetStatistics(); queue.Render();
+		const auto after = Render::LinuxBasicFx::GetStatistics();
+		Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
+		unsigned char pixel[4]{}; glReadPixels(128,128,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pixel);
+		const bool visible = !culling || !mirrored;
+		const bool good = after.draws == before.draws + 1 && !pixel[0] && !pixel[2] &&
+			pixel[1] == (visible ? 255 : 0) && glGetError() == GL_NO_ERROR;
+		fprintf(stdout, "BasicFX sided probe: mirrored=%d culling=%d green=%u result=%s\n",
+			mirrored, culling, pixel[1], good ? "PASS" : "FAIL");
+		passed = good && passed;
+	}
 	Render::LinuxBasicFx::Select(authored, nullptr);
 	for (int sorted = 0; sorted < 2; ++sorted)
 		for (int unsupported = 0; unsupported < 2; ++unsupported)

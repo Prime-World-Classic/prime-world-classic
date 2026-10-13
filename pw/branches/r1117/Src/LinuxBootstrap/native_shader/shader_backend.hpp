@@ -23,6 +23,8 @@ struct Float4View { const Float4* data = nullptr; size_t count = 0; };
 enum class Stage { Vertex, Pixel };
 enum class IndexType { UInt16, UInt32 };
 enum class Winding { CounterClockwise, Clockwise };
+enum class AlphaTest { Disabled, GreaterEqual };
+enum class CullMode { Back, Disabled };
 
 /** Host identity plus a host-assigned monotonic lifetime, not a recycled GLX address alone. */
 struct ContextKey {
@@ -65,6 +67,8 @@ private:
 /** Borrowed buffers remain valid through Draw. Offsets/stride are in bytes; indices in elements.
  * Texture is a live level-0 2D name in the owning context. Sampling is explicitly Repeat/Linear.
  * Draw targets the caller's framebuffer, without clearing it. All modified GL state is restored.
+ * Alpha testing uses final shader alpha; discarded pixels write neither color nor depth.
+ * Accepted fragments use opaque RGBA writes and LEQUAL depth writes, without blending.
  */
 struct IndexedDraw {
 	ByteView vertices, indexData;
@@ -75,6 +79,10 @@ struct IndexedDraw {
 	uint32_t texture = 0;
 	int viewportX = 0, viewportY = 0, viewportWidth = 0, viewportHeight = 0;
 	Winding frontFace = Winding::CounterClockwise;
+	AlphaTest alphaTest = AlphaTest::Disabled;
+	CullMode cullMode = CullMode::Back;
+	/** Original D3D byte reference, validated even when alpha testing is disabled. */
+	int alphaReference = 127;
 };
 
 /** Render-thread-only, noncopyable owner for one selected BasicFX pair.

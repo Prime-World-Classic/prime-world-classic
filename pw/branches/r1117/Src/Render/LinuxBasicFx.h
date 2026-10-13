@@ -17,7 +17,10 @@ struct Statistics {
 /** Host lifecycle: call once after GLX creation, and shut down before destroying it. */
 bool BeginContext();
 bool Shutdown();
-/** Batch selection is cleared even for unsupported/null materials. No pointer is retained. */
+/** Batch selection is cleared even for unsupported/null materials. No pointer is retained.
+ * Blend-off pair-zero materials support byte GEQUAL alpha testing and optional backface culling.
+ * Malformed admitted states remain selected but cannot draw or fall back to the old preview.
+ */
 void ClearSelection();
 void Select(const NDb::Material* material, const Texture* texture);
 bool IsSelected();

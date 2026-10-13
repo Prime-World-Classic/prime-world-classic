@@ -13,10 +13,16 @@ license and two allocation-failure fixes.
   The host begins a monotonically identified context lifetime and releases the
   shader backend before GLX destruction. A cleanup failure is not reported as
   successful shutdown.
-- Opaque, alpha-test-off, culling-on BasicFX with all four pins at zero, constant
-  diffuse/UV values, opacity/masterOpacity one, and linear repeat sampling.
+- Blend-off BasicFX with optional alpha testing and backface culling, all four
+  authored pins and runtime depth-output pin at zero, constant diffuse/UV values,
+  opacity/masterOpacity one, and linear repeat sampling. Alpha testing compares
+  final shader alpha using `>= alphaTestRef / 255`, after texture/multiply/add;
+  discarded fragments write neither color nor depth. Culling-off is two-sided,
+  without automatic winding changes for reflected WORLD transforms.
   Unsupported materials keep the existing preview path. Invalid draws of an
   admitted material are skipped, never replaced with stale shader constants.
+  Malformed alpha/culling enums and references outside 0..255 also fail closed,
+  even when alpha testing is off. Blended materials are not admitted yet.
 - Original POSITION0 float3 and TEXCOORD0 float2, triangle lists, 16/32-bit
   indices, stream offsets, strides and signed base vertices. WORLD rows stay
   separate from preview/camera registers; vertices are not transformed twice.
@@ -57,7 +63,13 @@ xvfb-run -a env PW_BACKEND_APPROVED_XVFB=1 LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREAD
 From `pw/branches/r1117/Bin`, the existing explicit renderer probe now also loads
 the original rubble mesh, material and Stone02 texture. It checks authored
 pixels, a private material colour change, rotated coverage, invalid-constant
-rejection and null-batch selection clearing:
+rejection and null-batch selection clearing. Raster probes use private copies of
+the material to test byte thresholds, culling, malformed states, and the runtime
+depth-output permutation guard. One-sided engine-buffer mock quads distinguish
+DB culling on/off under normal and reflected WORLD transforms; disabling the
+culling-off mapping must fail that probe. A separate test combines the original Stones
+geometry with the shipped TrapFlower alpha texture; this fixture is not the
+authored animated TrapFlower scene or evidence of skeletal support:
 
 ```sh
 xvfb-run -a -s '-screen 0 1280x720x24 +extension GLX -nolisten tcp' \
@@ -67,7 +79,9 @@ xvfb-run -a -s '-screen 0 1280x720x24 +extension GLX -nolisten tcp' \
 ```
 
 The capture is a 256-square actual engine draw; a second `-rotated.png` file
-shows the controlled colour/rotation test. It is not a full-game parity image.
+shows the controlled colour/rotation test. Additional `-cutout.png` and
+`-opaque.png` captures show the same geometry/texture with alpha testing enabled
+and disabled. These are not full-game parity images.
 The independent pixel suite also tests allocation refusal at each selected
 program-load allocation, context recreation, state restoration and malformed
 draw inputs. Defining `BACKEND_NEGATIVE_DRAW` while compiling

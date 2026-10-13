@@ -57,11 +57,13 @@ void Enable(GLenum state, bool value) { if (value) glEnable(state); else glDisab
 struct GlState {
 	GLint program = 0, vao = 0, array = 0, element = 0, active = 0, texture = 0, sampler = 0;
 	GLint viewport[4]{}, depthFunction = 0, cullMode = 0, face = 0, polygon[2]{};
+	GLint alphaFunction = 0;
+	GLfloat alphaReference = 0;
 	GLboolean depthMask = 0, colorMask[4]{}, blend = 0;
 	GLdouble depthRange[2]{};
 	static constexpr GLenum Flags[] = {GL_DEPTH_TEST, GL_CULL_FACE, GL_ALPHA_TEST,
 		GL_SCISSOR_TEST, GL_STENCIL_TEST, GL_DITHER, GL_FRAMEBUFFER_SRGB, GL_RASTERIZER_DISCARD,
-		GL_PROGRAM_POINT_SIZE, GL_POLYGON_OFFSET_FILL, GL_PRIMITIVE_RESTART, GL_DEPTH_CLAMP};
+		GL_PROGRAM_POINT_SIZE, GL_POLYGON_OFFSET_FILL, GL_PRIMITIVE_RESTART, GL_DEPTH_CLAMP, GL_COLOR_LOGIC_OP};
 	GLboolean flags[sizeof(Flags) / sizeof(Flags[0])]{};
 	GLuint borrowed = 0;
 	static constexpr GLenum Parameters[] = {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_MIN_FILTER,
@@ -81,6 +83,8 @@ struct GlState {
 		glGetIntegerv(GL_DEPTH_FUNC, &depthFunction);
 		glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
 		glGetIntegerv(GL_FRONT_FACE, &face);
+		glGetIntegerv(GL_ALPHA_TEST_FUNC, &alphaFunction);
+		glGetFloatv(GL_ALPHA_TEST_REF, &alphaReference);
 		glGetIntegerv(GL_POLYGON_MODE, polygon);
 		glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
 		glGetBooleani_v(GL_COLOR_WRITEMASK, 0, colorMask);
@@ -122,6 +126,7 @@ struct GlState {
 		if (blend) glEnablei(GL_BLEND, 0); else glDisablei(GL_BLEND, 0);
 		glCullFace(GLenum(cullMode));
 		glFrontFace(GLenum(face));
+		glAlphaFunc(GLenum(alphaFunction), alphaReference);
 		glPolygonMode(GL_FRONT, GLenum(polygon[0]));
 		glPolygonMode(GL_BACK, GLenum(polygon[1]));
 		for (size_t i = 0; i < std::size(Flags); ++i) Enable(Flags[i], flags[i]);
@@ -361,6 +366,10 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		d.viewportWidth <= 0 || d.viewportHeight <= 0 || d.viewportWidth > 16384 || d.viewportHeight > 16384 ||
 		(d.frontFace != Winding::Clockwise && d.frontFace != Winding::CounterClockwise))
 		return Fail(Code::InvalidInput, "draw layout/range out of bounds");
+	if ((d.alphaTest != AlphaTest::Disabled && d.alphaTest != AlphaTest::GreaterEqual) ||
+		(d.cullMode != CullMode::Back && d.cullMode != CullMode::Disabled) ||
+		d.alphaReference < 0 || d.alphaReference > 255)
+		return Fail(Code::InvalidInput, "invalid alpha-test or culling state");
 	try {
 		std::vector<uint32_t> indices(d.indexCount);
 		const size_t available = d.vertices.size - d.streamOffset;
@@ -418,7 +427,12 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_TEXCOORD, 0, 2, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.uvOffset));
 		for (GLenum flag : GlState::Flags) glDisable(flag);
-		glEnable(GL_DEPTH_TEST); glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		if (d.cullMode == CullMode::Back) glEnable(GL_CULL_FACE);
+		if (d.alphaTest == AlphaTest::GreaterEqual) {
+			glAlphaFunc(GL_GEQUAL, d.alphaReference / 255.f);
+			glEnable(GL_ALPHA_TEST);
+		}
 		glDepthFunc(GL_LEQUAL); glDepthMask(GL_TRUE); glDepthRange(0, 1);
 		glCullFace(GL_BACK);
 		glFrontFace(d.frontFace == Winding::CounterClockwise ? GL_CCW : GL_CW);
