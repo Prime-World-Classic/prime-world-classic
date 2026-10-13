@@ -120,6 +120,9 @@
 #include "Render/TextureManager.h"
 #include "Render/uirenderer.h"
 #include "Scene/DBScene.h"
+#include "Scene/AnimGraphBlender.h"
+#include "Scene/DiAnGrExtPars.h"
+#include "PF_GameLogic/DBAnimations.h"
 #include "Terrain/DBTerrain.h"
 #include "DebugVarsSender.h"
 #include "LoadingFlashInterface.h"
@@ -386,8 +389,11 @@ struct LinuxStaticMapResource
 	bool bakedSelected = false, bakedDrawn = false;
 };
 
+class LinuxAnimationGraphBank;
+
 struct LinuxWindowOverlay
 {
+	std::shared_ptr<LinuxAnimationGraphBank> unitAnimationGraphs;
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
 	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 3> staticMapResources;
 	std::weak_ptr<const void> skySceneOwner;
@@ -1849,6 +1855,7 @@ struct LinuxHeroSceneAssetPreview
   std::string firstAnimationFile;
   std::vector<std::string> animationFiles;
   std::string animGraphDbid;
+	NDb::Ptr<NDb::DBAnimatedSceneComponent> animationComponent;
   std::string staticSrcFile;
   std::string staticGeometryFile;
   std::string particleFxFile;
@@ -20494,6 +20501,7 @@ void ProbeHeroSceneComponentAsset(
       dynamic_cast<const NDb::DBAnimatedSceneComponent*>(component))
   {
     ++preview->animatedComponentCount;
+		if (!preview->animationComponent) preview->animationComponent=animated;
     MergeHeroSceneAabb(animated->aabb, preview);
 
     if (preview->animatedSrcFile.empty())
@@ -20746,6 +20754,9 @@ void ProbeHeroSceneObjectAsset(
     ProbeLinuxHeroAnimationSkinningPayloads(environment, preview);
   }
 }
+
+#include "LinuxBootstrap/animation_graph_playback.inc"
+#include "LinuxBootstrap/animation_graph_integration.inc"
 
 void ProbeSelectedHeroSceneAsset(
   const LinuxClientEnvironment& environment,
@@ -51323,7 +51334,8 @@ bool DrawLinuxHeroMeshPreview(
   unsigned char accentB,
   double elapsedSeconds,
   bool drawWireframe,
-	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses = nullptr
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses = nullptr,
+	const LinuxAnimationGraphPlayback* graphPose = nullptr
 );
 
 bool IsLinuxMapHeroMeshPreviewReady(const LinuxSelectedHeroDbPreview* heroPreview)
@@ -52376,6 +52388,7 @@ bool DrawLinuxMapHeroMeshReplica(
     marker.y);
   const float baseY = (localView ? .04f : 1.10f) + terrainHeight * scale;
   const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(heroPreview->sceneAsset,marker) : nullptr;
 
   glPushMatrix();
   glTranslatef(x, baseY, z);
@@ -52391,7 +52404,7 @@ bool DrawLinuxMapHeroMeshReplica(
     green,
     blue,
     elapsedSeconds,
-    false, poses);
+    false, poses, graphPose);
   glPopMatrix();
   return drawn;
 }
@@ -52425,6 +52438,7 @@ bool DrawLinuxMapUnitMeshReplica(
     marker.x,
     marker.y);
   const float baseY = (localView ? .04f : 1.04f) + terrainHeight * scale;
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(unitPreview->sceneAsset,marker) : nullptr;
   const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(
     marker,
     elapsedSeconds,
@@ -52446,7 +52460,7 @@ bool DrawLinuxMapUnitMeshReplica(
     green,
     blue,
     elapsedSeconds,
-    false, poses);
+    false, poses, graphPose);
   glPopMatrix();
   return drawn;
 }
@@ -52914,6 +52928,10 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
 
   vector<NWorld::LinuxDynamicWorldMarker> markers;
   world->GetLinuxDynamicWorldMarkers(markers, 640);
+	if (overlay) {
+		if (!overlay->unitAnimationGraphs) overlay->unitAnimationGraphs=std::make_shared<LinuxAnimationGraphBank>();
+		overlay->unitAnimationGraphs->Begin(world,selectedMapPreview->sceneCatalog,elapsedSeconds);
+	}
 	if (localView && camera && camera->valid) {
 		const double focusX = camera->centerX - camera->panX / camera->scale;
 		const double focusY = camera->centerY - camera->panZ / camera->scale;
@@ -55068,7 +55086,8 @@ bool DrawLinuxHeroMeshPreview(
   unsigned char accentB,
   double elapsedSeconds,
   bool drawWireframe,
-	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses,
+	const LinuxAnimationGraphPlayback* graphPose
 )
 {
   if (!heroPreview ||
@@ -55088,13 +55107,15 @@ bool DrawLinuxHeroMeshPreview(
   const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
   const float scale = 5.2f / assetHeight;
 	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex> localPoses;
-	const auto& vertices = (poses ? poses : &localPoses)->Get(&heroPreview->sceneAsset, elapsedSeconds, [&]() {
+	const void* poseIdentity=graphPose ? static_cast<const void*>(graphPose) : &heroPreview->sceneAsset;
+	const auto& vertices = (poses ? poses : &localPoses)->Get(poseIdentity, elapsedSeconds, [&]() {
 		std::vector<Matrix43> matrices;
-		const bool animated = ComputeLinuxHeroAnimationSkinMatrices(heroPreview->sceneAsset, elapsedSeconds, &matrices);
+		const bool animated = graphPose || ComputeLinuxHeroAnimationSkinMatrices(heroPreview->sceneAsset, elapsedSeconds, &matrices);
+		const auto* skinMatrices=graphPose ? &graphPose->Matrices() : animated ? &matrices : nullptr;
 		std::vector<LinuxHeroMeshPreviewVertex> result;
 		result.reserve(meshPreview.triangleVertices.size());
 		for (const auto& vertex : meshPreview.triangleVertices)
-			result.push_back(BuildLinuxHeroMeshPreviewRenderVertex(vertex, animated ? &matrices : nullptr));
+			result.push_back(BuildLinuxHeroMeshPreviewRenderVertex(vertex, skinMatrices));
 		return result;
 	});
   GLuint currentTexture = 0;
@@ -73169,6 +73190,7 @@ int main(int argc, char** argv)
 
     if (previousSelectedIndex != mapBrowserState.selectedIndex)
     {
+			overlay.unitAnimationGraphs.reset();
 			overlay.animatedMapResources.Clear();
 			for (auto& cache : overlay.staticMapResources) cache.Clear();
       ProbeSelectedMapPreview(environment, mapCatalog, mapBrowserState, &selectedMapPreview);
@@ -74959,6 +74981,12 @@ int main(int argc, char** argv)
     UI::Release();
   }
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
+	if (overlay.unitAnimationGraphs) {
+		const auto& graphs=*overlay.unitAnimationGraphs;
+		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu\n",
+			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size());
+		overlay.unitAnimationGraphs.reset();
+	}
 	overlay.animatedMapResources.Clear();
 	for (auto& cache : overlay.staticMapResources) cache.Clear();
   ShutdownLinuxRenderBootstrap(&renderBootstrap);

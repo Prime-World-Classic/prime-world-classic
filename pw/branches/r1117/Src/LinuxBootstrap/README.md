@@ -175,6 +175,22 @@ complete Plane skin decoding and original-mesh framebuffer comparisons with an
 independently pre-skinned reference. This verifies index association, not original
 skeletal material, lighting, animation-state or GPU-skinning parity.
 
+Eligible single-skeleton live hero/creep previews now use the original
+`DiAnimGraph`, `AnimGraphBlender` and `AnimGraphApplicator`, including authored
+default nodes, dispatchers and transition blending. Idle/move aliases come from
+the session's Hero/Creep animation sets, not the animation list order. Each
+visible unit owns its graph; the bounded cache retires unseen units and resets
+on map/world replacement or clock rewind. Pose-cache keys include graph identity,
+so units sharing a mesh can display different states at the same timestamp.
+Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
+boundary; the Windows definitions are unchanged. This is presentation-only:
+attack/cast/death events, movement-speed scaling, upper-body graphs, dynamic
+external parameters and gameplay animation callbacks remain unconnected.
+Playback uses presentation time, restarts after a gap over one second, and
+recreates graphs after offscreen eviction. Unadmitted assets and the separate
+character-inspection view retain the first-clip preview. The engine probe covers
+original graph transitions, malformed metadata, ownership and actual pose pixels.
+
 - Rendering uses real assets and selected original BasicFX/baked BasicMaterial
 	shaders, but most materials and presentation remain simplified. The
 	[native static shader contract](native_shader/README.md) documents exact admission,

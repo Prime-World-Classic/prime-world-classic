@@ -24,7 +24,12 @@ typedef unsigned  char            DiByte;
 
 typedef char                      DiInt8;
 typedef short  int                DiInt16;
+#if defined(__linux__)
+// Graph sequence arrays cross IAnimGraphBlender's int* boundary. LP64 long is not a 32-bit ID.
+typedef int                      DiInt32;
+#else
 typedef long   int                DiInt32;
+#endif
 #if defined(_MSC_VER)
 typedef __int64                  DiInt64;
 #else
@@ -33,14 +38,24 @@ typedef long  int                DiInt64;
 
 typedef unsigned char             DiUInt8;
 typedef unsigned short  int       DiUInt16;
+#if defined(__linux__)
+typedef unsigned int             DiUInt32;
+#else
 typedef unsigned long   int       DiUInt32;
+#endif
 #if defined (_MSC_VER)
 typedef unsigned __int64          DiUInt64;
 #else
 typedef unsigned long int         DiUInt64;
 #endif
 
+#if defined(__linux__)
+typedef int                       DiBool;
+static_assert(sizeof(DiInt32)==4 && sizeof(DiUInt32)==4 && sizeof(DiBool)==4,
+	"Original animation graph IDs and booleans require 32-bit values");
+#else
 typedef long  int                 DiBool;
+#endif
 typedef void                      DiVoid;
 
 typedef float                     DiFloat;
