@@ -66,6 +66,10 @@ namespace NWorld
     virtual float GetUseRange() const;
     virtual NDb::Ability const* GetDBDesc() const;
     const PFConsumable * GetConsumable() const;
+#if defined(PW_LINUX_NULL_RENDER)
+		// The native command wrapper reconstructs an inert shell of its own concrete type.
+		friend class LinuxConsumableCommandState;
+#endif
     PFHeroUseConsumableState() {}
 
     WORLD_OBJECT_METHODS( 0xF5CC3C0, PFHeroUseConsumableState )
@@ -92,6 +96,10 @@ namespace NWorld
     virtual float GetUseRange() const;
     virtual void PlayAskSound();
 
+#if defined(PW_LINUX_NULL_RENDER)
+		// Keep the empty legacy constructor private to all other callers.
+		friend class LinuxTalentCommandState;
+#endif
     PFHeroUseTalentState() {} // CPtr/CObj support
      
     WORLD_OBJECT_METHODS( 0xF6C0AC0, PFHeroUseTalentState );

@@ -96,6 +96,12 @@ static void ConsumableCommandQueueB10(Checks& check, PFWorld* world)
 		hero->Simulate(0);
 		check(hero->IsMoving() && hero->GetMana() == 200 && item->GetQuantity() == 2,
 			"real unit simulation enters consumable approach before payment");
+		CPtr<CObjectBase> retired(dynamic_cast<CObjectBase*>(hero->GetCurrentState()));
+		const int stateSize = retired ? retired->GetSizeOf() : 0;
+		check(IsValid(retired) && nstl::string(retired->GetObjectTypeName()) == "LinuxConsumableCommandState",
+			"native consumable command owns concrete intrusive reconstruction hooks");
+		check(retired && retired->GetTypeId() == PFHeroUseConsumableState::typeId,
+			"native consumable command preserves original numeric state identity");
 		if (policy == 1) hero->DoStop();
 		if (policy == 2) hero->RemoveConsumable(0);
 		for (int i = 0; i < 100 && item->GetQuantity() == 2; ++i) hero->Simulate(0.1f);
@@ -104,6 +110,10 @@ static void ConsumableCommandQueueB10(Checks& check, PFWorld* world)
 		check(policy != 0 || hero->IsPositionInRange(CVec2(15, 5), 4),
 			"queued consumable casts only inside the authored range");
 		hero->DoStop();
+		check(retired && !IsValid(retired) && nstl::string(retired->GetObjectTypeName()) == "LinuxConsumableCommandState",
+			"completed or cancelled consumable retains its concrete weak shell");
+		check(retired && retired->GetSizeOf() == stateSize && retired->GetTypeId() == PFHeroUseConsumableState::typeId,
+			"consumable weak shell preserves allocation size and original numeric identity");
 	}
 }
 
@@ -232,6 +242,12 @@ static void TalentCommandQueueB10(Checks& check, PFWorld* world, bool portal = f
 		hero->Simulate(0);
 		check(hero->IsMoving() && hero->GetMana() == 200,
 			"real unit simulation approaches a queued talent target before payment");
+		CPtr<CObjectBase> retired(dynamic_cast<CObjectBase*>(hero->GetCurrentState()));
+		const int stateSize = retired ? retired->GetSizeOf() : 0;
+		check(IsValid(retired) && nstl::string(retired->GetObjectTypeName()) == "LinuxTalentCommandState",
+			"native talent or portal command owns concrete intrusive reconstruction hooks");
+		check(retired && retired->GetTypeId() == PFHeroUseTalentState::typeId && stateSize > sizeof(PFHeroUseTalentState),
+			"native talent command reports its additional storage without changing numeric identity");
 		if (policy == 1) hero->DoStop();
 		if (policy == 2) talent->AddForbid();
 		for (int i = 0; i < 100 && talent->GetLastUseStep() == -1; ++i) hero->Simulate(0.1f);
@@ -243,6 +259,10 @@ static void TalentCommandQueueB10(Checks& check, PFWorld* world, bool portal = f
 			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepAfter == talent->GetLastUseStep()))),
 			"cast diagnostics capture actual state-driven talent execution");
 		hero->DoStop();
+		check(retired && !IsValid(retired) && nstl::string(retired->GetObjectTypeName()) == "LinuxTalentCommandState",
+			"completed or cancelled talent and portal retain their concrete weak shell");
+		check(retired && retired->GetSizeOf() == stateSize && retired->GetTypeId() == PFHeroUseTalentState::typeId,
+			"talent weak shell preserves allocation size and original numeric identity");
 	}
 }
 

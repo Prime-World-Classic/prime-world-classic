@@ -478,7 +478,10 @@ namespace NWorld
 	/** Pending command work stops when live actor/control admission is lost. */
 	class LinuxConsumableCommandState : public PFHeroUseConsumableState
 	{
+		OBJECT_METHODS(PFHeroUseConsumableState::typeId, LinuxConsumableCommandState);
 	public:
+		/** Preserve this concrete weak-reference shell after the last queued owner releases it. */
+		LinuxConsumableCommandState() = default;
 		using PFHeroUseConsumableState::PFHeroUseConsumableState;
 	protected:
 		bool OnStep(float dt) override
@@ -494,7 +497,10 @@ namespace NWorld
 	 */
 	class LinuxTalentCommandState : public PFHeroUseTalentState
 	{
+		OBJECT_METHODS(PFHeroUseTalentState::typeId, LinuxTalentCommandState);
 	public:
+		/** Reconstruction must retain the allocation's concrete type without issuing a cast. */
+		LinuxTalentCommandState() = default;
 		LinuxTalentCommandState(PFBaseMaleHero* hero, PFTalent* talent, const Target& target,
 			int level, int slot, int clientId, bool recordPayment, bool portalCommand = false)
 			: PFHeroUseTalentState(hero, talent, target), commandTalent(talent),
@@ -550,8 +556,8 @@ namespace NWorld
 		}
 	private:
 		CPtr<PFTalent> commandTalent;
-		int level, slot, clientId;
-		bool recordPayment, portalCommand;
+		int level = -1, slot = -1, clientId = -1;
+		bool recordPayment = false, portalCommand = false;
 	};
 #endif
 
