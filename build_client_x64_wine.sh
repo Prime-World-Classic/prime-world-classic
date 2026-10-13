@@ -100,8 +100,20 @@ done
 # привязан и к компилятору, и к каталогу исходников (gen/), поэтому два
 # прогона в одном build-каталоге вынуждают пересобирать весь граф (1145 TU).
 # Набор флагов при этом обязан быть идентичным — см. BUILD_CLIENT_X64.md.
-BUILD="$CCT/build/$TC_TAG"
-GEN="$CCT/gen/$TC_TAG"
+# Отдельный build/gen-каталог для сборок с изменёнными флагами компиляции.
+# PW_EXTRA_DEFS / PW_EXTRA_OPTS попадают в командную строку КАЖДОЙ TU, поэтому
+# инструментальный прогон (например -DPW_RENDER_SHADER_STATS) в общем каталоге
+# сносит весь кэш — 1159 TU, ~35 минут — и затем требует полной пересборки
+# обычного артефакта. Суффикс берётся из PW_BUILD_SUFFIX, а если он не задан —
+# из хэша этих переменных: инструментальная сборка попадает в свой каталог
+# автоматически и повторяется уже инкрементально.
+SFX="${PW_BUILD_SUFFIX:-}"
+if [ -z "$SFX" ] && { [ -n "${PW_EXTRA_DEFS:-}" ] || [ -n "${PW_EXTRA_OPTS:-}" ]; }; then
+    SFX="_$(printf '%s|%s' "${PW_EXTRA_DEFS:-}" "${PW_EXTRA_OPTS:-}" | md5sum | cut -c1-8)"
+fi
+BUILD="$CCT/build/$TC_TAG$SFX"
+GEN="$CCT/gen/$TC_TAG$SFX"
+CMD="$CCT/$TC_TAG$SFX.cmd"
 KEEP=""
 if [ "$DO_KEEP" = 1 ]; then KEEP="-k0"; fi
 
@@ -230,7 +242,7 @@ mkdir -p "$BUILD"
 python3 "$CCT/gen_cmake.py" "$BR/Src" "$CCT/model.json" "$GEN"
 # cmd-обёртка пишется и при --gen-only: её содержимое (пути, окружение тулчейна,
 # аргументы cmake) — часть проверки того, что конфигурирование было бы корректным.
-cat > "$CCT/$TC_TAG.cmd" <<'CMDEOF'
+cat > "$CMD" <<'CMDEOF'
 @echo off
 set PATH=__CMAKE_WIN__;__NINJADIR_WIN__;__CL_PATH__;%PATH%
 set INCLUDE=__CL_INC__
@@ -247,7 +259,7 @@ if errorlevel 1 exit /b 1
 cmake --build . -- __KEEP__ __NSTATS__ -j__JOBS__
 CMDEOF
 # подстановка путей отдельным прогоном: в heredoc не смешивать $-расширения
-python3 - "$CCT/$TC_TAG.cmd" "$BR/Src" "$BR" "$GEN" "$BUILD" "$CMAKE_DIR/bin" \
+python3 - "$CMD" "$BR/Src" "$BR" "$GEN" "$BUILD" "$CMAKE_DIR/bin" \
           "$NINJA" "$KEEP" "$NSTATS" "$JOBS" "$CL_PATH" "$CL_INC" "$CL_LIB" \
           "$LAUNCHER" <<'PY'
 import os, sys
@@ -276,7 +288,7 @@ open(p, "w", encoding="utf-8").write(s)
 PY
 
 if [ "$DO_GEN_ONLY" = 1 ]; then
-    echo "== --gen-only: граф в $GEN, cmd-обёртка в $CCT/$TC_TAG.cmd"
+    echo "== --gen-only: граф в $GEN, cmd-обёртка в $CMD"
     exit 0
 fi
 
@@ -313,7 +325,7 @@ if [ "$DO_CHECK" = 1 ]; then
     echo "== --check: сборка пропущена, проверяю артефакт"
 else
     echo "== 2/3. cmake -G Ninja (configure) + ninja"
-    WINEDEBUG=-all wine cmd /c "$(zpath "$CCT/$TC_TAG.cmd")"
+    WINEDEBUG=-all wine cmd /c "$(zpath "$CMD")"
 fi
 # ----------------------------------------------------------- 3. результат
 EXE="$BUILD/PW_Game.exe"
@@ -330,8 +342,11 @@ python3 "$CCT/check_exe.py" "$EXE" "$BR/Src/Version.h"
 # .pdb/.map, если собирались с PW_PDB=1 / PW_EXTRA_LINK_OPTS=/MAP) туда же.
 OUT="$REPO/build"
 mkdir -p "$OUT"
-cp -f "$EXE" "$OUT/PW_Game.exe"
+# Артефакт инструментальной сборки НЕ затирает обычный PW_Game.exe: иначе
+# «собрал со статистикой» = потерял стендовый бинарник (проверено на себе).
+ART="$OUT/PW_Game$SFX.exe"
+cp -f "$EXE" "$ART"
 for ext in pdb map; do
-    [ -f "$BUILD/PW_Game.$ext" ] && cp -f "$BUILD/PW_Game.$ext" "$OUT/"
+    [ -f "$BUILD/PW_Game.$ext" ] && cp -f "$BUILD/PW_Game.$ext" "$OUT/PW_Game$SFX.$ext"
 done
-echo "== артефакт: $OUT/PW_Game.exe"
+echo "== артефакт: $ART"
