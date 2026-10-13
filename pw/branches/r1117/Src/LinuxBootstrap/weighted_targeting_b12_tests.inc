@@ -272,6 +272,9 @@ static void WeightedCustomB12(Checks& check)
 /** Mock candidate enumeration only; the selector's production scoring and acceptance remain real. */
 struct WeightedListB12 : PFTargetSelector
 {
+	OBJECT_METHODS(PFTargetSelector::typeId, WeightedListB12);
+public:
+	WeightedListB12() = default;
 	std::vector<Target> candidates;
 	WeightedListB12(const NDb::TargetSelector& db, PFWorld* world) : PFTargetSelector(db, world) {}
 	void EnumerateTargets(ITargetAction& action, const RequestParams&) override

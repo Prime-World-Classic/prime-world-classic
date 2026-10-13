@@ -6,6 +6,9 @@ namespace
 /** Expose lifecycle observations only; formulas, ownership and payment are engine code. */
 struct AbilityModProbeB12 : PFApplAbilityMod
 {
+	OBJECT_METHODS(PFApplAbilityMod::typeId, AbilityModProbeB12);
+public:
+	AbilityModProbeB12() = default;
 	int enables = 0;
 	explicit AbilityModProbeB12(const PFApplCreatePars& pars) : PFApplAbilityMod(pars) {}
 	bool Initialize() { return Init(); }

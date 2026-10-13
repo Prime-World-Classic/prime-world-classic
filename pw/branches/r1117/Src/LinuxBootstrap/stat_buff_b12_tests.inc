@@ -6,6 +6,10 @@ namespace
 {
 struct StatBuffProbeB12 : PFApplStatMod
 {
+	// Reconstruct the concrete weak-reference shell without changing the production type ID.
+	OBJECT_METHODS(PFApplStatMod::typeId, StatBuffProbeB12);
+public:
+	StatBuffProbeB12() = default;
 	int enabledCalls = 0;
 	explicit StatBuffProbeB12(const PFApplCreatePars& p) : PFApplStatMod(p) {}
 	void Enable() override { ++enabledCalls; PFApplStatMod::Enable(); }

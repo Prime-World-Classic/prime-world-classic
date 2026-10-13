@@ -1010,6 +1010,9 @@ static void HeroDamageModifiers(Checks& check, PFWorld* world)
 /** Observe the actual behavior hook, including its post-health/pre-death timing. */
 struct DamageBehaviour : PFBaseBehaviour
 {
+	OBJECT_METHODS(PFBaseBehaviour::typeId, DamageBehaviour);
+public:
+	DamageBehaviour() = default;
 	int calls = 0, deaths = 0, stops = 0;
 	float observedHealth = -1;
 	PFBaseUnitDamageDesc observed;
@@ -1174,6 +1177,9 @@ static void DamageLimiter(Checks& check, PFWorld* world)
 /** Observe scheduling through the existing state interface, not a replacement FSM. */
 struct SchedulingState : PFBaseUnitState
 {
+	OBJECT_METHODS(PFBaseUnitState::typeId, SchedulingState);
+public:
+	SchedulingState() = default;
 	int entries = 0, steps = 0, leaves = 0;
 	float elapsed = 0;
 	bool complete = false;
@@ -1379,6 +1385,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "permanent_nature_b13_tests.inc"
 #include "permanent_terrain_cost_b13_tests.inc"
 #include "road_nature_b13_tests.inc"
+#include "fixture_lifetime_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 {
@@ -1390,6 +1397,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	NDb::SessionRoot* root = new NDb::SessionRoot; root->logicRoot = logic;
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
+	FixtureLifetimeB13(check);
 	{
 		NDb::Terrain* terrain = new NDb::Terrain; terrain->elemXCount = 4; terrain->elemYCount = 3; terrain->tilesPerElement = 4;
 		NDb::AdvMap* map = new NDb::AdvMap; map->terrain = terrain;

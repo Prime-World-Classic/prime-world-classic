@@ -1,6 +1,9 @@
 /** Expose authored inputs and owned instances while keeping base-use policy engine-owned. */
 struct B9UseState : PFBaseUseState
 {
+	OBJECT_METHODS(PFBaseUseState::typeId, B9UseState);
+public:
+	B9UseState() = default;
 	NDb::Ptr<NDb::Ability> db;
 	float useRange = 4;
 	B9UseState(PFBaseUnit* owner, const Target& target, const NDb::Ability* descriptor)

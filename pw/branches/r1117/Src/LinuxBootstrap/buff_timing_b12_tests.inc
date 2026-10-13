@@ -1,6 +1,9 @@
 /** Inject only the existing duration-policy hook; all formula and lifecycle behavior stays real. */
 struct TimedBuffB12 : EnabledBuffB12
 {
+	OBJECT_METHODS(EnabledBuffB12::typeId, TimedBuffB12);
+public:
+	TimedBuffB12() = default;
 	float durationScale = 1;
 	explicit TimedBuffB12(const PFApplCreatePars& pars) : EnabledBuffB12(pars) {}
 	float GetModifiedDuration(float original) const override { return original * durationScale; }

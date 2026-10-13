@@ -1,6 +1,9 @@
 /** Observe notifications while leaving activation, resource effects and ownership in the engine. */
 struct TerminalParentB12 : PFBaseApplicator
 {
+	OBJECT_METHODS(PFBaseApplicator::typeId, TerminalParentB12);
+public:
+	TerminalParentB12() = default;
 	int starts = 0, stops = 0;
 	std::function<void(PFBaseApplicator&, NDb::EParentNotification)> action;
 	explicit TerminalParentB12(const PFApplCreatePars& pars) : PFBaseApplicator(pars) {}
@@ -15,6 +18,9 @@ struct TerminalParentB12 : PFBaseApplicator
 /** Only expose existing lifecycle hooks; stat insertion/removal remains production code. */
 struct TerminalStatB12 : StatBuffProbeB12
 {
+	OBJECT_METHODS(StatBuffProbeB12::typeId, TerminalStatB12);
+public:
+	TerminalStatB12() = default;
 	using StatBuffProbeB12::StatBuffProbeB12;
 	using PFBaseApplicator::Block;
 	using PFBaseApplicator::Unblock;

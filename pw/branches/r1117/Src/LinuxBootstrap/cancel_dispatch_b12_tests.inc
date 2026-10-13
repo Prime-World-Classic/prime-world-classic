@@ -11,6 +11,9 @@ struct CancelAttackerB12 : ProbeUnit
 /** Mock only the authored parent callback; dispatch travel and registration remain real. */
 struct CancelDispatchParentB12 : PFBaseApplicator
 {
+	OBJECT_METHODS(PFBaseApplicator::typeId, CancelDispatchParentB12);
+public:
+	CancelDispatchParentB12() = default;
 	std::vector<const PFDispatch*> dropped;
 	std::function<void(const PFDispatch*)> action;
 	explicit CancelDispatchParentB12(const PFApplCreatePars& cp) : PFBaseApplicator(cp) {}

@@ -85,6 +85,9 @@ struct TerrainFormulaCacheRestoreB13 : B10ActivationTimerRestore
 /** Expose lifecycle hooks only; all modifier evaluation and ownership remain engine code. */
 struct TerrainFormulaStatB13 : StatBuffProbeB12
 {
+	OBJECT_METHODS(StatBuffProbeB12::typeId, TerrainFormulaStatB13);
+public:
+	TerrainFormulaStatB13() = default;
 	explicit TerrainFormulaStatB13(const PFApplCreatePars& pars) : StatBuffProbeB12(pars) {}
 	using PFBaseApplicator::Block;
 	using PFBaseApplicator::Unblock;

@@ -4,6 +4,9 @@
 /** A real pickup object exposes only its authored ability and completion observation. */
 struct B9Pickup : PFPickupableObjectBase
 {
+	OBJECT_METHODS(PFPickupableObjectBase::typeId, B9Pickup);
+public:
+	B9Pickup() = default;
 	NDb::Ptr<NDb::Ability> ability;
 	int picked = 0;
 	B9Pickup(PFWorld* world, const NDb::GameObject* db, NDb::Ability* ability)

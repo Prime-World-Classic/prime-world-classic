@@ -314,6 +314,9 @@ static void ApplicatorHistoryLastOwnerB13(Checks& check)
 /** Only destruction notification is instrumented; membership and final ownership are real rings. */
 struct ApplicatorHistoryFinalizerB13 : PFBaseApplicator
 {
+	OBJECT_METHODS(PFBaseApplicator::typeId, ApplicatorHistoryFinalizerB13);
+public:
+	ApplicatorHistoryFinalizerB13() = default;
 	std::function<void()> onDestroy;
 	explicit ApplicatorHistoryFinalizerB13(const PFApplCreatePars& pars) : PFBaseApplicator(pars) {}
 	void OnDestroyContents() override

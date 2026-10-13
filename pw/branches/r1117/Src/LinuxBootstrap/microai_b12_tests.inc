@@ -22,11 +22,15 @@ struct MicroListDbB12 : NDb::MultipleTargetSelector
 };
 struct MicroListB12 : PFMultipleTargetSelector
 {
-	const MicroListDbB12& db;
-	MicroListB12(const MicroListDbB12& db, PFWorld* world) : PFMultipleTargetSelector(db, world), db(db) {}
+	OBJECT_METHODS(PFMultipleTargetSelector::typeId, MicroListB12);
+public:
+	MicroListB12() = default;
+	MicroListB12(const MicroListDbB12& db, PFWorld* world) : PFMultipleTargetSelector(db, world) {}
 	void EnumerateTargets(ITargetAction& action, const RequestParams&) override
 	{
-		for (const Target& target : db.targets) action(target);
+		// The base already owns the descriptor; an inert weak shell needs no borrowed reference.
+		const auto* db = static_cast<const MicroListDbB12*>(GetDBBase().GetPtr());
+		if (db) for (const Target& target : db->targets) action(target);
 	}
 };
 NWorld::PFTargetSelector* MicroListDbB12::Create(PFWorld* world) const { return new MicroListB12(*this, world); }

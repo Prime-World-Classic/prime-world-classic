@@ -1,6 +1,9 @@
 /** Count virtual transitions while retaining original buff start, duration and ring ownership. */
 struct EnabledBuffB12 : PFApplBuff
 {
+	OBJECT_METHODS(PFApplBuff::typeId, EnabledBuffB12);
+public:
+	EnabledBuffB12() = default;
 	using PFApplBuff::Init;
 	using PFApplBuff::Start;
 	using PFApplBuff::Step;
@@ -100,4 +103,8 @@ static void ApplicatorEnabledTickB12(Checks& check)
 	delegated->Step(.1f);
 	check(!delegated->IsEnabled(), "delegation does not bypass later dynamic enabled conditions");
 	delegated->Stop();
+	CPtr<PFBaseApplicator> tombstone(app.GetPtr());
+	app = nullptr;
+	check(!IsValid(tombstone) && dynamic_cast<EnabledBuffB12*>(tombstone.GetPtr()) != nullptr,
+		"derived buff fixture retains its concrete tombstone until final weak-reference deletion");
 }

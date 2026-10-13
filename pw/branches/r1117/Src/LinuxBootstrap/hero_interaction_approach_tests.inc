@@ -3,6 +3,9 @@
 /** Count action admissions while movement/range checks run in the real interaction state. */
 struct B9Interaction : PFInteractObjectState
 {
+	OBJECT_METHODS(PFInteractObjectState::typeId, B9Interaction);
+public:
+	B9Interaction() = default;
 	int actions = 0;
 	B9Interaction(PFBaseHero* hero, const Target& target, float distance)
 		: PFInteractObjectState(hero, target) { range = distance; }

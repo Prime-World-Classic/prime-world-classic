@@ -119,6 +119,9 @@ static void HeroTalentLifecycleB9(Checks& check, PFWorld* world)
 /** Mock descriptor/range only; the production base hero-use state owns approach and cleanup. */
 struct B9HeroUseState : PFBaseUseHeroState
 {
+	OBJECT_METHODS(PFBaseUseHeroState::typeId, B9HeroUseState);
+public:
+	B9HeroUseState() = default;
 	NDb::Ptr<NDb::Ability> db;
 	float useRange = 4;
 	B9HeroUseState(PFBaseMaleHero* hero, const Target& target, const NDb::Ability* db)
