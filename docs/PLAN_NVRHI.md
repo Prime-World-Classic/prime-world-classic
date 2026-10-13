@@ -214,6 +214,35 @@ copy/blit, bind-texture, set-constants, readback, enumerate-adapters.
 не по памяти; проверить диффом на малом наборе направлений до переключения.
 
 
+### 2.1.2 Загрузка текстур: D3DX-фолбэки убраны (2026-10-13)
+
+Свой загрузчик DDS в клиенте **уже есть** — `Src/Render/ReadDDS.cpp`
+(порт DDS-лоадера Microsoft: `TextureHolder`/`CubeTextureHolder`, DXT1/3/5,
+L8/L16, A8R8G8B8 и пр., пропуск mipmap-уровней, объёмные текстуры отвергает).
+`TextureManager` сначала звал его, а `D3DXCreateTextureFromFileInMemoryEx` /
+`D3DXCreateCubeTextureFromFileInMemoryEx` — только как фолбэк для не-DDS.
+
+Инвентаризация контента (`tools/dds_inventory`, 8031 `.dds` в `Data/`):
+3715 A8R8G8B8, 3001 DXT5, 1294 DXT1, 5 L8, 16 кубов (13 DXT1 + 3 A8R8G8B8);
+mipmap-цепочки до 12 уровней; DX10-заголовков, volume и прочих форматов нет;
+в манифесте обновлений (`files.list`) из картинок только `.dds` (4318 записей).
+Размер битовых данных сходится с тем, что ожидает загрузчик, у 8030 из 8031
+файлов; единственный расходится — `Data/Heroes/Gunslinger/S2/_.dds` (объявлено
+11 mipmap, данных на один), в `files.list` его нет, то есть в контент он не
+уходит.
+
+Вывод: фолбэки мёртвы и удалены — 2D, кубы и отладочный `ProcessMipMaps`
+(`show_mipmap`) идут через свой загрузчик; вместо тихого отката на D3DX теперь
+явная ошибка «not a loadable DDS». Импорты `d3dx9_43.dll`: 17 → 16
+(исчез `D3DXCreateCubeTextureFromFileInMemoryEx`).
+
+Что осталось от D3DX в загрузке текстур: `CreateARGBTextureFromFileInMemory`
+(эмблемы гильдий, `PF_GameLogic/GuildEmblem.cpp` качает их по URL) — это не
+DDS, а веб-картинка, и это единственный оставшийся загрузчик, зависящий от
+устройства. Варианты: свой PNG-декодер (zlib уже подключён) или перевод эмблем
+в DDS на стороне отдачи. До этого `IRenderBackend::CreateTexture` нельзя
+считать закрытым.
+
 ### 2.2 Реальный срез состояний (много меньше, чем кажется)
 
 - **`D3DRS_*`, используемые вне `renderstatesmanager.cpp`: 32 уникальных,

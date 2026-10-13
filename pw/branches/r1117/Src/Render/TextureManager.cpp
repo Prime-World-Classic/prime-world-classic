@@ -166,11 +166,20 @@ HRESULT ProcessMipMaps(IDirect3DTexture9 **ppD3DTexture, UINT skipMipLevels, Str
   if(RENDER_DISABLED)
     return S_FALSE;
 
+  // show_mipmap — отладочная подсветка уровней. Весь контент — DDS
+  // (замер tools/dds_inventory: 8031 .dds в Data/, посторонних форматов нет),
+  // поэтому свой загрузчик, а не D3DX. Формат берётся из файла: подсветка и так
+  // работает только для A8R8G8B8 (ниже проверка levelDesc.Format).
+  IDirect3DBaseTexture9* pBaseTexture = 0;
+  HRESULT hResult = CreateTextureFromDDSFileInMemory( pStream->GetBuffer(), pStream->GetSize(), skipMipLevels, &pBaseTexture );
   IDirect3DTexture9* pD3DTexture = 0;
-  HRESULT hResult = D3DXCreateTextureFromFileInMemoryEx(GetDevice(), pStream->GetBuffer(), pStream->GetSize(),
-    D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, 
-    D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, D3DX_FILTER_TRIANGLE, D3DX_SKIP_DDS_MIP_LEVELS( skipMipLevels, D3DX_DEFAULT ), 
-    0, 0, 0, &pD3DTexture );
+  if( SUCCEEDED( hResult ) && pBaseTexture && pBaseTexture->GetType() == D3DRTYPE_TEXTURE )
+    pD3DTexture = static_cast<IDirect3DTexture9*>( pBaseTexture );
+  else if( pBaseTexture )
+  {
+    pBaseTexture->Release();
+    hResult = E_INVALIDARG;
+  }
 
   if (hResult == D3D_OK)
   {
@@ -220,12 +229,15 @@ static HRESULT CreateTextureFromFileInMemoryImpl(IDirect3DTexture9** _pResult, c
     *_pResult = static_cast<IDirect3DTexture9*>(pBaseTex);
     return hr;
   }
-  else
-    return D3DXCreateTextureFromFileInMemoryEx(GetDevice(), _pBuffer, _dataSize,
-                                               D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 0, 0, 
-                                               D3DFMT_FROM_FILE, D3DPOOL_MANAGED, D3DX_FILTER_TRIANGLE, 
-                                               D3DX_SKIP_DDS_MIP_LEVELS(_skipMipLevels, D3DX_DEFAULT), 
-                                               0, 0, 0, _pResult);
+  // Фолбэка на D3DX больше нет. Замер контента (tools/dds_inventory):
+  // 8031 .dds в Data/ — 3715 A8R8G8B8, 3001 DXT5, 1294 DXT1, 5 L8, 16 кубов;
+  // в манифесте обновлений (files.list) тоже только .dds, 4318 штук. Свой
+  // загрузчик (Render/ReadDDS.cpp) покрывает всё это, включая кубы и пропуск
+  // mipmap-уровней. Попался не-DDS — значит ошибка контента, а не повод
+  // возвращать d3dx9_43.dll.
+  NI_VERIFY( false, NStr::StrFmt( "Texture %s is not a loadable DDS (hr=0x%08X)",
+                               _fileName ? _fileName : "<memory>", hr ), return hr );
+  return hr;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -286,11 +298,9 @@ static bool LoadTextureFromFileImpl(const char* fileName, UINT skipMipLevels, Te
     d3dtexture = static_cast<IDirect3DCubeTexture9*>(pBaseTex);
   }
   else
-	hResult = D3DXCreateCubeTextureFromFileInMemoryEx(GetDevice(), pStream->GetBuffer(), pStream->GetSize(), 
-		                                                D3DX_DEFAULT, D3DX_DEFAULT, 0, D3DFMT_FROM_FILE, D3DPOOL_MANAGED,
-		                                                D3DX_FILTER_TRIANGLE | D3DX_FILTER_MIRROR | D3DX_FILTER_DITHER,
-		                                                D3DX_SKIP_DDS_MIP_LEVELS(skipMipLevels, D3DX_DEFAULT),
-		                                                0, 0, 0, &d3dtexture);
+    // кубов-не-DDS в контенте нет (замер: 16 кубических .dds — 13 DXT1 +
+    // 3 A8R8G8B8), а кубы умеет и свой загрузчик (CubeTextureHolder в ReadDDS.cpp)
+    NI_ASSERT( false, NStr::StrFmt( "Cube texture %s is not a loadable DDS (hr=0x%08X)", fileName, hResult ) );
 	pStream = 0;
 
 	NI_VERIFY(SUCCEEDED(hResult), NStr::StrFmt("Cube texture %s loading failed", fileName), return false);
@@ -458,6 +468,11 @@ const Texture2DRef& GetEmptyTexture2D() { return defTextures.pEmptyTexture; }
 const Texture2DRef& GetWhiteTexture2D() { return defTextures.pWhiteTexture; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Единственное место, где для загрузки текстур ещё нужен D3DX: эмблемы гильдий
+// приходят байтами по URL (GuildEmblem.cpp) — это не DDS, а готовая картинка
+// веб-формата. Чтобы снять d3dx9_43.dll полностью, сюда нужен свой PNG-декодер
+// (zlib уже подключён) либо перевод эмблем в DDS на стороне отдачи. Для этапа 2
+// важно другое: это единственный оставшийся загрузчик, зависящий от устройства.
 Texture2DRef CreateARGBTextureFromFileInMemory(const char* pData, int sizeInFile, UINT skipMipLevels)
 {
   if( g_disableTextureLoads )
