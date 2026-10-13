@@ -126,6 +126,70 @@ HRESULT D3D9Backend::DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
   return pDevice->DrawPrimitiveUP(ConvertPrimitiveType(type), primitiveCount, pVertexData, vertexStride);
 }
 
+HRESULT D3D9Backend::CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) {
+  (void)codeSize;   // D3D9 размер не спрашивает: DXBC описывает свой размер сам
+  IDirect3DVertexShader9* shader = 0;
+  HRESULT hr = pDevice->CreateVertexShader(static_cast<const DWORD*>(pShaderCode), &shader);
+  *pOut = MakeBackendHandle<HShader>(shader);
+  return hr;
+}
+
+HRESULT D3D9Backend::CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) {
+  (void)codeSize;
+  IDirect3DPixelShader9* shader = 0;
+  HRESULT hr = pDevice->CreatePixelShader(static_cast<const DWORD*>(pShaderCode), &shader);
+  *pOut = MakeBackendHandle<HShader>(shader);
+  return hr;
+}
+
+// Перенос перевода VertexFormatDescriptor -> D3DVERTEXELEMENT9 из
+// Renderer::CreateVertexFormatDeclaration: этот перевод и есть часть бэкенда
+// (в Vulkan на его месте VkVertexInputState).
+HRESULT D3D9Backend::CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut) {
+  unsigned int elements_count = descr.GetVertexElementsCount();
+
+  nstl::vector<D3DVERTEXELEMENT9> elements;
+  elements.reserve(elements_count);
+
+  for (unsigned int i = 0; i < elements_count; i++)
+  {
+    const VertexElementDescriptor& element = descr.GetVertexElement(i);
+
+    D3DVERTEXELEMENT9 d3d_element;
+    d3d_element.Stream       = static_cast<unsigned short>(element.stream);
+    d3d_element.Offset       = static_cast<unsigned short>(element.offset);
+    d3d_element.Type         = ConvertVertexElementType(element.type);
+    d3d_element.Method       = D3DDECLMETHOD_DEFAULT;
+    d3d_element.Usage        = ConvertVertexElementUsage(element.usage);
+    d3d_element.UsageIndex   = static_cast<unsigned char>(element.usageIndex);
+
+    elements.push_back(d3d_element);
+  }
+  D3DVERTEXELEMENT9 d3d_decl_end = D3DDECL_END();
+  elements.push_back(d3d_decl_end);
+
+  IDirect3DVertexDeclaration9* decl_d3d = 0;
+  HRESULT hr = pDevice->CreateVertexDeclaration(&elements[0], &decl_d3d);
+  *pOut = MakeBackendHandle<HInputLayout>(decl_d3d);
+  return hr;
+}
+
+HRESULT D3D9Backend::GetRenderTargetData(HSurface srcSurface, HSurface dstSurface) {
+  return pDevice->GetRenderTargetData(static_cast<IDirect3DSurface9*>(srcSurface.p),
+                                      static_cast<IDirect3DSurface9*>(dstSurface.p));
+}
+
+HRESULT D3D9Backend::ColorFill(HSurface surface, unsigned colorRGBA) {
+  return pDevice->ColorFill(static_cast<IDirect3DSurface9*>(surface.p), NULL, colorRGBA);
+}
+
+HRESULT D3D9Backend::StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
+                                 const RECT* pDstRect, EBackendFilter filter) {
+  return pDevice->StretchRect(static_cast<IDirect3DSurface9*>(src.p), pSrcRect,
+                              static_cast<IDirect3DSurface9*>(dst.p), pDstRect,
+                              filter == bfLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+}
+
 void D3D9Backend::SetClipPlane(bool enable, const float* pPlaneEquation) {
   // В D3D9 это два вызова: разрешение слота и запись уравнения. Пара держится
   // здесь, чтобы вызывающий код не знал про D3DRS_CLIPPLANEENABLE.

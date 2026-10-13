@@ -10,6 +10,7 @@
 // иначе рефакторинг превращается в переписывание половины Render/ разом.
 //
 #include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
+#include "vertexformatdescriptor.h"   // Render::VertexFormatDescriptor
 
 namespace Render
 {
@@ -117,6 +118,29 @@ public:
                                 const void* pVertexData, unsigned vertexStride) = 0;
   virtual HRESULT DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                          const void* pVertexData, unsigned vertexStride) = 0;
+
+  // --- прочее ---
+  // --- создание ресурсов ---
+  // Код шейдера — DXBC из контейнера .shd, размер в байтах. На этапе 3 в этот
+  // же слот ляжет альтернативный блоб (SPIR-V) — см. §1.3 плана про контейнер
+  // с несколькими бэкендами.
+  // HRESULT наружу, а не в сигнатуре «вернул ручку или 0»: вызывающий код
+  // логирует код ошибки (NI_DX_THROW), терять его нельзя.
+  virtual HRESULT CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) = 0;
+  virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) = 0;
+  // Вершинная декларация строится из проектного VertexFormatDescriptor: перевод
+  // в D3DVERTEXELEMENT9 (а в Vulkan — в VkVertexInputState) делает бэкенд.
+  virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut) = 0;
+
+  // --- поверхности ---
+  // Фильтр при копировании прямоугольника: замер вызовов показал, что в клиенте
+  // реально используются только POINT и LINEAR, поэтому enum свой, а не
+  // D3DTEXTUREFILTERTYPE.
+  enum EBackendFilter { bfPoint = 0, bfLinear = 1 };
+  virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface) = 0;
+  virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA) = 0;
+  virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
+                              const RECT* pDstRect, EBackendFilter filter) = 0;
 
   // --- прочее ---
   // D3D9-специфично (пул MANAGED); для бэкендов без managed-пула — пустая

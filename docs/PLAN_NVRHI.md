@@ -308,12 +308,31 @@ Vulkan (там instanced draw + per-instance атрибуты), схему ме�
 «до/после» одного и того же момента; сам по себе кадр боя не детерминирован
 (таймер, позиция юнита), так что это smoke, а не пиксельный эталон.
 
-Не перенесено (следующие шаги этапа 2): создание ресурсов
-(`CreateVertexShader`/`CreatePixelShader`/`CreateVertexDeclaration`),
-операции над поверхностями (`GetRenderTargetData`, `StretchRect`, `ColorFill`),
-запросы устройства (`GetDeviceCaps`, `GetDirect3D`, `GetCreationParameters`) и
-весь `smartrenderer.cpp` (27 вызовов `GetDevice()` — это и есть `DrawIndexed`,
-биндинги RT/depth и состояний, то есть основная часть интерфейса из чек-листа).
+**Третий шаг (2026-10-13) — создание ресурсов и поверхности: `renderer.cpp`
+12 → 5.** В интерфейс добавлены `CreateVertexShader`/`CreatePixelShader`
+(код — DXBC из `.shd`, размер пока не спрашивается: D3D9 читает свой размер из
+самого блоба; на этапе 3 в этот же слот ляжет SPIR-V — §1.3),
+`CreateInputLayout(const VertexFormatDescriptor&)` и операции над поверхностями
+`GetRenderTargetData`/`ColorFill`/`StretchRect`.
+
+Важные детали, которые надо помнить при переносе:
+* перевод `VertexFormatDescriptor` → `D3DVERTEXELEMENT9` переехал из
+  `Renderer::CreateVertexFormatDeclaration` внутрь `D3D9Backend` — это и есть
+  часть бэкенда (в Vulkan на этом месте `VkVertexInputState`);
+* create-методы возвращают `HRESULT` наружу, а не «ручку или 0»: вызывающий код
+  логирует код ошибки через `NI_DX_THROW`, терять его нельзя;
+* фильтр копирования поверхности — свой `IRenderBackend::EBackendFilter`
+  (`bfPoint`/`bfLinear`): замер вызовов показал, что `D3DTEXF_ANISOTROPIC` и
+  прочие значения в клиенте не встречаются;
+* семантика владения не менялась: `DX*Ref(..., false)` (adopt) — бэкенд отдаёт
+  уже созданный объект с счётчиком 1.
+
+Осталось в `renderer.cpp` 5 прямых вызовов устройства: `GetDeviceCaps`
+(`FillCaps`), `GetDirect3D` и `GetCreationParameters` (интроспекция адаптера и
+параметров создания — это слой создания устройства, его этап 2 не закрывал),
+`GetBackBuffer` + `CreateOffscreenPlainSurface` в `SaveScreenshotToFile` (там же
+остались `D3DXLoadSurfaceFromSurface` и `D3DXSaveSurfaceToFile(PNG)` — см. §2.13)
+и одна закомментированная строка `Present`.
 
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
@@ -341,6 +360,21 @@ uniform-буфер на стадию, который надо собрать и�
 Реализация — свободная функция `Render::GetConstStore()`, а не член `Renderer`:
 `renderer.h` включается почти везде, и любое его касание стоит полной
 пересборки графа (см. §2.11).
+
+### 2.13 Скриншот: последние два D3DX-импорта в клиенте (2026-10-13)
+
+`Renderer::SaveScreenshotToFile` (`Src/Render/renderer.cpp`) — единственное место,
+где остались `D3DXLoadSurfaceFromSurface` и `D3DXSaveSurfaceToFileA` (2 из 16
+импортов `d3dx9_43.dll`). Путь: `GetBackBuffer` → `CreateOffscreenPlainSurface`
+(SYSTEMMEM) → `D3DXLoadSurfaceFromSurface` (кроп + перенос) →
+`D3DXSaveSurfaceToFile(D3DXIFF_PNG)`.
+
+Что нужно, чтобы убрать: `GetBackBuffer`/`CreateOffscreenPlainSurface` в
+интерфейс бэкенда (поверхности уже там), кроп — `StretchRect` или копирование по
+строкам, и **свой PNG-энкодер** (zlib уже подключён: IHDR + IDAT из
+отфильтрованных строк + IEND — около 60 строк). Проверять — офлайн-тестом
+(`tools/`-паттерн, как `sh_math_test`): закодировать известный кадр и сверить с
+эталонным PNG, потому что в E2E скриншот никто не вызывает.
 
 ### 2.12 Замер раскладки констант (2026-10-13, `conststore`)
 

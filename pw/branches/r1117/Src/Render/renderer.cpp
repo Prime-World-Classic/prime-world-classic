@@ -533,34 +533,17 @@ void Renderer::FillCaps()
 
 DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexFormatDescriptor& descr)
 {
-  unsigned int elements_count = descr.GetVertexElementsCount();
-  NI_ASSERT(elements_count > 0, "Invalid vertex format!");
+  NI_ASSERT(descr.GetVertexElementsCount() > 0, "Invalid vertex format!");
 
-  nstl::vector<D3DVERTEXELEMENT9> elements;
-  elements.reserve(elements_count);
-
-  for (unsigned int i = 0; i < elements_count; i++)
-  {
-    const VertexElementDescriptor& element = descr.GetVertexElement(i);
-
-    D3DVERTEXELEMENT9 d3d_element;
-    d3d_element.Stream		 = static_cast<unsigned short>(element.stream);
-    d3d_element.Offset		 = static_cast<unsigned short>(element.offset);
-    d3d_element.Type			 = ConvertVertexElementType(element.type);
-    d3d_element.Method		 = D3DDECLMETHOD_DEFAULT;
-    d3d_element.Usage			= ConvertVertexElementUsage(element.usage);
-    d3d_element.UsageIndex = static_cast<unsigned char>(element.usageIndex);
-
-    elements.push_back(d3d_element);
-  }
-  D3DVERTEXELEMENT9 d3d_decl_end = D3DDECL_END();
-  elements.push_back(d3d_decl_end);
-
+  // Перевод описания формата в D3DVERTEXELEMENT9 — внутри бэкенда
+  // (docs/PLAN_NVRHI.md §2.8): на этом месте у Vulkan будет VkVertexInputState.
   IDirect3DVertexDeclaration9* decl_d3d = 0;
 
   if(!RENDER_DISABLED) {
-    HRESULT hr = GetDevice()->CreateVertexDeclaration(&elements[0], &decl_d3d);
+    HInputLayout layout = {};
+    HRESULT hr = pBackend->CreateInputLayout(descr, &layout);
     NI_DX_THROW( hr, "CreateVertexFormatDeclaration" );
+    decl_d3d = static_cast<IDirect3DVertexDeclaration9*>(layout.p);
   }
 
   return DXVertexDeclarationRef(decl_d3d, false);
@@ -571,8 +554,10 @@ DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexForma
 DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 {
 	IDirect3DVertexShader9* d3dshader = 0;
-	HRESULT hr = GetDevice()->CreateVertexShader( reinterpret_cast<DWORD const*>(data), &d3dshader );
+  HShader shader = {};
+	HRESULT hr = pBackend->CreateVertexShader(data, 0, &shader);
 	NI_DX_THROW(hr, "Creating vertex shader error!");
+  d3dshader = static_cast<IDirect3DVertexShader9*>(shader.p);
 	return DXVertexShaderRef(d3dshader, false);
 }
 
@@ -581,8 +566,10 @@ DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data)
 {
 	IDirect3DPixelShader9* d3dshader = 0;
-	HRESULT hr = GetDevice()->CreatePixelShader( reinterpret_cast<DWORD const*>(data), &d3dshader );
+  HShader shader = {};
+	HRESULT hr = pBackend->CreatePixelShader(data, 0, &shader);
 	NI_DX_THROW(hr, "Creating vertex shader error!");
+  d3dshader = static_cast<IDirect3DPixelShader9*>(shader.p);
 	return DXPixelShaderRef(d3dshader, false);
 }
 
@@ -845,7 +832,7 @@ void Renderer::ClearColorOnly( Color color )
 
 bool Renderer::GetRenderTargetData(IDirect3DSurface9* pSrc, IDirect3DSurface9* pDst) 
 {
-	HRESULT hr = GetDevice()->GetRenderTargetData(pSrc, pDst);
+	HRESULT hr = pBackend->GetRenderTargetData(MakeBackendHandle<HSurface>(pSrc), MakeBackendHandle<HSurface>(pDst));
   NI_DX_THROW(hr, __FUNCTION__);
 
 	return (hr == D3D_OK);
@@ -855,7 +842,8 @@ bool Renderer::GetRenderTargetData(IDirect3DSurface9* pSrc, IDirect3DSurface9* p
 
 void Renderer::StretchSurface(const DXSurfaceRef &pSrc, const DXSurfaceRef &pDst, bool bLinear)
 {
-  HRESULT hr = GetDevice()->StretchRect(::Get(pSrc), 0, ::Get(pDst), 0, bLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+  HRESULT hr = pBackend->StretchRect(MakeBackendHandle<HSurface>(::Get(pSrc)), 0, MakeBackendHandle<HSurface>(::Get(pDst)), 0,
+                                     bLinear ? IRenderBackend::bfLinear : IRenderBackend::bfPoint);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "StretchSurface");
 }
@@ -887,7 +875,7 @@ void Renderer::ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color)
 {
   if(!pSurface)
     return;
-  HRESULT hr = GetDevice()->ColorFill(pSurface, NULL, color);
+  HRESULT hr = pBackend->ColorFill(MakeBackendHandle<HSurface>(pSurface), color);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "ColorFillSurface");
 }
@@ -897,7 +885,8 @@ void Renderer::ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color)
 void Renderer::StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
                                   IDirect3DSurface9 *pDst, const RECT *pDstRect, D3DTEXTUREFILTERTYPE filter)
 {
-  HRESULT hr = GetDevice()->StretchRect(pSrc, pSrcRect, pDst, pDstRect, filter);
+  HRESULT hr = pBackend->StretchRect(MakeBackendHandle<HSurface>(pSrc), pSrcRect, MakeBackendHandle<HSurface>(pDst), pDstRect,
+                                     filter == D3DTEXF_LINEAR ? IRenderBackend::bfLinear : IRenderBackend::bfPoint);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "StretchSurfaceRect");
 }

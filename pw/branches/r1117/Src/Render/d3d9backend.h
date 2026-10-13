@@ -73,6 +73,17 @@ public:
   virtual HRESULT DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                          const void* pVertexData, unsigned vertexStride);
 
+  // --- создание ресурсов ---
+  virtual HRESULT CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
+  virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
+  virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut);
+
+  // --- поверхности ---
+  virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);
+  virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA);
+  virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
+                              const RECT* pDstRect, EBackendFilter filter);
+
   virtual void SetClipPlane(bool enable, const float* pPlaneEquation);
 
   virtual void EvictManagedResources();
