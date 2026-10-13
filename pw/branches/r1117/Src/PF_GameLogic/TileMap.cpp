@@ -5,6 +5,9 @@
 #include "System/InlineProfiler.h"
 #if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
 #include "System/ScopedArray.h"
+#include <cmath>
+#include <new>
+#include <limits>
 #endif
 
 
@@ -492,14 +495,30 @@ void TileMap::MarkObject(const vector<SVector> & tilesToMark, bool _lock, int _m
 }
 
 
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+/** Append the original five-point occupancy result for valid native geometry.
+ * Invalid geometry leaves both outputs unchanged; individual invalid mask cells are ignored.
+ * Dense scratch storage is capped at 16 Mi cells. Finite nonpositive mask spacing keeps the legacy 0.5 fallback.
+ */
+#endif
 void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<float>& _coll, const float _tileSize, const vector<CTPoint<int>>& _mask,
                          const Placement &_place,CTRect<int> *_pTileRect) const
 {
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	// Preserve caller output on invalid authored geometry, including failed projection later below.
+	if (width <= 0 || height <= 0 || !std::isfinite(tileSize) || tileSize <= 0 ||
+		!std::isfinite(_tileSize) || !_place.IsValid() ||
+		!std::isfinite(_coll.x1) || !std::isfinite(_coll.x2) ||
+		!std::isfinite(_coll.y1) || !std::isfinite(_coll.y2)) return;
+	vector<SVector> occupied;
+#endif
   CTRect<float> C = _coll;
   if (C.x1 >= C.x2 || C.y1 >= C.y2)
     return;							// null area
 
+#if !defined(PW_LINUX_NULL_RENDER) && !defined(PW_LINUX_DB_BOOTSTRAP)
   tilesToMark.reserve(_mask.size());
+#endif
   int maskSizeX = 0, maskSizeY = 0;
   // compute float->int scales
   // Vint = Vfloat * Va + Vb
@@ -521,27 +540,55 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
   C.x2 = ceil (C.x2 / myTileSize) * myTileSize;
   C.y2 = ceil (C.y2 / myTileSize) * myTileSize;
 
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	if (!std::isfinite(C.x1) || !std::isfinite(C.x2) || !std::isfinite(C.y1) ||
+		!std::isfinite(C.y2) || C.x1 >= C.x2 || C.y1 >= C.y2) return;
+#endif
   if (!_mask.empty())
   {
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+		// Bound the reusable dense scratch array to 16 Mi cells before conversion or multiplication.
+		const int maxMaskCells = 16 * 1024 * 1024;
+		const float columns = (C.x2 - C.x1) / myTileSize;
+		const float rows = (C.y2 - C.y1) / myTileSize;
+		if (!std::isfinite(columns) || !std::isfinite(rows) || columns < 1 || rows < 1 ||
+			columns > maxMaskCells || rows > maxMaskCells) return;
+		maskSizeX = static_cast<int>(columns); maskSizeY = static_cast<int>(rows);
+		if (maskSizeX > maxMaskCells / maskSizeY) return;
+#else
     maskSizeX = (C.x2 - C.x1) / myTileSize;
     maskSizeY = (C.y2 - C.y1) / myTileSize;
+#endif
     // Xint = floor(N * (Xfloat - Xmin) / (Xmax - Xmin))
     Xa =  maskSizeX / (C.x2 - C.x1);
     Xb = -maskSizeX * C.x1 / (C.x2 - C.x1);
     Ya =  maskSizeY / (C.y2 - C.y1);
     Yb = -maskSizeY * C.y1 / (C.y2 - C.y1);
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+		if (!std::isfinite(Xa) || !std::isfinite(Xb) || !std::isfinite(Ya) || !std::isfinite(Yb)) return;
+#endif
     // expand mask: convert list of items to 2D-array of bool
     int size = maskSizeX * maskSizeY;
     if (size > expandedMaskSize)
     {
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+			xMask = new (std::nothrow) bool[size];
+			if (!xMask) return;
+			expandedMaskSize = size;
+#else
       expandedMaskSize = size;
       xMask = new bool[size];
+#endif
 			::Reset(expandedMask, xMask);
     }
     memset(xMask, 0, size);
     for (int item = 0; item < _mask.size(); item++)
     {
       const CTPoint<int> &v = _mask[item];
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+			// Reject coordinates before computing a potentially overflowing flattened index.
+			if (v.x < 0 || v.x >= maskSizeX || v.y < 0 || v.y >= maskSizeY) continue;
+#endif
       int maskIndex = v.x + maskSizeX * v.y ;
       NI_DATA_VERIFY(v.x >= 0 && v.x < maskSizeX && v.y >= 0 && v.y < maskSizeY,
         NStr::StrFmt("Found bad lock mask: item(%d,%d)", v.x, v.y),
@@ -563,9 +610,23 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
   // get matrix from finalPlacement
   Matrix43 M;
   finalPlacement.GetMatrix(&M);
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	if (!M.IsFinite()) return;
+	// GetInversed returns an uninitialized matrix for a singular input; check its own float determinant.
+	const float determinant = M._11*(M._22*M._33 - M._23*M._32) +
+		M._21*(M._13*M._32 - M._12*M._33) + M._31*(M._12*M._23 - M._13*M._22);
+	if (!std::isfinite(determinant) || determinant == 0) return;
+	const Matrix43 inverse = M.GetInversed();
+	if (!inverse.IsFinite()) return;
+#endif
   // compute object 2D bounds
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	const float largest = std::numeric_limits<float>::max();
+	CVec3 bMin(largest, largest, largest), bMax(-largest, -largest, -largest);
+#else
   CVec3 bMin( 10000000,  10000000,  10000000);
   CVec3 bMax(-10000000, -10000000, -10000000);
+#endif
   for (int i = 0; i < 4; i++)
   {
     // get local corner coordinate
@@ -575,11 +636,24 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
     point.z = 0.0f;
     // transform object-space corner coordinate to world
     point = Transform(point, M);
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+		if (!point.IsFinite()) return;
+#endif
     // and expand bounds
     bMin.Minimize(point);
     bMax.Maximize(point);
   }
   // convert 'float' bounds to tiles
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	// Far-off-map finite geometry is clipped while still floating point, before any integer cast.
+	const auto boundedTile = [this](float coordinate, int last) {
+		const double value = floor(coordinate / tileSize);
+		return value <= 0 ? 0 : value >= last ? last : static_cast<int>(value);
+	};
+	const int xMin = boundedTile(bMin.x, width - 1), xMax = boundedTile(bMax.x, width - 1);
+	const int yMin = boundedTile(bMin.y, height - 1), yMax = boundedTile(bMax.y, height - 1);
+	M = inverse;
+#else
   int xMin = floor(bMin.x / tileSize);
   int xMax = floor(bMax.x / tileSize);
   int yMin = floor(bMin.y / tileSize);
@@ -601,13 +675,18 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
 
   // invert matrix for later use
   M = M.GetInversed();
+#endif
   // mark tiles
   for (int y = yMin; y <= yMax; y++)
   {
     for (int x = xMin; x <= xMax; x++)
     {
       // check few points; first - tile center, later - corners
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+			const CVec3 offsets[] =
+#else
       static const CVec3 offsets[] =
+#endif
       {
 #define POINT(x,y)  CVec3(x * tileSize * 0.49f, y * tileSize * 0.49f, 0.0f)
         POINT(0,0), POINT(-1,-1), POINT(1,-1), POINT(-1,1), POINT(1,1)
@@ -619,6 +698,9 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
         CVec3 origin( x * tileSize, y * tileSize, 0.0f );
         origin += offsets[i];
         CVec3 projected = Transform(origin, M);
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+				if (!projected.IsFinite()) return;
+#endif
         // validate projected point; can use table lookup later
         if (projected.x < C.x1 || projected.x > C.x2 ||
           projected.y < C.y1 || projected.y > C.y2)
@@ -627,8 +709,15 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
         if (!_mask.empty())
         {
           // convert float position to cell index
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+					const double column = floor(projected.x * Xa + Xb), row = floor(projected.y * Ya + Yb);
+					if (!std::isfinite(column) || !std::isfinite(row)) return;
+					if (column < 0 || column >= maskSizeX || row < 0 || row >= maskSizeY) continue;
+					const int maskX = static_cast<int>(column), maskY = static_cast<int>(row);
+#else
           int maskX = floor(projected.x * Xa + Xb);
           int maskY = floor(projected.y * Ya + Yb);
+#endif
           //				DebugTrace("mask=(%g,%g) -> %d,%d [%d,%d]", projected.x, projected.y, maskX, maskY, maskSizeX, maskSizeY);
           if (maskX < 0 || maskX >= maskSizeX ||
             maskY < 0 || maskY >= maskSizeY)
@@ -637,11 +726,22 @@ void TileMap::FillOccupiedTiles(vector<SVector> & tilesToMark, const CTRect<floa
           if (!xMask[maskX + maskSizeX * maskY])
             continue;				// item not found, check next offset
         }
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+				occupied.push_back(SVector(x,y));
+#else
         tilesToMark.push_back(SVector(x,y));
+#endif
         break; // no more offset tests
       }
     }
   }
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_DB_BOOTSTRAP)
+	for (const SVector& tile : occupied) tilesToMark.push_back(tile);
+	if (_pTileRect) {
+		_pTileRect->x1 = xMin; _pTileRect->x2 = xMax;
+		_pTileRect->y1 = yMin; _pTileRect->y2 = yMax;
+	}
+#endif
 }
 
 void TileMap::UpdateMap(int x0, int x1, int y0, int y1)

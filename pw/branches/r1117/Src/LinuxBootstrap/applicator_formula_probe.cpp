@@ -1371,6 +1371,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "pathfinding_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
+#include "tile_mask_numeric_b13_tests.inc"
 #include "pathfinding_callbacks_b13_tests.inc"
 #include "permanent_nature_b13_tests.inc"
 #include "permanent_terrain_cost_b13_tests.inc"
@@ -1531,6 +1532,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	PathfindingB13(check);
 	SpecialMovementB13(check);
 	TileMaskOwnershipB13(check);
+	TileMaskNumericB13(check);
 	RoutingCallbacksB13(check);
 	PermanentNatureB13(check, dataRoot);
 	PermanentTerrainCostB13(check);
