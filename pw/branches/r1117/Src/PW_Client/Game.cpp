@@ -45678,6 +45678,7 @@ bool HandleLinuxReplayInputControls(
 
 #include "LinuxBootstrap/native_input_probe.inl"
 #include "LinuxBootstrap/file_path_probe.inl"
+#include "LinuxBootstrap/crc_buffer_probe.inl"
 
 bool IsLinuxMapPreviewUiReservedPoint(
   const LinuxBootstrapScreenRuntime* runtime,
@@ -71209,6 +71210,10 @@ int main(int argc, char** argv)
 		return RunLinuxBootstrapInputProbe() && RunLinuxNativeInputProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-file-path-probe"))
 		return RunLinuxFilePathProbe() ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-crc-buffer-probe"))
+		return RunLinuxCrcBufferProbe(false) ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-crc-buffer-reallocate-probe"))
+		return RunLinuxCrcBufferProbe(true) ? 0 : 1;
 
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-hero-presentation-probe"))
 		return RunPrimeWorldLinuxHeroPresentationProbe() ? 0 : 1;

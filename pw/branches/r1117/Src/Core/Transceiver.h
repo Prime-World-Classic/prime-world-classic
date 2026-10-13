@@ -85,6 +85,7 @@ public:
     unsigned long crc;
   };
 
+	/// Owns an array of CRC bytes; both release paths must match Allocate's new[].
   struct Buffer
   {
     unsigned char* buffer;
@@ -92,12 +93,12 @@ public:
     size_t length;
 
     Buffer() : buffer( 0 ), size( 0 ), length( 0 ) { }
-    ~Buffer() { if ( buffer ) { delete buffer; buffer = 0; } }
+		~Buffer() { if ( buffer ) { delete[] buffer; buffer = 0; } }
 
     void Allocate( size_t _size )
     {
       if ( buffer )
-        delete buffer;
+				delete[] buffer;
 
       buffer = new unsigned char[_size];
       size = _size;
