@@ -430,6 +430,11 @@ int WriteMatrix(ShaderBlob* matrix, UberShaderDesc &curShader, int isV20)
   
   free(pInfo);
 
+  // fclose is required: without it the tail stays in the CRT buffer, so the
+  // file ends up truncated (size rounded down to 4096) or empty (0 bytes) if
+  // the process is terminated rather than exiting normally
+  if (fpFile) fclose(fpFile);
+
   return num;
 }
 int main( int argc, char *argv[ ] )
@@ -743,6 +748,11 @@ void WriteSharedFileFormat(ShaderBlob const buffers[], UberShaderDesc const& sha
   }
   NI_ASSERT(offset == fullSize, "Offset mismatch at the end of file");
   NI_ASSERT(ftell(fp) == (int)offset, "Offset mismatch at the end of file");
+
+  // fclose is required: without it the tail stays in the CRT buffer, so the
+  // file ends up truncated (size rounded down to 4096) or empty (0 bytes) if
+  // the process is terminated rather than exiting normally
+  fclose(fp);
 
   delete[] offsets;
 }
