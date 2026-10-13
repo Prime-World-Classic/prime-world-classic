@@ -57,7 +57,10 @@ struct VS_OUTPUT_VTF
 // war fog + sharp/color correct VS читал бы depth-текстуру вместо весов.
 // s3..s9 у FullScreenMaterial свободны (s0 DepthMap, s1 diffuse, s2 bloom,
 // s10 warFog).
-sampler coeffMap : register(s3);
+sampler2D coeffMap : register(s3);
+// sampler2D, a not a bare 'sampler': the VS below reads it with tex2Dlod,
+// and D3DX9 (d3dx9_43) refuses a legacy typeless sampler for that load
+// (E5017: not yet implemented feature: Resource load type 4)
 
 #if SharpPinValue == PRESENT
 float4 g_pixelSize: register(VSHADER_LOCALCONST7);
