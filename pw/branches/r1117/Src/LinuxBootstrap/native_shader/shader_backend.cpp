@@ -21,7 +21,9 @@ constexpr unsigned RequiredVS[] = {0,1,2,3,8,9,10,11,20};
 constexpr unsigned RequiredPS[] = {20,21};
 constexpr unsigned RequiredOpacityPS[] = {6,20,21};
 constexpr unsigned RequiredBakedVS[] = {0,1,2,8,9,10,11,234};
+constexpr unsigned RequiredTerrainVS[] = {8,9,10,11,20,21,234};
 constexpr std::array<size_t,3> FamilyIndices{{0,12,24}};
+constexpr std::array<size_t,8> TerrainIndices{{0,30,60,90,120,150,180,210}};
 std::atomic<uint64_t> NextGeneration{1};
 thread_local std::vector<ContextKey> Owners;
 
@@ -84,7 +86,7 @@ struct IndexedBlendFunctions {
 
 /** Only private VAO state is modified; global state and the borrowed texture are restored. */
 struct GlState {
-	GLint program = 0, vao = 0, array = 0, element = 0, active = 0, texture = 0, sampler = 0;
+	GLint program = 0, vao = 0, array = 0, element = 0, active = 0;
 	GLint viewport[4]{}, depthFunction = 0, cullMode = 0, face = 0, polygon[2]{};
 	GLint alphaFunction = 0;
 	GLint vertexColorClamp = GL_FIXED_ONLY, fragmentColorClamp = GL_FIXED_ONLY;
@@ -96,23 +98,31 @@ struct GlState {
 		GL_PROGRAM_POINT_SIZE, GL_POLYGON_OFFSET_FILL, GL_PRIMITIVE_RESTART, GL_DEPTH_CLAMP, GL_COLOR_LOGIC_OP,
 		GL_VERTEX_PROGRAM_TWO_SIDE};
 	GLboolean flags[sizeof(Flags) / sizeof(Flags[0])]{};
-	GLuint borrowed = 0;
 	static constexpr GLenum Parameters[] = {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_MIN_FILTER,
 		GL_TEXTURE_MAG_FILTER, GL_TEXTURE_BASE_LEVEL, GL_TEXTURE_MAX_LEVEL};
-	GLint parameters[6]{};
+	struct TextureUnit {
+		GLint texture = 0, sampler = 0;
+		GLuint borrowed = 0;
+		GLint parameters[6]{};
+	};
+	std::array<TextureUnit,5> units{};
+	size_t unitCount;
 	const IndexedBlendFunctions* indexedBlend;
 	static constexpr GLenum BlendParameters[] = {GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB,
 		GL_BLEND_SRC_ALPHA, GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB, GL_BLEND_EQUATION_ALPHA};
 	GLint blendParameters[6]{};
-	explicit GlState(const IndexedBlendFunctions* functions = nullptr) : indexedBlend(functions) {
+	explicit GlState(const IndexedBlendFunctions* functions = nullptr, size_t textures = 1)
+		: unitCount(textures), indexedBlend(functions) {
 		glGetIntegerv(GL_CURRENT_PROGRAM, &program);
 		glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
 		glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &array);
 		glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &element);
 		glGetIntegerv(GL_ACTIVE_TEXTURE, &active);
-		glActiveTexture(GL_TEXTURE0);
-		glGetIntegerv(GL_TEXTURE_BINDING_2D, &texture);
-		glGetIntegerv(GL_SAMPLER_BINDING, &sampler);
+		for (size_t i=0; i<unitCount; ++i) {
+			glActiveTexture(GL_TEXTURE0+GLenum(i));
+			glGetIntegerv(GL_TEXTURE_BINDING_2D, &units[i].texture);
+			glGetIntegerv(GL_SAMPLER_BINDING, &units[i].sampler);
+		}
 		glActiveTexture(GLenum(active));
 		glGetIntegerv(GL_VIEWPORT, viewport);
 		glGetIntegerv(GL_DEPTH_FUNC, &depthFunction);
@@ -131,27 +141,32 @@ struct GlState {
 		glGetDoublev(GL_DEPTH_RANGE, depthRange);
 		for (size_t i = 0; i < std::size(Flags); ++i) flags[i] = glIsEnabled(Flags[i]);
 	}
-	void Borrow(GLuint name) {
-		glActiveTexture(GL_TEXTURE0);
-		glBindSampler(0, 0);
+	bool Borrow(GLuint name, size_t unit) {
+		glActiveTexture(GL_TEXTURE0+GLenum(unit));
+		glBindSampler(GLuint(unit), 0);
 		glBindTexture(GL_TEXTURE_2D, name);
 		// A wrong-target name leaves an error and must not be treated as the bound texture.
 		GLint bound = 0;
 		glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
-		if (GLuint(bound) != name) return;
-		borrowed = name;
+		if (GLuint(bound) != name) return false;
+		units[unit].borrowed = name;
 		for (size_t i = 0; i < std::size(Parameters); ++i)
-			glGetTexParameteriv(GL_TEXTURE_2D, Parameters[i], &parameters[i]);
+			glGetTexParameteriv(GL_TEXTURE_2D, Parameters[i], &units[unit].parameters[i]);
+		return true;
 	}
 	~GlState() {
-		glActiveTexture(GL_TEXTURE0);
-		if (borrowed) {
-			glBindTexture(GL_TEXTURE_2D, borrowed);
-			for (size_t i = 0; i < std::size(Parameters); ++i)
-				glTexParameteri(GL_TEXTURE_2D, Parameters[i], parameters[i]);
+		// Reverse acquisition restores the original parameters even when names alias.
+		for (size_t n=unitCount; n>0; --n) {
+			const auto& unit=units[n-1];
+			glActiveTexture(GL_TEXTURE0+GLenum(n-1));
+			if (unit.borrowed) {
+				glBindTexture(GL_TEXTURE_2D, unit.borrowed);
+				for (size_t i = 0; i < std::size(Parameters); ++i)
+					glTexParameteri(GL_TEXTURE_2D, Parameters[i], unit.parameters[i]);
+			}
+			glBindTexture(GL_TEXTURE_2D, GLuint(unit.texture));
+			glBindSampler(GLuint(n-1), GLuint(unit.sampler));
 		}
-		glBindTexture(GL_TEXTURE_2D, GLuint(texture));
-		glBindSampler(0, GLuint(sampler));
 		glActiveTexture(GLenum(active));
 		glBindVertexArray(GLuint(vao));
 		glBindBuffer(GL_ARRAY_BUFFER, GLuint(array));
@@ -255,29 +270,81 @@ Result BakedDirectory(const Bytes& b, std::array<Span,2>& selected) {
 	return result;
 }
 
+using TerrainSpans = std::array<std::array<Span,2>,8>;
+Result TerrainDirectory(const Bytes& bytes, TerrainSpans& output) {
+	return CheckedDirectory(bytes,240,TerrainIndices,output);
+}
+
 /** Convert only referenced colours; checked source and destination bounds precede allocation. */
-Result StageBakedColors(const Bgra8ColorStream& day, const Bgra8ColorStream& night,
+template<size_t N>
+Result StageColors(const std::array<Bgra8ColorStream,N>& streams,
 	const std::vector<uint32_t>& indices, size_t limit, Bytes& output) {
+	constexpr size_t stride=N*4;
 	output.clear();
 	if (indices.empty()) return Fail(Code::InvalidInput,"missing baked colour indices");
 	const size_t maximum = *std::max_element(indices.begin(),indices.end());
-	if (limit < 8 || maximum >= limit / 8)
+	if (limit < stride || maximum >= limit / stride)
 		return Fail(Code::InvalidInput,"converted baked colours exceed geometry limit");
-	for (const auto* stream : {&day,&night}) {
-		if (!stream->bytes.data || stream->bytes.size > limit || stream->stride < 4 ||
-			stream->offset > stream->bytes.size || stream->bytes.size - stream->offset < 4 ||
-			maximum > (stream->bytes.size - stream->offset - 4) / stream->stride)
+	for (const Bgra8ColorStream& stream : streams) {
+		if (!stream.bytes.data || stream.bytes.size > limit || stream.stride < 4 ||
+			stream.offset > stream.bytes.size || stream.bytes.size - stream.offset < 4 ||
+			maximum > (stream.bytes.size - stream.offset - 4) / stream.stride)
 			return Fail(Code::InvalidInput,"baked colour stream/range out of bounds");
 	}
-	Bytes candidate((maximum + 1) * 8,0);
-	for (uint32_t index : indices) for (size_t channel=0; channel<2; ++channel) {
-		const auto& stream = channel ? night : day;
+	Bytes candidate((maximum + 1) * stride,0);
+	for (uint32_t index : indices) for (size_t channel=0; channel<N; ++channel) {
+		const auto& stream = streams[channel];
 		const auto* bgra = static_cast<const unsigned char*>(stream.bytes.data) + stream.offset + size_t(index)*stream.stride;
-		auto* rgba = candidate.data() + size_t(index)*8 + channel*4;
+		auto* rgba = candidate.data() + size_t(index)*stride + channel*4;
 		rgba[0]=bgra[2]; rgba[1]=bgra[1]; rgba[2]=bgra[0]; rgba[3]=bgra[3];
 	}
 	output.swap(candidate);
 	return {};
+}
+
+Result StageBakedColors(const Bgra8ColorStream& day, const Bgra8ColorStream& night,
+	const std::vector<uint32_t>& indices, size_t limit, Bytes& output) {
+	return StageColors(std::array<Bgra8ColorStream,2>{{day,night}},indices,limit,output);
+}
+
+/** Strict interface of ordinary TerrainElementMaterial, before any driver linking. */
+bool ExactTerrainReflection(const MOJOSHADER_parseData* p, bool vertex, size_t slot) {
+	if (slot>=8 || !p || p->error_count || p->major_ver!=3 || p->minor_ver || p->preshader ||
+		p->shader_type!=(vertex?MOJOSHADER_TYPE_VERTEX:MOJOSHADER_TYPE_PIXEL)) return false;
+	const bool local=slot%2!=0;
+	const size_t layers=slot/2+1;
+	const auto* registers=vertex?RequiredTerrainVS:RequiredPS;
+	const size_t count=vertex?std::size(RequiredTerrainVS):std::size(RequiredPS);
+	if (p->uniform_count!=int(count) || !p->uniforms || !p->attributes || !p->outputs ||
+		p->attribute_count!=(vertex?(local?5:4):4) || p->output_count!=(vertex?6:1) ||
+		p->sampler_count!=(vertex?0:int(layers+1)) || p->constant_count!=(vertex?1:0)) return false;
+	for (size_t i=0; i<count; ++i) {
+		const auto& u=p->uniforms[i];
+		if (u.type!=MOJOSHADER_UNIFORM_FLOAT || u.index!=int(registers[i]) || u.array_count || u.constant) return false;
+	}
+	const auto attr=[](const MOJOSHADER_attribute& a, MOJOSHADER_usage usage, int index) {
+		return a.usage==usage && a.index==index;
+	};
+	if (vertex) {
+		if (!p->constants) return false;
+		const auto& c=p->constants[0];
+		if (c.type!=MOJOSHADER_UNIFORM_FLOAT || c.index!=0 || c.value.f[0]!=1 ||
+			c.value.f[1]!=0 || c.value.f[2]!=255 || c.value.f[3]!=0 ||
+			!attr(p->attributes[0],MOJOSHADER_USAGE_POSITION,0) ||
+			(local && !attr(p->attributes[1],MOJOSHADER_USAGE_TEXCOORD,0))) return false;
+		for (int i=0; i<3; ++i) if (!attr(p->attributes[1+int(local)+i],MOJOSHADER_USAGE_COLOR,i)) return false;
+		return attr(p->outputs[0],MOJOSHADER_USAGE_TEXCOORD,0) && attr(p->outputs[1],MOJOSHADER_USAGE_COLOR,1) &&
+			attr(p->outputs[2],MOJOSHADER_USAGE_COLOR,0) && attr(p->outputs[3],MOJOSHADER_USAGE_TEXCOORD,1) &&
+			attr(p->outputs[4],MOJOSHADER_USAGE_TEXCOORD,3) && attr(p->outputs[5],MOJOSHADER_USAGE_POSITION,0);
+	}
+	if (!p->samplers) return false;
+	for (size_t i=0; i<=layers; ++i) {
+		const auto& s=p->samplers[i];
+		if (s.index!=int(i==layers?4:i) || s.type!=MOJOSHADER_SAMPLER_2D || s.texbem) return false;
+	}
+	return attr(p->attributes[0],MOJOSHADER_USAGE_TEXCOORD,0) && attr(p->attributes[1],MOJOSHADER_USAGE_COLOR,1) &&
+		attr(p->attributes[2],MOJOSHADER_USAGE_COLOR,0) && attr(p->attributes[3],MOJOSHADER_USAGE_TEXCOORD,1) &&
+		attr(p->outputs[0],MOJOSHADER_USAGE_COLOR,0);
 }
 
 bool ExactReflection(const MOJOSHADER_parseData* p, bool vertex, bool opacity = false) {
@@ -357,8 +424,8 @@ struct ShaderBackend::Impl {
 	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0, colorBuffer = 0;
 	bool registered = false, closed = false;
 	unsigned activeSlots = 0;
-	std::array<Pair, 4> pairs{};
-	Bytes archive, bakedArchive;
+	std::array<Pair, 12> pairs{};
+	Bytes archive, bakedArchive, terrainArchive;
 	std::array<Float4, 256> vs{};
 	std::array<Float4, 224> ps{};
 	std::array<bool, 256> vsInit{};
@@ -424,30 +491,40 @@ ShaderBackend::~ShaderBackend() {
 
 Result ShaderBackend::LoadBasicFxPair0(ByteView source, ProgramRef& output) {
 	output.Reset();
-	std::array<ProgramRef, 4> programs;
-	const auto status = LoadPrograms(source, {}, programs, 1);
+	std::array<ProgramRef, 12> programs;
+	const auto status = LoadPrograms(source, {}, {}, programs, 1);
 	output = std::move(programs[0]);
 	return status;
 }
 
 Result ShaderBackend::LoadStaticFamily(ByteView source, ByteView bakedSource, StaticPrograms& output) {
 	output = {};
-	std::array<ProgramRef,4> programs;
-	const auto status = LoadPrograms(source,bakedSource,programs,4);
+	std::array<ProgramRef,12> programs;
+	const auto status = LoadPrograms(source,bakedSource,{},programs,4);
 	output = {{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
+	return status;
+}
+
+Result ShaderBackend::LoadSceneFamily(ByteView source, ByteView baked, ByteView terrain, ScenePrograms& output) {
+	output = {};
+	std::array<ProgramRef,12> programs;
+	const auto status = LoadPrograms(source,baked,terrain,programs,12);
+	output.statics = {{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
+	for (size_t i=0; i<8; ++i) output.terrain[i]=std::move(programs[i+4]);
 	return status;
 }
 
 Result ShaderBackend::LoadBasicFxOpacityFamily(ByteView source, BasicFxOpacityPrograms& output) {
 	output = {};
-	std::array<ProgramRef, 4> programs;
-	const auto status = LoadPrograms(source, {}, programs, 3);
+	std::array<ProgramRef, 12> programs;
+	const auto status = LoadPrograms(source, {}, {}, programs, 3);
 	output = {std::move(programs[0]), std::move(programs[1]), std::move(programs[2])};
 	return status;
 }
 
 /** Stage every requested pair and ticket before committing the new load serial. */
-Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, std::array<ProgramRef,4>& output, size_t count) {
+Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, ByteView terrainSource,
+	std::array<ProgramRef,12>& output, size_t count) {
 	output = {};
 	auto& p = *impl_;
 	auto status = p.Check();
@@ -456,7 +533,8 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, std::a
 	p.InvalidateRegisters();
 	const size_t cap = std::min(p.budget.limits.archiveBytes,size_t(4*1024*1024));
 	if (!source.data || source.size < 4 || source.size > cap ||
-		(count==4 && (!bakedSource.data || bakedSource.size<4 || bakedSource.size>cap-source.size)))
+		(count>=4 && (!bakedSource.data || bakedSource.size<4 || bakedSource.size>cap-source.size)) ||
+		(count==12 && (!terrainSource.data || terrainSource.size<4 || terrainSource.size>cap-source.size-bakedSource.size)))
 		return Fail(Code::InvalidInput, "archive view out of bounds");
 	if (p.serial==std::numeric_limits<uint64_t>::max()) return Fail(Code::InvalidReference,"load serial exhausted");
 	try {
@@ -467,34 +545,43 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, std::a
 		if (!status) return status;
 		Bytes bakedArchive;
 		std::array<Span,2> bakedSpans{};
-		if(count==4) {
+		if(count>=4) {
 			const auto* first=static_cast<const unsigned char*>(bakedSource.data);
 			bakedArchive.assign(first,first+bakedSource.size);
 			status=BakedDirectory(bakedArchive,bakedSpans);
 			if(!status) return status;
 		}
-		std::array<ProgramRef, 4> programs;
+		Bytes terrainArchive;
+		TerrainSpans terrainSpans{};
+		if(count==12) {
+			const auto* first=static_cast<const unsigned char*>(terrainSource.data);
+			terrainArchive.assign(first,first+terrainSource.size);
+			status=TerrainDirectory(terrainArchive,terrainSpans);
+			if(!status) return status;
+		}
+		std::array<ProgramRef, 12> programs;
 		for (size_t slot = 0; slot < count; ++slot)
 			programs[slot].ticket_ = std::make_shared<ProgramRef::Ticket>(
 				ProgramRef::Ticket{p.generation, p.serial + 1, static_cast<uint8_t>(slot)});
 		GlState state;
 		MojoScope scope(p.context, p.vao);
-		std::array<Pair, 4> candidates{};
+		std::array<Pair, 12> candidates{};
 		struct Cleanup {
-			std::array<Pair, 4>& pairs;
+			std::array<Pair, 12>& pairs;
 			~Cleanup() { for (auto& pair : pairs) pair.Clear(); }
 		} cleanup{candidates};
 		for (size_t slot = 0; slot < count; ++slot) {
 			auto& candidate = candidates[slot];
-			const auto& stage = slot==3 ? bakedSpans : spans[slot];
-			const auto& bytes = slot==3 ? bakedArchive : archive;
+			const auto& stage = slot>=4 ? terrainSpans[slot-4] : slot==3 ? bakedSpans : spans[slot];
+			const auto& bytes = slot>=4 ? terrainArchive : slot==3 ? bakedArchive : archive;
 			candidate.vs = MOJOSHADER_glCompileShader(bytes.data() + stage[0].offset, unsigned(stage[0].size), nullptr, 0, nullptr, 0);
 			if (!candidate.vs) return Fail(Code::ShaderFailure, "vertex compilation failed");
 			candidate.ps = MOJOSHADER_glCompileShader(bytes.data() + stage[1].offset, unsigned(stage[1].size), nullptr, 0, nullptr, 0);
 			if (!candidate.ps) return Fail(Code::ShaderFailure, "pixel compilation failed");
 			const auto* vs = MOJOSHADER_glGetShaderParseData(candidate.vs);
 			const auto* ps = MOJOSHADER_glGetShaderParseData(candidate.ps);
-			const bool exact = slot==3 ? ExactBakedReflection(vs,true) && ExactBakedReflection(ps,false) :
+			const bool exact = slot>=4 ? ExactTerrainReflection(vs,true,slot-4) && ExactTerrainReflection(ps,false,slot-4) :
+				slot==3 ? ExactBakedReflection(vs,true) && ExactBakedReflection(ps,false) :
 				count!=1 ? ExactFamilyReflection(vs,true,slot) && ExactFamilyReflection(ps,false,slot) :
 				ExactReflection(vs,true) && ExactReflection(ps,false);
 			if (!exact) return Fail(Code::Unsupported, "reflection differs from fixed selected program");
@@ -507,6 +594,7 @@ Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, std::a
 		candidates = {};
 		p.archive = std::move(archive);
 		p.bakedArchive = std::move(bakedArchive);
+		p.terrainArchive = std::move(terrainArchive);
 		++p.serial;
 		output = std::move(programs);
 		p.activeSlots = (1u << count)-1;
@@ -544,9 +632,11 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		reference.ticket_->slot >= p.pairs.size() || !(p.activeSlots & (1u << reference.ticket_->slot)))
 		return Fail(Code::InvalidReference, "empty, stale, foreign or failed-load program");
 	const size_t slot = reference.ticket_->slot;
-	const bool baked = slot==3, opacity = slot==1 || slot==2;
-	const unsigned* requiredVS = baked ? RequiredBakedVS : RequiredVS;
-	const size_t vsCount = baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
+	const bool terrain = slot>=4, baked = slot==3, opacity = slot==1 || slot==2;
+	const size_t layers = terrain ? (slot-4)/2+1 : 1;
+	const bool hasUV = !terrain || (slot-4)%2!=0;
+	const unsigned* requiredVS = terrain ? RequiredTerrainVS : baked ? RequiredBakedVS : RequiredVS;
+	const size_t vsCount = terrain ? std::size(RequiredTerrainVS) : baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
 	const unsigned* requiredPS = opacity ? RequiredOpacityPS : RequiredPS;
 	const size_t psCount = opacity ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
 	for (size_t i=0;i<vsCount;++i) if (!p.vsInit[requiredVS[i]]) return Fail(Code::UninitializedRegisters, "required VS register missing");
@@ -556,7 +646,7 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		!d.vertices.data || !d.indexData.data || !d.stride || d.stride > size_t(std::numeric_limits<GLsizei>::max()) ||
 		d.vertices.size > p.budget.limits.geometryBytes || d.indexData.size > p.budget.limits.geometryBytes ||
 		d.streamOffset > d.vertices.size || d.positionOffset > d.stride || d.stride - d.positionOffset < 12 ||
-		d.uvOffset > d.stride || d.stride - d.uvOffset < 8 || !d.indexCount || d.indexCount % 3 ||
+		(hasUV && (d.uvOffset > d.stride || d.stride - d.uvOffset < 8)) || !d.indexCount || d.indexCount % 3 ||
 		d.indexCount > p.budget.limits.indices || d.indexCount > size_t(std::numeric_limits<GLsizei>::max()) ||
 		d.firstIndex > d.indexData.size / indexBytes || d.indexCount > d.indexData.size / indexBytes - d.firstIndex ||
 		d.viewportWidth <= 0 || d.viewportHeight <= 0 || d.viewportWidth > 16384 || d.viewportHeight > 16384 ||
@@ -580,12 +670,14 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 	}
 	const bool blended = d.blendMode != BlendMode::Off;
 	if (baked && blended) return Fail(Code::Unsupported,"baked BasicMaterial24 supports only blend Off");
+	if (terrain && blended && d.blendMode!=BlendMode::AddColor)
+		return Fail(Code::Unsupported,"ordinary terrain supports only Off or additive nature passes");
 	if (blended && !p.blend.Available())
 		return Fail(Code::Unsupported, "blending requires GL 4.0 or ARB_draw_buffers_blend with indexed entrypoints");
 	try {
 		std::vector<uint32_t> indices(d.indexCount);
 		const size_t available = d.vertices.size - d.streamOffset;
-		const size_t extent = std::max(d.positionOffset + 12, d.uvOffset + 8);
+		const size_t extent = hasUV ? std::max(d.positionOffset + 12, d.uvOffset + 8) : d.positionOffset + 12;
 		const auto* vertices = static_cast<const unsigned char*>(d.vertices.data);
 		const auto* indexData = static_cast<const unsigned char*>(d.indexData.data);
 		for (size_t i = 0; i < d.indexCount; ++i) {
@@ -600,16 +692,24 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			const size_t at = d.streamOffset + size_t(resolved) * d.stride;
 			float position[3], uv[2];
 			std::memcpy(position, vertices + at + d.positionOffset, sizeof(position));
-			std::memcpy(uv, vertices + at + d.uvOffset, sizeof(uv));
 			for (float f : position) if (!std::isfinite(f)) return Fail(Code::InvalidInput, "nonfinite vertex");
-			for (float f : uv) if (!std::isfinite(f)) return Fail(Code::InvalidInput, "nonfinite UV");
+			if (hasUV) {
+				std::memcpy(uv, vertices + at + d.uvOffset, sizeof(uv));
+				for (float f : uv) if (!std::isfinite(f)) return Fail(Code::InvalidInput, "nonfinite UV");
+			}
 		}
 		Bytes colors;
-		if (baked) {
-			status=StageBakedColors(d.dayColors,d.nightColors,indices,p.budget.limits.geometryBytes,colors);
+		if (baked || terrain) {
+			status=terrain ? StageColors(std::array<Bgra8ColorStream,3>{{d.dayColors,d.nightColors,d.terrainWeights}},
+				indices,p.budget.limits.geometryBytes,colors) :
+				StageBakedColors(d.dayColors,d.nightColors,indices,p.budget.limits.geometryBytes,colors);
 			if(!status) return status;
 		}
-		if (!d.texture || !glIsTexture(d.texture)) return Fail(Code::InvalidInput, "borrowed texture is not live");
+		const auto textureAt=[&](size_t unit) { return terrain ? (unit==4?d.natureTexture:d.terrainTextures[unit]) : d.texture; };
+		for (size_t unit=0; unit<(terrain?5:1); ++unit) {
+			if (terrain && unit>=layers && unit!=4) continue;
+			if (!textureAt(unit) || !glIsTexture(textureAt(unit))) return Fail(Code::InvalidInput, "borrowed texture is not live");
+		}
 		// GLSL 1.20 gl_FragColor broadcasts to all active color outputs.
 		GLint outputs = 0;
 		glGetIntegerv(GL_MAX_DRAW_BUFFERS, &outputs);
@@ -618,20 +718,24 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			glGetIntegerv(GL_DRAW_BUFFER0 + i, &buffer);
 			if (buffer != GL_NONE) return Fail(Code::Unsupported, "BasicFX requires a single color output");
 		}
-		GlState state(blended ? &p.blend : nullptr);
+		GlState state(blended ? &p.blend : nullptr,terrain?5:1);
 		MojoScope scope(p.context, p.vao);
-		state.Borrow(d.texture);
-		GLint width = 0, height = 0;
-		if (state.borrowed) {
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+		for (size_t unit=0; unit<(terrain?5:1); ++unit) {
+			if (terrain && unit>=layers && unit!=4) continue;
+			const bool borrowed=state.Borrow(textureAt(unit),unit);
+			GLint width = 0, height = 0;
+			if (borrowed) {
+				glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+				glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+			}
+			const GLenum textureError=glGetError();
+			if (!borrowed || width <= 0 || height <= 0 || textureError != GL_NO_ERROR)
+				return Fail(Code::InvalidInput, "texture is not a defined level0 2D image");
+			for (GLenum parameter : {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_REPEAT);
+			for (GLenum parameter : {GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		}
-		if (!state.borrowed || width <= 0 || height <= 0 || glGetError() != GL_NO_ERROR)
-			return Fail(Code::InvalidInput, "texture is not a defined level0 2D image");
-		for (GLenum parameter : {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_REPEAT);
-		for (GLenum parameter : {GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		glBindBuffer(GL_ARRAY_BUFFER, p.vertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(d.vertices.size), d.vertices.data, GL_STREAM_DRAW);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p.indexBuffer);
@@ -641,14 +745,14 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		for (size_t i = 0; i < psCount; ++i) MOJOSHADER_glSetPixelShaderUniformF(requiredPS[i], p.ps[requiredPS[i]].data(), 1);
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_POSITION, 0, 3, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.positionOffset));
-		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_TEXCOORD, 0, 2, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
+		if (hasUV) MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_TEXCOORD, 0, 2, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.uvOffset));
-		if (baked) {
+		if (baked || terrain) {
 			glBindBuffer(GL_ARRAY_BUFFER,p.colorBuffer);
 			glBufferData(GL_ARRAY_BUFFER,GLsizeiptr(colors.size()),colors.data(),GL_STREAM_DRAW);
-			for(int channel=0;channel<2;++channel)
+			for(int channel=0;channel<(terrain?3:2);++channel)
 				MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_COLOR,channel,4,MOJOSHADER_ATTRIBUTE_UBYTE,1,
-					8,reinterpret_cast<const void*>(uintptr_t(channel*4)));
+					terrain?12:8,reinterpret_cast<const void*>(uintptr_t(channel*4)));
 			// GLSL120 uses gl_FrontColor for HDR baked light; host clamps must not truncate it.
 			glClampColor(GL_CLAMP_VERTEX_COLOR,GL_FALSE);
 			glClampColor(GL_CLAMP_FRAGMENT_COLOR,GL_FALSE);
@@ -708,6 +812,7 @@ Result ShaderBackend::Shutdown() {
 	p.activeSlots = 0; p.closed = true;
 	p.archive.clear();
 	p.bakedArchive.clear();
+	p.terrainArchive.clear();
 	if (p.registered) {
 		Owners.erase(std::remove(Owners.begin(), Owners.end(), p.key), Owners.end());
 		p.registered = false;

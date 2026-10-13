@@ -79,6 +79,15 @@ struct StaticPrograms {
 	ProgramRef bakedBasicMaterial;
 };
 
+/** Original static family plus eight ordinary TerrainElementMaterial variants.
+ * Terrain slot = 2 * (layerCount - 1) + localUV, selecting archive pairs 0,30,...,210.
+ * Cached, shadow and depth-output terrain permutations are intentionally excluded.
+ */
+struct ScenePrograms {
+	StaticPrograms statics;
+	std::array<ProgramRef, 8> terrain;
+};
+
 /** Borrowed packed BGRA8 colours, normalized by the backend, not predecoded lighting.
  * A colour starts at offset + (index + baseVertex) * stride, independently of stream0.
  */
@@ -110,11 +119,19 @@ struct IndexedDraw {
 	/** Original D3D byte reference, validated even when alpha testing is disabled. */
 	int alphaReference = 127;
 	BlendMode blendMode = BlendMode::Off;
-	/** Required only by baked BasicMaterial; BasicFX ignores these two views. */
+	/** Required by baked BasicMaterial and terrain; BasicFX ignores these two views. */
 	Bgra8ColorStream dayColors, nightColors;
+	/** Terrain-only COLOR2 weights and samplers 0..3/4. Unused layers are ignored.
+	 * All samplers use repeat/linear level0 sampling; names may alias. Diffuse
+	 * mipmapping/anisotropic filtering from the Windows terrain pass is not yet ported.
+	 * Day/night colors are also required. Terrain ignores the single texture field.
+	 */
+	Bgra8ColorStream terrainWeights;
+	std::array<uint32_t, 4> terrainTextures{};
+	uint32_t natureTexture = 0;
 };
 
-/** Render-thread-only owner for pair zero, BasicFX opacity, or the fixed static family.
+/** Render-thread-only owner for pair zero, BasicFX, static, or static-plus-terrain families.
  * Requires OpenGL 3.3 compatibility, and exclusive MojoShader use on its host context.
  * Call Shutdown successfully before the host destroys its context. The destructor attempts
  * Shutdown, then terminates on a lifetime-contract violation rather than pretending cleanup.
@@ -141,6 +158,14 @@ public:
 	 * and PS c20/c21. Shader-owned c3 and HDR/day-night decoding are not CPU lighting.
 	 */
 	Result LoadStaticFamily(ByteView basicFxArchive, ByteView basicMaterialArchive, StaticPrograms& output);
+	/** Atomic twelve-program set in the same context owner, with summed archive limits.
+	 * Terrain requires VS c8..11/c20/c21/c234 and PS c20/c21. Positions are world-space;
+	 * c0 is shader-owned, not WORLD. Only Off (first nature pass) and AddColor (later
+	 * passes preserving destination alpha/depth) are admitted. All three BGRA streams
+	 * and exactly layerCount diffuse samplers plus nature sampler4 must be valid.
+	 */
+	Result LoadSceneFamily(ByteView basicFxArchive, ByteView basicMaterialArchive,
+		ByteView terrainArchive, ScenePrograms& output);
 	/** Rejected write invalidates all required initialization bits; reupload the full required set. */
 	Result SetFloat4(Stage stage, uint32_t firstRegister, Float4View values);
 	Result Draw(const ProgramRef& program, const IndexedDraw& draw);
@@ -149,8 +174,8 @@ public:
 	Diagnostics GetDiagnostics() const;
 private:
 	struct Impl;
-	Result LoadPrograms(ByteView basicFx, ByteView basicMaterial,
-		std::array<ProgramRef, 4>& output, size_t count);
+	Result LoadPrograms(ByteView basicFx, ByteView basicMaterial, ByteView terrain,
+		std::array<ProgramRef, 12>& output, size_t count);
 	explicit ShaderBackend(std::unique_ptr<Impl> impl);
 	std::unique_ptr<Impl> impl_;
 };

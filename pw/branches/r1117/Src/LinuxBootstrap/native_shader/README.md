@@ -8,6 +8,52 @@ uses its existing DirectX renderer. No Wine or replacement shader is involved.
 See [vendor provenance](../third_party/mojoshader/README.md) for the exact pin,
 license and two allocation-failure fixes.
 
+## Ordinary Terrain Backend
+
+`LoadSceneFamily` atomically adds the eight shipped `TerrainElementMaterial.shd`
+pairs `0,30,60,90,120,150,180,210` to the four static programs in the same context
+owner. The slot is `2 * (layerCount - 1) + localUV`. This is a tested backend
+contract; the map renderer still uses its preview terrain material until the
+authored layer/nature inputs are connected. No terrain appearance parity is
+claimed by the backend alone.
+
+Terrain positions are world-space. Required vertex registers are `c8..11`
+(view-projection), `c20.x` (global tiling), `c21` (nature UV mapping), and `c234.x`
+(night fraction). Pixel `c20.x` is overburn and `c21` selects the nature channels.
+The original shader owns `c0`, decodes day/night BGRA lighting, swizzles COLOR2
+weights, and samples one to four diffuse textures plus nature sampler 4. Local
+UVs affect only layer zero. Its alpha rule is intentional: layer-zero alpha is
+unweighted; subsequent layer alphas are weighted. Overburn multiplies the
+already nature-weighted RGB, not an independent additive light.
+
+`IndexedDraw` borrows independent day/night/weight streams and live level-zero
+2D textures. Global variants ignore unused UV layout/data. Off writes RGBA/depth;
+AddColor supports later nature passes while preserving destination alpha/depth.
+Other terrain blend modes, cache, shadow and depth-output permutations are not
+admitted. Every referenced sampler uses repeat/linear level-zero sampling; the
+Windows diffuse mipmapping/anisotropic modes are not implemented here. All five unit
+bindings/samplers and modified texture parameters are restored, including aliases
+and failures partway through borrowing. Tickets remain CPU-only after shutdown.
+
+CPU and isolated pixel gates accept a third archive argument:
+
+```bash
+DATA=pw/branches/r1117/Data/Shaders/UberShaders
+/tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderFamilyCpuProbe \
+	"$DATA/BasicFXMaterial.shd" "$DATA/BasicMaterial.shd" "$DATA/TerrainElementMaterial.shd"
+prlimit --core=0 --as=8589934592 xvfb-run -a \
+	-s '-screen 0 1280x720x24 +extension GLX -nolisten tcp' \
+	env PW_BACKEND_APPROVED_XVFB=1 \
+	/tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderPixelProbe \
+	"$DATA/BasicFXMaterial.shd" "$DATA/BasicMaterial.shd" "$DATA/TerrainElementMaterial.shd"
+```
+
+Run GUI gates sequentially. `--terrain-only` after the three paths runs the
+focused terrain suite. The tests use the original bytecode with mock geometry,
+textures and a byte-domain color oracle, including shader compile/link failure
+injection and hostile caller state. ASan builds require their shadow address
+space, so use an RSS cap instead of `prlimit --as` for them.
+
 ## Supported Contract
 
 - OpenGL 3.3 compatibility or newer, one render thread and one active host context.

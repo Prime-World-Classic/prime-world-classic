@@ -34,3 +34,7 @@ add_test(NAME linux_shader_family_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProb
 add_test(NAME linux_shader_static_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProbe
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicFXMaterial.shd
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicMaterial.shd)
+add_test(NAME linux_shader_scene_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProbe
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicFXMaterial.shd
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicMaterial.shd
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/TerrainElementMaterial.shd)
