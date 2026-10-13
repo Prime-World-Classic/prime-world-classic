@@ -1345,16 +1345,39 @@ public:
 
 	void operator()(PFBaseUnit& unit)
 	{
-		if (unit.GetWorld() != owner.GetWorld())
+		Consider(unit, true);
+	}
+
+	/** Original help requests bypass scan distance and faction fog, not eligibility or weight. */
+	void ProcessAdditionalTarget(PFBaseUnit& unit)
+	{
+		Consider(unit, false);
+	}
+
+private:
+	bool Registered(const PFBaseUnit* unit) const
+	{
+		PFWorld* world = owner.GetWorld();
+		return world && IsUnitValid(unit) && unit->GetWorld() == world
+			&& world->FindLinuxUnitByObjectId(unit->GetObjectId()) == unit;
+	}
+
+	void Consider(PFBaseUnit& unit, bool ordinary)
+	{
+		CObj<PFBaseUnit> held(&unit);
+		if (!Registered(&owner) || !Registered(&unit))
 			return;
-		if (!owner.CanSelectTarget(&unit, true))
-			return;
-		if (!owner.IsTargetInRange(&unit, maxRange))
+		const bool selectable = owner.CanSelectTarget(&unit, ordinary);
+		// Eligibility callbacks can unregister either endpoint before scoring begins.
+		owner.GetWorld()->ProcessAddRemove();
+		if (!selectable || !Registered(&owner) || !Registered(&unit) || (ordinary && !owner.IsTargetInRange(&unit, maxRange)))
 			return;
 
 		if (params)
 		{
-			const float weight = owner.GetTargetWeight(CPtr<PFBaseUnit>(&unit), *params);
+			float weight;
+			if (!owner.TryGetTargetWeight(CPtr<PFBaseUnit>(&unit), *params, weight)
+				|| !Registered(&owner) || !Registered(&unit)) return;
 			if (std::isfinite(weight) && weight > maxWeight)
 			{
 				maxWeight = weight;
@@ -1367,18 +1390,19 @@ public:
 
 		// Only unconfigured bootstrap units retain the preexisting closest-target route.
 		const float distance2 = fabs2(unit.GetPosition().AsVec2D() - origin);
-		if (distance2 < bestDistance2)
+		if (std::isfinite(distance2) && distance2 < bestDistance2)
 		{
 			bestDistance2 = distance2;
 			bestTarget = &unit;
 		}
 	}
 
+public:
 	CPtr<PFBaseUnit> GetTarget() const
 	{
-		if (!IsUnitValid(bestTarget) || bestTarget->GetWorld() != owner.GetWorld()) return CPtr<PFBaseUnit>();
+		if (!Registered(&owner) || !Registered(bestTarget.GetPtr())) return CPtr<PFBaseUnit>();
 		const CPtr<PFBaseUnit>& alpha = bestTarget->GetAlphaSummon();
-		if (params && IsUnitValid(alpha) && alpha->GetWorld() == owner.GetWorld() &&
+		if (params && Registered(alpha.GetPtr()) &&
 			competingTargets.find(alpha) != competingTargets.end()) return alpha;
 		return bestTarget;
 	}
@@ -1394,7 +1418,7 @@ private:
 	vector<CPtr<PFBaseUnit>> competingTargets;
 };
 
-CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, bool checkForbid)
+CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool checkScreams, int targetFlags, bool checkForbid)
 {
 	if (!std::isfinite(fRange) || fRange < 0.0f) return CPtr<PFBaseUnit>();
   if (IsDead() || (checkForbid && CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)))
@@ -1406,6 +1430,8 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, boo
 
   if (GetWorld() && GetWorld()->GetAIWorld())
   {
+		CObj<PFBaseUnit> held(this);
+		GetWorld()->ProcessAddRemove();
     PFAIWorld* pAIWorld = GetWorld()->GetAIWorld();
     const float searchRadius = range + (GetObjectSize() + pAIWorld->GetMaxObjectSize()) * 0.5f;
     int targetTypesToFind = NDb::SPELLTARGET_ALL;
@@ -1418,7 +1444,19 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, boo
     LinuxAIWorldTargetScan targetFinder(*this, range);
     pAIWorld->ForAllUnitsInRange(GetPosition(), searchRadius, targetFinder, UnitMaskingPredicate(GetOppositeFactionFlags(), targetTypesToFind, this));
 
-		// A rejected indexed candidate must not be retried with weaker fog or selector rules.
+		if (checkScreams)
+		{
+			// Detach this batch before callbacks; new requests belong to the next selection.
+			vector<ScreamTarget> pending;
+			pending.swap(screamTargets);
+			vector<CObj<PFBaseUnit>> targets;
+			for (const auto& request : pending)
+				if (IsUnitValid(request.pTarget)) targets.push_back(CObj<PFBaseUnit>(request.pTarget.GetPtr()));
+			for (const auto& target : targets)
+				targetFinder.ProcessAdditionalTarget(*target);
+		}
+
+		// Only explicit help requests use the original additional-target policy; no generic fallback.
 		return targetFinder.GetTarget();
   }
 

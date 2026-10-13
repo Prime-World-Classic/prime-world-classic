@@ -1345,6 +1345,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "position_cast_b12_tests.inc"
 #include "../PF_GameLogic/PFTargetSelector.h"
 #include "weighted_targeting_b12_tests.inc"
+#include "scream_targets_b13_tests.inc"
 #include "area_selector_b12_tests.inc"
 #include "directional_selector_b12_tests.inc"
 #include "wrapper_factory_b12_tests.inc"
@@ -1517,6 +1518,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeathCleanupDeferredB13(check);
 	DeadWorldB13(check);
 	HeroCorpsesB13(check);
+	ScreamTargetsB13(check);
 	NatureOverrideB13(check);
 	TerrainFormulasB13(check);
 	if (dataRoot && *dataRoot) TerrainFormulasAuthoredB13(check, dataRoot);
