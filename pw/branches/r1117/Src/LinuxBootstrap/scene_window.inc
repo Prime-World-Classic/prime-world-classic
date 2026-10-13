@@ -218,6 +218,7 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 			target.push_back(candidate.kind == SceneWindowKind::Static ? catalog.statics[candidate.payloadIndex]
 				: catalog.terrain[candidate.payloadIndex]);
 			remap(target.back().materialDiffuseTextureIndices);
+			for (auto& faction : target.back().terrainTextureIndices) remap(faction);
 		}
 	}
 	std::vector<std::string> files;

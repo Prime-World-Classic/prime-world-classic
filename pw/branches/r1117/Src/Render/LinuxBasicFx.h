@@ -15,6 +15,7 @@ struct Statistics {
 	/** Aggregate bridge counts; bakedDraws is the successful baked subset of draws. */
 	uint64_t selections = 0, unsupported = 0, draws = 0, rejected = 0, loads = 0;
 	uint64_t bakedSelections = 0, bakedUnsupported = 0, bakedDraws = 0, bakedRejected = 0;
+	uint64_t terrainDraws = 0, terrainRejected = 0;
 };
 
 /** Host lifecycle: call once after GLX creation, and shut down before destroying it. */
@@ -48,6 +49,23 @@ bool IsTransparentMaterial(const NDb::Material* material);
 void SetTransparentDrawingEnabled(bool enabled);
 /** Draw raw engine buffers. A selected failure must not fall back to unshaded geometry. */
 bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::PreviewTransform& preview);
+
+/** Original ordinary terrain constants. World-space vertices need no WORLD matrix. */
+struct TerrainConstants {
+	unsigned layers = 0;
+	bool localUV = false;
+	float tiling = .1f / 1.7f, nightFraction = 0, overburn = 0;
+	pwshader::Float4 natureMapping{}, natureWeight{0,1,0,0};
+};
+/** Borrowed terrain draw in the same shader/context owner as static materials.
+ * Clears material selection; never falls back to the preview on a failed admitted draw.
+ * The caller supplies budget-admitted textures, all three color streams and nature-pass
+ * raster state. Finite constants, layer count, streams and textures are checked before submission.
+ */
+bool DrawTerrain(pwshader::IndexedDraw draw, const TerrainConstants& constants,
+	const pwshader::PreviewTransform& preview);
+/** Preflight a mixed-nature tile before its first pass; no geometry is submitted. */
+bool SupportsTerrainAdditive();
 Statistics GetStatistics();
 
 }

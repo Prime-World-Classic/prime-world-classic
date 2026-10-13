@@ -169,6 +169,10 @@ public:
 	/** Rejected write invalidates all required initialization bits; reupload the full required set. */
 	Result SetFloat4(Stage stage, uint32_t firstRegister, Float4View values);
 	Result Draw(const ProgramRef& program, const IndexedDraw& draw);
+	/** Query only in the owning live context. Allows multi-pass callers to reject a
+	 * missing additive capability before submitting their first opaque pass.
+	 */
+	bool SupportsIndexedBlending() const;
 	/** Wrong/no context or wrong thread returns failure without releasing resources. */
 	Result Shutdown();
 	Diagnostics GetDiagnostics() const;

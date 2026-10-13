@@ -825,4 +825,8 @@ Diagnostics ShaderBackend::GetDiagnostics() const {
 	const auto& p = *impl_;
 	return {p.budget.live, p.budget.peak, p.budget.calls, p.budget.refused, p.draws};
 }
+
+bool ShaderBackend::SupportsIndexedBlending() const {
+	return bool(impl_->Check()) && impl_->blend.Available();
+}
 }

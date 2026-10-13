@@ -86,6 +86,7 @@ void TerrainTests(Checks& check, Host& host, const Bytes& fx, const Bytes& baked
 	const ByteView f{fx.data(),fx.size()},b{baked.data(),baked.size()},t{terrain.data(),terrain.size()};
 	Result status; auto backend=ShaderBackend::Create({&host,Host::Current,FamilyLookup},{},status);
 	check.Good(status,"terrain backend creation"); if (!backend) return;
+	check.Test(backend->SupportsIndexedBlending()==IndexedBlendAvailable(),"terrain multi-pass capability matches current context");
 	ScenePrograms programs;
 	const unsigned compiles=familyCompiles,links=familyLinks;
 	const auto initial=TerrainSnapshot(draw);
@@ -254,10 +255,12 @@ void TerrainTests(Checks& check, Host& host, const Bytes& fx, const Bytes& baked
 	late=programs;
 	ScenePrograms wrong=programs;
 	host.ReleaseCurrent();
+	check.Test(!backend->SupportsIndexedBlending(),"terrain capability unavailable without owning current context");
 	check.Test(backend->LoadSceneFamily(f,b,t,wrong).code==Code::WrongContext && SceneEmpty(wrong),"wrong-context scene reload only clears output");
 	host.MakeCurrent();
 	target.Clear(); check.Good(backend->Draw(programs.terrain[7],draw),"wrong-context attempt preserves active scene");
 	check.Good(backend->Shutdown(),"scene shutdown");
+	check.Test(!backend->SupportsIndexedBlending(),"closed backend reports no terrain additive capability");
 	check.Test(backend->GetDiagnostics().liveBytes==0,"all twelve programs freed");
 	backend.reset();
 	// The aggregate archive cap includes all three sources, without overflowing on SIZE_MAX.

@@ -12,10 +12,27 @@ license and two allocation-failure fixes.
 
 `LoadSceneFamily` atomically adds the eight shipped `TerrainElementMaterial.shd`
 pairs `0,30,60,90,120,150,180,210` to the four static programs in the same context
-owner. The slot is `2 * (layerCount - 1) + localUV`. This is a tested backend
-contract; the map renderer still uses its preview terrain material until the
-authored layer/nature inputs are connected. No terrain appearance parity is
-claimed by the backend alone.
+owner. The slot is `2 * (layerCount - 1) + localUV`. The native map view now
+submits original baked tile bytes through this family, with authored layer
+selection, faction textures and current gameplay nature. This is not complete
+terrain appearance parity.
+
+The bounded [layer selector](../terrain_layers.h) retains the original inclusive
+border footprint, ascending IDs and first-four truncation. Descriptor positions
+identify cells; filtered payload indices and deformed bounds do not. IDs 0/1 use
+the local material and IDs 2+ use the compact valid global material registry.
+Only an initial ID 1 enables local UV. All N/A/B textures pass through the existing
+scene texture admission/remapping ledger. Default global tiling is `0.1 / 1.7`.
+
+The bounded [nature cache](../terrain_nature_mask.h) maps pixel centers to original
+hex identities once, then queries each distinct cell once per world step. Changed
+current nature uploads as N=green, A=blue, B=red, with alpha zero. A neutral image
+is allowed before world creation, not as a replacement for a failed live query.
+The shader samples with the original negative-Y nature mapping. Tile footprints
+include bilinear/repeat neighbors; the first present faction writes depth and
+later factions add RGB. Mixed-nature tiles require indexed blending before any
+pass is submitted. Original GPU blur/noise, attack/retreat transitions and overburn
+are not reproduced by this current-state image.
 
 Terrain positions are world-space. Required vertex registers are `c8..11`
 (view-projection), `c20.x` (global tiling), `c21` (nature UV mapping), and `c234.x`
@@ -104,14 +121,15 @@ material CRC. This forces preparation for each queued batch even when sort IDs
 match. Sorted and unsorted queue tests cover distinct colours and a transition
 from an unsupported material back to a supported one.
 
-The renderer loads a fixed four-program family once per context. Both original
-archives are required and their combined size is capped at 4 MiB. Ticket switches
-do not compile or link shaders. A family reload either publishes all four tickets
-or none; failed owning-context reloads invalidate the old tickets and register
-initialization. The standalone `LoadBasicFxPair0` API still compiles only pair zero
+The renderer loads twelve scene programs once per context, with a combined 4 MiB
+archive cap. A missing or unsupported terrain archive is logged and explicitly
+falls back to the four static programs, leaving terrain tickets unavailable.
+Ticket switches do not compile or link shaders. A family reload publishes all
+its tickets or none; failed owning-context reloads invalidate the old tickets and
+register initialization. The standalone `LoadBasicFxPair0` API still compiles only pair zero
 and retains its original reflection/constant contract. The BasicFX-only family
 API remains available. Combined loads validate the complete reflected interfaces
-and archive directories of both original files.
+and archive directories of every supplied file.
 
 ## Authored Baked Lighting
 
@@ -254,3 +272,11 @@ The engine cache probe draws opaque and transparent geometry through both map
 hooks for repeated frames, compares nonblank pixels, checks independent cache
 groups, evicts resources with pending batches, replaces a same-sized map and
 rejects a changed view. Missing geometry must not retry or reuse a stale mesh.
+
+The scene-window engine probe also resolves the original MOBA spawn tile 1187
+to global Bank layer 6, checks all faction texture remaps through three nearby
+windows, then draws the actual baked tile with its original shader and texture.
+Coverage and color diversity checks detect missing draws and incorrect winding.
+Standalone layer tests cover every shipped tile plus malformed/mock masks;
+nature-cache tests cover live changes, invalid-query atomicity, Y orientation,
+cached cell lookup and conservative bilinear/repeat pass selection.

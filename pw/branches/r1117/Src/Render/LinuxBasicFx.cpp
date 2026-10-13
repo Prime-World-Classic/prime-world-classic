@@ -21,7 +21,7 @@ namespace Render { namespace LinuxBasicFx {
 namespace {
 uint64_t lifetime = 0;
 std::unique_ptr<pwshader::ShaderBackend> backend;
-pwshader::StaticPrograms programs;
+pwshader::ScenePrograms programs;
 Statistics statistics;
 bool selected = false, attempted = false;
 bool selectedBaked = false, selectedBakedValid = false;
@@ -101,29 +101,37 @@ bool BakedColorViews(const MeshVertexColors& colors) {
 	return true;
 }
 /** One bounded read per archive; the combined loader enforces the same limit on their sum. */
-bool ReadArchive(const char* path, size_t limit, std::vector<unsigned char>& bytes) {
+bool ReadArchive(const char* path, size_t limit, std::vector<unsigned char>& bytes, bool quiet = false) {
+	const auto fail=[&](const char* message) { return quiet ? false : Reject(message); };
 	CObj<Stream> stream = RootFileSystem::OpenFile(path, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING);
-	if (!IsValid(stream) || !stream->IsOk()) return Reject("missing static shader archive");
+	if (!IsValid(stream) || !stream->IsOk()) return fail("missing static shader archive");
 	const int size = stream->GetSize();
 	if (size <= 0 || size_t(size) > limit)
-		return Reject("missing or oversized static shader archive");
+		return fail("missing or oversized static shader archive");
 	try { bytes.resize(size_t(size)); }
-	catch (const std::bad_alloc&) { return Reject("static shader archive allocation failed"); }
-	if (stream->Read(bytes.data(),bytes.size()) != size) return Reject("short static shader archive read");
+	catch (const std::bad_alloc&) { return fail("static shader archive allocation failed"); }
+	if (stream->Read(bytes.data(),bytes.size()) != size) return fail("short static shader archive read");
 	return true;
 }
 bool Ready() {
-	if (!programs.basicFx.simple.Empty()) return true;
+	if (!programs.statics.basicFx.simple.Empty()) return true;
 	if (attempted) return false;
 	attempted = true;
 	pwshader::Result status;
 	backend = pwshader::ShaderBackend::Create({nullptr, Current, Lookup}, {}, status);
 	if (!backend) return Reject(status.message.c_str());
-	std::vector<unsigned char> bytes, baked;
+	std::vector<unsigned char> bytes, baked, terrain;
 	const size_t limit = pwshader::Limits{}.archiveBytes;
 	if (!ReadArchive("Shaders/UberShaders/BasicFXMaterial.shd",limit,bytes) ||
 		!ReadArchive("Shaders/UberShaders/BasicMaterial.shd",limit-bytes.size(),baked)) return false;
-	status = backend->LoadStaticFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},programs);
+	if (ReadArchive("Shaders/UberShaders/TerrainElementMaterial.shd",limit-bytes.size()-baked.size(),terrain,true))
+		status = backend->LoadSceneFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},
+			{terrain.data(),terrain.size()},programs);
+	else status = {pwshader::Code::InvalidInput,"terrain archive missing, unreadable or oversized"};
+	if (!status) {
+		fprintf(stderr,"Native terrain shaders unavailable: %s; retaining static shaders\n",status.message.c_str());
+		status = backend->LoadStaticFamily({bytes.data(),bytes.size()},{baked.data(),baked.size()},programs.statics);
+	}
 	if (!status) return Reject(status.message.c_str());
 	++statistics.loads;
 	return true;
@@ -250,10 +258,10 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 	if (!pwshader::BuildBasicFxTransformRegisters(rows, modelView, projection, preview, registers))
 		return Reject("invalid WORLD or preview camera");
 	if (!Ready()) return false;
-	const pwshader::ProgramRef* program = &programs.basicFx.simple;
-	if (selectedBaked) program = &programs.bakedBasicMaterial;
-	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_ADDITIVEOPACITY) program = &programs.basicFx.additiveOpacity;
-	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY) program = &programs.basicFx.blendOpacity;
+	const pwshader::ProgramRef* program = &programs.statics.basicFx.simple;
+	if (selectedBaked) program = &programs.statics.bakedBasicMaterial;
+	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_ADDITIVEOPACITY) program = &programs.statics.basicFx.additiveOpacity;
+	else if (selectedOpacity == NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY) program = &programs.statics.basicFx.blendOpacity;
 	for (const auto& result : {
 		backend->SetFloat4(pwshader::Stage::Vertex, 0, {registers.world.data(), selectedBaked ? size_t(3) : size_t(4)}),
 		backend->SetFloat4(pwshader::Stage::Vertex, 8, {registers.viewProjection.data(), 4}),
@@ -293,6 +301,48 @@ bool Draw(pwshader::IndexedDraw draw, const Matrix43* world, const pwshader::Pre
 	++statistics.draws;
 	if (selectedBaked) ++statistics.bakedDraws;
 	return true;
+}
+
+bool DrawTerrain(pwshader::IndexedDraw draw, const TerrainConstants& constants,
+	const pwshader::PreviewTransform& preview) {
+	ClearSelection();
+	const auto reject=[](const char* message) {
+		++statistics.rejected;
+		if (++statistics.terrainRejected==1) fprintf(stderr,"Native terrain draw rejected: %s\n",message);
+		return false;
+	};
+	if (constants.layers<1 || constants.layers>4) return reject("terrain layer count outside 1..4");
+	std::array<float,16> modelView{},projection{};
+	glGetFloatv(GL_MODELVIEW_MATRIX,modelView.data()); glGetFloatv(GL_PROJECTION_MATRIX,projection.data());
+	const std::array<float,16> identity{{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}};
+	pwshader::BasicFxTransformRegisters transform;
+	if (!pwshader::BuildBasicFxTransformRegisters(identity,modelView,projection,preview,transform))
+		return reject("invalid terrain camera transform");
+	if (!Ready()) return false;
+	const auto& program=programs.terrain[(constants.layers-1)*2+unsigned(constants.localUV)];
+	if (program.Empty()) return reject("ordinary terrain family unavailable");
+	const pwshader::Float4 tiling{constants.tiling,0,0,0}, night{constants.nightFraction,0,0,0}, burn{constants.overburn,0,0,0};
+	for (const auto& status : {
+		backend->SetFloat4(pwshader::Stage::Vertex,8,{transform.viewProjection.data(),4}),
+		backend->SetFloat4(pwshader::Stage::Vertex,20,{&tiling,1}),
+		backend->SetFloat4(pwshader::Stage::Vertex,21,{&constants.natureMapping,1}),
+		backend->SetFloat4(pwshader::Stage::Vertex,234,{&night,1}),
+		backend->SetFloat4(pwshader::Stage::Pixel,20,{&burn,1}),
+		backend->SetFloat4(pwshader::Stage::Pixel,21,{&constants.natureWeight,1})})
+		if (!status) return reject(status.message.c_str());
+	GLint viewport[4]{}; glGetIntegerv(GL_VIEWPORT,viewport);
+	draw.viewportX=viewport[0]; draw.viewportY=viewport[1];
+	draw.viewportWidth=viewport[2]; draw.viewportHeight=viewport[3];
+	// Original terrain triangles face +worldZ. The preview's XYZ->XZY mapping reverses winding.
+	draw.frontFace=pwshader::Winding::Clockwise;
+	const auto result=backend->Draw(program,draw);
+	if (!result) return reject(result.message.c_str());
+	++statistics.draws; ++statistics.terrainDraws;
+	return true;
+}
+
+bool SupportsTerrainAdditive() {
+	return Ready() && !programs.terrain[0].Empty() && backend->SupportsIndexedBlending();
 }
 }}
 #endif

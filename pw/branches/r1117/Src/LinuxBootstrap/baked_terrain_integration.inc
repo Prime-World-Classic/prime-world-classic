@@ -42,8 +42,33 @@ static void RecordLinuxMapBakedTerrainElement(const LinuxClientEnvironment& envi
 	payload.localBounds.minY = tile->minimum[1]; payload.localBounds.maxY = tile->maximum[1];
 	payload.localBounds.minZ = tile->minimum[2]; payload.localBounds.maxZ = tile->maximum[2];
 	payload.materialReferences.push_back(element.material);
-	payload.materialDiffuseTextureIndices.push_back(RecordLinuxMapStaticDiffuseTexture(environment,
-		ExtractLinuxMaterialDiffuseTextureFileName(element.material.GetPtr()), &map));
+	const auto& heightmap=map.terrainHeightmap;
+	const size_t columns=heightmap.layerMaskWidth/16, rows=heightmap.layerMaskHeight/16;
+	const double x=double(element.position.x)/10, y=double(element.position.y)/10;
+	if (std::isfinite(x) && std::isfinite(y) && x>=0 && y>=0 && x<columns && y<rows &&
+		LinuxBootstrap::SelectTerrainLayers(heightmap.fullLayerMask.data(),heightmap.fullLayerMask.size(),
+			columns,rows,static_cast<size_t>(x),static_cast<size_t>(y),payload.terrainLayerSelection)) {
+		payload.materialReferences.clear();
+		for (size_t i=0; i<payload.terrainLayerSelection.count; ++i) {
+			const auto id=payload.terrainLayerSelection.ids[i];
+			// Original GetLayerTexture falls back to the local material for missing global IDs.
+			const NDb::Material* material=id>=2 && size_t(id-2)<heightmap.globalTerrainMaterials.size()
+				? heightmap.globalTerrainMaterials[id-2].GetPtr() : element.material.GetPtr();
+			payload.materialReferences.push_back(material);
+		}
+	}
+	for (const auto& material : payload.materialReferences)
+		payload.materialDiffuseTextureIndices.push_back(RecordLinuxMapStaticDiffuseTexture(environment,
+			ExtractLinuxMaterialDiffuseTextureFileName(material.GetPtr()), &map));
+	if (!ReserveLinuxMapSceneMetadata(&map,sizeof(payload.terrainTextureIndices))) return;
+	for (size_t layer=0; layer<payload.terrainLayerSelection.count; ++layer) {
+		const auto* material=dynamic_cast<const NDb::TerrainMaterial*>(payload.materialReferences[layer].GetPtr());
+		if (!material) continue;
+		const NDb::SamplerEx* samplers[]={&material->N_DiffuseMap,&material->A_DiffuseMap,&material->B_DiffuseMap};
+		for (size_t faction=0; faction<3; ++faction)
+			payload.terrainTextureIndices[faction][layer]=RecordLinuxMapStaticDiffuseTexture(environment,
+				ExtractLinuxSamplerExTextureFileName(*samplers[faction]),&map);
+	}
 	map.terrainElementPayloads.push_back(std::move(payload));
 	++map.terrainHeightmap.terrainElementPayloadResolvedCount;
 }

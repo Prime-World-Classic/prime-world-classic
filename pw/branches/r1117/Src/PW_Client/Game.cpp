@@ -128,6 +128,9 @@
 #include <iostream>
 #include "LinuxBootstrap/baked_vertex_colors.h"
 #include "LinuxBootstrap/baked_terrain.h"
+#include "LinuxBootstrap/terrain_layers.h"
+#include "LinuxBootstrap/terrain_nature_mask.h"
+#include "PF_GameLogic/PFWorldNatureMap.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/map_view.h"
 #include "LinuxBootstrap/map_camera.h"
@@ -498,6 +501,13 @@ struct LinuxWindowOverlay
   std::map<std::string, OpenGlTexture> heroPreviewDiffuseTextureCache;
   std::vector<OpenGlTexture> heroPreviewDiffuseTextures;
   std::vector<OpenGlTexture> mapPreviewDiffuseTextures;
+	OpenGlTexture terrainNatureTexture;
+	LinuxBootstrap::TerrainNatureMask terrainNatureMask;
+	std::weak_ptr<const LinuxBootstrap::BakedTerrain> terrainNatureGeometry;
+	const NWorld::PFWorldNatureMap* terrainNatureOwner = nullptr;
+	int terrainNatureStep = -1;
+	bool terrainNatureReady = false, terrainNatureUploadPending = false;
+	size_t terrainNatureUploads = 0, terrainLayerDraws = 0, terrainLayerFailures = 0;
   FT_Library ftLibrary;
   FT_Face ftFace;
   bool freetypeReady;
@@ -2135,6 +2145,12 @@ struct LinuxTacticalMapPreview
 struct LinuxMapStaticGeometryPayloadPreview
 {
 	bool bakedTerrain = false;
+	LinuxBootstrap::TerrainLayerSelection terrainLayerSelection;
+	std::array<std::array<size_t,4>,3> terrainTextureIndices = [] {
+		std::array<std::array<size_t,4>,3> slots;
+		for (auto& faction : slots) faction.fill(kLinuxHeroPreviewNoDiffuseTexture);
+		return slots;
+	}();
 	// Original AdvMap identity, never the filtered payload/cache slot index.
 	bool hasBakedIdentity = false;
 	size_t originalObjectIndex = 0, bakedComponentIndex = 0;
@@ -2339,6 +2355,8 @@ struct LinuxMapTerrainHeightmapPreview
   float maxHeight;
   std::vector<float> sampledHeights;
   std::vector<unsigned char> sampledLayerIds;
+	std::vector<std::uint8_t> fullLayerMask;
+	std::vector<NDb::Ptr<NDb::TerrainMaterial>> globalTerrainMaterials;
   std::vector<LinuxMapTerrainLayerPreview> terrainLayers;
   std::vector<LinuxMapNatureRoadPreview> natureRoads;
 
@@ -19311,6 +19329,8 @@ void ProbeSelectedMapTerrainLayers(
   heightmap.terrainLayerTextureLoadedCount = 0;
   heightmap.terrainLayerSampledUniqueCount = 0;
   heightmap.terrainLayers.clear();
+	heightmap.fullLayerMask.clear();
+	heightmap.globalTerrainMaterials.clear();
   heightmap.terrainLayers.reserve(heightmap.terrainLayerCount);
 
   for (int layerIndex = 0; layerIndex < terrain->layers.terrainLayers.size(); ++layerIndex)
@@ -19330,6 +19350,8 @@ void ProbeSelectedMapTerrainLayers(
       if (terrainType && IsValid(terrainType->pDBMaterial))
       {
         const NDb::TerrainMaterial* material = terrainType->pDBMaterial.GetPtr();
+				if (heightmap.globalTerrainMaterials.size()<254)
+					heightmap.globalTerrainMaterials.push_back(terrainType->pDBMaterial);
         layerPreview.materialResolved = true;
         layerPreview.materialDbid = DescribeRawDbResource(material);
         ++heightmap.terrainLayerMaterialCount;
@@ -19369,15 +19391,16 @@ void ProbeSelectedMapTerrainLayers(
     return;
   }
 
-  const size_t maskWidth = static_cast<size_t>(std::max(0, terrain->elemXCount)) * 16U;
-  const size_t maskHeight = static_cast<size_t>(std::max(0, terrain->elemYCount)) * 16U;
-  if (maskWidth == 0 || maskHeight == 0 || maskHeight > static_cast<size_t>(-1) / maskWidth)
+	const size_t columns=static_cast<size_t>(std::max(0,terrain->elemXCount));
+	const size_t rows=static_cast<size_t>(std::max(0,terrain->elemYCount));
+	const size_t expectedBytes=LinuxBootstrap::TerrainLayerMaskBytes(columns,rows);
+	if (!expectedBytes)
   {
     preview->warnings.push_back("Selected map terrain layer mask dimensions invalid");
     return;
   }
 
-  const size_t expectedBytes = maskWidth * maskHeight;
+	const size_t maskWidth=columns*16, maskHeight=rows*16;
   const fs::path maskPath = ResolveDataRefPath(environment, layerMaskReference, 0);
   heightmap.layerMaskFile = maskPath.string();
   heightmap.layerMaskWidth = maskWidth;
@@ -19395,7 +19418,7 @@ void ProbeSelectedMapTerrainLayers(
     return;
   }
 
-  std::vector<unsigned char> layerMask(expectedBytes);
+	std::vector<unsigned char> layerMask(expectedBytes);
   input.read(reinterpret_cast<char*>(&layerMask[0]), static_cast<std::streamsize>(expectedBytes));
   const std::streamsize bytesRead = input.gcount();
   heightmap.layerMaskBytes = bytesRead > 0 ? static_cast<size_t>(bytesRead) : 0;
@@ -19406,6 +19429,7 @@ void ProbeSelectedMapTerrainLayers(
   }
 
   heightmap.layerMaskReady = true;
+	heightmap.fullLayerMask=std::move(layerMask);
   if (!heightmap.ready ||
       heightmap.sampledWidth < 2 ||
       heightmap.sampledHeight < 2)
@@ -19423,7 +19447,7 @@ void ProbeSelectedMapTerrainLayers(
     {
       const size_t sourceX =
         ResolveLinuxTerrainPreviewSourceIndex(x, heightmap.sampledWidth, maskWidth);
-      const unsigned char layerId = layerMask[sourceY * maskWidth + sourceX];
+			const unsigned char layerId = heightmap.fullLayerMask[sourceY * maskWidth + sourceX];
       heightmap.sampledLayerIds[y * heightmap.sampledWidth + x] = layerId;
       sampledLayers.insert(layerId);
     }
@@ -32151,6 +32175,11 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
     overlay->mapPreviewDiffuseTextures.clear();
     overlay->mapPreviewDiffuseTextureSourceFiles.clear();
     overlay->mapPreviewDiffuseTextureFailedSourceFiles.clear();
+		DeleteOpenGlTexture(&overlay->terrainNatureTexture);
+		fprintf(stdout,"Native terrain shutdown: draws=%zu rejected=%zu natureUploads=%zu channels=%u\n",
+			overlay->terrainLayerDraws,overlay->terrainLayerFailures,overlay->terrainNatureUploads,overlay->terrainNatureMask.AllChannels());
+		overlay->terrainNatureMask.Clear(); overlay->terrainNatureGeometry.reset();
+		overlay->terrainNatureOwner=nullptr; overlay->terrainNatureReady=false;
     DeleteLinuxOverlayGlyphTextures(overlay);
 
     if (overlay->fontDisplayListsReady && overlay->fontDisplayListBase != 0)
@@ -53346,6 +53375,7 @@ size_t ResolveLinuxSkeletalRendererMaterialTextureIndex(
 }
 
 #include "../LinuxBootstrap/static_transparency.inc"
+#include "../LinuxBootstrap/terrain_render.inc"
 
 size_t DrawLinuxMapRendererStaticMeshPayloadList(
   LinuxWindowOverlay* overlay,
@@ -53380,6 +53410,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 
   size_t totalPayloads = 0;
   size_t totalBatches = 0;
+	size_t terrainTriangles = 0;
   for (size_t payloadIndex = 0; payloadIndex < payloads.size(); ++payloadIndex)
   {
     const LinuxMapStaticGeometryPayloadPreview& payload = payloads[payloadIndex];
@@ -53408,6 +53439,20 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 			return result;
 		});
 		if (!resource) continue;
+		if (payload.bakedTerrain && payload.terrainLayerSelection.count) {
+			const size_t passes=DrawLinuxBakedTerrainLayers(*overlay,*selectedMapPreview,payload,{centerX,centerY,0,scale});
+			if (passes) {
+				++totalPayloads; totalBatches+=passes;
+				const auto* tile=selectedMapPreview->bakedTerrain->GetTile(payload.originalObjectIndex);
+				terrainTriangles+=passes*tile->triangleCount;
+				if (materialStats) {
+					materialStats->authoredMaterials+=payload.terrainLayerSelection.count;
+					materialStats->diffuseSamplers+=passes*payload.terrainLayerSelection.count;
+					materialStats->diffuseTextures+=passes*payload.terrainLayerSelection.count;
+				}
+			}
+			continue;
+		}
 		auto* retained = transparent.Retain(resource->mesh, resource->world, payload.localBounds, transparentGroup);
 		if (!retained) continue;
 
@@ -53479,7 +53524,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
   (void)dips;
   if (renderedTriangles)
   {
-    *renderedTriangles = triangles;
+    *renderedTriangles = triangles + terrainTriangles;
   }
   if (drawnPayloads)
   {
@@ -54026,6 +54071,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 	profile.Mark(Profile::Surface);
   size_t terrainElementTriangles = 0;
   LinuxRendererMaterialSlotStats terrainElementMaterialStats;
+	const auto* terrainWorld=dynamic_cast<const NWorld::PFWorld*>(runtime.transceiverWorld.GetPtr());
+	PrepareLinuxTerrainNatureMask(*renderContext.overlay,*selectedMapPreview,terrainWorld,runtime.transceiverWorldStep);
   size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
     renderContext.overlay,
     selectedMapPreview,

@@ -20,6 +20,13 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 		[](const auto& tile) { return tile.originalObjectIndex == 1187; });
 	check(spawnTile != catalog.terrain.end(), "original hero-spawn terrain tile exists");
 	if (spawnTile != catalog.terrain.end()) {
+		check(spawnTile->terrainLayerSelection.count==1 && spawnTile->terrainLayerSelection.ids[0]==6 &&
+			!spawnTile->terrainLayerSelection.LocalUV(), "real spawn tile selects global Bank layer6");
+		check(map.terrainHeightmap.fullLayerMask.size()==430336 && map.terrainHeightmap.globalTerrainMaterials.size()==11,
+			"native map retains the complete mask and compact valid material registry");
+		check(spawnTile->materialReferences.size()==1 && map.terrainHeightmap.globalTerrainMaterials.size()>4 &&
+			spawnTile->materialReferences[0].GetPtr()==map.terrainHeightmap.globalTerrainMaterials[4].GetPtr(),
+			"baked terrain binds the authored layer material instead of local editor material");
 		check(spawnTile->bakedTerrain && map.bakedTerrain && map.bakedTerrain->TileCount() == 1681,
 			"catalog references the validated original baked stream");
 		check(spawnTile->placement.pos == CVec3(0, 0, 0) && spawnTile->placement.scale == CVec3(1, 1, 1),
@@ -101,9 +108,46 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 		bool remapped = true;
 		for (const auto& payload : map.staticGeometryPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
 		for (const auto& payload : map.terrainElementPayloads) remapped = validTextures(payload.materialDiffuseTextureIndices) && remapped;
+		for (const auto& payload : map.terrainElementPayloads)
+			for (const auto& faction : payload.terrainTextureIndices) remapped=validTextures(faction) && remapped;
 		for (const auto& payload : map.animatedGeometryPayloads)
 			for (const auto& skin : payload.skinGeometryPayloads) remapped = validTextures(skin.materialDiffuseTextureIndices) && remapped;
 		check(remapped, "all active diffuse slots remap inside this window");
+		overlay.ready=overlay.openglReady=true;
+		check(PrepareLinuxTerrainNatureMask(overlay,map,nullptr,-1),"native pre-world neutral mask initialized");
+		check(overlay.terrainNatureMask.Width()==656 && overlay.terrainNatureMask.Height()==656 &&
+			overlay.terrainNatureMask.AllChannels()==1,"native mask uses original map resolution and neutral channel");
+		const auto uploads=overlay.terrainNatureUploads;
+		check(PrepareLinuxTerrainNatureMask(overlay,map,nullptr,-1) && overlay.terrainNatureUploads==uploads,
+			"same world step never reuploads unchanged nature");
+		if (focus.x==384) {
+			const auto tile=std::find_if(map.terrainElementPayloads.begin(),map.terrainElementPayloads.end(),
+				[](const auto& payload) { return payload.originalObjectIndex==1187; });
+			check(tile!=map.terrainElementPayloads.end(),"spawn tile admitted with all faction textures");
+			if (tile!=map.terrainElementPayloads.end()) {
+				glPushAttrib(GL_ALL_ATTRIB_BITS);
+				glViewport(0,0,128,128); glDisable(GL_SCISSOR_TEST); glDisable(GL_ALPHA_TEST);
+				glDepthMask(GL_TRUE); glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+				glClearColor(.08f,.02f,.05f,1); glClearDepth(1); glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+				GLint mode=0; glGetIntegerv(GL_MATRIX_MODE,&mode);
+				glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(-6,6,-6,6,-20,20);
+				glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity(); glRotatef(90,1,0,0);
+				std::vector<unsigned char> before(128*128*4),after(before.size());
+				glReadPixels(0,0,128,128,GL_RGBA,GL_UNSIGNED_BYTE,before.data());
+				const auto statistics=Render::LinuxBasicFx::GetStatistics();
+				check(DrawLinuxBakedTerrainLayers(overlay,map,*tile,{385,165,6.682475f,1})==1,"actual Bank tile draws original ordinary shader");
+				check(Render::LinuxBasicFx::GetStatistics().terrainDraws==statistics.terrainDraws+1 &&
+					Render::LinuxBasicFx::GetStatistics().terrainRejected==statistics.terrainRejected,"engine terrain bridge submits without fallback");
+				glReadPixels(0,0,128,128,GL_RGBA,GL_UNSIGNED_BYTE,after.data());
+				size_t changed=0; std::set<unsigned> colors;
+				for (size_t i=0; i<after.size(); i+=4) {
+					if (std::memcmp(before.data()+i,after.data()+i,4)) ++changed;
+					colors.insert(unsigned(after[i])|(unsigned(after[i+1])<<8)|(unsigned(after[i+2])<<16));
+				}
+				check(changed>1000 && colors.size()>16,"real shaded terrain survives culling and covers expected pixels");
+				glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GLenum(mode)); glPopAttrib();
+			}
+		}
 		bool hasSky = false;
 		for (const auto& payload : map.staticGeometryPayloads)
 			for (const auto& material : payload.materialReferences)
@@ -123,6 +167,8 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 			"stationary frames preserve counters, resources and input budget");
 	}
 	check(unionObjects.size() > 256, "camera traversal reaches more than the old fixed scene");
+	DeleteOpenGlTexture(&overlay.terrainNatureTexture);
+	for (auto& texture : overlay.mapPreviewDiffuseTextures) DeleteOpenGlTexture(&texture);
 	fprintf(stdout, "Scene window engine: %u checks, %u failures, distinctObjects=%zu\n", checks, failures, unionObjects.size());
 	return failures == 0;
 }
