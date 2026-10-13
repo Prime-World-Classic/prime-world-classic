@@ -11,7 +11,7 @@ sampler screen     : register(s6);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 VS_OUTPUT MainPass_VSMain( VS_INPUT Input )
 {
-	VS_OUTPUT Output;
+	VS_OUTPUT Output = (VS_OUTPUT)0;   // VS_OUTPUT has Texcoord3, not set here: fxc rejects partial init (X4000)
 	Output.Position = CommonTransform( Input.Position );
 	Output.Texcoord = Input.Texcoord;
 	Output.Texcoord2 = Input.Texcoord2;

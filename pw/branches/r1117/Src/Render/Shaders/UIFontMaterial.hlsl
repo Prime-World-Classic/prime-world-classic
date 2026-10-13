@@ -5,7 +5,7 @@ sampler fontCacheSampler : register( s0 );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 VS_OUTPUT MainPass_VSMain( VS_INPUT Input )
 {
-	VS_OUTPUT Output;
+	VS_OUTPUT Output = (VS_OUTPUT)0;   // fxc: X4000 on partially initialized struct
 	Output.Position = CommonTransform( Input.Position );
 	Output.Texcoord = Input.Texcoord;
 	Output.Texcoord2 = Input.Texcoord2;

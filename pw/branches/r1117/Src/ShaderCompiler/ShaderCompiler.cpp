@@ -622,6 +622,17 @@ void WriteSharedFileFormat(ShaderBlob const buffers[], UberShaderDesc const& sha
   nstl::vector<unsigned> byIndex(bufferCount);
   nstl::hash_map<unsigned, unsigned> byHash;
 
+  // Если вариация не скомпилировалась, в матрице null. NI_ASSERT в shipping
+  // выключен, и дальше был бы null deref — не пишем такой .shd целиком,
+  // чтобы в контент не уехал битый контейнер (старый остаётся в другом pile).
+  for (unsigned bufferIdx = 0; bufferIdx < bufferCount; ++bufferIdx)
+    if (!buffers[bufferIdx])
+    {
+      printf("ERROR: shader '%s' has failed variations, .shd is not written\n",
+             shader.shaderName.c_str());
+      return;
+    }
+
   // find equal buffers
   for (unsigned bufferIdx = 0; bufferIdx < bufferCount; ++bufferIdx)
   {
