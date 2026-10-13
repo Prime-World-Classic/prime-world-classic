@@ -240,14 +240,15 @@ std::vector<int64_t> Snapshot(GLuint borrowed) {
 	for (GLenum query : {GL_CURRENT_PROGRAM, GL_VERTEX_ARRAY_BINDING, GL_ARRAY_BUFFER_BINDING,
 		GL_ELEMENT_ARRAY_BUFFER_BINDING, GL_ACTIVE_TEXTURE, GL_DEPTH_FUNC, GL_CULL_FACE_MODE, GL_FRONT_FACE,
 		GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB, GL_BLEND_SRC_ALPHA, GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB,
-		GL_BLEND_EQUATION_ALPHA, GL_DEPTH_WRITEMASK, GL_ALPHA_TEST_FUNC, GL_LOGIC_OP_MODE}) {
+		GL_BLEND_EQUATION_ALPHA, GL_DEPTH_WRITEMASK, GL_ALPHA_TEST_FUNC, GL_LOGIC_OP_MODE,
+		GL_CLAMP_VERTEX_COLOR, GL_CLAMP_FRAGMENT_COLOR}) {
 		GLint v; glGetIntegerv(query, &v); s.push_back(v);
 	}
 	GLfloat alphaReference; glGetFloatv(GL_ALPHA_TEST_REF, &alphaReference);
 	uint32_t alphaBits; std::memcpy(&alphaBits, &alphaReference, sizeof(alphaBits)); s.push_back(alphaBits);
 	for (GLenum flag : {GL_DEPTH_TEST,GL_CULL_FACE,GL_BLEND,GL_ALPHA_TEST,GL_SCISSOR_TEST,GL_STENCIL_TEST,
 		GL_DITHER,GL_FRAMEBUFFER_SRGB,GL_RASTERIZER_DISCARD,GL_PROGRAM_POINT_SIZE,GL_POLYGON_OFFSET_FILL,
-		GL_PRIMITIVE_RESTART,GL_DEPTH_CLAMP,GL_COLOR_LOGIC_OP}) s.push_back(glIsEnabled(flag));
+		GL_PRIMITIVE_RESTART,GL_DEPTH_CLAMP,GL_COLOR_LOGIC_OP,GL_VERTEX_PROGRAM_TWO_SIDE}) s.push_back(glIsEnabled(flag));
 	GLint buffers = 0; glGetIntegerv(GL_MAX_DRAW_BUFFERS, &buffers);
 	for (GLuint buffer = 0; buffer < GLuint(buffers); ++buffer) {
 		GLboolean mask[4]; glGetBooleani_v(GL_COLOR_WRITEMASK, buffer, mask);
@@ -593,6 +594,7 @@ void BlendCapabilityTests(Checks& check, Host& host, const Bytes& archive) {
 }
 
 #include "family_pixel_tests.inc"
+#include "baked_pixel_tests.inc"
 
 void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 	Target target; Texture texture, white(true); Mesh mesh;
@@ -867,20 +869,25 @@ void Run(Checks& check, Host& host, const Bytes& archive, ProgramRef& late) {
 
 int main(int argc, char** argv) {
 	std::cout << std::unitbuf;
-	if ((argc!=2 && (argc!=3 || std::strcmp(argv[2],"--family-only"))) || !std::getenv("PW_BACKEND_APPROVED_XVFB")) {
+	const bool familyOnly = argc == 3 && !std::strcmp(argv[2],"--family-only");
+	const bool bakedOnly = argc == 4 && !std::strcmp(argv[3],"--baked-only");
+	const bool withBaked = (argc == 3 && !familyOnly) || bakedOnly;
+	if ((argc != 2 && !familyOnly && !withBaked) || !std::getenv("PW_BACKEND_APPROVED_XVFB")) {
 		std::cerr << "run only using the parent-approved isolated wrapper\n"; return 2;
 	}
 	Checks check;
 	try {
-		const auto archive=Read(argv[1]); ProgramRef late; BasicFxOpacityPrograms lateFamily;
+		const auto archive=Read(argv[1]); ProgramRef late; BasicFxOpacityPrograms lateFamily; StaticPrograms lateStatic;
+		const auto baked = withBaked ? Read(argv[2]) : Bytes{};
 		{
 			Host host(1); host.Open();
 			std::cout << "GL renderer=" << glGetString(GL_RENDERER) << " version=" << glGetString(GL_VERSION) << '\n';
-			if (argc == 2) {
+			if (!familyOnly && !bakedOnly) {
 				Run(check,host,archive,late);
 				BlendCapabilityTests(check,host,archive);
 			}
-			FamilyTests(check,host,archive,lateFamily);
+			if (!bakedOnly) FamilyTests(check,host,archive,lateFamily);
+			if (withBaked) BakedTests(check,host,archive,baked,lateStatic);
 		}
 		check.Test(glXGetCurrentContext()==nullptr,"host GL context destroyed before late reference release");
 		{
@@ -895,14 +902,16 @@ int main(int argc, char** argv) {
 				check.Test(backend->Draw(late,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context ticket rejected");
 				for (const auto& ticket : FamilyTickets(lateFamily))
 					check.Test(backend->Draw(ticket,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context family ticket rejected");
+				if (withBaked) for (const auto& ticket : StaticTickets(lateStatic))
+					check.Test(backend->Draw(ticket,mesh.Draw(texture.name)).code==Code::InvalidReference,"prior destroyed-context static ticket rejected");
 				check.Good(backend->Draw(program,mesh.Draw(texture.name)),"recreated host draws");
 				PixelIs(check,32,32,{255,0,0,255},"recreated host exact pixel");
 				check.Good(backend->Shutdown(),"recreated host shutdown");
 				check.Test(backend->GetDiagnostics().liveBytes==0,"recreated host ownership balanced");
 			}
 		}
-		std::thread release([reference=std::move(late),family=std::move(lateFamily)]() mutable {
-			reference.Reset(); family = {};
+		std::thread release([reference=std::move(late),family=std::move(lateFamily),statics=std::move(lateStatic)]() mutable {
+			reference.Reset(); family = {}; statics = {};
 		}); release.join();
 		check.Test(true,"last CPU reference release without context/on other thread");
 	} catch (const std::exception& e) { check.Test(false,std::string("exception: ")+e.what()); }

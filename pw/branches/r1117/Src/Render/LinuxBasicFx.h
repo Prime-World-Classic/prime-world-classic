@@ -8,10 +8,13 @@ struct Matrix43;
 namespace NDb { struct Material; }
 namespace Render {
 class Texture;
+class MeshVertexColors;
 namespace LinuxBasicFx {
 
 struct Statistics {
+	/** Aggregate bridge counts; bakedDraws is the successful baked subset of draws. */
 	uint64_t selections = 0, unsupported = 0, draws = 0, rejected = 0, loads = 0;
+	uint64_t bakedSelections = 0, bakedUnsupported = 0, bakedDraws = 0, bakedRejected = 0;
 };
 
 /** Host lifecycle: call once after GLX creation, and shut down before destroying it. */
@@ -27,6 +30,15 @@ bool Shutdown();
  */
 void ClearSelection();
 void Select(const NDb::Material* material, const Texture* texture);
+/** Select original opaque BasicMaterial24 after mesh/material preparation.
+ * Non-BasicMaterial calls leave a sibling BasicFX selection unchanged. Null colours or
+ * unsupported material features clear a BasicMaterial selection and retain preview fallback.
+ * Supplied malformed colours/state remain selected but fail closed at Draw. Both raw BGRA
+ * buffers are borrowed through the following Draw only; the mesh must retain their owner.
+ * Night fraction is captured from the current SceneConstants, not cached with the material.
+ */
+void SelectBaked(const NDb::Material* material, const Texture* texture,
+	const MeshVertexColors* colors, float nightFraction);
 bool IsSelected();
 /** Classify the same BasicFX subset as Select, without loading textures or GL.
  * Malformed non-Off modes also require deferral so Draw can reject them without opaque fallback.

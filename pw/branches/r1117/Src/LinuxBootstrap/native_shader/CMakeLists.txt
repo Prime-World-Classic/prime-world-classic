@@ -31,3 +31,6 @@ target_compile_options(PrimeWorldLinuxShaderFamilyCpuProbe PRIVATE -Wall -Wextra
 target_link_libraries(PrimeWorldLinuxShaderFamilyCpuProbe PRIVATE PrimeWorldLinuxMojoShader OpenGL::GL Threads::Threads)
 add_test(NAME linux_shader_family_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProbe
 	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicFXMaterial.shd)
+add_test(NAME linux_shader_static_cpu COMMAND PrimeWorldLinuxShaderFamilyCpuProbe
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicFXMaterial.shd
+	${CMAKE_CURRENT_SOURCE_DIR}/../../../Data/Shaders/UberShaders/BasicMaterial.shd)

@@ -1,6 +1,7 @@
-# Native BasicFX Shader Path
+# Native Static Shader Path
 
-The Linux renderer translates the shipped `BasicFXMaterial.shd` pairs 0, 12 and 24 with
+The Linux renderer translates shipped `BasicFXMaterial.shd` pairs 0, 12 and 24
+and baked `BasicMaterial.shd` pair 24 with
 [MojoShader](https://github.com/icculus/mojoshader), then draws raw engine vertex
 and index buffers through `StaticMesh -> Batch -> SmartRenderer`. Windows still
 uses its existing DirectX renderer. No Wine or replacement shader is involved.
@@ -31,7 +32,7 @@ license and two allocation-failure fixes.
   admitted material are skipped, never replaced with stale shader constants.
   Malformed opacity/alpha/culling/blend enums and references outside 0..255 also fail
   closed, even when alpha testing is off.
-- Original Off, LerpByAlpha, PremultipliedLerp, AddColor, AddColorMulAlpha,
+- For BasicFX: original Off, LerpByAlpha, PremultipliedLerp, AddColor, AddColorMulAlpha,
   MulColor and MulInvColor factors. Non-Off modes preserve destination alpha and
   depth, with RGB-only writes, LEQUAL testing and FUNC_ADD. PremultipliedLerp does
   not multiply source RGB by alpha again. Blending requires GL 4.0 or
@@ -57,12 +58,46 @@ material CRC. This forces preparation for each queued batch even when sort IDs
 match. Sorted and unsorted queue tests cover distinct colours and a transition
 from an unsupported material back to a supported one.
 
-The renderer loads a fixed three-program family once per context. Ticket switches
-do not compile or link shaders. A family reload either publishes all three tickets
+The renderer loads a fixed four-program family once per context. Both original
+archives are required and their combined size is capped at 4 MiB. Ticket switches
+do not compile or link shaders. A family reload either publishes all four tickets
 or none; failed owning-context reloads invalidate the old tickets and register
 initialization. The standalone `LoadBasicFxPair0` API still compiles only pair zero
-and retains its original reflection/constant contract. The family API validates
-the complete reflected interface of all three original archive selections.
+and retains its original reflection/constant contract. The BasicFX-only family
+API remains available. Combined loads validate the complete reflected interfaces
+and archive directories of both original files.
+
+## Authored Baked Lighting
+
+Eligible BasicMaterial meshes use the original pair 24: unskinned, non-instanced,
+normal render mode, no depth output, opacity/emissive/reflectivity off, no normal
+or specular texture, no derived specular pin, and BlendMode Off. Overridden render
+state, special transparency and non-wrap/linear sampling remain unsupported.
+Original byte alpha testing and culling are retained. Malformed admitted buffers,
+constants, runtime pins and raster state fail closed, without preview fallback.
+
+The [bounded reader](../baked_vertex_colors.h) decodes the original map `.vtxcolor`
+file once per map, with a 64 MiB source cap and independent metadata/count budgets.
+Lookup uses the original AdvMap object index, scene DBID hash and component index,
+then validates the complete common vertex-buffer CRC and vertex count. The current
+map integration admits only one childless static root per scene, where traversal
+index zero is proven. Complex hierarchies retain the earlier preview. Filtered
+payload indices and geometry-only cache keys are not valid lighting identities.
+
+Day/night streams remain BGRA8. The backend stages referenced colors as RGBA8;
+the original shader performs HDR decoding and day/night interpolation. VS c0..2
+and c8..11 carry WORLD/VP, c234.x carries the current world night fraction, and
+c3 is shader-defined. PS c20/c21 modify RGB only; texture alpha remains unchanged.
+The day/night value refreshes per view, not only when a cached material is built.
+Vertex/fragment color clamping and two-sided vertex-color state are restored.
+
+Native DXPtr does not own allocations. An aliasing shared mesh owner retains both
+color buffers and destroys the mesh descriptor before freeing them. Retained draws
+therefore survive map cache eviction. Failed binding clears previous descriptors
+and buffers. Missing colors use the explicit unsupported preview path; fake/editor
+colors are not presented as authored lighting. Preview caps still restrict coverage.
+`finalBakedMapColors` reports cumulative lookup/binding counts, selected/drawn
+payload instances, and successful draw calls separately.
 
 ## Transparent Scene Pass
 
@@ -95,7 +130,7 @@ not join this pass.
 
 This is not a general permutation renderer. Skinning, animated
 material constants, runtime opacity/blend overrides, emissive, distortion,
-vertex colors, lighting/shadows, instancing and full texture mip chains are
+general vertex colors, SH/dynamic lighting, shadows, instancing and full texture mip chains are
 not implemented here. Texture sampling deliberately uses the existing native
 level-zero upload. Source reflection/bounds checks are not a signature or a
 sandbox for arbitrary replacement shader archives.
@@ -110,10 +145,11 @@ different-layout archives before parsing or applying fixture-specific mutations:
 ```sh
 cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxShaderTransformProbe PrimeWorldLinuxShaderFamilyCpuProbe PrimeWorldLinuxShaderPixelProbe
 /tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderTransformProbe
-ctest --test-dir /tmp/primeworld-linux-bootstrap -R linux_shader_family_cpu --output-on-failure
+ctest --test-dir /tmp/primeworld-linux-bootstrap -R 'linux_shader_.*cpu|LinuxBakedColors' --output-on-failure
 xvfb-run -a env PW_BACKEND_APPROVED_XVFB=1 LIBGL_ALWAYS_SOFTWARE=1 LP_NUM_THREADS=2 \
   /tmp/primeworld-linux-bootstrap/native_shader/PrimeWorldLinuxShaderPixelProbe \
-  pw/branches/r1117/Data/Shaders/UberShaders/BasicFXMaterial.shd
+  pw/branches/r1117/Data/Shaders/UberShaders/BasicFXMaterial.shd \
+  pw/branches/r1117/Data/Shaders/UberShaders/BasicMaterial.shd
 ```
 
 From `pw/branches/r1117/Bin`, the existing explicit renderer probe now also loads
@@ -138,6 +174,14 @@ The capture is a 256-square actual engine draw; a second `-rotated.png` file
 shows the controlled colour/rotation test. Additional `-cutout.png` and
 `-opaque.png` captures show the same geometry/texture with alpha testing enabled
 and disabled. These are not full-game parity images.
+
+The same engine probe draws original Rough01N geometry/material/texture with MOBA
+placements 378 and 1293 under the same WORLD transform. `-baked-day.png` and
+`-baked-night.png` show its original lighting. Tests distinguish both placements,
+fresh day/night constants, production identity discovery, invalid CRC/count/fragment
+binding, invalid materials, missing-color fallback, shader switching and retained
+buffer ownership across cache eviction. The full backend pixel suite additionally
+checks exact synthetic HDR/alpha output using the shipped shader bytecode.
 The independent pixel suite also tests allocation refusal at each selected
 program-load allocation, context recreation, state restoration and malformed
 draw inputs, all blend equations, preserved depth/alpha and missing indexed

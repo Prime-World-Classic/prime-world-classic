@@ -73,6 +73,21 @@ struct BasicFxOpacityPrograms {
 	ProgramRef blendOpacity;
 };
 
+/** Fixed CPU tickets for original BasicFX 0/12/24 and baked BasicMaterial 24. */
+struct StaticPrograms {
+	BasicFxOpacityPrograms basicFx;
+	ProgramRef bakedBasicMaterial;
+};
+
+/** Borrowed packed BGRA8 colours, normalized by the backend, not predecoded lighting.
+ * A colour starts at offset + (index + baseVertex) * stride, independently of stream0.
+ */
+struct Bgra8ColorStream {
+	ByteView bytes;
+	size_t offset = 0;
+	size_t stride = 4;
+};
+
 /** Borrowed buffers remain valid through Draw. Offsets/stride are in bytes; indices in elements.
  * Texture is a live level-0 2D name in the owning context. Sampling is explicitly Repeat/Linear.
  * Draw targets the caller's framebuffer, without clearing it. All modified GL state is restored.
@@ -95,9 +110,11 @@ struct IndexedDraw {
 	/** Original D3D byte reference, validated even when alpha testing is disabled. */
 	int alphaReference = 127;
 	BlendMode blendMode = BlendMode::Off;
+	/** Required only by baked BasicMaterial; BasicFX ignores these two views. */
+	Bgra8ColorStream dayColors, nightColors;
 };
 
-/** Render-thread-only, noncopyable owner for pair zero or the fixed BasicFX opacity family.
+/** Render-thread-only owner for pair zero, BasicFX opacity, or the fixed static family.
  * Requires OpenGL 3.3 compatibility, and exclusive MojoShader use on its host context.
  * Call Shutdown successfully before the host destroys its context. The destructor attempts
  * Shutdown, then terminates on a lifetime-contract violation rather than pretending cleanup.
@@ -118,6 +135,12 @@ public:
 	 * Wrong-context/thread calls leave backend state unchanged.
 	 */
 	Result LoadBasicFxOpacityFamily(ByteView archive, BasicFxOpacityPrograms& output);
+	/** Atomically publishes the fixed four-program set; archive limits apply to the sum.
+	 * Owning-context attempts invalidate all old tickets even on failure, just like BasicFX.
+	 * Baked draws require BlendMode::Off, both colour streams, VS c0..2/c8..11/c234,
+	 * and PS c20/c21. Shader-owned c3 and HDR/day-night decoding are not CPU lighting.
+	 */
+	Result LoadStaticFamily(ByteView basicFxArchive, ByteView basicMaterialArchive, StaticPrograms& output);
 	/** Rejected write invalidates all required initialization bits; reupload the full required set. */
 	Result SetFloat4(Stage stage, uint32_t firstRegister, Float4View values);
 	Result Draw(const ProgramRef& program, const IndexedDraw& draw);
@@ -126,7 +149,8 @@ public:
 	Diagnostics GetDiagnostics() const;
 private:
 	struct Impl;
-	Result LoadPrograms(ByteView archive, std::array<ProgramRef, 3>& output, bool family);
+	Result LoadPrograms(ByteView basicFx, ByteView basicMaterial,
+		std::array<ProgramRef, 4>& output, size_t count);
 	explicit ShaderBackend(std::unique_ptr<Impl> impl);
 	std::unique_ptr<Impl> impl_;
 };

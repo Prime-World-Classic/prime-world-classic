@@ -78,6 +78,7 @@
 #include "PF_GameLogic/PFCreature.h"
 #include "PF_GameLogic/PFDispatch.h"
 #include "PF_GameLogic/PFDispatchFactory.h"
+#include "PF_GameLogic/DayNightController.h"
 #include "PF_GameLogic/PFFlagpole.h"
 #include "PF_GameLogic/PFEaselPlayer.h"
 #include "PF_GameLogic/PFConsumable.h"
@@ -106,6 +107,8 @@
 #include "Render/SkeletonWrapper.h"
 #include "Render/smartrenderer.h"
 #include "Render/StaticMesh.h"
+#include "Render/VertexColorStream.h"
+#include "Render/sceneconstants.h"
 #include "Render/LinuxBasicFx.h"
 #include "Render/FlashRendererInterface.h"
 #include "Render/TextureManager.h"
@@ -120,6 +123,7 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "LinuxBootstrap/baked_vertex_colors.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/map_view.h"
 #include "LinuxBootstrap/interactive_clock.h"
@@ -348,17 +352,29 @@ struct LinuxAnimatedMapResource
 	std::vector<size_t> slotTextureIndices;
 };
 
+/** Native DXPtr is borrowed; aliasing mesh pointers retain these backing allocations too.
+ * Member order destroys the mesh/color descriptor before the two owned vertex buffers.
+ */
+struct LinuxStaticMeshStorage
+{
+	std::unique_ptr<IDirect3DVertexBuffer9> dayColors, nightColors;
+	Render::StaticMesh mesh;
+};
+
 /** A pending transparent pass may retain a mesh after its map cache is invalidated. */
 struct LinuxStaticMapResource
 {
 	std::shared_ptr<Render::StaticMesh> mesh;
 	Matrix43 world;
+	bool bakedSelected = false, bakedDrawn = false;
 };
 
 struct LinuxWindowOverlay
 {
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
 	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 2> staticMapResources;
+	std::size_t bakedColorLookups = 0, bakedColorMatches = 0;
+	std::size_t bakedSelectedPayloads = 0, bakedDrawnPayloads = 0, bakedDrawCalls = 0;
 	std::size_t dynamicPoseBuilds = 0, dynamicPoseHits = 0;
   struct OpenGlTexture
   {
@@ -2110,6 +2126,10 @@ struct LinuxTacticalMapPreview
 
 struct LinuxMapStaticGeometryPayloadPreview
 {
+	// Original AdvMap identity, never the filtered payload/cache slot index.
+	bool hasBakedIdentity = false;
+	size_t originalObjectIndex = 0, bakedComponentIndex = 0;
+	std::uint32_t bakedSceneHash = 0;
   std::string geometryFile;
   std::string rootGeometryFile;
   std::vector<size_t> materialDiffuseTextureIndices;
@@ -2344,6 +2364,7 @@ struct LinuxMapTerrainHeightmapPreview
 
 struct LinuxSelectedMapPreview
 {
+	LinuxBootstrap::BakedVertexColors::Ptr bakedVertexColors;
   size_t selectedIndex;
   std::string descriptor;
   bool ready;
@@ -20083,10 +20104,13 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
   }
 }
 
+#include "../LinuxBootstrap/baked_scene_colors.inc"
+
 void ProbeLinuxMapSceneObjectStaticPayloads(
   const LinuxClientEnvironment& environment,
   const NDb::DBSceneObject* sceneObject,
   const Placement& rootPlacement,
+  size_t originalObjectIndex,
   LinuxSelectedMapPreview* preview
 )
 {
@@ -20096,6 +20120,7 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
   }
 
   ++preview->staticSceneObjectResolvedCount;
+  const auto firstPayload = preview->staticGeometryPayloads.size();
   std::set<std::string> visitedComponents;
   for (int i = 0; i < sceneObject->attached.size(); ++i)
   {
@@ -20114,6 +20139,16 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
       &visitedComponents,
       preview);
   }
+	// This first slice proves traversal index zero only for one childless static root.
+	const auto* root = sceneObject->attached.size() == 1
+		? dynamic_cast<const NDb::DBStaticSceneComponent*>(sceneObject->attached[0].component.GetPtr()) : nullptr;
+	if (root && root->attached.empty() && preview->staticGeometryPayloads.size() == firstPayload + 1) {
+		auto& payload = preview->staticGeometryPayloads[firstPayload];
+		payload.hasBakedIdentity = true;
+		payload.originalObjectIndex = originalObjectIndex;
+		payload.bakedSceneHash = sceneObject->GetDBID().GetHashKey();
+		payload.bakedComponentIndex = 0;
+	}
 }
 
 void ProbeSelectedMapStaticSceneObjects(
@@ -20122,6 +20157,7 @@ void ProbeSelectedMapStaticSceneObjects(
   LinuxSelectedMapPreview* preview
 )
 {
+  if (preview) preview->bakedVertexColors.reset();
   if (!preview || entry.descriptor.empty())
   {
     return;
@@ -20157,6 +20193,13 @@ void ProbeSelectedMapStaticSceneObjects(
   ProbeSelectedMapWaterZones(dbMap.GetPtr(), preview);
   ProbeSelectedMapAuthoredGuides(dbMap.GetPtr(), preview);
   ProbeSelectedMapLighting(dbMap.GetPtr(), preview);
+	const auto colorPath = NormalizeRootFileSystemPath(dbMap->bakedLighting.vertexColorsFileName.c_str());
+	if (!LoadLinuxBakedVertexColors(colorPath.c_str(), preview->bakedVertexColors))
+		preview->warnings.push_back("Original baked vertex colors unavailable; unsupported materials keep preview rendering");
+	else
+		fprintf(stdout, "Original baked map colors: objects=%zu scenes=%zu components=%zu bytes=%zu\n",
+			preview->bakedVertexColors->ObjectCount(), preview->bakedVertexColors->SceneCount(),
+			preview->bakedVertexColors->ComponentCount(), preview->bakedVertexColors->SourceBytes());
 
   const size_t objectLimit =
     std::min(static_cast<size_t>(dbMap->objects.size()), kLinuxMapStaticPreviewMaxObjects);
@@ -20194,6 +20237,7 @@ void ProbeSelectedMapStaticSceneObjects(
         environment,
         sceneObjects[sceneObjectIndex],
         mapObject.offset.GetPlace(),
+        objectIndex,
         preview);
       if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
       {
@@ -30435,11 +30479,12 @@ bool RunLinuxFlashViewportProbe(Render::IUIRenderer* uiRenderer, unsigned int wi
 }
 
 bool RunLinuxHeroMeshTextureProbe();
-bool RunLinuxBasicFxEngineProbe(const std::string& capturePath);
+bool RunLinuxBasicFxEngineProbe(const std::string& capturePath, const LinuxClientEnvironment& environment);
 
 // Exercises queued Flash commands through the native OpenGL UI renderer and checks
 // replay state, texturing, masking, fill morphing, and framebuffer output.
-bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height, const std::string& capturePath)
+bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height, const std::string& capturePath,
+	const LinuxClientEnvironment& environment)
 {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
   if (!NMainFrame::MakeOpenGLContextCurrent())
@@ -31335,7 +31380,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height, const s
 
 	const bool viewportPassed = RunLinuxFlashViewportProbe(uiRenderer, width, height);
 	const bool heroTexturesPassed = RunLinuxHeroMeshTextureProbe();
-	const bool basicFxPassed = RunLinuxBasicFxEngineProbe(capturePath);
+	const bool basicFxPassed = RunLinuxBasicFxEngineProbe(capturePath, environment);
   uiRenderer->Release();
 	return passed && viewportPassed && heroTexturesPassed && basicFxPassed;
 #else
@@ -53380,8 +53425,15 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 			auto result = std::make_unique<LinuxStaticMapResource>();
 			payload.placement.GetMatrix(&result->world);
 			const auto materials = CreateLinuxStaticPreviewMaterials(payload.materialReferences, geometry);
-			result->mesh = std::make_shared<Render::StaticMesh>();
+			auto storage = std::make_shared<LinuxStaticMeshStorage>();
+			result->mesh = std::shared_ptr<Render::StaticMesh>(storage, &storage->mesh);
 			result->mesh->Initialize(result->world, geometry, materials);
+			if (payload.hasBakedIdentity && selectedMapPreview->bakedVertexColors) {
+				++overlay->bakedColorLookups;
+				if (BindLinuxBakedVertexColors(*storage, *geometry, selectedMapPreview->bakedVertexColors,
+					payload.originalObjectIndex, payload.bakedSceneHash, payload.bakedComponentIndex))
+					++overlay->bakedColorMatches;
+			}
 			return result;
 		});
 		if (!resource) continue;
@@ -53415,6 +53467,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
           Render::SmartRenderer::GetOpenGLTextureBindStats();
+				const auto bakedBefore = Render::LinuxBasicFx::GetStatistics();
 #endif
         batch->Prepare();
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -53424,6 +53477,16 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
           materialStats);
 #endif
         batch->Draw();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+				const auto bakedAfter = Render::LinuxBasicFx::GetStatistics();
+				if (!resource->bakedSelected && bakedAfter.bakedSelections > bakedBefore.bakedSelections) {
+					resource->bakedSelected = true; ++overlay->bakedSelectedPayloads;
+				}
+				if (bakedAfter.bakedDraws > bakedBefore.bakedDraws) {
+					overlay->bakedDrawCalls += bakedAfter.bakedDraws - bakedBefore.bakedDraws;
+					if (!resource->bakedDrawn) { resource->bakedDrawn = true; ++overlay->bakedDrawnPayloads; }
+				}
+#endif
         ++payloadBatches;
       }
     }
@@ -53777,6 +53840,9 @@ struct LinuxOverlayUiRenderContext
 
 void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContext)
 {
+	const auto* world = GetLinuxBootstrapRuntimeWorld(renderContext.screenRuntime);
+	const auto* dayNight = world ? world->GetDayNightController().GetPtr() : nullptr;
+	Render::SceneConstants::RetriveForModification().nightFraction = dayNight ? dayNight->GetNightFraction() : 0.f;
 	using Profile = LinuxBootstrap::DrawProfile;
 	LinuxBootstrap::DrawProfileLaps<> profile(renderContext.screenRuntime ? &renderContext.screenRuntime->drawProfile : nullptr);
   const LinuxSelectedMapPreview* selectedMapPreview = renderContext.selectedMapPreview;
@@ -68801,6 +68867,9 @@ void AppendRuntimeInputLog(
 	}
 	logFile << "  finalDynamicPoseCache=builds:" << overlay.dynamicPoseBuilds
 		<< " hits:" << overlay.dynamicPoseHits << "\n";
+	logFile << "  finalBakedMapColors=lookups:" << overlay.bakedColorLookups
+		<< " matches:" << overlay.bakedColorMatches << " selectedPayloads:" << overlay.bakedSelectedPayloads
+		<< " drawnPayloads:" << overlay.bakedDrawnPayloads << " drawCalls:" << overlay.bakedDrawCalls << "\n";
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
 	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
@@ -71432,7 +71501,7 @@ int main(int argc, char** argv)
       flashRendererProbePassed = RunLinuxFlashRendererProbe(
         static_cast<unsigned int>(settings.width),
         static_cast<unsigned int>(settings.height),
-		settings.bootstrapFrameCapturePath
+		settings.bootstrapFrameCapturePath, environment
       );
     }
     else

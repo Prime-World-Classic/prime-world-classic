@@ -20,7 +20,8 @@ using Bytes = std::vector<unsigned char>;
 constexpr unsigned RequiredVS[] = {0,1,2,3,8,9,10,11,20};
 constexpr unsigned RequiredPS[] = {20,21};
 constexpr unsigned RequiredOpacityPS[] = {6,20,21};
-constexpr size_t FamilyIndices[] = {0,12,24};
+constexpr unsigned RequiredBakedVS[] = {0,1,2,8,9,10,11,234};
+constexpr std::array<size_t,3> FamilyIndices{{0,12,24}};
 std::atomic<uint64_t> NextGeneration{1};
 thread_local std::vector<ContextKey> Owners;
 
@@ -86,12 +87,14 @@ struct GlState {
 	GLint program = 0, vao = 0, array = 0, element = 0, active = 0, texture = 0, sampler = 0;
 	GLint viewport[4]{}, depthFunction = 0, cullMode = 0, face = 0, polygon[2]{};
 	GLint alphaFunction = 0;
+	GLint vertexColorClamp = GL_FIXED_ONLY, fragmentColorClamp = GL_FIXED_ONLY;
 	GLfloat alphaReference = 0;
 	GLboolean depthMask = 0, colorMask[4]{}, blend = 0;
 	GLdouble depthRange[2]{};
 	static constexpr GLenum Flags[] = {GL_DEPTH_TEST, GL_CULL_FACE, GL_ALPHA_TEST,
 		GL_SCISSOR_TEST, GL_STENCIL_TEST, GL_DITHER, GL_FRAMEBUFFER_SRGB, GL_RASTERIZER_DISCARD,
-		GL_PROGRAM_POINT_SIZE, GL_POLYGON_OFFSET_FILL, GL_PRIMITIVE_RESTART, GL_DEPTH_CLAMP, GL_COLOR_LOGIC_OP};
+		GL_PROGRAM_POINT_SIZE, GL_POLYGON_OFFSET_FILL, GL_PRIMITIVE_RESTART, GL_DEPTH_CLAMP, GL_COLOR_LOGIC_OP,
+		GL_VERTEX_PROGRAM_TWO_SIDE};
 	GLboolean flags[sizeof(Flags) / sizeof(Flags[0])]{};
 	GLuint borrowed = 0;
 	static constexpr GLenum Parameters[] = {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_MIN_FILTER,
@@ -116,6 +119,8 @@ struct GlState {
 		glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
 		glGetIntegerv(GL_FRONT_FACE, &face);
 		glGetIntegerv(GL_ALPHA_TEST_FUNC, &alphaFunction);
+		glGetIntegerv(GL_CLAMP_VERTEX_COLOR, &vertexColorClamp);
+		glGetIntegerv(GL_CLAMP_FRAGMENT_COLOR, &fragmentColorClamp);
 		glGetFloatv(GL_ALPHA_TEST_REF, &alphaReference);
 		glGetIntegerv(GL_POLYGON_MODE, polygon);
 		glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
@@ -166,6 +171,8 @@ struct GlState {
 		glCullFace(GLenum(cullMode));
 		glFrontFace(GLenum(face));
 		glAlphaFunc(GLenum(alphaFunction), alphaReference);
+		glClampColor(GL_CLAMP_VERTEX_COLOR, GLenum(vertexColorClamp));
+		glClampColor(GL_CLAMP_FRAGMENT_COLOR, GLenum(fragmentColorClamp));
 		glPolygonMode(GL_FRONT, GLenum(polygon[0]));
 		glPolygonMode(GL_BACK, GLenum(polygon[1]));
 		for (size_t i = 0; i < std::size(Flags); ++i) Enable(Flags[i], flags[i]);
@@ -206,11 +213,15 @@ uint32_t Read32(const Bytes& b, size_t at) {
 struct Span { size_t offset, size; };
 using FamilySpans = std::array<std::array<Span, 2>, 3>;
 
-Result Directory(const Bytes& b, FamilySpans& selected) {
+/** Validate all original directory entries, while selecting only the fixed requested slots. */
+template<size_t N>
+Result CheckedDirectory(const Bytes& b, size_t expected, const std::array<size_t,N>& indices,
+	std::array<std::array<Span,2>,N>& selected) {
+	selected = {};
 	if (b.size() < 4) return Fail(Code::InvalidInput, "short archive header");
 	const size_t pairs = Read32(b, 0);
-	if (pairs != 96 || pairs > (b.size() - 4) / 8)
-		return Fail(Code::Unsupported, "expected the 96-pair BasicFX archive");
+	if (pairs != expected || pairs > (b.size() - 4) / 8)
+		return Fail(Code::Unsupported, "unexpected or truncated fixed shader directory");
 	const size_t end = 4 + pairs * 8;
 	std::vector<size_t> offsets;
 	for (size_t i = 0; i < pairs * 2; ++i) {
@@ -227,9 +238,45 @@ Result Directory(const Bytes& b, FamilySpans& selected) {
 		if (length < 8 || length > 1024 * 1024 || (length & 3) ||
 			Read32(b, o) != (i % 2 ? 0xffff0300U : 0xfffe0300U) || Read32(b, o + length - 4) != 0x0000ffffU)
 			return Fail(Code::InvalidInput, "invalid shader envelope");
-		for (size_t slot = 0; slot < std::size(FamilyIndices); ++slot)
-			if (i / 2 == FamilyIndices[slot]) selected[slot][i % 2] = {o, length};
+		for (size_t slot = 0; slot < N; ++slot)
+			if (i / 2 == indices[slot]) selected[slot][i % 2] = {o, length};
 	}
+	return {};
+}
+
+Result Directory(const Bytes& b, FamilySpans& selected) {
+	return CheckedDirectory(b,96,FamilyIndices,selected);
+}
+
+Result BakedDirectory(const Bytes& b, std::array<Span,2>& selected) {
+	std::array<std::array<Span,2>,1> spans{};
+	const auto result = CheckedDirectory(b,36864,std::array<size_t,1>{{24}},spans);
+	selected = result ? spans[0] : std::array<Span,2>{};
+	return result;
+}
+
+/** Convert only referenced colours; checked source and destination bounds precede allocation. */
+Result StageBakedColors(const Bgra8ColorStream& day, const Bgra8ColorStream& night,
+	const std::vector<uint32_t>& indices, size_t limit, Bytes& output) {
+	output.clear();
+	if (indices.empty()) return Fail(Code::InvalidInput,"missing baked colour indices");
+	const size_t maximum = *std::max_element(indices.begin(),indices.end());
+	if (limit < 8 || maximum >= limit / 8)
+		return Fail(Code::InvalidInput,"converted baked colours exceed geometry limit");
+	for (const auto* stream : {&day,&night}) {
+		if (!stream->bytes.data || stream->bytes.size > limit || stream->stride < 4 ||
+			stream->offset > stream->bytes.size || stream->bytes.size - stream->offset < 4 ||
+			maximum > (stream->bytes.size - stream->offset - 4) / stream->stride)
+			return Fail(Code::InvalidInput,"baked colour stream/range out of bounds");
+	}
+	Bytes candidate((maximum + 1) * 8,0);
+	for (uint32_t index : indices) for (size_t channel=0; channel<2; ++channel) {
+		const auto& stream = channel ? night : day;
+		const auto* bgra = static_cast<const unsigned char*>(stream.bytes.data) + stream.offset + size_t(index)*stream.stride;
+		auto* rgba = candidate.data() + size_t(index)*8 + channel*4;
+		rgba[0]=bgra[2]; rgba[1]=bgra[1]; rgba[2]=bgra[0]; rgba[3]=bgra[3];
+	}
+	output.swap(candidate);
 	return {};
 }
 
@@ -266,6 +313,37 @@ bool ExactFamilyReflection(const MOJOSHADER_parseData* p, bool vertex, size_t sl
 	}
 	return p->constant_count == 0 && p->outputs[0].usage == MOJOSHADER_USAGE_COLOR && p->outputs[0].index == 0;
 }
+
+/** Exact shipped BasicMaterial24 interface; no other baked/SH/lighting permutations. */
+bool ExactBakedReflection(const MOJOSHADER_parseData* p, bool vertex) {
+	if (!p || p->error_count || p->major_ver!=3 || p->minor_ver || p->preshader ||
+		p->shader_type!=(vertex?MOJOSHADER_TYPE_VERTEX:MOJOSHADER_TYPE_PIXEL)) return false;
+	const auto* required=vertex?RequiredBakedVS:RequiredPS;
+	const size_t count=vertex?std::size(RequiredBakedVS):std::size(RequiredPS);
+	if (p->uniform_count!=int(count) || !p->uniforms || !p->attributes || !p->outputs ||
+		p->attribute_count!=(vertex?4:2) || p->output_count!=(vertex?4:1) ||
+		p->sampler_count!=(vertex?0:1) || p->constant_count!=(vertex?1:0)) return false;
+	for(size_t i=0;i<count;++i) {
+		const auto& u=p->uniforms[i];
+		if(u.type!=MOJOSHADER_UNIFORM_FLOAT || u.index!=int(required[i]) || u.array_count || u.constant) return false;
+	}
+	const auto attr=[](const MOJOSHADER_attribute& a, MOJOSHADER_usage usage, int index) {
+		return a.usage==usage && a.index==index;
+	};
+	if(vertex) {
+		if(!p->constants) return false;
+		const auto& c=p->constants[0];
+		return c.type==MOJOSHADER_UNIFORM_FLOAT && c.index==3 && c.value.f[0]==1 && c.value.f[1]==0 &&
+			c.value.f[2]==255 && c.value.f[3]==0 &&
+			attr(p->attributes[0],MOJOSHADER_USAGE_POSITION,0) && attr(p->attributes[1],MOJOSHADER_USAGE_TEXCOORD,0) &&
+			attr(p->attributes[2],MOJOSHADER_USAGE_COLOR,0) && attr(p->attributes[3],MOJOSHADER_USAGE_COLOR,1) &&
+			attr(p->outputs[0],MOJOSHADER_USAGE_TEXCOORD,0) && attr(p->outputs[1],MOJOSHADER_USAGE_TEXCOORD,2) &&
+			attr(p->outputs[2],MOJOSHADER_USAGE_COLOR,0) && attr(p->outputs[3],MOJOSHADER_USAGE_POSITION,0);
+	}
+	return p->samplers && p->samplers[0].index==0 && p->samplers[0].type==MOJOSHADER_SAMPLER_2D && !p->samplers[0].texbem &&
+		attr(p->attributes[0],MOJOSHADER_USAGE_TEXCOORD,0) && attr(p->attributes[1],MOJOSHADER_USAGE_COLOR,0) &&
+		attr(p->outputs[0],MOJOSHADER_USAGE_COLOR,0);
+}
 }
 
 struct ShaderBackend::Impl {
@@ -276,11 +354,11 @@ struct ShaderBackend::Impl {
 	Budget budget;
 	IndexedBlendFunctions blend;
 	MOJOSHADER_glContext* context = nullptr;
-	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0;
+	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0, colorBuffer = 0;
 	bool registered = false, closed = false;
 	unsigned activeSlots = 0;
-	std::array<Pair, 3> pairs{};
-	Bytes archive;
+	std::array<Pair, 4> pairs{};
+	Bytes archive, bakedArchive;
 	std::array<Float4, 256> vs{};
 	std::array<Float4, 224> ps{};
 	std::array<bool, 256> vsInit{};
@@ -327,7 +405,8 @@ std::unique_ptr<ShaderBackend> ShaderBackend::Create(ContextBinding owner, Limit
 		glGenVertexArrays(1, &p.vao);
 		glGenBuffers(1, &p.vertexBuffer);
 		glGenBuffers(1, &p.indexBuffer);
-		if (!p.vao || !p.vertexBuffer || !p.indexBuffer || glGetError() != GL_NO_ERROR) {
+		glGenBuffers(1, &p.colorBuffer);
+		if (!p.vao || !p.vertexBuffer || !p.indexBuffer || !p.colorBuffer || glGetError() != GL_NO_ERROR) {
 			status = Fail(Code::DriverFailure, "private draw resources failed"); return {};
 		}
 		Owners.push_back(key);
@@ -345,60 +424,80 @@ ShaderBackend::~ShaderBackend() {
 
 Result ShaderBackend::LoadBasicFxPair0(ByteView source, ProgramRef& output) {
 	output.Reset();
-	std::array<ProgramRef, 3> programs;
-	const auto status = LoadPrograms(source, programs, false);
+	std::array<ProgramRef, 4> programs;
+	const auto status = LoadPrograms(source, {}, programs, 1);
 	output = std::move(programs[0]);
+	return status;
+}
+
+Result ShaderBackend::LoadStaticFamily(ByteView source, ByteView bakedSource, StaticPrograms& output) {
+	output = {};
+	std::array<ProgramRef,4> programs;
+	const auto status = LoadPrograms(source,bakedSource,programs,4);
+	output = {{std::move(programs[0]),std::move(programs[1]),std::move(programs[2])},std::move(programs[3])};
 	return status;
 }
 
 Result ShaderBackend::LoadBasicFxOpacityFamily(ByteView source, BasicFxOpacityPrograms& output) {
 	output = {};
-	std::array<ProgramRef, 3> programs;
-	const auto status = LoadPrograms(source, programs, true);
+	std::array<ProgramRef, 4> programs;
+	const auto status = LoadPrograms(source, {}, programs, 3);
 	output = {std::move(programs[0]), std::move(programs[1]), std::move(programs[2])};
 	return status;
 }
 
 /** Stage every requested pair and ticket before committing the new load serial. */
-Result ShaderBackend::LoadPrograms(ByteView source, std::array<ProgramRef, 3>& output, bool family) {
+Result ShaderBackend::LoadPrograms(ByteView source, ByteView bakedSource, std::array<ProgramRef,4>& output, size_t count) {
 	output = {};
 	auto& p = *impl_;
 	auto status = p.Check();
 	if (!status) return status;
 	p.activeSlots = 0;
 	p.InvalidateRegisters();
-	if (!source.data || source.size < 4 || source.size > p.budget.limits.archiveBytes || source.size > 4 * 1024 * 1024)
+	const size_t cap = std::min(p.budget.limits.archiveBytes,size_t(4*1024*1024));
+	if (!source.data || source.size < 4 || source.size > cap ||
+		(count==4 && (!bakedSource.data || bakedSource.size<4 || bakedSource.size>cap-source.size)))
 		return Fail(Code::InvalidInput, "archive view out of bounds");
+	if (p.serial==std::numeric_limits<uint64_t>::max()) return Fail(Code::InvalidReference,"load serial exhausted");
 	try {
 		const auto* begin = static_cast<const unsigned char*>(source.data);
 		Bytes archive(begin, begin + source.size);
 		FamilySpans spans{};
 		status = Directory(archive, spans);
 		if (!status) return status;
-		const size_t count = family ? p.pairs.size() : 1;
-		std::array<ProgramRef, 3> programs;
+		Bytes bakedArchive;
+		std::array<Span,2> bakedSpans{};
+		if(count==4) {
+			const auto* first=static_cast<const unsigned char*>(bakedSource.data);
+			bakedArchive.assign(first,first+bakedSource.size);
+			status=BakedDirectory(bakedArchive,bakedSpans);
+			if(!status) return status;
+		}
+		std::array<ProgramRef, 4> programs;
 		for (size_t slot = 0; slot < count; ++slot)
 			programs[slot].ticket_ = std::make_shared<ProgramRef::Ticket>(
 				ProgramRef::Ticket{p.generation, p.serial + 1, static_cast<uint8_t>(slot)});
 		GlState state;
 		MojoScope scope(p.context, p.vao);
-		std::array<Pair, 3> candidates{};
+		std::array<Pair, 4> candidates{};
 		struct Cleanup {
-			std::array<Pair, 3>& pairs;
+			std::array<Pair, 4>& pairs;
 			~Cleanup() { for (auto& pair : pairs) pair.Clear(); }
 		} cleanup{candidates};
 		for (size_t slot = 0; slot < count; ++slot) {
 			auto& candidate = candidates[slot];
-			const auto& stage = spans[slot];
-			candidate.vs = MOJOSHADER_glCompileShader(archive.data() + stage[0].offset, unsigned(stage[0].size), nullptr, 0, nullptr, 0);
+			const auto& stage = slot==3 ? bakedSpans : spans[slot];
+			const auto& bytes = slot==3 ? bakedArchive : archive;
+			candidate.vs = MOJOSHADER_glCompileShader(bytes.data() + stage[0].offset, unsigned(stage[0].size), nullptr, 0, nullptr, 0);
 			if (!candidate.vs) return Fail(Code::ShaderFailure, "vertex compilation failed");
-			candidate.ps = MOJOSHADER_glCompileShader(archive.data() + stage[1].offset, unsigned(stage[1].size), nullptr, 0, nullptr, 0);
+			candidate.ps = MOJOSHADER_glCompileShader(bytes.data() + stage[1].offset, unsigned(stage[1].size), nullptr, 0, nullptr, 0);
 			if (!candidate.ps) return Fail(Code::ShaderFailure, "pixel compilation failed");
 			const auto* vs = MOJOSHADER_glGetShaderParseData(candidate.vs);
 			const auto* ps = MOJOSHADER_glGetShaderParseData(candidate.ps);
-			if (family ? (!ExactFamilyReflection(vs, true, slot) || !ExactFamilyReflection(ps, false, slot)) :
-				(!ExactReflection(vs, true) || !ExactReflection(ps, false)))
-				return Fail(Code::Unsupported, "reflection differs from selected BasicFX program");
+			const bool exact = slot==3 ? ExactBakedReflection(vs,true) && ExactBakedReflection(ps,false) :
+				count!=1 ? ExactFamilyReflection(vs,true,slot) && ExactFamilyReflection(ps,false,slot) :
+				ExactReflection(vs,true) && ExactReflection(ps,false);
+			if (!exact) return Fail(Code::Unsupported, "reflection differs from fixed selected program");
 			candidate.linked = MOJOSHADER_glLinkProgram(candidate.vs, candidate.ps);
 			if (!candidate.linked) return Fail(Code::ShaderFailure, "program link failed");
 		}
@@ -407,9 +506,10 @@ Result ShaderBackend::LoadPrograms(ByteView source, std::array<ProgramRef, 3>& o
 		p.pairs = candidates;
 		candidates = {};
 		p.archive = std::move(archive);
+		p.bakedArchive = std::move(bakedArchive);
 		++p.serial;
 		output = std::move(programs);
-		p.activeSlots = family ? 7 : 1;
+		p.activeSlots = (1u << count)-1;
 		return {};
 	} catch (const std::bad_alloc&) { return Fail(Code::AllocationFailure, "archive/reference allocation failed"); }
 }
@@ -444,9 +544,12 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		reference.ticket_->slot >= p.pairs.size() || !(p.activeSlots & (1u << reference.ticket_->slot)))
 		return Fail(Code::InvalidReference, "empty, stale, foreign or failed-load program");
 	const size_t slot = reference.ticket_->slot;
-	const unsigned* requiredPS = slot ? RequiredOpacityPS : RequiredPS;
-	const size_t psCount = slot ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
-	for (unsigned i : RequiredVS) if (!p.vsInit[i]) return Fail(Code::UninitializedRegisters, "required VS register missing");
+	const bool baked = slot==3, opacity = slot==1 || slot==2;
+	const unsigned* requiredVS = baked ? RequiredBakedVS : RequiredVS;
+	const size_t vsCount = baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
+	const unsigned* requiredPS = opacity ? RequiredOpacityPS : RequiredPS;
+	const size_t psCount = opacity ? std::size(RequiredOpacityPS) : std::size(RequiredPS);
+	for (size_t i=0;i<vsCount;++i) if (!p.vsInit[requiredVS[i]]) return Fail(Code::UninitializedRegisters, "required VS register missing");
 	for (size_t i = 0; i < psCount; ++i) if (!p.psInit[requiredPS[i]]) return Fail(Code::UninitializedRegisters, "required PS register missing");
 	const size_t indexBytes = d.indexType == IndexType::UInt16 ? 2 : 4;
 	if ((d.indexType != IndexType::UInt16 && d.indexType != IndexType::UInt32) ||
@@ -476,6 +579,7 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 	default: return Fail(Code::InvalidInput, "invalid blend mode");
 	}
 	const bool blended = d.blendMode != BlendMode::Off;
+	if (baked && blended) return Fail(Code::Unsupported,"baked BasicMaterial24 supports only blend Off");
 	if (blended && !p.blend.Available())
 		return Fail(Code::Unsupported, "blending requires GL 4.0 or ARB_draw_buffers_blend with indexed entrypoints");
 	try {
@@ -499,6 +603,11 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			std::memcpy(uv, vertices + at + d.uvOffset, sizeof(uv));
 			for (float f : position) if (!std::isfinite(f)) return Fail(Code::InvalidInput, "nonfinite vertex");
 			for (float f : uv) if (!std::isfinite(f)) return Fail(Code::InvalidInput, "nonfinite UV");
+		}
+		Bytes colors;
+		if (baked) {
+			status=StageBakedColors(d.dayColors,d.nightColors,indices,p.budget.limits.geometryBytes,colors);
+			if(!status) return status;
 		}
 		if (!d.texture || !glIsTexture(d.texture)) return Fail(Code::InvalidInput, "borrowed texture is not live");
 		// GLSL 1.20 gl_FragColor broadcasts to all active color outputs.
@@ -528,12 +637,22 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, p.indexBuffer);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, GLsizeiptr(indices.size() * sizeof(uint32_t)), indices.data(), GL_STREAM_DRAW);
 		MOJOSHADER_glBindProgram(p.pairs[slot].linked);
-		for (unsigned i : RequiredVS) MOJOSHADER_glSetVertexShaderUniformF(i, p.vs[i].data(), 1);
+		for (size_t i=0;i<vsCount;++i) MOJOSHADER_glSetVertexShaderUniformF(requiredVS[i], p.vs[requiredVS[i]].data(), 1);
 		for (size_t i = 0; i < psCount; ++i) MOJOSHADER_glSetPixelShaderUniformF(requiredPS[i], p.ps[requiredPS[i]].data(), 1);
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_POSITION, 0, 3, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.positionOffset));
 		MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_TEXCOORD, 0, 2, MOJOSHADER_ATTRIBUTE_FLOAT, 0,
 			unsigned(d.stride), reinterpret_cast<const void*>(d.streamOffset + d.uvOffset));
+		if (baked) {
+			glBindBuffer(GL_ARRAY_BUFFER,p.colorBuffer);
+			glBufferData(GL_ARRAY_BUFFER,GLsizeiptr(colors.size()),colors.data(),GL_STREAM_DRAW);
+			for(int channel=0;channel<2;++channel)
+				MOJOSHADER_glSetVertexAttribute(MOJOSHADER_USAGE_COLOR,channel,4,MOJOSHADER_ATTRIBUTE_UBYTE,1,
+					8,reinterpret_cast<const void*>(uintptr_t(channel*4)));
+			// GLSL120 uses gl_FrontColor for HDR baked light; host clamps must not truncate it.
+			glClampColor(GL_CLAMP_VERTEX_COLOR,GL_FALSE);
+			glClampColor(GL_CLAMP_FRAGMENT_COLOR,GL_FALSE);
+		}
 		for (GLenum flag : GlState::Flags) glDisable(flag);
 		glEnable(GL_DEPTH_TEST);
 		if (d.cullMode == CullMode::Back) glEnable(GL_CULL_FACE);
@@ -583,10 +702,12 @@ Result ShaderBackend::Shutdown() {
 	}
 	if (p.vertexBuffer) glDeleteBuffers(1, &p.vertexBuffer);
 	if (p.indexBuffer) glDeleteBuffers(1, &p.indexBuffer);
+	if (p.colorBuffer) glDeleteBuffers(1, &p.colorBuffer);
 	if (p.vao) glDeleteVertexArrays(1, &p.vao);
-	p.vertexBuffer = p.indexBuffer = p.vao = 0;
+	p.vertexBuffer = p.indexBuffer = p.colorBuffer = p.vao = 0;
 	p.activeSlots = 0; p.closed = true;
 	p.archive.clear();
+	p.bakedArchive.clear();
 	if (p.registered) {
 		Owners.erase(std::remove(Owners.begin(), Owners.end(), p.key), Owners.end());
 		p.registered = false;

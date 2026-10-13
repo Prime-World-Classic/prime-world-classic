@@ -8,6 +8,9 @@
 #include "renderer.h"
 #include "smartrenderer.h"
 #include "LinuxBasicFx.h"
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include "sceneconstants.h"
+#endif
 
 #include <algorithm>
 
@@ -308,6 +311,7 @@ StaticMesh::~StaticMesh()
 void StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::StaticMesh* pDBMeshResource)
 {
   worldMatrix = _worldMatrix;
+	Reset(pVertexColors);
   ClearStaticMeshMaterials(materials, &materialsCount);
   pMeshGeom = 0;
   if (pDBMeshResource)
@@ -321,6 +325,7 @@ void StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::StaticMesh*
 bool StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::DBStaticSceneComponent* pDBMeshResource, bool appendColorStream)
 {
   worldMatrix = _worldMatrix;
+	Reset(pVertexColors);
   ClearStaticMeshMaterials(materials, &materialsCount);
   pMeshGeom = 0;
   if (pDBMeshResource)
@@ -335,6 +340,7 @@ bool StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::DBStaticSce
 void StaticMesh::Initialize(const Matrix43& _worldMatrix, const MeshGeometry* geom, vector<Render::BaseMaterial*> materials)
 {
   worldMatrix = _worldMatrix;
+	Reset(pVertexColors);
   ClearStaticMeshMaterials(this->materials, &materialsCount);
   pMeshGeom = geom;
   localAABB.center = CVec3(0.0f, 0.0f, 0.0f);
@@ -348,6 +354,21 @@ void StaticMesh::PrepareRendererAfterMaterial(unsigned int elementNumber) const
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
   SmartRenderer::SetOpenGLImmediateObjectMatrix(&worldMatrix);
   SmartRenderer::SetOpenGLImmediateSkeletalMatrices(0, 0);
+	if (elementNumber >= static_cast<unsigned>(materialsCount) || elementNumber >= materials.capacity())
+	{
+		LinuxBasicFx::ClearSelection();
+		return;
+	}
+	const BaseMaterial* material = Get(materials[elementNumber]);
+	const NDb::Material* dbMaterial = material ? material->GetDBMaterial() : 0;
+	if (dbMaterial && dbMaterial->GetObjectTypeID() == NDb::BasicMaterial::typeId)
+	{
+		const Sampler* diffuse = material->GetDiffuseMap();
+		// Material preparation has loaded the texture; this mesh owns the authored colour pair.
+		LinuxBasicFx::SelectBaked(dbMaterial,
+			diffuse && diffuse->Enabled() ? diffuse->GetTexture().GetPtr() : 0,
+			Get(pVertexColors), SceneConstants::Global().nightFraction);
+	}
 #endif
 }
 
@@ -427,8 +448,9 @@ void StaticMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
 
 void StaticMesh::SetVertexColors(AutoPtr<MeshVertexColors> pColors, bool fake)
 {
-  (void)pColors;
-  (void)fake;
+	// Only supplied authored buffers are eligible; editor-generated white/black is not baked data.
+	pVertexColors = pColors;
+	if (fake) Reset(pVertexColors);
 }
 
 void StaticMesh::CalculateLighting(SceneConstants const& sceneConst)

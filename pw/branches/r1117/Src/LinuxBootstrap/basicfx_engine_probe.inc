@@ -6,9 +6,10 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(LinuxWindowOverlay*, const LinuxS
 #include "static_map_cache_engine_probe.inc"
 #include "transparent_engine_probe.inc"
 #include "opacity_engine_probe.inc"
+#include "baked_engine_probe.inc"
 
 /** Exercise authored geometry/texture through StaticMesh -> Batch -> SmartRenderer. */
-bool RunLinuxBasicFxEngineProbe(const std::string& capturePath)
+bool RunLinuxBasicFxEngineProbe(const std::string& capturePath, const LinuxClientEnvironment& environment)
 {
 	const auto scene = NDb::Get<NDb::DBSceneObject>(NDb::DBID("Buildings/B/Main/_crash.SOBJ"));
 	NDb::Ptr<NDb::DBStaticSceneComponent> component;
@@ -306,5 +307,6 @@ bool RunLinuxBasicFxEngineProbe(const std::string& capturePath)
 	glMatrixMode(GL_MODELVIEW); glPopMatrix();
 	glMatrixMode(GL_PROJECTION); glPopMatrix();
 	glPopClientAttrib(); glPopAttrib();
+	passed = RunLinuxBakedEngineProbe(capturePath, environment, *authored) && passed;
 	return passed && glGetError() == GL_NO_ERROR;
 }

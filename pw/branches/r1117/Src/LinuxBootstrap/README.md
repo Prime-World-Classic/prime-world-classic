@@ -121,7 +121,10 @@ or duplicated final records; wait for the process to exit before validating logs
 
 ## Remaining Boundaries
 
-- Rendering uses real assets but still has simplified materials and presentation.
+- Rendering uses real assets and selected original BasicFX/baked BasicMaterial
+	shaders, but most materials and presentation remain simplified. The
+	[native static shader contract](native_shader/README.md) documents exact admission,
+	per-placement color ownership, tests and preview-coverage limits.
 - Numeric formulas support bounded arithmetic/conditionals, checked helpers,
 	abilityScale/damageScale contexts and 47 exact unit properties through s/t/r
 	prefixes. Four exact combat accessors support the shipped defence constants;
