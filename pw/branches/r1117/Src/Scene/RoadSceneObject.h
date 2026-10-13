@@ -72,7 +72,6 @@ public:
   // add batches to the render queue [internal?]
   virtual void RenderToQueue( Render::BatchQueue& queue );
 
-  Render::OcclusionQueries* GetQueries() const { return 0; }
   
   // setup shader constants right before sending primitive to DirectX
   virtual void PrepareRendererAfterMaterial( unsigned int elementNumber ) const;

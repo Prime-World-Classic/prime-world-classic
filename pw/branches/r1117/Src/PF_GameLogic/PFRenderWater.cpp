@@ -27,8 +27,6 @@ DEFINE_DEV_VAR( s_drawWater, true, "draw_water", STORAGE_NONE );
 
 bool g_doTerrainZPrepass = false;
 REGISTER_VAR( "waterZPrepass", g_doTerrainZPrepass, STORAGE_NONE );
-bool g_useQueries = true;
-REGISTER_VAR( "waterUseQueries", g_useQueries, STORAGE_NONE );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 __declspec(align(16))
@@ -82,24 +80,6 @@ private:
     statesManager.LockStencil();
 
     RenderSequenceMarker("REFLECTION MASK END");
-  }
-
-  void IssueInvisibleQueries(WaterLevel &level)
-  { // Issue occlusion queries
-    BatchQueue &batchQueue = renderInterface.tempBatchQueue;
-
-    RenderSequenceMarker("REFLECTION QUERY ISSUE");
-    Batch::SetWaterLevel( true, level.GetLevel() );
-    OcclusionQueries::SetUseMode(OcclusionQueries::QUM_ISSUE);
-
-    batchQueue.Render(NDb::MATERIALPRIORITY_MESHESOPAQUE);
-    batchQueue.Render(NDb::MATERIALPRIORITY_TERRAINOBJECTS);
-    batchQueue.Render(NDb::MATERIALPRIORITY_TRANSPARENT);
-    batchQueue.Render(NDb::MATERIALPRIORITY_TRANSPARENTSPECIAL);
-
-    OcclusionQueries::SetUseMode(OcclusionQueries::QUM_NONE);
-    OcclusionQueries::SetCurrentCameraID(OcclusionQueriesBank::CID_MAIN);
-    Batch::SetWaterLevel(false);
   }
 
 	static void DrawConvexPoly(int numPoints, const CVec3 *pPoints)
@@ -214,11 +194,6 @@ public:
       if( g_doTerrainZPrepass )
       {
         RenderSurfaceMask(level);
-        if( g_useQueries )
-        {
-          OcclusionQueries::SetCurrentCameraID(OcclusionQueriesBank::CID_WATER);
-          OcclusionQueries::SetUseMode(OcclusionQueries::QUM_CHECK_AND_ISSUE);
-        }
       }
 
       RenderSequenceMarker("REFLECTION RENDER");
@@ -227,8 +202,6 @@ public:
 
       if( g_doTerrainZPrepass )
       {
-        if( g_useQueries )
-          IssueInvisibleQueries(level);
 
         RenderStatesManager& statesManager = *GetStatesManager();
         statesManager.UnlockStencil();

@@ -74,7 +74,6 @@ namespace Render
     LightsData lightsData;
     unsigned long lightsFlags;
 
-    mutable DeviceLostWrapper<OcclusionQueries> queries;
 
     bool needLightingSH;
 
@@ -109,8 +108,6 @@ namespace Render
     virtual void SetMaterial( int slotNumber, BaseMaterial* _pMaterial );
     virtual BaseMaterial* GetMaterial( int slotNumber );
 
-    OcclusionQueries* GetQueries() const { return &queries; }
-    bool FillOBB(CVec3 (&_vertices)[8]) const ;
     const AABB& GetLocalAABB() const  { return localAABB; }
     const AABB& GetAABB(bool *_pIsLocal) const
     {

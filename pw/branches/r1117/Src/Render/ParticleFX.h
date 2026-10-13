@@ -132,6 +132,5 @@ namespace Render
     // Hides RenderComponent::SetMaterial?
     void SetMaterial( BaseMaterial* _pMaterial );
     BaseMaterial* GetMaterial() const { return pFXMaterial; }
-    OcclusionQueries* GetQueries() const { return 0; }
 	};
 }; // namespace Render

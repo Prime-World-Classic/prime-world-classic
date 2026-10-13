@@ -68,7 +68,6 @@ protected:
   LightsData lightsData;
   unsigned long lightsFlags;
 	
-  mutable DeviceLostWrapper<OcclusionQueries> queries;
 
 #ifdef _DEBUG
 	unsigned int  triangleCount;
@@ -88,12 +87,9 @@ public:
 
 	virtual void RenderToQueue( BatchQueue& queue );
 
-  OcclusionQueries* GetQueries() const;
-  virtual bool FillOBB(CVec3 (&_vertices)[8]) const;
   virtual const AABB& GetLocalAABB() const  { return localAABB; }
   virtual const AABB& GetAABB(bool *_pIsLocal) const { *_pIsLocal = true; return localAABB; }
 
-  static void SetQueryTriBound(UINT _bound);
 
 	void SetMaterial( int nElementIdx, BaseMaterial* _pMaterial );
 	int GetElementsCount() const { ASSERT( pMeshGeom ); return pMeshGeom->primitives.size(); }

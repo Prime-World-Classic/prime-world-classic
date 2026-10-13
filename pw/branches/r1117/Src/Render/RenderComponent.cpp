@@ -4,8 +4,6 @@
 #include "material.h"
 #include "sceneconstants.h"
 
-static bool  s_enableWaterLevel = false;
-static float s_WaterLevel = 0.0f;
 
 namespace Render
 {

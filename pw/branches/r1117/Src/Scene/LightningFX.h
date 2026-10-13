@@ -30,7 +30,6 @@ public:
 	void Update(CVec3 const& p1, CVec3 const& p2, float dt);
 
   Render::BaseMaterial *GetMaterial() { return Get(pMaterial); }
-  Render::OcclusionQueries* GetQueries() const { return 0; }
 
 	// From Render::RenderComponent
 	virtual void PrepareRendererAfterMaterial( unsigned int elementNumber ) const;

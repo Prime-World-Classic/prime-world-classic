@@ -57,7 +57,6 @@ namespace Grass
 
 		// From Render::RenderComponent
 		virtual void PrepareRendererAfterMaterial( unsigned int elementNumber ) const;
-    Render::OcclusionQueries* GetQueries() const { return 0; }
 
     virtual void DebugDraw( Render::IDebugRender* _debugRenderer ) {}
 	};

@@ -25,14 +25,11 @@ struct Batch
   bool                        dontDraw;
   bool                        isInside;
 
-  static void SetWaterLevel(bool _enable, float _level = 0.0f);
 
 	__forceinline unsigned int GetSortId() const { return pMaterial->GetSortId(); }
 
 	void Prepare() const;
 	void Draw() const;
-  void IssueQueryUP();
-  void IssueQuery();
 };
 
 class BatchQueueSorter

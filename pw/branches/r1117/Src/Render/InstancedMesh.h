@@ -20,7 +20,6 @@ public:
 
 	virtual void RenderToQueue( Render::BatchQueue &q );
 
-  OcclusionQueries* GetQueries() const { return 0; }
 	virtual void ForAllMaterials(Render::IMaterialProcessor &proc);
 
 	virtual bool IsInstanced() const { return true; }

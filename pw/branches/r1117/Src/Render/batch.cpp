@@ -11,8 +11,6 @@
 //static bool g_checkSortId = false;
 //REGISTER_DEV_VAR("bvsbvs", g_checkSortId, STORAGE_NONE);
 
-static bool s_queryUP = false;
-REGISTER_VAR("waterQueryUP", s_queryUP, STORAGE_NONE);
 
 static bool s_sortNew = true;
 REGISTER_DEV_VAR("newTranspSort", s_sortNew, STORAGE_NONE);
@@ -223,14 +221,7 @@ void insertSort(T a[], long size)
 }	
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static bool s_enableWaterLevel = false;
-static float s_WaterLevel = 0.0f;
 
-void Batch::SetWaterLevel(bool _enable, float _level)
-{
-  s_enableWaterLevel = _enable;
-  s_WaterLevel = _level + 0.02f;
-}
 
 
 __forceinline void Batch::Prepare() const
@@ -273,68 +264,6 @@ __forceinline void Batch::Draw() const
   pPrimitive->Draw();
 
   LOG_RENDER_SEQUENCE(*this);
-}
-
-__forceinline void Batch::IssueQueryUP()
-{
-  static CVec3 Vertices[8];
-
-  dontDraw = false;
-  if( OcclusionQueries* const queries = pOwner->GetQueries() )
-  {
-    OcclusionQueriesBank& bank = queries->Get();
-    if( SUCCEEDED(bank.BeginNextQuery()) )
-    {
-      if( pOwner->FillOBB(Vertices) )
-      {
-        // Close truncated OBB. I assume here that basis[2] is Z-aligned and the basis is orthogonal
-        if(s_enableWaterLevel && Vertices[0].z < s_WaterLevel && Vertices[6].z > s_WaterLevel)
-        {
-          Vertices[0].z = s_WaterLevel;
-          Vertices[1].z = s_WaterLevel;
-          Vertices[2].z = s_WaterLevel;
-          Vertices[3].z = s_WaterLevel;
-        }
-
-        CubeRenderer::DrawIndexedPrimitiveUP(Vertices);
-      }
-      bank.EndNextQuery();
-    }
-  }
-}
-
-__forceinline void Batch::IssueQuery()
-{
-  dontDraw = false;
-  if( OcclusionQueries* const queries = pOwner->GetQueries() )
-  {
-    OcclusionQueriesBank& bank = queries->Get();
-    if( SUCCEEDED(bank.BeginNextQuery()) )
-    {
-      static const float zEps = 0.02f;
-
-      const Matrix43& world = pOwner->GetWorldMatrix();
-      const AABB& localAABB = pOwner->GetLocalAABB();
-      CVec3 localPos = localAABB.center;
-      CVec3 halfSize = localAABB.halfSize;
-      const float diff = s_WaterLevel + zEps - (localPos.z - halfSize.z) - world._34;
-      if(diff > 0.0f)
-      {
-        const float shift = diff * 0.5f;
-        localPos.z += shift;
-        halfSize.z -= shift;
-      }
-      if(halfSize.z > 0.0f)
-      {
-        Matrix43 worldCorrected(localPos);
-        worldCorrected.SetScale(halfSize);
-        worldCorrected = world * worldCorrected;
-        GetRenderer()->SetVertexShaderConstants(WORLD, 3, &worldCorrected);
-        CubeRenderer::Draw();
-      }
-      bank.EndNextQuery();
-    }
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -638,52 +567,6 @@ public:
 
 
 static BatchChunk<> s_batchChunk;
-
-#pragma warning(push)
-#pragma warning(disable:4706)  // Disable C4706: assignment within conditional expression
-
-template<UINT mode> 
-static __forceinline void RenderBatch(Batch &batch, UINT &curSortId)
-{
-  const bool checkQueries = mode & OcclusionQueries::QUM_CHECK;
-  if( checkQueries )
-    if( OcclusionQueries* const queries = batch.pOwner->GetQueries() )
-       if( batch.dontDraw = (queries->Get().GetLatestResults() == 0) )
-         return;
-
-  const UINT sortId = batch.GetSortId();
-
-  if( (sortId != curSortId) || (sortId == 0) )
-  {
-	  batch.Prepare();
-	  curSortId = sortId;
-  }
-
-  if( mode & OcclusionQueries::QUM_ISSUE  )
-  {
-	  OcclusionQueriesBank *pQueriesBank = 0;
-
-    if( checkQueries || !batch.dontDraw ) // in checkQueries mode we don't need check batch.dontDraw here
-    {
-      if( OcclusionQueries* const queries = batch.pOwner->GetQueries() )
-      {
-        OcclusionQueriesBank& bank = queries->Get();
-        if( SUCCEEDED(bank.BeginNextQuery()) )
-          pQueriesBank = &bank;
-      }
-      batch.Draw();
-
-      if(pQueriesBank)
-        pQueriesBank->EndNextQuery();
-    }
-  }
-  else
-    batch.Draw();
-}
-
-
-#pragma warning(pop)
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void BatchQueue::RenderBatchesPtrArray(UINT numBatches, Batch **pBatches)
 {
@@ -710,48 +593,31 @@ void BatchQueue::RenderBatchesPtrArray(UINT numBatches, Batch **pBatches)
   //}
 
   Batch** const pBound = pBatches + numBatches;
-  switch( OcclusionQueries::GetUseMode() )
-  {
-  case OcclusionQueries::QUM_NONE:
-    s_batchChunk.Reset();
+  s_batchChunk.Reset();
 
-    do {
-      Batch* const pBatch = *pBatches;
+  do {
+    Batch* const pBatch = *pBatches;
 #ifdef COUNT_DRAWS
-      if(curPrimitive != pBatch->pPrimitive)
-        curPrimitive = pBatch->pPrimitive;
-      else
-        if( curSortId == pBatch->pMaterial->GetSortId() )
-          g_NumNewInstances.AddValue(1);
+    if(curPrimitive != pBatch->pPrimitive)
+      curPrimitive = pBatch->pPrimitive;
+    else
+      if( curSortId == pBatch->pMaterial->GetSortId() )
+        g_NumNewInstances.AddValue(1);
 #endif
-      const UINT sortId = pBatch->GetSortId();
+    const UINT sortId = pBatch->GetSortId();
 
-      if( (sortId != curSortId) || EqualIDs(sortId, 0) )
-      {
-        s_batchChunk.Finish(pBatches);
-        s_batchChunk.NewMaterial(pBatches);
-        curSortId = sortId;
-      }
-      else
-        s_batchChunk.AddBatch(pBatch);
-    } while(++pBatches != pBound);
+    if( (sortId != curSortId) || EqualIDs(sortId, 0) )
+    {
+      s_batchChunk.Finish(pBatches);
+      s_batchChunk.NewMaterial(pBatches);
+      curSortId = sortId;
+    }
+    else
+      s_batchChunk.AddBatch(pBatch);
+  } while(++pBatches != pBound);
 
-    s_batchChunk.Finish(pBatches);
-    SmartRenderer::DisableHardwareInstancing();
-    break;
-  case OcclusionQueries::QUM_CHECK:
-    do RenderBatch<OcclusionQueries::QUM_CHECK>(**pBatches, curSortId);
-    while(++pBatches != pBound);
-    break;
-  case OcclusionQueries::QUM_ISSUE:
-    do RenderBatch<OcclusionQueries::QUM_ISSUE>(**pBatches, curSortId);
-    while(++pBatches != pBound);
-    break;
-  case OcclusionQueries::QUM_CHECK_AND_ISSUE:
-    do RenderBatch<OcclusionQueries::QUM_CHECK_AND_ISSUE>(**pBatches, curSortId);
-    while(++pBatches != pBound);
-    break;
-  }
+  s_batchChunk.Finish(pBatches);
+  SmartRenderer::DisableHardwareInstancing();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -839,35 +705,6 @@ static void ProcessParticleBatches(Batch** _pSortedArray, UINT _numSortedBatches
     pManager->FinalizeBatch();
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Issue occlusion queries for objects that are marked invisible
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static void IssueQueriesInvisible(Batch* _pBatchList)
-{
-  if( s_queryUP )
-  {
-    BBEffectUP effect;
-    effect.Begin();
-
-    for(Batch *pBatch = _pBatchList; pBatch; pBatch = pBatch->pNextBatch)
-      if(pBatch->dontDraw)
-        pBatch->IssueQueryUP();
-
-    effect.End();
-  }
-  else
-  {
-    BBEffect effect;
-    effect.Begin();
-    CubeRenderer::Bind();
-
-    for(Batch *pBatch = _pBatchList; pBatch; pBatch = pBatch->pNextBatch)
-      if(pBatch->dontDraw)
-        pBatch->IssueQuery();
-
-    effect.End();
-  }
-}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void BatchQueue::Render( int priority ) const
@@ -883,18 +720,13 @@ void BatchQueue::Render( int priority ) const
 
   Batch* const pBatchList = priorities[priority].pBatchList;
                            
-  if( OcclusionQueries::GetUseMode() == OcclusionQueries::QUM_ISSUE )
-    IssueQueriesInvisible(pBatchList);
-  else
-  {
-    int numSortedBatches;
-    Batch **pSortedArray = priorities[priority].bSort ? sorter.Sort<CompareFarToNear>(numBatches, pBatchList, numSortedBatches)
-                                                      : sorter.Sort<CompareSortId>(numBatches, pBatchList, numSortedBatches);
-    if(priority == NDb::MATERIALPRIORITY_TRANSPARENT && GetRuntimePins().NewParticlesValue == NDb::BOOLPIN_TRUE)
-      ProcessParticleBatches(pSortedArray, numSortedBatches);
+  int numSortedBatches;
+  Batch **pSortedArray = priorities[priority].bSort ? sorter.Sort<CompareFarToNear>(numBatches, pBatchList, numSortedBatches)
+                                                    : sorter.Sort<CompareSortId>(numBatches, pBatchList, numSortedBatches);
+  if(priority == NDb::MATERIALPRIORITY_TRANSPARENT && GetRuntimePins().NewParticlesValue == NDb::BOOLPIN_TRUE)
+    ProcessParticleBatches(pSortedArray, numSortedBatches);
 
-    RenderBatchesPtrArray( numSortedBatches, pSortedArray );
-  }
+  RenderBatchesPtrArray( numSortedBatches, pSortedArray );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,6 @@ public:
 
 	void SetMaterial(NDb::TraceMaterial const* pDBMaterial);
   Render::BaseMaterial* GetMaterial() const { return Get(pMaterial); }
-  Render::OcclusionQueries* GetQueries() const { return 0; }
 	void SetParameters(Params const& newParams);
   Params const& GetParameters() const { return params; }
 	void SetWorldMatrix(Matrix43 const& m) { worldMatrix = m; }

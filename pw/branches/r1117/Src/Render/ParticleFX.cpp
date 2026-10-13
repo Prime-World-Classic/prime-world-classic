@@ -470,7 +470,6 @@ class ParticlesManager : public DeviceDeleteHandler, public IParticlesManager
       activeParticleCount = 0;
     }
 
-    virtual OcclusionQueries* GetQueries() const { return 0; }
     virtual void PrepareRendererAfterMaterial( unsigned int elementNumber ) const;
     virtual void Bind() const;
     virtual void Draw() const;

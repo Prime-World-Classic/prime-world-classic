@@ -2,7 +2,6 @@
 
 #include "../System/noncopyable.h"
 #include "aabb.h"
-#include "OcclusionQueries.h"
 
 // 
 #define REPLACE_DEFAULT_NEW_DELETE(className)		static uint className##InstanceCounter; \
@@ -56,8 +55,6 @@ public:
 	void SetDBID(const NDb::DBID &dbid) { pResourceDBID = &dbid; }
 	const NDb::DBID* GetDBID() const { return pResourceDBID; }
 
-  virtual bool FillOBB(CVec3 (&_vertices)[8]) const { return false; } // = 0;
-  virtual OcclusionQueries* GetQueries()   const = 0; //{ return 0; }
   virtual const Matrix43& GetWorldMatrix() const { static const Matrix43 m( CVec3::Zero() ); return m; } // = 0;
   virtual const AABB&     GetLocalAABB()   const { static const AABB bb( CVec3::Zero(), CVec3::Zero() ); return bb; } // = 0;
 

@@ -8,7 +8,6 @@
 #include "../System/staticarray.h"
 #include "texture.h"
 #include "renderflagsconverter.h"
-#include "OcclusionQueries.h"
 #include "GlobalMasks.h"
 #include "DXWarnSignal.h"
 #include <vector>
@@ -357,7 +356,6 @@ void OnFrameStart()
   pairMap.clear();
 #endif // USE_RENDER_SHADER_STATS
   NullLastPointers();
-  OcclusionQueriesBank::OnFrameStart();
 }
 
 bool IsResourceBound(const IUnknown* const ptr)

@@ -231,15 +231,6 @@ namespace Render
     }
   }
 
-  /////////////////////////////////////////////////////////////////////////
-  bool SkeletalMesh::FillOBB(CVec3 (&_vertices)[8]) const
-  {
-    if( localAABB.IsEmpty() )
-      return false;
-
-    RenderComponent::FillOBB(localAABB, worldMatrix, &_vertices[0]);
-    return true;
-  }
 
 	void SkeletalMesh::SetAnimationBlender( SkeletalAnimationBlender* pSampler )
 	{
