@@ -123,7 +123,12 @@ namespace
 {
   inline void NoteShaderPair()
   {
-    const UINT64 key = (UINT64(size_t)pLastVertexShader << 32) | UINT32(size_t(pLastPixelShader));
+    // Ключ (VS,PS) одним словом: кастоинг поинтеров, не склеивание в 32 бита
+    // (на x64 адреса не влезает в 32 бита, а склеинные бы сливались в pairMap и число пайплеинов
+    // приходило бы недооценным). Вероятность коллизиии при ~10^4 ключей ~5e-12 для замера не влияет.
+    const UINT64 vs = (UINT64)(size_t)pLastVertexShader;
+    const UINT64 ps = (UINT64)(size_t)pLastPixelShader;
+    const UINT64 key = vs * 0x9E3779B97F4A7C15ull ^ ps;
     if(key == lastBoundPair)
       return;
     lastBoundPair = key;
@@ -345,6 +350,16 @@ void NullThePointers()
 void OnFrameStart()
 {
 #ifdef USE_RENDER_SHADER_STATS
+  // DebugVar-можно посмотреть только в игровой консоли, а замер нужно на
+  // E2E-стенде (консоли нет) и в shipping-сборке меры. Раз в ~5 с печатаем
+  // снимок в лог: какие ключи пайплайного кэша нужно готовить на этапе 3.
+  static int s_statsTick = 0;
+  if ( ++s_statsTick % 300 == 0 )
+  {
+    DebugTrace( "ShaderStats: pairTotal=%d pairFrame=%d vsTotal=%d vsFrame=%d psTotal=%d psFrame=%d",
+      (int)pairMapTotal.size(), (int)pairMap.size(), (int)vsMapTotal.size(),
+      (int)vsMap.size(), (int)psMapTotal.size(), (int)psMap.size() );
+  }
   g_numPSu.SetValue( (int)psMap.size() );
   g_numVSu.SetValue( (int)vsMap.size() );
   g_numPSt.SetValue( (int)psMapTotal.size() );
