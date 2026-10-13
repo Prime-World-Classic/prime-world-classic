@@ -252,6 +252,60 @@ void TerrainTests(Checks& check, Host& host, const Bytes& fx, const Bytes& baked
 		auto unused=draw; for (size_t i=slot/2+1; i<4; ++i) unused.terrainTextures[i]=UINT32_MAX;
 		target.Clear(); check.Good(backend->Draw(programs.terrain[slot],unused),"unreferenced terrain samplers ignored");
 	}
+	// Authored mip colors distinguish genuine minification from level-zero fallback.
+	{
+		Texture mip;
+		const Pixel mipColors[]={{255,0,0,255},{0,255,0,255},{0,0,255,255},{255,255,0,255}};
+		glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D,mip.name);
+		for (int level=0;level<4;++level) {
+			std::vector<Pixel> pixels(size_t(8>>level)*size_t(8>>level),mipColors[level]);
+			glTexImage2D(GL_TEXTURE_2D,level,GL_RGBA8,8>>level,8>>level,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
+		}
+		colors.Fill({255,255,255,1},{255,255,255,1}); colors.Weights({255,0,0,0});
+		SolidTexture(natureTexture.name,{0,255,0,0});
+		auto mapped=draw; mapped.terrainTextures[0]=mip.name;
+		for (unsigned count : {1u,2u,3u,4u}) {
+			mapped.terrainMipLevels[0]=count; TerrainRegisters(*backend,0,1024); target.Clear();
+			const auto before=TerrainSnapshot(mapped);
+			check.Good(backend->Draw(programs.terrain[0],mapped),"authored partial/full terrain mip chain");
+			PixelIs(check,32,32,mipColors[count-1],"minification reaches requested authored terminal mip");
+			check.Test(TerrainSnapshot(mapped)==before,"mip draw restores borrowed image and sampler state");
+		}
+		for (unsigned level : {0u,1u}) {
+			TerrainRegisters(*backend,0,4*std::sqrt(2.f)*float(1u<<level)); target.Clear();
+			check.Good(backend->Draw(programs.terrain[0],mapped),"fractional terrain LOD draw");
+			const Pixel expected=level?Pixel{0,128,128,255}:Pixel{128,128,0,255};
+			check.Test(Near(ReadPixel(32,32),expected,6),"trilinear mixes adjacent authored levels, not nearest-mip selection");
+		}
+		mapped.natureTexture=mip.name;
+		TerrainRegisters(*backend,0,1024,{0,1,0,0},0,{1024,1024,0,0}); target.Clear();
+		check.Good(backend->Draw(programs.terrain[0],mapped),"nature and minified diffuse may alias");
+		PixelIs(check,32,32,{0,0,0,255},"aliased nature reads red level zero, not yellow diffuse mip");
+		mapped.natureTexture=natureTexture.name; mapped.terrainTextures[1]=mip.name;
+		mapped.terrainMipLevels[0]=1; mapped.terrainMipLevels[1]=4; colors.Weights({128,127,0,0});
+		TerrainRegisters(*backend,0,1024); target.Clear();
+		check.Good(backend->Draw(programs.terrain[2],mapped),"aliased diffuse samplers have independent mip limits");
+		PixelIs(check,32,32,{255,127,0,255},"aliased first-level red and terminal yellow remain distinct");
+		mapped.terrainMipLevels[0]=2; target.Clear();
+		check.Good(backend->Draw(programs.terrain[2],mapped),"aliased diffuse samplers retain distinct partial-chain limits");
+		PixelIs(check,32,32,{127,255,0,255},"partial green and full yellow mips remain independently clamped");
+		colors.Weights({255,0,0,0});
+		for (unsigned count : {0u,5u,14u}) {
+			mapped.terrainMipLevels[0]=count; target.Clear(); const auto before=TerrainSnapshot(mapped);
+			check.Test(backend->Draw(programs.terrain[0],mapped).code==Code::InvalidInput,"invalid mip range rejected before drawing");
+			PixelIs(check,32,32,ClearPixel,"invalid mip range cannot paint a partial tile");
+			check.Test(TerrainSnapshot(mapped)==before,"invalid mip range preserves host state");
+		}
+		mapped.terrainMipLevels[0]=4;
+		glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D,mip.name);
+		glTexImage2D(GL_TEXTURE_2D,3,GL_RGBA8,2,1,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+		target.Clear(); const auto before=TerrainSnapshot(mapped);
+		check.Test(backend->Draw(programs.terrain[0],mapped).code==Code::InvalidInput,"wrong-size late mip rejected");
+		check.Test(TerrainSnapshot(mapped)==before,"late mip failure restores every borrowed unit");
+		PixelIs(check,32,32,ClearPixel,"late malformed mip leaves framebuffer untouched");
+		colors.Fill(day,night); colors.Weights(weights); SolidTexture(natureTexture.name,nature);
+		TerrainRegisters(*backend);
+	}
 	late=programs;
 	ScenePrograms wrong=programs;
 	host.ReleaseCurrent();

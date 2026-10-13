@@ -130,6 +130,7 @@
 #include "LinuxBootstrap/baked_terrain.h"
 #include "LinuxBootstrap/terrain_layers.h"
 #include "LinuxBootstrap/terrain_nature_mask.h"
+#include "LinuxBootstrap/dds_mip_chain.h"
 #include "PF_GameLogic/PFWorldNatureMap.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/map_view.h"
@@ -392,6 +393,7 @@ struct LinuxWindowOverlay
     GLuint texture;
     unsigned int width;
     unsigned int height;
+		unsigned int mipLevels=1;
 
     OpenGlTexture()
       : texture(0),
@@ -1389,6 +1391,8 @@ struct LinuxTextureAssetPreview
   bool sourceResolved;
   bool artworkLoaded;
   LinuxLoadingArtwork artwork;
+	std::shared_ptr<const std::vector<unsigned char>> ddsMipSource;
+	LinuxBootstrap::DdsMipChain ddsMips;
   std::vector<std::string> warnings;
 
   LinuxTextureAssetPreview()
@@ -20309,6 +20313,7 @@ void ProbeLinuxMapSceneObjectStaticPayloads(
 	}
 }
 
+#include "../LinuxBootstrap/terrain_texture_source.inc"
 #include "../LinuxBootstrap/scene_window.inc"
 
 void ProbeSelectedMapStaticSceneObjects(
@@ -31863,6 +31868,7 @@ void DeleteOpenGlTexture(LinuxWindowOverlay::OpenGlTexture* texture)
   texture->texture = 0;
   texture->width = 0;
   texture->height = 0;
+	texture->mipLevels=1;
 }
 
 bool UploadUiMaterialTexture(
@@ -53260,6 +53266,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   return drawn;
 }
 
+#include "../LinuxBootstrap/terrain_texture_upload.inc"
+
 GLuint ResolveLinuxMapPreviewDiffuseTexture(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedMapPreview* selectedMapPreview,
@@ -53303,10 +53311,12 @@ GLuint ResolveLinuxMapPreviewDiffuseTexture(
 
   DeleteOpenGlTexture(&overlay->mapPreviewDiffuseTextures[textureIndex]);
   overlay->mapPreviewDiffuseTextureSourceFiles[textureIndex].clear();
-  if (!UploadOpenGlTexture(
+	const auto mipStatus=UploadLinuxDdsMipTexture(texturePreview,overlay->mapPreviewDiffuseTextures[textureIndex]);
+	if (mipStatus==LinuxBootstrap::DdsMipStatus::Invalid ||
+		(mipStatus==LinuxBootstrap::DdsMipStatus::Unsupported && !UploadOpenGlTexture(
         overlay,
         texturePreview.artwork,
-        &overlay->mapPreviewDiffuseTextures[textureIndex]))
+        &overlay->mapPreviewDiffuseTextures[textureIndex])))
   {
     overlay->mapPreviewDiffuseTextureFailedSourceFiles.insert(sourceFile);
     return 0;

@@ -91,6 +91,11 @@ static bool ReadLinuxMapSceneAssetCost(const fs::path& path, LinuxBootstrap::Sce
 		header.header.dwCubemapFlags != 0 || header.header.dwWidth == 0 || header.header.dwHeight == 0 ||
 		header.header.dwWidth > 4096 || header.header.dwHeight > 4096) return false;
 	cost.decodedBytes = static_cast<size_t>(header.header.dwWidth) * header.header.dwHeight * 4;
+	std::shared_ptr<const std::vector<unsigned char>> mipSource;
+	LinuxBootstrap::DdsMipChain mips;
+	const auto status=ReadLinuxDdsMipSource(path,mipSource,mips);
+	if (status==LinuxBootstrap::DdsMipStatus::Invalid) return false;
+	if (status==LinuxBootstrap::DdsMipStatus::Valid) cost.decodedBytes=mips.rgbaBytes;
 	return true;
 }
 
@@ -233,6 +238,21 @@ static bool UpdateLinuxMapSceneWindow(const LinuxClientEnvironment& environment,
 		} else {
 			textures.emplace_back();
 			ProbeTexturePayloadFile(environment, file, &textures.back());
+			auto& texture=textures.back();
+			if (texture.artworkLoaded && ReadLinuxDdsMipSource(texture.sourceFile,texture.ddsMipSource,texture.ddsMips)==
+				LinuxBootstrap::DdsMipStatus::Invalid) {
+				texture.artworkLoaded=false;
+				texture.warnings.push_back("DDS mip source changed or failed after scene admission");
+			}
+			if (texture.ddsMipSource) {
+				const auto admitted=measured.find("texture:"+texture.sourceFile);
+				if (admitted==measured.end() || !admitted->second.first ||
+					texture.ddsMipSource->size()!=admitted->second.second.sourceBytes ||
+					texture.ddsMips.rgbaBytes!=admitted->second.second.decodedBytes) {
+					texture.ddsMipSource.reset(); texture.ddsMips={}; texture.artworkLoaded=false;
+					texture.warnings.push_back("DDS mip source differs from admitted source/decoded extent");
+				}
+			}
 			++metrics.textureLoads;
 		}
 	}

@@ -1,3 +1,5 @@
+#include "terrain_texture_engine_probe.inc"
+
 /** Original MOBA catalog integration: bounded nearby selection, stable identity and cache epochs. */
 static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environment)
 {
@@ -136,6 +138,13 @@ static bool RunLinuxSceneWindowEngineProbe(const LinuxClientEnvironment& environ
 				glReadPixels(0,0,128,128,GL_RGBA,GL_UNSIGNED_BYTE,before.data());
 				const auto statistics=Render::LinuxBasicFx::GetStatistics();
 				check(DrawLinuxBakedTerrainLayers(overlay,map,*tile,{385,165,6.682475f,1})==1,"actual Bank tile draws original ordinary shader");
+				const auto textureIndex=tile->terrainTextureIndices[0][0];
+				check(textureIndex<map.staticDiffuseTextures.size() && map.staticDiffuseTextures[textureIndex].ddsMipSource &&
+					map.staticDiffuseTextures[textureIndex].ddsMips.count==10,"original Bank mip source retained after scene admission");
+				check(textureIndex<overlay.mapPreviewDiffuseTextures.size() &&
+					overlay.mapPreviewDiffuseTextures[textureIndex].mipLevels==
+					(LinuxDdsGlExtension("GL_EXT_texture_compression_s3tc")?10u:1u),"native Bank texture owns authored levels or explicit capability fallback");
+				if (textureIndex<map.staticDiffuseTextures.size()) CheckLinuxDdsUpload(map.staticDiffuseTextures[textureIndex],check);
 				check(Render::LinuxBasicFx::GetStatistics().terrainDraws==statistics.terrainDraws+1 &&
 					Render::LinuxBasicFx::GetStatistics().terrainRejected==statistics.terrainRejected,"engine terrain bridge submits without fallback");
 				glReadPixels(0,0,128,128,GL_RGBA,GL_UNSIGNED_BYTE,after.data());

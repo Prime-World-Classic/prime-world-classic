@@ -122,12 +122,17 @@ struct IndexedDraw {
 	/** Required by baked BasicMaterial and terrain; BasicFX ignores these two views. */
 	Bgra8ColorStream dayColors, nightColors;
 	/** Terrain-only COLOR2 weights and samplers 0..3/4. Unused layers are ignored.
-	 * All samplers use repeat/linear level0 sampling; names may alias. Diffuse
-	 * mipmapping/anisotropic filtering from the Windows terrain pass is not yet ported.
+	 * Samplers repeat; diffuse mips use original uncached-terrain trilinear filtering.
+	 * Nature remains level-zero bilinear; names may alias with independent mip limits.
 	 * Day/night colors are also required. Terrain ignores the single texture field.
 	 */
 	Bgra8ColorStream terrainWeights;
 	std::array<uint32_t, 4> terrainTextures{};
+	/** Authored levels per diffuse sampler, 1..13; one retains level-zero sampling.
+	 * Multiple levels request trilinear sampling. Each defined level is validated;
+	 * nature remains level-zero bilinear even when its texture aliases a diffuse.
+	 */
+	std::array<unsigned, 4> terrainMipLevels{{1,1,1,1}};
 	uint32_t natureTexture = 0;
 };
 

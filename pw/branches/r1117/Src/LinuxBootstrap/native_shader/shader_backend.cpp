@@ -422,6 +422,7 @@ struct ShaderBackend::Impl {
 	IndexedBlendFunctions blend;
 	MOJOSHADER_glContext* context = nullptr;
 	GLuint vao = 0, vertexBuffer = 0, indexBuffer = 0, colorBuffer = 0;
+	std::array<GLuint,5> terrainSamplers{};
 	bool registered = false, closed = false;
 	unsigned activeSlots = 0;
 	std::array<Pair, 12> pairs{};
@@ -473,7 +474,17 @@ std::unique_ptr<ShaderBackend> ShaderBackend::Create(ContextBinding owner, Limit
 		glGenBuffers(1, &p.vertexBuffer);
 		glGenBuffers(1, &p.indexBuffer);
 		glGenBuffers(1, &p.colorBuffer);
-		if (!p.vao || !p.vertexBuffer || !p.indexBuffer || !p.colorBuffer || glGetError() != GL_NO_ERROR) {
+		glGenSamplers(GLsizei(p.terrainSamplers.size()),p.terrainSamplers.data());
+		for (const auto sampler : p.terrainSamplers) if (sampler) {
+			glSamplerParameteri(sampler,GL_TEXTURE_WRAP_S,GL_REPEAT);
+			glSamplerParameteri(sampler,GL_TEXTURE_WRAP_T,GL_REPEAT);
+			glSamplerParameteri(sampler,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+			glSamplerParameteri(sampler,GL_TEXTURE_COMPARE_MODE,GL_NONE);
+			glSamplerParameterf(sampler,GL_TEXTURE_MIN_LOD,0);
+		}
+		const auto resourceError=glGetError();
+		if (!p.vao || !p.vertexBuffer || !p.indexBuffer || !p.colorBuffer || resourceError!=GL_NO_ERROR ||
+			std::any_of(p.terrainSamplers.begin(),p.terrainSamplers.end(),[](GLuint name) { return !name; })) {
 			status = Fail(Code::DriverFailure, "private draw resources failed"); return {};
 		}
 		Owners.push_back(key);
@@ -634,6 +645,9 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 	const size_t slot = reference.ticket_->slot;
 	const bool terrain = slot>=4, baked = slot==3, opacity = slot==1 || slot==2;
 	const size_t layers = terrain ? (slot-4)/2+1 : 1;
+	if (terrain) for (size_t layer=0;layer<layers;++layer)
+		if (!d.terrainMipLevels[layer] || d.terrainMipLevels[layer]>13)
+			return Fail(Code::InvalidInput,"terrain mip count outside 1..13");
 	const bool hasUV = !terrain || (slot-4)%2!=0;
 	const unsigned* requiredVS = terrain ? RequiredTerrainVS : baked ? RequiredBakedVS : RequiredVS;
 	const size_t vsCount = terrain ? std::size(RequiredTerrainVS) : baked ? std::size(RequiredBakedVS) : std::size(RequiredVS);
@@ -720,6 +734,7 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 		}
 		GlState state(blended ? &p.blend : nullptr,terrain?5:1);
 		MojoScope scope(p.context, p.vao);
+		const auto levelsAt=[&](size_t unit) { return terrain && unit<layers?d.terrainMipLevels[unit]:1u; };
 		for (size_t unit=0; unit<(terrain?5:1); ++unit) {
 			if (terrain && unit>=layers && unit!=4) continue;
 			const bool borrowed=state.Borrow(textureAt(unit),unit);
@@ -731,10 +746,34 @@ Result ShaderBackend::Draw(const ProgramRef& reference, const IndexedDraw& d) {
 			const GLenum textureError=glGetError();
 			if (!borrowed || width <= 0 || height <= 0 || textureError != GL_NO_ERROR)
 				return Fail(Code::InvalidInput, "texture is not a defined level0 2D image");
+			const auto levels=levelsAt(unit);
+			unsigned maximum=1;
+			for (auto dimension=std::max(width,height);dimension>1;dimension/=2) ++maximum;
+			if (levels>maximum) return Fail(Code::InvalidInput,"too many mips for texture dimensions");
+			GLint format=0; glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_INTERNAL_FORMAT,&format);
+			for (unsigned level=1;level<levels;++level) {
+				width=std::max(1,width/2); height=std::max(1,height/2);
+				GLint actualWidth=0,actualHeight=0,actualFormat=0;
+				glGetTexLevelParameteriv(GL_TEXTURE_2D,GLint(level),GL_TEXTURE_WIDTH,&actualWidth);
+				glGetTexLevelParameteriv(GL_TEXTURE_2D,GLint(level),GL_TEXTURE_HEIGHT,&actualHeight);
+				glGetTexLevelParameteriv(GL_TEXTURE_2D,GLint(level),GL_TEXTURE_INTERNAL_FORMAT,&actualFormat);
+				if (actualWidth!=width || actualHeight!=height || actualFormat!=format)
+					return Fail(Code::InvalidInput,"missing or incompatible authored texture mip");
+			}
 			for (GLenum parameter : {GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_REPEAT);
 			for (GLenum parameter : {GL_TEXTURE_MIN_FILTER, GL_TEXTURE_MAG_FILTER}) glTexParameteri(GL_TEXTURE_2D, parameter, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+			unsigned imageLevels=levels;
+			if (terrain) {
+				// Texture level bounds are shared by aliases; per-unit sampler LOD is not.
+				for (size_t other=0;other<layers;++other)
+					if (textureAt(other)==textureAt(unit)) imageLevels=std::max(imageLevels,levelsAt(other));
+				const auto sampler=p.terrainSamplers[unit];
+				glSamplerParameteri(sampler,GL_TEXTURE_MIN_FILTER,levels>1?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
+				glSamplerParameterf(sampler,GL_TEXTURE_MAX_LOD,GLfloat(levels-1));
+				glBindSampler(GLuint(unit),sampler);
+			}
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, GLint(imageLevels-1));
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, p.vertexBuffer);
 		glBufferData(GL_ARRAY_BUFFER, GLsizeiptr(d.vertices.size), d.vertices.data, GL_STREAM_DRAW);
@@ -807,6 +846,8 @@ Result ShaderBackend::Shutdown() {
 	if (p.vertexBuffer) glDeleteBuffers(1, &p.vertexBuffer);
 	if (p.indexBuffer) glDeleteBuffers(1, &p.indexBuffer);
 	if (p.colorBuffer) glDeleteBuffers(1, &p.colorBuffer);
+	glDeleteSamplers(GLsizei(p.terrainSamplers.size()),p.terrainSamplers.data());
+	p.terrainSamplers.fill(0);
 	if (p.vao) glDeleteVertexArrays(1, &p.vao);
 	p.vertexBuffer = p.indexBuffer = p.colorBuffer = p.vao = 0;
 	p.activeSlots = 0; p.closed = true;

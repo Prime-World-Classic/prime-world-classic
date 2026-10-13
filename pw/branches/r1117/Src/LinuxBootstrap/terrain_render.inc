@@ -100,12 +100,14 @@ static size_t DrawLinuxBakedTerrainLayers(LinuxWindowOverlay& overlay, const Lin
 	if ((channels&(channels-1)) && !Render::LinuxBasicFx::SupportsTerrainAdditive())
 		return fail("mixed-nature tile needs indexed blending before its first pass");
 	std::array<std::array<GLuint,4>,3> textures{};
+	std::array<std::array<unsigned,4>,3> mipLevels{};
 	// Resolve every needed sampler before any faction pass, so a missing later texture
 	// cannot leave a partially shaded tile. All indices were admitted by the scene ledger.
 	for (size_t nature=0; nature<3; ++nature) if (channels&(1u<<nature))
 		for (size_t layer=0; layer<selection.count; ++layer) {
 			textures[nature][layer]=ResolveLinuxMapPreviewDiffuseTexture(&overlay,&map,payload.terrainTextureIndices[nature][layer]);
 			if (!textures[nature][layer]) return fail("budget-admitted faction diffuse texture unavailable");
+			mipLevels[nature][layer]=overlay.mapPreviewDiffuseTextures[payload.terrainTextureIndices[nature][layer]].mipLevels;
 		}
 	pwshader::IndexedDraw draw;
 	draw.vertices={map.bakedTerrain->VertexData(payload.originalObjectIndex),size_t(tile->vertexCount)*44};
@@ -123,6 +125,7 @@ static size_t DrawLinuxBakedTerrainLayers(LinuxWindowOverlay& overlay, const Lin
 	size_t passes=0;
 	for (size_t nature=0; nature<3; ++nature) if (channels&(1u<<nature)) {
 		draw.terrainTextures=textures[nature]; constants.natureWeight=weights[nature];
+		draw.terrainMipLevels=mipLevels[nature];
 		draw.blendMode=passes?pwshader::BlendMode::AddColor:pwshader::BlendMode::Off;
 		if (!Render::LinuxBasicFx::DrawTerrain(draw,constants,preview)) return fail("original terrain shader draw failed");
 		++passes; ++overlay.terrainLayerDraws;

@@ -43,14 +43,32 @@ UVs affect only layer zero. Its alpha rule is intentional: layer-zero alpha is
 unweighted; subsequent layer alphas are weighted. Overburn multiplies the
 already nature-weighted RGB, not an independent additive light.
 
-`IndexedDraw` borrows independent day/night/weight streams and live level-zero
-2D textures. Global variants ignore unused UV layout/data. Off writes RGBA/depth;
+`IndexedDraw` borrows independent day/night/weight streams and live 2D textures.
+Global variants ignore unused UV layout/data. Off writes RGBA/depth;
 AddColor supports later nature passes while preserving destination alpha/depth.
 Other terrain blend modes, cache, shadow and depth-output permutations are not
-admitted. Every referenced sampler uses repeat/linear level-zero sampling; the
-Windows diffuse mipmapping/anisotropic modes are not implemented here. All five unit
-bindings/samplers and modified texture parameters are restored, including aliases
-and failures partway through borrowing. Tickets remain CPU-only after shutdown.
+admitted. Diffuse `terrainMipLevels` defaults to one (repeat/linear level zero);
+multiple authored levels use repeat/trilinear sampling, matching the original
+uncached terrain pass. The nature sampler remains level-zero bilinear. Five
+private sampler objects keep mip limits independent even when texture names
+alias. Every requested level must have the expected dimensions and identical
+internal format; malformed or missing later levels reject the entire draw.
+All five unit bindings/samplers and modified texture parameters are restored,
+including aliases and failures partway through borrowing. Tickets remain CPU-only
+after shutdown. The cached terrain pass and its anisotropic mode remain unported.
+
+The [bounded DDS reader](../dds_mip_chain.h) reuses the original DDS layout and
+admits only 2D DXT1/3/5, up to 4096 per axis and 64 MiB source. It validates the
+exact full or partial chain, including small block-rounded mips, before retaining
+immutable source bytes. Scene admission accounts for every decoded level, and
+the retained source must match the admitted source/decoded extent. Native map
+textures upload authored blocks through OpenGL S3TC, without regenerating mips
+or recompressing pixels. Nonterrain shader draws still sample level zero; their
+map textures now use the driver's original DXT decoding. UI/character artwork
+loading is unchanged. Unsupported codecs or missing S3TC capability retain the
+existing level-zero preview; corrupt admitted sources or failed GPU uploads do
+not silently fall back. Uploads restore active texture, binding, PBO and unpack
+state, including compressed-block pixel storage when supported.
 
 CPU and isolated pixel gates accept a third archive argument:
 
@@ -194,9 +212,9 @@ not join this pass.
 
 This is not a general permutation renderer. Skinning, animated
 material constants, runtime opacity/blend overrides, emissive, distortion,
-general vertex colors, SH/dynamic lighting, shadows, instancing and full texture mip chains are
-not implemented here. Texture sampling deliberately uses the existing native
-level-zero upload. Source reflection/bounds checks are not a signature or a
+general vertex colors, SH/dynamic lighting, shadows and instancing are not
+implemented here. General material sampler states and non-DXT mip chains remain
+outside this terrain sampling path. Source reflection/bounds checks are not a signature or a
 sandbox for arbitrary replacement shader archives.
 
 ## Verification
@@ -280,3 +298,9 @@ Coverage and color diversity checks detect missing draws and incorrect winding.
 Standalone layer tests cover every shipped tile plus malformed/mock masks;
 nature-cache tests cover live changes, invalid-query atomicity, Y orientation,
 cached cell lookup and conservative bilinear/repeat pass selection.
+
+DDS regressions cover malformed/truncated sources, partial/non-square/tiny mip
+chains and the shipped ten-level Bank texture. The engine probe uploads that
+texture with hostile PBO/unpack state, then reads every compressed level back and
+compares its exact bytes. Terrain pixel tests distinguish minification, fractional
+trilinear LOD, independent alias limits and malformed late-mip rejection.
