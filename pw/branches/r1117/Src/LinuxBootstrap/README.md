@@ -121,6 +121,14 @@ or duplicated final records; wait for the process to exit before validating logs
 
 ## Remaining Boundaries
 
+Native skeletal previews decode the original exporter `Render::Color` bone
+indices from BGRA storage into RGBA weight order before fragment palette lookup.
+Plain `UBYTE4` declarations retain their byte order. The
+`--bootstrap-flash-renderer-probe` includes asymmetric mock influence tests,
+complete Plane skin decoding and original-mesh framebuffer comparisons with an
+independently pre-skinned reference. This verifies index association, not original
+skeletal material, lighting, animation-state or GPU-skinning parity.
+
 - Rendering uses real assets and selected original BasicFX/baked BasicMaterial
 	shaders, but most materials and presentation remain simplified. The
 	[native static shader contract](native_shader/README.md) documents exact admission,

@@ -273,6 +273,9 @@ namespace
       if (ReadVertexFloat4(storage, vertexBase + blendWeightElement->offset, weights) &&
           ReadVertexBytes4(storage, vertexBase + blendIndicesElement->offset, indices))
       {
+		// MeshConverter writes Render::Color: restore shader RGBA order from BGRA storage.
+		if (blendIndicesElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_D3DCOLOR))
+			std::swap(indices[0], indices[2]);
         for (unsigned int influence = 0; influence < 4; ++influence)
         {
           const float weight = weights[influence];

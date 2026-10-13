@@ -16618,11 +16618,13 @@ bool FindLinuxMeshSkinningElements(
   const unsigned char* payload,
   size_t payloadSize,
   unsigned int* blendWeightOffset,
-  unsigned int* blendIndicesOffset
+  unsigned int* blendIndicesOffset,
+  Render::EVertexElementType* blendIndicesType
 )
 {
   if (!blendWeightOffset ||
       !blendIndicesOffset ||
+      !blendIndicesType ||
       !StaticVectorPayloadRangeValid(fragment.vertexElementDescriptor, payload, payloadSize))
   {
     return false;
@@ -16648,6 +16650,7 @@ bool FindLinuxMeshSkinningElements(
               descriptor.type == Render::VERTEXELEMENTTYPE_UBYTE4))
     {
       *blendIndicesOffset = descriptor.offset;
+      *blendIndicesType = descriptor.type;
       foundIndices = true;
     }
   }
@@ -16776,11 +16779,13 @@ bool ReadLinuxHeroMeshPreviewNormal(
   return true;
 }
 
+/** Decode shader-order influences before applying the fragment's local-to-skeleton palette. */
 bool ReadLinuxHeroMeshPreviewSkinning(
   const H6FragmentHeader& fragment,
   unsigned int localVertexIndex,
   unsigned int blendWeightOffset,
   unsigned int blendIndicesOffset,
+  Render::EVertexElementType blendIndicesType,
   const StaticVector<unsigned short>* fragmentReindex,
   unsigned int skeletonJointsCount,
   const char* vertexBuffer,
@@ -16828,6 +16833,12 @@ bool ReadLinuxHeroMeshPreviewSkinning(
   {
     return false;
   }
+
+	// D3DCOLOR is exported as BGRA bytes; UBYTE4 is already in weight order.
+	if (blendIndicesType == Render::VERTEXELEMENTTYPE_D3DCOLOR)
+		std::swap(indices[0], indices[2]);
+	else if (blendIndicesType != Render::VERTEXELEMENTTYPE_UBYTE4)
+		return false;
 
   for (size_t i = 0; i < 4; ++i)
   {
@@ -17215,13 +17226,15 @@ bool ProbeLinuxHeroSkinMeshPayloadFile(
       }
       unsigned int blendWeightOffset = 0;
       unsigned int blendIndicesOffset = 0;
+      Render::EVertexElementType blendIndicesType = Render::VERTEXELEMENTTYPE_D3DCOLOR;
       const bool fragmentHasSkinning =
         FindLinuxMeshSkinningElements(
           fragment,
           payloadBytes,
           payload.size(),
           &blendWeightOffset,
-          &blendIndicesOffset);
+          &blendIndicesOffset,
+          &blendIndicesType);
       const StaticVector<unsigned short>* fragmentReindex = 0;
       const bool fragmentHasSkinningReindex =
         fragmentHasSkinning &&
@@ -17312,6 +17325,7 @@ bool ProbeLinuxHeroSkinMeshPayloadFile(
                 vertexIndex,
                 blendWeightOffset,
                 blendIndicesOffset,
+                blendIndicesType,
                 fragmentHasSkinningReindex ? fragmentReindex : 0,
                 header->jointsCount,
                 vertexBuffer,
