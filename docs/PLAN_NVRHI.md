@@ -1153,6 +1153,32 @@ color-correct начинают получать настоящие веса) —
 `VK_ERROR_OUT_OF_DATE_KHR` / `DXGI_STATUS_OC_RESIZED`. Это же — единственная
 часть, где придётся держать нативный Vulkan/DXGI код в обход NVRHI.
 
+### 3.x Спайк A: HLSL -> SPIR-V (сделано 2026-10-13, `tools/spirv_probe`)
+
+Главный риск этапа 3 был в шейдерах: 49 HLSL-файлов в диалекте SM3.0
+(`sampler2D`/`samplerCUBE`, `register(cN)`/`register(sN)`, `tex2D*`,
+`: POSITION`/`: COLOR`, `VPOS`). DXC (SM6) их не принимает.
+
+Замер: **35 материалов × VS/PS = 70 единиц компиляции; без прослойки — 0/70,
+с механической прослойкой — 67/70.** Оставшиеся три — конкретные правки:
+`UIFlashMaterial` (VS+PS, при части перестановок PIN'ов нет запасного `return` —
+`fxc` терпел, DXC нет) и `TerrainElementMaterial` PS (`tex2D(samplerArray[0], uv)`
+— индекс в массиве сэмплеров, прослойка не разбирает).
+
+Прослойка (`shim.py`, ~90 строк правил): combined-сэмплер → `Texture2D` +
+один общий `SamplerState`; `register(...)` снимается (раскладку зададим сами);
+`tex2D/texCUBE/tex2Dlod/tex2Dproj` → `.Sample/.SampleLevel` (proj — вручную
+через `c.xy/c.w`); `POSITION` → `SV_POSITION`; `COLOR` выхода PS → `SV_TARGET`
+(в структуре-возврате → `SV_TARGET0..n`, что заодно раскрывает MRT у
+`BasicMaskMaterial`: цвет + глубина); `VPOS` → `SV_Position` **обязательно
+float4** (Vulkan требует, `VUID-FragCoord-FragCoord-04212`).
+
+Вывод: компилируемость — не риск. Риск — семантическая эквивалентность
+(sampler-state на слот, раскладка `GlobalMasks.h` в uniform-буферы, Y-инверсия,
+`clip()`, MRT, строково-векторный `mul`, offset-формы `tex2D`). Отвечает на это
+спайк B: нарисовать один SPIR-V-шейдер через NVRHI на lavapipe и сравнить
+пиксели с D3D9.
+
 ### 3.y Решение: GPU-окклюзии не будет (принято 2026-10-12)
 
 **Факт по NVRHI** (`6b96fb03`): в `nvrhi.h` есть только `IEventQuery` и
