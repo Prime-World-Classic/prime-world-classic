@@ -15,6 +15,7 @@ function Init( reconnecting )
 				currentHero = tostring(team) .. tostring(hero)
 				LuaHeroTakeConsumable ( currentHero, "NaftaPotion2000" ) -- прописан в dictionary 
 				LuaHeroTakeConsumable ( currentHero, "RemoveCooldown" ) -- прописан в dictionary 
+				LuaHeroTakeConsumable ( currentHero, "TestTeleport" ) -- прописан в dictionary 
 			end
 		end
 				

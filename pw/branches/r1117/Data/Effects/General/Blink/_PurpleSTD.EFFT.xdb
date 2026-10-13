@@ -2,6 +2,7 @@
 <BasicEffectStandalone>
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability3.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/A2_BlinkToTarget.APLR" Count="2" />
+	<BackLink DBID="/Items/Temp/Test-Teleport.ARCT" Count="2" />
 	<component href="/Effects/General/Blink/_PurpleTRS.PRXY" />
 	<deathType>Anim</deathType>
 	<enableCondition href="" />
