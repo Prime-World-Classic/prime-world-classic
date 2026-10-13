@@ -48,7 +48,10 @@ VS_OUT MainPass_VSMain( VS_IN In, out float4 ClipSpacePosition: POSITION )
 {
 	VS_OUT Out;
 
-  uvSpeed = 0;
+  // fxc (строгий режим) запрещает писать в register-глобал (X3025).
+  // Старый D3DX молча делал из этого локальную тень, поэтому анимация UV всегда
+  // была выключена. Пишем то же явно: локальная тень затеняет register-объявление.
+  float2 uvSpeed = 0;
 
 	// Choose matrix
 #if SkeletalMeshPinValue == 1
