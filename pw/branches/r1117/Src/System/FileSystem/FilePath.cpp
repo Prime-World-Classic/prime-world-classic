@@ -196,7 +196,8 @@ void MakeRelativePath( string *pRes, const string &szFullPath, const string &szP
 	//
 	const int nPos = FindLastSlash( szParentPath );
 	if ( (nPos != (int)string::npos) && ComparePathEq(0, nPos + 1, szParentPath, 0, nPos + 1, szFullPath) )
-		*pRes = szFullPath.c_str() + nPos + 1;
+		// Own the substring before assignment: output may alias szFullPath.
+		*pRes = string( szFullPath.c_str() + nPos + 1 );
 	else
 		*pRes = '/' + szFullPath;
 }
@@ -215,7 +216,8 @@ void MakeFullPath( string *pRes, const string &szRelativePath, const string &szP
 	}
 	//
 	if ( IsFolderSeparator(szRelativePath[0]) ) // absolute path
-		*pRes = szRelativePath.c_str() + 1;
+		// nstl::string's pointer assignment uses memcpy, not overlap-safe memmove.
+		*pRes = string( szRelativePath.c_str() + 1 );
 	else	// relative to parent's path
 	{
 		const int nPos = FindLastSlash( szParentPath );
