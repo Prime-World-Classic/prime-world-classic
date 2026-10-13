@@ -868,12 +868,16 @@ bool NatureMap::OverrideStep(float dt)
         // bring the top of them back to be active. Otherwise - just expire.
         if (ovr.inactiveStack.size() > 0)
         {
+#if defined(PW_LINUX_NULL_RENDER)
+			// A permanent edit clears cell ownership without cancelling queued lifetimes.
+			const bool stillOwnsCell = GetElementInfo(ovr.id).ownerData == ovr.data.ownerData;
+#endif
           TInactiveStak::iterator it = ovr.inactiveStack.end() - 1;
           ovr.data = *it;
           ovr.inactiveStack.pop_back();
 #if defined(PW_LINUX_NULL_RENDER)
-			// Restore both the visible value and ownership of the surviving entry.
-			ApplyOverride(ovr);
+			// Restore the surviving entry only while the expired entry still owned the cell.
+			if (stillOwnsCell) ApplyOverride(ovr);
 #endif
           aliveOverrides.push_back(&ovr);
         }

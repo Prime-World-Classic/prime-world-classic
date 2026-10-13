@@ -807,6 +807,7 @@ add_executable(
   ../System/Dumper.cpp
   ../System/FastMath.cpp
   ../System/Geom.cpp
+	../System/PlaneGeometry.cpp
   ../System/LoadingProgress.cpp
   ../System/Logger.cpp
   ../System/LogHelpers.cpp

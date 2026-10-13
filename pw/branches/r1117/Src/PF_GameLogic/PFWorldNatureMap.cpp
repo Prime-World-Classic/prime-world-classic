@@ -9,6 +9,7 @@
 #if defined( PW_LINUX_NULL_RENDER ) && !defined( PW_LINUX_TERRAIN_RUNTIME_PROBE )
 #define PW_LINUX_NATUREMAP_NULL_RENDER 1
 #include <cmath>
+#include <limits>
 #endif
 
 #ifndef VISUAL_CUTTED
@@ -36,6 +37,11 @@ namespace
 			const bool loaded = Initialize(params, &modified);
 			modified.clear();
 			return loaded;
+		}
+		/** Iterator bounds must use the size retained by this loaded grid. */
+		bool MatchesEditWorldSize(const CVec2& size) const
+		{
+			return worldSize.x == size.x && worldSize.y == size.y;
 		}
 		bool Advance(float dt)
 		{
@@ -307,7 +313,39 @@ void PFWorldNatureMap::DebugOverride(NDb::EFaction faction, CVec2 const &center,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
 {
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	/** Bound the original float geometry, including cell positions and cross products. */
+	const double LinuxNatureEditLimit = sqrt(double(std::numeric_limits<float>::max())) * .125;
+
+	bool LinuxNatureEditPoint(const CVec2& point)
+	{
+		return std::isfinite(point.x) && std::isfinite(point.y)
+			&& fabs(double(point.x)) <= LinuxNatureEditLimit && fabs(double(point.y)) <= LinuxNatureEditLimit;
+	}
+
+	/** Validate the original iterators' clamped hex corners before unsigned range conversion. */
+	bool LinuxNatureEditBounds(const Terrain::NatureMap* map, const PFWorld* world,
+		NDb::ENatureType from, NDb::ENatureType to, const CVec2& low, const CVec2& high)
+	{
+		if (!map || !world || !map->GetDB().editableNatureMap
+			|| int(from) >= NDb::KnownEnum<NDb::ENatureType>::sizeOf
+			|| to < NDb::NATURETYPE_N || to > NDb::NATURETYPE_B) return false;
+		const CVec2& size = world->GetMapSize();
+		const float step = map->GetElementSize();
+		if (!LinuxNatureEditPoint(size) || size.x <= 0.f || size.y <= 0.f
+			|| !static_cast<const LinuxNatureQuery*>(map)->MatchesEditWorldSize(size)
+			|| !std::isfinite(step) || step <= 0.f || !std::isfinite(1.f / step)
+			|| !map->GetSizeX() || !map->GetSizeY()
+			|| double(step) * map->GetSizeX() > LinuxNatureEditLimit
+			|| double(step) * map->GetSizeY() > LinuxNatureEditLimit) return false;
+		const int first = map->LocateElement(ClampFast(low.x, 0.f, size.x), ClampFast(low.y, 0.f, size.y));
+		const int last = map->LocateElement(ClampFast(high.x, 0.f, size.x), ClampFast(high.y, 0.f, size.y));
+		if (first < 0 || last < 0) return false;
+		return map->GetElementRow(first) <= map->GetElementRow(last)
+			&& Max(int(map->GetElementColumn(first)) - 1, 0)
+				<= Min(int(map->GetElementColumn(last)) + 1, int(map->GetSizeX()) - 1);
+	}
+#endif
   struct NatureChnager : public NonCopyable
   {
   public :
@@ -325,12 +363,15 @@ namespace
     NDb::ENatureType from;
     NDb::ENatureType to;
   }; 
-#endif
 
 }
 void PFWorldNatureMap::ChangeNature( CVec2 const &pos, float radius, NDb::ENatureType from, NDb::ENatureType to )
 {
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (!LinuxNatureEditPoint(pos) || !std::isfinite(radius) || radius <= 0.f || radius > LinuxNatureEditLimit
+		|| !LinuxNatureEditBounds(pMap, GetWorld(), from, to,
+			CVec2(pos.x - radius, pos.y - radius), CVec2(pos.x + radius, pos.y + radius))) return;
+#endif
   if (!pMap)
     return;
 
@@ -339,12 +380,18 @@ void PFWorldNatureMap::ChangeNature( CVec2 const &pos, float radius, NDb::ENatur
 
   NatureChnager func( *pMap, from, to );
   pMap->ForAllElementsInCircle( func, pos, radius );
-#endif
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::ChangeNature( const vector<CVec2>& polygon, NDb::ENatureType from, NDb::ENatureType to )
 {
-#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+#if defined(PW_LINUX_NATUREMAP_NULL_RENDER)
+	if (polygon.empty()) return;
+	for (int i = 0; i < polygon.size(); ++i)
+		if (!LinuxNatureEditPoint(polygon[i])) return;
+	const CTRect<float> bounds = GetPolygonBoundingBox(polygon);
+	if (!LinuxNatureEditBounds(pMap, GetWorld(), from, to,
+		CVec2(bounds.left, bounds.top), CVec2(bounds.right, bounds.bottom))) return;
+#endif
   if (!pMap)
     return;
   if( polygon.empty() )
@@ -352,7 +399,6 @@ void PFWorldNatureMap::ChangeNature( const vector<CVec2>& polygon, NDb::ENatureT
 
   NatureChnager func( *pMap, from, to );
   pMap->ForAllElementsInPolygon( func, polygon );
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
