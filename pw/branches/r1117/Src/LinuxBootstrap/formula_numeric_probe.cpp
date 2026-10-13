@@ -323,6 +323,27 @@ void NumericFunctions()
 /** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
 void ContextFunctions()
 {
+	for (const char* name : {"__history_s_taken", "__history_s_dealt", "__history_r_taken", "__history_r_dealt"})
+	{
+		int calls = 0;
+		const NumericFunctionResolver history = [&](const std::string& call, const double* args, std::size_t count, double& value) {
+			++calls; value = args[0]; return call == name && count == 1;
+		};
+		const std::string prefix = name;
+		Check(EvaluateNumericFormula(prefix + "(min(3,7))", {}, history).value == 3 && calls == 1,
+			"reserved history transport passes one evaluated scalar argument");
+		for (const char* suffix : {"()", "(1,2)", "(,1)", "(1,)", "(1,,2)"})
+			Check(!EvaluateNumericFormula("0 ? " + prefix + suffix + " : 2", {}, history).Succeeded() && calls == 1,
+				"one-argument history arity is checked even in unselected branches");
+		Check(EvaluateNumericFormula("0 ? " + prefix + "(1/0) : 4").value == 4,
+			"unselected history argument requires no resolver");
+		Check(EvaluateNumericFormula(prefix + "(1)").error == Error::MissingResolver,
+			"selected scalar history call needs explicit context");
+		Check(EvaluateNumericFormula(prefix + "(1/0)", {}, history).error == Error::NonFiniteValue && calls == 1,
+			"invalid history argument fails before the callback");
+		Check(EvaluateNumericFormula(prefix + "(1)+" + prefix + "(2)", {}, history).value == 3 && calls == 3,
+			"separate selected history calls are not cached");
+	}
 	for (const char* name : {"ut_bldg", "ut_hero"})
 	{
 		int predicateCalls = 0;

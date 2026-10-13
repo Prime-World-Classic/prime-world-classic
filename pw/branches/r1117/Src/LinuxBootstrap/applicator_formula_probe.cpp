@@ -1360,6 +1360,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "microai_spatial_b13_tests.inc"
 #include "applicator_history_b13_tests.inc"
 #include "damage_history_b13_tests.inc"
+#include "damage_formula_b13_tests.inc"
 #include "death_cleanup_b13_tests.inc"
 #include "dead_world_b13_tests.inc"
 #include "nature_override_b13_tests.inc"
@@ -1509,6 +1510,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	ApplicatorHistoryB13(check);
 	DeathCleanupPoliciesB13(check);
 	DamageHistoryB13(check);
+	DamageFormulasB13(check);
 	DeathCleanupStateB13(check);
 	DeathCleanupDeferredB13(check);
 	DeadWorldB13(check);

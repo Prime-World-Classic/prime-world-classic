@@ -15,6 +15,11 @@ namespace LinuxBootstrap
  * sender.vName and receiver.vName bind live GetVariable values; Name follows
  * FormulaBuilder's [A-Z][A-Za-z_0-9]* rule. Missing variables retain the engine's
  * zero default without creating a variable. No general member/string API is exposed.
+ * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
+ * spellings, use checked production PFBaseUnit history with one finite float argument.
+ * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited
+ * records fail rather than becoming no-damage predicates. Unselected calls stay lazy;
+ * no extended mask queries, arbitrary object paths or generic virtual fallback is added.
  * pMisc->GetVariable("damageDealed") and pMisc->GetVariable("isAutoAttack")
  * are the only applicator accessors and require an applicator context.
  * Unknown properties or selected missing units fail, never silently substitute zero.

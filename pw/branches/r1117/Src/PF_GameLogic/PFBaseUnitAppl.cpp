@@ -439,27 +439,42 @@ struct RecentApplicator
 
 /** Reuse the owning engine traversal without CheckApplicatorTime's borrowed comparator. */
 template<class Ring>
-float CalculateRecentDamage(Ring& history, const PFWorld* world, float interval)
+bool CalculateRecentDamage(Ring& history, const PFWorld* world, float interval, float& result)
 {
-	if (!world || !std::isfinite(interval) || interval <= 0.f) return 0.f;
+	if (!world || !std::isfinite(interval)) return false;
 	const float now = world->GetTimeElapsed();
-	if (!std::isfinite(now) || now < 0.f) return 0.f;
+	if (!std::isfinite(now) || now < 0.f) return false;
+	if (interval <= 0.f) { result = 0; return true; }
 	DamageCalculator calc;
 	RecentApplicator recent = {now, interval, true};
 	PFBaseApplicator::ForallRingSafeWhileBack(history, calc, recent);
 	// A malformed visited record invalidates the whole result, not just its contribution.
-	return calc.valid && recent.valid ? static_cast<float>(calc.amount) : 0.f;
+	if (!calc.valid || !recent.valid) return false;
+	result = static_cast<float>(calc.amount);
+	return true;
 }
 }
 
 float PFBaseUnit::GetDamageTaken(float dt) const
 {
-	return CalculateRecentDamage(appliedApplicatorsHistory, GetWorld(), dt);
+	float result = 0;
+	TryGetDamageTaken(dt, result);
+	return result;
 }
 
 float PFBaseUnit::GetDamageDealt(float dt) const
 {
-	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt);
+	float result = 0;
+	TryGetDamageDealt(dt, result);
+	return result;
+}
+bool PFBaseUnit::TryGetDamageTaken(float dt, float& result) const
+{
+	return CalculateRecentDamage(appliedApplicatorsHistory, GetWorld(), dt, result);
+}
+bool PFBaseUnit::TryGetDamageDealt(float dt, float& result) const
+{
+	return CalculateRecentDamage(sentApplicatorsHistory, GetWorld(), dt, result);
 }
 float PFBaseUnit::GetDamageTakenEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
 float PFBaseUnit::GetDamageDealtEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }

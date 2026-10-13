@@ -1162,6 +1162,11 @@ public:
 
   virtual float GetDamageTaken(float dt) const;
   virtual float GetDamageDealt(float dt) const;
+#if defined(PW_LINUX_DB_BOOTSTRAP) || defined(PW_LINUX_NULL_RENDER)
+	/** Checked native history queries preserve result on malformed context/records, not a false zero. */
+	bool TryGetDamageTaken(float dt, float& result) const;
+	bool TryGetDamageDealt(float dt, float& result) const;
+#endif
   virtual float GetDamageTakenEx(float dt, const unsigned mask, const IMiscFormulaPars* const pMisc) const;
   virtual float GetDamageDealtEx(float dt, const unsigned mask, const IMiscFormulaPars* const pMisc) const;
 

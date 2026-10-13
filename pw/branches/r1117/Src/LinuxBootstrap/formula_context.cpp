@@ -78,7 +78,7 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"BaseWill", &IUnitFormulaPars::GetBaseWill}
 };
 
-/** Bind authored unit variable names and two exact applicator accessors as scalars.
+/** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
@@ -93,7 +93,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		while (pos < source.size() && nameChar(source[pos])) ++pos;
 		const std::string name = source.substr(start, pos - start);
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
-			name.compare(0, 10, "__position") == 0) return false;
+			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0) return false;
 		if (name == "pMisc")
 		{
 			bool found = false;
@@ -111,8 +111,23 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 			if (!positionContext || source.compare(pos, suffix.size(), suffix) != 0) return false;
 			result += " __position_nature "; pos += suffix.size();
 		}
-		else if (name == "sender" || name == "receiver")
+		else if (name == "sender" || name == "receiver" || name == "pFirst" || name == "pSecond")
 		{
+			const bool pointer = name == "pFirst" || name == "pSecond";
+			bool history = false;
+			for (const char* method : {"GetDamageTaken", "GetDamageDealt"})
+			{
+				const std::string suffix = std::string(pointer ? "->" : ".") + method;
+				if (source.compare(pos, suffix.size(), suffix) != 0) continue;
+				std::size_t open = pos + suffix.size();
+				while (open < source.size() && (source[open] == ' ' || source[open] == '\t' || source[open] == '\r' || source[open] == '\n')) ++open;
+				if (open == source.size() || source[open] != '(') return false;
+				result += std::string(name == "sender" || name == "pFirst" ? " __history_s_" : " __history_r_") +
+					(std::string(method) == "GetDamageTaken" ? "taken" : "dealt");
+				pos = open; history = true; break;
+			}
+			if (history) continue;
+			if (pointer) return false;
 			if (source.compare(pos, 2, ".v") != 0 || pos + 2 >= source.size() ||
 				source[pos + 2] < 'A' || source[pos + 2] > 'Z') return false;
 			pos += 2;
@@ -154,6 +169,20 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "__history_s_taken" || name == "__history_s_dealt" ||
+			name == "__history_r_taken" || name == "__history_r_dealt")
+		{
+			if (count != 1 || !std::isfinite(args[0]) || std::fabs(args[0]) > std::numeric_limits<float>::max()) return false;
+			const bool fromSender = name == "__history_s_taken" || name == "__history_s_dealt";
+			const auto* unit = dynamic_cast<const NWorld::PFBaseUnit*>(fromSender ? sender : target);
+			if (!unit) return false;
+			float result;
+			const bool valid = name == "__history_s_taken" || name == "__history_r_taken"
+				? unit->TryGetDamageTaken(static_cast<float>(args[0]), result)
+				: unit->TryGetDamageDealt(static_cast<float>(args[0]), result);
+			if (!valid) return false;
+			value = result; return true;
+		}
 		if (name == "ut_bldg" || name == "ut_hero")
 		{
 			if (!target || count != 2) return false;

@@ -159,6 +159,16 @@ double ResolveFunction(FunctionBinding& binding, const double* args, std::size_t
 	if (!found) throw Error::UnknownSymbol;
 	return Finite(value);
 }
+/** Four reserved endpoint bindings are emitted only by the engine-context source whitelist. */
+bool IsHistoryFunction(const std::string& name)
+{
+	return name == "__history_s_taken" || name == "__history_s_dealt" ||
+		name == "__history_r_taken" || name == "__history_r_dealt";
+}
+double ResolveOne(void* data, double a)
+{
+	return ResolveFunction(*static_cast<FunctionBinding*>(data), &a, 1);
+}
 double ResolveTwo(void* data, double a, double b)
 {
 	const double args[] = {a, b};
@@ -283,7 +293,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
 			if (next < expression.size() && expression[next] == '(')
 			{
-				if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero")
+				if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -348,7 +358,12 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			const auto& frame = functionParentheses.back();
 			if (frame.context)
 			{
-				if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero")
+				if (IsHistoryFunction(frame.context->name))
+				{
+					if (frame.arguments != 1) throw Error::InvalidExpression;
+					parser.DefineFunUserData(frame.context->token, ResolveOne, frame.context, false);
+				}
+				else if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero")
 				{
 					if (frame.arguments != 2) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);

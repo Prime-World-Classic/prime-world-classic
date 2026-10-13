@@ -11,6 +11,7 @@ namespace LinuxBootstrap
 using NumericSymbolResolver = std::function<bool(const std::string&, double&)>;
 
 /** abilityScale/damageScale use three or four arguments; random/ut_bldg/ut_hero use two.
+ * Reserved __history_{s,r}_{taken,dealt} engine bindings use one argument.
  * Arguments and names are borrowed for the call; false means unavailable context.
  * Selected calls are not cached. The callback must write a finite result on success.
  */
@@ -72,6 +73,9 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * ut_bldg/ut_hero pass two evaluated arguments to the receiver-kind context callback.
  * Like FormulaBuilder's SwitchByBool, their arguments are eager unless the entire
  * call is in an unselected ?: branch. This layer does not classify game units.
+ * Four reserved __history_{s,r}_{taken,dealt} calls pass one evaluated argument;
+ * the engine context emits them from an exact member whitelist and rejects direct
+ * source injection. This scalar layer does not inspect or retain unit history.
  * No other functions, assignment, strings, lists, bitwise/power operators,
  * comments, casts, hex/octal literals, or ambient built-in constants. Whitespace
  * is ASCII space, tab, CR and LF. Repeated unary signs require parentheses:
