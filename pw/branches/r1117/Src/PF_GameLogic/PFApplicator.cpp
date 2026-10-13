@@ -16,6 +16,7 @@
 #include "TileMap.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <set>
+#include <cmath>
 
 namespace NWorld
 {
@@ -214,6 +215,8 @@ void PFBaseApplicator::Stop()
 {
 	// Preserve sibling ownership and history when cleanup is repeated or reentrant.
 	if (!IsAlive()) return;
+	// Notifications can remove both owning rings and release the caller's last CObj.
+	CObj<PFBaseApplicator> holder(this);
   pDispatch = 0;
   pUpgraderAbilityData = 0;
   flags |= FLAG_STOPPED;
@@ -221,6 +224,8 @@ void PFBaseApplicator::Stop()
     pAbility->NotifyApplicatorStopped(pReceiver);
   if (IsValid(pParent))
     pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_STOP);
+	// Named membership is weak, but must retire before the owning links are released.
+	NamedRing::safeRemove(this);
   RemoveFromRingsSafe();
 }
 
@@ -566,9 +571,13 @@ void MemorizeApplicator(CObj<PFBaseApplicator> app)
     return;
   app->RemoveFromRingsSafe();
   CPtr<PFBaseUnit> pReceiver = app->GetReceiver();
+	CPtr<PFBaseUnit> pSender = app->GetAbilityOwner();
+	// Windows timestamps completion using the sender world, falling back only for an absent sender.
+	PFWorld* world = IsValid(pSender) ? pSender->GetWorld() : IsValid(pReceiver) ? pReceiver->GetWorld() : 0;
+	if (world && std::isfinite(world->GetTimeElapsed()) && world->GetTimeElapsed() >= 0.f)
+		app->SetMarkerTime(world->GetTimeElapsed());
   if (IsValid(pReceiver))
     pReceiver->RegisterAppliedApplicatorToHistory(app);
-  CPtr<PFBaseUnit> pSender = app->GetAbilityOwner();
   if (IsValid(pSender))
     pSender->RegisterSentApplicatorToHistory(app);
 }

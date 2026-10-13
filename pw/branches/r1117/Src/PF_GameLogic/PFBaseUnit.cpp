@@ -1797,7 +1797,10 @@ bool PFBaseUnit::Step(float dtInSeconds)
 		FsmStep(dtInSeconds);
 	// Effects use the same post-order ring lifecycle as the Windows simulation.
 	if (std::isfinite(dtInSeconds) && dtInSeconds >= 0.0f)
+	{
 		StepApplicators(dtInSeconds);
+		StepApplicatorsHistory();
+	}
   return PFLogicObject::Step(dtInSeconds);
 }
 

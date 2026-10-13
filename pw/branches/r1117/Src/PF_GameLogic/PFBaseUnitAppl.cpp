@@ -7,13 +7,18 @@
 #include "PFBaseAttackData.h"
 #include "PFAbilityData.h"
 #include "TargetSelectorFormulaPars.h"
+#include <cmath>
 
 namespace NWorld
 {
 
 namespace
 {
-struct StopAndMemorizeApplicator
+const float s_appliedApplicatorHistoryDecayTime = 35.f;
+const float s_sentApplicatorHistoryDecayTime = 35.f;
+
+/** Bulk removal discards effects; only normal completion is memorized on Windows. */
+struct StopAndDeleteApplicator
 {
   void operator()(const CObj<PFBaseApplicator>& app)
   {
@@ -21,7 +26,7 @@ struct StopAndMemorizeApplicator
       return;
     if (app->IsAlive())
       app->Stop();
-    MemorizeApplicator(app);
+		app->RemoveFromRingsSafe();
   }
 };
 
@@ -38,10 +43,34 @@ struct StopOnDeathApplicator
       if (!sender)
         app->SetStopReason(APPL_STOP_REASON_ONDEATH);
       app->Stop();
-      MemorizeApplicator(app);
+			app->RemoveFromRingsSafe();
     }
   }
   bool sender;
+};
+
+struct DeleteAppliedApplicator
+{
+	void operator()(const CObj<PFBaseApplicator>& app) { app->RemoveFromAppliedRing(); }
+};
+
+struct DeleteSentApplicator
+{
+	void operator()(const CObj<PFBaseApplicator>& app) { app->RemoveFromSentRing(); }
+};
+
+/** Keep the original strict, chronological prefix test without a borrowed comparator. */
+struct ExpiredApplicator
+{
+	PFWorld* world;
+	float decay;
+	bool operator()(const PFBaseApplicator* app) const
+	{
+		const float now = world->GetTimeElapsed();
+		const float age = now - app->GetMarkerTime();
+		return std::isfinite(now) && now >= 0.f && std::isfinite(app->GetMarkerTime())
+			&& std::isfinite(age) && age > decay;
+	}
 };
 
 struct RecalculateApplicator
@@ -87,7 +116,17 @@ void PFBaseUnit::StepApplicators(float dtInSeconds)
   PFBaseApplicator::StepRing(appliedApplicators, dtInSeconds);
 }
 
-void PFBaseUnit::StepApplicatorsHistory() {}
+/** Expire each owning history link independently; never stop a retired effect again. */
+void PFBaseUnit::StepApplicatorsHistory()
+{
+	if (!GetWorld()) return;
+	DeleteAppliedApplicator applied;
+	ExpiredApplicator appliedExpired = {GetWorld(), s_appliedApplicatorHistoryDecayTime};
+	PFBaseApplicator::ForallRingSafeWhile(appliedApplicatorsHistory, applied, appliedExpired);
+	DeleteSentApplicator sent;
+	ExpiredApplicator sentExpired = {GetWorld(), s_sentApplicatorHistoryDecayTime};
+	PFBaseApplicator::ForallRingSafeWhile(sentApplicatorsHistory, sent, sentExpired);
+}
 
 void PFBaseUnit::RecalculateApplicators()
 {
@@ -97,13 +136,13 @@ void PFBaseUnit::RecalculateApplicators()
 
 void PFBaseUnit::RemoveAppliedApplicators()
 {
-  StopAndMemorizeApplicator stop;
+	StopAndDeleteApplicator stop;
   ForAllAppliedApplicators(stop);
 }
 
 void PFBaseUnit::RemoveSentApplicators()
 {
-  StopAndMemorizeApplicator stop;
+	StopAndDeleteApplicator stop;
   ForAllSentApplicators(stop);
 }
 
@@ -121,10 +160,11 @@ void PFBaseUnit::RemoveSentApplicatorsOnDeath()
 
 void PFBaseUnit::CleanupHistoryApplicators()
 {
-  while (!appliedApplicatorsHistory.empty())
-    PFBaseApplicator::AppliedRing::remove(appliedApplicatorsHistory.first());
-  while (!sentApplicatorsHistory.empty())
-    PFBaseApplicator::SentRing::remove(sentApplicatorsHistory.first());
+	// Engine traversal holds the current effect while last-owner callbacks can remove siblings.
+	DeleteAppliedApplicator applied;
+	ForAllAppliedApplicatorsInHistory(applied);
+	DeleteSentApplicator sent;
+	ForAllSentApplicatorsInHistory(sent);
 }
 
 void PFBaseUnit::CleanupTauntApplicatorsStack()
