@@ -1298,6 +1298,10 @@
 						<propertyName>ReplayControls_Timeline</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_239_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>Tooltip_StatisticBarWardsIcon</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_240_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />
