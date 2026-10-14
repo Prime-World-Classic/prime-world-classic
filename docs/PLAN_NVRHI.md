@@ -31,7 +31,7 @@
 
 | # | шаг | почему здесь |
 |---|---|---|
-| 1 | вендоринг `Vendor/NVRHI` + `Vendor/SDL3` | согласовано; в рантайме ничего не меняет, развязывает этап 3 |
+| 1 | ✅ вендоринг `Vendor/NVRHI` + `Vendor/SDL3` (закрыто 2026-10-14, §3.0) | согласовано; в рантайме ничего не меняет, развязывает этап 3 |
 | 2 | дамп счётчиков `Statistics` при выходе + прогон | закрывает хвост этапа 0, даёт настоящие числа для кэша пайплайнов (§1.2.1) |
 | 3 | инстансинг, шаг 1: `DrawIndexedInstanced` в seam, D3D9-трюк внутрь бэкенда | без этого этап 3 начнётся с переделки draw-пути (§2.10) |
 | 4 | caps: `BackendSystemInfo` + дамп разрешённых пинов (эталон) | эталон надо снимать, пока D3D9 жив (§2.5) |
@@ -1564,13 +1564,64 @@ color-correct начинают получать настоящие веса) —
       словарь пулов за seam'ом.
 - Критерий: картинка не меняется, E2E зелёный.
 
+### 3.0 Вендоринг зависимостей рендера (закрыто 2026-10-14)
+
+Деревья в `pw/branches/r1117/Vendor/`, версии зафиксированы в
+`Vendor/fetch_render_deps.sh` (+ `SOURCE_COMMIT.txt` в каждом дереве):
+
+| дерево | версия | размер | что нужно |
+|---|---|---|---|
+| `NVRHI/` | `6b96fb03e075` | 2,0 МБ | сам бэкенд-слой (examples/doc вырезаны) |
+| `Vulkan-Headers/` | `v1.4.352` | 21 МБ | только `include/`: NVRHI работает через Vulkan-Hpp |
+| `DirectX-Headers/` | `v1.717.0-preview` | 4,0 МБ | `include/` + `src/` (CMake компилирует `DirectX-Headers`/`DirectX-Guids`) |
+| `SDL3/` | `release-3.2.30` | 32 МБ | `src/`+`include/`+`cmake/`+`build-scripts/` (test/ 21 МБ и examples/ 8 МБ вырезаны) |
+
+Версии хэдеров совпадают с теми, что подтягивает CMake NVRHI по умолчанию
+(`NVRHI_VULKAN_HEADERS_GIT_TAG`/`NVRHI_DIRECTX_HEADERS_GIT_TAG`) — сверять при
+апгрейде NVRHI. Свои, а не FetchContent: сборка клиента идёт без сети.
+
+Встраивание — `gen_cmake.py` (блок «вендорские библиотеки рендера», только при
+`PW_MACHINE=X64`): `Vulkan-Headers` (INTERFACE) → `add_subdirectory`
+DirectX-Headers → NVRHI (`NVRHI_WITH_VULKAN=ON`, `DX12=ON`, `DX11=OFF`,
+`BUILD_SHARED=OFF`, FETCH выключены) → SDL3 (`SDL_STATIC=ON`, `SDL_SHARED=OFF`).
+Все `EXCLUDE_FROM_ALL`, в линковку `PW_Game` не входят; проверяются отдельной
+целью `render_vendor` — она собирается `./build_client_x64_wine.sh --vendor`.
+
+Найденные при внедрении грабли (все — не очевидные, при апгрейде повторятся):
+1. **`add_library(Vulkan::Headers INTERFACE)` CMake запрещает** («reserved»).
+   NVRHI принимает и простое имя (`Vendor/NVRHI/CMakeLists.txt:85-90`), поэтому
+   цель называется `Vulkan-Headers`.
+2. **`/EHsc` обязан быть добавлен руками.** Верхний CMakeLists обнуляет
+   `CMAKE_CXX_FLAGS` (флаги приходят из vcproj, где `/EHsc` вычищен), а NVRHI
+   живёт на try/catch → без него cl даёт C4530 и стек-развёртка не работает.
+3. **`HAVE_ROAPI_H` у SDL3 прописан в кэш наперёд** (`cmake/PreseedMSVCCache.cmake:176`
+   для MSVC≥19.1), а `roapi.h`/`windows.gaming.input.h` лежат в
+   `Include/<ver>/winrt`, которого в include-пути клиента нет (там ucrt/um/shared).
+   `set(... CACHE ... FORCE)` SDL3 перезаписывает, помогает обычная переменная
+   `set(HAVE_ROAPI_H OFF)` в родительской области (она перекрывает кэш при
+   `#cmakedefine`). Фолбэк апстримовый: SDL сам объявляет `RO_INIT_TYPE` и
+   грузит `RoInitialize` динамически.
+4. **Подсистемы SDL, кроме видео, выключены** (`SDL_JOYSTICK/HAPTIC/SENSOR/
+   AUDIO/CAMERA/RENDER/GPU=OFF`): они тянут те самые WinRT-заголовки, а клиенту
+   от SDL нужны только окно, `SDL_Vulkan_CreateSurface` и события окна (ввод —
+   свой `WndProc`, звук — FMOD, рендер — NVRHI).
+
+Статика собрана `/MT` (тот же CRT, что у клиента). Размеры библиоток — ориентир
+для этапа 3 (в exe попадут только используемые объекты):
+`nvrhi.lib` 5,4 МБ, `nvrhi_d3d12.lib` 12,2 МБ, `nvrhi_vk.lib` 15,3 МБ,
+`SDL3-static.lib` 4,7 МБ, `DirectX-Headers.lib` 0,1 МБ, `DirectX-Guids.lib` 0,1 МБ.
+
+Гейт: `PW_Game.exe` **побитово совпал с эталоном до вендоринга**
+(`sha256 6f09b48e…`, 15 196 160 Б) — `ninja: no work to do` по клиентским TU,
+`check_exe.py` ИТОГ: OK. E2E не требовался: артефакт не изменился.
+
 ### Этап 3. `NvrhiBackend`: DX12 + Vulkan (6–10 смен)
 
-- [ ] `Vendor/NVRHI/` + отдельный CMake-таргет (`cxx_std_17`, свои флаги,
-      статика или `nvrhi.dll` при проблемах с `/MT`); в TU клиента — только
-      обёртки, без `<nvrhi.h>`. В `gen_cmake.py` — новый вендор + правила
-      `X64_LIB_*`/`X64_LINKDIR_DROP` (vcproj не правим: он остаётся источником
-      графа).
+- [x] **Вендоринг и CMake-таргеты — сделано (2026-10-14, §3.0).** `Vendor/NVRHI`
+      + `Vendor/SDL3` + хэдеры, версии зафиксированы в `Vendor/fetch_render_deps.sh`;
+      цели в графе (`gen_cmake.py`), проверка — `--vendor`. Статика `/MT`
+      собралась без проблем с CRT, `nvrhi.dll` не понадобился. В TU клиента пока
+      ни одного `#include <nvrhi.h>` — это появится вместе с бэкендом.
 - [ ] Один бэкенд за `IRenderBackend` — **Vulkan**, дефолт. Интерфейс
       рассчитан на последующее добавление DX12 (никаких Vulkan-типов в
       заголовках вне реализации); dev-var `rndr_backend=vulkan` закладывается
@@ -1695,8 +1746,9 @@ color-correct начинают получать настоящие веса) —
 - Порядок: **этап 2** — `Renderer(HWND)` перестаёт принимать HWND (окно уходит в
   platform-слой, Win32-окно пока как есть); **этап 3** — это окно заменяется на
   SDL-овское, к нему цепляются surface/swapchain.
-- SDL3 в `Vendor/` ещё нет — кладётся рядом с `Vendor/NVRHI/` (тот же
-  CMake-таргет, свои флаги, vcproj не правим).
+- SDL3 лежит в `Vendor/SDL3` (3.2.30, `Vendor/fetch_render_deps.sh`, §3.0) —
+  собирается целью `render_vendor` (`./build_client_x64_wine.sh --vendor`),
+  подсистемы кроме видео выключены.
 
 Запасной вариант — SDL2 2.32.x: `SDL_Vulkan_CreateSurface` есть с 2.0.7, но
 события ресайза/минимизации и fullscreen-режимы там хуже, а ветка 2.x —

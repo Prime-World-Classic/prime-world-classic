@@ -1,0 +1,4 @@
+# вендоринг: не править руками, обновлять ./fetch_render_deps.sh --force
+url:  https://github.com/microsoft/DirectX-Headers.git
+ref:  v1.717.0-preview
+cut:  2026-10-14

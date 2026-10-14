@@ -1,0 +1,4 @@
+# вендоринг: не править руками, обновлять ./fetch_render_deps.sh --force
+url:  https://github.com/libsdl-org/SDL.git
+ref:  release-3.2.30
+cut:  2026-10-14

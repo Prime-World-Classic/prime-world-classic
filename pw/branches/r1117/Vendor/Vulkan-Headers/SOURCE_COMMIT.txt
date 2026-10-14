@@ -1,0 +1,4 @@
+# вендоринг: не править руками, обновлять ./fetch_render_deps.sh --force
+url:  https://github.com/KhronosGroup/Vulkan-Headers.git
+ref:  v1.4.352
+cut:  2026-10-14

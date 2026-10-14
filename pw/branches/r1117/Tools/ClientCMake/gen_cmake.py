@@ -758,6 +758,86 @@ def main():
         top.append(f"target_link_options({t}_tool PRIVATE " + " ".join(lf_t) + ")")
         top.append(f"set_target_properties({t}_tool PROPERTIES OUTPUT_NAME {t})")
 
+    # --- вендорские библиотеки рендера (docs/PLAN_NVRHI.md, этап 3) --------
+    # Только x64: NVRHI требует C++17 (cl 14.44), x86-контур VS2008 его не
+    # собирает. Деревья лежат в Vendor/ и качаются Vendor/fetch_render_deps.sh
+    # (версии зафиксированы там же).
+    #
+    # В линковку PW_Game они ПОКА НЕ входят: кода рендер-бэкенда ещё нет.
+    # EXCLUDE_FROM_ALL — чтобы не попадали в default-цель ninja; проверяются
+    # отдельной целью render_vendor (её собирает build_client_x64_wine.sh
+    # --vendor). Так вендоринг проверяется нашим тулчейном, не трогая артефакт.
+    #
+    # Порядок важен: Vulkan::Headers и add_subdirectory(DirectX-Headers) обязаны
+    # быть ДО add_subdirectory(NVRHI) — NVRHI ищет готовые цели и иначе уходит
+    # в FetchContent (сети в сборке нет) или в FATAL_ERROR
+    # (Vendor/NVRHI/CMakeLists.txt, строки 83-168).
+    if os.environ.get("PW_MACHINE", "X86") == "X64":
+        top.append("""
+# --- вендорские библиотеки рендера (PLAN_NVRHI.md, этап 3) ---------------
+# Имя без '::': add_library с двойным двоеточием CMake запрещает ("reserved"),
+# а NVRHI принимает и простое имя (Vendor/NVRHI/CMakeLists.txt:85-90)
+add_library(Vulkan-Headers INTERFACE)
+target_include_directories(Vulkan-Headers INTERFACE ${R1117}/Vendor/Vulkan-Headers/include)
+add_subdirectory(${R1117}/Vendor/DirectX-Headers ${CMAKE_BINARY_DIR}/vendor/dx-headers EXCLUDE_FROM_ALL)
+set(NVRHI_BUILD_SHARED OFF CACHE BOOL "")
+set(NVRHI_INSTALL OFF CACHE BOOL "")
+set(NVRHI_WITH_VALIDATION ON CACHE BOOL "")
+set(NVRHI_WITH_VULKAN ON CACHE BOOL "")
+set(NVRHI_WITH_DX11 OFF CACHE BOOL "")
+set(NVRHI_WITH_DX12 ON CACHE BOOL "")
+set(NVRHI_FETCH_VULKAN_HEADERS OFF CACHE BOOL "")
+set(NVRHI_FETCH_DIRECTX_HEADERS OFF CACHE BOOL "")
+add_subdirectory(${R1117}/Vendor/NVRHI ${CMAKE_BINARY_DIR}/vendor/nvrhi EXCLUDE_FROM_ALL)
+set(SDL_SHARED OFF CACHE BOOL "")
+set(SDL_STATIC ON CACHE BOOL "")
+set(SDL_TESTS OFF CACHE BOOL "")
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "")
+set(SDL_EXAMPLES OFF CACHE BOOL "")
+set(SDL_INSTALL OFF CACHE BOOL "")
+# roapi.h лежит в Include/<ver>/winrt, которого нет в include-пути клиента
+# (там ucrt/um/shared). SDL3 при MSVC>=19.1 прописывает HAVE_ROAPI_H=1 в кэш
+# наперёд (cmake/PreseedMSVCCache.cmake:176), поэтому обычный set(... CACHE
+# FORCE) он перезаписывает. Обычная переменная здесь надёжнее: она видна в
+# области SDL3 и перекрывает кэш при #cmakedefine
+# (include/build_config/SDL_build_config.h.cmake:227). Фолбэк апстримовый:
+# без HAVE_ROAPI_H SDL сам объявляет RO_INIT_TYPE и грузит RoInitialize
+# динамически (src/core/windows/SDL_windows.c:206, WIN_LoadComBaseFunction).
+set(HAVE_ROAPI_H OFF)
+# Клиенту от SDL нужны окно, Vulkan surface и события окна: ввод — свой
+# WndProc, звук — FMOD, рендер — NVRHI. Остальные подсистемы выключены:
+# меньше поверхность сборки и нет зависимости от WinRT-заголовков
+# (windows.gaming.input.h и др.), которых нет в include-пути клиента
+# (там ucrt/um/shared). SDL_VULKAN остаётся ON — он даёт SDL_Vulkan_CreateSurface.
+set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+set(SDL_HIDAPI_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_VIRTUAL_JOYSTICK OFF CACHE BOOL "" FORCE)
+set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+set(SDL_WASAPI OFF CACHE BOOL "" FORCE)
+set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+set(SDL_GPU OFF CACHE BOOL "" FORCE)
+add_subdirectory(${R1117}/Vendor/SDL3 ${CMAKE_BINARY_DIR}/vendor/sdl3 EXCLUDE_FROM_ALL)
+# /MT: клиент статически слинкован, CRT-DLL в поставке нет — вендорские либы
+# обязаны брать тот же CRT (та же причина в tools/nvrhi_probe)
+foreach(_vt nvrhi nvrhi_vk nvrhi_d3d12 DirectX-Headers DirectX-Guids SDL3-static)
+  if(TARGET ${_vt})
+    set_property(TARGET ${_vt} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+  endif()
+endforeach()
+# /EHsc: верхний CMakeLists обнуляет CMAKE_CXX_FLAGS (флаги приходят из vcproj,
+# где /EHsc вычищен), а NVRHI работает на try/catch (vulkan-device.cpp и др.) —
+# без него cl даёт C4530 и стек-развёртка не работает
+foreach(_vt nvrhi nvrhi_vk nvrhi_d3d12)
+  if(MSVC AND TARGET ${_vt})
+    target_compile_options(${_vt} PRIVATE /EHsc)
+  endif()
+endforeach()
+add_custom_target(render_vendor DEPENDS nvrhi nvrhi_vk nvrhi_d3d12
+                  DirectX-Headers DirectX-Guids SDL3-static)""")
+
     write_if_changed(
         os.path.join(out, "CMakeLists.txt"),
         "# СГЕНЕРИРОВАННО из model.json (Tools/ClientCMake/gen_cmake.py) — не править руками\n"

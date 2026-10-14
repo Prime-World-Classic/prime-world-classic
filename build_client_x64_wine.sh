@@ -18,6 +18,9 @@
 #   ./build_client_x64_wine.sh --prefix=PATH   # другой Wine-префикс
 #   ./build_client_x64_wine.sh --keep-going    # ninja -k0 (обзор ошибок компиляции)
 #   ./build_client_x64_wine.sh --check         # только сверка артефакта
+#   ./build_client_x64_wine.sh --vendor        # + собрать вендор рендера
+#     (цель render_vendor: NVRHI/SDL3/DirectX-Headers — см. Vendor/fetch_render_deps.sh;
+#      в линковку PW_Game они пока не входят)
 #   PW_BUILD_JOBS=8 ./build_client_x64_wine.sh
 #   PW_EXTRA_OPTS / PW_EXTRA_DEFS / PW_EXTRA_LINK_OPTS — см. ниже
 #
@@ -83,7 +86,7 @@ JOBS="${PW_BUILD_JOBS:-8}"
 CMAKE_DIR="${PW_CMAKE_DIR:-$HOME/pwbuild/wintools/cmake-3.31.6-windows-x86_64}"
 NINJA="${PW_NINJA:-$HOME/pwbuild/wintools/ninja.exe}"
 
-DO_CLEAN=0; DO_GEN_ONLY=0; DO_KEEP=0; DO_CHECK=0; PREFIX_FORCED=0
+DO_CLEAN=0; DO_GEN_ONLY=0; DO_KEEP=0; DO_CHECK=0; DO_VENDOR=0; PREFIX_FORCED=0
 for arg in "$@"; do
     case "$arg" in
         --prefix=*)   WINEPREFIX="${arg#--prefix=}"; PREFIX_FORCED=1 ;;
@@ -91,6 +94,7 @@ for arg in "$@"; do
         --gen-only)   DO_GEN_ONLY=1 ;;
         --keep-going) DO_KEEP=1 ;;
         --check)      DO_CHECK=1 ;;
+        --vendor)     DO_VENDOR=1 ;;
         -h|--help)    grep '^# ' "$0" | sed 's/^# \{0,1\}//' | head -60; exit 0 ;;
         *) echo "Неизвестный аргумент: $arg (см. --help)" >&2; exit 2 ;;
     esac
@@ -257,14 +261,15 @@ cmake -G Ninja -DPW_SRC=__SRC_FWD__ -DR1117=__R1117_FWD__ ^
   __GEN_FWD__
 if errorlevel 1 exit /b 1
 cmake --build . -- __KEEP__ __NSTATS__ -j__JOBS__
+__VENDOR_BUILD__
 CMDEOF
 # подстановка путей отдельным прогоном: в heredoc не смешивать $-расширения
 python3 - "$CMD" "$BR/Src" "$BR" "$GEN" "$BUILD" "$CMAKE_DIR/bin" \
           "$NINJA" "$KEEP" "$NSTATS" "$JOBS" "$CL_PATH" "$CL_INC" "$CL_LIB" \
-          "$LAUNCHER" <<'PY'
+          "$LAUNCHER" "$DO_VENDOR" <<'PY'
 import os, sys
 (p, src, r1117, gen, build, cmakedir, ninja,
- keep, nstats, jobs, clpath, clinc, cllib, launcher) = sys.argv[1:15]
+ keep, nstats, jobs, clpath, clinc, cllib, launcher, vendor) = sys.argv[1:16]
 
 
 def w(x):        # windows-путь для cmd (set / cd /d): wine требует букву диска
@@ -282,6 +287,8 @@ for k, v in {"__CMAKE_WIN__": w(cmakedir), "__NINJADIR_WIN__": w(os.path.dirname
              "__BUILD_WIN__": w(build), "__SRC_FWD__": f(src), "__R1117_FWD__": f(r1117),
              "__GEN_FWD__": f(gen), "__NINJA_FWD__": f(ninja),
              "__LAUNCHER__": launcher_flag,
+             "__VENDOR_BUILD__": (f"cmake --build . --target render_vendor -j{jobs}"
+                                  if vendor == "1" else "rem --vendor не запрошен"),
              "__KEEP__": keep, "__NSTATS__": nstats, "__JOBS__": jobs}.items():
     s = s.replace(k, v)
 open(p, "w", encoding="utf-8").write(s)

@@ -1,0 +1,4 @@
+# вендоринг: не править руками, обновлять ./fetch_render_deps.sh --force
+url:  https://github.com/NVIDIAGameWorks/nvrhi.git
+ref:  6b96fb03e07539f08327aea76c56d55f1de9d906
+cut:  2026-10-14
