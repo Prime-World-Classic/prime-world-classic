@@ -170,7 +170,10 @@ int GetRenderTargetHeight();
 
 void DumpScreenshot( const nstl::string& filename, bool keepAlpha );
 int GetScreenshotCount();
-byte* DumpScreenshotToMemory( int width, int height );
+// DumpScreenshotToMemory(width,height) убрана: её читал только EditorNative
+// (вне CMake-графа клиента), а сама она была обёрткой над
+// D3DXSaveSurfaceToFileInMemory. DDS-снимок в память делает Render/screenshot.h
+// (BuildDdsImage) поверх readback'а бэкенда.
 
 } // namespace SmartRenderer
 } // namespace Render

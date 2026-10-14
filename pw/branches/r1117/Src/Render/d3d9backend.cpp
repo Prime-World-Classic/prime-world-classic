@@ -190,6 +190,80 @@ HRESULT D3D9Backend::StretchRect(HSurface src, const RECT* pSrcRect, HSurface ds
                               filter == bfLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
 }
 
+HRESULT D3D9Backend::ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+                                 unsigned dstRowPitch, EBackendPixelLayout* pOutLayout) {
+  IDirect3DSurface9* pSrc = static_cast<IDirect3DSurface9*>(srcSurface.p);
+  if (!pSrc || !pDstBuffer || !dstRowPitch)
+    return E_INVALIDARG;
+
+  D3DSURFACE_DESC desc;
+  HRESULT hr = pSrc->GetDesc(&desc);
+  if (FAILED(hr))
+    return hr;
+  // Readback в клиенте нужен только снимку кадра, а кадровая поверхность и
+  // бэк-буфер — 32 бита (A8R8G8B8/X8R8G8B8). Другой формат — отказ, а не
+  // тихая подмена: молча переписать каналы/шаг строки хуже ошибки.
+  if (desc.Format != D3DFMT_A8R8G8B8 && desc.Format != D3DFMT_X8R8G8B8)
+    return D3DERR_INVALIDCALL;
+
+  // Поверхности пула DEFAULT (RT, бэк-буфер) процессору недоступны — сначала
+  // копируем в системную память (D3D9 требует, чтобы источник был RT или
+  // бэк-буфером; для остальных DEFAULT это просто не сработает).
+  IDirect3DSurface9* pRead = pSrc;
+  IDirect3DSurface9* pStaging = 0;
+  if (desc.Pool == D3DPOOL_DEFAULT) {
+    if (FAILED(pDevice->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format,
+                                                    D3DPOOL_SYSTEMMEM, &pStaging, NULL)))
+      return D3DERR_INVALIDCALL;
+    hr = pDevice->GetRenderTargetData(pSrc, pStaging);
+    if (FAILED(hr)) {
+      pStaging->Release();
+      return hr;
+    }
+    pRead = pStaging;
+  }
+
+  const unsigned x0 = pCropRect ? (unsigned)pCropRect->left   : 0;
+  const unsigned y0 = pCropRect ? (unsigned)pCropRect->top    : 0;
+  const unsigned w  = pCropRect ? (unsigned)(pCropRect->right  - pCropRect->left) : desc.Width;
+  const unsigned h  = pCropRect ? (unsigned)(pCropRect->bottom - pCropRect->top)  : desc.Height;
+  if (x0 + w > desc.Width || y0 + h > desc.Height) {
+    if (pStaging) pStaging->Release();
+    return D3DERR_INVALIDCALL;
+  }
+
+  D3DLOCKED_RECT lr;
+  hr = pRead->LockRect(&lr, NULL, D3DLOCK_READONLY);
+  if (FAILED(hr)) {
+    if (pStaging) pStaging->Release();
+    return hr;
+  }
+  const unsigned char* pSrcBytes = static_cast<const unsigned char*>(lr.pBits);
+  unsigned char* pDst = static_cast<unsigned char*>(pDstBuffer);
+  for (unsigned row = 0; row < h; ++row)
+    memcpy(pDst + (size_t)row * dstRowPitch,
+           pSrcBytes + (size_t)(y0 + row) * lr.Pitch + (size_t)x0 * 4,
+           (size_t)w * 4);
+  pRead->UnlockRect();
+  if (pStaging) pStaging->Release();
+
+  if (pOutLayout)
+    *pOutLayout = plBGRA;   // A8R8G8B8/X8R8G8B8 в памяти = B,G,R,A
+  return S_OK;
+}
+
+HRESULT D3D9Backend::GetBackBuffer(HSurface* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  IDirect3DSurface9* pBB = 0;
+  const HRESULT hr = pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
+  if (SUCCEEDED(hr)) {
+    pOut->p = pBB;
+    pBB->Release();   // владеет устройством; ручка действительна до конца вызова звенящего
+  }
+  return hr;
+}
+
 void D3D9Backend::SetClipPlane(bool enable, const float* pPlaneEquation) {
   // В D3D9 это два вызова: разрешение слота и запись уравнения. Пара держится
   // здесь, чтобы вызывающий код не знал про D3DRS_CLIPPLANEENABLE.

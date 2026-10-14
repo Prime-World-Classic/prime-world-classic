@@ -917,75 +917,24 @@ static int screenshotCount = 0;
 
 void DumpScreenshot( const nstl::string& filename, bool keepAlpha )
 {
-  // extract extension
-  size_t pos = filename.rfind('.');
-  string extension = (pos == string::npos) ? string(".bmp") : NStr::GetLower(filename.substr(pos));
-
-  // find proper format
-  static struct
-  {
-    const char* name;
-    D3DXIMAGE_FILEFORMAT format;
-  } supported[] =
-  {
-    {".bmp", D3DXIFF_BMP},
-    {".jpg", D3DXIFF_JPG},
-    {".jpeg",D3DXIFF_JPG},
-    {".png", D3DXIFF_PNG},
-    {".dds", D3DXIFF_DDS},
-    {".hdr", D3DXIFF_HDR},
-  };
-  D3DXIMAGE_FILEFORMAT format = D3DXIFF_BMP;
-  for (int i = 0; i < ARRAY_SIZE(supported); ++i)
-    if (extension == supported[i].name)
-      format = supported[i].format;
-
-  if (keepAlpha)
-  {
-    // just write to file backbuffer as is
-    HRESULT hr = D3DXSaveSurfaceToFile( filename.c_str(), format, Get(GetRenderer()->GetColorSurface()), 0, 0 );
-    NI_DX_THROW(hr, __FUNCTION__);
+  // Формат выбирается по расширению (png/bmp/dds); jpg/hdr сворачиваются в png
+  // (их умел только D3DX, а lossy-формат для визуальной сверки кадров не годится),
+  // см. Render/screenshot.h. Источник — поверхность, в которую нарисован кадр,
+  // а не бэк-буфер: как и раньше, чтобы снимок включал всё нарисованное.
+  // keepAlpha=false раньше делал копию в X8R8G8B8 через D3DXLoadSurfaceFromSurface;
+  // теперь альфу отбрасывает пишущий код.
+  // NI_DX_THROW разворачивается в if (...) без блоков, поэтому ветки обязаны
+  // быть в фигурных скобках — иначе висячий else (C2181).
+  if ( !GetRenderer()->SaveFrameToFile( filename.c_str(), keepAlpha, NULL, /*useBackBuffer=*/false ) ) {
+    NI_DX_THROW( E_FAIL, "DumpScreenshot" );
+  } else {
+    ++screenshotCount;
   }
-  else // convert surface to get rid of alpha
-  {
-    DXSurfacePtr const& pSource = GetRenderer()->GetColorSurface();
-    D3DSURFACE_DESC desc;
-    HRESULT hr = pSource->GetDesc(&desc);
-    NI_DX_THROW(hr, __FUNCTION__);
-
-    desc.Format = D3DFMT_X8R8G8B8;
-    desc.MultiSampleType = D3DMULTISAMPLE_NONE;
-    desc.MultiSampleQuality = 0;
-    RenderSurfaceRef pDest = Create<RenderSurface>(desc);
-    hr = D3DXLoadSurfaceFromSurface(Get(pDest->GetDXSurface()), NULL, NULL, Get(pSource), NULL, NULL, D3DX_FILTER_NONE, 0);
-    NI_DX_THROW(hr, __FUNCTION__);
-
-    hr = D3DXSaveSurfaceToFile( filename.c_str(), format, Get(pDest->GetDXSurface()), NULL, NULL );
-    NI_DX_THROW(hr, __FUNCTION__);
-  }
-
-  ++screenshotCount;
 }
 
 int GetScreenshotCount()
 {
   return screenshotCount;
-}
-
-byte* DumpScreenshotToMemory( int width, int height )
-{
-  int headerSize = 128;
-  LPD3DXBUFFER pBuffer = 0;
-  D3DXSaveSurfaceToFileInMemory( &pBuffer, D3DXIFF_DDS, Get(Render::GetRenderer()->GetColorSurface()), 0, 0 );
-  byte* ptr = (byte*)(pBuffer)->GetBufferPointer();
-  unsigned int len = (pBuffer)->GetBufferSize();
-  int realLength = len-headerSize;
-  NI_ASSERT( width*height*4 == realLength, "Bad Array" );
-  byte* realPtr = ptr+headerSize;
-  byte* res = new byte[realLength];
-  memcpy(res,realPtr,realLength);
-  pBuffer->Release();  
-  return res;
 }
 
 void SetMainViewport( int x, int y, int width, int height ) // smirnov [2009/7/15]: why "Main"?

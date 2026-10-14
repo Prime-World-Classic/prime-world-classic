@@ -9,8 +9,9 @@
 #include "renderstatesmanager.h"
 #include "renderflagsconverter.h"
 #include "renderresourcemanager.h"
-#include "dxutils.h" // D3DX для SaveScreenshotToFile (этап 1)
-
+#include "dxutils.h" // Get()/NI_DX_THROW для поверхностей; D3DX отсюда больше не нужен
+#include "screenshot.h"   // свои png/bmp/dds вместо D3DXSaveSurfaceToFile
+#include <vector>
 #include "vertexformatdescriptor.h"
 #include "texture.h"
 #include "rendersurface.h"
@@ -924,22 +925,66 @@ int Renderer::GetAvailableVidMem()
 
 bool Renderer::SaveScreenshotToFile(const char *fileName, int x, int y, int width, int height, bool needCrop)
 {
-  IDirect3DDevice9 *pDevice = GetDevice();
-  IDirect3DSurface9 *pBB = 0, *pDest = 0;
+  RECT rect = { x, y, x + width, y + height };
+  // Источник — бэк-буфер (как было), альфа отбрасывалась и раньше: D3DX-путь
+  // шёл через X8R8G8B8.
+  return SaveFrameToFile(fileName, /*keepAlpha=*/false, needCrop ? &rect : 0, /*useBackBuffer=*/true);
+}
 
-  if(FAILED(pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB)))
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool Renderer::SaveFrameToFile(const char* fileName, bool keepAlpha, const RECT* pCropRect,
+                               bool useBackBuffer)
+{
+  if(!pBackend || !fileName)
     return false;
 
-  bool saved = false;
-  if(SUCCEEDED(pDevice->CreateOffscreenPlainSurface(width, height, D3DFMT_X8R8G8B8, D3DPOOL_SYSTEMMEM, &pDest, NULL)))
-  {
-    RECT rect = { x, y, x + width, y + height };
-    if(SUCCEEDED(D3DXLoadSurfaceFromSurface(pDest, NULL, NULL, pBB, NULL, needCrop ? &rect : NULL, D3DX_FILTER_NONE, 0)))
-      saved = SUCCEEDED(D3DXSaveSurfaceToFile(fileName, D3DXIFF_PNG, pDest, NULL, NULL));
-    pDest->Release();
+  HSurface src;
+  if(useBackBuffer) {
+    if(FAILED(pBackend->GetBackBuffer(&src)))
+      return false;
+  } else {
+    if(!pDeviceColorSurface)
+      return false;
+    src = MakeBackendHandle<HSurface>(::Get(pDeviceColorSurface));   // :: — иначе видится Renderer::Get();
   }
-  pBB->Release();
-  return saved;
+
+  // Размеры источника берутся из описания поверхности: интерфейс бэкенда их не
+  // отдаёт (у Vulkan их знает текстура, а снимок берётся с RT/бэк-буфера).
+  unsigned w = 0, h = 0;
+  D3DSURFACE_DESC desc;
+  if(FAILED(static_cast<IDirect3DSurface9*>(src.p)->GetDesc(&desc)))
+    return false;
+  w = desc.Width;
+  h = desc.Height;
+
+  unsigned cw = w, ch = h;
+  RECT clamped = { 0, 0, (LONG)w, (LONG)h };
+  const RECT* pSrcRect = 0;
+  if(pCropRect) {
+    const LONG x0 = pCropRect->left  < 0 ? 0 : pCropRect->left;
+    const LONG y0 = pCropRect->top   < 0 ? 0 : pCropRect->top;
+    const LONG x1 = pCropRect->right > (LONG)w ? (LONG)w : pCropRect->right;
+    const LONG y1 = pCropRect->bottom > (LONG)h ? (LONG)h : pCropRect->bottom;
+    if(x1 <= x0 || y1 <= y0)
+      return false;
+    cw = (unsigned)(x1 - x0);
+    ch = (unsigned)(y1 - y0);
+    // Бэкенду отдаём УЖЕ ограниченный прямоугольник: ReadSurface выход за
+    // поверхности отвергает (иначе он молча прочитал бы чужую память), а
+    // ограничивать здесь и просить там исходный — значит гарантированно
+    // получить отказ на частично выходящем кропе.
+    clamped.left = x0; clamped.top = y0; clamped.right = x1; clamped.bottom = y1;
+    pSrcRect = &clamped;
+  }
+
+  std::vector<unsigned char> pixels((size_t)ch * cw * 4);
+  EBackendPixelLayout layout = plBGRA;
+  if(FAILED(pBackend->ReadSurface(src, pSrcRect, &pixels[0], cw * 4, &layout)))
+    return false;
+
+  return WriteScreenshotFile(fileName, ScreenshotFormatFromName(fileName),
+                             &pixels[0], cw, ch, cw * 4, layout, keepAlpha);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -83,6 +83,9 @@ public:
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA);
   virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
                               const RECT* pDstRect, EBackendFilter filter);
+  virtual HRESULT ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+                              unsigned dstRowPitch, EBackendPixelLayout* pOutLayout);
+  virtual HRESULT GetBackBuffer(HSurface* pOut);
 
   virtual void SetClipPlane(bool enable, const float* pPlaneEquation);
 

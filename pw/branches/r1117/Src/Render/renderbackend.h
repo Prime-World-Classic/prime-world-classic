@@ -9,6 +9,7 @@
 // в Renderer/DX*Ref — они закрываются вместе с NvrhiBackend на этапе 3,
 // иначе рефакторинг превращается в переписывание половины Render/ разом.
 //
+#include "renderpixellayout.h"   // Render::EBackendPixelLayout (формат пикселя при readback)
 #include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
 #include "vertexformatdescriptor.h"   // Render::VertexFormatDescriptor
 
@@ -141,6 +142,21 @@ public:
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA) = 0;
   virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
                               const RECT* pDstRect, EBackendFilter filter) = 0;
+
+  // Чтение пикселей поверхности в память вызывающего (32 бита на пиксель).
+  // pCropRect — прямоугольник источника (0 = вся поверхность), dstRowPitch —
+  // stride строки назначения в байтах. Бэкенд сам решает, нужен ли staging:
+  // у D3D9 поверхности пула DEFAULT (RT, бэк-буфер) CPU недоступны, поэтому
+  // они сначала копируются в системную память.
+  // Требование: пиксель 32 бита (A8R8G8B8/X8R8G8B8) — другие форматы в клиенте
+  // для readback не используются.
+  virtual HRESULT ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+                              unsigned dstRowPitch, EBackendPixelLayout* pOutLayout) = 0;
+
+  // Бэк-буфер текущего окна. Ручка действительна до конца вызова вызывающего
+  // кода: поверхность принадлежит устройству (у Vulkan — swapchain'у), а не
+  // тому, кто её запросил.
+  virtual HRESULT GetBackBuffer(HSurface* pOut) = 0;
 
   // --- прочее ---
   // D3D9-специфично (пул MANAGED); для бэкендов без managed-пула — пустая

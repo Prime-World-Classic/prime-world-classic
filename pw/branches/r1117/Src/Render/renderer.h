@@ -198,8 +198,14 @@ public:
   void EvictManagedResources();
   // Доступная видеопамять адаптера (-1 = неизвестно). D3D9 + ConfigManager.
   int GetAvailableVidMem();
-  // Бэк-буфер -> PNG (needCrop=false берётся весь кадр). D3D9 + D3DX.
+  // Бэк-буфер -> файл (needCrop=false берётся весь кадр). Формат — по
+  // расширению (png/bmp/dds), см. Render/screenshot.h.
   bool SaveScreenshotToFile(const char *fileName, int x, int y, int width, int height, bool needCrop);
+  // Кадр -> файл своим png/bmp/dds (без D3DX). useBackBuffer=false — поверхность
+  // сцены (GetColorSurface), true — бэк-буфер. pCropRect — прямоугольник
+  // источника (0 — весь кадр), keepAlpha=false — альфа отбрасывается.
+  bool SaveFrameToFile(const char* fileName, bool keepAlpha, const RECT* pCropRect,
+                       bool useBackBuffer);
 
   RenderStatesManager* GetRenderStatesManager() { return &statesMan; }
 	LightsManager* GetLightsManager() { return &lightsMan; }

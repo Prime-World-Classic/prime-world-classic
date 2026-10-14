@@ -457,6 +457,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\screenshot.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\screenshot.h"
+				>
+			</File>
+			<File
 				RelativePath=".\specific.h"
 				>
 			</File>
@@ -713,6 +721,10 @@
 				</File>
 				<File
 					RelativePath=".\renderprimitivetype.h"
+					>
+				</File>
+				<File
+					RelativePath=".\renderpixellayout.h"
 					>
 				</File>
 				<File

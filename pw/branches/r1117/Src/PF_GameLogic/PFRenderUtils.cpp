@@ -14,7 +14,7 @@
 
 using namespace Render;
 
-#define DEFAULT_SCREENSHOT_EXTENSION "jpg"
+#define DEFAULT_SCREENSHOT_EXTENSION "png"
 
 namespace {
 string s_screenshotExt(DEFAULT_SCREENSHOT_EXTENSION);
@@ -98,10 +98,9 @@ void DumpScreenshots()
 {
 	if (s_screenshotFire)
 	{
-	  //Поддержка D3DXSaveSurfaceToFile появилась в wine 1.5.6
-	  //(коммит ec70b67b8d908d1ee11708d18a75774cb9a9bdf8). Пока мы не перейдём на 
-	  //эту, или более позднюю версию, скриншоты можно отключить
-    if( !Compatibility::IsRunnedUnderWine() )  
+	  // D3DXSaveSurfaceToFile больше не нужен: снимок пишет свой код
+	  // (Render/screenshot.h: png/bmp/dds), поэтому старая защита от Wine <1.5.6
+	  // (в нём не было D3DXSaveSurfaceToFile) снята — снимки работают и под Wine.
       Render::SmartRenderer::DumpScreenshot(s_screenshotName, s_screenshotAsIs);
       
 		s_screenshotFire = false;
