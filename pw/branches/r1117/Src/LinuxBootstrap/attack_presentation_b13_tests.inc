@@ -12,6 +12,8 @@ static void AttackPresentationB13(Checks& check, PFWorld* world)
 		sender->AssignTarget(receiver.GetPtr(),true);
 		check(sender->DoAttack(false),"B13 actual unit attack admits presentation fixture");
 		const auto cue=attack->GetLinuxPresentation();
+		check(cue.hasTarget && cue.targetX==receiver->GetPosition().x && cue.targetY==receiver->GetPosition().y,
+			"B13 accepted attack captures its target coordinates without retaining the victim");
 		check(cue.sequence==1 && cue.abilityObjectId==attack->GetObjectId() && !cue.cancelled &&
 			cue.startedAt==world->GetTimeElapsed() && cue.period>0,"B13 accepted attack records identity, clock and actual cooldown period");
 		check(!sender->DoAttack(false) && attack->GetLinuxPresentation().sequence==cue.sequence,"B13 cooldown rejection cannot duplicate presentation");

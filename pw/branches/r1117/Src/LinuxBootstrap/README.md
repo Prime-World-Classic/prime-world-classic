@@ -200,7 +200,17 @@ receipts prevent duplicate draws and quick offscreen reentry from restarting an
 attack. Unseen cues older than 250 ms, invalid intervals and missing attack aliases
 are skipped, not queued. This is visual state only: native `GetAttackTimeOffset()`
 still returns zero, so authored windup, damage-marker synchronization, attack-speed
-clip scaling, critical/special attacks and attack-facing alignment remain open.
+clip scaling and critical/special attacks remain open.
+
+Accepted attacks also snapshot their victim position before synchronous callbacks.
+Eligible live units face that position once per consumed cue, retaining their own
+visual heading through idle, cancellation and attack expiry. Subsequent movement
+uses the original world direction. Checked double-precision normalization rejects
+nonfinite and near-zero directions; no simulation position/direction is changed.
+Map/world/asset replacement or offscreen eviction discards visual heading and
+reentry starts from current world direction (stable forward if unavailable).
+Turns are immediate; original smooth turning and offscreen facing continuity are
+not yet ported. Unsupported graph assets retain the previous mesh-yaw policy.
 
 - Rendering uses real assets and selected original BasicFX/baked BasicMaterial
 	shaders, but most materials and presentation remain simplified. The

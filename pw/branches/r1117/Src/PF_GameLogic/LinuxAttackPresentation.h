@@ -11,6 +11,9 @@ struct LinuxAttackPresentation
 	int abilityObjectId=-1;
 	double startedAt=-1;
 	float period=0;
+	/** Snapshot before synchronous damage callbacks; never retain or revisit a possibly removed victim. */
+	float targetX=0,targetY=0;
+	bool hasTarget=false;
 	bool cancelled=false;
 };
 }

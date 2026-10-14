@@ -141,6 +141,7 @@
 #include "LinuxBootstrap/dds_mip_chain.h"
 #include "PF_GameLogic/PFWorldNatureMap.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
+#include "LinuxBootstrap/unit_facing.h"
 #include "LinuxBootstrap/map_view.h"
 #include "LinuxBootstrap/map_camera.h"
 #include "LinuxBootstrap/interactive_clock.h"
@@ -52216,15 +52217,10 @@ bool ResolveLinuxDynamicWorldMarkerMoveDirection(
     return false;
   }
 
-  const float lenSq = marker.moveDirX * marker.moveDirX + marker.moveDirY * marker.moveDirY;
-  if (lenSq <= 0.0001f)
-  {
-    return false;
-  }
-
-  const float invLen = 1.0f / sqrtf(lenSq);
-  if (outX) *outX = marker.moveDirX * invLen;
-  if (outZ) *outZ = marker.moveDirY * invLen;
+	float nx=0,ny=0;
+	if (!LinuxBootstrap::NormalizeFacing(marker.moveDirX,marker.moveDirY,nx,ny)) return false;
+	if (outX) *outX=nx;
+	if (outZ) *outZ=ny;
   return true;
 }
 
@@ -52394,8 +52390,8 @@ bool DrawLinuxMapHeroMeshReplica(
     marker.x,
     marker.y);
   const float baseY = (localView ? .04f : 1.10f) + terrainHeight * scale;
-  const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
-	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(heroPreview->sceneAsset,marker) : nullptr;
+	float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(heroPreview->sceneAsset,marker,&yaw) : nullptr;
 
   glPushMatrix();
   glTranslatef(x, baseY, z);
@@ -52445,13 +52441,13 @@ bool DrawLinuxMapUnitMeshReplica(
     marker.x,
     marker.y);
   const float baseY = (localView ? .04f : 1.04f) + terrainHeight * scale;
-	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(unitPreview->sceneAsset,marker) : nullptr;
-  const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(
+	float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(
     marker,
     elapsedSeconds,
     marker.moving ? 24.0 : 9.0,
     0.051,
     0.027);
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(unitPreview->sceneAsset,marker,&yaw) : nullptr;
 	const auto& bounds = unitPreview->sceneAsset.meshPreview;
 	const float meshScale = localView ? std::max(.1f, bounds.maxZ - bounds.minZ) * scale / 5.2f :
 		(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? .50f : .42f);
@@ -74990,8 +74986,8 @@ int main(int argc, char** argv)
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
-		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu\n",
-			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize());
+		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu\n",
+			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces);
 		overlay.unitAnimationGraphs.reset();
 	}
 	overlay.animatedMapResources.Clear();

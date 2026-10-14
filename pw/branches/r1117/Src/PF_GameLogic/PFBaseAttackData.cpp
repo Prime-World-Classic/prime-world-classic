@@ -143,6 +143,7 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 
 	const auto cancellation=linuxCancelRevision;
 	const double startedAt=GetOwner()->GetWorld() ? GetOwner()->GetWorld()->GetTimeElapsed() : -1;
+	const CVec2 targetPosition=target.GetUnit()->GetPosition().AsVec2D();
   CObj<PFBaseAttackInstance> pInst = new PFBaseAttackInstance( this, target, allowAllies );
 	if (!pInst->ApplyAttack())
 		return false;
@@ -156,6 +157,8 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 	linuxPresentation.abilityObjectId=GetObjectId();
 	linuxPresentation.startedAt=startedAt;
 	linuxPresentation.period=GetCurrentCooldown();
+	linuxPresentation.targetX=targetPosition.x; linuxPresentation.targetY=targetPosition.y;
+	linuxPresentation.hasTarget=std::isfinite(targetPosition.x) && std::isfinite(targetPosition.y);
 	linuxPresentation.cancelled=linuxCancelRevision!=cancellation;
   return true;
 }

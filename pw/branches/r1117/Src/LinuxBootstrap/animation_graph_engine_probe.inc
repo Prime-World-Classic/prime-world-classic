@@ -184,6 +184,38 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 		check(bounded.CueSize()==0,"expired cue receipts release their bounded capacity");
 	}
 	{
+		LinuxAnimationGraphBank bank; int world=0; auto map=std::make_shared<int>(1);
+		NWorld::LinuxDynamicWorldMarker marker; marker.objectId=1; marker.kind=marker.KIND_HERO;
+		marker.hasMoveDirection=true; marker.moveDirY=1;
+		float heading=999;
+		bank.Begin(&world,map,0); bank.Resolve(asset,marker,&heading);
+		check(heading==0,"new visible unit uses its original forward direction");
+		marker.attack.sequence=1; marker.attack.abilityObjectId=2; marker.attack.startedAt=0;
+		marker.attack.period=1; marker.attack.hasTarget=true; marker.attack.targetX=10;
+		bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading-90)<.001f,"accepted attack faces its captured victim position");
+		marker.attack.targetX=-10; bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading-90)<.001f,"same accepted cue cannot rotate again on repeated draws");
+		marker.attack.cancelled=true; bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading-90)<.001f,"cancellation keeps the last visual heading while returning to idle");
+		marker.moving=true; marker.moveDirX=-1; marker.moveDirY=0;
+		bank.Begin(&world,map,.1); bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading+90)<.001f,"subsequent movement owns the visible unit heading");
+		marker.moving=false; marker.moveDirX=0; marker.moveDirY=1;
+		bank.Begin(&world,map,.2); bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading+90)<.001f,"idle retains the last heading instead of resuming an old move direction");
+		marker.attack.cancelled=false; marker.attack.sequence=2; marker.attack.startedAt=.2;
+		marker.attack.targetX=std::numeric_limits<float>::infinity(); bank.Resolve(asset,marker,&heading);
+		check(std::isfinite(heading) && std::abs(heading+90)<.001f,"invalid target coordinates cannot poison a live mesh transform");
+		marker.attack.sequence=3; marker.attack.targetX=0; marker.attack.targetY=0; bank.Resolve(asset,marker,&heading);
+		check(std::abs(heading+90)<.001f,"coincident attacker and victim preserve the previous heading");
+		auto other=marker; other.objectId=2; other.attack=NWorld::LinuxAttackPresentation{};
+		bank.Resolve(asset,other,&heading);
+		check(heading==0,"units sharing geometry keep independent facing");
+		bank.Begin(&world,map,.3); bank.Begin(&world,map,.4); bank.Resolve(asset,marker,&heading);
+		check(heading==0,"offscreen reentry starts from current world direction, not a stale attack cue");
+	}
+	{
 		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set);
 		const bool ready=idle && move && attack && idle->Advance(0,false) && move->Advance(0,true) &&
 			attack->Advance(0,false) && attack->BeginAttack(1) && attack->Advance(.4,false) &&
@@ -204,18 +236,21 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 			LinuxWindowOverlay overlay; overlay.ready=overlay.openglReady=true;
 			LinuxSelectedHeroDbPreview hero; hero.sceneAsset=asset;
 			LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex> poses;
-			const auto draw=[&](const LinuxAnimationGraphPlayback* pose) {
+			const auto draw=[&](const LinuxAnimationGraphPlayback* pose,float heading=0) {
 				glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+				glPushMatrix(); glRotatef(heading,0,1,0);
 				check(DrawLinuxHeroMeshPreview(&overlay,&hero,255,255,255,.4,false,&poses,pose),"original skinned mesh accepts graph-owned matrices");
+				glPopMatrix();
 				std::vector<unsigned char> pixels(256*256*4); glReadPixels(0,0,256,256,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); return pixels;
 			};
-			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),repeated=draw(idle.get());
+			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),repeated=draw(idle.get());
 			size_t visible=0; for (size_t i=0; i<first.size(); i+=4) if (first[i] || first[i+1] || first[i+2]) ++visible;
 			fprintf(stdout,"Animation graph pixels: visible=%zu different=%d repeated=%d builds=%zu hits=%zu\n",visible,first!=second,first==repeated,poses.builds,poses.hits);
 			check(visible>1000,"original Plane geometry produces visible pixels");
 			check(first!=second && first==repeated,"independent idle/move graph poses survive actual drawing and warm pose-cache reuse");
 			check(attacking!=first && attacking!=second,"accepted attack produces a distinct original skinned pose on screen");
-			check(poses.builds==3 && poses.hits==1,"pose cache separates shared-model unit graphs at the same timestamp");
+			check(turned!=attacking,"changed heading rotates original attack geometry without changing its cached pose");
+			check(poses.builds==3 && poses.hits==2,"pose cache separates shared-model unit graphs and reuses pure facing changes");
 			for (const auto& texture : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&texture.second.texture);
 			glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(mode);
 			glPopClientAttrib(); glPopAttrib(); glActiveTexture(active);

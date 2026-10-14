@@ -7,6 +7,8 @@ class LinuxAnimationGraphBank
 		const void* asset=nullptr;
 		const void* component=nullptr;
 		bool used=false;
+		float heading=0;
+		bool hasFacing=false;
 		std::unique_ptr<LinuxAnimationGraphPlayback> player;
 	};
 	std::map<int,Entry> entries;
@@ -17,7 +19,7 @@ class LinuxAnimationGraphBank
 	double clock=-1;
 public:
 	size_t created=0,unsupported=0,sampled=0,movingSamples=0,failed=0;
-	size_t attackStarts=0,attackSkipped=0;
+	size_t attackStarts=0,attackSkipped=0,attackFaces=0;
 	/** Retain only the previous visible frame; at most 58 meshes are admitted by the caller. */
 	void Begin(const void* nextWorld,const std::shared_ptr<const void>& nextScene,double seconds)
 	{
@@ -32,7 +34,7 @@ public:
 		}
 	}
 	/** Resolve the SessionVisualRoot's actual Hero/Creep aliases, never infer clip names. */
-	LinuxAnimationGraphPlayback* Resolve(const LinuxHeroSceneAssetPreview& asset,const NWorld::LinuxDynamicWorldMarker& marker)
+	LinuxAnimationGraphPlayback* Resolve(const LinuxHeroSceneAssetPreview& asset,const NWorld::LinuxDynamicWorldMarker& marker,float* heading=nullptr)
 	{
 		if (marker.objectId<0 || marker.dead || !std::isfinite(clock) || clock<0) return nullptr;
 		auto it=entries.find(marker.objectId);
@@ -43,6 +45,7 @@ public:
 		auto& entry=it->second; entry.used=true;
 		if (entry.asset!=&asset || entry.component!=asset.animationComponent.GetPtr()) {
 			entry.asset=&asset; entry.component=asset.animationComponent.GetPtr(); entry.player.reset();
+			entry.heading=0; entry.hasFacing=false;
 			const auto root=NDb::SessionRoot::GetRoot();
 			const int kind=marker.kind==NWorld::LinuxDynamicWorldMarker::KIND_HERO ? NDb::ANIMSETID_HERO : NDb::ANIMSETID_CREEP;
 			if (root && root->visualRoot && kind<root->visualRoot->animSets.sets.size())
@@ -51,6 +54,8 @@ public:
 		}
 		if (!entry.player) return nullptr;
 		if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
+		if ((!entry.hasFacing || marker.moving) && marker.hasMoveDirection &&
+			LinuxBootstrap::FacingYaw(marker.moveDirX,marker.moveDirY,entry.heading)) entry.hasFacing=true;
 		// Retain light cue identities briefly after graph eviction; old offscreen attacks are never queued.
 		const auto& attack=marker.attack;
 		auto seen=cues.find(marker.objectId);
@@ -64,12 +69,18 @@ public:
 				const double age=clock-attack.startedAt;
 				if (attack.abilityObjectId>=0 && !marker.moving && std::isfinite(age) && age>=0 && age<=.25 &&
 					std::isfinite(attack.period) && attack.period>0 && attack.period<=60 &&
-					entry.player->BeginAttack(attack.period-age)) ++attackStarts;
+					entry.player->BeginAttack(attack.period-age)) {
+					++attackStarts;
+					if (attack.hasTarget && LinuxBootstrap::FacingYaw(double(attack.targetX)-marker.x,double(attack.targetY)-marker.y,entry.heading)) {
+						entry.hasFacing=true; ++attackFaces;
+					}
+				}
 				else ++attackSkipped;
 			}
 			if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
 		}
 		++sampled; if (marker.moving) ++movingSamples;
+		if (heading) *heading=entry.heading;
 		return entry.player.get();
 	}
 	size_t Size() const { return entries.size(); }
