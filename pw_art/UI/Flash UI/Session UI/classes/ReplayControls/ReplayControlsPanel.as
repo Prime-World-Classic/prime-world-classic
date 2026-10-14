@@ -33,7 +33,9 @@
 
 		private static const PANEL_W:Number = 440;
 		private static const PANEL_H:Number = 62;
-		private static const GAP_ABOVE_BAR:Number = 10;
+		// отрицательный: панель чуть заходит на зону баффов, чтобы сообщение «Скорость воспроизведения
+		// записи» вставало прямо над панелью, а не поверх кнопок
+		private static const GAP_ABOVE_BAR:Number = -16;
 		private static const BUTTON:Number = 30;
 		private static const ICON:Number = 22;
 		private static const BUTTONS_Y:Number = 6;
@@ -48,6 +50,8 @@
 		private static const BUTTON_ALPHA:Number = 0.2;
 		private static const BUTTON_HOVER_ALPHA:Number = 0.4;
 		private static const HOVER_PAD:Number = 8; // поля фона вокруг времени под курсором
+		private static const PANEL_ROUND:Number = 16; // диаметр скругления углов панели
+		private static const BUTTON_ROUND:Number = 10; // и кнопок (и фона времени под курсором)
 		private static const HIT_ALPHA:Number = 0.35;
 		private static const BAR_COLOR:uint = 0x5C5C5C;
 		private static const PROGRESS_COLOR:uint = 0xD9B44A;
@@ -55,6 +59,7 @@
 
 		private var parent:DisplayObjectContainer;
 		private var anchorTop:Function; // верх панели талантов (с баффами) в координатах экрана
+		private var anchorCenterX:Function; // середина панели талантов по горизонтали
 		private var panel:Sprite;
 
 		private var backButton:MovieClip;
@@ -78,7 +83,7 @@
 		// Нажатие уже обработано по MOUSE_DOWN — CLICK того же нажатия пропускаем
 		private var pressHandled:Boolean = false;
 		private var lastAnchor:Number = NaN;
-		private var lastStageWidth:Number = NaN;
+		private var lastCenterX:Number = NaN;
 
 		// Последнее состояние: время в десятых секунды, скорость в процентах
 		private var time:int = 0;
@@ -88,10 +93,11 @@
 		private var paused:Boolean = false;
 		private var ended:Boolean = false;
 
-		public function ReplayControlsPanel(_parent:DisplayObjectContainer, _anchorTop:Function)
+		public function ReplayControlsPanel(_parent:DisplayObjectContainer, _anchorTop:Function, _anchorCenterX:Function)
 		{
 			parent = _parent;
 			anchorTop = _anchorTop;
+			anchorCenterX = _anchorCenterX;
 		}
 
 		public function Show(show:Boolean):void
@@ -137,7 +143,7 @@
 
 			var back:Shape = new Shape();
 			back.graphics.beginFill(PANEL_COLOR, PANEL_ALPHA);
-			back.graphics.drawRect(0, 0, PANEL_W, PANEL_H);
+			back.graphics.drawRoundRect(0, 0, PANEL_W, PANEL_H, PANEL_ROUND, PANEL_ROUND);
 			back.graphics.endFill();
 			panel.addChild(back);
 
@@ -149,8 +155,7 @@
 			slowerButton = CreateButton(PANEL_W - 12 - BUTTON * 2 - 52, "slower", "speed_dec");
 			fasterButton = CreateButton(PANEL_W - 12 - BUTTON, "faster", "speed_inc");
 
-			speedText = CreateText(TEXT_SIZE + 1, 0xFFFFFF, 52, TextFormatAlign.CENTER);
-			speedText.x = PANEL_W - 12 - BUTTON - 52;
+			speedText = CreateText(TEXT_SIZE + 1, 0xFFFFFF, 52, TextFormatAlign.LEFT);
 			speedText.y = BUTTONS_Y + (BUTTON - speedText.height) / 2;
 			panel.addChild(speedText);
 
@@ -254,7 +259,7 @@
 		{
 			back.graphics.clear();
 			back.graphics.beginFill(BUTTON_COLOR, alpha);
-			back.graphics.drawRect(0, 0, BUTTON, BUTTON);
+			back.graphics.drawRoundRect(0, 0, BUTTON, BUTTON, BUTTON_ROUND, BUTTON_ROUND);
 			back.graphics.endFill();
 		}
 
@@ -320,13 +325,17 @@
 			var top:Number = anchorTop != null ? Number(anchorTop()) : NaN;
 			if (isNaN(top))
 				top = panel.stage.stageHeight - 160;
-			var stageWidth:Number = panel.stage.stageWidth;
-			if (top == lastAnchor && stageWidth == lastStageWidth)
+			// по центру панели талантов: центр сцены у движка не совпадает с центром экрана
+			var centerX:Number = anchorCenterX != null ? Number(anchorCenterX()) : NaN;
+			if (isNaN(centerX))
+				centerX = panel.stage.stageWidth / 2;
+			if (top == lastAnchor && centerX == lastCenterX)
 				return;
 			lastAnchor = top;
-			lastStageWidth = stageWidth;
+			lastCenterX = centerX;
+			SendCommand("dbg layout top " + int(top) + " center " + int(centerX) + " stage " + int(panel.stage.stageWidth) + " parent " + int(parent.x));
 
-			panel.x = Math.round((stageWidth - PANEL_W) / 2);
+			panel.x = Math.round(centerX - PANEL_W / 2);
 			panel.y = Math.round(top - GAP_ABOVE_BAR - PANEL_H);
 		}
 
@@ -335,6 +344,9 @@
 			SetIcon(playButton, paused || ended ? "play" : "pause");
 
 			speedText.text = SpeedLabel(speed);
+			// посередине между «−» и «+»: выравнивание по центру поля движок не делает
+			speedText.width = Math.ceil(speedText.textWidth) + 4;
+			speedText.x = Math.round(PANEL_W - 12 - BUTTON - 26 - speedText.width / 2);
 			timeText.text = FormatTime(target >= 0 ? target : time);
 			totalText.text = FormatTime(total);
 
@@ -406,7 +418,7 @@
 			hoverText.y = -hoverText.height - 2;
 			hoverBack.graphics.clear();
 			hoverBack.graphics.beginFill(PANEL_COLOR, PANEL_ALPHA);
-			hoverBack.graphics.drawRect(Math.round(center - textW / 2 - HOVER_PAD), hoverText.y + 1, textW + HOVER_PAD * 2, hoverText.height);
+			hoverBack.graphics.drawRoundRect(Math.round(center - textW / 2 - HOVER_PAD), hoverText.y + 1, textW + HOVER_PAD * 2, hoverText.height, BUTTON_ROUND, BUTTON_ROUND);
 			hoverBack.graphics.endFill();
 			hoverText.visible = hoverBack.visible = true;
 		}

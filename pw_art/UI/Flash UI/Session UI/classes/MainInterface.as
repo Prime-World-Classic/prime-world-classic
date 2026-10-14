@@ -120,7 +120,7 @@
 				function():Array { return mainWindow.Players; },
 				function(heroId:int):MateInfoBase { return friendlyTeamController.DoesHeroExist(heroId) ? friendlyTeamController.GetMateInfo(heroId) : null; },
 				function():int { return ourID; });
-			replayControlsPanel = new ReplayControlsPanel(mainWindow, GetActionBarTop);
+			replayControlsPanel = new ReplayControlsPanel(mainWindow, GetActionBarTop, GetActionBarCenterX);
 		//	var Test:MainInterfaceTest = new MainInterfaceTest(this, mainWindow);
 		//	var Test2:MyFullTest = new MyFullTest(this, mainWindow);
 		}
@@ -2574,6 +2574,18 @@
 				top = Math.min(top, buff.y);
 			}
 			return container.y + (bar.y + top) * container.scaleY;
+		}
+
+		// Середина ряда слотов активных талантов — граница между 6-м и 7-м слотом — в координатах экрана.
+		// x слота — его левый край, так что граница — это x 7-го слота (width слота не годится:
+		// в нее входят выступающие части).
+		private function GetActionBarCenterX():Number
+		{
+			var container:MovieClip = mainWindow.actionBarContainer;
+			if (container == null || container.actionBar_mc == null || container.actionBar_mc.btn7 == null)
+				return NaN;
+			var bar:MovieClip = container.actionBar_mc;
+			return container.x + (bar.x + bar.btn7.x) * container.scaleX;
 		}
 		
 		public function TempUnlockActionBar(unlock:Boolean):void
