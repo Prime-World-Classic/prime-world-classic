@@ -24,6 +24,7 @@
 #include "PF_GameLogic/ForceCalc.h"
 
 #include "PF_GameLogic/AsyncMapStartup.h"
+#include "System/SyncProcessorState.h"
 
 #include <functional>
 
@@ -47,6 +48,19 @@ namespace Game
 
   ReplayRunner::~ReplayRunner()
   {
+    MessageTrace( "replay: runner destroyed" );
+  }
+
+  ReplayRunnerLoader::~ReplayRunnerLoader()
+  {
+    MessageTrace( "replay: loader destroyed" );
+  }
+
+  void ReplayRunnerLoader::ReleaseLoadingJob()
+  {
+    StopAsyncMapLoadingJob();
+    loadingThread = 0;
+    mapLoadingJob = 0;
   }
 
   ReplayRunnerLoader::ReplayRunnerLoader( NWorld::ReplayTransceiver* _transceiver, 
@@ -302,11 +316,18 @@ namespace Game
 
   void ReplayRunner::Close()
   {
+    size_t virtualSize = 0;
+    utils::GetMemoryStatus( virtualSize );
+    MessageTrace( "replay: closing, virtual memory %u mb", (unsigned)( virtualSize / ( 1024 * 1024 ) ) );
+
     if (transceiver)
       transceiver->Detach();
     NGlobal::UnregisterCmd( "replay_skip_time" );
 
     StopAsyncMapLoadingJob();
+    if (loader)
+      loader->ReleaseLoadingJob();
+    mapDescription = 0;
 
     if (advScreeen)
       NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( advScreeen ) );

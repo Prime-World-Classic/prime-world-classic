@@ -69,6 +69,10 @@ public:
   bool IsRunning() const { return state == S_RUNNING; }
 
   void StopAsyncMapLoadingJob();
+  // The loading job holds the world strongly (MapLoadingJob::world): let it go when the replay closes
+  void ReleaseLoadingJob();
+
+  ~ReplayRunnerLoader();
 
 private:
   EState state;

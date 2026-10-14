@@ -958,6 +958,7 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
 
 AdventureScreen::~AdventureScreen()
 {
+  MessageTrace( "combat screen destroyed" );
   NMainFrame::SetCloseHandler( 0 );
 
   s_screenInstance = 0;

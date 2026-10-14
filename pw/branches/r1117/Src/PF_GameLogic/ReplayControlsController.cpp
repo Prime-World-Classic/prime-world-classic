@@ -70,11 +70,13 @@ void ReplayControlsController::SetState( int playedSteps, int totalSteps, int st
 
 void ReplayControlsController::OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID, const char* args, const wchar_t * argsW )
 {
-  if ( strcmp( listenerID, szReplayCommand ) != 0 || !args || strlen( args ) > 32 )
+  if ( strcmp( listenerID, szReplayCommand ) != 0 || !args || strlen( args ) > 64 )
     return;
 
-  // Flash sends: "pause", "speed_inc", "speed_dec", "speed_rst", "seek <seconds>", "seek_to <0..1>"
-  if ( strcmp( args, "pause" ) == 0 )
+  // Flash sends: "pause", "speed_inc", "speed_dec", "speed_rst", "seek <seconds>", "seek_to <0..1>", "dbg <text>"
+  if ( strncmp( args, "dbg ", 4 ) == 0 )
+    MessageTrace( "replay panel: %s", args + 4 );
+  else if ( strcmp( args, "pause" ) == 0 )
     NGlobal::RunCommand( L"replay_pause" );
   else if ( strcmp( args, "speed_inc" ) == 0 )
     NGlobal::RunCommand( L"replay_speed_inc" );

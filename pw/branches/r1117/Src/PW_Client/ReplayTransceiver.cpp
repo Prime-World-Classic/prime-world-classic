@@ -377,6 +377,7 @@ ReplayTransceiver::ReplayTransceiver( NCore::IReplayStorage* _replay, int _stepL
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ReplayTransceiver::~ReplayTransceiver()
 {
+  MessageTrace( "replay: transceiver destroyed" );
   PollSnapshot( true ); // a compression in progress still goes to the cache
   snapshotThread = 0;
   snapshotJob = 0;
@@ -508,7 +509,7 @@ void ReplayTransceiver::RequestRestart( int target )
 
   cache.restartPending = true;
   cache.restartTarget = target;
-  cache.restartPaused = isPaused;
+  cache.restartPaused = true; // after a rewind the replay waits on pause (user request)
   cache.restartSnapshotStep = best >= 0 ? cache.snapshots[best].step : -1;
 
   restartRequested = true;

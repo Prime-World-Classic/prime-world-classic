@@ -22,7 +22,8 @@
 	//
 	// Движок PW: Sprite.graphics не рисуется (только дочерние Shape), обводок нет,
 	// мелкие фигуры размыты — значки кнопок текстурами (pw_art/UI/Replay/gen_replay_icons.py),
-	// TextField только без масштаба, getBounds() не работает.
+	// TextField только без масштаба, getBounds() не работает, MouseEvent.localX всегда 0
+	// (координата — через mouseX), почти прозрачная заливка не ловит нажатие (клик уходит в игру).
 	public class ReplayControlsPanel
 	{
 		public static const COMMAND:String = "ReplayControlCmd";
@@ -44,8 +45,9 @@
 		private static const PANEL_COLOR:uint = 0x000000;
 		private static const PANEL_ALPHA:Number = 0.6;
 		private static const BUTTON_COLOR:uint = 0xFFFFFF;
-		private static const BUTTON_ALPHA:Number = 0.08;
-		private static const BUTTON_HOVER_ALPHA:Number = 0.22;
+		private static const BUTTON_ALPHA:Number = 0.2;
+		private static const BUTTON_HOVER_ALPHA:Number = 0.4;
+		private static const HIT_ALPHA:Number = 0.35;
 		private static const BAR_COLOR:uint = 0x5C5C5C;
 		private static const PROGRESS_COLOR:uint = 0xD9B44A;
 		private static const TARGET_COLOR:uint = 0xFFFFFF;
@@ -72,6 +74,8 @@
 		private var timelineTooltip:TooltipSender;
 
 		private var shown:Boolean = false;
+		// Нажатие уже обработано по MOUSE_DOWN — CLICK того же нажатия пропускаем
+		private var pressHandled:Boolean = false;
 		private var lastAnchor:Number = NaN;
 		private var lastStageWidth:Number = NaN;
 
@@ -165,8 +169,8 @@
 			timeline.mouseChildren = false;
 			timeline.x = BAR_X;
 			timeline.y = BAR_Y - 8;
-			var hit:Shape = new Shape(); // область клика выше и ниже тонкой полосы
-			hit.graphics.beginFill(0x000000, 0.01);
+			var hit:Shape = new Shape(); // область клика выше и ниже тонкой полосы (тёмная полоса под шкалой)
+			hit.graphics.beginFill(0x000000, HIT_ALPHA);
 			hit.graphics.drawRect(0, 0, BarWidth(), BAR_H + 16);
 			hit.graphics.endFill();
 			timeline.addChild(hit);
@@ -177,7 +181,7 @@
 			timeline.addEventListener(MouseEvent.MOUSE_MOVE, OnTimelineMove);
 			timeline.addEventListener(MouseEvent.MOUSE_OUT, OnTimelineOut);
 			timeline.addEventListener(MouseEvent.MOUSE_UP, StopEvent);
-			timeline.addEventListener(MouseEvent.CLICK, StopEvent);
+			timeline.addEventListener(MouseEvent.CLICK, OnTimelineClick);
 			timeline.addEventListener(MouseEvent.DOUBLE_CLICK, StopEvent);
 			panel.addChild(timeline);
 			timelineTooltip = new TooltipSender(timeline as MovieClip);
@@ -214,15 +218,30 @@
 			button.addChild(icon);
 			SetIcon(button, image);
 
+			var press:Function = function():void
+			{
+				SendCommand(button == playButton && ended ? "seek_to 0" : command);
+			};
 			button.addEventListener(MouseEvent.MOUSE_DOWN, function(e:MouseEvent):void
 			{
 				e.stopPropagation();
-				SendCommand(button == playButton && ended ? "seek_to 0" : command);
+				pressHandled = true;
+				SendCommand("dbg down " + image);
+				press();
+			});
+			button.addEventListener(MouseEvent.CLICK, function(e:MouseEvent):void
+			{
+				e.stopPropagation();
+				if (!pressHandled)
+				{
+					SendCommand("dbg click " + image);
+					press();
+				}
+				pressHandled = false;
 			});
 			button.addEventListener(MouseEvent.MOUSE_OVER, function(e:MouseEvent):void { DrawButtonBack(button.getChildByName("back") as Shape, BUTTON_HOVER_ALPHA); });
 			button.addEventListener(MouseEvent.MOUSE_OUT, function(e:MouseEvent):void { DrawButtonBack(button.getChildByName("back") as Shape, BUTTON_ALPHA); });
 			button.addEventListener(MouseEvent.MOUSE_UP, StopEvent);
-			button.addEventListener(MouseEvent.CLICK, StopEvent);
 			button.addEventListener(MouseEvent.DOUBLE_CLICK, StopEvent);
 
 			buttonTooltips.push(new TooltipSender(button));
@@ -350,16 +369,32 @@
 		private function OnTimelineDown(e:MouseEvent):void
 		{
 			e.stopPropagation();
+			pressHandled = true;
+			SeekToMouse("down");
+		}
+
+		private function OnTimelineClick(e:MouseEvent):void
+		{
+			e.stopPropagation();
+			if (!pressHandled)
+				SeekToMouse("click");
+			pressHandled = false;
+		}
+
+		private function SeekToMouse(source:String):void
+		{
+			var fraction:Number = TimelineFraction();
+			SendCommand("dbg timeline " + source + " x " + int(timeline.mouseX) + " of " + int(BarWidth()) + " total " + total);
 			if (total <= 0)
 				return;
-			SendCommand("seek_to " + TimelineFraction(e).toFixed(4));
+			SendCommand("seek_to " + fraction.toFixed(4));
 		}
 
 		private function OnTimelineMove(e:MouseEvent):void
 		{
 			if (total <= 0)
 				return;
-			var fraction:Number = TimelineFraction(e);
+			var fraction:Number = TimelineFraction();
 			hoverText.text = FormatTime(int(total * fraction));
 			hoverText.x = Math.round(BAR_X + BarWidth() * fraction - hoverText.width / 2);
 			hoverText.y = -hoverText.height - 2;
@@ -375,10 +410,10 @@
 			hoverText.visible = hoverBack.visible = false;
 		}
 
-		private function TimelineFraction(e:MouseEvent):Number
+		private function TimelineFraction():Number
 		{
-			// localX — координата в timeline, полоса начинается с 0
-			return Math.min(1, Math.max(0, e.localX / BarWidth()));
+			// mouseX — координата в timeline, полоса начинается с 0 (localX события в движке всегда 0)
+			return Math.min(1, Math.max(0, timeline.mouseX / BarWidth()));
 		}
 
 		private function StopEvent(e:MouseEvent):void
