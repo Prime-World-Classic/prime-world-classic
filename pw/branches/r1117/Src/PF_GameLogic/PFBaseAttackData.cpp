@@ -157,6 +157,7 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 	linuxPresentation.abilityObjectId=GetObjectId();
 	linuxPresentation.startedAt=startedAt;
 	linuxPresentation.period=GetCurrentCooldown();
+	linuxPresentation.fireOffset=pInst->GetNativeFireOffset();
 	linuxPresentation.targetX=targetPosition.x; linuxPresentation.targetY=targetPosition.y;
 	linuxPresentation.hasTarget=std::isfinite(targetPosition.x) && std::isfinite(targetPosition.y);
 	linuxPresentation.cancelled=linuxCancelRevision!=cancellation;

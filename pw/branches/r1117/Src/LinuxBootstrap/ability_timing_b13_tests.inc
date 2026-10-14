@@ -56,6 +56,8 @@ static void AbilityTimingB13(Checks& check)
 			"B13 exact BaseAttack type uses original attack/doFire names");
 		sender->ReplaceBaseAttack(attack, false); sender->AssignTarget(receiver.GetPtr(), true);
 		check(sender->DoAttack(false), "B13 authored delayed attack admitted by real unit");
+		check(std::fabs(attack->GetLinuxPresentation().fireOffset-.26f) < 1e-6f,
+			"B13 accepted visual cue preserves raw fire timing independently of rounded dispatch scheduling");
 		sender->AddFlag(NDb::UNITFLAG_FORBIDATTACK); sender->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 		sender->Step(.1f); sender->Step(.1f);
 		check(receiver->GetHealth() == 1000, "B13 actual dispatch cannot deliver before the rounded fire marker");

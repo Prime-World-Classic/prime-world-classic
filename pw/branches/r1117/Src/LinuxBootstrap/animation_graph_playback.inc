@@ -1,5 +1,6 @@
 #include "animation_graph_admission.inc"
 #include "animation_graph_locomotion.inc"
+#include "animation_graph_attack.inc"
 
 /** Native presentation owner for the original animation graph and CPU skeletal blend.
  * Instances are independent; this adapter never sends gameplay events or mutates DB data.
@@ -42,8 +43,10 @@ public:
 		result->parameters->applyParamsToGraph(); result->graph->StoreDefaultValues();
 		result->idle=result->graph->GetNodeIDByNameSlowQuite(idle.commonNode.c_str());
 		result->move=result->graph->GetNodeIDByNameSlowQuite(move.commonNode.c_str());
-		if (set->states.size()>NDb::ANIMSTATES_ATTACK && mapped(set->states[NDb::ANIMSTATES_ATTACK]))
+		if (set->states.size()>NDb::ANIMSTATES_ATTACK && mapped(set->states[NDb::ANIMSTATES_ATTACK])) {
 			result->attack=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_ATTACK].commonNode.c_str());
+			result->attackTiming.Initialize(*result->graph,*component.animGraph,set->states[NDb::ANIMSTATES_ATTACK].commonMarker);
+		}
 		if (set->states.size()>NDb::ANIMSTATES_DEATH && mapped(set->states[NDb::ANIMSTATES_DEATH]))
 			result->death=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_DEATH].commonNode.c_str());
 		if (set->states.size()>NDb::ANIMSTATES_STUN && mapped(set->states[NDb::ANIMSTATES_STUN]))
@@ -77,10 +80,11 @@ public:
 		// A suspended corpse is hidden instead of replaying death from its first frame.
 		if (restart && dying) return false;
 		if (restart) {
+			CancelAttack();
 			if (!blender->Restart(graph->GetDefNode())) return false;
 			target=-1; attackUntil=-1;
 		}
-		if (Attacking() && (moving || seconds>=attackUntil)) CancelAttack();
+		if (Attacking() && (moving || seconds>=attackUntil || !attackTiming.BoundedRate())) CancelAttack();
 		const int requested=dying ? death : stunned && !frozen ? (stun>=0 ? stun : idle) : Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
@@ -126,6 +130,7 @@ public:
 		if (last<0 || death<0 || static_cast<unsigned>(death)>=graph->GetNumNodes()) return false;
 		graph->UnFreeze();
 		if (!blender->SetMainAGTargetNode(death)) { if (frozen) graph->Freeze(); return false; }
+		attackTiming.Cancel();
 		stunned=frozen=false;
 		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=death; dirty=true; return true;
 	}
@@ -134,17 +139,35 @@ public:
 	bool Dying() const { return dying; }
 	/** World-clock frame in which the original 99% death callback was reached, or -1. */
 	double DeathCompletedAt() const { return deathCompletedAt; }
-	/** Start one visual attack window; combat remains authoritative and independent. */
-	bool BeginAttack(double period)
+	/** Reach the session fire marker when supported; otherwise preserve normal-rate attack-state playback.
+	 * Successful calls report whether synchronization was admitted, independently of visual fallback.
+	 */
+	bool BeginAttack(double period, double fireDelay=0, bool* synchronized=nullptr)
 	{
 		if (dying || stunned || frozen || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
-			!std::isfinite(period) || period<=0 || period>60) return false;
+			!std::isfinite(period) || period<=0 || period>60 || !std::isfinite(fireDelay) || fireDelay<0 ||
+			fireDelay>60 || (fireDelay>0 && fireDelay<.001)) return false;
 		if (!blender->SetMainAGTargetNode(attack)) return false;
+		attackTiming.Cancel();
+		const bool synced=fireDelay>0 && attackTiming.Reach(fireDelay);
+		if (fireDelay>0 && !synced) {
+			// SetTargetNode owns restoration of the original temporary speed and marker callback.
+			if (!blender->SetMainAGTargetNode(attack)) { attackUntil=-1; target=-1; dirty=true; return false; }
+		}
+		if (synchronized) *synchronized=synced;
 		target=attack; attackUntil=last+period; dirty=true; return true;
 	}
 	/** Cancel the presentation request without sending any simulation event. */
-	void CancelAttack() { if (Attacking()) { attackUntil=-1; target=-1; dirty=true; } }
+	void CancelAttack()
+	{
+		attackTiming.Cancel();
+		if (Attacking()) { blender->SetMainAGTargetNode(idle); attackUntil=-1; target=-1; dirty=true; }
+	}
 	bool Attacking() const { return attackUntil>=0; }
+	/** Last sampled world time, or -1 after creation/reset; bounds visible-only event catch-up. */
+	double LastSampleTime() const { return last; }
+	unsigned AttackMarkerHits() const { return attackTiming.Hits(); }
+	double GraphSpeed() const { return graph->GetGraphSpeedCoeff(); }
 	int CurrentNode() const { return static_cast<int>(graph->GetCurNodeUnsafe()); }
 	int TargetNode() const { return target; }
 	unsigned Updates() const { return updates; }
@@ -160,6 +183,7 @@ private:
 	NDb::Ptr<NDb::DBAnimatedSceneComponent> component;
 	std::unique_ptr<NScene::AnimGraphApplicator> applicator;
 	std::unique_ptr<NScene::AnimGraphBlender> blender;
+	LinuxAnimationGraphAttack attackTiming;
 	std::unique_ptr<DiAnimGraph,DeleteGraph> graph;
 	std::unique_ptr<DiAnGrExtPars> parameters;
 	LinuxAnimationGraphLocomotion locomotion;

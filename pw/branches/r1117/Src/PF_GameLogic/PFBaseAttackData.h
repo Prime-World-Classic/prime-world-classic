@@ -38,6 +38,8 @@ public:
 #if defined(PW_LINUX_NULL_RENDER)
 	/** Base attacks have a distinct holder; detached world stepping must exclude that payload too. */
 	bool OwnsNativeAttackDispatch(const PFDispatch* value) const { return dispatch.Get().GetPtr() == value; }
+	/** Original unquantized fire delay captured at construction, before dispatch callbacks can change the owner. */
+	float GetNativeFireOffset() const { return rawAttackDelay; }
 #endif
 
 private:

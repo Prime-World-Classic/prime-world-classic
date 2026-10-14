@@ -184,7 +184,7 @@ on map/world replacement or clock rewind. Pose-cache keys include graph identity
 so units sharing a mesh can display different states at the same timestamp.
 Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
 boundary; the Windows definitions are unchanged. This is presentation-only:
-cast events, attack-speed scaling, upper-body graphs, dynamic external
+cast events, upper-body graphs, dynamic external
 parameters and gameplay animation callbacks remain unconnected.
 Live playback uses world time (including pauses), restarts after a gap over one second, and
 recreates graphs after offscreen eviction. Unadmitted assets and the separate
@@ -239,7 +239,7 @@ validation remains separate from this header-only timing reader. Run
 `PrimeWorldLinuxClient --bootstrap-ability-timing-probe --root <game-root>` for the
 headless original-graph/shipped-Plane checks, alongside the real delayed-dispatch
 [gameplay tests](ability_timing_b13_tests.inc). Visual attack-marker synchronization
-is separate; this change does not make rendered frames drive damage.
+uses a separate graph owner; rendered frames never drive damage.
 
 Ordinary animated deaths expose a nonserialized corpse snapshot from the original
 creature lifecycle. Already-visible supported graphs request the session death
@@ -259,14 +259,33 @@ separate skeleton/effect objects and complete corpse/visibility parity remain op
 
 Accepted native base attacks publish a nonserialized presentation cue independent
 of their dispatch lifetime. Live markers carry the ability identity, sequence,
-world timestamp, cooldown period and cancellation. The original session attack
+world timestamp, cooldown period, raw fire offset and cancellation. The original session attack
 alias drives whole-body playback for the remaining accepted cooldown window;
 movement, cancellation or expiry returns to locomotion. Bounded short-lived cue
 receipts prevent duplicate draws and quick offscreen reentry from restarting an
-attack. Unseen cues older than 250 ms, invalid intervals and missing attack aliases
-are skipped, not queued. This is visual state only: native `GetAttackTimeOffset()`
-still returns zero, so authored windup, damage-marker synchronization, attack-speed
-clip scaling and critical/special attacks remain open.
+attack. A visible graph retains its cue identity through slow frames; the 250 ms
+receipt expiry applies only after graph eviction. Unseen cues older than 250 ms,
+invalid intervals and missing attack aliases
+are skipped, not queued. Supported positive fire offsets use the session's authored
+attack marker and original `ReachMarkerByTime`, subtracting cue age before requesting
+the remaining windup. For an already-visible graph whose preceding sample predates
+the accepted cue, playback splits at the recorded start and catches up within the
+existing one-second frame bound and 250 ms cue-age limit. This allows a fire marker
+between draws without replaying gameplay. Fresh/offscreen owners cannot reconstruct
+already-fired cues, and cancellations take priority over catch-up. The
+original marker callback restores normal graph speed; normal target selection
+cancels its temporary speed/callback on movement, cancellation, control or death.
+Zero timing metadata, missing/unsupported markers and unsafe reach paths retain
+the previous normal-rate attack-state fallback instead of removing an otherwise
+supported attack animation. Failed reach requests restore the original graph rate
+before fallback; their starts are not counted as synchronized attacks.
+Checks protect the original short path buffers, millisecond integer conversion,
+dispatcher ownership and combined playback-rate bound. Diagnostics count admitted
+synchronized attacks separately from observed fire markers; not all admitted
+attacks finish before cancellation or visibility eviction. Tests use original
+graph mocks and independent shipped Plane skeletons in the renderer probe.
+This does not restore critical/special attacks, upper-body attack layering,
+runtime graph replacement or full Windows animation parity.
 
 Accepted attacks also snapshot their victim position before synchronous callbacks.
 Eligible live units face that position once per consumed cue, retaining their own
