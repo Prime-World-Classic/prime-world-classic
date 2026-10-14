@@ -204,7 +204,7 @@ void PFBaseAttackData::Cancel()
 
 float PFBaseAttackData::GetWorkTime() const
 {
-  return GetTimeOffset();
+	return GetLinuxAnimationTime("attack", nullptr);
 }
 
 float PFBaseAttackData::GetSpeed() const

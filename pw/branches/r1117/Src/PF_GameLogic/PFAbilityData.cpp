@@ -578,20 +578,42 @@ void PFAbilityData::OnAbilityInstanceRemoved( PFAbilityInstance const* pInstance
   if ( iInst != rgInstances.end() )
     rgInstances.erase(iInst);
 }
-float PFAbilityData::GetWorkTime() const { return 0.0f; }
-float PFAbilityData::GetSpeed() const { return 0.0f; }
+float PFAbilityData::GetLinuxAnimationTime(const char* node, const char* marker) const
+{
+	float seconds = 0;
+	if (IsValid(pOwner) && pOwner->DbUnitDesc() && pOwner->GetWorld())
+		pOwner->GetWorld()->GetLinuxAbilityAnimationTime(*pOwner->DbUnitDesc(), node, marker, seconds);
+	return seconds;
+}
+float PFAbilityData::GetWorkTime() const
+{
+	if (!pDBDesc || pDBDesc->node.empty()) return 0;
+	nstl::string marker = "workTime";
+	for (char c : pDBDesc->node) if (c >= '0' && c <= '9') marker += c;
+	return GetLinuxAnimationTime(pDBDesc->node.c_str(), marker.c_str());
+}
+float PFAbilityData::GetSpeed() const
+{
+	const float work = GetWorkTime();
+	return std::isfinite(work) && work >= EPS_VALUE ? 1.f/work : 0;
+}
 float PFAbilityData::GetTimeOffset( bool getRawTime ) const
 {
   const float rawTimeOffset = GetAttackTimeOffset();
+	if (!std::isfinite(rawTimeOffset) || rawTimeOffset < 0) return 0;
   if (getRawTime)
     return rawTimeOffset;
 
   PFWorld* pOwnerWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
   const float stepLengthInSeconds = pOwnerWorld ? pOwnerWorld->GetStepLengthInSeconds() : 0.0f;
-  if (stepLengthInSeconds <= EPS_VALUE)
+  if (!std::isfinite(stepLengthInSeconds) || stepLengthInSeconds <= EPS_VALUE)
     return rawTimeOffset;
 
-  return int(rawTimeOffset / stepLengthInSeconds + 0.5f) * stepLengthInSeconds;
+	// Preserve original float rounding, but check before the narrowing integer conversion.
+	const float steps = rawTimeOffset / stepLengthInSeconds + .5f;
+	if (!std::isfinite(steps) || static_cast<double>(steps) > std::numeric_limits<int>::max()) return 0;
+	const float rounded = static_cast<int>(steps) * stepLengthInSeconds;
+	return std::isfinite(rounded) ? rounded : 0;
 }
 unsigned PFAbilityData::GetFlags() const { return pDBDesc ? pDBDesc->flags : 0; }
 float PFAbilityData::GetAoeSize() const
@@ -697,7 +719,16 @@ NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& ta
   return 0;
 }
 ::DiAnimGraph* PFAbilityData::GetAG( NScene::SceneObject* so ) const { (void)so; return 0; }
-float PFAbilityData::GetAttackTimeOffset() const { return 0.0f; }
+float PFAbilityData::GetAttackTimeOffset() const
+{
+	if (!pDBDesc) return 0;
+	const float work = GetWorkTime();
+	if (!std::isfinite(work) || std::fabs(work) < EPS_VALUE) return 0;
+	const bool attack = pDBDesc->GetObjectTypeID() == NDb::BaseAttack::typeId;
+	const char* node = attack ? "attack" : pDBDesc->node.c_str();
+	const char* marker = attack ? "doFire" : pDBDesc->marker.c_str();
+	return *node && *marker ? GetLinuxAnimationTime(node, marker) : 0;
+}
 float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::string &nodeName, const nstl::string &markerName ) const { (void)pSO; (void)nodeName; (void)markerName; return 0.0f; }
 NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const { needDelete = false; return 0; }
 bool PFAbilityData::IsInstaCast() const { return (GetFlags() & NDb::ABILITYFLAGS_INSTACAST) != 0; }

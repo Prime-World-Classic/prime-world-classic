@@ -20757,6 +20757,8 @@ void ProbeHeroSceneObjectAsset(
 }
 
 #include "LinuxBootstrap/animation_graph_playback.inc"
+#include "LinuxBootstrap/ability_animation_timing.inc"
+#include "LinuxBootstrap/ability_animation_timing_probe.inc"
 #include "LinuxBootstrap/animation_graph_integration.inc"
 
 void ProbeSelectedHeroSceneAsset(
@@ -34793,6 +34795,7 @@ void ValidateLinuxBootstrapReplayFileProof(
       }
       else
       {
+				liveWorld->SetLinuxAbilityAnimationTiming(std::make_shared<LinuxAuthoredAbilityTiming>());
         StrongMT<NWorld::MapLoadingJob> liveMapLoadingJob =
           new NWorld::MapLoadingJob(
             liveWorldBase,
@@ -41980,6 +41983,8 @@ void EnsureLinuxBootstrapGameScheduler(
       runtime->replayInputLoadedCommands = runtime->replayInputStorage->GetLinuxReplayLoadedCommands();
       runtime->replayInputLoadedStatuses = runtime->replayInputStorage->GetLinuxReplayLoadedStatuses();
       runtime->transceiverWorld = NWorld::PFWorld::CreatePFWorld();
+			if (auto* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()))
+				world->SetLinuxAbilityAnimationTiming(std::make_shared<LinuxAuthoredAbilityTiming>());
       runtime->replayInputTransceiver =
         new NWorld::ReplayTransceiver(
           runtime->replayInputStorage.GetPtr(),
@@ -42013,6 +42018,7 @@ void EnsureLinuxBootstrapGameScheduler(
     if (NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()))
     {
       world->SetLinuxAutoAIEnabled(settings.bootstrapCreateGame);
+			world->SetLinuxAbilityAnimationTiming(std::make_shared<LinuxAuthoredAbilityTiming>());
       if (settings.bootstrapCreateGame)
         world->SetAIContainer(new NWorld::PFAIContainer(world, runtime->transceiver));
     }
@@ -71476,6 +71482,16 @@ int main(int argc, char** argv)
   ProbeUiRootPreview(rootFileSystemPreview, &uiRootPreview);
   LinuxSessionRootPreview sessionRootPreview;
   ProbeSessionRootPreview(rootFileSystemPreview, &sessionRootPreview);
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-ability-timing-probe"))
+	{
+		const bool passed = rootFileSystemPreview.dbCacheReady && RunLinuxAbilityTimingProbe();
+		Input::BindsManager::Instance()->SetBinds(0);
+		ClearLoadingUiDataResourceCache();
+		NDb::SessionRoot::InitRoot(0);
+		NDb::SetResourceCache(0);
+		RootFileSystem::ClearFileSystems();
+		return passed ? 0 : 1;
+	}
 	if (sessionStartupProbe)
 	{
 		// Stop before sound, graphics and replay setup; this is startup integration, not a match gate.
@@ -74996,6 +75012,9 @@ int main(int argc, char** argv)
 	}
 	overlay.animatedMapResources.Clear();
 	for (auto& cache : overlay.staticMapResources) cache.Clear();
+	// Release metadata graph/DB owners before the global resource cache and file systems.
+	if (auto* world = dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()))
+		world->SetLinuxAbilityAnimationTiming({});
   ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);

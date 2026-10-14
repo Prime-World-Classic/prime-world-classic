@@ -19,6 +19,7 @@
 #if defined(PW_LINUX_NULL_RENDER)
 #include "LinuxAttackPresentation.h"
 #include "LinuxDeathPresentation.h"
+#include "LinuxAbilityAnimationTiming.h"
 #endif
 
 
@@ -323,6 +324,7 @@ class PFWorld : public PF_Core::World
   int linuxAILastCommandTargetObjectId;
   int linuxAILastCommandSent;
   bool linuxAutoAIEnabled;
+	std::shared_ptr<LinuxAbilityAnimationTiming> linuxAbilityAnimationTiming;
 #endif
 
 public:
@@ -401,6 +403,16 @@ public:
   const int  GetPresentPlayersCount() const;
   const int  GetPresentPlayersCount(NDb::EFaction faction) const;
 #if defined( PW_LINUX_NULL_RENDER )
+/** Install before loading the map; ownership and cache lifetime belong to this world. */
+	void SetLinuxAbilityAnimationTiming(std::shared_ptr<LinuxAbilityAnimationTiming> source) { linuxAbilityAnimationTiming = source; }
+	/** Missing/unsupported metadata preserves the caller's output and the legacy zero-time fallback. */
+	bool GetLinuxAbilityAnimationTime(const NDb::Unit& unit, const char* node, const char* marker, float& seconds) const
+	{
+		float value = 0;
+		if (!linuxAbilityAnimationTiming || !linuxAbilityAnimationTiming->Query(unit, node, marker, value) ||
+			!std::isfinite(value) || value < 0 || value > 3600) return false;
+		seconds = value; return true;
+	}
   int GetLinuxLoadedMapObjectsCount() const
   {
     return linuxLoadedWarFogUnblockObjects + linuxLoadedSimpleObjects + linuxLoadedMultiStateObjects + linuxLoadedTreeObjects + linuxLoadedGlyphSpawnerObjects + linuxLoadedAdvMapObstacleObjects + linuxLoadedHeroPlaceHolderObjects + linuxLoadedCreepSpawnerObjects + linuxLoadedNeutralCreepSpawnerObjects + linuxLoadedSimpleBuildingObjects + linuxLoadedUsableBuildingObjects + linuxLoadedShopObjects + linuxLoadedQuarterObjects + linuxLoadedTowerObjects + linuxLoadedControllableTowerObjects + linuxLoadedFountainObjects + linuxLoadedRoadFlagpoleObjects + linuxLoadedScriptedFlagpoleObjects + linuxLoadedMainBuildingObjects + linuxLoadedMinigamePlaceObjects + linuxLoadedCameraSplineObjects + linuxLoadedScriptPathObjects + linuxLoadedScriptPolygonAreaObjects;

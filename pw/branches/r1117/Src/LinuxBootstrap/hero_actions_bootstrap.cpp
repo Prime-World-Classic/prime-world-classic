@@ -493,7 +493,7 @@ namespace NWorld
 
 	/** Observe the production use state without replacing its approach/cast lifecycle.
 	 * Diagnostics are transient bootstrap evidence, not additional serialized gameplay state.
-	 * Payment text is emitted only for an activation in this call, before regeneration can run.
+	 * Delayed payment/cooldown evidence comes from the instance's immutable activation receipt.
 	 */
 	class LinuxTalentCommandState : public PFHeroUseTalentState
 	{
@@ -513,12 +513,9 @@ namespace NWorld
 				return true;
 			const bool hadInstance = IsValid(pAbilityInstance);
 			const bool sample = !hadInstance && IsUnitValid(hero) && IsValid(commandTalent);
-			const bool life = sample && commandTalent->DoesSpendLifeInsteadEnergy();
-			const float before = sample ? (life ? hero->GetLife() : hero->GetMana()) : 0;
 			const int beforeStep = sample ? commandTalent->GetLastUseStep() : -1;
 			const int beforeInstances = sample ? commandTalent->GetActiveInstancesCount() : 0;
 			const float beforeCooldown = sample ? commandTalent->GetCurrentCooldown() : 0;
-			const float cost = sample && recordPayment ? commandTalent->GetManaCost() : 0;
 			const float range = sample && recordPayment ? commandTalent->GetUseRange(target) : 0;
 			const bool finished = PFHeroUseTalentState::OnStep(dt);
 			if (sample && IsValid(pAbilityInstance))
@@ -530,6 +527,8 @@ namespace NWorld
 					return finished;
 				}
 				++diagnostic.useTalentActionAccepted;
+				admitted = true; admissionStep = beforeStep; admissionInstances = beforeInstances;
+				admissionCooldown = beforeCooldown; admissionRange = range;
 				diagnostic.useTalentLevel = level; diagnostic.useTalentSlot = slot;
 				diagnostic.useTalentTargetType = static_cast<int>(target.GetType());
 				diagnostic.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(target);
@@ -540,16 +539,33 @@ namespace NWorld
 				diagnostic.useTalentActiveInstancesAfter = commandTalent->GetActiveInstancesCount();
 				diagnostic.useTalentCooldownBefore = beforeCooldown;
 				diagnostic.useTalentCooldownAfter = commandTalent->GetCurrentCooldown();
+			}
+			if (admitted && !reported && IsValid(pAbilityInstance) && IsValid(commandTalent) &&
+				pAbilityInstance->GetLinuxActivationReceipt().activated)
+			{
+				reported = true;
+				const auto& receipt = pAbilityInstance->GetLinuxActivationReceipt();
+				auto& diagnostic = g_linuxHeroGameplayCommandDiagnostics;
+				diagnostic.useTalentLevel = level; diagnostic.useTalentSlot = slot;
+				diagnostic.useTalentTargetType = static_cast<int>(target.GetType());
+				diagnostic.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(target);
+				diagnostic.useTalentTargetFaction = GetLinuxBootstrapTargetFaction(target);
+				diagnostic.useTalentLastUseStepBefore = admissionStep;
+				diagnostic.useTalentLastUseStepAfter = commandTalent->GetLastUseStep();
+				diagnostic.useTalentActiveInstancesBefore = admissionInstances;
+				diagnostic.useTalentActiveInstancesAfter = commandTalent->GetActiveInstancesCount();
+				diagnostic.useTalentCooldownBefore = admissionCooldown;
+				diagnostic.useTalentCooldownAfter = receipt.cooldown;
 				if (IsLinuxHumanTalentActor(hero, clientId))
 					fprintf(stdout, "Native local talent cast: hero=%d player=%d user=%d slot=%d,%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f\n",
 						hero->GetObjectId(), hero->GetPlayerId(), hero->GetPlayer()->GetUserID(), level, slot,
 						diagnostic.useTalentTargetType, diagnostic.useTalentTargetObjectId, diagnostic.useTalentTargetFaction,
-						beforeStep, diagnostic.useTalentLastUseStepAfter, beforeInstances, diagnostic.useTalentActiveInstancesAfter,
-						beforeCooldown, diagnostic.useTalentCooldownAfter);
-				if (recordPayment && pAbilityInstance->IsActivated())
+						admissionStep, diagnostic.useTalentLastUseStepAfter, admissionInstances, diagnostic.useTalentActiveInstancesAfter,
+						admissionCooldown, receipt.cooldown);
+				if (recordPayment && receipt.paymentObserved)
 					fprintf(stdout, "Native talent formula payment: slot=%d,%d range=%.6g cost=%.6g pool=%s before=%.6g after=%.6g step=%d\n",
-						level, slot, range, cost,
-						life ? "life" : "mana", before, life ? hero->GetLife() : hero->GetMana(),
+						level, slot, admissionRange, receipt.cost,
+						receipt.spentLife ? "life" : "mana", receipt.before, receipt.after,
 						commandTalent->GetLastUseStep());
 			}
 			return finished;
@@ -558,6 +574,9 @@ namespace NWorld
 		CPtr<PFTalent> commandTalent;
 		int level = -1, slot = -1, clientId = -1;
 		bool recordPayment = false, portalCommand = false;
+		bool admitted = false, reported = false;
+		int admissionStep = -1, admissionInstances = 0;
+		float admissionCooldown = 0, admissionRange = 0;
 	};
 #endif
 

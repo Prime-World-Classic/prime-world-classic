@@ -211,6 +211,36 @@ gets one valid idle pose; missing optional stun aliases use idle. Mixed overlapp
 effects follow current flags instead of retaining stale client callback state.
 This does not change effect durations, flag counts or simulation command admission.
 
+Ability and base-attack simulation timing uses a separate world-owned metadata
+cache, installed for local sessions and replay worlds before map loading. Original
+`DiAnimGraph` queries supply node duration and marker time; dispatcher queries keep
+the first matching subnode, ordinary work markers append the node's digits, and
+base attacks use `attack`/`doFire`. Raw marker time is rounded to the nearest world
+step only for scheduling. Pending attacks can be cancelled before launch, and
+projectile travel starts after windup, not during it. No visible mesh, animation
+update, graphics context or simulation RNG is involved. The retained Windows
+implementation is unchanged.
+
+Native cast receipts observe actual activation, not initial command admission.
+Each instance keeps nonserialized cooldown and resource-before/after samples at
+the original activation/payment calls. The command state emits its actor-scoped
+receipt once after successful activation, so later regeneration or cooldown ticks
+cannot distort the evidence. Cancellation before the marker emits no successful
+receipt. Observing a payment call does not itself assert that funds were deducted;
+the strict HUD gate still checks the actual resource delta and cooldown.
+
+The source reads bounded original clip headers through `RootFileSystem`, retains
+DB ownership, and caches at most 256 scene graphs. Eviction recomputes the same
+timing. Missing/unsupported metadata retains the explicit legacy zero fallback;
+it is not complete ability parity. The source uses the original offscreen
+`Unit.sceneObject`/first hero scene selection, constant graph parameters only, and
+does not support runtime skin/graph replacement or upper-body graphs. Clip sample
+validation remains separate from this header-only timing reader. Run
+`PrimeWorldLinuxClient --bootstrap-ability-timing-probe --root <game-root>` for the
+headless original-graph/shipped-Plane checks, alongside the real delayed-dispatch
+[gameplay tests](ability_timing_b13_tests.inc). Visual attack-marker synchronization
+is separate; this change does not make rendered frames drive damage.
+
 Ordinary animated deaths expose a nonserialized corpse snapshot from the original
 creature lifecycle. Already-visible supported graphs request the session death
 alias and retain their last heading; the authored graph owns its final corpse pose.
@@ -295,7 +325,7 @@ not yet ported. Unsupported graph assets retain the previous mesh-yaw policy.
 	after removal. Real unit simulation advances timed applicators and cached consumable
 	data. Ability instances reject repeated admission, recheck delayed activation and
 	retain deferred payloads; creation channels defer payment until real completion.
-	Full consumable groups, authored animation timing, projectile subtypes and saved-world
+	Full consumable groups, dynamic animation timing, projectile subtypes and saved-world
 	restoration of bootstrap command observers remain unproven or unported.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
@@ -370,7 +400,7 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	before payment, real inventory and unit-owned cast/channel completion without
 	double stepping. Mock only descriptor inputs and nonzero work duration;
 	bootstrap talent/consumable commands still need production state routing and
-	authored animation timing.
+	complete authored animation timing beyond the constant-graph source above.
 - Hero orders cover [follow movement](hero_follow_lifecycle_tests.inc),
 	[assisted combat](hero_follow_combat_tests.inc), [hold](hero_hold_tests.inc),
 	[suspend](hero_suspend_tests.inc), [interaction approaches](hero_interaction_approach_tests.inc),

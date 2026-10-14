@@ -199,6 +199,10 @@ protected:
 
 	NScene::SceneObject* GetSO( bool& needDelete ) const;
 	::DiAnimGraph* GetAG( NScene::SceneObject* so ) const;
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Authored metadata query, independent of visible client objects; null marker means node duration. */
+	float GetLinuxAnimationTime(const char* node, const char* marker) const;
+#endif
 
 private:
 

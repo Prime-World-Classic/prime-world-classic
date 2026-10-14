@@ -59,6 +59,12 @@ public:
 
   unsigned int          GetFlags() const;
 #if defined(PW_LINUX_NULL_RENDER)
+	/** Nonserialized activation receipt, sampled at cooldown restart/payment rather than command admission. */
+	struct LinuxActivationReceipt {
+		bool activated = false, paymentObserved = false, spentLife = false;
+		float cooldown = 0, cost = 0, before = 0, after = 0;
+	};
+	const LinuxActivationReceipt& GetLinuxActivationReceipt() const { return linuxActivationReceipt; }
 	/** Identify the existing ordinary holder without adding scheduling state or serialized fields. */
 	bool OwnsNativeDispatch(const PFDispatch* value) const { return dispatch.Get().GetPtr() == value; }
 #endif
@@ -91,6 +97,9 @@ private:
   //////////////////////////////////////////////////////////////////////////
   
   void Activate();
+#if defined(PW_LINUX_NULL_RENDER)
+	LinuxActivationReceipt linuxActivationReceipt;
+#endif
 
   ZDATA_(PFWorldObjectBase)
   CObj<PFAbilityData> pAbilityData;

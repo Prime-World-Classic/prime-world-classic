@@ -1380,6 +1380,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "death_presentation_b13_tests.inc"
 #include "locomotion_presentation_b13_tests.inc"
 #include "control_presentation_b13_tests.inc"
+#include "ability_timing_b13_tests.inc"
 #include "hero_corpses_b13_tests.inc"
 #include "nature_override_b13_tests.inc"
 #include "terrain_formulas_b13_tests.inc"
@@ -1548,6 +1549,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeathPresentationB13(check);
 	LocomotionPresentationB13(check);
 	ControlPresentationB13(check);
+	AbilityTimingB13(check);
 	HeroCorpsesB13(check);
 	ScreamTargetsB13(check);
 	DamageExtendedB13(check);

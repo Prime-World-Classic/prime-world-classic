@@ -101,6 +101,7 @@ void PFAbilityInstance::Activate()
 
     if ( !pAbilityData->IsMultiState() )
       pAbilityData->RecalculateAndRestartCooldown();
+		linuxActivationReceipt.cooldown = pAbilityData->GetCurrentCooldown();
 
 		// Native dispatch applies synchronously; its end callback owns the final channel progress.
     if ( ( GetFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING ) != 0 && IsValid( pOwner ) )
@@ -115,13 +116,23 @@ void PFAbilityInstance::Activate()
       if ( pAbilityData->GetEventTypeByAbilityTypeId( eventType ) && IsValid( pOwner ) )
         pOwner->EventHappened( PFBaseUnitUseAbilityEvent( eventType, this ) );
 
+			linuxActivationReceipt.spentLife = pAbilityData->DoesSpendLifeInsteadEnergy();
+			linuxActivationReceipt.cost = pAbilityData->GetManaCost();
+			CObj<PFBaseUnit> paymentOwner = IsValid(pOwner) ? pOwner.GetPtr() : nullptr;
+			if (paymentOwner)
+				linuxActivationReceipt.before = linuxActivationReceipt.spentLife ? paymentOwner->GetLife() : paymentOwner->GetMana();
       pAbilityData->SpendMana();
+			if (paymentOwner) {
+				linuxActivationReceipt.after = linuxActivationReceipt.spentLife ? paymentOwner->GetLife() : paymentOwner->GetMana();
+				linuxActivationReceipt.paymentObserved = true;
+			}
       LogAbilityUsed();
       pAbilityData->NotifyCastProcessed();
     }
 
     if ( IsValid( pOwner ) && GetData()->abilityType != NDb::ABILITYTYPEID_SPECIAL )
       pOwner->StartGlobalCooldown();
+		linuxActivationReceipt.activated = true;
   }
   else
   {

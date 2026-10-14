@@ -1009,6 +1009,10 @@ add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")
 set_tests_properties(LinuxSessionStartup PROPERTIES TIMEOUT 60
 	ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy;DISPLAY=;WAYLAND_DISPLAY=")
+add_test(NAME LinuxAbilityAnimationTiming COMMAND PrimeWorldLinuxClient --bootstrap-ability-timing-probe
+	--root "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+set_tests_properties(LinuxAbilityAnimationTiming PROPERTIES TIMEOUT 60
+	ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy;DISPLAY=;WAYLAND_DISPLAY=")
 add_test(NAME LinuxSessionStartupInvalidRoot COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DINVALID_ROOT=${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")
