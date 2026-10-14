@@ -45803,6 +45803,28 @@ bool HandleLinuxReplayInputControls(
   return changed;
 }
 
+enum class LinuxTimedExit { Continue, Draining, Complete, TimedOut };
+
+/** Seal timed local input once and wait for its existing scheduler/replay barrier.
+ * Returning Draining leaves stepping, rendering and input rejection in the normal loop.
+ * Start the bounded grace period at sealing, including when a frame missed run expiry.
+ */
+LinuxTimedExit PollLinuxTimedExit(const LinuxClientLaunchSettings& settings,
+	LinuxBootstrapScreenRuntime& runtime, double elapsedSeconds, double& drainStarted)
+{
+	if (settings.runSeconds <= 0.0 || elapsedSeconds < settings.runSeconds)
+		return LinuxTimedExit::Continue;
+	if (runtime.replayFileInputActive ||
+		!runtime.localScheduler || !runtime.transceiver || !runtime.transceiverWorldAttached)
+		return LinuxTimedExit::Complete;
+	const int finishStep = runtime.localScheduler->CloseLinuxInput();
+	if (runtime.transceiverWorldStep >= finishStep)
+		return LinuxTimedExit::Complete;
+	if (drainStarted < 0.0) drainStarted = elapsedSeconds;
+	return elapsedSeconds - drainStarted >= 1.0 ? LinuxTimedExit::TimedOut : LinuxTimedExit::Draining;
+}
+
+#include "LinuxBootstrap/timed_exit_probe.inl"
 #include "LinuxBootstrap/native_input_probe.inl"
 #include "LinuxBootstrap/file_path_probe.inl"
 #include "LinuxBootstrap/crc_buffer_probe.inl"
@@ -71406,7 +71428,7 @@ int main(int argc, char** argv)
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-query-probe"))
 		return RunPrimeWorldLinuxVisibilityQueryProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-scheduler-drain-probe"))
-		return RunPrimeWorldLinuxSchedulerDrainProbe() ? 0 : 1;
+		return RunPrimeWorldLinuxSchedulerDrainProbe() && RunLinuxTimedExitProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-applicator-formula-probe"))
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0)) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
@@ -73066,7 +73088,8 @@ int main(int argc, char** argv)
   double lastDemoCycleTime = 0.0;
   size_t bootstrapClickNextIndex = 0;
   double bootstrapClickNextTime = settings.bootstrapClickAfterSeconds;
-	bool interactiveDrainFailed = false;
+	bool timedDrainFailed = false;
+	double timedDrainStarted = -1.0;
 	const int matchFinishProofFaction = CmdLineLite::Instance().GetIntKey("--bootstrap-match-finish-proof", 0);
 	bool matchFinishProofSent = false;
 
@@ -73391,27 +73414,18 @@ int main(int argc, char** argv)
 		screenRuntime.profileUpdateMs += duration(updateStart, assetsStart);
 		screenRuntime.profileAssetsMs += duration(assetsStart, drawStart);
 		screenRuntime.profileDrawMs += duration(drawStart, ProfileClock::now());
-    if (settings.runSeconds > 0.0)
-    {
-      if (elapsedSeconds >= settings.runSeconds)
-      {
-				if (!settings.bootstrapInteractiveWorld || screenRuntime.replayFileInputActive ||
-					!screenRuntime.localScheduler || !screenRuntime.transceiver ||
-					!screenRuntime.transceiverWorldAttached)
-					break;
-				// Retain accepted input; normal wall-clock ticks consume only this sealed tail.
-				const int finishStep = screenRuntime.localScheduler->CloseLinuxInput();
-				if (screenRuntime.transceiverWorldStep >= finishStep)
-					break;
-				if (elapsedSeconds >= settings.runSeconds + 1.0)
-				{
-					fprintf(stderr, "Interactive scheduler drain timed out: world=%d barrier=%d\n",
-						screenRuntime.transceiverWorldStep, finishStep);
-					interactiveDrainFailed = true;
-					break;
-				}
-      }
-    }
+		// Asset work and drawing may outlast the frame's initial timestamp.
+		NHPTimer::GetTime(now);
+		const auto timedExit = PollLinuxTimedExit(settings, screenRuntime,
+			NHPTimer::Time2Seconds(now - start), timedDrainStarted);
+		if (timedExit == LinuxTimedExit::Complete) break;
+		if (timedExit == LinuxTimedExit::TimedOut)
+		{
+			fprintf(stderr, "Local scheduler drain timed out: world=%d barrier=%d\n",
+				screenRuntime.transceiverWorldStep, screenRuntime.localScheduler->GetLinuxInputFinishStep());
+			timedDrainFailed = true;
+			break;
+		}
 
     usleep(16 * 1000);
   }
@@ -75082,7 +75096,7 @@ int main(int argc, char** argv)
   RootFileSystem::ClearFileSystems();
   NMainFrame::ShutdownApplication();
   fprintf(stdout, "Prime World Linux client shell finished.\n");
-  return interactiveDrainFailed ? 1 : 0;
+  return timedDrainFailed ? 1 : 0;
 }
 
 #else
