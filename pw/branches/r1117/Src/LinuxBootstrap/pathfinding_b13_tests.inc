@@ -225,7 +225,9 @@ static void RoutingChangesB13(Checks& check)
 		CObj<RoutingMoverB13> blocker = f.Mover(CVec2(28.5f, 60.5f));
 		mover->MoveTo(CVec2(40.5f, 60.5f), 0);
 		for (int i = 0; i < 40 && mover->IsMoving(); ++i) f.Tick();
-		check(mover->GetPosition().x < 28 && !mover->IsMoving(), "routing: ordinary paths retain continuous dynamic-circle blocking");
+		check(mover->GetPosition().x < 28 && mover->IsMoving(), "routing: ordinary paths wait behind continuous dynamic-circle blocking");
+		const CVec2 blocked = mover->GetPos(); f.Tick();
+		check(mover->GetPos() == blocked, "routing: retaining a dynamically blocked order does not penetrate the blocker");
 		mover->SetGhostMode(NDb::GHOSTMOVEMODE_IGNOREDYNAMIC, false);
 		mover->MoveTo(CVec2(40.5f, 60.5f), 0); bool admissible, detoured;
 		check(RoutingArriveB13(f, mover, CVec2(40.5f, 60.5f), 0, admissible, detoured), "routing: ignore-dynamic does not change static route policy");

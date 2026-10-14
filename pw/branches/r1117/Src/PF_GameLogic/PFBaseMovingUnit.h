@@ -244,6 +244,14 @@ protected:
   }
 
 private:
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Transient deferred-order outcome, not a new shared save/checksum field.
+	 * Native command replay rebuilds it through MoveTo; native snapshot/reconnect
+	 * restoration of in-flight notifications is not implemented yet.
+	 */
+	enum class LinuxMoveOutcome { None, Pending, Started, FailedBeforeStart, FailedAfterStart };
+	LinuxMoveOutcome linuxMoveOutcome = LinuxMoveOutcome::None;
+#endif
   void RecalculateGhostMode();
   void ApplyGhostMode();
   Pathfinding::CCommonPathFinder * GetPathFinder();
@@ -386,6 +394,20 @@ public:
 
   void SetMoveFlags(unsigned value = 0);
 	unsigned GetMoveFlags() const     { return world.moveFlags; }
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Point orders consume a deferred routing failure instead of resubmitting it indefinitely. */
+	bool HasLinuxMoveFailed() const
+	{
+		return world.linuxMoveOutcome == MovingUnit::LinuxMoveOutcome::FailedBeforeStart
+			|| world.linuxMoveOutcome == MovingUnit::LinuxMoveOutcome::FailedAfterStart;
+	}
+	/** A first routing failure still needs the original point-order MOVE notification. */
+	bool HasLinuxMoveStarted() const
+	{
+		return world.linuxMoveOutcome == MovingUnit::LinuxMoveOutcome::Started
+			|| world.linuxMoveOutcome == MovingUnit::LinuxMoveOutcome::FailedAfterStart;
+	}
+#endif
 	float SetUnitSpeed(float value); // override speed, valid for MOVE_FLAG_OVERRIDE_SPEED only; will return actual unit speed
 
 	// utilities

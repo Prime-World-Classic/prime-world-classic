@@ -133,7 +133,8 @@ The current client state and limitations are recorded in the
 not require Ruffle: it drives a native client window with `xdotool`, validates
 its stored replay, and compares the actual projected click with the queued
 destination. `reissue` also requires arrival at the second requested point;
-`obstructed` requires preserving the clicked goal, not reaching blocked ground.
+`obstructed` requires preserving the clicked goal and retiring the failed order,
+not reaching blocked ground. Both scenarios reject indefinitely moving orders.
 
 Run each scenario separately in an isolated X11 session with a window manager,
 at 1280x720, using a fresh output path. The probe refuses ambiguous windows or

@@ -53,6 +53,10 @@ class NativeMovementTests(unittest.TestCase):
 			else:
 				probe.validate_movement(text, scenario)
 
+	def test_obstructed_order_must_retire(self):
+		with self.assertRaisesRegex(probe.EvidenceError, 'settle'):
+			probe.validate_movement(evidence().replace('moving=no', 'moving=yes'), 'obstructed')
+
 	def test_input_is_window_addressed(self):
 		with patch.object(probe, 'tool', return_value='42') as tool, patch.object(probe, 'pause'):
 			probe.drive('42', 'reissue', 100)

@@ -16,8 +16,8 @@ SCENARIOS = {'reissue': ((500, 300), (500, 360)), 'obstructed': ((780, 410),)}
 def validate_movement(stdout, scenario):
 	'''Compare independently recorded projection and command positions at logged precision.
 
-	An obstructed destination need not be reachable, but must not be replaced by
-	another goal in the UI. The engine alone owns routing and arrival policy.
+	An obstructed destination need not be reachable, but its order must retire
+	without replacing the goal in the UI. The engine owns routing and arrival.
 	'''
 	move = fields(record(stdout, 'Final map command move', ': '), '=')
 	live = fields(record(stdout, 'Final live 3D map commands', ': '), '=')
@@ -33,8 +33,9 @@ def validate_movement(stdout, scenario):
 	require(pair(move['target'], ',', number) == pair(live['target'], ',', number) == requested,
 		'UI replaced the projected destination before queuing movement')
 	require(move['tracking'] == 'yes', 'Movement command was not tracked')
+	require(move['moving'] == 'no', 'Movement order did not settle')
 	if scenario == 'reissue':
-		require(move['moved'] == move['reached'] == 'yes' and move['moving'] == 'no', 'Reissued move did not settle')
+		require(move['moved'] == move['reached'] == 'yes', 'Reissued move did not settle')
 		require(number(move['remaining']) <= 1.01 and number(move['maxDistance']) > 1, 'Move did not reach the second goal')
 	return move
 

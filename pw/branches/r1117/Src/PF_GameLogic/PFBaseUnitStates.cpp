@@ -73,6 +73,12 @@ bool PFBaseUnitMoveToState::OnStep(float dt)
 			pOwner->SetMoveDirection(target);
 		return true;
 	}
+	if (initiatedMove && pOwner->HasLinuxMoveFailed())
+	{
+		if (!pOwner->HasLinuxMoveStarted())
+			pOwner->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
+		return true;
+	}
 	const bool needsSight = requireLineOfSight && !pOwner->CanSee(target);
 	const CVec2 position = pOwner->GetPosition().AsVec2D();
 	// The native path's double-precision circle intersection is stored as float XY.

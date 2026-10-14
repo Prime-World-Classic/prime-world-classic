@@ -314,7 +314,7 @@ void MovingUnit::MoveTo(const CVec2& target, float stopDistance_, IPointChecking
 			&& (!LinuxMappedMovePoint(pMap, origin) || !LinuxMappedMovePoint(pMap, target)))) { Stop(false); return; }
 	LinuxMoveAttempt::Cancel(this);
 	if (moveState != MOVE_STATE_MOVING || target != vFarTarget || pChecking.GetPtr() != pointChecking || stopDistance != stopDistance_)
-	{ pPath = 0; pStaticPath = 0; }
+	{ pPath = 0; pStaticPath = 0; linuxMoveOutcome = LinuxMoveOutcome::Pending; }
 	pUnitTarget = 0; vFarTarget = target; vShortTarget = target;
 	stopDistance = stopDistance_; pChecking = pointChecking; UpdateMoveDir(target); moveState = MOVE_STATE_MOVING;
 }
@@ -328,12 +328,14 @@ bool MovingUnit::TeleportTo(const CVec2& target, bool)
 {
 	if (!LinuxFiniteMovePoint(target)) return false;
 	LinuxMoveAttempt::Cancel(this);
+	linuxMoveOutcome = LinuxMoveOutcome::None;
 	pPath = 0; pStaticPath = 0; pChecking = 0; pUnitTarget = 0;
 	SetCenter(target); vFarTarget = target; vShortTarget = target; moveState = MOVE_STATE_IDLE; return true;
 }
 void MovingUnit::Stop(bool)
 {
 	LinuxMoveAttempt::Cancel(this);
+	linuxMoveOutcome = LinuxMoveOutcome::None;
 	pPath = 0; pStaticPath = 0; pChecking = 0; pUnitTarget = 0;
 	if (moveState != MOVE_STATE_MOUNTED && moveState != MOVE_STATE_DEAD) moveState = MOVE_STATE_IDLE;
 }
@@ -745,15 +747,24 @@ void MovingUnit::TickMove(float dt)
 			&& moveFlags == flags && speed == quotedSpeed && stopDistance == quotedStopDistance
 			&& pChecking.GetPtr() == checker.GetPtr() && pMap.GetPtr() == map.GetPtr()
 			&& LinuxMoveRegistered(owner, world) && GetPathFinder() == finder.GetPtr()
+			&& !owner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)
 			&& attempt.IsCurrent();
 	};
+	// Preserve only terminal route failures; caller commands and successful arrival clear the outcome.
+	const auto fail = [&] {
+		const auto outcome = linuxMoveOutcome;
+		Stop(false);
+		if (outcome == LinuxMoveOutcome::Pending || outcome == LinuxMoveOutcome::Started)
+			linuxMoveOutcome = outcome == LinuxMoveOutcome::Pending
+				? LinuxMoveOutcome::FailedBeforeStart : LinuxMoveOutcome::FailedAfterStart;
+	};
 	if (!current()) return;
-	if (!IsValid(pMap)) { Stop(false); return; }
+	if (!IsValid(pMap)) { fail(); return; }
 	if (!LinuxFiniteMovePoint(origin) || !LinuxFiniteMovePoint(vFarTarget)
-		|| !std::isfinite(stopDistance) || stopDistance < 0) { Stop(false); return; }
+		|| !std::isfinite(stopDistance) || stopDistance < 0) { fail(); return; }
 	const int staticMode = LinuxStaticMoveMode(curGhostMode, moveFlags);
 	if (staticMode && (!LinuxMappedMovePoint(pMap, origin) || !LinuxMappedMovePoint(pMap, vFarTarget)
-		|| !LinuxMoveFootprintValid(pOwner) || !GetPathFinder())) { Stop(false); return; }
+		|| !LinuxMoveFootprintValid(pOwner) || !GetPathFinder())) { fail(); return; }
 	// Predicate completion does not require a positive movement budget.
 	const auto checkArrival = [&](bool& arrived) {
 		const double dx = double(vFarTarget.x) - origin.x, dy = double(vFarTarget.y) - origin.y;
@@ -783,24 +794,35 @@ void MovingUnit::TickMove(float dt)
 		if (remaining <= EPS_VALUE) return;
 		if (staticMode && !direct && !IsValid(pPath) && pMap->GetTile(origin) != pMap->GetTile(vFarTarget))
 		{
-			if (++searches > 2) { Stop(false); return; }
+			if (++searches > 2) { fail(); return; }
 			const bool found = RecomputePath();
 			if (!current()) return;
-			if (!found) { Stop(false); return; }
+			if (!found) { fail(); return; }
 		}
 		const CVec2 target = IsValid(pPath)
 			? (pPath->IsFinished() ? pPath->GetFinishPoint() : pPath->PeekPoint(0)) : vFarTarget;
-		if (!LinuxFiniteMovePoint(target) || (staticMode && !LinuxMappedMovePoint(pMap, target))) { Stop(false); return; }
+		if (!LinuxFiniteMovePoint(target) || (staticMode && !LinuxMappedMovePoint(pMap, target))) { fail(); return; }
 		const double dx = double(target.x) - origin.x, dy = double(target.y) - origin.y;
 		const double length = sqrt(dx * dx + dy * dy);
-		if (!std::isfinite(length) || length > FLT_MAX) { Stop(false); return; }
+		if (!std::isfinite(length) || length > FLT_MAX) { fail(); return; }
 		if (length <= EPS_VALUE)
 		{
-			if (!IsValid(pPath) || pPath->IsFinished()) { Stop(false); return; }
+			if (!IsValid(pPath) || pPath->IsFinished()) { fail(); return; }
 			CObj<CStandartPath2> cursor = pPath;
 			MapModeChanger mode(staticMode, map); cursor->Shift(1, pathFindingSteps);
 			if (!current()) return;
 			continue;
+		}
+		if (linuxMoveOutcome == LinuxMoveOutcome::Pending)
+		{
+			const float statSpeed = owner->GetMoveSpeedMpS();
+			linuxMoveOutcome = LinuxMoveOutcome::Started;
+			owner->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
+			// Notifications may stop, redirect, teleport, kill or unregister this owner.
+			if (!current()) return;
+			// A movement-triggered modifier must not spend this tick's stale speed budget.
+			if (statSpeed != owner->GetMoveSpeedMpS()) PreStep(0);
+			if (!current()) return;
 		}
 		const CVec2 direction(static_cast<float>(dx / length), static_cast<float>(dy / length));
 		double amount = Min(double(remaining), length);
@@ -819,12 +841,12 @@ void MovingUnit::TickMove(float dt)
 		}
 		const CVec2 desired(static_cast<float>(double(origin.x) + dx / length * amount),
 			static_cast<float>(double(origin.y) + dy / length * amount));
-		if (!LinuxFiniteMovePoint(desired)) { Stop(false); return; }
+		if (!LinuxFiniteMovePoint(desired)) { fail(); return; }
 		const PFBaseMovingUnit* movingTarget = IsValid(pUnitTarget) ? dynamic_cast<PFBaseMovingUnit*>(pUnitTarget.GetPtr()) : nullptr;
 		// Never enter TileMap mode zero; full ghost/no-collide is handled by the flags.
 		MapModeChanger mode(staticMode ? staticMode : MAP_MODE_ALL_STATICS, pMap);
 		const float wanted = fabs(desired - origin);
-		if (!std::isfinite(wanted)) { Stop(false); return; }
+		if (!std::isfinite(wanted)) { fail(); return; }
 		if (wanted <= EPS_VALUE) { if (arriving) Stop(false); return; }
 		float safe = (moveFlags & MOVE_FLAG_NO_COLLIDE) ? wanted
 			: LinuxTraceStraightMove(pOwner, pMap, origin, desired, false, curGhostMode, moveFlags, movingTarget, pFollowed);
@@ -848,7 +870,9 @@ void MovingUnit::TickMove(float dt)
 				if (!current()) return;
 				if (found) continue;
 			}
-			Stop(false); return;
+			// Dynamic occupancy can clear on a later tick; retain the admitted order and its event.
+			if (blockedStatic) fail();
+			return;
 		}
 		expectedOrigin = desired; SetCenter(desired);
 		if (!current()) return;
@@ -857,14 +881,19 @@ void MovingUnit::TickMove(float dt)
 		if (arriving) { Stop(false); return; }
 		if (amount + EPS_VALUE >= length)
 		{
-			if (!IsValid(pPath) || pPath->IsFinished()) { Stop(false); return; }
+			if (!IsValid(pPath) || pPath->IsFinished())
+			{
+				if (!checkArrival(arrived)) return;
+				if (arrived) Stop(false); else fail();
+				return;
+			}
 			CObj<CStandartPath2> cursor = pPath;
 			cursor->Shift(1, pathFindingSteps);
 			if (!current()) return;
 		}
 	}
 	// A degenerate/restored cursor must not make a world tick unbounded.
-	Stop(false);
+	fail();
 }
 void MovingUnit::TickMoveSpecial(float) {}
 void MovingUnit::MoveToInternal(const CVec2& target, float stopDistance_, IPointChecking* pointChecking) { MoveTo(target, stopDistance_, pointChecking); }
