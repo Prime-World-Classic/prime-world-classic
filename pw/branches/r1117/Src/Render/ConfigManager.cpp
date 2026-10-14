@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ConfigManager.h"
 #include "configdatabase.h"
+#include "System/CmdLineLite.h"
 
 
 static bool s_readableDepth = true;
@@ -61,6 +62,27 @@ inline void SetFlag(DWORD _flag, bool _val, DWORD *_pDest)
   *_pDest = (~_flag & *_pDest) | (-int(_val) & _flag);
 }
 
+// Дамп разрешённых пинов config.txt (docs/PLAN_NVRHI.md §2.5).
+// config.txt — это матчер: из идентификатора адаптера, caps и переданных
+// 1024/64/1700 он разрешает список команд, которые затем исполняются как
+// setvar. На этапе 3 вместо D3DCAPS9 придёт синтезированный BackendSystemInfo,
+// и обязан разрешиться ТОТ ЖЕ список. Сравнивать будет не с чем, если не снять
+// эталон, пока D3D9 жив, — отсюда этот дамп.
+// Ключ командной строки, а не только dev-переменная: CheckDeviceCaps() работает
+// ДО NGlobal::ExecuteConfig("autoexec.cfg") (тот исполняется в PseudoWinMain
+// позже инициализации рендера), поэтому setvar из autoexec.cfg до этого места
+// не доходит — проверено прогоном. Переменная оставлена для интерактивной
+// отладки, когда порядок не важен.
+static bool s_dumpConfigPins = false;
+REGISTER_DEV_VAR( "dump_config_pins", s_dumpConfigPins, STORAGE_NONE );
+
+static bool DumpConfigPinsRequested()
+{
+  return s_dumpConfigPins
+      || CmdLineLite::Instance().IsKeyDefined( "dumpConfigPins" )
+      || CmdLineLite::Instance().IsKeyDefined( "-dumpConfigPins" );
+}
+
 
 HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats)
 {
@@ -71,6 +93,13 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
   D3DCAPS9 caps9;
   _pDevice->GetDeviceCaps(&caps9);
   sysInfo.MaxVertexShaderConst = caps9.MaxVertexShaderConst;
+
+  // Диагностика порядка запуска: дамп пинов завязан на ключ командной строки, а
+  // CmdLineLite инициализируется в PseudoWinMain — проверяем, что к моменту
+  // создания устройства он уже заполнен.
+  DebugTrace( "CheckDeviceCaps: args=%d dumpConfigPins=%d",
+              CmdLineLite::Instance().ArgsCount(),
+              (int)CmdLineLite::Instance().IsKeyDefined( "-dumpConfigPins" ) );
 
   D3DADAPTER_IDENTIFIER9 adapterID;
   IntrusivePtr<IDirect3D9> pD3D;
@@ -104,6 +133,24 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
     if( pCDB->Load("config.txt", sndDev, adapterID, caps9, 1024, 64, 1700) )
         config_params = pCDB->GetAggregateProperties();
     pCDB->Release();
+
+    if( DumpConfigPinsRequested() )
+    {
+      // Входы матчера: без них список пинов нельзя воспроизвести на другом
+      // железе (или при другом синтезе caps). 1024/64/1700 — жёстко зашитые
+      // SystemMemory/VideoMemory/CPUSpeed, их решение менять не будем (§2.5).
+      // Форматтер клиента %llu не понимает (в Render такого нет нигде) —
+      // версия драйвера печатается двумя половинками LARGE_INTEGER.
+      DebugTrace( "ConfigPins: adapter=\"%s\" vendor=0x%04x device=0x%04x driver=%u.%u "
+                  "mem=1024 vid=64 cpu=1700 MaxVertexShaderConst=%u IsNullRef=%d caps=0x%x pins=%d",
+                  adapterID.Description, adapterID.VendorId, adapterID.DeviceId,
+                  (unsigned)(adapterID.DriverVersion.QuadPart >> 32),
+                  (unsigned)(adapterID.DriverVersion.QuadPart & 0xffffffffULL),
+                  sysInfo.MaxVertexShaderConst, (int)sysInfo.IsNullRef, caps,
+                  (int)config_params.size() );
+      for( size_t i = 0; i < config_params.size(); ++i )
+        DebugTrace( "ConfigPin: %s %s", config_params[i].first.c_str(), config_params[i].second.c_str() );
+    }
 
     for(int i = config_params.size(); --i >= 0;) {
       const StringPair& curProperty = config_params[i];
