@@ -134,6 +134,7 @@
 		public static var Tooltip_ActionBarEscMenuWindowOff:String = "";
 
 		public static var Tooltip_StatisticBarKillsIcon:String   = "Убийства";
+		public static var Tooltip_StatisticBarWardsIcon:String   = "Поставлено фонарей";
 		public static var Tooltip_StatisticBarDeathsIcon:String  = "Смерти";
 		public static var Tooltip_StatisticBarAssistIcon:String  ="Поддержки"
 		public static var Tooltip_StatisticBarScoreIcon:String   = "Очки"

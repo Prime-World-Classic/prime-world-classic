@@ -13,6 +13,7 @@
 	import flash.utils.getDefinitionByName;
 	import flash.events.Event;
 	import flash.text.TextField;
+	import flash.text.TextFieldAutoSize;
 	import Interfaces.IMate;
 	import src.ButtonTooltipEvent;
 	import flash.events.MouseEvent;
@@ -21,6 +22,7 @@
 	import EscMenu.ShortcutItem;
 	import flash.display.Loader;
 	import flash.display.Sprite;
+	import flash.display.Shape;
 	import flash.net.URLRequest;
 
 	public class StatisticsBarPlayers extends MovieClip implements IMate
@@ -73,6 +75,12 @@
 		private static var wardCounts:Object = new Object();
 		private static const WARD_ICON:String = "/UI/Styles/Icons/Artifacts/EyeYellow.dds";
 		private var wardIcon:Loader;
+		private var wardHolder:MovieClip;      // значок + область наведения для подсказки
+		private var wardTooltip:TooltipSender;
+		private static const WARD_ICON_SIZE:Number = 22;
+		private var wardCenterX:Number = NaN; // ось колонки фонарей: и значок, и число по её центру
+		// фонари соперников видны только в итоговой статистике после боя
+		private var finalStatistic:Boolean = false;
 
 
 		// pings of the player off: button next to the chat mute (allies only, the pings of the enemies are not shown anyway)
@@ -129,17 +137,26 @@
 			wardIcon = new Loader();
 			wardIcon.mouseEnabled = false;
 			wardIcon.load(new URLRequest(WARD_ICON));
-			wardIcon.scaleX = 22 / 64;
-			wardIcon.scaleY = 22 / 64;
-			wardIcon.x = wardX;
-			wardIcon.y = might.y;
-			// the count under the ward icon exactly like the kills count under the kills icon (same line)
+			wardIcon.scaleX = WARD_ICON_SIZE / 64;
+			wardIcon.scaleY = WARD_ICON_SIZE / 64;
+			wardHolder = new MovieClip();
+			var wardHit:Shape = new Shape(); // область наведения для подсказки «Поставлено фонарей»
+			wardHit.graphics.beginFill(0x000000, 0.01);
+			wardHit.graphics.drawRect(0, 0, WARD_ICON_SIZE, WARD_ICON_SIZE);
+			wardHit.graphics.endFill();
+			wardHolder.addChild(wardHit);
+			wardHolder.addChild(wardIcon);
+			wardHolder.x = wardX;
+			wardHolder.y = might.y;
+			wardTooltip = new TooltipSender(wardHolder);
+			// the count on the line of the kills count; the icon is centred right above the count (UpdateWards)
 			if (sumWardStat != null)
 			{
-				sumWardStat.x = sumKillStat.x - step;
+				wardCenterX = sumKillStat.x - step + sumKillStat.width / 2;
 				sumWardStat.y = sumKillStat.y;
+				sumWardStat.autoSize = TextFieldAutoSize.NONE;
 			}
-			addChild(wardIcon);
+			addChild(wardHolder);
 
 			UpdateWards();
 
@@ -172,6 +189,24 @@
 			if (_playerData != null && wardCounts[String(_playerData.HeroId)] != null)
 				count = int(wardCounts[String(_playerData.HeroId)]);
 			sumWardStat.text = count.toString();
+
+			// соперникам во время боя фонари не показываем — только в итоговой статистике
+			var shown:Boolean = finalStatistic || _playerData == null || !_playerData.IsEnemyTeam;
+			sumWardStat.visible = shown;
+			if (wardHolder != null)
+			{
+				wardHolder.visible = shown;
+				wardTooltip.TooltipText = Localization.Tooltip_StatisticBarWardsIcon;
+			}
+
+			// движок не выравнивает текст по центру поля: поле по ширине числа, число и значок по оси колонки
+			if (!isNaN(wardCenterX))
+			{
+				sumWardStat.width = Math.ceil(sumWardStat.textWidth) + 4;
+				sumWardStat.x = Math.round(wardCenterX - sumWardStat.width / 2);
+				if (wardHolder != null)
+					wardHolder.x = Math.round(wardCenterX - WARD_ICON_SIZE / 2);
+			}
 		}
 
 		private function UpdatePingMuteView():void
@@ -376,6 +411,8 @@
 		public function SwitchToFinalStatistic():void
 		{
 			teamMateStat_mc.SetViewInFinalStatistic();
+			finalStatistic = true;
+			UpdateWards();
 			if (_playerData == null)
 				return;
 
