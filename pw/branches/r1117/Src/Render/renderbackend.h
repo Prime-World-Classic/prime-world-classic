@@ -102,6 +102,9 @@ public:
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp) = 0;
   virtual void SetScissorRect(const BackendRect* pRect) = 0;
+  // Чтение текущего scissor (save/restore вокруг временного). На этапе 3 —
+  // тень в бэкенде: динамического состояния у NVRHI нет.
+  virtual void GetScissorRect(BackendRect* pOut) = 0;
 
   // --- очистка привязанных поверхностей ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil) = 0;

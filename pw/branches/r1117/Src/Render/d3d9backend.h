@@ -44,6 +44,7 @@ public:
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp);
   virtual void SetScissorRect(const BackendRect* pRect);
+  virtual void GetScissorRect(BackendRect* pOut);
 
   // --- очистка ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil);

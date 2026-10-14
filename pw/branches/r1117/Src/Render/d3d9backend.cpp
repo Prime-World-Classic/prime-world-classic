@@ -55,6 +55,14 @@ void D3D9Backend::SetScissorRect(const BackendRect* pRect) {
   pDevice->SetScissorRect(ToD3DRect(pRect, rect) ? &rect : NULL);
 }
 
+void D3D9Backend::GetScissorRect(BackendRect* pOut) {
+  if (!pOut)
+    return;
+  RECT rect = { 0, 0, 0, 0 };
+  pDevice->GetScissorRect(&rect);
+  *pOut = MakeBackendRect(rect.left, rect.top, rect.right, rect.bottom);
+}
+
 HRESULT D3D9Backend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil) {
   DWORD d3dFlags = 0;
   if (clearFlags & bcTarget)

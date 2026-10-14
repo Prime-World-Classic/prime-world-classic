@@ -2,6 +2,7 @@
 #include "renderstats.h"
 #include <algorithm>
 #include "renderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/BackendRect
 #include "batch.h"
 
 #include "../System/InlineProfiler.h"
@@ -98,7 +99,7 @@ REGISTER_DEV_VAR("checkSubPriorities", s_checkSubPriorities, STORAGE_NONE);
 
 class ZeroScissor
 {
-  RECT  rect;
+  BackendRect  rect;
   DWORD oldVal;
   NDb::RenderModePin oldMode;
   bool  isSet;
@@ -109,9 +110,9 @@ public:
   void Enable(bool _enable)
   {
 #ifndef _SHIPPING
-    static const RECT  zeroRect = {0, 0, 1, 1};
-
-    IDirect3DDevice9* const pDevice = GetDevice();
+    // 1x1, а не пустой: пустой scissor D3D9 отвергает.
+    static const BackendRect zeroRect = { 0, 0, 1, 1 };
+    IRenderBackend* const pBackend = GetBackend();
 
     if(_enable)
     {
@@ -122,8 +123,8 @@ public:
         GetStatesManager()->GetStateDirectValue(D3DRS_SCISSORTESTENABLE, oldVal);
         GetStatesManager()->SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
 
-        pDevice->GetScissorRect(&rect);
-        pDevice->SetScissorRect(&zeroRect);
+        pBackend->GetScissorRect(&rect);
+        pBackend->SetScissorRect(&zeroRect);
 
         oldMode = GetRuntimePins().RenderModeValue;
         GetRuntimePins().RenderModeValue = NDb::RENDERMODEPIN_RENDERSHAPEONLY;
@@ -134,7 +135,7 @@ public:
       if(!isSet)
         return;
 
-      pDevice->SetScissorRect(&rect);
+      pBackend->SetScissorRect(&rect);
       GetStatesManager()->SetStateDirect(D3DRS_SCISSORTESTENABLE, FALSE);
       GetRuntimePins().RenderModeValue = oldMode;
     }
