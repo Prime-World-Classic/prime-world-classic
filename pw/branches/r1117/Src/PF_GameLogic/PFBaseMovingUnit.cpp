@@ -152,7 +152,10 @@ static bool LinuxStaticMoveSegment(const PFBaseMovingUnit* unit, TileMap* map,
 	for (int i = 0; tile != end && i < 8192; ++i)
 	{
 		SVector shift(0, 0);
-		if (edgeX < edgeY) { shift.x = sx; edgeX += stepX; }
+		// An exact negative-axis endpoint belongs to end, not the cell beyond its edge.
+		if (tile.x == end.x) { shift.y = sy; edgeY += stepY; }
+		else if (tile.y == end.y) { shift.x = sx; edgeX += stepX; }
+		else if (edgeX < edgeY) { shift.x = sx; edgeX += stepX; }
 		else if (edgeY < edgeX) { shift.y = sy; edgeY += stepY; }
 		else { shift = SVector(sx, sy); edgeX += stepX; edgeY += stepY; }
 		if (!map->CanUnitGoByDir(unit->GetUnitRadius(), tile, shift)) return false;

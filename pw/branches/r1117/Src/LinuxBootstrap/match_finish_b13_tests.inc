@@ -59,6 +59,7 @@ static void MatchFinishB13(Checks& check)
 		CObj<NCore::WorldCommand> move=CreateCmdMoveHero(hero.GetPtr(),CVec2(15,15),false);
 		check(move->CanExecute(),"B13 moving hero command is admitted before match end");
 		move->Execute(f.world);
+		f.world->Step(.1f,.1f);
 		check(hero->IsMoving(),"B13 match finish fixture has an active movement cursor");
 		dead->AddFlag(NDb::UNITFLAG_FORBIDREWARDS); dead->ChangeHealth(-1000);
 		deadHero->AddFlag(NDb::UNITFLAG_FORBIDREWARDS); deadHero->ChangeHealth(-1000);

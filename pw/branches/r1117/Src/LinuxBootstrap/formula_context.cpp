@@ -3,6 +3,7 @@
 #include "formula_context.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFBaseUnit.h"
+#include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFAIWorld.h"
 #include "../PF_GameLogic/PFApplicator.h"
@@ -174,7 +175,8 @@ bool DamageArguments(const std::string& source, std::size_t& pos, std::vector<st
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
-bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext, unsigned nesting = 0)
+bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext,
+	std::map<std::string,std::string>& talents, unsigned nesting = 0)
 {
 	if (source.size() > NumericFormulaMaxLength || nesting > NumericFormulaMaxNesting) return false;
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
@@ -185,8 +187,34 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		while (pos < source.size() && nameChar(source[pos])) ++pos;
 		const std::string name = source.substr(start, pos - start);
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
-			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0) return false;
-		if (name == "pMisc")
+			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
+			name.compare(0, 9, "__talent_") == 0) return false;
+		if (name == "tal")
+		{
+			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
+			const auto space = [&]() {
+				while (pos < source.size() && (source[pos]==' ' || source[pos]=='\t' || source[pos]=='\r' || source[pos]=='\n')) ++pos;
+			};
+			space(); if (pos == source.size() || source[pos++] != '(') return false;
+			space(); if (pos == source.size() || source[pos++] != '"') return false;
+			const std::size_t begin = pos;
+			while (pos < source.size() && source[pos] != '"')
+			{
+				if (source[pos] < 32 || source[pos] > 126 || source[pos] == '\\') return false;
+				++pos;
+			}
+			if (pos == source.size()) return false;
+			const std::string id = source.substr(begin,pos-begin); ++pos;
+			space(); if (pos == source.size() || source[pos++] != ')') return false;
+			auto existing = std::find_if(talents.begin(),talents.end(),[&](const auto& item) { return item.second == id; });
+			if (existing == talents.end())
+			{
+				if (talents.size() >= NumericFormulaMaxSymbols) return false;
+				existing = talents.emplace("__talent_"+std::to_string(talents.size()),id).first;
+			}
+			result += " " + existing->first + " ";
+		}
+		else if (name == "pMisc")
 		{
 			bool found = false;
 			for (const char* variable : {"damageDealed", "isAutoAttack"})
@@ -230,7 +258,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 							args[2].find_last_not_of(" \t\r\n") - first + 1) != "pMisc") return false;
 					}
 					std::string interval;
-					if (!BindCombatAccessors(args[0], interval, positionContext, nesting + 1)) return false;
+					if (!BindCombatAccessors(args[0], interval, positionContext, talents, nesting + 1)) return false;
 					result += boundName + (args.size() == 3 ? "_ex_misc(" : "_ex(") + interval + "," + std::to_string(mask) + ")";
 					pos = open; history = true; break;
 				}
@@ -269,8 +297,19 @@ struct Context
 	{
 		if (++expressions > 128) return {NumericFormulaError::LimitExceeded};
 		std::string bound;
-		if (!BindCombatAccessors(expression, bound, position != nullptr)) return {NumericFormulaError::UnsupportedSyntax};
+		std::map<std::string,std::string> talents;
+		if (!BindCombatAccessors(expression, bound, position != nullptr, talents)) return {NumericFormulaError::UnsupportedSyntax};
 		return EvaluateNumericFormula(bound, [&](const std::string& name, double& value) {
+			const auto found = talents.find(name);
+			if (found != talents.end())
+			{
+				// Nonhero base implementations assert; missing hero talents instead mean false.
+				const auto* hero = dynamic_cast<const NWorld::PFBaseHero*>(sender);
+				if (!hero) return false;
+				const auto* talent = hero->GetTalent(found->second.c_str());
+				value = talent && talent->IsTalentBought() ? 1 : 0;
+				return true;
+			}
 			return Resolve(name, value);
 		}, [&](const std::string& name, const double* args, std::size_t count, double& value) {
 			return Scale(name, args, count, value);

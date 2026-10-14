@@ -60,19 +60,36 @@ PFBaseUnitMoveToState::PFBaseUnitMoveToState( PFBaseMovingUnit* _pUnit, const CV
 {
 }
 
+/** Retain original turn-only orders and failed-start notifications after numeric admission. */
 bool PFBaseUnitMoveToState::OnStep(float dt)
 {
   (void)dt;
 	if (!IsUnitValid(pOwner) || !std::isfinite(target.x) || !std::isfinite(target.y)
-		|| !std::isfinite(range) || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+		|| !std::isfinite(range))
     return true;
+	if (pOwner->CheckFlag(NDb::UNITFLAG_FORBIDMOVE))
+	{
+		if (pOwner->CheckFlag(NDb::UNITFLAG_CANTURNWHILEFORBIDMOVE))
+			pOwner->SetMoveDirection(target);
+		return true;
+	}
 	const bool needsSight = requireLineOfSight && !pOwner->CanSee(target);
-	if (pOwner->IsPositionInRange(target, range) && !needsSight)
+	const CVec2 position = pOwner->GetPosition().AsVec2D();
+	// The native path's double-precision circle intersection is stored as float XY.
+	// Accept its rounding error only after a started move stops, not for new orders.
+	const double rounding = double(EPS_VALUE) * (std::fabs(double(position.x)) + std::fabs(double(position.y)) + 1.0);
+	const bool roundedArrival = initiatedMove && !pOwner->IsMoving()
+		&& std::hypot(double(position.x) - target.x, double(position.y) - target.y) <= double(range) + rounding;
+	if ((pOwner->IsPositionInRange(target, range) || roundedArrival) && !needsSight)
 		return true;
 	if (!initiatedMove || (!pOwner->IsMoving() && !pOwner->IsMounted()))
   {
 		if (!pOwner->MoveTo(target, requireLineOfSight ? pOwner->GetObjectSize() : range))
+		{
+			if (!initiatedMove)
+				pOwner->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
 			return true;
+		}
     initiatedMove = true;
   }
   return false;
@@ -280,7 +297,13 @@ bool PFBaseUnitChaseState::OnStep( float dt )
 				projection * projection + radius * radius - fabs2(offset))));
 			if (!std::isfinite(stopping) || !pOwner->MoveTo(goal, stopping)) return true;
 		}
-		else if (!pOwner->MoveTo(targetUnit.GetPtr(), approach)) return true;
+		else
+		{
+			// Keep float XY rounding inside the exact combat/LOS predicate, without widening its range.
+			const double rounding = double(EPS_VALUE) * (std::fabs(double(lastPos.x)) + std::fabs(double(lastPos.y)) + approach + 1.0);
+			const float stopping = static_cast<float>(Max(0.0, double(approach) - rounding));
+			if (!pOwner->MoveTo(targetUnit.GetPtr(), stopping)) return true;
+		}
 		return false;
 	}
 	if (IsValid(targetUnit)) targetUnit->ReleaseAttackSector(attackSector);
@@ -394,9 +417,10 @@ bool PFBaseUnitAttackState::OnStep(float dt)
   return pOwner->IsReadyToAttack() && !pOwner->DoAttack(allowAllies);
 }
 
+/** Original windup blocks queued orders only until its attack dispatch has started. */
 bool PFBaseUnitAttackState::IsBlocking() const
 {
-  return true;
+	return IsValid(pOwner) && !pOwner->IsAttackFinished();
 }
 
 bool PFBaseUnitAttackState::isTargetDropped(const PFBaseUnit* pTarget_)

@@ -877,29 +877,26 @@ void PFBaseHero::OnScrollReceived() {}
 void PFBaseHero::OnGlyphPickUp( const PFGlyph* pGlyph ) { (void)pGlyph; }
 float PFBaseHero::GetHeroStatisticsValue( HeroStatisticsId heroStatId ) const { (void)heroStatId; return 0.0f; }
 int PFBaseHero::GetHeroAchievementCount( const char* achievId ) const { (void)achievId; return 0; }
-bool PFBaseHero::CanMove() const { return true; }
+/** Preserve the original player-control, turn-only and controlled-mount policy. */
+bool PFBaseHero::CanMove() const
+{
+	return !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) && !CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME)
+		&& (CheckFlag(NDb::UNITFLAG_CANTURNWHILEFORBIDMOVE) || !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)
+			|| ControlsMount());
+}
+
+/** Route ordinary hero orders through the original FSM, retaining authored speed and collisions. */
 void PFBaseHero::Move(const CVec2 & target)
 {
-  Cleanup();
-  DropTarget();
-  CPtr<PFBaseMovingUnit> pHeroOrMount = ControlsMount() ? GetMount() : this;
-  if (!IsValid(pHeroOrMount))
-  {
-    return;
-  }
-
-  pHeroOrMount->SetMoveFlags(pHeroOrMount->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED);
-  pHeroOrMount->SetUnitSpeed(6.0f);
-
-  if (pHeroOrMount->IsPositionInRange(target, 1.0f))
-  {
-    pHeroOrMount->EventHappened(NWorld::PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
-  }
-
-  // PW_LINUX_NULL_RENDER stubs PFFsm/EnqueueState, so arm the bootstrap movement primitive directly.
-  pHeroOrMount->MoveToSpecial(target, false);
-  pHeroOrMount->SetMoveFlags(pHeroOrMount->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED);
-  pHeroOrMount->SetUnitSpeed(6.0f);
+	CPtr<PFBaseMovingUnit> actor = ControlsMount() ? GetMount() : this;
+	NI_VERIFY(IsValid(actor), "Invalid hero or mount!", return;);
+	// Nearby orders never start a path, but still notify movement listeners as on Windows.
+	if (actor->IsPositionInRange(target, 1.0f))
+		actor->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
+	if (PFBaseUnitMoveToState* state = dynamic_cast<PFBaseUnitMoveToState*>(actor->GetCurrentState()))
+		state->SetNewParams(target, 0.0f);
+	else
+		actor->EnqueueState(new PFBaseUnitMoveToState(actor, target, 0.0f), true);
 }
 float PFBaseHero::GetCustomEnergyValue() const
 {

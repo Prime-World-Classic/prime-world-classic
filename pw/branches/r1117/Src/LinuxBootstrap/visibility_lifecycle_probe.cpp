@@ -398,8 +398,9 @@ void HeroRespawn(Checks& checks)
 	CObj<NCore::WorldCommand> restored = packed->GetWorldCommand(fixture.world->GetPointerSerialization());
 	checks.Check(restored && restored->CanExecute(), "actual packed hero command restores");
 	if (restored) restored->Execute(fixture.world);
+	hero->Step(0.0f); // Original movement orders enter the FSM on the next unit step.
 	checks.Check(hero->IsMoving(), "packed command retains its intended hero");
-	hero->Stop(false);
+	hero->Cleanup(); hero->Stop(false);
 	{
 		Fixture other(checks);
 		move->Execute(nullptr);
@@ -599,11 +600,12 @@ void AttackCommandPolicy(Checks& checks)
 		else
 		{
 			hero->Move(CVec2(40, 20));
+			hero->Step(0.0f);
 			hero->AssignTarget(previous.GetPtr(), true);
 			checks.Check(hero->IsMoving(), "fixture: old movement remains active while hidden command is rejected");
 			RejectedAttack(checks, fixture, hidden, *hero, *target, "human attack cannot admit an invisible target");
 			RejectedAttack(checks, fixture, queued, *hero, *target, "human queued attack rejects newly invisible target");
-			hero->Stop(false);
+			hero->Cleanup(); hero->Stop(false);
 		}
 		hero->AssignTarget(previous.GetPtr(), true);
 		target->RemoveFlag(NDb::UNITFLAG_INVISIBLE);
@@ -785,6 +787,7 @@ static void AttackOrderScheduling(Checks& checks)
 		checks.Check(!hero->GetCurrentTarget() && hero->IsIdle() && !hero->IsMoving(), "stop cancels the combat order");
 		command->Execute(fixture.world); hero->Step(0.1f);
 		CObj<NCore::WorldCommand> move = CreateCmdMoveHero(hero.GetPtr(), CVec2(20, 25)); move->Execute(fixture.world);
+		hero->Step(0.0f);
 		checks.Check(!hero->GetCurrentTarget() && !dynamic_cast<const PFBaseUnitAttackState*>(hero->GetCurrentState()),
 			"movement replaces the old attack order");
 	}

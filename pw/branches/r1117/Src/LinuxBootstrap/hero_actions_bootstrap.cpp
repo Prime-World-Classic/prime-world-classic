@@ -704,7 +704,8 @@ namespace NWorld
 #else
     hero = pHero;
 #endif
-    if (IsValid(hero))
+    // Control flags can change after a queued command passed CanExecute.
+    if (IsValid(hero) && hero->CanMove())
     {
 #if defined(PW_LINUX_NULL_RENDER)
       ++g_linuxHeroMoveCommandDiagnostics.executeCalls;

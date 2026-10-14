@@ -32,6 +32,12 @@ namespace LinuxBootstrap
  * Unknown properties or selected missing units fail, never silently substitute zero.
  * Constants use the existing local/global ability lookup. Recursion is limited
  * to 16 active names and 128 expressions; cycles and missing constants fail.
+ * tal("id") lazily queries the real sender hero's GetTalent/IsTalentBought.
+ * Missing/unbought talents are false; missing/nonhero senders fail when selected.
+ * IDs are single ASCII literals without escapes/concatenation, bounded by the
+ * expression limit. No other talent macros or general string APIs are exposed.
+ * Repeated IDs share the evaluation-local symbol snapshot; nothing is cached
+ * across calls, purchases or set replacements. Reserved binding injection fails.
  * abilityScale/damageScale use the existing ability's STAT scaling with three
  * arguments and optional fourth rounding flag (default true). Missing worlds,
  * invalid endpoints/intermediates and unsafe integer rounding fail closed.
