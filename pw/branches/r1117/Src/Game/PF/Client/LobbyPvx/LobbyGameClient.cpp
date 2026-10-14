@@ -47,8 +47,9 @@ REGISTER_VAR( "update_ping_statistics_period", g_fUpdatePingStatisticsPeriod, ST
 static float g_fLogPingStatisticsPeriod = 60.0; // Log ping statistics once in 60 seconds by default
 REGISTER_VAR( "log_ping_statistics_period", g_fLogPingStatisticsPeriod, STORAGE_NONE);
 
-static bool g_enableReplay = false;
-//REGISTER_VAR( "enable_replay", g_enableReplay, STORAGE_USER);
+// Replays are written on a background thread (NewReplay.cpp), the game step never waits for the disk
+static bool g_enableReplay = true;
+REGISTER_VAR( "enable_replay", g_enableReplay, STORAGE_USER);
 
 #pragma warning( disable : 4996 ) // This function or variable may be unsafe.
 class WorldStepIntDebugVar : public NDebug::DebugVar<int>

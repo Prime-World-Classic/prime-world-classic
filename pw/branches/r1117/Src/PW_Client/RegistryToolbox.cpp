@@ -102,7 +102,13 @@ bool RegistryExtentionAssociation::StoreRegParam( const std::string& path, const
 
 void RegisterReplayFileExtentionAssociation()
 {
+  // The running executable itself: works for any install layout (x86/x64 builds, renamed folders)
   string appPath = NFile::GetBaseDir() + "Bin\\" + string(PRODUCT_EXECUTABLE);
+  char modulePath[MAX_PATH * 2] = "";
+  const DWORD modulePathLen = ::GetModuleFileNameA(NULL, modulePath, sizeof(modulePath));
+  if (modulePathLen > 0 && modulePathLen < sizeof(modulePath))
+    appPath = modulePath;
+
   string appRunPath = string("\"") + appPath + string("\" \"%1\"");
   string appIconPath = appPath + string(",0");
 

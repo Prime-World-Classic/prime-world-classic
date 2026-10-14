@@ -10,8 +10,9 @@
 #include <Windows.h>
 
 #include "Network/LoginClientVersion.h"
-#include "System/FileSystem/FileWriteAsynchronousStream.h"
 #include "System/FileSystem/FileUtils.h"
+#include "System/JobThread.h"
+#include "System/SyncPrimitives.h"
 #include "System/ChunklessSaver.h"
 #include "System/LogFileName.h"
 #include "System/ProfileManager.h"
@@ -23,7 +24,8 @@
 
 namespace
 {
-	bool OpenReplayFileStream(CObj<FileWriteAsynchronousStream>& stream, string &replaysFolderPath, string &replayFilePath, string &informationFileName, const Peered::TSessionId serverId)
+	// Picks a free replay file name; the file itself is created by the replay writer thread
+	bool ChooseReplayFilePath(string &replaysFolderPath, string &replayFilePath, const Peered::TSessionId serverId)
   {
     replaysFolderPath = GetFullFolderPath(NProfile::FOLDER_REPLAYS);
     if (!NFile::DoesFolderExist(replaysFolderPath))
@@ -31,38 +33,27 @@ namespace
 
     string replayFileName;
 
-    {  
-      replayFileName = NDebug::GenerateDebugFileName(NStr::StrFmt("%016llx", serverId), "pwrp", 0, false);
-      replayFilePath = NFile::Combine(replaysFolderPath, replayFileName);
-
-      if (!NFile::DoesFileExist(replayFilePath))
-      {
-        stream->Open(replayFilePath);
-
-        if (stream->IsOk())
-          return true;
-      }
-    }
-
-    for (unsigned index = 1; index < 10; ++index)
+    for (unsigned index = 0; index < 10; ++index)
     {
-      replayFileName = NDebug::GenerateDebugFileName(NStr::StrFmt("%016llx-%u", serverId, index), "pwrp", 0, false);
+      const string suffix = index ? NStr::StrFmt("%016llx-%u", serverId, index) : NStr::StrFmt("%016llx", serverId);
+      replayFileName = NDebug::GenerateDebugFileName(suffix.c_str(), "pwrp", 0, false);
       replayFilePath = NFile::Combine(replaysFolderPath, replayFileName);
 
       if (!NFile::DoesFileExist(replayFilePath))
-      {
-        stream->Open(replayFilePath);
-
-        if (stream->IsOk())
-          return true;
-      }
+        return true;
     }
 
-    NI_ALWAYS_ASSERT(NStr::StrFmt("Failed to open replay file %s!", replayFileName));
-
-    stream = NULL;
-
+    MessageTrace("replay_writer: no free replay file name for session %016llx", serverId);
     return false;
+  }
+
+  void PutBytes(vector<char> & buffer, const void * data, int size)
+  {
+    if (size <= 0)
+      return;
+    const int from = buffer.size();
+    buffer.resize(from + size, 0);
+    memcpy(&buffer[from], data, size);
   }
 	
 	// Convert an ASCII string to a Unicode String
@@ -104,12 +95,152 @@ namespace NCore
 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Writes the replay file on its own thread. The game thread only copies bytes into the memory
+// buffer (Append), so a slow disk, an antivirus or a cloud-synced Documents folder can't stall
+// the game step. Data goes to the file about once a second with a regular buffered write
+// (no FILE_FLAG_WRITE_THROUGH / NO_BUFFERING, no waiting for the disk on the game thread).
+class ReplayFileWorker : public threading::IThreadJob, public BaseObjectMT
+{
+  NI_DECLARE_REFCOUNT_CLASS_2( ReplayFileWorker, threading::IThreadJob, BaseObjectMT );
+
+public:
+  explicit ReplayFileWorker(const string & _fileName)
+  : fileName(_fileName)
+  , evtData(false, false)
+  , closeRequested(false)
+  , overflow(false)
+  , file(0)
+  {
+    inputBuffer.reserve(WAKE_SIZE * 2);
+    workingBuffer.reserve(WAKE_SIZE * 2);
+  }
+
+  ~ReplayFileWorker()
+  {
+    CloseFile();
+  }
+
+  void Append(const void * data, int size)
+  {
+    if (size <= 0)
+      return;
+
+    bool wake = false;
+    {
+      threading::MutexLock guard(mutex);
+
+      if (closeRequested || overflow)
+        return;
+
+      if (inputBuffer.size() + size > MAX_PENDING_SIZE)
+      {
+        // The disk doesn't keep up at all; drop the rest instead of eating memory
+        overflow = true;
+        return;
+      }
+
+      PutBytes(inputBuffer, data, size);
+      wake = inputBuffer.size() >= WAKE_SIZE;
+    }
+
+    if (wake)
+      evtData.Set();
+  }
+
+  // Writes out everything appended so far and closes the file; later Appends are ignored
+  void RequestClose()
+  {
+    {
+      threading::MutexLock guard(mutex);
+      closeRequested = true;
+    }
+    evtData.Set();
+  }
+
+private:
+  enum
+  {
+    FLUSH_PERIOD_MS = 1000,
+    WAKE_SIZE = 64 * 1024,
+    MAX_PENDING_SIZE = 64 * 1024 * 1024
+  };
+
+  virtual void Work(volatile bool & isRunning)
+  {
+    file = fopen(fileName.c_str(), "wb");
+    if (!file)
+      MessageTrace("replay_writer: failed to create %s", fileName.c_str());
+
+    while (true)
+    {
+      evtData.Wait(FLUSH_PERIOD_MS);
+
+      bool closing = false;
+      {
+        threading::MutexLock guard(mutex);
+        closing = closeRequested || !isRunning;
+        inputBuffer.swap(workingBuffer);
+      }
+
+      WriteOut();
+
+      if (closing)
+        break;
+    }
+
+    if (overflow)
+      MessageTrace("replay_writer: pending data limit exceeded, replay %s is truncated", fileName.c_str());
+
+    CloseFile();
+  }
+
+  void WriteOut()
+  {
+    if (workingBuffer.empty())
+      return;
+
+    if (file)
+    {
+      const size_t size = workingBuffer.size();
+      if (fwrite(&workingBuffer[0], 1, size, file) == size)
+      {
+        fflush(file); // hands the data to the OS cache only, no disk sync
+      }
+      else
+      {
+        MessageTrace("replay_writer: write to %s failed, replay recording stopped", fileName.c_str());
+        CloseFile();
+      }
+    }
+
+    workingBuffer.clear();
+  }
+
+  void CloseFile()
+  {
+    if (file)
+      fclose(file);
+    file = 0;
+  }
+
+  const string fileName;
+  threading::Mutex mutex;
+  threading::Event evtData;
+  vector<char> inputBuffer;
+  vector<char> workingBuffer;
+  bool closeRequested;
+  bool overflow;
+  FILE * file;
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ReplayWriter::ReplayWriter()
 : versionWritten(false)
 , lobbyDataWritten(false)
 , gsDataWritten(false)
 , headerWritten(false)
 , infoheaderWritten(false)
+, finished(false)
 , replaysFolderPath("")
 , replayFilePath("")
 , separator(";")
@@ -118,7 +249,17 @@ ReplayWriter::ReplayWriter()
   const int marker = 'PRWP';
   header->Write(&marker, sizeof(marker));
   saver = CreateChunklessSaver(header, 0, false);
-  replayFile = new FileWriteAsynchronousStream();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ReplayWriter::~ReplayWriter()
+{
+  // Game left without a finish (leave, session error, reconnect): keep what was recorded
+  if (fileWorker)
+    fileWorker->RequestClose();
+
+  fileThread = 0; // joins the writer thread: at most about a second of data is left to write
+  fileWorker = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -176,8 +317,11 @@ void ReplayWriter::WriteStartGame(Peered::TSessionId serverId, int step)
   NI_VERIFY(gsDataWritten, "Wrong replay's header writing order", return;);
   NI_VERIFY(!headerWritten, "Header is already written to replay", return;);
 
-  if (!OpenReplayFileStream(replayFile, replaysFolderPath, replayFilePath, informationFileName, serverId))
+  if (!ChooseReplayFilePath(replaysFolderPath, replayFilePath, serverId))
     return;
+
+  fileWorker = new ReplayFileWorker(replayFilePath);
+  fileThread = new threading::JobThread(fileWorker, "ReplayWriter", 10000, 65536);
 
   //add replay file path to replays info (if started from castle)
   if (infoheaderWritten)
@@ -195,9 +339,8 @@ void ReplayWriter::WriteStartGame(Peered::TSessionId serverId, int step)
   }
   ///
   
-  replayFile->Write(header->GetBuffer(), header->GetPosition());
-  replayFile->Write(&step, sizeof(step));
-  replayFile->Flush();
+  fileWorker->Append(header->GetBuffer(), header->GetPosition());
+  fileWorker->Append(&step, sizeof(step));
 
   headerWritten = true;
 }
@@ -209,35 +352,36 @@ void ReplayWriter::WriteStepData(int step,
 {
   NI_PROFILE_FUNCTION;
 
-  if (!replayFile) // Possible in case we have failed to open the file
+  if (!fileWorker || finished) // No file (recording failed to start) or the game is already finished
     return;
 
   NI_VERIFY(headerWritten, "Replay header wasn't written", return;);
 
-  replayFile->FinishFlush();
-  replayFile->Write(&step, sizeof(step));
+  // The whole step goes to the worker as one record: a single memcpy under the lock
+  recordBuffer.clear();
+  PutBytes(recordBuffer, &step, sizeof(step));
   unsigned short commandsCount = commands.size();
   unsigned short statusesCount = statuses.size();
-  replayFile->Write(&commandsCount, sizeof(commandsCount));
-  replayFile->Write(&statusesCount, sizeof(statusesCount));
+  PutBytes(recordBuffer, &commandsCount, sizeof(commandsCount));
+  PutBytes(recordBuffer, &statusesCount, sizeof(statusesCount));
 
   for (int i = 0; i < commands.size(); ++i)
   {
     const rpc::MemoryBlock & block = commands[i];
     unsigned short size = block.size;
-    replayFile->Write(&size, sizeof(size));
-    replayFile->Write(block.memory, block.size);
+    PutBytes(recordBuffer, &size, sizeof(size));
+    PutBytes(recordBuffer, block.memory, block.size);
   }
 
   for (int i = 0; i < statuses.size(); ++i)
   {
     const Peered::BriefClientInfo & status = statuses[i];
     unsigned short size = sizeof(status);
-    replayFile->Write(&size, sizeof(size));
-    replayFile->Write(&status, sizeof(status));
+    PutBytes(recordBuffer, &size, sizeof(size));
+    PutBytes(recordBuffer, &status, sizeof(status));
   }
 
-  replayFile->Flush();
+  fileWorker->Append(&recordBuffer[0], recordBuffer.size());
 }
 
 
@@ -308,18 +452,22 @@ void ReplayWriter::WriteFinishGame(int step, const StatisticService::RPC::Sessio
 {
   NI_PROFILE_FUNCTION;
 
-  if (!replayFile) // Possible in case we have failed to open the file
+  if (!fileWorker || finished) // Possible in case we have failed to open the file
     return;
 
   NI_VERIFY(headerWritten, "Replay header wasn't written", return;);
 
-  replayFile->FinishFlush();
-  replayFile->Write(&step, sizeof(step));
+  recordBuffer.clear();
+  PutBytes(recordBuffer, &step, sizeof(step));
   unsigned short commandsCount = 0;
   unsigned short statusesCount = 0;
-  replayFile->Write(&commandsCount, sizeof(commandsCount));
-  replayFile->Write(&statusesCount, sizeof(statusesCount));
-  replayFile->Flush();
+  PutBytes(recordBuffer, &commandsCount, sizeof(commandsCount));
+  PutBytes(recordBuffer, &statusesCount, sizeof(statusesCount));
+  fileWorker->Append(&recordBuffer[0], recordBuffer.size());
+
+  // The worker writes out the tail and closes the file on its own thread
+  finished = true;
+  fileWorker->RequestClose();
 
   //write information
   WriteSessionInfoToFile(_sessionResults, _replayInfo);

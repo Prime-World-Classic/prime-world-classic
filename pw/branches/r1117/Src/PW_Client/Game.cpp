@@ -831,19 +831,38 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   if (CmdLineLite::Instance().IsKeyDefined( EXIT_CODE_QUIT_CASTLE ))
     NMainFrame::SetExitCode( EXIT_CODE_QUIT_CASTLE );
 
-  // Check if we deal with a replay
+  // Check if we deal with a replay:
+  //   PW_Game.exe "<file>.pwrp"           (double click on a replay, see RegisterReplayFileExtentionAssociation)
+  //   PW_Game.exe -replay "<file>.pwrp"   (launcher, shortcuts)
+  // A replay runs locally: no launcher protocol, no server connection.
   bool isReplay = false;
+  bool replayNotFound = false;
   string replayFileName;
-  if ( CmdLineLite::Instance().ArgsCount() > 1 )
   {
-    replayFileName = CmdLineLite::Instance().Argument(1);
+    const char * replayKey = CmdLineLite::Instance().GetStringKey( "-replay", 0 );
+    if ( replayKey )
+      replayFileName = replayKey;
+    else if ( CmdLineLite::Instance().ArgsCount() > 1 )
+      replayFileName = CmdLineLite::Instance().Argument(1);
+
     if(!replayFileName.empty() && replayFileName.find('.') != string::npos && NFile::DoesFileExist(replayFileName))
     {
+      // The working directory is switched to the module folder below: keep a relative path valid
+      char fullPath[MAX_PATH * 2] = "";
+      const DWORD fullPathLen = GetFullPathNameA( replayFileName.c_str(), sizeof( fullPath ), fullPath, 0 );
+      if ( fullPathLen > 0 && fullPathLen < sizeof( fullPath ) )
+        replayFileName = fullPath;
+
       isSpectator = true;
       isReplay = true;
 
       if (!IsDebuggerPresent())
         NFile::SetModuleCurrentDir();
+    }
+    else if ( replayKey )
+    {
+      // Explicit -replay with a missing file: reported below, instead of the "start via launcher" error
+      replayNotFound = true;
     }
   }
 
@@ -1264,10 +1283,15 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     protocolLineStr = CmdLineLite::Instance().GetStringKey( "protocol", "" );
   }
 
-  if ( s_localGame && context ) {
-    // Local game (setvar local_game = 1 in game.cfg, dev builds only): no launcher protocol needed,
-    // start the local lobby right away.
+  if ( ( s_localGame || isReplay ) && context ) {
+    // Local game (setvar local_game = 1 in game.cfg, dev builds only) or a replay: no launcher
+    // protocol needed, start the local lobby right away. For a replay the "replay" command
+    // below replaces the lobby screen with the replay runner.
     context->Start();
+  } else if ( replayNotFound ) {
+    // "Replay file not found." in Russian and English
+    ShowLocalizedErrorMB( L"ReplayNotFound", L"\x0424\x0430\x0439\x043B \x0440\x0435\x043F\x043B\x0435\x044F \x043D\x0435 \x043D\x0430\x0439\x0434\x0435\x043D.\nReplay file not found." );
+    return 0;
   } else if(protocolLineStr.empty()) {
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
