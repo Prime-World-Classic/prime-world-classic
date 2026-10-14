@@ -163,7 +163,7 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 
   // Spectator (live match viewing, Shared/WebSpectatorKey.h): the key carries
   // the user id and is signed for this session. A session player may not log
-  // in as a spectator of his own match.
+  // in as a spectator of the same match.
   if ( WebSession::IsSpectatorPlayerKey( _hello.playerKey.c_str() ) )
   {
     if ( !WebSession::VerifySpectatorKey( token, _hello.playerKey.c_str(), keyApi, uid ) )
