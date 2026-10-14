@@ -14,7 +14,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/native_host.cmake")
 enable_testing()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME RuffleGameplayEvidence COMMAND "${Python3_EXECUTABLE}" -B -m unittest
-	test_gameplay_gate test_native_controls_probe)
+	test_gameplay_gate test_native_controls_probe test_native_movement_probe)
 set_tests_properties(RuffleGameplayEvidence PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" TIMEOUT 30)
 add_executable(PrimeWorldRuffleHudCallsProbe hud_calls.cpp hud_calls_probe.cpp)
 target_compile_features(PrimeWorldRuffleHudCallsProbe PRIVATE cxx_std_17)

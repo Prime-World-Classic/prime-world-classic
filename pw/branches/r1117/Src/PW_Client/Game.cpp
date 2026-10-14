@@ -36855,6 +36855,7 @@ void UpdateLinuxBootstrapCreepDuelProof(
   }
 }
 
+/** Preserve projected player destinations; the engine pathfinder owns obstacle routing. */
 bool SendLinuxBootstrapHeroMoveCommandToTarget(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
@@ -36878,8 +36879,12 @@ bool SendLinuxBootstrapHeroMoveCommandToTarget(
   }
 
   const CVec2 heroPosition = hero->GetPosition().AsVec2D();
-  const CVec2 commandTarget =
-    ResolveLinuxBootstrapReachableHeroMoveTarget(world, hero, target);
+	const CVec2 mapSize = world->GetMapSize();
+	if (!std::isfinite(target.x) || !std::isfinite(target.y) ||
+		!std::isfinite(mapSize.x) || !std::isfinite(mapSize.y) ||
+		target.x < 0 || target.y < 0 || target.x >= mapSize.x || target.y >= mapSize.y)
+		return false;
+	const CVec2 commandTarget = target;
   NCore::WorldCommand* moveCommand =
     NWorld::CreateCmdMoveHero(hero, commandTarget, true);
   if (!moveCommand)

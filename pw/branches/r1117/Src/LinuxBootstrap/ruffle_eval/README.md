@@ -126,6 +126,30 @@ an accessible X11 session. The window manager may override the requested size;
 use the embedded host for fixed-size evidence. Desktop harness success means
 capture completion only, not movie compatibility.
 
+## Native Movement Regression
+
+The current client state and limitations are recorded in the
+[native port plan](../LINUX_PORT_PLAN.md). The standalone movement probe does
+not require Ruffle: it drives a native client window with `xdotool`, validates
+its stored replay, and compares the actual projected click with the queued
+destination. `reissue` also requires arrival at the second requested point;
+`obstructed` requires preserving the clicked goal, not reaching blocked ground.
+
+Run each scenario separately in an isolated X11 session with a window manager,
+at 1280x720, using a fresh output path. The probe refuses ambiguous windows or
+lost focus and always reaps its child. It leaves the game visible for 60 seconds.
+
+```sh
+python3 -B "$EVAL/native_movement_probe.py" --binary /absolute/path/PrimeWorldLinuxClient \
+  --bin-dir "$DATA/../Bin" --output /tmp/pw-move-reissue.log --scenario reissue
+python3 -B "$EVAL/native_movement_probe.py" --binary /absolute/path/PrimeWorldLinuxClient \
+  --bin-dir "$DATA/../Bin" --output /tmp/pw-move-obstructed.log --scenario obstructed
+python3 -B -m unittest discover -s "$EVAL" -p test_native_movement_probe.py
+```
+
+The original Ruffle acceptance notes below are historical evaluation scope;
+the port plan is authoritative for subsequent integration work.
+
 ## Next Acceptance Gates
 
 1. Implement exact PW text semantics and verify styled text, whitespace,
