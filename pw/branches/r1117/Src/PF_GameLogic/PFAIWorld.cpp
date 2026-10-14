@@ -618,8 +618,30 @@ int PFAIWorld::GetMaxHeroLevel() const
 
 void PFAIWorld::OnGameFinished( const NDb::EFaction failedFaction )
 {
-  (void)failedFaction;
-  wasGameFinished = true;
+	if (wasGameFinished || !GetWorld()) return;
+	wasGameFinished = true;
+	PFWorld* world = GetWorld();
+	world->ProcessAddRemove();
+	vector<CObj<PFBaseUnit> > units, heroes;
+	auto collect = [&](PFBaseUnit& unit) {
+		if (unit.GetWorld() == world && !unit.IsTrueHero() && !unit.IsDead())
+			units.push_back(CObj<PFBaseUnit>(&unit));
+	};
+	ForAllUnits(collect);
+	world->GetLinuxMatchFinishHeroes(heroes);
+	// Strong snapshots keep callback removals safe without retaining registry iterators.
+	for (int pass = 0; pass < 2; ++pass)
+	{
+		vector<CObj<PFBaseUnit> >& snapshot = pass ? heroes : units;
+		for (int i = 0; i < snapshot.size(); ++i)
+		{
+			world->ProcessAddRemove();
+			PFBaseUnit* unit = snapshot[i];
+			if (IsValid(unit) && unit->GetWorld() == world && !unit->IsObjectDead() &&
+				world->FindLinuxUnitByObjectId(unit->GetObjectId()) == unit && (pass || !unit->IsDead()))
+				unit->OnGameFinished(failedFaction);
+		}
+	}
 }
 
 int PFAIWorld::GetHeroDevPoints4Level(int level) const

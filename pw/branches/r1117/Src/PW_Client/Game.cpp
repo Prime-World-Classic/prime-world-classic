@@ -4403,6 +4403,7 @@ struct LinuxBootstrapScreenRuntime
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 	PwRuffleClientInspection ruffleInspection;
 	size_t ruffleGameplayRequests = 0;
+	size_t ruffleMatchExitRequests = 0;
 	size_t ruffleTalentCommands = 0, ruffleRejectedRequests = 0, ruffleNeedsTarget = 0;
 	int ruffleTalentRequestSteps[36] = {};
 	int ruffleInitialPrime = -1, ruffleCurrentPrime = -1;
@@ -51434,7 +51435,7 @@ NWorld::PFBaseHero* ResolveLinuxRuffleCommandHero(const LinuxClientLaunchSetting
 		!runtime->localScheduler->IsAllClientsReady() || runtime->transceiver->IsAsynced() ||
 		!runtime->ruffleInspection.IsReady() || !NMainFrame::IsAppActive()) return 0;
 	auto* world = GetLinuxBootstrapRuntimeWorld(runtime);
-	if (!world || world->GetTimeScale() <= 0) return 0;
+	if (!world || world->GetTimeScale() <= 0 || !world->GetAIWorld() || world->GetAIWorld()->WasGameFinished()) return 0;
 	auto* player = world->GetPlayerByUID(runtime->localScheduler->GetMyClientID());
 	auto* hero = player && !player->IsBot() && player->IsPlaying() ? player->GetHero() : 0;
 	if (!hero || hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) ||
@@ -51625,6 +51626,20 @@ void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings,
 	const bool canceled = !hero || runtime->ruffleInputEpoch != runtime->ruffleInspection.InputEpoch();
 	for (const auto& event : events)
 	{
+		if (event.kind == PwRuffleGameplayEvent::Kind::ReturnToLobby)
+		{
+			auto* world = GetLinuxBootstrapRuntimeWorld(runtime);
+			if (world && world->GetAIWorld() && world->GetAIWorld()->WasGameFinished() &&
+				runtime->ruffleInspection.MatchEndCalls() == 1 && runtime->ruffleMatchExitRequests == 0)
+			{
+				++runtime->ruffleMatchExitRequests;
+				// Like the original standalone client, exit normally; no castle process is attached.
+				NMainFrame::Exit();
+				fprintf(stdout, "Ruffle completed match dismissed: native shutdown requested\n");
+			}
+			else ++runtime->ruffleRejectedRequests;
+			continue;
+		}
 		if (event.kind == PwRuffleGameplayEvent::Kind::TalentClicked)
 		{
 			if (!DispatchLinuxRuffleTalent(event, dynamic_cast<NWorld::PFBaseMaleHero*>(hero), runtime))
@@ -51744,6 +51759,25 @@ PwRuffleHudState CaptureLinuxRuffleHero(LinuxBootstrapScreenRuntime* runtime)
 	development.prime = runtime->ruffleCurrentPrime;
 	// Local bootstrap has no paid-currency account or purchase service attached.
 	development.gold = 0;
+	if (world->GetAIWorld() && world->GetAIWorld()->WasGameFinished())
+	{
+		const auto loser = world->IsFactionDefeated(NDb::FACTION_FREEZE) ? NDb::FACTION_FREEZE :
+			world->IsFactionDefeated(NDb::FACTION_BURN) ? NDb::FACTION_BURN : NDb::FACTION_NEUTRAL;
+		if (loser != NDb::FACTION_NEUTRAL)
+		{
+			auto& result = state.result.emplace();
+			result.failedFaction = loser;
+			const bool victory = hero->GetFaction() != loser;
+			NDb::Ptr<NDb::Texture> image;
+			if (hero->GetOriginalFaction() == NDb::FACTION_FREEZE)
+				image = victory ? uiData->victoryDefeatImages.VictoryFreeze : uiData->victoryDefeatImages.DefeatFreeze;
+			else if (hero->GetOriginalFaction() == NDb::FACTION_BURN)
+				image = victory ? uiData->victoryDefeatImages.VictoryBurn : uiData->victoryDefeatImages.DefeatBurn;
+			if (image) result.imagePath = image->textureFileName.c_str();
+			result.hideStatistics = true; // Native final-score/achievement data is not ported yet.
+			result.hideDialog = false;
+		}
+	}
 	return state;
 }
 
@@ -69031,6 +69065,8 @@ void AppendRuntimeInputLog(
 		<< " prime:" << screenRuntime.ruffleInitialPrime << "->" << screenRuntime.ruffleCurrentPrime
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
+		<< " matchEndCalls:" << screenRuntime.ruffleInspection.MatchEndCalls()
+		<< " matchExitRequests:" << screenRuntime.ruffleMatchExitRequests
 		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
 		<< " minimapUploads:" << screenRuntime.ruffleInspection.MinimapUploads()
 		<< " pointerEvents:" << screenRuntime.ruffleInspection.PointerEvents()
@@ -73026,6 +73062,8 @@ int main(int argc, char** argv)
   size_t bootstrapClickNextIndex = 0;
   double bootstrapClickNextTime = settings.bootstrapClickAfterSeconds;
 	bool interactiveDrainFailed = false;
+	const int matchFinishProofFaction = CmdLineLite::Instance().GetIntKey("--bootstrap-match-finish-proof", 0);
+	bool matchFinishProofSent = false;
 
   while (!NMainFrame::IsExit())
   {
@@ -73107,6 +73145,19 @@ int main(int argc, char** argv)
       DriveLinuxUiUser(inputState, &uiRootPreview);
       DriveLinuxUiCursor(&uiRootPreview);
     }
+		// Explicit UI fixture only: exercise a scripted finish after real world startup.
+		// This is not evidence of winning a match and is never enabled by ordinary play.
+		if (!matchFinishProofSent && (matchFinishProofFaction == 1 || matchFinishProofFaction == 2))
+		{
+			auto* world = GetLinuxBootstrapRuntimeWorld(&screenRuntime);
+			if (world && screenRuntime.mapLoadingJobCompleted && world->GetStepNumber() >= 650)
+			{
+				matchFinishProofSent = true;
+				world->GameFinish(static_cast<NDb::EFaction>(matchFinishProofFaction));
+				fprintf(stdout, "Explicit match finish UI fixture: faction=%d step=%d finished=%d\n",
+					matchFinishProofFaction, world->GetStepNumber(), world->GetAIWorld()->WasGameFinished());
+			}
+		}
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;

@@ -676,8 +676,24 @@ void PFWorld::UnregisterCreep(const PFCommonCreep*)
   if (totalCreepsCount > 0)
     --totalCreepsCount;
 }
-void PFWorld::OnGameFinished(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
-void PFWorld::GameFinish(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
+/** Main-building death finishes automatic maps; scripts explicitly finish manual maps. */
+void PFWorld::OnGameFinished(NDb::EFaction failedFaction)
+{
+	if (!manualGameFinish && IsFactionDefeated(failedFaction))
+		GameFinish(failedFaction);
+}
+
+/** Publish one immutable result before entering unit/UI callbacks. */
+void PFWorld::GameFinish(NDb::EFaction failedFaction)
+{
+	if (!pAIWorld || pAIWorld->WasGameFinished() ||
+		(failedFaction != NDb::FACTION_FREEZE && failedFaction != NDb::FACTION_BURN)) return;
+	SetDefeatedFaction(failedFaction);
+	if (!IsFactionDefeated(failedFaction)) return;
+	const int surrenderVotes = pAIWorld->GetSurrenderVotes(failedFaction);
+	pAIWorld->OnGameFinished(failedFaction);
+	if (adventureScreen) adventureScreen->OnVictory(failedFaction, surrenderVotes);
+}
 bool PFWorld::CanCreateClients() { return IsValid(advMapDescription); }
 void PFWorld::StopMovingUnits() {}
 void PFWorld::KillDeadUnits(bool fullCleanup)
@@ -842,6 +858,19 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
 
     markers.push_back(marker);
   }
+}
+
+void PFWorld::GetLinuxMatchFinishHeroes(vector<CObj<PFBaseUnit> >& heroes)
+{
+	heroes.clear();
+	const TObjects& objects = GetObjects();
+	for (TObjects::const_iterator it = objects.begin(); it != objects.end(); ++it)
+	{
+		PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(it->second.GetPtr());
+		if (unit && unit->GetWorld() == this && unit->IsTrueHero() &&
+			(unit->GetFaction() == NDb::FACTION_FREEZE || unit->GetFaction() == NDb::FACTION_BURN))
+			heroes.push_back(CObj<PFBaseUnit>(unit));
+	}
 }
 
 PFBaseUnit* PFWorld::FindLinuxUnitByObjectId(int objectId)
@@ -1343,7 +1372,12 @@ void PFWorld::NotifyTalentCastProcessed(const NWorld::PFTalent*) {}
 void PFWorld::NotifyConsumableProcessed(const NWorld::PFConsumableAbilityData*) {}
 void PFWorld::NotifyCreepSpawnerCleaned(const NWorld::PFNeutralCreepSpawner*, const NWorld::PFBaseUnit*) {}
 bool PFWorld::IsFactionDefeated(const NDb::EFaction& faction) { return defeatedFaction == faction; }
-void PFWorld::SetDefeatedFaction(const NDb::EFaction& faction) { defeatedFaction = faction; }
+/** Preserve the first playable-faction defeat, including during nested death callbacks. */
+void PFWorld::SetDefeatedFaction(const NDb::EFaction& faction)
+{
+	if (defeatedFaction == NDb::FACTION_NEUTRAL &&
+		(faction == NDb::FACTION_FREEZE || faction == NDb::FACTION_BURN)) defeatedFaction = faction;
+}
 bool PFWorld::PollProtectionResult(NCore::ProtectionResult& result) { return protection ? protection->PopResult(result) : false; }
 void PFWorld::SetProtectionUpdateFrequency(const int offset, const int frequency) { if (protection) protection->SetUpdateFrequency(offset, frequency); }
 bool PFWorld::IsDay() const { return dayNightController ? dayNightController->IsDay() : true; }

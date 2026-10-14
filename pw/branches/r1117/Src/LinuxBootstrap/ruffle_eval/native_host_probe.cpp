@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <cstdlib>
 #include <stdexcept>
 #include <vector>
 
@@ -408,6 +410,88 @@ int main(int argc, char** argv)
 		window.CheckCurrent();
 		Check(inspection.Reset(), "Inspection teardown failed");
 		Check(!inspection.MinimapBounds(), "Shutdown retained minimap input bounds");
+		// Exercise both original factions and both results in fresh authored movies.
+		for (const int faction : {1, 2}) for (const bool victory : {true, false})
+		{
+			auto ended = hud;
+			ended.hero->faction = ended.hero->originalFaction = faction;
+			const std::string artwork = std::string("/UI/Styles/victory_defeat/") +
+				(faction == 1 ? "doct_" : "ad_") + (victory ? "win_620.dds" : "defeat_620.dds");
+			ended.result = PwRuffleHudState::MatchResult{victory ? 3-faction : faction, artwork, true, false};
+			Check(host.Open(argv[1], argv[2], argv[3], error), error);
+			Check(host.Request(R"({"path":"LocalizationResources","method":"LocalizationComplete","args":[]})", response, error), error);
+			Check(host.Request(R"({"path":"mainInterface","method":"HideAllWindows","args":[]})", response, error), error);
+			Check(host.Request(R"({"action":"step","frames":3})", response, error), error);
+			for (const auto& calls : {PwRuffleHeroIdentityCalls(ended), PwRuffleHeroValueCalls(ended), PwRuffleMatchEndCalls(ended)})
+				for (const auto& call : calls) Check(host.Request(call.dump(), response, error), error);
+			for (int frame=0; frame<40; ++frame)
+			{
+				glClearColor(17.f/255, 203.f/255, 71.f/255, 1); glClear(GL_COLOR_BUFFER_BIT);
+				Check(host.Draw(1280,720,250,error),error);
+			}
+			Check(host.Request(R"({"path":"endGameScreen_mc","op":"get","method":"visible","args":[]})",response,error),error);
+			Check(nlohmann::json::parse(response).at("value") == true,"Authored result panel did not appear after its four-second timer");
+			std::vector<uint8_t> pixels(1280*720*3);
+			glReadPixels(0,0,1280,720,GL_RGB,GL_UNSIGNED_BYTE,pixels.data());
+			size_t drawn=0;
+			for (int y=100;y<620;++y) for (int x=340;x<940;++x)
+			{
+				const auto i=(y*1280+x)*3;
+				if (pixels[i]!=17 || pixels[i+1]!=203 || pixels[i+2]!=71) ++drawn;
+			}
+			Check(drawn>50000,"Result artwork/panel was blank");
+			if (const char* prefix=std::getenv("PW_RUFFLE_MATCH_CAPTURE_PREFIX"))
+			{
+				std::ofstream capture(std::string(prefix)+"-"+std::to_string(faction)+(victory?"-win.ppm":"-defeat.ppm"),std::ios::binary);
+				capture<<"P6\n1280 720\n255\n";
+				for (int y=719;y>=0;--y) capture.write(reinterpret_cast<const char*>(pixels.data()+y*1280*3),1280*3);
+				Check(capture.good(),"Cannot write requested result capture");
+			}
+			Check(host.Request(R"({"path":"endGameScreen_mc.buttonClose","op":"get","method":"root","args":[]})",response,error),error);
+			const auto resultRoot=nlohmann::json::parse(response).at("id");
+			Check(host.Request(nlohmann::json{{"path","endGameScreen_mc.buttonClose"},{"method","getBounds"},
+				{"args",{{{"$handle",resultRoot}}}}}.dump(),response,error),error);
+			const auto bounds=nlohmann::json::parse(response).at("id");
+			const auto field=[&](const char* key) {
+				Check(host.Request(nlohmann::json{{"receiver",bounds},{"op","get"},{"method",key},
+					{"args",nlohmann::json::array()}}.dump(),response,error),error);
+				return nlohmann::json::parse(response).at("value").get<double>();
+			};
+			const double x=field("x")+field("width")/2, y=field("y")+field("height")/2;
+			Check(x>=0 && x<1280 && y>=0 && y<720,"Result close button is outside viewport");
+			Check(host.Request(R"({"action":"events"})",response,error),error);
+			for (const char* type : {"mouse_move","mouse_down","mouse_up"})
+			{
+				nlohmann::json event{{"type",type},{"x",x},{"y",y}};
+				if (std::string(type)!="mouse_move") event["button"]="left";
+				Check(host.Request(nlohmann::json{{"action","input"},{"event",event}}.dump(),response,error),error);
+			}
+			Check(host.Draw(1280,720,16,error),error);
+			Check(host.Request(R"({"action":"events"})",response,error),error);
+			const auto callbacks=PwRuffleDecodeGameplayEvents(response);
+			Check(std::count_if(callbacks.begin(),callbacks.end(),[](const auto& event) {
+				return event.kind==PwRuffleGameplayEvent::Kind::ReturnToLobby;
+			})==1,"Authored result close did not emit exactly one ReturnToLobby");
+			Check(host.Request(R"({"action":"stats"})",response,error),error);
+			Check(nlohmann::json::parse(response).at("runtime_errors")==0,"Result screen reported AS errors");
+			std::cout<<"Match end faction="<<faction<<" victory="<<victory<<" drawn="<<drawn<<" close="<<x<<','<<y<<'\n';
+			Check(host.Reset(),"Result screen teardown failed");
+			window.CheckCurrent();
+		}
+		PwRuffleClientInspection terminal;
+		hud.result=PwRuffleHudState::MatchResult{1,"/UI/Styles/victory_defeat/doct_win_620.dds",true,false};
+		for (int frame=0;frame<24;++frame)
+			Check(terminal.Draw(argv[1],argv[2],1280,720,250,hud,updated,minimap),terminal.Error());
+		Check(terminal.MatchEndCalls()==1,"Repeated terminal snapshots replayed GameEnd");
+		terminal.Focus(true);
+		Check(!terminal.UseActionSlot(0,1280,720),"Completed match admitted a talent shortcut");
+		Check(terminal.Pointer(Kind::Down,10,100,0,0,1280,720),"Result modal shield leaked a world press");
+		Check(terminal.Pointer(Kind::Up,10,100,0,0,1280,720),"Result modal shield leaked a world release");
+		hud.result->failedFaction=2;
+		Check(!terminal.Draw(argv[1],argv[2],1280,720,16,hud,updated,minimap) && !terminal.IsReady(),
+			"Changed terminal result was accepted in the same session");
+		Check(terminal.MatchEndCalls()==1,"Changed result was sent before rejection");
+		window.CheckCurrent();
 		PwRuffleClientInspection missing;
 		Check(!missing.Draw("/nonexistent/pw-ruffle.so", argv[2], 1280, 720, 16) &&
 			missing.WasAttempted() && !missing.IsReady() && !missing.Error().empty(), "Missing-library fallback failed");

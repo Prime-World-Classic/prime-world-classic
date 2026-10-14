@@ -540,6 +540,8 @@ public:
   float GetLinuxCommonCreepMovementDistance();
   void GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers);
   PFBaseUnit* FindLinuxUnitByObjectId(int objectId);
+	/** Strong local-hero snapshot, including dead heroes absent from the voxel map. */
+	void GetLinuxMatchFinishHeroes(vector<CObj<PFBaseUnit> >& heroes);
   int GetLinuxCreepSpawnerWavesCount();
   int GetLinuxNeutralCreepSpawnerWavesCount();
   int GetLinuxReadyCreepSpawnerObjectsCount();

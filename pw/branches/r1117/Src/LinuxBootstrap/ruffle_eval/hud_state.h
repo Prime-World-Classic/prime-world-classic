@@ -100,6 +100,15 @@ struct PwRuffleHudState
 	};
 
 	std::optional<HeroIdentity> hero;
+	/** Authoritative terminal result; the caller supplies the original faction's DB artwork. */
+	struct MatchResult
+	{
+		std::int64_t failedFaction = -1; ///< Only the two playable factions can lose.
+		std::string imagePath; ///< Empty is supported by the original GameEnd API.
+		std::optional<bool> hideStatistics;
+		std::optional<bool> hideDialog;
+	};
+	std::optional<MatchResult> result; ///< Requires a local hero; never synthesized from a timer.
 	std::optional<HeroValues> values; ///< Requires hero to identify the recipient.
 	std::optional<Development> development; ///< Requires a local hero.
 	std::optional<MatchProgress> match; ///< May be emitted without a local hero.

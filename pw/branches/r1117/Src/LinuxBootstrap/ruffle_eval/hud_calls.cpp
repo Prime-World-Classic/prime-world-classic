@@ -71,7 +71,7 @@ std::string Resource(const std::string& value, const char* field)
 	return ":/" + std::string(body);
 }
 
-/** Validate all engaged groups consistently in both public builders. */
+/** Validate all engaged groups consistently in all public builders. */
 void Validate(const State& state)
 {
 	Require(state.hero || (!state.values && !state.development), "hero", "hero values require a local identity");
@@ -142,6 +142,15 @@ void Validate(const State& state)
 		Integer(Required(m.creepSpawnSeconds, "creepSpawnSeconds"), "creepSpawnSeconds",
 			std::numeric_limits<std::int32_t>::min());
 	}
+	if (state.result)
+	{
+		Require(state.hero.has_value(), "result.hero", "match result requires local identity");
+		Integer(state.hero->faction, "result.faction", 1, 2);
+		Integer(state.result->failedFaction, "failedFaction", 1, 2);
+		Resource(state.result->imagePath, "result.imagePath");
+		Required(state.result->hideStatistics, "hideStatistics");
+		Required(state.result->hideDialog, "hideDialog");
+	}
 }
 
 /** Match the native Ruffle invoke envelope without depending on the host or ABI. */
@@ -199,5 +208,15 @@ nlohmann::json PwRuffleHeroValueCalls(const PwRuffleHudState& state)
 		calls.push_back(Invoke("SetGameProgress", Json::array({m.humanTerrain, m.elfTerrain,
 			m.matchSeconds, *m.creepSpawnSeconds})));
 	}
+	return calls;
+}
+
+nlohmann::json PwRuffleMatchEndCalls(const PwRuffleHudState& state)
+{
+	Validate(state);
+	auto calls = Json::array();
+	if (state.result)
+		calls.push_back(Invoke("GameEnd", Json::array({state.hero->faction != state.result->failedFaction,
+			Resource(state.result->imagePath, "result.imagePath"), *state.result->hideStatistics, *state.result->hideDialog})));
 	return calls;
 }

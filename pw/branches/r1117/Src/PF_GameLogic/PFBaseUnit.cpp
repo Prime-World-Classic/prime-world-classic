@@ -1745,7 +1745,12 @@ CObj<PFBaseAttackData> PFBaseUnit::ReplaceBaseAttack(CObj<PFBaseAttackData> cons
 void PFBaseUnit::OnStartedFighting() { isInCombat = true; }
 void PFBaseUnit::OnFinishedFighting() { isInCombat = false; }
 void PFBaseUnit::OnAttackDispatchStarted() const {}
-void PFBaseUnit::OnGameFinished(const NDb::EFaction) {}
+/** Match the original finish lifecycle: stop autonomous behaviour and pending states. */
+void PFBaseUnit::OnGameFinished(const NDb::EFaction)
+{
+	RemoveBehaviour();
+	DropStates();
+}
 
 void PFBaseUnit::UpdateExternalAbilities(float dt)
 {

@@ -77,7 +77,7 @@ void Reject(const std::string& field, const std::function<void(State&)>& change)
 {
 	State state = Fixture();
 	change(state);
-	for (const auto builder : {PwRuffleHeroIdentityCalls, PwRuffleHeroValueCalls})
+	for (const auto builder : {PwRuffleHeroIdentityCalls, PwRuffleHeroValueCalls, PwRuffleMatchEndCalls})
 	{
 		bool rejected = false;
 		try { static_cast<void>(builder(state)); }
@@ -115,6 +115,32 @@ void Contracts()
 	Check(values[0]["args"][2].is_number_integer(), "Health is not an AS int");
 	Check(values[0]["args"][6].is_boolean(), "Visibility is not an AS Boolean");
 	Check(values[0]["args"][9].is_number_float(), "Channeling is not an AS Number");
+}
+
+/** Terminal UI uses the real losing faction, not an assumed local victory. */
+void MatchEndContracts()
+{
+	State state=Fixture();
+	Check(PwRuffleMatchEndCalls({}).empty() && PwRuffleMatchEndCalls(state).empty(), "Running match emitted GameEnd");
+	for (const int local : {1,2}) for (const int loser : {1,2})
+	{
+		state.hero->faction=local;
+		state.result=State::MatchResult{loser,"/UI/End/result.dds",true,false};
+		const auto calls=PwRuffleMatchEndCalls(state);
+		Check(calls.size()==1,"Terminal call count");
+		Call(calls[0],"GameEnd",Json::array({local!=loser,":/UI/End/result.dds",true,false}));
+		Check(PwRuffleHeroValueCalls(state).size()==3,"Terminal call leaked into repeated hero updates");
+	}
+	state.result->imagePath=""; state.result->hideDialog=true; state.result->hideStatistics=false;
+	Call(PwRuffleMatchEndCalls(state)[0],"GameEnd",Json::array({false,"",false,true}));
+	Reject("failedFaction",[](State& s) { s.result=State::MatchResult{0,"",true,false}; });
+	Reject("failedFaction",[](State& s) { s.result=State::MatchResult{3,"",true,false}; });
+	Reject("result.hero",[](State& s) { s.hero.reset(); s.values.reset(); s.development.reset(); s.result=State::MatchResult{1,"",true,false}; });
+	Reject("result.faction",[](State& s) { s.hero->faction=0; s.result=State::MatchResult{1,"",true,false}; });
+	Reject("hideStatistics",[](State& s) { s.result=State::MatchResult{1,"",{},false}; });
+	Reject("hideDialog",[](State& s) { s.result=State::MatchResult{1,"",true,{}}; });
+	for (const char* path : {"../result.dds","https://invalid/result.dds","UI/../result.dds"})
+		Reject("result.imagePath",[path](State& s) { s.result=State::MatchResult{1,path,true,false}; });
 }
 
 /** Missing optional groups never emit fictitious health, currencies or terrain. */
@@ -256,6 +282,7 @@ int main()
 	try
 	{
 		Contracts();
+		MatchEndContracts();
 		OmissionsAndBounds();
 		InvalidTextAndPaths();
 		InvalidValues();

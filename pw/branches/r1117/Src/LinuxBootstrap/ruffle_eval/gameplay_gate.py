@@ -66,7 +66,7 @@ def pair(value, separator='/', parser=integer):
 RUFFLE_COUNTERS = '''attempted frames discardedCallbacks receivedCallbacks pendingCallbacks
 gameplayRequests talentCommands rejectedRequests needsTarget targetArmed targetCasts
 targetRejected targetCanceled targetPending shortcutCalls minimapMoves minimapCameras
-priorGlErrors hudCalls actionCalls minimapUploads pointerEvents consumedPointerEvents'''
+priorGlErrors hudCalls matchEndCalls matchExitRequests actionCalls minimapUploads pointerEvents consumedPointerEvents'''
 CAPTURE_FIELDS = '''valid magic bounds bytes commands statuses records steps commandBlocks
 statusBlocks active away disconnected leaver bytesRead largest startStep firstStep lastStep error'''
 STORAGE_FIELDS = '''valid segments commands statuses failures steps segmentMatch commandMatch
@@ -243,7 +243,7 @@ def validate(stdout, client_log, mode):
 			require(prime == (400, 100), 'Ruffle purchase prime mismatch')
 			expected = {'priorGlErrors': 0, 'pendingCallbacks': 0, 'targetPending': 0, 'targetArmed': 3,
 				'targetCanceled': 2, 'targetCasts': 1, 'targetRejected': 2, 'shortcutCalls': 3,
-				'talentCommands': 2, 'minimapMoves': 0}
+				'talentCommands': 2, 'minimapMoves': 0, 'matchEndCalls': 0, 'matchExitRequests': 0}
 			for key, value in expected.items():
 				require(ruffle[key] == value, f'Ruffle {key}: expected {value}, got {ruffle[key]}')
 	if mode == 'targeting':

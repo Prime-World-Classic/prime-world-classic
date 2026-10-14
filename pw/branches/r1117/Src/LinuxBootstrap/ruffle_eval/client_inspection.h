@@ -18,8 +18,8 @@ struct PwRuffleMinimapState
 	std::optional<int> matchSeconds; ///< Actual simulation clock, not presentation uptime.
 };
 
-/** Explicitly opt-in combat SWF inspection, not the live game HUD backend.
- * Live hero data and pointer events are bound; gameplay callbacks are not executed.
+/** Opt-in native combat SWF host, with live engine snapshots and queued input callbacks.
+ * Gameplay and terminal callbacks are executed by the caller, never from rendering.
  * Failed initialization,
  * rendering, or runtime diagnostics disable this instance and let the caller
  * retain its existing presentation. Reset before destroying the GLX context.
@@ -66,6 +66,8 @@ public:
 	size_t PriorGlErrors() const { return priorGlErrors_; }
 	/** Successful authored hero calls, excluding unchanged snapshots. */
 	size_t HudCalls() const { return hudCalls_; }
+	/** Successful one-shot GameEnd submissions for this movie/session. */
+	size_t MatchEndCalls() const { return matchEndCalls_; }
 	size_t ActionCalls() const { return actionCalls_; }
 	size_t ShortcutCalls() const { return shortcutCalls_; }
 	size_t MinimapUploads() const { return minimapUploads_; }
@@ -83,6 +85,8 @@ private:
 	size_t priorGlErrors_ = 0;
 	std::string error_;
 	std::string identity_, values_;
+	std::string result_;
+	size_t matchEndCalls_ = 0;
 	size_t hudCalls_ = 0;
 	std::optional<PwRuffleActionState> actions_;
 	size_t actionCalls_ = 0;

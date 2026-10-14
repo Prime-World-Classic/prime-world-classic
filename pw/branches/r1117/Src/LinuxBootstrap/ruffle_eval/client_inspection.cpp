@@ -84,7 +84,7 @@ bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x,
 
 bool PwRuffleClientInspection::UseActionSlot(unsigned slot, unsigned width, unsigned height)
 {
-	if (slot >= PwRuffleActionState::ActionSlots || !host_.IsReady() || !actions_ ||
+	if (slot >= PwRuffleActionState::ActionSlots || !host_.IsReady() || !actions_ || !result_.empty() ||
 		!focused_.value_or(false) || !host_.MatchesViewport(width, height)) return false;
 	try
 	{
@@ -158,6 +158,9 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 		if (!std::isfinite(deltaMs)) throw std::runtime_error("Nonfinite inspection frame time");
 		const auto identities = PwRuffleHeroIdentityCalls(hud);
 		const auto values = PwRuffleHeroValueCalls(hud);
+		const auto result = PwRuffleMatchEndCalls(hud);
+		if (!result_.empty() && result_ != result.dump())
+			throw std::runtime_error("Match result changed; reopen HUD for the new session");
 		if (!identity_.empty() && identity_ != identities.dump())
 			throw std::runtime_error("Hero identity changed; reopen inspection for the new session");
 		if (identity_.empty() && !identities.empty())
@@ -201,6 +204,13 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 			request(nlohmann::json{{"path", "miniMap_mc"}, {"op", "set"}, {"method", "GameTime"},
 				{"args", {*minimap.matchSeconds}}}.dump().c_str());
 			matchSeconds_ = *minimap.matchSeconds;
+		}
+		if (result_.empty() && !result.empty())
+		{
+			for (const auto& call : result) { request(call.dump().c_str()); ++matchEndCalls_; }
+			result_ = result.dump();
+			++inputEpoch_; ++controlEpoch_;
+			pointerCapture_.Reset(); events_.Clear();
 		}
 		if (!host_.Draw(width, height, std::clamp(deltaMs, 0.0, 250.0), error_))
 			throw std::runtime_error(error_);

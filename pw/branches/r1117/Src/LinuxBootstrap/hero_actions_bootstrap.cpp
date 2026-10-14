@@ -28,6 +28,12 @@
 namespace NWorld
 {
 #if defined(PW_LINUX_NULL_RENDER)
+	/** Finished worlds cannot accept new player or queued bot orders. */
+	static bool IsLinuxMatchRunning(PFWorld* world)
+	{
+		return world && world->GetAIWorld() && !world->GetAIWorld()->WasGameFinished();
+	}
+
 	/** Gather live engine facts; never resolve a fallback hero or substitute a talent. */
 	bool CanUseLinuxGroundTalent(PFBaseMaleHero* hero, int row, int column,
 		const Target& target, int clientId)
@@ -37,7 +43,7 @@ namespace NWorld
 			return false;
 		PFWorld* world = hero->GetWorld();
 		PFPlayer* player = hero->GetPlayer();
-		if (!world || !IsValid(player)) return false;
+		if (!IsLinuxMatchRunning(world) || !IsValid(player)) return false;
 		PFTalent* talent = hero->GetTalent(row, column);
 		if (!IsValid(talent) || !talent->GetDBDesc()) return false;
 		const NDb::Ability* db = talent->GetDBDesc();
@@ -117,7 +123,7 @@ namespace NWorld
 
 		// Local AI shares the scheduler UID; it is not a substitute for actor identity.
 		(void)clientId;
-		if (!world || !IsValid(preferredHero) || preferredHero->GetWorld() != world)
+		if (!IsLinuxMatchRunning(world) || !IsValid(preferredHero) || preferredHero->GetWorld() != world)
 			return 0;
 		return world->FindLinuxUnitByObjectId(preferredHero->GetObjectId()) == preferredHero ?
 			preferredHero : 0;
@@ -136,7 +142,7 @@ namespace NWorld
 	/** Shared live actor/control gate; local AI UIDs never substitute another actor. */
 	static bool CanUseLinuxCastingActor(PFBaseMaleHero* hero)
 	{
-		return IsUnitValid(hero) && hero->GetWorld() &&
+		return IsUnitValid(hero) && IsLinuxMatchRunning(hero->GetWorld()) &&
 			hero->GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero &&
 			!hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) &&
 			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME);
@@ -145,7 +151,7 @@ namespace NWorld
 	/** Preserve exact shop endpoints and Windows bot/leaver ownership without UID fallback. */
 	static bool CanUseLinuxShopActor(PFWorld* world, PFBaseHero* hero, PFShop* shop, int clientId)
 	{
-		if (!world || !IsUnitValid(hero) || !IsUnitValid(shop) ||
+		if (!IsLinuxMatchRunning(world) || !IsUnitValid(hero) || !IsUnitValid(shop) ||
 			hero->GetWorld() != world || shop->GetWorld() != world ||
 			world->FindLinuxUnitByObjectId(hero->GetObjectId()) != hero ||
 			world->FindLinuxUnitByObjectId(shop->GetObjectId()) != shop ||
@@ -669,7 +675,7 @@ namespace NWorld
       target,
       issuedByScript);
     const bool heroCheck = IsValid(pHero);
-    const bool controlsCheck = heroCheck;
+    const bool controlsCheck = heroCheck && IsLinuxMatchRunning(pHero->GetWorld());
     const bool canMoveCheck = heroCheck && pHero->CanMove();
     g_linuxHeroMoveCommandDiagnostics.lastHeroCheck = heroCheck ? 1 : 0;
     g_linuxHeroMoveCommandDiagnostics.lastControlsCheck = controlsCheck ? 1 : 0;

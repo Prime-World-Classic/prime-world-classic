@@ -92,6 +92,12 @@ Event Decode(std::string_view command, std::string_view args)
 	ValidateText(command, args);
 	Event result;
 	result.command = command;
+	if (command == "ReturnToLobby")
+	{
+		Tokens(args, 0);
+		result.kind = Kind::ReturnToLobby;
+		return result;
+	}
 	if (command == "TalentClicked" || command == "TalentToolTip" || command == "TalentActionToolTip")
 	{
 		const bool click = command == "TalentClicked";

@@ -36,3 +36,10 @@ nlohmann::json PwRuffleHeroIdentityCalls(const PwRuffleHudState& state);
  * required even when only gold or time changed. No diffing or VM state is retained.
  */
 nlohmann::json PwRuffleHeroValueCalls(const PwRuffleHudState& state);
+
+/** Build the authored four-argument GameEnd request, or [] while the match is running.
+ * Requires actual hero/faction identity. The host must submit this once, after
+ * identity initialization, and reject a changed result until a new session opens.
+ * @throws std::invalid_argument On any invalid engaged snapshot group.
+ */
+nlohmann::json PwRuffleMatchEndCalls(const PwRuffleHudState& state);

@@ -864,7 +864,11 @@ bool PFBaseHero::HasTalentFromPack(const char* id) const
 		}
 	return false;
 }
-void PFBaseHero::OnGameFinished( const NDb::EFaction failedFaction ) { (void)failedFaction; }
+/** Use original creature/movement shutdown; native hero achievement statistics remain unported. */
+void PFBaseHero::OnGameFinished(const NDb::EFaction failedFaction)
+{
+	PFCreature::OnGameFinished(failedFaction);
+}
 void PFBaseHero::SetHappy() {}
 void PFBaseHero::OnStopped() {}
 void PFBaseHero::OnTargetDropped() {}

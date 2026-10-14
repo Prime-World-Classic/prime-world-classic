@@ -63,6 +63,20 @@ def fixture(mode='targeting'):
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
 
+	def test_running_match_cannot_report_terminal_ui(self):
+		'''New counters are required, but a forced finish cannot pass ordinary gameplay acceptance.'''
+		for mode in ('targeting', 'default'):
+			stdout, client = fixture(mode)
+			for key in ('matchEndCalls', 'matchExitRequests'):
+				if key + ':' not in client:
+					client = client.replace(' error:', f' {key}:0 error:')
+			self.assertEqual(gate.validate(stdout, client, mode)['world_step'], 1000)
+			for key in ('matchEndCalls', 'matchExitRequests'):
+				with self.subTest(mode=mode, key=key), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout, client.replace(key + ':0', key + ':1'), mode)
+				with self.subTest(mode=mode, missing=key), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout, client.replace(' ' + key + ':0', ''), mode)
+
 	def test_bot_commands_cannot_overwrite_local_execution(self):
 		'''Local event identity replaces the obsolete assumption of a bot-free world.'''
 		stdout, client = fixture()

@@ -106,6 +106,11 @@ void NonRequests()
 /** Keep original normalized axes/button flags, including valid out-of-map motion. */
 void MinimapContracts()
 {
+	Check(One("ReturnToLobby", "").kind == Kind::ReturnToLobby, "Authored empty result-dismiss callback");
+	Check(One("ReturnToLobby", " \t\n").kind == Kind::ReturnToLobby, "Whitespace-only result-dismiss payload");
+	RejectArgs("ReturnToLobby", "0");
+	RejectArgs("ReturnToLobby", "1 2");
+	Check(One("returntolobby", "").kind == Kind::Unsupported, "Result-dismiss callback is case-sensitive");
 	const auto over = One("MinimapMouseOver", "1 0.25 0.75");
 	Check(over.kind == Kind::MinimapMouseOver && over.flag && over.x == 0.25f && over.y == 0.75f,
 		"minimap hover shape and axes");

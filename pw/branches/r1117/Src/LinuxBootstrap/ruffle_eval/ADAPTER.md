@@ -11,6 +11,33 @@ the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
 ## Implemented Boundary
 
+### Native Match Completion (0.128.0)
+
+The opt-in HUD now receives the real world's finished flag and first defeated
+faction. It submits the original four-argument `GameEnd` once, using the local
+hero's original-faction victory/defeat texture from DBUIData. The shipped movie
+owns its four-second delay, animation, modal shield, labels and close button.
+Repeated snapshots cannot restart the animation; conflicting results require a
+new movie/session. Finished worlds reject queued player/bot hero commands.
+
+Final score and achievement data are not ported, so `dontShowStatistics` is true.
+The authored empty `ReturnToLobby` callback is accepted only after an actual
+finished world and a successful `GameEnd` submission. It requests normal native
+client shutdown, matching the standalone original client's exit path. It does
+not launch a castle service or implement an in-process rematch. Ruffle remains
+opt-in; this does not claim result-screen parity for the default backend.
+
+`PrimeWorldRuffleNativeHostProbe LIBRARY DATA COMBAT_SWF` exercises both factions'
+victory and defeat art, delayed visibility, rendered pixels and the actual close
+button callback. Set `PW_RUFFLE_MATCH_CAPTURE_PREFIX` to an unused temporary path
+prefix to retain four PPM captures. The client-only explicit fixture
+`--bootstrap-match-finish-proof 1` (Freeze loses) or `2` (Burn loses) invokes a
+scripted finish after world step 650. This is a result-UI integration fixture,
+not a completed-match acceptance test; never enable it for ordinary gameplay or
+count it as evidence of a naturally won match. Real lethal main-building damage
+is covered separately by the engine applicator/gameplay probe. See the current
+[port plan](../LINUX_PORT_PLAN.md) for build, replay and sanitizer evidence.
+
 ### Repeatable Gameplay Gates (0.16.6)
 
 `gameplay_gate.py --stdout OUTPUT --client-log CLIENT_LOG --mode targeting`

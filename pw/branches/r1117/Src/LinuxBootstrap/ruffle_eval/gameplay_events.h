@@ -30,6 +30,7 @@ struct PwRuffleGameplayEvent
 		Unsupported,
 		Informational, ///< TalentToolTip/TalentActionToolTip; not a gameplay request.
 		TalentClicked,
+		ReturnToLobby, ///< Empty payload; caller requires an authoritative completed match.
 		MinimapMouseOver,
 		MinimapMouseDown,
 		MinimapMouseUp,
