@@ -27169,37 +27169,43 @@ void ProbeEffectsPoolRuntime(
 
         if (specialSwitchInstance)
         {
+					// PFApplCreatePars borrows its target until the factory consumes the parameters.
+					const NWorld::Target switchProofTarget(specialSwitchTarget.GetPtr());
           NWorld::PFApplCreatePars switchProofPars(
             specialSwitchInstance,
-            NWorld::Target(specialSwitchTarget.GetPtr()),
+						switchProofTarget,
             static_cast<NWorld::PFBaseApplicator*>(0));
           switchProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialSwitchDb);
           CObj<NWorld::PFBaseApplicator> switchProof =
             specialSwitchDb->Create(switchProofPars);
+					const NWorld::Target programProofTarget(specialProgramTarget.GetPtr());
           NWorld::PFApplCreatePars programProofPars(
             specialSwitchInstance,
-            NWorld::Target(specialProgramTarget.GetPtr()),
+						programProofTarget,
             static_cast<NWorld::PFBaseApplicator*>(0));
           programProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialProgramDb);
           CObj<NWorld::PFBaseApplicator> programProof =
             specialProgramDb->Create(programProofPars);
+					const NWorld::Target forAllProofTarget(specialOwner.GetPtr());
           NWorld::PFApplCreatePars forAllProofPars(
             specialSwitchInstance,
-            NWorld::Target(specialOwner.GetPtr()),
+						forAllProofTarget,
             static_cast<NWorld::PFBaseApplicator*>(0));
           forAllProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialForAllDb);
           CObj<NWorld::PFBaseApplicator> forAllProof =
             specialForAllDb->Create(forAllProofPars);
+					const NWorld::Target naftaProofTarget(specialNaftaSource.GetPtr());
           NWorld::PFApplCreatePars naftaProofPars(
             specialSwitchInstance,
-            NWorld::Target(specialNaftaSource.GetPtr()),
+						naftaProofTarget,
             static_cast<NWorld::PFBaseApplicator*>(0));
           naftaProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialNaftaDb);
           CObj<NWorld::PFBaseApplicator> naftaProof =
             specialNaftaDb->Create(naftaProofPars);
+					const NWorld::Target converterProofTarget(specialConverterTarget.GetPtr());
           NWorld::PFApplCreatePars converterProofPars(
             specialSwitchInstance,
-            NWorld::Target(specialConverterTarget.GetPtr()),
+						converterProofTarget,
             static_cast<NWorld::PFBaseApplicator*>(0));
           converterProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialConverterDb);
           CObj<NWorld::PFBaseApplicator> converterProof =
@@ -27519,9 +27525,10 @@ void ProbeEffectsPoolRuntime(
           auto createSpecialControlProof =
             [&](NDb::BaseApplicator* applicatorDb, NWorld::PFBaseUnit* target) -> CObj<NWorld::PFBaseApplicator>
             {
+							const NWorld::Target proofTarget(target);
               NWorld::PFApplCreatePars proofPars(
                 proofInstance,
-                NWorld::Target(target),
+								proofTarget,
                 static_cast<NWorld::PFBaseApplicator*>(0));
               proofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(applicatorDb);
               return applicatorDb->Create(proofPars);
