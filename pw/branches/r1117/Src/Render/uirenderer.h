@@ -125,6 +125,10 @@ _interface IUIRenderer
   virtual void PushNoCrop() = 0;
   virtual void PopCrop() = 0;
 
+  // quads added until ResetScreenScale are scaled by 'scale' around 'pivot' (UI coordinates)
+  virtual void SetScreenScale( float scale, const CVec2 & pivot ) = 0;
+  virtual void ResetScreenScale() = 0;
+
   virtual void AddQuad( UIQuad & _quad, Render::BaseMaterial* _renderMaterial, const SMaterialParams & params ) = 0;
   virtual void BeginFlashParts( int _startFlashElement ) = 0;
   virtual void EndFlashParts( int _lastFlashElement ) = 0;

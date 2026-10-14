@@ -136,6 +136,8 @@ Window::Window()
   , parent(0)
   , needOrderReSort( false )
   , sortOrder( 0 )
+  , screenScale( 1.f )
+  , screenScalePivot( 0, 0 )
   , refreshNeeded( false )
   , winRect(0, 0, 0, 0)
   , cropRect(0, 0, 0, 0)
@@ -1105,7 +1107,14 @@ void Window::RenderInternal( Window * specialWindow, ESpecialMode::Enum mode )
       Render::GetUIRenderer()->SetWorldMatrix( wnd->transformRotated, m, wnd->worldPosition, wnd->depthBias );
     }
 
+    const bool screenScaled = wnd->screenScale != 1.f;
+    if ( screenScaled )
+      Render::GetUIRenderer()->SetScreenScale( wnd->screenScale, CVec2( wnd->screenScalePivot.x, wnd->screenScalePivot.y ) );
+
     wnd->RenderInternal( specialWindow, childrenSpecMode );
+
+    if ( screenScaled )
+      Render::GetUIRenderer()->ResetScreenScale();
 
     if ( isBase && wnd->Is3D() )
       Render::GetUIRenderer()->ResetWorldMatrix();

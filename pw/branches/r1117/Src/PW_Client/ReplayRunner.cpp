@@ -14,6 +14,7 @@
 
 #include "PF_GameLogic/StringExecutor.h"
 #include "PF_GameLogic/AdventureScreen.h"
+#include "PF_GameLogic/AdventureCameraController.hpp"
 #include "PF_Minigames/MinigameSessionInterface.h"
 #include "PF_GameLogic/PFWorld.h"
 #include "Core/Replay.h"
@@ -436,6 +437,9 @@ namespace Game
     NI_ASSERT( IsValid( advScreen ), "" );
     transceiver->ApplyStartSnapshot();
     advScreen->OnMapLoaded( mapLoadingJob->MapDescriptionResource(), mapLoadingJob->GetCameraSettings() );
+    // a replay viewer may move the camera twice as far away as a player in a battle
+    if ( IsValid( advScreen->GetCamera() ) )
+      advScreen->GetCamera()->ExtendZoomOut( 2.f );
     advScreen->ActivateSessionSoundScene();
     advScreen->OnSessionStart(0);
     advScreen->ShowUIBlock( "EscMenuRunToCastleButton", false );

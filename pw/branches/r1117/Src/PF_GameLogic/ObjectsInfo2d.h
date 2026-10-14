@@ -72,6 +72,7 @@ private:
   int  idCounter;
   bool  showHealthBars;
   Tooltips tooltips;
+  float overtipScale; // camera zoom-out beyond the battle limit shrinks the overtips (replay)
   WindowsPool windowsPool;
 
   ConstPtr<NWorld::PFBaseHero> localHero;
