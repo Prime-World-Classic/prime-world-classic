@@ -972,6 +972,14 @@
 					RelativePath=".\VoiceOverlayController.h"
 					>
 				</File>
+				<File
+					RelativePath=".\ReplayControlsController.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\ReplayControlsController.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="AdventureScreenFacets"

@@ -1110,6 +1110,7 @@ struct GSClientSettings
     virtual void ShowReplaySpeed(float speed);
     virtual void ShowReplayPause();
     virtual void HideReplayMsg();
+    virtual void UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended );
 
     bool OnEnterLeaveMinigame( NWorld::PFEaselPlayer * easelPlayer, bool bEnter );
     bool OnUIEvent( PFUIEvent * pEvent, NNameMap::Map const *pMap, AnnouncementParams * announcementParams = 0, bool skipCheckSignRecipients = false );

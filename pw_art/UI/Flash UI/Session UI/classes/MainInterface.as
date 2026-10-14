@@ -30,6 +30,7 @@
 	import flashx.textLayout.formats.Float;
 	import Utils.GameTimeGlobalUtils;
 	import VoiceChat.VoiceTeamOverlay;
+	import ReplayControls.ReplayControlsPanel;
 	import Controllers.SoundController;
 	import EscMenu.ShortcutItem;
 	import EscMenu.OptionsWindow;
@@ -107,6 +108,7 @@
 		private var showAlwaysHeroesLevels:Boolean = false;
 		private var _shortheroname: SetPlayerShortName;
 		private var voiceTeamOverlay:VoiceTeamOverlay;
+		private var replayControlsPanel:ReplayControlsPanel;
 	
 		public function MainInterface(_main:Main)
 		{	
@@ -118,6 +120,7 @@
 				function():Array { return mainWindow.Players; },
 				function(heroId:int):MateInfoBase { return friendlyTeamController.DoesHeroExist(heroId) ? friendlyTeamController.GetMateInfo(heroId) : null; },
 				function():int { return ourID; });
+			replayControlsPanel = new ReplayControlsPanel(mainWindow, GetActionBarTop);
 		//	var Test:MainInterfaceTest = new MainInterfaceTest(this, mainWindow);
 		//	var Test2:MyFullTest = new MyFullTest(this, mainWindow);
 		}
@@ -2539,6 +2542,38 @@
 		public function SetVoiceOverlayState(micState:int, meSpeaking:Boolean, myName:String, ids:Array, flags:Array, volumes:Array, names:Array):void
 		{
 			voiceTeamOverlay.SetState(micState, meSpeaking, myName, ids, flags, volumes, names);
+		}
+
+		// Панель управления реплеем (PF_GameLogic/ReplayControlsController.cpp). Время — в десятых
+		// секунды, target — куда идёт перемотка (-1 — нет), speed — в процентах.
+		public function ShowReplayControls(show:Boolean):void
+		{
+			replayControlsPanel.Show(show);
+		}
+
+		public function SetReplayState(time:int, total:int, target:int, speed:int, paused:Boolean, ended:Boolean):void
+		{
+			replayControlsPanel.SetState(time, total, target, speed, paused, ended);
+		}
+
+		// Верх панели активных талантов вместе с полосками и баффами над ней, в координатах экрана
+		// (getBounds в движке не работает — считаем по детям; второй ряд слотов поднимает полоски и баффы).
+		private function GetActionBarTop():Number
+		{
+			var container:MovieClip = mainWindow.actionBarContainer;
+			if (container == null || container.actionBar_mc == null)
+				return NaN;
+			var bar:MovieClip = container.actionBar_mc;
+			var top:Number = bar.healthBar_mc != null ? bar.healthBar_mc.y : 0;
+			for (var i:int = 1; i <= 40; i++)
+			{
+				var buff:DisplayObject = null;
+				try { buff = bar["buff" + i] as DisplayObject; } catch (e:Error) { break; }
+				if (buff == null)
+					break;
+				top = Math.min(top, buff.y);
+			}
+			return container.y + (bar.y + top) * container.scaleY;
 		}
 		
 		public function TempUnlockActionBar(unlock:Boolean):void

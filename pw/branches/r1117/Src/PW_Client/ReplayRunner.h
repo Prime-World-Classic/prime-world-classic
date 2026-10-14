@@ -184,7 +184,6 @@ public:
 private:
   NCore::MapStartInfo mapInfo;
   string replayFileName;
-  static const float rForcedStepTime;
   Weak<NGameX::AdventureScreen>  advScreeen;
   StrongMT<ReplayRunnerLoader> loader;
   Strong<NWorld::ReplayTransceiver> transceiver;
@@ -193,14 +192,12 @@ private:
 
   CObj<NWorld::PFResourcesCollection> resourceCollection;
 
-  float  rSkipTime; //in seconds
 
   int GetPlayer(int clientId);
   int PickAnyPlayer();
   bool StartReplay();
   void CreateAdvScreeen( int playerId, int _stepLength, const NCore::ClientSettings & clientSettings );
   void RunningState();
-  void ForcedStep( float rDt );
 
   ReplayRunner() : LoadingScreen( "", "", true, false ) {}
 };

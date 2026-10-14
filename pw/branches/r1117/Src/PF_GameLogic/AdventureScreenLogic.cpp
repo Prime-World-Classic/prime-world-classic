@@ -69,6 +69,7 @@
 #include "AIWorldFacets/VotingForSurrenderLogic.h"
 #include "VotingForSurrenderController.h"
 #include "VoiceOverlayController.h"
+#include "ReplayControlsController.h"
 #include "IgnoreListController.h"
 #include "IgnoreListStorage.h"
 #include "DBGameLogic.h"
@@ -665,6 +666,18 @@ void AdventureScreenLogic::NotifySmartCast( const char * talentId, bool on )
 {
   if ( voiceOverlayController )
     voiceOverlayController->NotifySmartCast( talentId, on );
+}
+
+void AdventureScreenLogic::UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended )
+{
+  if ( !replayControlsController )
+  {
+    if ( !IsValid( flashWnd ) )
+      return;
+    replayControlsController = new ReplayControlsController( flashWnd, "mainInterface" );
+  }
+
+  replayControlsController->SetState( playedSteps, totalSteps, stepLengthMs, speed, paused, seekTargetStep, ended );
 }
 
 void AdventureScreenLogic::CloseAdventureScreen()

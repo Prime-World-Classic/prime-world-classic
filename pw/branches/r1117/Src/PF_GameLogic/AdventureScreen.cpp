@@ -7524,6 +7524,12 @@ void AdventureScreen::HideReplayMsg()
   pLogic->SetMessage( L"" );
 }
 
+void AdventureScreen::UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended )
+{
+  if ( pLogic )
+    pLogic->UpdateReplayControls( playedSteps, totalSteps, stepLengthMs, speed, paused, seekTargetStep, ended );
+}
+
 
 // It's the code to pick only one player (actually his hero) from the whole group for logging global events
 NWorld::PFBaseHero * AdventureScreen::GetLoggerHero()

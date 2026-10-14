@@ -34,14 +34,11 @@ REGISTER_DEV_VAR( "use_server_replay", g_useServerReplay, STORAGE_NONE );
 
 namespace Game
 {
-  const float ReplayRunner::rForcedStepTime = 0.025f;
-
   ReplayRunner::ReplayRunner( const string& _replayFileName, 
                               NWorld::IMapCollection * _mapCollection)
     : LoadingScreen( "", "", true, false )
     , replayFileName( _replayFileName )
     , mapCollection( _mapCollection )
-    , rSkipTime(0.0f)
   {
     NGlobal::RegisterContextCmd( "replay_skip_time", this, &ReplayRunner::SkipTime );
   }
@@ -247,26 +244,9 @@ namespace Game
     return -1;
   }
 
-  void ReplayRunner::ForcedStep( float rDt )
-  {
-    transceiver->Step( rDt * 1000.f );
-  }
-
   void ReplayRunner::RunningState()
   {
-    float rTimeFotUpdate = NMainLoop::GetTimeDelta();
-
-    while( rSkipTime > rForcedStepTime )
-    {
-      ForcedStep( rForcedStepTime );
-      rSkipTime -= rForcedStepTime;
-    }
-
-    if ( rSkipTime >= 0 )
-    {
-      transceiver->Step( ( rSkipTime + rTimeFotUpdate ) * 1000.f );
-      rSkipTime = 0.0f;
-    }
+    transceiver->Step( NMainLoop::GetTimeDelta() * 1000.f );
   }
 
   void ReplayRunner::Step( bool bAppActive )
@@ -299,10 +279,12 @@ namespace Game
     }
   }
 
+  // replay_skip_time <seconds>: kept for old configs, the same as replay_seek
   bool ReplayRunner::SkipTime(const char *name, const vector<wstring> &args)
   {
     const string sSkip  = !args.empty() ? NStr::ToMBCS( args[0] ) : "0";
-    rSkipTime += NStr::ToFloat(sSkip);
+    if (transceiver)
+      transceiver->SeekBy( NStr::ToFloat(sSkip) );
     return true;
   }
 

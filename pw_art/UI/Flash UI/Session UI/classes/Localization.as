@@ -41,6 +41,13 @@
 		public static var Options_PingWheelPage:String = "Колесо сигналов";
 		public static var Statistics_PingMute:String = "Отключить пинги игрока";
 		public static var Statistics_PingUnmute:String = "Включить пинги игрока";
+		// Панель реплея (ReplayControls/ReplayControlsPanel.as); переводы — Combat.xdb props 234–239
+		public static var ReplayControls_Back:String = "Назад на 10 с (стрелка влево)";
+		public static var ReplayControls_Pause:String = "Пауза / продолжить (пробел)";
+		public static var ReplayControls_Forward:String = "Вперёд на 10 с (стрелка вправо)";
+		public static var ReplayControls_Slower:String = "Медленнее (стрелка вниз)";
+		public static var ReplayControls_Faster:String = "Быстрее (стрелка вверх)";
+		public static var ReplayControls_Timeline:String = "Нажмите, чтобы перейти к этому моменту";
 
 		//InventoryBar
 		public static var InventoryBar_HeaderText:String = "Инвентарь";
