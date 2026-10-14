@@ -319,7 +319,7 @@ public:
   void SetTalentSmartCast( int column, int raw, int mode ); // smart-cast checkbox of a talent: 0 none, 1 off, 2 on
   void RefreshSmartCastBoxes();
   void ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,
-                   const string & targetIcon, const wstring & targetName, int targetColor, int amount );
+                   const string & targetIcon, const wstring & targetName, int targetColor, int praiseId, const wstring & text ); // text: empty - the standard praise
   void SetPraisePanel( int id, float slide, float row, float alpha, float top ); // slide 0..1 (1 = hidden to the right), top: part of the screen height; alpha <= 0 removes
   void PreloadPingImage( const string & path ); // loads a texture for ping markers now (before the game start)
   void SetPingMarkerHero( int id, const string & iconPath ); // hero icon above the marker, call before its first SetPingMarker

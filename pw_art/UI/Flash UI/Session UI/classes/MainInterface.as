@@ -2009,8 +2009,12 @@
 			}
 		}
 		
+		// width of the praise text between the portraits
+		private static const PRAISE_TEXT_WIDTH:Number = 168;
+
 		// children: 0 bg, 1 sender portrait, 2 target portrait, 3 title, 4 sender name, 5 target name
-		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int) : void
+		// param8: number of the praise chosen in the castle fair, param9: its text (empty - the standard "ХВАЛИТ")
+		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int, param9:String = "") : void
 		{
 			var _loc9_:Sprite = this.GetPingLayer();
 			var _loc10_:Sprite = null;
@@ -2038,7 +2042,8 @@
 			_loc10_.addChild(_loc11_);
 			_loc10_.addChild(this.CreatePraisePortrait(param2,12));
 			_loc10_.addChild(this.CreatePraisePortrait(param5,248));
-			_loc12_ = this.CreatePingLabel("ХВАЛИТ",15784080);
+			_loc12_ = this.CreatePingLabel(param9 != null && param9.length > 0 ? param9 : "ХВАЛИТ",15784080);
+			this.FitPraiseName(_loc12_,MainInterface.PRAISE_TEXT_WIDTH);
 			_loc10_.addChild(_loc12_);
 			this.PlacePraiseLabel(_loc12_,160,40);
 			// the praise is free: no prime in the panel; long names are cut with "..." to stay inside the panel
