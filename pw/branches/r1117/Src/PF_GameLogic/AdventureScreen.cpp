@@ -1892,6 +1892,11 @@ void AdventureScreen::OnMapLoaded( const NDb::AdvMapDescription * advMapDescript
 
     pCameraController->SetInitialParameters(&s_camera_rod, &pitch);
 
+    // A spectator (live match or replay) may move the camera twice as far
+    // away as a player in a battle
+    if ( IsSpectator() )
+      pCameraController->ExtendZoomOut( 2.f );
+
     const float farPplane = 500.f;
     camera->SetPerspectiveTransform( pCameraController->GetFOV(), renderMode.width,  renderMode.height, 0.5f, 
                                       farPplane, pCameraController->GetFovCorrectionAngle() );

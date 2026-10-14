@@ -1407,9 +1407,20 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       return 0;
     }
 
-    if (protocolMethod != "runGame" && protocolMethod != "reconnect") {
+    if (protocolMethod != "runGame" && protocolMethod != "reconnect" && protocolMethod != "spectate") {
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol syntax" );
       return 0;
+    }
+
+    // "spectate" - live match viewing (admins / testers, the back-end decides):
+    // the token is <sessionToken 32><spectatorKey 64><user id>, see
+    // Shared/WebSpectatorKey.h. The spectator mode is chosen here, after the
+    // command line, so its key bindings go on top of the ones loaded above.
+    const bool protocolSpectator = (protocolMethod == "spectate");
+    if (protocolSpectator && !isSpectator) {
+      isSpectator = true;
+      MessageTrace("Starting in spectator mode (launcher protocol)");
+      NGlobal::ExecuteConfig( "spectator.cfg",	NProfile::FOLDER_GLOBAL );
     }
 
     // No pre-login HTTP to the synchronizer: the protocol token carries the
@@ -1417,13 +1428,14 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     // sha256(user_id+sessionToken+api_key)). The server authenticates by
     // playerKey and delivers the session data in the login reply
     // (LoginReply::webSession, applied in GameContext::Poll).
-    if (strlen(protocolToken) < 96) {
+    if (strlen(protocolToken) < (protocolSpectator ? 97u : 96u)) {
       systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid protocol token length: " << strlen(protocolToken) << endl;
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [bad token length]! Please start the game via the launcher." );
       return 0;
     }
     g_sessionToken = string(protocolToken, 32);
-    g_playerToken = string(protocolToken + 32, 64);
+    // A spectator key keeps the user id after the 64 hex chars
+    g_playerToken = protocolSpectator ? string(protocolToken + 32) : string(protocolToken + 32, 64);
 
     // The web session always goes through the network path: the players
     // count is unknown before the login. A solo session becomes a 1-slot

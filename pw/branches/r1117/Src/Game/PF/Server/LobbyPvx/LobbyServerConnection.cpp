@@ -6,6 +6,7 @@
 #include "LobbyConfig.h"
 #include "Client/LobbyPvx/RLobbyClientInterface.auto.h"
 #include "LobbyLog.h"
+#include <Shared/WebSpectatorKey.h>
 
 
 namespace lobby
@@ -16,7 +17,8 @@ config( _cfg ),
 status( EConnectionStatus::New ),
 server( _server ),
 clientId( _clientId ),
-clientRevision( 0 )
+clientRevision( 0 ),
+webSpectateGameId( 0 )
 {
 }
 
@@ -234,25 +236,11 @@ EOperationResult::Enum ServerConnection::CreateCustomGame( int maxPlayers, int m
 
 EOperationResult::Enum ServerConnection::SpectateCustomGame( int gameId )
 {
-  if ( !config->Cfg()->enableDevMode )
-    return EOperationResult::RestrictedAccess;
-
-  if ( status != EConnectionStatus::Established ) {
-    LOBBY_LOG_ERR( "Wrong connection state" );
-    return EOperationResult::RestrictedAccess;
-  }
-
-  StrongMT<ServerNode> locked  = server.Lock();
-  NI_VERIFY( locked, "", return EOperationResult::InternalError );
-
-  ServerNode::TGames::const_iterator it = locked->Games().find( gameId );
-  if( it == locked->Games().end() ) {
-    LOBBY_LOG_ERR( "Unknown game" );
-    return EOperationResult::GameNotFound;
-  }
-  StrongMT<GameSession> game = it->second;
-
-  return game->SpectateCustomGame( this );
+  // Spectating by a bare game id is closed: every game here is a web session
+  // and any logged-in player could watch any match (both teams, no fog) this
+  // way. Spectators come through ConnectToWebLobby with a signed key.
+  LOBBY_LOG_WRN( "Spectate by game id refused. user=%d, game=%d", ClientId(), gameId );
+  return EOperationResult::RestrictedAccess;
 }
 
 
@@ -325,6 +313,11 @@ lobby::EOperationResult::Enum ServerConnection::ConnectToWebLobby(const nstl::st
 
   map<nstl::string, StrongMT<CustomGame>>::iterator it;
   nstl::string sessionToken = nstl::string(token.c_str(), 32);
+
+  // Spectator launch token: <session 32><spectator key 64><user id>
+  if ( WebSession::IsSpectatorPlayerKey( token.c_str() + 32 ) )
+    return SpectateWebGame( sessionToken, token );
+
   it = g_games.find(sessionToken);
 
   if (it == g_games.end()) {
@@ -337,6 +330,59 @@ lobby::EOperationResult::Enum ServerConnection::ConnectToWebLobby(const nstl::st
   StrongMT<CustomGame>& game = it->second;
   int gameId = game->Id();
   return ReconnectToCustomGame(gameId, 0, "");
+}
+
+
+
+// Live match viewing (Shared/WebSpectatorKey.h). The login already checked
+// the key, but the session token here comes from the client again, so the
+// key is checked once more against THIS session and THIS connection: a
+// player of one match must not get the spectator view of another one.
+EOperationResult::Enum ServerConnection::SpectateWebGame( const nstl::string & sessionToken, const nstl::string & token )
+{
+  if ( status != EConnectionStatus::Established ) {
+    LOBBY_LOG_ERR( "Wrong connection state" );
+    return EOperationResult::RestrictedAccess;
+  }
+
+  int uid = 0;
+  if ( !WebSession::VerifySpectatorKey( sessionToken.c_str(), token.c_str() + 32, config->Cfg()->webSessionKey.c_str(), uid ) || uid != ClientId() ) {
+    LOBBY_LOG_WRN( "Spectator key refused. user=%d, key_uid=%d, token=%s", ClientId(), uid, sessionToken.c_str() );
+    return EOperationResult::RestrictedAccess;
+  }
+
+  // The match is created by its first player; until then the client retries
+  // (InternalError is the retry signal of SelectGameModeScreen).
+  map<nstl::string, StrongMT<CustomGame>>::iterator it = g_games.find( sessionToken );
+  if ( it == g_games.end() )
+    return EOperationResult::InternalError;
+
+  const int gameId = it->second->Id();
+
+  // The client repeats the web join once it got Ok (the player path needs the
+  // second call to enter the game it has just created): do not add twice.
+  if ( webSpectateGameId == gameId )
+    return EOperationResult::Ok;
+
+  if ( it->second->playersUserData.find( uid ) != it->second->playersUserData.end() ) {
+    LOBBY_LOG_WRN( "Session player tried to spectate own game. user=%d, token=%s", uid, sessionToken.c_str() );
+    return EOperationResult::RestrictedAccess;
+  }
+
+  StrongMT<ServerNode> locked = server.Lock();
+  NI_VERIFY( locked, "", return EOperationResult::InternalError );
+
+  ServerNode::TGames::const_iterator gameIt = locked->Games().find( gameId );
+  if ( gameIt == locked->Games().end() )
+    return EOperationResult::InternalError;
+
+  StrongMT<GameSession> gameSession = gameIt->second;
+  const EOperationResult::Enum result = gameSession->SpectateCustomGame( this );
+  if ( result == EOperationResult::Ok ) {
+    webSpectateGameId = gameId;
+    LOBBY_LOG_MSG( "Web spectator joined. user=%d, game=%d, token=%s", uid, gameId, sessionToken.c_str() );
+  }
+  return result;
 }
 
 } //namespace lobby
