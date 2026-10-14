@@ -9,6 +9,7 @@ sources = [
     'renderer.h',
     'DxIntrusivePtr.h',
     'renderstates.h',
+    'renderwindow.h',
     'renderstatesmanager.cpp',
     'renderstatesmanager.h',
     'dxutils.cpp',

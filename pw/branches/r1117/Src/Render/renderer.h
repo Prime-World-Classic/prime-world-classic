@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rendermode.h"
+#include "renderwindow.h"   // NativeWindow: Renderer не хранит HWND (§2.8)
 #include "vertexformatdescriptor.h"
 #include "dipdescriptor.h"
 #include "renderstates.h"
@@ -28,6 +29,11 @@ struct Caps
 	float pixelShaderVersion;
 	float vertexShaderVersion;
 	bool  bSupportSM30;
+  // Заполняются из caps устройства при его смене (FillCaps). Нужны, чтобы
+  // отвязка ресурсов (ClearDeviceResources) не дёргала GetDeviceCaps; на этапе 3
+  // те же поля придут из синтезируемой caps-структуры (§2.5).
+  unsigned numSimultaneousRTs;
+  unsigned maxStreams;
 };
 
 // Seam этапа 2 (docs/PLAN_NVRHI.md §2.8): сырые вызовы устройства идут через
@@ -54,7 +60,7 @@ class Renderer
   bool                  bResetDevice;
   bool                  bTripleBufferUsed;
   bool                  isRunningUnderPerfHUD;
-	HWND                  hWnd;   // HWND, not unsigned int: on x64 a handle does not fit in 32 bits safely
+	NativeWindow          window; // не HWND: окно — граница платформы, seam его не знает
 	D3DPRESENT_PARAMETERS presentParams;
 	DXSurfacePtr          pDeviceDepthSurface;
 	DXSurfacePtr          pDeviceColorSurface;
@@ -73,12 +79,12 @@ class Renderer
 	void FillCaps();
 
 public:
-	explicit Renderer(HWND _hWnd);
+	explicit Renderer(NativeWindow _window);
 	 ~Renderer();
 
-	static void Init(HWND _hWnd)
+	static void Init(NativeWindow _window)
 	{
-	  s_pInstance = new Renderer(_hWnd);
+	  s_pInstance = new Renderer(_window);
 	}
 
 	static Renderer* Get();// { return s_pInstance; }
@@ -91,9 +97,11 @@ public:
 
 	const RenderMode& GetCurrentRenderMode();
 
-  void SetHWND( HWND hwnd)
+  // Граница платформы: HWND приходит снаружи и сразу превращается в ручку seam'а.
+  void SetWindow( NativeWindow w )
   {
-    presentParams.hDeviceWindow = hwnd;
+    window = w;
+    presentParams.hDeviceWindow = static_cast< HWND >( w.p );
   }
   
   D3DSWAPEFFECT GetSwapEffectParams() const { return presentParams.SwapEffect; }
@@ -169,7 +177,7 @@ public:
 	void BeginScene();
 	void EndScene();
 	void Present();
-  void Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRect_ );
+  void Present( NativeWindow window_, const Rect* sourceRect_, const Rect* destRect_ );
 
 	const DXSurfacePtr& GetDepthStencilSurface() { return pDeviceDepthSurface; }
 	const DXSurfacePtr& GetColorSurface() { return pDeviceColorSurface; }

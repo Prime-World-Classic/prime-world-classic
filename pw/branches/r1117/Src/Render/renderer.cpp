@@ -77,11 +77,11 @@ const RenderMode& Renderer::GetCurrentRenderMode()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Renderer::Renderer(HWND _hWnd) : 
+Renderer::Renderer(NativeWindow _window) : 
 	pD3D(0), 
 	pDevice(0),
 	pBackend(0),
-	hWnd(_hWnd),
+	window(_window),
 	bDeviceLost(true),
   bResetDevice(false),
   bTripleBufferUsed(false),
@@ -96,7 +96,6 @@ Renderer::Renderer(HWND _hWnd) :
 		//Log.Add(MAIN_LOG, "[!]  Direct3DCreate9\n"); FIXME
 	}
 
-	hWnd = _hWnd;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,12 +288,12 @@ void Renderer::OnDeviceChanged()
   
   FillCaps();
 
-  // Save links to surfaces
-  IDirect3DSurface9 *pSurf;
-  pDevice->GetDepthStencilSurface(&pSurf);
-  pDeviceDepthSurface.Attach(pSurf);
-  pDevice->GetRenderTarget(0, &pSurf);
-  pDeviceColorSurface.Attach(pSurf);
+  // Save links to surfaces — через seam (владеющие ручки, см. renderbackend.h)
+  HSurface hSurface;
+  if (SUCCEEDED(pBackend->GetDepthStencil(&hSurface)))
+    pDeviceDepthSurface.Attach(static_cast<IDirect3DSurface9*>(hSurface.p));
+  if (SUCCEEDED(pBackend->GetRenderTarget(0, &hSurface)))
+    pDeviceColorSurface.Attach(static_cast<IDirect3DSurface9*>(hSurface.p));
 
   IDirect3DQuery9* pQuery;
   pDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pQuery);
@@ -415,13 +414,13 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   }
 
   // Try to create chosen device
-  HRESULT hr = pD3D->CreateDevice(s_adapterToUse, DeviceType, (HWND)hWnd, dwCreateFlags,	&pp, &pDevice);
+  HRESULT hr = pD3D->CreateDevice(s_adapterToUse, DeviceType, static_cast<HWND>(window.p), dwCreateFlags,	&pp, &pDevice);
   bDeviceLost = (D3D_OK != hr);
 
   // Notify about failure
   if( FAILED(hr) ) {
     // Some of presentpapams could be rejected(e.g., triple buffer) and changed by CreateDevice. Retry.
-    hr = pD3D->CreateDevice(s_adapterToUse, DeviceType, (HWND)hWnd, dwCreateFlags,	&pp, &pDevice);
+    hr = pD3D->CreateDevice(s_adapterToUse, DeviceType, static_cast<HWND>(window.p), dwCreateFlags,	&pp, &pDevice);
     bDeviceLost = (D3D_OK != hr);
 
     if( FAILED(hr) ) {
@@ -530,6 +529,15 @@ void Renderer::FillCaps()
 	{
 		caps.pixelShaderVersion = 0.0f;
 		caps.vertexShaderVersion = 0.0f;
+		// Консервативные границы для ClearDeviceResources: без caps перебирать
+		// максимумы нечем.
+		caps.numSimultaneousRTs = 1;
+		caps.maxStreams = 256;
+	}
+	else
+	{
+		caps.numSimultaneousRTs = d3dCaps.NumSimultaneousRTs;
+		caps.maxStreams = d3dCaps.MaxStreams;
 	}
 
 	// SM2.0-фолбэк удалён (вместе с .shd2 и FORCE_SM20 в шейдерах):
@@ -663,7 +671,7 @@ void Renderer::EndScene()
 
 void Renderer::Present()
 {
-  Present((HWND)hWnd, NULL, NULL);
+  Present(window, NULL, NULL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -708,24 +716,24 @@ void Renderer::Synchronize()
 
 void Renderer::ClearDeviceResources()
 {
+  // Отвязка всего, что было привязано к устройству — через seam (нулевые ручки
+  // = unbind). Границы перебора берутся из кэша caps (FillCaps при смене
+  // устройства): раньше здесь каждый раз дёргался GetDeviceCaps.
+  IRenderBackend* const pB = GetBackend();
   HRESULT hr = S_OK;
-  hr = pDevice->SetVertexDeclaration(0);
-  hr = pDevice->SetVertexShader(0);
-  hr = pDevice->SetPixelShader(0);
+  hr = pB->SetInputLayout(HInputLayout());
+  hr = pB->SetVertexShader(HShader());
+  hr = pB->SetPixelShader(HShader());
 
   static const int MAX_SAMPLERS_NUMBER = 16; // for ps.3.0
   for(int i = 0; i < MAX_SAMPLERS_NUMBER; ++i)
-    hr = pDevice->SetTexture(i, 0);
+    hr = pB->SetTexture(i, HTexture());
 
-  D3DCAPS9 caps;
-  if( SUCCEEDED( pDevice->GetDeviceCaps(&caps)) )
-  {
-    for(DWORD n = 0; n < caps.NumSimultaneousRTs; ++n)
-      hr = pDevice->SetRenderTarget(n, 0);
+  for(unsigned n = 0; n < caps.numSimultaneousRTs; ++n)
+    hr = pB->SetRenderTarget(n, HSurface());
 
-    for(DWORD n = 0; n < caps.MaxStreams; ++n)
-      hr = pDevice->SetStreamSource(n, 0, 0, 4);
-  }
+  for(unsigned n = 0; n < caps.maxStreams; ++n)
+    hr = pB->SetStreamSource(n, HBuffer(), 0, 4);
   
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
@@ -735,7 +743,7 @@ void Renderer::ClearDeviceResources()
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Renderer::Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRect_ )
+void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rect* destRect_ )
 {
   NI_PROFILE_FUNCTION
 
@@ -759,7 +767,7 @@ void Renderer::Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRec
     NI_PROFILE_BLOCK( "Present itself" )
 
     //HRESULT hr = GetDevice()->Present((const RECT*)sourceRect_, NULL, hWnd_, NULL);
-    hr = pBackend->Present(hWnd_, (const RECT*)sourceRect_, (const RECT*)destRect_);
+    hr = pBackend->Present(window_, (const RECT*)sourceRect_, (const RECT*)destRect_);
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
   }
@@ -776,7 +784,7 @@ void Renderer::InvalidateResources()
   ClearDeviceResources();
   NotifyResourcesRelease();
   bDeviceLost = true;
-  pDevice->EvictManagedResources();
+  pBackend->EvictManagedResources();
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    
@@ -1012,7 +1020,7 @@ void Renderer::Convert( const RenderMode &_renderMode, D3DPRESENT_PARAMETERS &pp
   pp.AutoDepthStencilFormat = D3DFMT_D24S8;
   pp.SwapEffect = D3DSWAPEFFECT_DISCARD;
   pp.BackBufferFormat = D3DFMT_A8R8G8B8;
-  pp.hDeviceWindow = (HWND)hWnd;
+  pp.hDeviceWindow = static_cast<HWND>(window.p);
 
 	pp.BackBufferCount = 1;
 

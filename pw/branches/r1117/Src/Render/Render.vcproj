@@ -728,6 +728,10 @@
 					>
 				</File>
 				<File
+					RelativePath=".\renderwindow.h"
+					>
+				</File>
+				<File
 					RelativePath=".\vertexelementtype.h"
 					>
 				</File>

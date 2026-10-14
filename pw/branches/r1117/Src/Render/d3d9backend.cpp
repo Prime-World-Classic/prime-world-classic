@@ -21,8 +21,10 @@ HRESULT D3D9Backend::EndScene() {
   return pDevice->EndScene();
 }
 
-HRESULT D3D9Backend::Present(HWND window, const RECT* pSrcRect, const RECT* pDstRect) {
-  return pDevice->Present(pSrcRect, pDstRect, window, NULL);
+HRESULT D3D9Backend::Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect) {
+  // Единственное место, где ручка seam'а становится HWND (окно — граница
+  // платформы, см. renderwindow.h).
+  return pDevice->Present(pSrcRect, pDstRect, static_cast<HWND>(window.p), NULL);
 }
 
 void D3D9Backend::GetViewport(BackendViewport& vp) {
@@ -294,6 +296,26 @@ HRESULT D3D9Backend::ReadSurface(HSurface srcSurface, const RECT* pCropRect, voi
   if (pOutLayout)
     *pOutLayout = plBGRA;   // A8R8G8B8/X8R8G8B8 в памяти = B,G,R,A
   return S_OK;
+}
+
+HRESULT D3D9Backend::GetRenderTarget(unsigned index, HSurface* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  IDirect3DSurface9* pSurf = 0;
+  const HRESULT hr = pDevice->GetRenderTarget(index, &pSurf);
+  if (SUCCEEDED(hr))
+    pOut->p = pSurf;   // владеющая: GetRenderTarget() добавил ссылку, её снимает вызывающий
+  return hr;
+}
+
+HRESULT D3D9Backend::GetDepthStencil(HSurface* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  IDirect3DSurface9* pSurf = 0;
+  const HRESULT hr = pDevice->GetDepthStencilSurface(&pSurf);
+  if (SUCCEEDED(hr))
+    pOut->p = pSurf;   // владеющая
+  return hr;
 }
 
 HRESULT D3D9Backend::GetBackBuffer(HSurface* pOut) {

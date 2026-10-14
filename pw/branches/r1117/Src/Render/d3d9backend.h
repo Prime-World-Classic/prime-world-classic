@@ -39,7 +39,7 @@ public:
   // --- кадр ---
   virtual HRESULT BeginScene();
   virtual HRESULT EndScene();
-  virtual HRESULT Present(HWND window, const RECT* pSrcRect, const RECT* pDstRect);
+  virtual HRESULT Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect);
 
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp);
@@ -61,6 +61,7 @@ public:
   virtual HRESULT SetTexture(unsigned samplerIndex, HTexture texture);
   virtual HRESULT SetRenderTarget(unsigned index, HSurface surface);
   virtual HRESULT SetDepthStencil(HSurface surface);
+  virtual HRESULT GetDepthStencil(HSurface* pOut);
   virtual HRESULT SetViewport(const BackendViewport& vp);
 
   // --- вывод ---
@@ -89,6 +90,7 @@ public:
   virtual HRESULT ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
                               unsigned dstRowPitch, EBackendPixelLayout* pOutLayout);
   virtual HRESULT GetBackBuffer(HSurface* pOut);
+  virtual HRESULT GetRenderTarget(unsigned index, HSurface* pOut);
 
   virtual void SetClipPlane(bool enable, const float* pPlaneEquation);
 

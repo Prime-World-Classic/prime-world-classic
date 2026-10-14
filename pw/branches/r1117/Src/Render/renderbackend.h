@@ -9,6 +9,7 @@
 // в Renderer/DX*Ref — они закрываются вместе с NvrhiBackend на этапе 3,
 // иначе рефакторинг превращается в переписывание половины Render/ разом.
 //
+#include "renderwindow.h"        // Render::NativeWindow (окно вывода seam'а)
 #include "renderpixellayout.h"   // Render::EBackendPixelLayout (формат пикселя при readback)
 #include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
 #include "vertexformatdescriptor.h"   // Render::VertexFormatDescriptor
@@ -83,7 +84,7 @@ public:
   // --- кадр ---
   virtual HRESULT BeginScene() = 0;
   virtual HRESULT EndScene() = 0;
-  virtual HRESULT Present(HWND window, const RECT* pSrcRect, const RECT* pDstRect) = 0;
+  virtual HRESULT Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect) = 0;
 
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp) = 0;
@@ -117,6 +118,9 @@ public:
   virtual HRESULT SetTexture(unsigned samplerIndex, HTexture texture) = 0;
   virtual HRESULT SetRenderTarget(unsigned index, HSurface surface) = 0;
   virtual HRESULT SetDepthStencil(HSurface surface) = 0;
+  // Текущая поверхность глубины/трафарета (после Reset() она новая). Владеющая
+  // ручка — см. GetRenderTarget.
+  virtual HRESULT GetDepthStencil(HSurface* pOut) = 0;
   virtual HRESULT SetViewport(const BackendViewport& vp) = 0;
 
   // --- вывод ---
@@ -179,7 +183,12 @@ public:
   // Бэк-буфер текущего окна. Ручка действительна до конца вызова вызывающего
   // кода: поверхность принадлежит устройству (у Vulkan — swapchain'у), а не
   // тому, кто её запросил.
+  // Возвращает НЕвладеющую ручку: действительна до конца вызова звенящего.
   virtual HRESULT GetBackBuffer(HSurface* pOut) = 0;
+  // В отличие от GetBackBuffer — владеющая ручка (вызывающий обязан отпустить;
+  // в Render это делает DXSurfacePtr::Attach). Нужна для хранения поверхности
+  // кадра/глубины между кадрами.
+  virtual HRESULT GetRenderTarget(unsigned index, HSurface* pOut) = 0;
 
   // --- прочее ---
   // D3D9-специфично (пул MANAGED); для бэкендов без managed-пула — пустая

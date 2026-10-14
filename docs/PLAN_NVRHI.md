@@ -334,6 +334,49 @@ Vulkan (там instanced draw + per-instance атрибуты), схему ме�
 остались `D3DXLoadSurfaceFromSurface` и `D3DXSaveSurfaceToFile(PNG)` — см. §2.13)
 и одна закомментированная строка `Present`.
 
+**Четвёртый шаг (2026-10-14) — окно и отвязка ресурсов.** Считать вызовы только
+по `GetDevice()->` было неверно: в `renderer.cpp` они идут и через член
+`pDevice`. Честный замер `pDevice->` + `GetDevice()->` в `renderer.cpp`:
+**19 → 10**.
+
+* **Окно уходит из `Renderer` и из seam'а.** Новый `Render/renderwindow.h`:
+  `struct NativeWindow { void* p; }` + `MakeNativeWindow(void*)`. `Renderer`
+  хранит `NativeWindow window` вместо `HWND hWnd`; `Renderer(HWND)` →
+  `Renderer(NativeWindow)`, `SetHWND` → `SetWindow`, `Renderer::Present(HWND,…)`
+  → `Present(NativeWindow,…)`; в `IRenderBackend::Present` HWND заменён на
+  `NativeWindow`. Граница платформы — `Render/RenderInterface.cpp`
+  (`MakeNativeWindow(nWnd)`, `nWnd` приходит из `NMainFrame::GetWnd()`).
+  `HWND` в `renderer.{h,cpp}` остался только как приведение в D3D9-местах
+  (`CreateDevice`, `pp.hDeviceWindow`) — это код создания устройства, он уходит
+  на этапе 4. Отдельный заголовок, а не место в `renderbackend.h`, нужен потому,
+  что `renderbackend.h` в `renderer.h` не подключается намеренно (renderer.h
+  включается почти везде).
+* **Владеющие getters поверхностей.** В seam добавлены
+  `GetRenderTarget(index, HSurface*)` и `GetDepthStencil(HSurface*)` — в отличие
+  от `GetBackBuffer` (не владеющая ручка, действительна до конца вызова)
+  они отдают владеющую: `OnDeviceChanged()` хранит поверхности кадра и глубины
+  между кадрами через `DXSurfacePtr::Attach`. Путаницу владения здесь легко
+  сделать — `GetBackBuffer` в снимке кадра (§2.13) намеренно не владеющая.
+* **`ClearDeviceResources()` — через seam** (нулевая ручка = unbind):
+  `SetInputLayout/SetVertexShader/SetPixelShader/SetTexture×16/
+  SetRenderTarget×N/SetStreamSource×M`. Границы перебора (`NumSimultaneousRTs`,
+  `MaxStreams`) кэшируются в `Renderer::Caps` при `FillCaps()` — раньше ради них
+  каждый раз дёргался `GetDeviceCaps`; в ветке неудачного `GetDeviceCaps`
+  поставлены консервативные значения (1 RT / 256 потоков).
+* **`InvalidateResources()` → `pBackend->EvictManagedResources()`.**
+
+Остаток в `renderer.cpp` (10) — это слой создания/жизни устройства и caps:
+`Release`, `Reset`, `TestCooperativeLevel` (D3D9-восстановление, §2.3),
+`CreateQuery(D3DQUERYTYPE_EVENT)` ×2 (вертикальная синхронизация; у NVRHI —
+`EventQuery`, в seam ещё не положено), `GetDisplayMode` (перечисление режимов —
+заменит SDL, §3.x GAP), `GetDeviceCaps`, `GetDirect3D`, `GetCreationParameters`
+(§2.5 — синтез caps-структуры на этапе 3).
+
+**Грабли include-списков.** `renderer.h` отдаёт наружу кучу типов по
+транзитивности; удаление из него `#include "vertexformatdescriptor.h"`
+сломало `AOERenderer.cpp` (тот не объявляет тип сам). Правя списки include в
+общих заголовках `Render/`, надо пересобирать полный граф, а не только свой TU.
+
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
 `Src/Render/conststore.{h,cpp}`. D3D9 применяет каждую запись сразу
@@ -1313,9 +1356,14 @@ color-correct начинают получать настоящие веса) —
 - [ ] `configdatabase`: синтез `D3DCAPS9`-совместимой структуры (§2.5) +
       прогон `config.txt` через новый матчер (регресс: пины не должны
       «уехать»).
-- [ ] **Окно: `Renderer(HWND)` перестаёт принимать HWND** — окно уходит в
-      platform-слой (Win32-окно пока как есть, SDL подменяет его на этапе 3).
-      Без этого `IRenderBackend` не может быть free of HWND (§2.8).
+- [x] **Окно: `Renderer(HWND)` перестаёт принимать HWND** (закрыто 2026-10-14).
+      `Render/renderwindow.h` (`NativeWindow` + `MakeNativeWindow`),
+      `Renderer` хранит `NativeWindow`, `IRenderBackend::Present` — тоже
+      `NativeWindow`; граница платформы — `RenderInterface.cpp`. Подробности и
+      остаток — §2.8 «Четвёртый шаг».
+- [ ] **Типизация кэша viewport/scissor вне D3D9**: `BackendViewport` в seam
+      есть, но кэш в `SmartRenderer` и `RECT` в `Present`/`SetScissorRect`/
+      `StretchRect`/`ReadSurface` — Win32-структуры (§2.8, «осознанные течи»).
 - [ ] Linux-контур — **вне рамок этой ветки** (клиент пока Windows-only).
       Но `IRenderBackend` обязана не содержать `HWND`: сейчас
       `Renderer(HWND)` — окно вынести в platform-слой заранее, на этапе 2.

@@ -28,7 +28,7 @@ Interface::Interface(HWND hwnd)
   , disableWarFog(false)
 {
 	HWND nWnd = hwnd ? hwnd : NMainFrame::GetWnd();   // HWND, not unsigned int: a handle must not be truncated on x64
-	Renderer::Init(nWnd);
+	Renderer::Init(MakeNativeWindow(nWnd));
 
 	s_pSelf = this;
 }
@@ -102,13 +102,13 @@ void Interface::Present()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present( HWND hWnd, const Render::Rect& sourceRect, const Render::Rect& destRect )
 {
-	Render::GetRenderer()->Present( hWnd, &sourceRect, &destRect );
+	Render::GetRenderer()->Present( Render::MakeNativeWindow(hWnd), &sourceRect, &destRect );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present( HWND hWnd, const Render::Rect * sourceRect, const Render::Rect* destRect )
 {
-  Render::GetRenderer()->Present( hWnd, sourceRect, destRect );
+  Render::GetRenderer()->Present( Render::MakeNativeWindow(hWnd), sourceRect, destRect );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +120,6 @@ void Interface::GetTriangleAndDipCount(unsigned int& triangleCount, unsigned int
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::SetHWND( HWND hwnd)
 {
-  Render::GetRenderer()->SetHWND(hwnd);
+  Render::GetRenderer()->SetWindow(Render::MakeNativeWindow(hwnd));
 }
 } // end namespace Render
