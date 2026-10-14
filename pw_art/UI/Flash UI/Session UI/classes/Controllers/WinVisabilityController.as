@@ -1,4 +1,4 @@
-package Controllers
+﻿package Controllers
 {
 	import Events.ShowDialogEvent;
 	import flash.display.MovieClip;
@@ -15,85 +15,87 @@ package Controllers
 		private var mousePosition:Number = -1;
 		private const STICK_GAP_SIZE:int = 14;
 		private var isFinalAnimationWasShowed:Boolean = false;
-		
+
 		private var DELETE_STICKING_LISTENER:Boolean = true;
 		private var isEscMenuShowing:Boolean = false;
 		private var isHideAllWindows:Boolean;
 		private var mainSceen:MovieClip;
 		private var isTalentSetCanBeShowed:Boolean = true;
-		
+
 		public function WinVisabilityController(winArr:Array, butArr:Array, _mainSceen:MovieClip)
 		{
 			mainSceen = _mainSceen;
 			mainSceen.addEventListener(WindowVisibleControllerEvent.OPEN_CLOSE, WindowEventHandler);
 			mainSceen.addEventListener(WindowVisibleControllerEvent.OPEN, OpenWindow);
 			mainSceen.addEventListener(ShowDialogEvent.EVENT_TYPE, ShowDialog);
-			
+
 			if (!DELETE_STICKING_LISTENER)
 			{
 				mainSceen.addEventListener(WindowVisibleControllerEvent.WINDOW_MOVING, WindowMoving);
 				winArr[EWindows.WINDOW_INVENTORYBAR].StickWindow = winArr[EWindows.WINDOW_SHOPBAR];
 			}
-			
+
 			winArr[EWindows.WINDOW_SHOPBAR].x = winArr[EWindows.WINDOW_INVENTORYBAR].x - winArr[EWindows.WINDOW_SHOPBAR].windowWidth;
-			
+
 			buttons = butArr;
 			windows = winArr;
 		}
-		
+
 		public function set NonClickableMov(clip:MovieClip):void
 		{
 			nonClickableMovieclip = clip;
 		}
-		
-		private function OpenWindow(e:WindowVisibleControllerEvent):void 
+
+		private function OpenWindow(e:WindowVisibleControllerEvent):void
 		{
 			e.stopPropagation();
 			ShowSomeWindow(e.id);
 		}
-		
+
 		private function WindowEventHandler(e:WindowVisibleControllerEvent):void
 		{
 			SwitchWindowState(e.id);
 		}
-		
+
 		public function IsWindowVisible(winId:int):Boolean
 		{
 			if (windows[winId] == null) return false;
-			
+
 			return windows[winId].visible;
 		}
-		
+
 		public function SwitchWindowState(winId:int):void
 		{
 			if (windows[winId] == null) return;
-			
+
 			if (windows[winId].visible)
 				HideSomeWindow(winId)
 			else
 				ShowSomeWindow(winId);
 		}
-		
+
 		public function HideSomeWindow(winId:int):void
-		{			
+		{
 			if (windows[winId] == null) return;
-		
+
 			if (!isHideAllWindows && windows[winId].visible)
 				SoundController.PlaySound(SoundController.UI_CLOSE);
-			
+
 			windows[winId].visible = false;
-			
+
 			if (buttons[winId] != null)
 				buttons[winId].setOffState();
-			
-				
-			switch (winId) 
+
+
+			switch (winId)
 			{
 				case EWindows.WINDOW_OPTIONSBAR :
 					if (isEscMenuShowing)
 					{
 						windows[EWindows.WINDOW_ESCMENUBAR].visible = true;
 						FSCommands.Send(FSCommands.PREFERENCE_COMPONENT_CANCEL);
+						// back to the game menu (it does not block the game either)
+						mainSceen.setChildIndex(windows[EWindows.WINDOW_ESCMENUBAR], mainSceen.numChildren - 1);
 					}
 					break;
 				case EWindows.WINDOW_ESCMENUBAR:
@@ -118,36 +120,40 @@ package Controllers
 					break;
 				case EWindows.WINDOW_REPORT:
 					FSCommands.Send(FSCommands.REPORT_WINDOW_OPENED, FSCommands.DISABLE);
-			}	
+			}
 		}
-		
-		private function ShowDialog(e:ShowDialogEvent):void 
+
+		private function ShowDialog(e:ShowDialogEvent):void
 		{
 			windows[EWindows.WINDOW_MESSAGEBOX].PrepareDialog( e.dialogHeader, e.dialogText, e.OnYesFunction, e.OnNoFunction, e.OkDialog);
 			ShowSomeWindow(EWindows.WINDOW_MESSAGEBOX);
 		}
-		
+
 		public function ShowSomeWindow(winId:int):void
 		{
 			if (windows[winId] == null) return;
 
 			if (isFinalAnimationWasShowed && winId!=EWindows.WINDOW_SELECTIONCHARSTAT && winId!=EWindows.WINDOW_SELECTIONTALANTBAR && winId!=EWindows.WINDOW_REPORT && winId!=EWindows.WINDOW_MESSAGEBOX) return;
-			
+
 			if (isEscMenuShowing&&winId!=EWindows.WINDOW_OPTIONSBAR&&winId!=EWindows.WINDOW_MESSAGEBOX) return;
-			
+
 			if (winId == EWindows.WINDOW_TALENTSBAR && !isTalentSetCanBeShowed) return;
-			
+
 			PlayOpenSound(winId);
-			
+
 			windows[winId].visible = true;
 			mainSceen.setChildIndex(windows[winId], mainSceen.numChildren - 1);
-			
+
 			windows[winId].SetOnStartPosition();
-			
-			switch(winId) 
+
+			switch(winId)
 			{
-				case EWindows.WINDOW_OPTIONSBAR : 
+				case EWindows.WINDOW_OPTIONSBAR :
 					windows[EWindows.WINDOW_ESCMENUBAR].visible = false;
+					// the settings do not block the game: clicks outside the window go to the game, the hotkeys work
+					nonClickableMovieclip.visible = false;
+					FSCommands.Send(FSCommands.ESCMENU_CONTINUE);
+					FSCommands.Send(FSCommands.ESCMENU_DISABLEHOTKEYS, FSCommands.DISABLE);
 					break;
 				case EWindows.WINDOW_ESCMENUBAR :
 					FSCommands.Send(FSCommands.ESCMENU_SHOW);
@@ -158,18 +164,18 @@ package Controllers
 					if (!windows[EWindows.WINDOW_INVENTORYBAR].visible)
 						ShowSomeWindow(EWindows.WINDOW_INVENTORYBAR);
 					break;
-				case EWindows.WINDOW_MESSAGEBOX : 
+				case EWindows.WINDOW_MESSAGEBOX :
 					nonClickableMovieclip.alpha = 0;
 					mainSceen.setChildIndex(nonClickableMovieclip, mainSceen.numChildren - 2);
 					nonClickableMovieclip.visible = true;
 					break;
-			}	
-			
+			}
+
 			if (buttons[winId] != null)
-				buttons[winId].setOnState();	
+				buttons[winId].setOnState();
 		}
-		
-		private function PlayOpenSound(winId:int):void 
+
+		private function PlayOpenSound(winId:int):void
 		{
 			if (isHideAllWindows) return;
 			if (windows[winId].visible) return;
@@ -177,35 +183,40 @@ package Controllers
 				SoundController.PlaySound(SoundController.UI_OPEN_SMALL)
 			else
 				SoundController.PlaySound(SoundController.UI_OPEN_BIG);
-				
+
 		}
-		
+
 		private function EscapeMenuShowing(winId):void
 		{
+			// the game menu takes the mouse only where it is: clicks outside it go to the game, the hotkeys work
+			// (in a minigame the menu still blocks everything, as before)
+			var blocking:Boolean = windows[winId].visible && windows[winId].isPlayingMiniGame;
 			nonClickableMovieclip.alpha = 0;
 			mainSceen.setChildIndex(nonClickableMovieclip, mainSceen.numChildren - 2);
-			nonClickableMovieclip.visible = windows[winId].visible;
-			
-			if (windows[winId].visible)
+			nonClickableMovieclip.visible = blocking;
+
+			if (blocking)
 				FSCommands.Send(FSCommands.ESCMENU_DISABLEHOTKEYS, FSCommands.ENABLE);
-			else 
-				FSCommands.Send(FSCommands.ESCMENU_DISABLEHOTKEYS, FSCommands.DISABLE); 
-			
-			if (!windows[winId].isPlayingMiniGame) 
+			else
+				FSCommands.Send(FSCommands.ESCMENU_DISABLEHOTKEYS, FSCommands.DISABLE);
+			if (windows[winId].visible && !blocking)
+				FSCommands.Send(FSCommands.ESCMENU_CONTINUE); // the game controls stay on (C++ turned them off on EscMenuShow)
+
+			if (!windows[winId].isPlayingMiniGame)
 				return;
-			
+
 			if (windows[winId].visible)
 				FSCommands.Send(FSCommands.MINIGAMEMENU_OPENED);
-			else 
-				FSCommands.Send(FSCommands.MINIGAMEMENU_CLOSED); 
-			
-		}	
-		
+			else
+				FSCommands.Send(FSCommands.MINIGAMEMENU_CLOSED);
+
+		}
+
 		public function get CloseButtonTooltip():String
 		{
 			return windows[0].CloseButtonTooltip;
 		}
-		
+
 		public function set CloseButtonTooltip(value:String):void
 		{
 			for each (var window:MovieClip in windows)
@@ -214,14 +225,14 @@ package Controllers
 					window.CloseButtonTooltip = value;
 			}
 		}
-				
-		
+
+
 		public function WindowMoving(e:WindowVisibleControllerEvent):void
 		{
-			var draggedWindow:BaseDragObject = windows[e.id];		
+			var draggedWindow:BaseDragObject = windows[e.id];
 			var minimalGap:int = int.MAX_VALUE;
 			var closerWindow:BaseDragObject = null;
-		
+
 			if (draggedWindow.isWindowStick)
 			{	if (Math.abs(Math.abs(draggedWindow.mouseX)-Math.abs(draggedWindow.startDragPosition)) > STICK_GAP_SIZE)
 				{
@@ -230,64 +241,64 @@ package Controllers
 					draggedWindow.RestartStickDrag(false);
 					draggedWindow.StickWindow=null;
 					draggedWindow.x = draggedWindow.x + Math.abs(draggedWindow.mouseX) - Math.abs(draggedWindow.startDragPosition);
-					
+
 					return;
 				}
 			}
-			
+
 			//find the closest window
 			for (var i:int = 0; i < windows.length;i++)
 			{
 				if (windows[i] == null || windows[i].visible == false) continue;
-					
+
 				if (i == e.id || i == EWindows.WINDOW_ESCMENUBAR) continue;
-				
+
 				var newGap:Number = GetGapBetweenWindows(draggedWindow, windows[i]);
 
 				if (newGap == -1) continue;
-							
+
 				if (minimalGap >= newGap)
 				{
 					minimalGap = newGap;
 					closerWindow = windows[i];
 				}
 			}
-			
+
 			if (closerWindow == null ||minimalGap >STICK_GAP_SIZE)
 			{
 				draggedWindow.StickWindow=null;
 				return;
 			}
-			
+
 			var draggedIsLeft : Boolean = draggedWindow.x < closerWindow.x;
 			var offsetFromClosest:int = draggedIsLeft? ( -draggedWindow.windowWidth-1 ) : closerWindow.windowWidth;
-			
+
 			draggedWindow.x = closerWindow.x + offsetFromClosest;
-			
+
 			draggedWindow.isWindowStick = true;
 			draggedWindow.StickWindow=closerWindow;
-			draggedWindow.RestartStickDrag(true);			
-		} 
-		
+			draggedWindow.RestartStickDrag(true);
+		}
+
 		public function GetGapBetweenWindows(dragged:BaseDragObject, window:BaseDragObject):int
 		{
 			var gap:int=-1;
-			
+
 			if (dragged.x + dragged.windowWidth <= window.x+5)
 			{
 				gap = Math.abs(window.x - dragged.windowWidth - dragged.x);
-				
+
 			}
-			
+
 			if (window.x + window.windowWidth <= dragged.x+5)
 			{
 				gap= Math.abs(dragged.x - window.windowWidth - window.x);
 			}
-			
-			
+
+
 			return gap;
 		}
-		
+
 		public function ShowFinalAnimation():void
 		{
 			isFinalAnimationWasShowed = true;
@@ -297,20 +308,20 @@ package Controllers
 					windows[i].AnimationClosing();
 			}
 		}
-		
-		public function HideAllWindows():void 
+
+		public function HideAllWindows():void
 		{
 			isHideAllWindows = true;
-			
+
 			for (var i:int = 0; i < EWindows.WINDOWS_COUNT; i++)
 			{
 				HideSomeWindow(i);
 			}
-			
+
 			isHideAllWindows = false;
 		}
-		
-		public function ShowTalentsSet(show:Boolean):void 
+
+		public function ShowTalentsSet(show:Boolean):void
 		{
 			isTalentSetCanBeShowed = show;
 		}

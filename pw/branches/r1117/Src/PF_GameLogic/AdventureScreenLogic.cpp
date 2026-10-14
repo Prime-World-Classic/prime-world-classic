@@ -286,6 +286,12 @@ void AdventurepreferencesProcessor::Cancel()
   }
 }
 
+void AdventurepreferencesProcessor::SaveUserVars()
+{
+  if(!NGameX::AdventureScreen::Instance()->IsInReplayMode())
+    NGlobal::SaveConfig( NProfile::GetFullFilePath( "user.cfg", NProfile::FOLDER_USER ), STORAGE_USER );
+}
+
 void AdventurepreferencesProcessor::ApplyShortcuts()
 {
   PreferencesProcessor::ApplyShortcuts();

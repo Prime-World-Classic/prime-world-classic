@@ -77,6 +77,7 @@ namespace NGameX
     virtual ~AdventurepreferencesProcessor() {};
     virtual void Apply();
     virtual void ApplyShortcuts();
+    virtual void SaveUserVars();
     virtual void Cancel();
     virtual void ShortcutRebind( const wchar_t* command );
   };

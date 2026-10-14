@@ -698,22 +698,18 @@ namespace NWorld
 
   bool CmdPraise::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && IsValid( pTarget ) && pTarget.GetPtr() != pHero.GetPtr() && amount > 0;
+    return CheckHero(pHero, GetId()) && IsValid( pTarget ) && pTarget.GetPtr() != pHero.GetPtr();
   }
 
   void CmdPraise::Execute( NCore::IWorldBase * /*pWorld*/ )
   {
-    if ( !IsValid( pHero ) || !IsValid( pTarget ) || pTarget.GetPtr() == pHero.GetPtr() || amount <= 0 )
-      return;
-    if ( pHero->GetGold() < amount ) // the prime could be spent while the command was on its way
+    if ( !IsValid( pHero ) || !IsValid( pTarget ) || pTarget.GetPtr() == pHero.GetPtr() )
       return;
 
-    const float given = pHero->TakeGold( static_cast<float>( amount ) );
-    pTarget->AddGold( given, true );
-
+    // the praise is free and gives nothing: no prime moves (amount is kept in the command for compatibility, always 0)
 #ifndef VISUAL_CUTTED
     if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
-      pScreen->OnPraise( pHero.GetPtr(), pTarget.GetPtr(), static_cast<int>( given + 0.5f ) );
+      pScreen->OnPraise( pHero.GetPtr(), pTarget.GetPtr(), 0 );
 #endif
   }
 

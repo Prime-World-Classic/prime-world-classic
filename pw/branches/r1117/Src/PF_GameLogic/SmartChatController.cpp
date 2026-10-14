@@ -333,6 +333,10 @@ namespace NGameX
           OnItem(item);
 
           RegisterMessage(item, message);
+
+          // a message without a key (only for the chat wheel): known to the receivers, not shown in the menu
+          if (!binds->FindCommand(message->commandId.c_str()))
+            return;
           RegisterMessageHandler(item, message);
 
           const nstl::string keys(ProcessCommand(message->commandId) ? GetKeys() : smartChatNA);
@@ -844,6 +848,48 @@ namespace NGameX
   void SmartChatController::Reset()
   {
     OnDeactivate();
+  }
+
+  int SmartChatController::GetWheelMessageCount() const
+  {
+    if (!IsValid(configuration))
+      return 0;
+
+    return configuration->messages.size();
+  }
+
+  nstl::wstring SmartChatController::GetWheelMessageText(const int index) const
+  {
+    if (index < 0 || index >= GetWheelMessageCount())
+      return nstl::wstring();
+
+    const SmartChat::MessagePtr& message = configuration->messages[index];
+
+    if (!IsValid(message))
+      return nstl::wstring();
+
+    return message->text.GetText();
+  }
+
+  bool SmartChatController::SendWheelMessage(const int index)
+  {
+    if (!IsOperational())
+      return false;
+    if (index < 0 || index >= GetWheelMessageCount())
+      return false;
+
+    const SmartChat::MessagePtr& message = configuration->messages[index];
+
+    if (!IsValid(message) || !IsValid(chatClient))
+      return false;
+
+    if (!Use())
+      return false;
+
+    // the same payload as a message chosen in the menu: other players see it in their language, with the marker
+    chatClient->SendMsg(MakeSmartChatMessage(NStr::ToUnicode(message->commandId)), gamechat::ChannelType::SmartChat);
+
+    return true;
   }
 
   bool SmartChatController::Use() const

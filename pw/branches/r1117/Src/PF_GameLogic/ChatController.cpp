@@ -30,6 +30,10 @@ namespace
   static bool g_sessionChatOff = false;
   REGISTER_VAR( "session_chat_off", g_sessionChatOff, STORAGE_USER );
 
+  // settings "Communication": the ability status messages of the allies (Alt + click on a talent) in the chat
+  static bool g_showAbilityStatusMessages = true;
+  REGISTER_VAR( "show_ability_status_messages", g_showAbilityStatusMessages, STORAGE_USER );
+
   DEV_VAR_STATIC bool g_chatMuted = false;
   DEV_VAR_STATIC bool g_chatLeaverMuted = false;
   DEV_VAR_STATIC bool g_chatLeaverPartyMuted = false;
@@ -239,6 +243,10 @@ void ChatUiController::Update()
           continue;
       }
     }
+
+      // ability status messages of the allies (Alt + click on a talent, AdventureScreen::SendTalentStatusToTeam)
+      if (!g_showAbilityStatusMessages && chatMessage.userId != chatClient->GetGameUserId() && chatMessage.message.find(L"<style:#FFC864>") == 0)
+        continue;
 
       const bool proceed = HookMessageReceived(chatMessage);
 

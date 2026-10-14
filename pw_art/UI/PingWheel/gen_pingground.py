@@ -1,7 +1,7 @@
 """Ground ping visuals (Dota-like): ring on the ground (white, tinted by the game), colored beams, plain ping icon.
 usage: gen_pingground.py <outdir>
   ping_ring.dds      256x256 + mips, white glow ring -> Data/Effects/UI/Ping/PingRing.dds (AOE material)
-  ping_beam0..5.dds  32x128 vertical light beam per ping type -> Data/UI/Styles/Icons/PingWheel/
+  ping_beam<type>.dds 32x128 vertical light beam per ping type -> Data/UI/Styles/Icons/PingWheel/
   ping_icon5.dds     64x64 "!" badge of the plain ping -> Data/UI/Styles/Icons/PingWheel/
 """
 import math, struct, os, sys
@@ -11,8 +11,9 @@ OUT = sys.argv[1]
 os.makedirs(OUT, exist_ok=True)
 SS = 4
 
-# same order as s_pingWheelColors in AdventureScreen.cpp + the plain ping (5)
-COLORS = [0x60B0FF, 0xFFB040, 0xFF5A3A, 0xFF4090, 0x70E070, 0x48C8FF]
+# ping type -> color, same as s_pingColors in AdventureScreen.cpp (5 = the plain ping)
+COLORS = [0x60B0FF, 0xFFB040, 0xFF5A3A, 0xFF4090, 0x70E070, 0x48C8FF,
+          0xFFD040, 0x60E0A0, 0x40D8FF, 0x5A7CFF, 0xFFE040, 0xFF3030, 0xC070FF, 0xFF9030, 0x80D050]
 
 
 def rgb(c):

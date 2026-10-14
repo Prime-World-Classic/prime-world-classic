@@ -726,9 +726,9 @@ void AdventureFlashInterface::SetTeamPortraitsScale( float scale )
   CallMethod( "SetTeamPortraitsScale", scale );
 }
 
-void AdventureFlashInterface::ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale )
+void AdventureFlashInterface::ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, const wstring & types, float bgAlpha, float scale )
 {
-  CallMethod( "ShowPingWheel", nx, ny, labels, colors, bgAlpha, scale );
+  CallMethod( "ShowPingWheel", nx, ny, labels, colors, types, bgAlpha, scale );
 }
 
 void AdventureFlashInterface::HighlightPingWheel( int index )
@@ -744,6 +744,31 @@ void AdventureFlashInterface::PreloadPingWheel()
 void AdventureFlashInterface::HidePingWheel()
 {
   CallMethod( "HidePingWheel" );
+}
+
+void AdventureFlashInterface::ShowChatWheel( float nx, float ny, const wstring & labels, float bgAlpha, float scale )
+{
+  CallMethod( "ShowChatWheel", nx, ny, labels, bgAlpha, scale );
+}
+
+void AdventureFlashInterface::HighlightChatWheel( int index )
+{
+  CallMethod( "HighlightChatWheel", index );
+}
+
+void AdventureFlashInterface::HideChatWheel()
+{
+  CallMethod( "HideChatWheel" );
+}
+
+void AdventureFlashInterface::SetPlayerWards( int playerId, int count )
+{
+  CallMethod( "SetPlayerWards", playerId, count );
+}
+
+void AdventureFlashInterface::SetWheelEditor( int wheel, const string & varName, const string & ids, const wstring & labels, const string & icons, const string & items, const wstring & texts )
+{
+  CallMethod( "SetWheelEditor", wheel, varName, ids, labels, icons, items, texts );
 }
 
 void AdventureFlashInterface::ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,

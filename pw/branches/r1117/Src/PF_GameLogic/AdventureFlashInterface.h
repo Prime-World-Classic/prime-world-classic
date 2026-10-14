@@ -302,10 +302,19 @@ public:
   void SetChatCentered( bool centered, float raise ); // Dota-like chat in the screen center; raise = part of the screen height
   void SetTeamPortraitsScale( float scale ); // team portrait panels size, 1 = original
   // ping wheel and floating ping texts (coordinates are 0..1 parts of the screen)
-  void ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, float bgAlpha, float scale );
+  // labels, colors (RRGGBB) and ping types (icons) of the slots separated by '|', item 0 at the top, clockwise
+  void ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, const wstring & types, float bgAlpha, float scale );
   void HighlightPingWheel( int index );
   void HidePingWheel();
   void PreloadPingWheel(); // loads the wheel textures (call before the game start)
+  // chat wheel (quick chat messages): labels separated by '|', item 0 at the top, clockwise
+  void ShowChatWheel( float nx, float ny, const wstring & labels, float bgAlpha, float scale );
+  void HighlightChatWheel( int index );
+  void HideChatWheel();
+  void SetPlayerWards( int playerId, int count ); // wards placed, statistics window
+  // wheel editor of the settings window: wheel 0 = chat, 1 = ping; catalog ids / labels / icons separated by '|',
+  // items = ids of the slots "a,b,c"; varName is set by Flash (PreferenceSetVar) when the slots change
+  void SetWheelEditor( int wheel, const string & varName, const string & ids, const wstring & labels, const string & icons, const string & items, const wstring & texts );
   void SetMinimapAlertSound( bool enabled ); // the old Flash sound of minimap signals
   void SetTalentSmartCast( int column, int raw, int mode ); // smart-cast checkbox of a talent: 0 none, 1 off, 2 on
   void RefreshSmartCastBoxes();
