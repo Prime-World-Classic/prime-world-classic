@@ -4,6 +4,7 @@
 #include "ImmediateRenderer.h"
 #include "renderresourcemanager.h"
 #include "smartrenderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/EvictManagedResources
 #include "../System/nalgobase.h"
 #include "../System/Transform.h"
 #include "../System/InlineProfiler.h"
@@ -513,7 +514,7 @@ namespace Render
     sizeX *= s_SizeScale;
     sizeY *= s_SizeScale;
 
-    GetDevice()->EvictManagedResources();
+    GetBackend()->EvictManagedResources();
 
     pShadowMap = CreateShadowMap(shadowMode);
     if( pShadowMap && !pShadowMap->Init(sizeX, sizeY, depthBias, biasSlope) )

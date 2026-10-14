@@ -2,6 +2,7 @@
 #include "ShadowMap.h"
 #include "ImmediateRenderer.h"
 #include "smartrenderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/Clear/EvictManagedResources
 #include "IConfigManager.h"
 
 static bool shadowPCF4_enable = true;
@@ -104,7 +105,7 @@ void ShadowMapPCF::PreRender(void)
   SmartRenderer::BindRenderTargetColor( 0, pShadowTexture->GetSurface(0) );
   SmartRenderer::BindRenderTargetDepth( pDepth->GetDXSurface() );
   if( NewFrustumEnabled() )
-    GetDevice()->Clear(0, 0, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 0.f, 0);
+    GetBackend()->Clear(bcTarget | bcZBuffer, 0, 0.f, 0);
   else
     GetRenderer()->Clear(Color(255,255,255,255));
 }
@@ -231,7 +232,7 @@ void ShadowMapPCF_DS::PreRender(void)
 
   RenderStatesManager* const pStatesManager = GetStatesManager();
   pStatesManager->SetStateDirect(D3DRS_COLORWRITEENABLE, 0);
-  HRESULT hr = GetRenderer()->GetDevice()->Clear(0, 0, D3DCLEAR_ZBUFFER, 0, NewFrustumEnabled() ? 0.0f : 1.0f, 0);
+  HRESULT hr = GetBackend()->Clear(bcZBuffer, 0, NewFrustumEnabled() ? 0.0f : 1.0f, 0);
   hr = hr;
 
   pStatesManager->SetStateDirect(D3DRS_DEPTHBIAS, *(DWORD*)&depthBias);
@@ -496,7 +497,7 @@ void ShadowMapESM::PreRender(void)
   SmartRenderer::BindRenderTargetColor( 0, pShadowTexture->GetSurface(0) );
   SmartRenderer::BindRenderTargetDepth( pDepth->GetDXSurface() );
   if( NewFrustumEnabled() )
-    GetDevice()->Clear(0, 0, D3DCLEAR_TARGET|D3DCLEAR_ZBUFFER, 0, 0.f, 0);
+    GetBackend()->Clear(bcTarget | bcZBuffer, 0, 0.f, 0);
   else
     GetRenderer()->Clear(Color(255,255,255,255));
 }

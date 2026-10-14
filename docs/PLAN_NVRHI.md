@@ -447,6 +447,45 @@ Win32 `RECT`; конвертация `BackendRect` → `RECT` — только �
   `tools/dds_inventory` показывает битый файл `Data/Heroes/Gunslinger/S2/_.dds`
   (объявлено 11 mipmap, данных на один уровень); счётчик 2↔3 — шум прогона.
 
+**Седьмой шаг (2026-10-14) — шейдеры, Clear в тенях, viewport из immediate-слоя.**
+Счётчик живых обращений к устройству/Direct3D в `Render/` (кроме бэкенда и
+менеджера состояний): **48 → 40**, из них к устройству — **32 → 24**.
+
+* `shadercompiler.cpp`: `CreatePixelShader`/`CreateVertexShader` через seam
+  (раньше — напрямую устройство). В seam передаётся **размер** DXBC-блоба
+  (`info.code->GetBufferSize()`): D3D9 его игнорирует (читает из заголовка
+  блоба), а Vulkan/DX12-бэкенду он нужен — иначе слот под SPIR-V (§1.3)
+  пришлось бы переделывать.
+* `ShadowMap.cpp`: три `Clear` через seam (`bcTarget|bcZBuffer`, `bcZBuffer`).
+* `ImmediateRenderer.cpp`: `GetViewport` через seam, `D3DVIEWPORT9` →
+  `BackendViewport` (это не косметика: на размерах вьюпорта держится математика
+  экранного квада — `1/vp.width`, перевод координат в NDC).
+* `ShadowManager.cpp`: `EvictManagedResources` через seam.
+
+Что осталось внутри `Render/` — и почему это не «доделать механически»:
+* слой создания/перечисления устройства: `pD3D->` ×16 (`GetAdapterIdentifier`,
+  `GetAdapterCount/Monitor/ModeCount`, `EnumAdapterModes`,
+  `CheckDeviceFormat`) + `CreateDevice`/`Reset`/`Release`/`TestCooperativeLevel`
+  — этап 3/4 (режимы перечисления заменит SDL, §3.x GAP);
+* caps/свойства: `GetDeviceCaps`, `GetProperties` ×4 (`configdatabase`),
+  `GetDirect3D`, `GetCreationParameters`, `GetDisplayMode` — синтез caps-структуры
+  (§2.5);
+* `CreateQuery(D3DQUERYTYPE_EVENT)` ×2 — вертикальная синхронизация, у NVRHI это
+  `EventQuery`, в seam ещё не положено;
+* фиксированный блок `RenderDeferred2D` (`SetFVF`, `DrawPrimitiveUP`,
+  `SetVertexShader`) — план §1.4; `CreateVertexDeclaration` в `smartrenderer.cpp`
+  — часть инстансинг-хака (достроить декларацию элементом на потоке 1 под
+  `SetStreamSourceFreq`): переносится только вместе со **схемой инстансинга**
+  (§2.10), а не как отдельный вызов;
+* мёртвый код: `GetViewport` ×3 и `GetScissorRect` ×1 под `#ifdef
+  _DEBUG_VIEWPORT` (не компилируются).
+
+Замер гейта: `gross(>64)` 1,76% (выше обычного шума 0,1–1,0%) — проверено кропом:
+разница сосредоточена в верхнем левом углу и у портала, это сдвиг камеры между
+прованами (на старом кадре строение левее, кольцо арены уже); центр кадра — земля и
+тени — 0,0% грубых отличий, UI-зоны чистые. То есть «gross выше шума» само по себе
+не регрессия: надо смотреть, где именно различия (тени/земля vs анимация/камера).
+
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
 `Src/Render/conststore.{h,cpp}`. D3D9 применяет каждую запись сразу

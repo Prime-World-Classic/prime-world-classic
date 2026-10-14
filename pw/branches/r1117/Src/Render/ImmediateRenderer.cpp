@@ -5,6 +5,7 @@
 #include "primitive.h"
 #include "renderresourcemanager.h"
 #include "shadercompiler.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/BackendViewport
 #include "GlobalMasks.h"
 
 namespace Render
@@ -42,8 +43,8 @@ DXPixelShaderRef LoadPixelShader(char const* pFileName)
 
 void ImmRenderer::BasicParams::BindMaterial( const CTRect<float> *rect /*= NULL*/ ) const
 {
-  D3DVIEWPORT9 vp;
-  GetDevice()->GetViewport(&vp);
+  BackendViewport vp;
+  GetBackend()->GetViewport(vp);
 
   if(!rect)
     rect = &s_fullScreen;
@@ -52,8 +53,8 @@ void ImmRenderer::BasicParams::BindMaterial( const CTRect<float> *rect /*= NULL*
   CVec4 madValuePos;
   madValuePos.x = 0.5f * (rect->maxx - rect->minx);
   madValuePos.y = 0.5f * (rect->maxy - rect->miny);
-  madValuePos.z = 0.5f * (rect->maxx + rect->minx) - 1.0f / vp.Width;  // NOT 0.5f/width because full range is -1..1
-  madValuePos.w = 0.5f * (rect->maxy + rect->miny) + 1.0f / vp.Height; // sign inversion occurs in screen-space to viewport conversion
+  madValuePos.z = 0.5f * (rect->maxx + rect->minx) - 1.0f / vp.width;  // NOT 0.5f/width because full range is -1..1
+  madValuePos.w = 0.5f * (rect->maxy + rect->miny) + 1.0f / vp.height; // sign inversion occurs in screen-space to viewport conversion
 
   GetRenderer()->SetVertexShaderConstantsVector4(VSHADER_LOCALCONST1, madValuePos);
   GetRenderer()->SetVertexShaderConstantsVector4(VSHADER_LOCALCONST0, madValueUV);
@@ -209,15 +210,15 @@ void ImmRenderer::RenderScreenQuad(CTRect<float> const& rect, BasicParams const&
 
 void ImmRenderer::RenderScreenQuad(CTRect<int> const& rect, BasicParams const& params)
 {
-  D3DVIEWPORT9 vp;
-  GetDevice()->GetViewport(&vp);
+  BackendViewport vp;
+  GetBackend()->GetViewport(vp);
 
 	// convert coordinates
 	CTRect<float> rectFloat;
-	rectFloat.minx = 2.0f * float(rect.minx) / float(vp.Width) - 1.0f;
-	rectFloat.maxx = 2.0f * float(rect.maxx) / float(vp.Width) - 1.0f;
-	rectFloat.miny = -2.0f * float(rect.maxy) / float(vp.Height) + 1.0f;
-	rectFloat.maxy = -2.0f * float(rect.miny) / float(vp.Height) + 1.0f;
+	rectFloat.minx = 2.0f * float(rect.minx) / float(vp.width) - 1.0f;
+	rectFloat.maxx = 2.0f * float(rect.maxx) / float(vp.width) - 1.0f;
+	rectFloat.miny = -2.0f * float(rect.maxy) / float(vp.height) + 1.0f;
+	rectFloat.maxy = -2.0f * float(rect.miny) / float(vp.height) + 1.0f;
 
 	// forward
 	RenderScreenQuad(rectFloat, params);
