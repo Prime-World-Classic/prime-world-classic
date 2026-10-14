@@ -54,6 +54,21 @@ struct HSurface     { void* p = 0; };
 struct HShader      { void* p = 0; };   // VS и PS: бэкенд знает, какой слот
 struct HInputLayout { void* p = 0; };
 
+// Пул ресурса — нейтральная лексика вместо D3DPOOL (docs/PLAN_NVRHI.md §2.3).
+// Порядок значений совпадает с dxutils.h::PoolType (проверяется static_assert'
+// ами в dxutils.cpp), поэтому вызывающий код продолжает писать RENDER_POOL_*.
+// Семантика за бэкендом: в D3D9 это D3DPOOL+usage, в Vulkan/DX12 MANAGED и
+// DYNAMIC становятся staging-копией + default-ресурсом + upload-кольцом.
+enum EBackendPool {
+  BACKEND_POOL_DEFAULT = 0,
+  BACKEND_POOL_MANAGED,
+  BACKEND_POOL_DYNAMIC,
+  BACKEND_POOL_TEX_DYNAMIC,
+  BACKEND_POOL_SYSMEM,
+  BACKEND_POOL_SYSMEM_DYNAMIC,
+  BACKEND_POOL_COUNT
+};
+
 template <class H, class P>
 inline H MakeBackendHandle(P* pObj) {
   H h;
@@ -132,6 +147,14 @@ public:
   // Вершинная декларация строится из проектного VertexFormatDescriptor: перевод
   // в D3DVERTEXELEMENT9 (а в Vulkan — в VkVertexInputState) делает бэкенд.
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut) = 0;
+
+  // Создание буферов (этап 2, пулы). Выбор D3DPOOL/usage — за бэкендом.
+  // Ручка владеет одной ссылкой на созданный объект (в D3D9 — счётчик от Create*).
+  // Начальных данных в сигнатуре нет намеренно: путь записи (Lock в D3D9 сегодня,
+  // upload-кольцо в этапе 3) — отдельный, не надо плодить второй способ залить
+  // буфер прямо на создании.
+  virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) = 0;
+  virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) = 0;
 
   // --- поверхности ---
   // Фильтр при копировании прямоугольника: замер вызовов показал, что в клиенте

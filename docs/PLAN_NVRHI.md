@@ -1256,8 +1256,27 @@ color-correct начинают получать настоящие веса) —
       reallocate, а при неудачном `Reset()` остаётся в состоянии «отпущено»
       (`bDeviceLost = true`), которое разберёт повторный `Start()` или
       `RecoverFromDeviceLost()` на ближайшем `Present()`.
-- [ ] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
+- [~] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
       (`dxutils.h::PoolType` сохраняется как enum).
+      **Первый шаг сделан 2026-10-14:** создание вершинных/индексных буферов
+      переведено через `IRenderBackend` — в seam положен нейтральный enum
+      `EBackendPool` (порядок значений совпадает с `PoolType`, паритет
+      проверяется `NI_STATIC_ASSERT`-ами в `D3DPoolFromBackend`,
+      `d3d9backend.cpp`), появились `CreateVertexBuffer(size, pool, HBuffer*)` и
+      `CreateIndexBuffer(size, index32, pool, HBuffer*)`; `CreateVBInternal` /
+      `CreateIBInternal` в `dxutils.cpp` больше не зовут устройство напрямую
+      (прямых `CreateVertexBuffer`/`CreateIndexBuffer` в `dxutils.cpp` — 0),
+      34 места-потребителя (`CreateVB`/`CreateIB`/`CreateIB16`,
+      `DXVertexBufferDynamicRef` и т.п.) не менялись. Начальных данных в
+      сигнатуре нет намеренно: путь записи — отдельный.
+      **Остаток:** (а) запись — `Lock`/`Unlock` в `dxutils.cpp` (`FillVB`/
+      `FillIB`, динамические буферы) становятся upload-кольцом; (б) текстуры и
+      поверхности — `CreateTexture`/`CreateCubeTexture`/`CreateRenderTarget`/
+      `CreateDepthStencilSurface` ещё создаются устройством напрямую
+      (14 мест: `texture.cpp`, `TextureManager.cpp`, `rendersurface.cpp`,
+      `ShadowMap.cpp`, `ReadDDS.cpp`, `WaterManager.cpp`, `mesh.cpp`,
+      `ModelLoader.cpp`); (в) само разделение managed → staging+default живёт
+      в NvrhiBackend (этап 3), здесь только словарь пулов за seam'ом.
 - Критерий: картинка не меняется, E2E зелёный.
 
 ### Этап 3. `NvrhiBackend`: DX12 + Vulkan (6–10 смен)
@@ -1759,6 +1778,26 @@ A-B 11,73% / B-C 10,67% / A-C 11,41% — сигнала регресса нет;
 счётчики `LoadTextureFromFileImpl`/`FormulaVM` — как в предыдущем прогоне) +
 клиентский снимок: кадр и UI целы, «грубые» отличия от предыдущего прогона
 локализованы в светящемся портале (анимация партиклов), статичные зоны UI — 0.
+
+### Сделано (этап 2, пулы — первый шаг, 2026-10-14)
+
+| Файл | Что изменилось |
+|---|---|
+| `Render/renderbackend.h` | нейтральный `EBackendPool` (6 значений, порядок = `PoolType`) + `CreateVertexBuffer` / `CreateIndexBuffer` в `IRenderBackend` |
+| `Render/d3d9backend.{h,cpp}` | реализация; `D3DPoolFromBackend()` — единственное место, где пул становится `D3DPOOL`+`usage`; там же `NI_STATIC_ASSERT` паритета enum'ов |
+| `Render/dxutils.cpp` | `CreateVBInternal`/`CreateIBInternal` зовут `GetBackend()->Create*`; прямых `CreateVertexBuffer`/`CreateIndexBuffer` через устройство — 0 |
+
+Замечания по реализации: `NI_STATIC_ASSERT` в этом коде разворачивается в блок
+(`{ StaticAssert<…> ERROR_msg; … }`) — работать на уровне файла он не может,
+поэтому паритет проверается внутри функции; `renderer.h` объявляет
+`IRenderBackend` только forward-объявлением, поэтому `renderbackend.h` входит
+лишь в несколько TU (пересборка после правки seam'а — 5 шагов, а не 500).
+
+Гейт: x64 (Wine) + `check_exe.py` OK + E2E tiny10 (`2026.10.14-01.02.25`,
+`finish 270728c4…`, дампов нет, AutoShot ×2, счётчики `LoadTextureFromFileImpl`
+/`FormulaVM` как в предыдущих прогонах) + клиентский снимок: 11,97% отличий от
+прошлого прогона при 0,97% «грубых» — тот же уровень шума, что между двумя
+прогонами без правок (12,48%/0,91%), статичные зоны UI — 0,00%.
 
 ### Сознательные отклонения от «картинка не меняется»
 

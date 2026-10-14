@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "d3d9backend.h"
 #include "renderflagsconverter.h"
+#include "dxutils.h"   // GetD3DPoolAndUsagesParamaters + PoolType (D3D9-реализация знает про D3D9)
 
 namespace Render
 {
@@ -171,6 +172,49 @@ HRESULT D3D9Backend::CreateInputLayout(const VertexFormatDescriptor& descr, HInp
   IDirect3DVertexDeclaration9* decl_d3d = 0;
   HRESULT hr = pDevice->CreateVertexDeclaration(&elements[0], &decl_d3d);
   *pOut = MakeBackendHandle<HInputLayout>(decl_d3d);
+  return hr;
+}
+
+// Нейтральный пул -> D3DPOOL + usage. Единственное место, где EBackendPool
+// превращается в D3D9-параметры (docs/PLAN_NVRHI.md §2.3): в Vulkan/DX12 тот же
+// enum разворачивается в staging + default + upload-кольцо.
+static void D3DPoolFromBackend(EBackendPool pool, DWORD& usage, D3DPOOL& d3dPool) {
+  // Паритет словарей пулов: PoolType (dxutils.h) — словарь вызывающего кода,
+  // EBackendPool (renderbackend.h) — словарь seam'а; static_cast ниже требует,
+  // чтобы значения совпадали по порядку. NI_STATIC_ASSERT разворачивается в
+  // блок — поэтому он внутри функции, а не в файловом скоупе.
+  NI_STATIC_ASSERT((int)RENDER_POOL_DEFAULT        == (int)BACKEND_POOL_DEFAULT,        pool_default_drift);
+  NI_STATIC_ASSERT((int)RENDER_POOL_MANAGED        == (int)BACKEND_POOL_MANAGED,        pool_managed_drift);
+  NI_STATIC_ASSERT((int)RENDER_POOL_DYNAMIC        == (int)BACKEND_POOL_DYNAMIC,        pool_dynamic_drift);
+  NI_STATIC_ASSERT((int)RENDER_POOL_TEX_DYNAMIC    == (int)BACKEND_POOL_TEX_DYNAMIC,    pool_tex_dynamic_drift);
+  NI_STATIC_ASSERT((int)RENDER_POOL_SYSMEM         == (int)BACKEND_POOL_SYSMEM,         pool_sysmem_drift);
+  NI_STATIC_ASSERT((int)RENDER_POOL_SYSMEM_DYNAMIC == (int)BACKEND_POOL_SYSMEM_DYNAMIC, pool_sysmem_dynamic_drift);
+
+  NI_ASSERT(pool >= BACKEND_POOL_DEFAULT && pool < BACKEND_POOL_COUNT, "bad backend pool");
+  GetD3DPoolAndUsagesParamaters(usage, d3dPool, static_cast<PoolType>(pool));
+}
+
+HRESULT D3D9Backend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) {
+  DWORD usage;
+  D3DPOOL d3dPool;
+  D3DPoolFromBackend(pool, usage, d3dPool);
+
+  IDirect3DVertexBuffer9* vb = 0;
+  HRESULT hr = pDevice->CreateVertexBuffer(size, usage, 0, d3dPool, &vb, 0);
+  *pOut = MakeBackendHandle<HBuffer>(vb);
+  return hr;
+}
+
+HRESULT D3D9Backend::CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) {
+  DWORD usage;
+  D3DPOOL d3dPool;
+  D3DPoolFromBackend(pool, usage, d3dPool);
+
+  IDirect3DIndexBuffer9* ib = 0;
+  HRESULT hr = pDevice->CreateIndexBuffer(size, usage,
+                                          index32 ? D3DFMT_INDEX32 : D3DFMT_INDEX16,
+                                          d3dPool, &ib, 0);
+  *pOut = MakeBackendHandle<HBuffer>(ib);
   return hr;
 }
 

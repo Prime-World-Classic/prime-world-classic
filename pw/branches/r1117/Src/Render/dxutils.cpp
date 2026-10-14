@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "renderer.h"
+#include "renderbackend.h"   // HBuffer/EBackendPool: создание буферов идёт через seam
 #include "DxResourcesControl.h"
 #include "DebugLocks.h"
 #include <MemoryLib/UserMessage.h>
@@ -187,13 +188,13 @@ void GetD3DPoolAndUsagesParamaters(DWORD& usage, D3DPOOL& pool, PoolType poolTyp
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static IDirect3DVertexBuffer9* CreateVBInternal(int size, PoolType type, void const *pData = 0)
 {
-  DWORD usage;
-  D3DPOOL pool;
-  GetD3DPoolAndUsagesParamaters(usage, pool, type);
-
-  IDirect3DVertexBuffer9* d3dvb = 0;
-  HRESULT hr = GetDevice()->CreateVertexBuffer(size, usage, 0, pool, &d3dvb, 0);
+  // Создание — за бэкендом: какой D3DPOOL/usage соответствует пулу, знает он
+  // (docs/PLAN_NVRHI.md §2.3). Запись начальных данных остаётся здесь — это
+  // Lock-путь D3D9, в этапе 3 он становится upload-кольцом.
+  HBuffer handle;
+  HRESULT hr = GetBackend()->CreateVertexBuffer(size, static_cast<EBackendPool>(type), &handle);
   NI_DX_THROW_CRITICAL( hr, NStr::StrFmt("CreateVB(%d bytes)", size) );
+  IDirect3DVertexBuffer9* d3dvb = static_cast<IDirect3DVertexBuffer9*>(handle.p);
   if (pData && d3dvb)
     FillVB(d3dvb, size, pData);
   return d3dvb;
@@ -242,14 +243,12 @@ void* LockVB(IDirect3DVertexBuffer9 *pBuff, unsigned int flags, int size)
 template<typename T>
 static IDirect3DIndexBuffer9* CreateIBInternal(int size, PoolType type, T const *pData = 0)
 {
-	DWORD usage;
-	D3DPOOL pool;
-	GetD3DPoolAndUsagesParamaters(usage, pool, type);
   NI_STATIC_ASSERT((sizeof(T) == 4) || (sizeof(T) == 2), UnsupportedIndexSize);
 
-	IDirect3DIndexBuffer9* d3dib = 0;
-  HRESULT hr = GetDevice()->CreateIndexBuffer(size, usage, sizeof(T) == 4 ? D3DFMT_INDEX32 : D3DFMT_INDEX16, pool, &d3dib, 0);
+  HBuffer handle;
+  HRESULT hr = GetBackend()->CreateIndexBuffer(size, sizeof(T) == 4, static_cast<EBackendPool>(type), &handle);
 	NI_DX_THROW_CRITICAL( hr, NStr::StrFmt("CreateIB(%d bytes)", size) );
+	IDirect3DIndexBuffer9* d3dib = static_cast<IDirect3DIndexBuffer9*>(handle.p);
   if (pData  && d3dib)
     FillIB(d3dib, size, pData, 0);
 	return d3dib;

@@ -78,6 +78,9 @@ public:
   virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut);
 
+  virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
+  virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);
+
   // --- поверхности ---
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA);
