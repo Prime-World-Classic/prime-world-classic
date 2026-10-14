@@ -5,13 +5,32 @@
 
 #include "../Render/renderer.h"
 #include "../Render/GlobalMasks.h"
-#include "../Render/Material.h"
+#include "../Render/material.h"
 $(IncludeMaterialDbHeaders)
-#include "../Render/RenderResourceManager.h"
+#include "../Render/renderresourcemanager.h"
 #include "../libdb/AnimatedWrapper.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace $(ProjectName)
 {
+// NI_DB_LAYOUT_ASSERT -- variant of NI_STATIC_ASSERT used only here (this block is
+// part of the generator template - Patterns/MaterialSpecHeader.txt - keep it in
+// sync with MaterialCode.cs, which emits these checks). The "no gap between
+// significant fields" check exists because
+// Render::Material::GetRSandSamplersRep lays the field values out as raw
+// memcpy chunks for the material CRC/sort id.
+// On x64 it does not hold: NDb::Sampler contains Ptr<> (8 bytes, alignment 8),
+// so after RenderState (16 bytes, alignment 4) the sampler is realigned and a
+// 4-byte gap appears -- in the struct AND in the CRC buffer. Material identity
+// therefore has to be revisited for x64 (batching only, no rendering break),
+// see PLAN_client_modern.md, stage 3 audit.
+#ifndef NI_DB_LAYOUT_ASSERT
+#if defined(_M_X64) || defined(__x86_64__)
+#  define NI_DB_LAYOUT_ASSERT( expr, msg )
+#else
+#  define NI_DB_LAYOUT_ASSERT( expr, msg ) NI_STATIC_ASSERT( expr, msg )
+#endif
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct $(RuntimePinsClassName)
 {

@@ -30,13 +30,12 @@ namespace DBCodeGen.VisualStudioSupport
 		protected virtual string GetFileNameInProject( string fileName )
 		{
 			string fullFileName = Path.GetFullPath( fileName );
-			if ( fullFileName.StartsWith( projectPath, StringComparison.InvariantCultureIgnoreCase ) )
-			{
-				fullFileName = fullFileName.Substring( projectPath.Length );
-				if ( fullFileName.Length > 0 && ( fullFileName[0] == '\\' || fullFileName[0] == '/' ) )
-					fullFileName = fullFileName.Substring( 1 );
-				return Path.Combine( ProjectPath, fullFileName );
-			}
+			// Сравнение по компоненту пути, а не по строке: у проекта Client\Client.vcproj
+			// имя файла начинается с имени каталога; прежняя проверка считала его
+			// «внутри проекта» и обрезала имя до ".vcproj" (файл не находился).
+			string prefix = ( projectPath.EndsWith( "\\" ) || projectPath.EndsWith( "/" ) ) ? projectPath : projectPath + "\\";
+			if ( fullFileName.StartsWith( prefix, StringComparison.InvariantCultureIgnoreCase ) )
+				return fullFileName;
 
 			return Path.Combine( ProjectPath, fileName );
 		}

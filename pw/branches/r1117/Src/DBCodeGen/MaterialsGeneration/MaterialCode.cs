@@ -127,7 +127,7 @@ namespace DBCodeGen.MaterialsGeneration
       }
       for ( int i = 0; i < significantFields.Count - 1; ++i )
       {
-        checkTypesSizes.Add(string.Format("NI_STATIC_ASSERT( offsetof( {0}, {1} ) + sizeof( {1} ) == offsetof( {0}, {2} ), Found_gap_after_significant_field_{1} );", MaterialName, significantFields[i], significantFields[i + 1]));
+        checkTypesSizes.Add(string.Format("NI_DB_LAYOUT_ASSERT( offsetof( {0}, {1} ) + sizeof( {1} ) == offsetof( {0}, {2} ), Found_gap_after_significant_field_{1} );", MaterialName, significantFields[i], significantFields[i + 1]));
       }
 
 

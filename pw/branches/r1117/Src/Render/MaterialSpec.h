@@ -12,9 +12,10 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Render
 {
-// NI_DB_LAYOUT_ASSERT -- variant of NI_STATIC_ASSERT used only here (the file is
-// generated; the generator is not in the tree, so keep this block when
-// regenerating). The "no gap between significant fields" check exists because
+// NI_DB_LAYOUT_ASSERT -- variant of NI_STATIC_ASSERT used only here (this block is
+// part of the generator template - Patterns/MaterialSpecHeader.txt - keep it in
+// sync with MaterialCode.cs, which emits these checks). The "no gap between
+// significant fields" check exists because
 // Render::Material::GetRSandSamplersRep lays the field values out as raw
 // memcpy chunks for the material CRC/sort id.
 // On x64 it does not hold: NDb::Sampler contains Ptr<> (8 bytes, alignment 8),
@@ -22,10 +23,12 @@ namespace Render
 // 4-byte gap appears -- in the struct AND in the CRC buffer. Material identity
 // therefore has to be revisited for x64 (batching only, no rendering break),
 // see PLAN_client_modern.md, stage 3 audit.
+#ifndef NI_DB_LAYOUT_ASSERT
 #if defined(_M_X64) || defined(__x86_64__)
 #  define NI_DB_LAYOUT_ASSERT( expr, msg )
 #else
 #  define NI_DB_LAYOUT_ASSERT( expr, msg ) NI_STATIC_ASSERT( expr, msg )
+#endif
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
