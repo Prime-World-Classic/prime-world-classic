@@ -52,6 +52,28 @@ namespace NWorld
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// World snapshots of the open replay and a pending reopen request: they live while the replay is
+// reopened (a new runner, transceiver and combat screen). Never freed at exit on purpose - no
+// CObj releases in the static destruction order.
+struct ReplaySnapshotCache
+{
+  string fileName;
+  nstl::vector<ReplayTransceiver::Snapshot> snapshots; // sorted by step
+  bool restartPending;
+  int restartTarget;
+  bool restartPaused;
+  int restartSnapshotStep; // by step: the cache may get one more snapshot while the replay reopens
+
+  ReplaySnapshotCache() : restartPending(false), restartTarget(0), restartPaused(false), restartSnapshotStep(-1) {}
+};
+
+static ReplaySnapshotCache & Cache()
+{
+  static ReplaySnapshotCache * cache = new ReplaySnapshotCache();
+  return *cache;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ReplayStorage2::ReplayStorage2(NCore::ReplayBufferMode mode,
                                const char * fileName,
                                NWorld::IMapCollection * _mapCollection,
@@ -305,6 +327,12 @@ ReplayTransceiver::ReplayTransceiver()
 , totalSteps(0)
 , seekTarget(-1)
 , replayEnded(false)
+, commandsRegistered(false)
+, restartRequested(false)
+, restartAtLaunch(false)
+, startTarget(0)
+, startPaused(false)
+, startSnapshotStep(-1)
 {
 }
 
@@ -319,6 +347,12 @@ ReplayTransceiver::ReplayTransceiver( NCore::IReplayStorage* _replay, int _stepL
 , totalSteps(0)
 , seekTarget(-1)
 , replayEnded(false)
+, commandsRegistered(true)
+, restartRequested(false)
+, restartAtLaunch(false)
+, startTarget(0)
+, startPaused(false)
+, startSnapshotStep(-1)
 {
   NI_SYNC_FPU_START;
   stepLengthInSeconds = _stepLength/1000.0f;
@@ -343,19 +377,144 @@ ReplayTransceiver::ReplayTransceiver( NCore::IReplayStorage* _replay, int _stepL
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ReplayTransceiver::~ReplayTransceiver()
 {
-  snapshotThread = 0; // waits for a compression in progress
+  PollSnapshot( true ); // a compression in progress still goes to the cache
+  snapshotThread = 0;
   snapshotJob = 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void ReplayTransceiver::OnDestroyContent()
 {
+  UnregisterCommands();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ReplayTransceiver::UnregisterCommands()
+{
+  if ( !commandsRegistered )
+    return;
+  commandsRegistered = false;
+
   NGlobal::UnregisterCmd( "timescale" );
   NGlobal::UnregisterCmd( "replay_speed_inc" );
   NGlobal::UnregisterCmd( "replay_speed_dec" );
   NGlobal::UnregisterCmd( "replay_speed_rst" );
+  NGlobal::UnregisterCmd( "replay_pause" );
   NGlobal::UnregisterCmd( "replay_seek" );
   NGlobal::UnregisterCmd( "replay_seek_to" );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ReplayTransceiver::Detach()
+{
+  UnregisterCommands();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ReplayTransceiver::SetReplayFile( const string & fileName )
+{
+  ReplaySnapshotCache & cache = Cache();
+  if ( cache.fileName != fileName )
+  {
+    // Another replay: the snapshots of the previous one are of no use
+    cache = ReplaySnapshotCache();
+    cache.fileName = fileName;
+    return;
+  }
+
+  if ( cache.restartPending )
+  {
+    cache.restartPending = false;
+    restartAtLaunch = true;
+    startTarget = cache.restartTarget;
+    startPaused = cache.restartPaused;
+    startSnapshotStep = cache.restartSnapshotStep;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+int ReplayTransceiver::FindSnapshot( int step )
+{
+  const nstl::vector<Snapshot> & snapshots = Cache().snapshots;
+  for ( int i = 0; i < snapshots.size(); ++i )
+    if ( snapshots[i].step == step && IsValid( snapshots[i].data ) )
+      return i;
+  return -1;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool ReplayTransceiver::HasStartSnapshot() const
+{
+  return restartAtLaunch && startSnapshotStep >= 0 && FindSnapshot( startSnapshotStep ) >= 0;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// The same world load as the reconnect (GameClientPW::PollWorldData) into the map loaded in the
+// reconnect mode (MapLoadingJob, isReconnecting), before AdventureScreen::OnMapLoaded
+void ReplayTransceiver::ApplyStartSnapshot()
+{
+  if ( !HasStartSnapshot() )
+    return;
+
+  Snapshot snapshot = Cache().snapshots[FindSnapshot( startSnapshotStep )];
+  ReplayStorage2 * storage = Storage();
+  PFWorld * pfWorld = dynamic_cast<PFWorld *>( world.GetPtr() );
+  if ( !storage || !pfWorld )
+    return;
+
+  MessageTrace( "replay: reopened at the snapshot of step %d, going to step %d", snapshot.step, startTarget );
+
+  snapshot.data->Seek( snapshot.data->GetSize(), SEEKORIGIN_BEGIN );
+
+  pfWorld->GetAIWorld()->ClearVoxelMap();
+  pfWorld->GetWorldChecker()->Load( *snapshot.data );
+  pfWorld->Reset();
+  if ( pfWorld->GetAIContainer() )
+    pfWorld->GetAIContainer()->OnReconnect();
+
+  storage->SetReadPosition( snapshot.position );
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ReplayTransceiver::OnReplayLaunched()
+{
+  if ( !restartAtLaunch )
+    return;
+  restartAtLaunch = false;
+
+  if ( startTarget > GetPlayedSteps() )
+    seekTarget = startTarget;
+
+  if ( startPaused && !isPaused )
+  {
+    isPaused = true;
+    if ( adventureScreen )
+      adventureScreen->ProcessGamePause( NGameX::PAUSE_HARD, 0 );
+  }
+
+  UpdateControls();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void ReplayTransceiver::RequestRestart( int target )
+{
+  ReplaySnapshotCache & cache = Cache();
+
+  // The latest snapshot not after the target; none (the first one isn't ready yet) - from the start
+  int best = -1;
+  for ( int i = 0; i < cache.snapshots.size(); ++i )
+    if ( cache.snapshots[i].step <= target && IsValid( cache.snapshots[i].data ) )
+      best = i;
+
+  cache.restartPending = true;
+  cache.restartTarget = target;
+  cache.restartPaused = isPaused;
+  cache.restartSnapshotStep = best >= 0 ? cache.snapshots[best].step : -1;
+
+  restartRequested = true;
+  seekTarget = -1;
+
+  MessageTrace( "replay: reopening to go back to step %d (snapshot step %d)", target, best >= 0 ? cache.snapshots[best].step : 0 );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -383,8 +542,15 @@ void ReplayTransceiver::Step( float dt )
   if ( !world )
     return;
 
+  // Waiting to be reopened (ReplayRestarter): the world stays as is
+  if ( restartRequested )
+  {
+    UpdateControls();
+    return;
+  }
+
   // The start of the game: the first snapshot, so that any point can be reached back
-  if ( snapshots.empty() && !snapshotThread )
+  if ( Cache().snapshots.empty() && !snapshotThread )
     StartSnapshot( true );
 
   if ( seekTarget >= 0 )
@@ -513,30 +679,17 @@ void ReplayTransceiver::SeekTo( float fraction )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void ReplayTransceiver::SeekToStep( int target )
 {
-  if ( !world )
+  if ( !world || restartRequested )
     return;
 
   target = Max( target, 0 );
   if ( totalSteps > 0 )
     target = Min( target, totalSteps );
 
-  const int current = GetPlayedSteps();
-
-  // The latest snapshot not after the target: needed to go back, and saves time going forward
-  // over a part that was already played (after a rewind)
-  int best = -1;
-  for ( int i = 0; i < snapshots.size(); ++i )
-    if ( snapshots[i].step <= target && ( best < 0 || snapshots[i].step > snapshots[best].step ) )
-      best = i;
-
-  const int jumpThreshold = (int)( g_replaySnapshotInterval * 1000.0f / stepLength ) / 2;
-  if ( target < current || ( best >= 0 && snapshots[best].step > current + jumpThreshold ) )
+  if ( target < GetPlayedSteps() )
   {
-    if ( best < 0 || !RestoreSnapshot( snapshots[best] ) )
-    {
-      seekTarget = -1;
-      return;
-    }
+    RequestRestart( target );
+    return;
   }
 
   seekTarget = target;
@@ -556,6 +709,7 @@ void ReplayTransceiver::StartSnapshot( bool force )
   const int step = GetPlayedSteps();
   if ( !force )
   {
+    const nstl::vector<Snapshot> & snapshots = Cache().snapshots;
     const int interval = Max( 1, (int)( g_replaySnapshotInterval * 1000.0f / stepLength ) );
     for ( int i = 0; i < snapshots.size(); ++i )
       if ( abs( snapshots[i].step - step ) < interval )
@@ -590,6 +744,7 @@ void ReplayTransceiver::PollSnapshot( bool wait )
     data->Write( compressed->GetBuffer(), size );
     pendingSnapshot.data = data.GetPtr();
 
+    nstl::vector<Snapshot> & snapshots = Cache().snapshots;
     int index = 0;
     while ( index < snapshots.size() && snapshots[index].step < pendingSnapshot.step )
       ++index;
@@ -611,6 +766,7 @@ void ReplayTransceiver::PollSnapshot( bool wait )
 void ReplayTransceiver::TrimSnapshots()
 {
   const int limit = Max( 16, g_replaySnapshotMemoryMb ) * 1024 * 1024;
+  nstl::vector<Snapshot> & snapshots = Cache().snapshots;
 
   while ( snapshots.size() > 2 )
   {
@@ -626,37 +782,11 @@ void ReplayTransceiver::TrimSnapshots()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// The same world reload as the reconnect (GameClientPW::PollWorldData)
-bool ReplayTransceiver::RestoreSnapshot( const Snapshot & _snapshot )
-{
-  Snapshot snapshot = _snapshot;
-  ReplayStorage2 * storage = Storage();
-  PFWorld * pfWorld = dynamic_cast<PFWorld *>( world.GetPtr() );
-  if ( !storage || !pfWorld || !snapshot.data )
-    return false;
-
-  MessageTrace( "replay: restoring the world of step %d (from step %d)", snapshot.step, GetPlayedSteps() );
-
-  snapshot.data->Seek( snapshot.data->GetSize(), SEEKORIGIN_BEGIN );
-
-  pfWorld->GetAIWorld()->ClearVoxelMap();
-  pfWorld->GetWorldChecker()->Load( *snapshot.data );
-  pfWorld->Reset();
-  if ( pfWorld->GetAIContainer() )
-    pfWorld->GetAIContainer()->OnReconnect();
-
-  storage->SetReadPosition( snapshot.position );
-
-  replayEnded = false;
-  time = 0.0f;
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void ReplayTransceiver::UpdateControls()
 {
   if ( adventureScreen )
-    adventureScreen->UpdateReplayControls( GetPlayedSteps(), totalSteps, stepLength, NMainLoop::GetTimeScale(), isPaused, seekTarget, replayEnded );
+    adventureScreen->UpdateReplayControls( GetPlayedSteps(), totalSteps, stepLength, NMainLoop::GetTimeScale(), isPaused,
+      restartRequested ? Cache().restartTarget : seekTarget, replayEnded );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

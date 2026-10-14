@@ -84,9 +84,12 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plays a replay step by step. Seeking: forward runs the steps as fast as the frame budget
-// allows; backward restores the nearest earlier world snapshot (taken while playing, the same
-// world save/load the reconnect uses) and runs forward from it. Controls: console commands
-// replay_* (keys in replay.cfg) and the replay panel of the combat UI (ReplayControlsController).
+// allows. Backward: the world can't be loaded over the live one (objects reused by id keep
+// runtime caches pointing to the objects the load drops - crash), so the replay is reopened
+// the way a reconnect works: the map is loaded in the reconnect mode, the nearest earlier
+// world snapshot (taken while playing) is applied, then the steps run up to the target
+// (ReplayRestarter). Controls: console commands replay_* (keys in replay.cfg) and the replay
+// panel of the combat UI (ReplayControlsController).
 class ReplayTransceiver : public NCore::ITransceiver, public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_2( ReplayTransceiver, NCore::ITransceiver, BaseObjectST )
@@ -123,16 +126,29 @@ public:
   void SeekBy( float seconds );
   void SeekTo( float fraction );
 
-protected:
-  virtual void OnDestroyContent();
+  // Snapshots of a replay outlive the transceiver: the reopened replay continues from them
+  void SetReplayFile( const string & fileName );
+  // A seek back asked to reopen the replay (handled by ReplayRestarter)
+  bool IsRestartRequested() const { return restartRequested; }
+  // The reopened replay starts from a snapshot: load the map in the reconnect mode
+  bool HasStartSnapshot() const;
+  // After the map is loaded: the reconnect world load from the snapshot / then the seek and the pause
+  void ApplyStartSnapshot();
+  void OnReplayLaunched();
+  // Unregisters the console commands now: the reopened replay registers its own before this one dies
+  void Detach();
 
-private:
   struct Snapshot
   {
     int step;                                // world steps played when the snapshot was taken
     ReplayStorage2::ReadPosition position;
     CObj<Stream> data;                       // compressed world (WorldChecker format)
   };
+
+protected:
+  virtual void OnDestroyContent();
+
+private:
 
   CObj<NCore::IReplayStorage> replay;
   CPtr<NCore::IWorldBase> world;
@@ -149,7 +165,12 @@ private:
   int totalSteps;
   int seekTarget;                            // world step to reach, -1 - not seeking
   bool replayEnded;
-  nstl::vector<Snapshot> snapshots;          // sorted by step
+  bool commandsRegistered;
+  bool restartRequested;
+  bool restartAtLaunch;                      // this transceiver plays a reopened replay
+  int startTarget;
+  bool startPaused;
+  int startSnapshotStep;                     // step of the snapshot to start from, -1 - from the start
   StrongMT<SaveCompressThreadJob> snapshotJob;
   StrongMT<threading::JobThread> snapshotThread;
   Snapshot pendingSnapshot;
@@ -172,7 +193,9 @@ private:
   void StartSnapshot( bool force );
   void PollSnapshot( bool wait );
   void TrimSnapshots();
-  bool RestoreSnapshot( const Snapshot & snapshot );
+  void RequestRestart( int target );
+  static int FindSnapshot( int step );
+  void UnregisterCommands();
   void UpdateControls();
 
 public:

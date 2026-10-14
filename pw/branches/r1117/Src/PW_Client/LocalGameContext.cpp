@@ -47,7 +47,8 @@ state( ELocalGameState::Initial ),
 clientId( 1984 ),
 maxPlayers( 0 ),
 developerSex( lobby::ESex::Male ),
-isSpectator( _isSpectator )
+isSpectator( _isSpectator ),
+replayRestartWait( 0 )
 {
   NGlobal::RegisterContextCmd( "replay", this, &LocalGameContext::LoadReplay );
 
@@ -192,6 +193,8 @@ int LocalGameContext::Poll( float dt )
   switch ( state )
   {
     default:
+      if ( ReplayRunner::PollRestart( replayRunner, mapCollection, replayRestartFile, replayRestartWait ) )
+        return -1;
       if(replayRunner)
       {
         if(replayRunner->IsLoading())

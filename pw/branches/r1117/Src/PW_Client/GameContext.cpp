@@ -90,7 +90,8 @@ GameContext::GameContext( const char * _sessionKey, const char * _devLogin, cons
   socialConnection(_socialConnection),
   guildEmblem( _guildEmblem ),
   isSpectator( _isSpectator ),
-  isTutorial( _isTutorial )
+  isTutorial( _isTutorial ),
+  replayRestartWait( 0 )
 {
   /*
   if ( _sessionKey )
@@ -244,6 +245,9 @@ void GameContext::Start()
 int GameContext::Poll( float dt )
 {
   NI_PROFILE_FUNCTION;
+
+  if ( ReplayRunner::PollRestart( replayRunner, Maps(), replayRestartFile, replayRestartWait ) )
+    return -1;
 
   // Poll only replay events while loading a replay
   if(replayRunner)

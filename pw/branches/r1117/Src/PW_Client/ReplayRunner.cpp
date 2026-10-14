@@ -106,6 +106,7 @@ namespace Game
 
     transceiver = new NWorld::ReplayTransceiver( pReplay, stepLength );
     transceiver->SetUseServerReplay(g_useServerReplay);
+    transceiver->SetReplayFile(replayFileName);
 
     mapInfo.replayName = replayFileName;
 
@@ -294,6 +295,50 @@ namespace Game
       loader->StopAsyncMapLoadingJob();
   }
 
+  bool ReplayRunner::IsRestartRequested() const
+  {
+    return transceiver && transceiver->IsRestartRequested();
+  }
+
+  void ReplayRunner::Close()
+  {
+    if (transceiver)
+      transceiver->Detach();
+    NGlobal::UnregisterCmd( "replay_skip_time" );
+
+    StopAsyncMapLoadingJob();
+
+    if (advScreeen)
+      NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( advScreeen ) );
+    NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( this ) );
+  }
+
+  bool ReplayRunner::PollRestart( Weak<ReplayRunner> & runner, NWorld::IMapCollection * maps, string & restartFile, int & waitFrames )
+  {
+    if (restartFile.empty())
+    {
+      if (!runner || !runner->IsRestartRequested())
+        return false;
+
+      MessageTrace( "replay: closing the combat screen to reopen the replay" );
+      restartFile = runner->replayFileName;
+      runner->Close();
+      runner = 0;
+      waitFrames = 0;
+      return true;
+    }
+
+    // Wait (a few frames) for the old combat screen to be destroyed; give up waiting after ~10 s
+    if (NGameX::AdventureScreen::Instance() && ++waitFrames < 600)
+      return true;
+
+    Strong<ReplayRunner> reopened = new ReplayRunner( restartFile, maps );
+    restartFile.clear();
+    runner = reopened;
+    NScreenCommands::PushCommand( NScreenCommands::CreatePushScreenCommand( reopened ) );
+    return true;
+  }
+
   void ReplayRunnerLoader::OnCombatScreenStarted( NCore::IWorldBase * world, const NGameX::ReplayInfo & _replayInfo )
   {
     transceiver->SetWorld( world );
@@ -303,7 +348,8 @@ namespace Game
     NI_VERIFY(mapDescription, "Invalid map description loader!", return);
     NI_VERIFY(mapDescription->IsSuccessfullyLoaded, "Map description wasn't loaded!", return);
 
-    mapLoadingJob = new NWorld::MapLoadingJob( world, mapInfo, mapDescription->Description, mapDescription->Settings, mapDescription->Map, false );
+    // A replay reopened at a world snapshot loads the map like a reconnect does
+    mapLoadingJob = new NWorld::MapLoadingJob( world, mapInfo, mapDescription->Description, mapDescription->Settings, mapDescription->Map, transceiver->HasStartSnapshot() );
 
     replayRunner->SetProgress( mapLoadingJob->GetProgress() );
 
@@ -367,11 +413,13 @@ namespace Game
   void ReplayRunnerLoader::LaunchReplay()
   {
     NI_ASSERT( IsValid( advScreen ), "" );
+    transceiver->ApplyStartSnapshot();
     advScreen->OnMapLoaded( mapLoadingJob->MapDescriptionResource(), mapLoadingJob->GetCameraSettings() );
     advScreen->ActivateSessionSoundScene();
     advScreen->OnSessionStart(0);
     advScreen->ShowUIBlock( "EscMenuRunToCastleButton", false );
     scheduler->StartGame();
+    transceiver->OnReplayLaunched();
 
     state = ReplayRunnerLoader::S_RUNNING;
   }

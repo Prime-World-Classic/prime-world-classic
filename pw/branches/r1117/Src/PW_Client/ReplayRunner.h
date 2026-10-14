@@ -174,12 +174,22 @@ public:
   bool IsTransparent() const { return false; }
   bool IsLoading() const { return loader && loader->IsLoading(); }
   bool IsRunning() const { return loader && loader->IsRunning(); }
+  bool IsRestartRequested() const;
+
+  // A seek back reopens the replay (see NWorld::ReplayTransceiver). Called from the Poll of the
+  // context that runs replays; true while it is busy with that. The old combat screen must be
+  // destroyed before the new one is created: its destructor resets AdventureScreen::Instance()
+  // and the input section.
+  static bool PollRestart( Weak<ReplayRunner> & runner, NWorld::IMapCollection * maps, string & restartFile, int & waitFrames );
 
   int Poll(float dt) { return loader ? loader->Poll(dt) : -1; }
 
   bool SkipTime( const char *name, const vector<wstring> &args );
 
   void StopAsyncMapLoadingJob();
+
+  // Leaves the replay: stops the map loading, pops the combat screen and the runner
+  void Close();
 
 private:
   NCore::MapStartInfo mapInfo;
