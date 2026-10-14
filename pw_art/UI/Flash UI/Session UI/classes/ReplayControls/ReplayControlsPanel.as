@@ -47,6 +47,7 @@
 		private static const BUTTON_COLOR:uint = 0xFFFFFF;
 		private static const BUTTON_ALPHA:Number = 0.2;
 		private static const BUTTON_HOVER_ALPHA:Number = 0.4;
+		private static const HOVER_PAD:Number = 8; // поля фона вокруг времени под курсором
 		private static const HIT_ALPHA:Number = 0.35;
 		private static const BAR_COLOR:uint = 0x5C5C5C;
 		private static const PROGRESS_COLOR:uint = 0xD9B44A;
@@ -190,7 +191,7 @@
 			hoverBack = new Shape();
 			hoverBack.visible = false;
 			panel.addChild(hoverBack);
-			hoverText = CreateText(TEXT_SIZE, 0xFFFFFF, 64, TextFormatAlign.CENTER);
+			hoverText = CreateText(TEXT_SIZE, 0xFFFFFF, 64, TextFormatAlign.LEFT);
 			hoverText.visible = false;
 			panel.addChild(hoverText);
 		}
@@ -396,11 +397,16 @@
 				return;
 			var fraction:Number = TimelineFraction();
 			hoverText.text = FormatTime(int(total * fraction));
-			hoverText.x = Math.round(BAR_X + BarWidth() * fraction - hoverText.width / 2);
+			// Движок не выравнивает текст по центру поля: поле по ширине текста (+2 px отступа TextField
+			// с каждой стороны) и центр вручную, как в InlineTextLayout
+			var center:Number = BAR_X + BarWidth() * fraction;
+			var textW:Number = Math.ceil(hoverText.textWidth);
+			hoverText.width = textW + 4;
+			hoverText.x = Math.round(center - hoverText.width / 2);
 			hoverText.y = -hoverText.height - 2;
 			hoverBack.graphics.clear();
 			hoverBack.graphics.beginFill(PANEL_COLOR, PANEL_ALPHA);
-			hoverBack.graphics.drawRect(hoverText.x + 6, hoverText.y + 1, hoverText.width - 12, hoverText.height);
+			hoverBack.graphics.drawRect(Math.round(center - textW / 2 - HOVER_PAD), hoverText.y + 1, textW + HOVER_PAD * 2, hoverText.height);
 			hoverBack.graphics.endFill();
 			hoverText.visible = hoverBack.visible = true;
 		}
