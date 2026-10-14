@@ -1274,6 +1274,30 @@
 						<propertyName>Statistics_PingUnmute</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_233_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>ReplayControls_Back</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_234_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Pause</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_235_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Forward</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_236_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Slower</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_237_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Faster</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_238_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Timeline</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_239_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />
