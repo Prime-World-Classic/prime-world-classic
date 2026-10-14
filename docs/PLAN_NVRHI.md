@@ -433,6 +433,75 @@ Vec3TransformCoordArray`, `Vec2TransformNormalArray`), ~55 мест вызова
 (`tools/`-паттерн, как `sh_math_test`): закодировать известный кадр и сверить с
 эталонным PNG, потому что в E2E скриншот никто не вызывает.
 
+**Сделано (2026-10-14).**
+
+* В `IRenderBackend` добавлены `ReadSurface(HSurface, pCropRect, pDst, rowPitch,
+  pOutLayout)` и `GetBackBuffer(HSurface*)`. D3D9-реализация сама решает про
+  staging: поверхности пула DEFAULT (RT, бэк-буфер) CPU недоступны →
+  `GetRenderTargetData` в SYSTEMMEM, затем `LockRect` + копирование по строкам.
+  Формат пикселя — явный `Render::EBackendPixelLayout` (`renderpixellayout.h`):
+  A8R8G8B8/X8R8G8B8 у D3D9 лежит в памяти как B,G,R,A, у Vulkan-бэкенда
+  естественный ответ — R,G,B,A; перестановку делает пишущий код, иначе на этапе
+  3 каналы поменяются молча. Другой формат у источника — отказ (`D3DERR_INVALIDCALL`),
+  а не тихая подмена.
+* `Renderer::SaveFrameToFile(fileName, keepAlpha, pCropRect, useBackBuffer)` —
+  общий путь. `SaveScreenshotToFile` (её зовёт `SocialConnection`) — обёртка над
+  ней (бэк-буфер + кроп, альфа отбрасывалась и раньше через X8R8G8B8);
+  `SmartRenderer::DumpScreenshot` — тот же путь с поверхностью сцены.
+  `DumpScreenshotToMemory` **удалена**: читал её только `EditorNative` (вне
+  CMake-графа), а сама она была обёрткой над `D3DXSaveSurfaceToFileInMemory`;
+  вместо неё — `BuildDdsImage` (заголовок те же 128 байт, смещение 128 у
+  вызывающего сохраняется).
+* Писатель — `Render/screenshot.{h,cpp}`: png (IHDR + один IDAT + IEND, фильтр
+  None, `compress2`, CRC32 из zlib), bmp (32 bpp BI_RGB, строки снизу вверх —
+  отрицательная высота в DIB запрещена), dds (магия `DDS ` + `DDSURFACEDESC2`).
+  jpg/hdr умел только D3DX: дефолт `screenshot_ext` переведён `jpg` → `png`,
+  `jpg`/`hdr` в запросе сворачиваются в png (имя файла не переписывается).
+  Из `PFRenderUtils.cpp` убран Wine-гейт (`!Compatibility::IsRunnedUnderWine()` —
+  обход битого `D3DXSaveSurfaceToFile` в Wine <1.5.6): теперь снимок работает и
+  под Wine.
+* Модуль намеренно **без** `stdafx.h` (только C-stdlib, `std::vector`, zlib) —
+  компилируется нативно, вне графа клиента; в графе TU получает stdafx через
+  pch-обёртку (`Tools/ClientCMake/pch_rules.py`), поэтому её отсутствие в TU
+  сборки не ломает.
+* Смоук `tools/screenshot_test/` (g++ + zlib; дальше `check.py`: свой декодер +
+  **независимая сверка через PIL**) поймал три бага, которые по логам E2E не
+  проявились бы вообще:
+  1. CRC PNG-чанка считался **от поля длины** (`typePos` брался до вставки
+     длины) — декодер браковал каждый чанк;
+  2. DDS-заголовок писался **без магии `DDS `**, со всеми полями, сдвинутыми на 4
+     (`dwSize` в байт 0 вместо 4, маски в 88..100 вместо 92..104), и без
+     `DDSD_WIDTH` в `dwFlags`;
+  3. у **собственного декодера** теста смещения BMP были неверны
+     (`biPlanes`/`biBitCount`/`biCompression` читались с 24/26 вместо 26/30) —
+     писатель и декодер ошибались по-разному; без независимого декодера такую
+     пару легко «починить» под общую ошибку. Отсюда правило: у офлайн-смоука
+     должен быть второй декодер (PIL/`file`), а не только свой.
+  Итог: png/bmp/dds сверяются пиксель в пиксель (кадр 37×13 — нечётные размеры
+  ловят ошибку шага строки; узоры таковы, что переворот строк и подмена каналов
+  дают разные расхождения) и своим декодером, и PIL.
+* Гейт: x64-сборка под Wine (`check_exe.py` ИТОГ: OK, 15 191 552 Б) + **E2E на
+  tiny10 ПРОЙДЕН** (финальный артефакт, лог `2026.10.13-22.42.41`): login
+  `Success(5) uid=131` → lobby → `gamesvc_00` → `mapload: all map objects
+  loaded` → бой → `Switch to EGameState::Finished by 3` → `finish 7e447f97…` в
+  dev-бэкенде; дампов нет, `assert`/`shader`-ошибок нет. Предыдущий прогон того
+  же пути (до удаления мёртвого `GetFrameSize` и до ограничения кропа —
+  `2026.10.13-22.16.50`, `finish d21ab423…`) — тоже зелёный. Визуальный гейт
+  (`tools/render_shot`): кадр боя отрисован целиком (ландшафт, юнит с HP-полосой,
+  партиклы, UI, миникарта), два кадра через 26 с отличаются на 9,6% (второй
+  прогон — 5,3%) — рендер не залип.
+* **Что осталось непроверенным: readback на устройстве.** В E2E снимок никто не
+  вызывает, и в shipping его нечем вызвать: команда есть
+  (`REGISTER_CMD( screenshot, PF_Render::CommandScreenshot )`,
+  `PF_GameLogic/PFRenderUtils.cpp`; опции `asis` и имя, файл в
+  `NProfile::FOLDER_SCREENSHOTS`, cvar `screenshot_ext`; исполняется в
+  `PFRenderUtils::DumpScreenshots()` на следующем кадре), но точки ввода команд в
+  shipping-сборке нет — `command_line` (`System/Commands.cpp`) никем не
+  вызывается, `PreferencesProcessor::Apply` гоняет только `applyCommandName` из
+  БД-предпочтений, игровой консоли на стенде нет. Закрывать либо dev-хуком
+  сброса снимка по счётчику кадров (тот же переключатель, что
+  `PW_RENDER_SHADER_STATS`), либо отдельной точкой входа — по мере надобности.
+
 ### 2.12 Замер раскладки констант (2026-10-13, `conststore`)
 
 Снимок из боя на tiny10 (shipping + `PW_RENDER_SHADER_STATS`, лог
@@ -565,7 +634,14 @@ ConstStore: VS c0..c234 (235 reg, 6342864 writes, 835944 changed)
   по умолчанию был выключен — `s_enableDXHints = false`). Вместе с ним
   осиротел `IRenderablePrimitive::GetBuffers()` (7 реализаций) — убирать на
   этапе 4.
-- `DXResourcesControl` в дереве **нет** (первичная оценка ошибочна).
+- `DXResourcesControl` — **в дереве ЕСТЬ и он компилируется** (первичная
+  оценка «нет» была ошибочна, проверено 2026-10-14): `Render/DxResourcesControl.{h,cpp}`
+  в `Render.vcproj`, есть в unity-графе `_ShippingSingleExe`, подключается шестью
+  файлами — `Render/DxIntrusivePtr.h`, `dxutils.cpp`, `renderer.cpp`,
+  `TextureManager.cpp`, `shadercompiler.cpp` и **снаружи** `Render` —
+  `PF_Core/EffectsPool.cpp`. В этап 2 он не попал (это счётчик ресурсов, не
+  вызовы устройства), но этап 4 обязан его убрать/переписать — в списке удаления
+  его раньше не было.
 - `DeviceLostHandler` + `DeviceLostWrapper` (~35 классов, `NotifyDeviceLost/
   NotifyDeviceReset`, `RecoverFromDeviceLost`) — **интерфейс сохранить,
   семантику свести к «ресайз/ре-аллокация»**: в DX12/Vulkan device-lost нет.
@@ -960,7 +1036,8 @@ color-correct начинают получать настоящие веса) —
       waitEventQuery/resetEventQuery` — ложится 1:1.
       `DXManager` удалён целиком (+ cvar `DXHints`, `resourceManager` в
       `BatchQueue`; по умолчанию был выключен: `s_enableDXHints = false`).
-      `DXResourcesControl` в дереве **нет** (первичная оценка ошибочна).
+      `DXResourcesControl` в дереве ЕСТЬ и компилируется (см. §2.3 — ушёл в
+      этап 4).
       Удалены мёртвые файлы: `Render/rendertarget.h` (`#error` с 2008,
       ни одного включения), `Terrain/UberElement.{h,cpp}` (`#error`
       «deprecated 28.05.2008», ни одного включения; единственный
@@ -1001,7 +1078,9 @@ color-correct начинают получать настоящие веса) —
       (15), `Vec3Normalize` (3) + типы `D3DXVECTOR3`(105)/`D3DXMATRIX`(26)/
       `D3DXPLANE`(7). Матричные перемножения участвуют и в игровых
       трансформациях — менять только с проверкой битов (инвариант FP).
-- [ ] **Удалить GPU-окклюзию целиком** (§3.y — решение принято 2026-10-12):
+- [x] **Удалить GPU-окклюзию целиком** (§3.y — решение принято 2026-10-12,
+      удалено `a49b7d2b5`, проверено 2026-10-14: `Render/OcclusionQueries.*` в
+      дереве нет, `OcclusionQuer`/`g_useQueries` в исходниках не встречаются):
       `Render/OcclusionQueries.{h,cpp}`, `RenderComponent::GetQueries()` +
       реализации, `RenderBatch<mode>`/`switch(GetUseMode())` в `batch.cpp`,
       `IssueQueriesInvisible`, `g_useQueries`/cvar `waterUseQueries`,
@@ -1066,6 +1145,19 @@ color-correct начинают получать настоящие веса) —
       eviction по замерам этапа 0.
 - [ ] `ConstBlock` — «виртуальные регистры» c0..c255 одним буфером (§2.7),
       генерация раскладки из `GlobalMasks.h`.
+- [ ] **Состояние внутри `Src/Render`, обходящее `RenderStatesManager`**
+      (находка 2026-10-14; в §2.1 считались только утечки *снаружи* `Render`).
+      Прямых вызовов устройства внутри `Render` осталось **96** (`GetDevice()->…`),
+      из них **55 `SetRenderState`**; `FlashRenderer.cpp` — 51 вызов устройства
+      (33 «сырых» `SetRenderState`: SRCBLEND/DESTBLEND/BLENDOP, STENCIL*,
+      COLORWRITEENABLE) и `uirenderer.cpp` — тот же обход менеджера состояний,
+      что чинился в `PFRenderInterface`. Критерий «0 `GetDevice()` вне `Render`»
+      выполнен, но цель этапа 2 («`Render` ходит через один интерфейс») по
+      `FlashRenderer` не закрыта: на Vulkan-бэкенде эти состояния не попадут ни
+      в `RenderState`-ключ, ни в `IRenderBackend`. Плюс чтение состояния обратно
+      (`GetRenderState`/`GetSamplerState`/`GetVertexShaderConstantF`/
+      `GetPixelShaderConstantF`) — `conststore` (§2.9) его не покрывает, на
+      uniform-буферах ответить будет нечем.
 - [ ] `DeviceLostHandler` → `OnReallocate` (интерфейс тот же, семантика —
       ресайз).
 - [ ] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
@@ -1432,6 +1524,25 @@ build-каталога под инструментальные сборки ск
   входа, `VK_KHR_dynamic_rendering`, `VulkanBindingOffsets`,
   `frontCounterClockwise=true`, `-Zpr`).
 
+### Сделано (этап 2, снимок кадра без D3DX — закрыто 2026-10-14)
+
+| Область | Изменение |
+|---|---|
+| `Render/renderbackend.h`, `d3d9backend.{h,cpp}` | `ReadSurface` (staging-копия для пула DEFAULT + `LockRect`, кроп по строкам) и `GetBackBuffer`; формат пикселя — явный `EBackendPixelLayout` |
+| `Render/renderpixellayout.h` | новый заголовок: `plBGRA`/`plRGBA` — вынесен из интерфейса намеренно, чтобы читатель пикселей не зависел от D3D9/Windows/stdafx |
+| `Render/screenshot.{h,cpp}` | свои png/bmp/dds вместо `D3DXSaveSurfaceToFile*`; `ScreenshotFormatFromName` (jpg/hdr → png), `WriteScreenshotFile`, `BuildDdsImage` |
+| `Render/renderer.{h,cpp}` | `SaveFrameToFile` — общий путь (бэк-буфер или поверхность сцены, кроп, отброс альфы); `SaveScreenshotToFile` — обёртка; `GetBackBuffer`/`CreateOffscreenPlainSurface`/`D3DXLoadSurfaceFromSurface`/`D3DXSaveSurfaceToFileA` из `renderer.cpp` убраны |
+| `Render/smartrenderer.{h,cpp}` | `DumpScreenshot` — через `SaveFrameToFile`; `DumpScreenshotToMemory` удалена (единственный читатель — `EditorNative`, вне графа) |
+| `PF_GameLogic/PFRenderUtils.cpp` | дефолт `screenshot_ext` `jpg` → `png`; снят Wine-гейт снимка (обход битого `D3DXSaveSurfaceToFile` в Wine <1.5.6) |
+| `Render/Render.vcproj` | `screenshot.{h,cpp}`, `renderpixellayout.h` |
+| `tools/screenshot_test/` | нативный смоук писателя (`main.cpp` + `check.py`): узоры 37×13, свой декодер png/bmp/dds + независимая сверка через PIL |
+
+Детали и найденные смоуком баги (CRC PNG, смещения DDS-заголовка, смещения BMP
+в самом декодере теста) — §2.13. Гейт: x64 (Wine) + E2E tiny10 (`2026.10.13-22.42.41`,
+`finish 7e447f97…`) + скриншот-гейт (кадр боя полный, 5,3% между кадрами через
+26 с). Readback на устройстве не проверен — точки запуска снимка в shipping нет
+(§2.13, последний пункт).
+
 ### Сознательные отклонения от «картинка не меняется»
 
 1. **PostFX sharp / color-correct.** `coeffMap` был не привязан (бинд в
@@ -1446,6 +1557,10 @@ build-каталога под инструментальные сборки ск
 
 - Эмблемы гильдий: путь с D3DX оставлен как есть, переделывается заново
   (`PENDING.md` §9). Не блокирует этап 2 — фасад закрывает DDS-путь.
+  После снимка (§2.13) импорт `d3dx9_43.dll` в собранном exe — **14 символов**
+  (замер разбором импорт-таблицы `check_exe.py`): 13 математики (§2.14 — решение
+  возить DLL до этапа 4) + `D3DXCreateTextureFromFileInMemoryEx` этого пути
+  эмблем; `d3d9.dll` — 1 символ (`Direct3DCreate9`). Всего DLL в импорте — 28.
 - `.shd2`-файлы в `Data/Shaders/UberShaders/` (17 шт.) клиентом больше не
   читаются, но из контента не удалены — удаление трогает `files.list`
   (манифест обновлений), делать в контентном контуре.
