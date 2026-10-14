@@ -218,7 +218,7 @@ void PFBaseHero::PrepareExcludedResourcesList( const NDb::EFaction& sourceFactio
     HeroSkinVector::const_iterator it_end = pDbHero->heroSkins.end();
     for (; it != it_end; ++it)
     {
-      if ((*it).GetPtr() == currentSkin)
+      if (!(*it).GetPtr() || (*it).GetPtr() == currentSkin)
         continue;
 
       excludedResources.push_back(*it);
@@ -306,7 +306,7 @@ bool PFBaseHero::SetSkin( const nstl::string& skinId, bool invalidateClientObjec
     vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = pDbHero->heroSkins.begin();
     for ( ; it != pDbHero->heroSkins.end(); ++it )
     {
-      if ((*it)->persistentId == skinId)
+      if ((*it).GetPtr() && (*it)->persistentId == skinId)
       {
         heroSkinId = skinId;
         pCurrentHeroSkin = *it;
@@ -1236,7 +1236,7 @@ const NDb::HeroSkin* PFBaseHero::GetHeroSkin(const NDb::Hero* dbHeroPtr, const s
     vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = dbHeroPtr->heroSkins.begin();
     for ( ; it != dbHeroPtr->heroSkins.end(); ++it )
     {
-      if ((*it)->persistentId == skinId)
+      if ((*it).GetPtr() && (*it)->persistentId == skinId)
         return *it;
     }
   }

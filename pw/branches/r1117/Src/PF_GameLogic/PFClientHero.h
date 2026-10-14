@@ -49,7 +49,7 @@ public:
         vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = unit.heroSkins.begin();
         for ( ; it != unit.heroSkins.end(); ++it )
         {
-          if ((*it)->persistentId == skinId)
+          if ((*it).GetPtr() && (*it)->persistentId == skinId)
           {
             return (*it)->sceneObject;  
           }
