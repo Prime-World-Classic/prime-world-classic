@@ -2,6 +2,7 @@
 #include "LoadingScreenLogic.h"
 
 #include "../System/RandomGen.h"
+#include "../System/FileSystem/FileSystem.h"
 #include "../UI/ImageLabel.h"
 #include "../UI/FlashContainer2.h"
 #include "PF_GameLogic/DBSessionRoots.h"
@@ -27,6 +28,30 @@
 #include "PF_GameLogic/AdventureScreen.h"
 #include "PF_GameLogic/SessionData.h"
 
+
+// Loading screen chosen in the castle fair (written to user.cfg by the launcher): name of a background in
+// /UI/Styles/LoadingBack/Fair/<name>.dds; it is seen only by this player. Empty or missing file - the map background.
+static string g_fairLoadscreen;
+REGISTER_VAR( "fair_loadscreen", g_fairLoadscreen, STORAGE_USER );
+
+namespace
+{
+  string FairLoadingBack( const char * mapBack )
+  {
+    if ( g_fairLoadscreen.empty() || g_fairLoadscreen.size() > 64 )
+      return mapBack;
+    for ( int i = 0; i < g_fairLoadscreen.size(); ++i )
+    {
+      const char c = g_fairLoadscreen[i];
+      if ( !( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) || c == '_' || c == '-' ) )
+        return mapBack;
+    }
+    const string path = string( "/UI/Styles/LoadingBack/Fair/" ) + g_fairLoadscreen + ".dds";
+    if ( !RootFileSystem::GetFileInfo( 0, path ) )
+      return mapBack;
+    return path;
+  }
+}
 
 namespace 
 {
@@ -221,7 +246,7 @@ void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerI
 void LoadingScreenLogic::SetTempMapBack( const char* back, const char* logo )
 {
   if (flashInterface)
-    flashInterface->SetMapBack(back, logo);
+    flashInterface->SetMapBack(FairLoadingBack(back).c_str(), logo);
 }
 
 void LoadingScreenLogic::SetMap( const NDb::AdvMapDescription * _advMapDescription, const NDb::AdvMapSettings * _advMapSettings )
@@ -244,7 +269,7 @@ void LoadingScreenLogic::SetMap( const NDb::AdvMapDescription * _advMapDescripti
   const char * back =  advMapDescription->loadingBackgroundImages.back? advMapDescription->loadingBackgroundImages.back->textureFileName.c_str() : "";
   const char * logo =  advMapDescription->loadingBackgroundImages.logo? advMapDescription->loadingBackgroundImages.logo->textureFileName.c_str() : "";
 
-  flashInterface->SetMapBack(back, logo);
+  flashInterface->SetMapBack(FairLoadingBack(back).c_str(), logo);
 
   if (advMapDescription->modeVisualDescription)
     AddModeVisual(advMapDescription->modeVisualDescription);
