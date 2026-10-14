@@ -645,18 +645,38 @@ bool ReplayTransceiver::StepOnce()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Runs steps until the seek target, at most g_replaySeekFrameBudget seconds per frame: the game keeps
 // drawing and the panel shows the progress instead of freezing on a long seek.
+// The viewer's pause also pauses the world (ProcessGamePause), and a paused PFWorld::Step stands still
+// while the commands of the steps are still executed: the world would fall behind the replay for good
+// (after a rewind - by the whole way from the snapshot). So the pause is lifted for the seek steps.
 void ReplayTransceiver::StepSeek()
 {
   const NHPTimer::FTime started = NHPTimer::GetScalarTime();
 
+  bool pauseLifted = false;
+  if ( isPaused && world->IsPaused() )
+  {
+    world->SetPause( false, 0 );
+    pauseLifted = !world->IsPaused();
+  }
+
+  bool done = true;
   while ( seekTarget >= 0 && GetPlayedSteps() < seekTarget )
   {
     if ( !StepOnce() )
       break;
 
     if ( NHPTimer::GetScalarTime() - started > g_replaySeekFrameBudget )
-      return;
+    {
+      done = false;
+      break;
+    }
   }
+
+  if ( pauseLifted )
+    world->SetPause( true, 0 );
+
+  if ( !done )
+    return;
 
   seekTarget = -1;
   time = 0.0f;
