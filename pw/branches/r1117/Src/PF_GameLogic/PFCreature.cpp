@@ -21,10 +21,10 @@ PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
 namespace NWorld
 {
 PFCreature::PFCreature(PFWorld* pWorld, const CVec3& pos, const CVec2& direction, const NDb::Creature& unitDesc) : PFBaseMovingUnit(pWorld, pos, direction, unitDesc), deadUnitLifeTime(-1.0f), unitFallUndergroundOffset(-1.0f), observingTimeOffset(-1.0f), forcedAnimationTimeLeft(0.0f) {}
-void PFCreature::Reset() { PFBaseMovingUnit::Reset(); }
+void PFCreature::Reset() { PFBaseMovingUnit::Reset(); linuxDeathPresentation=LinuxDeathPresentation{}; linuxDeathNotified=false; ++linuxDeathRevision; }
 void PFCreature::OnAfterReset() { PFBaseMovingUnit::OnAfterReset(); }
 bool PFCreature::UpdateClientColor() { return PFBaseMovingUnit::UpdateClientColor(); }
-/** Advance original simulation timers without requiring the unported corpse presentation. */
+/** Advance original timers; publish the strict fall crossing without giving presentation timer ownership. */
 bool PFCreature::Step(float dtInSeconds)
 {
 	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return true;
@@ -32,7 +32,9 @@ bool PFCreature::Step(float dtInSeconds)
 	if (IsDead())
 	{
 		observingTimeOffset -= dtInSeconds;
-		if (unitFallUndergroundOffset >= 0) unitFallUndergroundOffset -= dtInSeconds;
+		if (unitFallUndergroundOffset >= 0 && (unitFallUndergroundOffset -= dtInSeconds) < 0 &&
+			deadUnitLifeTime>0 && linuxDeathPresentation.active && linuxDeathPresentation.fallStartedAt<0 && GetWorld())
+			linuxDeathPresentation.fallStartedAt=GetWorld()->GetTimeElapsed();
 		if (deadUnitLifeTime >= 0 && (deadUnitLifeTime -= dtInSeconds) < 0) RemoveCorpse();
 	}
 	if (forcedAnimationTimeLeft > 0)
@@ -46,6 +48,10 @@ bool PFCreature::Step(float dtInSeconds)
 /** Preserve authored death/unsummon deadlines and immediate forced removal. */
 void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc)
 {
+	// Lethal damage sets health to zero before this hook. Own notification identity independently.
+	const bool notify=!linuxDeathNotified && !(flags & UNITDIEFLAGS_DEFERREDDEATH);
+	const auto revision=linuxDeathRevision;
+	if (notify) { linuxDeathNotified=true; linuxDeathPresentation.active=false; linuxDeathPresentation.fallStartedAt=-1; }
 	PFBaseMovingUnit::OnUnitDie(killer, flags, damageDesc);
 	const NDb::UnitDeathParameters* params = GetDeathParams();
 	if (!params) return;
@@ -59,9 +65,18 @@ void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageD
 	// Finite negative lifetimes retain their original disabled-timer meaning.
 	deadUnitLifeTime = std::isfinite(duration) ? duration : -1;
 	if (!(flags & (UNITDIEFLAGS_DONTPLAYDEATHANIMATION | UNITDIEFLAGS_DEFERREDDEATH | UNITDIEFLAGS_UNSUMMON)))
+	{
 		unitFallUndergroundOffset = std::isfinite(params->fallOffset) ? params->fallOffset : -1;
+		if (notify && revision==linuxDeathRevision && IsDead() && std::isfinite(duration) && GetWorld() &&
+			std::isfinite(GetWorld()->GetTimeElapsed()) && GetWorld()->GetTimeElapsed()>=0) {
+			if (++linuxDeathPresentation.sequence==0) ++linuxDeathPresentation.sequence;
+			linuxDeathPresentation.startedAt=GetWorld()->GetTimeElapsed();
+			linuxDeathPresentation.fallSpeed=std::isfinite(params->fallSpeed) && params->fallSpeed>0 ? params->fallSpeed : 0;
+			linuxDeathPresentation.active=true;
+		}
+	}
 }
-void PFCreature::OnRessurect() { deadUnitLifeTime = -1.0f; unitFallUndergroundOffset = -1.0f; observingTimeOffset = -1.0f; }
+void PFCreature::OnRessurect() { deadUnitLifeTime = -1.0f; unitFallUndergroundOffset = -1.0f; observingTimeOffset = -1.0f; linuxDeathPresentation.active=false; linuxDeathPresentation.fallStartedAt=-1; linuxDeathNotified=false; ++linuxDeathRevision; }
 void PFCreature::PlaceSkeleton(bool) {}
 int PFCreature::ReplaceAnimSet(NDb::Ptr<NDb::AnimSet>) { return -1; }
 void PFCreature::RollbackAnimSet(int) {}
@@ -74,7 +89,7 @@ CObj<IPFState> PFCreature::InvokeAbility(int, Target const&) { return 0; }
 void PFCreature::ForceAnimation(const string&, int) { forcedAnimationTimeLeft = 1e10f; }
 void PFCreature::StopForcedAnimation(bool) { forcedAnimationTimeLeft = 0.0f; }
 /** Base corpse retirement is presentation/timer ownership; creep subclasses also retire the object. */
-void PFCreature::RemoveCorpse() { deadUnitLifeTime = -1; }
+void PFCreature::RemoveCorpse() { deadUnitLifeTime = -1; linuxDeathPresentation.active=false; ++linuxDeathRevision; }
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFCreature, NWorld)

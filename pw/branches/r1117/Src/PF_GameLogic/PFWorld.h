@@ -18,6 +18,7 @@
 #include "Core/Scheduler.h"
 #if defined(PW_LINUX_NULL_RENDER)
 #include "LinuxAttackPresentation.h"
+#include "LinuxDeathPresentation.h"
 #endif
 
 
@@ -87,6 +88,7 @@ class PFMinigamePlace;
 struct LinuxDynamicWorldMarker
 {
 	LinuxAttackPresentation attack;
+	LinuxDeathPresentation death;
   enum EKind
   {
     KIND_HERO = 1,

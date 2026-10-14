@@ -9,6 +9,7 @@ class LinuxAnimationGraphBank
 		bool used=false;
 		float heading=0;
 		bool hasFacing=false;
+		unsigned long long deathSequence=0;
 		std::unique_ptr<LinuxAnimationGraphPlayback> player;
 	};
 	std::map<int,Entry> entries;
@@ -20,6 +21,7 @@ class LinuxAnimationGraphBank
 public:
 	size_t created=0,unsupported=0,sampled=0,movingSamples=0,failed=0;
 	size_t attackStarts=0,attackSkipped=0,attackFaces=0;
+	size_t deathStarts=0,deathSamples=0;
 	/** Retain only the previous visible frame; at most 58 meshes are admitted by the caller. */
 	void Begin(const void* nextWorld,const std::shared_ptr<const void>& nextScene,double seconds)
 	{
@@ -34,18 +36,21 @@ public:
 		}
 	}
 	/** Resolve the SessionVisualRoot's actual Hero/Creep aliases, never infer clip names. */
-	LinuxAnimationGraphPlayback* Resolve(const LinuxHeroSceneAssetPreview& asset,const NWorld::LinuxDynamicWorldMarker& marker,float* heading=nullptr)
+	LinuxAnimationGraphPlayback* Resolve(const LinuxHeroSceneAssetPreview& asset,const NWorld::LinuxDynamicWorldMarker& marker,float* heading=nullptr,float* corpseDrop=nullptr)
 	{
-		if (marker.objectId<0 || marker.dead || !std::isfinite(clock) || clock<0) return nullptr;
+		if (marker.objectId<0 || !std::isfinite(clock) || clock<0) return nullptr;
 		auto it=entries.find(marker.objectId);
+		// Only already-visible owners can start a fresh death; never recreate an offscreen corpse.
+		if (marker.dead && (!marker.death.active || it==entries.end())) return nullptr;
 		if (it==entries.end()) {
 			if (entries.size()>=128) { ++failed; return nullptr; }
 			it=entries.emplace(marker.objectId,Entry{}).first;
 		}
 		auto& entry=it->second; entry.used=true;
 		if (entry.asset!=&asset || entry.component!=asset.animationComponent.GetPtr()) {
+			if (marker.dead) return nullptr;
 			entry.asset=&asset; entry.component=asset.animationComponent.GetPtr(); entry.player.reset();
-			entry.heading=0; entry.hasFacing=false;
+			entry.heading=0; entry.hasFacing=false; entry.deathSequence=0;
 			const auto root=NDb::SessionRoot::GetRoot();
 			const int kind=marker.kind==NWorld::LinuxDynamicWorldMarker::KIND_HERO ? NDb::ANIMSETID_HERO : NDb::ANIMSETID_CREEP;
 			if (root && root->visualRoot && kind<root->visualRoot->animSets.sets.size())
@@ -53,6 +58,34 @@ public:
 			if (entry.player) ++created; else ++unsupported;
 		}
 		if (!entry.player) return nullptr;
+		if (marker.dead) {
+			const auto& death=marker.death;
+			const double age=clock-death.startedAt;
+			if (!death.sequence || !std::isfinite(age) || age<0) return nullptr;
+			if (entry.deathSequence!=death.sequence) {
+				if (age>.25) return nullptr;
+				entry.player->EndDeath();
+				if (!entry.player->Advance(clock,false) || !entry.player->BeginDeath()) return nullptr;
+				entry.deathSequence=death.sequence; ++deathStarts;
+			}
+			if (!entry.player->Advance(clock,false)) return nullptr;
+			if (heading) *heading=entry.heading;
+			if (corpseDrop) {
+				*corpseDrop=0;
+				const double completed=entry.player->DeathCompletedAt();
+				const double falling=clock-std::max(death.fallStartedAt,completed);
+				const double height=double(asset.meshPreview.maxZ)-asset.meshPreview.minZ;
+				// Original StartFallThrough caps travel at three authored half-heights.
+				if (completed>=0 && death.fallStartedAt>=0 && std::isfinite(falling) && falling>0 &&
+					std::isfinite(death.fallSpeed) && death.fallSpeed>0 && std::isfinite(height) && height>0) {
+					const double distance=std::min(falling*death.fallSpeed,1.5*height);
+					if (std::isfinite(distance) && distance<=std::numeric_limits<float>::max()) *corpseDrop=static_cast<float>(distance);
+				}
+			}
+			++sampled; ++deathSamples; return entry.player.get();
+		}
+		entry.player->EndDeath(); entry.deathSequence=0;
+		if (corpseDrop) *corpseDrop=0;
 		if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
 		if ((!entry.hasFacing || marker.moving) && marker.hasMoveDirection &&
 			LinuxBootstrap::FacingYaw(marker.moveDirX,marker.moveDirY,entry.heading)) entry.hasFacing=true;

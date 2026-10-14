@@ -1,6 +1,9 @@
 #pragma once
 
 #include "PFBaseMovingUnit.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxDeathPresentation.h"
+#endif
 
 namespace NGameX { class PFClientCreature; };
 namespace NDb { struct AnimSet; enum EAnimStates; }
@@ -30,6 +33,15 @@ protected:
 
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(1,(PFBaseMovingUnit*)this); f.Add(2,&deadUnitLifeTime); f.Add(3,&unitFallUndergroundOffset); f.Add(4,&observingTimeOffset);  f.Add(5,&forcedAnimationTimeLeft); return 0; }
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Read-only nonserialized presentation; never used to advance simulation timers. */
+	const LinuxDeathPresentation& GetLinuxDeathPresentation() const { return linuxDeathPresentation; }
+private:
+	LinuxDeathPresentation linuxDeathPresentation;
+	bool linuxDeathNotified=false;
+	unsigned long long linuxDeathRevision=0;
+public:
+#endif
   PFCreature(PFWorld* pWorld, const CVec3 &pos, const CVec2 & direction, const NDb::Creature &unitDesc);
 
   int ReplaceAnimSet( NDb::Ptr<NDb::AnimSet> pSet );

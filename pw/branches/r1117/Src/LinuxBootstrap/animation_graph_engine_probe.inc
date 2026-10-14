@@ -216,8 +216,61 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 		check(heading==0,"offscreen reentry starts from current world direction, not a stale attack cue");
 	}
 	{
-		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set);
-		const bool ready=idle && move && attack && idle->Advance(0,false) && move->Advance(0,true) &&
+		auto player=LinuxAnimationGraphPlayback::Create(asset,set);
+		check(player && player->Advance(0,false) && player->BeginDeath(),"original graph admits the authored death state");
+		if (player) {
+			check(player->Dying() && !player->BeginAttack(1),"death overrides later attack requests");
+			check(player->Advance(.1,true) && player->Dying(),"movement cannot replace a dying unit pose");
+			player->EndDeath();
+			check(!player->Dying() && player->Advance(.2,false),"resurrection restarts original living graph state");
+		}
+		LinuxAnimationGraphBank bank; int world=0; auto map=std::make_shared<int>(1);
+		NWorld::LinuxDynamicWorldMarker marker; marker.objectId=100; marker.kind=marker.KIND_HERO;
+		marker.hasMoveDirection=true; marker.moveDirX=1;
+		float heading=0;
+		bank.Begin(&world,map,0); bank.Resolve(asset,marker,&heading);
+		marker.dead=true; marker.death.active=true; marker.death.sequence=1; marker.death.startedAt=0;
+		const auto* dying=bank.Resolve(asset,marker,&heading);
+		check(dying && dying->Dying() && heading==90,"visible death retains its original graph and last facing");
+		bank.Begin(&world,map,.1);
+		check(bank.Resolve(asset,marker)==dying && dying,"subsequent corpse frames do not restart death");
+		marker.death.fallStartedAt=.1; marker.death.fallSpeed=3;
+		float drop=99;
+		bank.Begin(&world,map,.2); bank.Resolve(asset,marker,&heading,&drop);
+		check(drop==0,"early fall timer cannot sink a still-playing death animation");
+		double corpseClock=.2;
+		while (dying && dying->DeathCompletedAt()<0 && corpseClock<6) {
+			corpseClock+=.1; bank.Begin(&world,map,corpseClock); dying=bank.Resolve(asset,marker,&heading,&drop);
+		}
+		check(dying && dying->DeathCompletedAt()>=0 && drop==0,"original 99 percent callback records completion without catching up an early fall timer");
+		corpseClock+=.1; bank.Begin(&world,map,corpseClock); bank.Resolve(asset,marker,&heading,&drop);
+		check(std::abs(drop-.3f)<.0001f,"completed corpse sinks at authored speed after both lifecycle gates");
+		marker.death.fallSpeed=std::numeric_limits<float>::max(); bank.Resolve(asset,marker,&heading,&drop);
+		check(std::isfinite(drop) && std::abs(drop-1.5f*(asset.meshPreview.maxZ-asset.meshPreview.minZ))<.001f,
+			"corpse fall distance is bounded by three authored half-heights");
+		marker.death.fallSpeed=std::numeric_limits<float>::infinity(); bank.Resolve(asset,marker,&heading,&drop);
+		check(drop==0,"invalid sinking metadata leaves the mesh on its original ground plane");
+		marker.death.active=false;
+		check(!bank.Resolve(asset,marker),"world corpse removal immediately stops drawing");
+		marker.dead=false;
+		const auto* living=bank.Resolve(asset,marker);
+		check(living && !living->Dying(),"same world identity returns to living animation after resurrection");
+		marker.dead=true; marker.death.active=true;
+		bank.Begin(&world,map,corpseClock+.1); bank.Begin(&world,map,corpseClock+.2);
+		check(!bank.Resolve(asset,marker),"offscreen corpse never replays an old death on reentry");
+		marker.dead=false; bank.Resolve(asset,marker);
+		marker.dead=true; marker.death.startedAt=corpseClock+1;
+		check(!bank.Resolve(asset,marker),"future death timestamps cannot start a corpse graph");
+		marker.death.startedAt=0;
+		check(!bank.Resolve(asset,marker),"stale death timestamps cannot queue a delayed death");
+		marker.death.startedAt=corpseClock+.2; marker.death.sequence=2;
+		check(bank.Resolve(asset,marker)!=nullptr,"a fresh subsequent death can use the retained living owner");
+		bank.Begin(&world,map,corpseClock+2);
+		check(!bank.Resolve(asset,marker),"long presentation gaps hide a corpse instead of restarting its death clip");
+	}
+	{
+		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set),death=LinuxAnimationGraphPlayback::Create(asset,set);
+		const bool ready=idle && move && attack && death && death->Advance(0,false) && death->BeginDeath() && death->Advance(.4,false) && idle->Advance(0,false) && move->Advance(0,true) &&
 			attack->Advance(0,false) && attack->BeginAttack(1) && attack->Advance(.4,false) &&
 			idle->Advance(.4,false) && move->Advance(.4,true);
 		check(ready,"three original poses are ready for renderer integration");
@@ -243,14 +296,15 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 				glPopMatrix();
 				std::vector<unsigned char> pixels(256*256*4); glReadPixels(0,0,256,256,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); return pixels;
 			};
-			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),repeated=draw(idle.get());
+			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),dying=draw(death.get()),repeated=draw(idle.get());
 			size_t visible=0; for (size_t i=0; i<first.size(); i+=4) if (first[i] || first[i+1] || first[i+2]) ++visible;
 			fprintf(stdout,"Animation graph pixels: visible=%zu different=%d repeated=%d builds=%zu hits=%zu\n",visible,first!=second,first==repeated,poses.builds,poses.hits);
 			check(visible>1000,"original Plane geometry produces visible pixels");
 			check(first!=second && first==repeated,"independent idle/move graph poses survive actual drawing and warm pose-cache reuse");
 			check(attacking!=first && attacking!=second,"accepted attack produces a distinct original skinned pose on screen");
 			check(turned!=attacking,"changed heading rotates original attack geometry without changing its cached pose");
-			check(poses.builds==3 && poses.hits==2,"pose cache separates shared-model unit graphs and reuses pure facing changes");
+			check(dying!=first && dying!=second && dying!=attacking,"authored death produces a distinct original skinned pose");
+			check(poses.builds==4 && poses.hits==2,"pose cache separates living and death graphs and reuses pure facing changes");
 			for (const auto& texture : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&texture.second.texture);
 			glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(mode);
 			glPopClientAttrib(); glPopAttrib(); glActiveTexture(active);

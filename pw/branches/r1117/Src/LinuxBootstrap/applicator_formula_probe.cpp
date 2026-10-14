@@ -1377,6 +1377,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "damage_extended_b13_tests.inc"
 #include "death_cleanup_b13_tests.inc"
 #include "dead_world_b13_tests.inc"
+#include "death_presentation_b13_tests.inc"
 #include "hero_corpses_b13_tests.inc"
 #include "nature_override_b13_tests.inc"
 #include "terrain_formulas_b13_tests.inc"
@@ -1542,6 +1543,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DeathCleanupStateB13(check);
 	DeathCleanupDeferredB13(check);
 	DeadWorldB13(check);
+	DeathPresentationB13(check);
 	HeroCorpsesB13(check);
 	ScreamTargetsB13(check);
 	DamageExtendedB13(check);

@@ -184,12 +184,28 @@ on map/world replacement or clock rewind. Pose-cache keys include graph identity
 so units sharing a mesh can display different states at the same timestamp.
 Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
 boundary; the Windows definitions are unchanged. This is presentation-only:
-cast/death events, movement-speed scaling, upper-body graphs, dynamic external
+cast events, movement-speed scaling, upper-body graphs, dynamic external
 parameters and gameplay animation callbacks remain unconnected.
 Live playback uses world time (including pauses), restarts after a gap over one second, and
 recreates graphs after offscreen eviction. Unadmitted assets and the separate
 character-inspection view retain the first-clip preview. The engine probe covers
 original graph transitions, malformed metadata, ownership and actual pose pixels.
+
+Ordinary animated deaths expose a nonserialized corpse snapshot from the original
+creature lifecycle. Already-visible supported graphs request the session death
+alias and retain their last heading; the authored graph owns its final corpse pose.
+Sinking waits for both the original strict fall-timer crossing and the graph's
+original 99% death-completion callback, then advances at authored speed capped
+at three mesh half-heights. Completion is recorded on the rendered world-clock
+frame; it never catches up sinking time from before the death animation finished.
+Corpse removal and resurrection invalidate
+presentation without changing world timers, object retirement or respawn behavior.
+Death notification identity is separate from health, which lethal damage clears
+before the hook, and cannot restart on repeated kills. Only fresh deaths observed
+within 250 ms are admitted. Offscreen or replaced owners and gaps over one second
+hide corpses rather than replay death. Unsupported graphs, unsummon, deferred death,
+no-animation and forced-removal paths keep the previous no-corpse rendering;
+separate skeleton/effect objects and complete corpse/visibility parity remain open.
 
 Accepted native base attacks publish a nonserialized presentation cue independent
 of their dispatch lifetime. Live markers carry the ability identity, sequence,

@@ -41,6 +41,12 @@ public:
 		result->move=result->graph->GetNodeIDByNameSlowQuite(move.commonNode.c_str());
 		if (set->states.size()>NDb::ANIMSTATES_ATTACK && mapped(set->states[NDb::ANIMSTATES_ATTACK]))
 			result->attack=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_ATTACK].commonNode.c_str());
+		if (set->states.size()>NDb::ANIMSTATES_DEATH && mapped(set->states[NDb::ANIMSTATES_DEATH]))
+			result->death=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_DEATH].commonNode.c_str());
+		// Match PFClientCreature's original normal-graph death-completion event, without world callbacks.
+		if (result->death>=0 && static_cast<unsigned>(result->death)<result->graph->GetNumNodes() &&
+			!result->graph->RegisterCallback(DIANGR_NODE,result->death,DeathComplete,DIANGR_CF_EXACT_PARAM,result.get(),.99f))
+			result->death=-1;
 		if (result->idle<0 || result->move<0 || static_cast<unsigned>(result->idle)>=result->graph->GetNumNodes() ||
 			static_cast<unsigned>(result->move)>=result->graph->GetNumNodes()) return {};
 		result->matrices.resize(skeleton->GetData()->jointsCount);
@@ -53,14 +59,17 @@ public:
 	bool Advance(double seconds, bool moving)
 	{
 		if (!std::isfinite(seconds) || seconds<0 || seconds>1e9) return false;
+		if (dying) moving=false;
 		if (seconds==last && moving==wasMoving && !dirty) return true;
 		const bool restart=last<0 || seconds<last || seconds-last>1;
+		// A suspended corpse is hidden instead of replaying death from its first frame.
+		if (restart && dying) return false;
 		if (restart) {
 			if (!blender->Restart(graph->GetDefNode())) return false;
 			target=-1; attackUntil=-1;
 		}
 		if (Attacking() && (moving || seconds>=attackUntil)) CancelAttack();
-		const int requested=Attacking() ? attack : moving ? move : idle;
+		const int requested=dying ? death : Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
 			target=requested;
@@ -79,13 +88,27 @@ public:
 			for (size_t j=0; j<12; ++j) if (!std::isfinite(values[j])) return false;
 		}
 		std::copy(pose,pose+matrices.size(),matrices.begin());
+		if (deathFinished && deathCompletedAt<0) deathCompletedAt=seconds;
 		last=seconds; wasMoving=moving; dirty=false; ++updates; return true;
 	}
 	const std::vector<Matrix43>& Matrices() const { return matrices; }
+	/** Death presentation overrides locomotion and attack without firing simulation callbacks. */
+	bool BeginDeath()
+	{
+		if (dying) return true;
+		if (last<0 || death<0 || static_cast<unsigned>(death)>=graph->GetNumNodes() ||
+			!blender->SetMainAGTargetNode(death)) return false;
+		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=death; dirty=true; return true;
+	}
+	/** Resurrection discards the previous death pose and clock. */
+	void EndDeath() { if (dying) { dying=false; deathFinished=false; deathCompletedAt=-1; last=-1; target=-1; attackUntil=-1; dirty=true; } }
+	bool Dying() const { return dying; }
+	/** World-clock frame in which the original 99% death callback was reached, or -1. */
+	double DeathCompletedAt() const { return deathCompletedAt; }
 	/** Start one visual attack window; combat remains authoritative and independent. */
 	bool BeginAttack(double period)
 	{
-		if (last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
+		if (dying || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
 			!std::isfinite(period) || period<=0 || period>60) return false;
 		if (!blender->SetMainAGTargetNode(attack)) return false;
 		target=attack; attackUntil=last+period; dirty=true; return true;
@@ -97,6 +120,13 @@ public:
 	int TargetNode() const { return target; }
 	unsigned Updates() const { return updates; }
 private:
+	/** Callback storage is graph-owned and destroyed while its presentation owner is still alive. */
+	static DiInt32 DeathComplete(const DiAnGrCallbackParams& event)
+	{
+		auto* owner=static_cast<LinuxAnimationGraphPlayback*>(event.vpUserData);
+		if (owner && owner->dying) owner->deathFinished=true;
+		return DIOBJMSG_CONTINUE;
+	}
 	/** Original names use a 36-byte fixed slot and the original loader accepts at most 60 clips. */
 	static bool Supported(const NDb::DBAnimatedSceneComponent& component)
 	{
@@ -147,8 +177,8 @@ private:
 	std::unique_ptr<DiAnimGraph,DeleteGraph> graph;
 	std::unique_ptr<DiAnGrExtPars> parameters;
 	std::vector<Matrix43> matrices;
-	double last=-1,attackUntil=-1;
-	int idle=-1,move=-1,attack=-1,target=-1;
-	bool wasMoving=false,dirty=false;
+	double last=-1,attackUntil=-1,deathCompletedAt=-1;
+	int idle=-1,move=-1,attack=-1,death=-1,target=-1;
+	bool wasMoving=false,dirty=false,dying=false,deathFinished=false;
 	unsigned updates=0;
 };

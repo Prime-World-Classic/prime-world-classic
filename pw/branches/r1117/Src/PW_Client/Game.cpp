@@ -52391,10 +52391,12 @@ bool DrawLinuxMapHeroMeshReplica(
     marker.y);
   const float baseY = (localView ? .04f : 1.10f) + terrainHeight * scale;
 	float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
-	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(heroPreview->sceneAsset,marker,&yaw) : nullptr;
+	float corpseDrop=0;
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(heroPreview->sceneAsset,marker,&yaw,&corpseDrop) : nullptr;
+	if (marker.dead && !graphPose) return false;
 
   glPushMatrix();
-  glTranslatef(x, baseY, z);
+	glTranslatef(x, baseY-corpseDrop*scale, z);
   glRotatef(yaw, 0.0f, 1.0f, 0.0f);
 	// Undo the inspection normalization so live units retain their authored world size.
 	const auto& bounds = heroPreview->sceneAsset.meshPreview;
@@ -52447,13 +52449,15 @@ bool DrawLinuxMapUnitMeshReplica(
     marker.moving ? 24.0 : 9.0,
     0.051,
     0.027);
-	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(unitPreview->sceneAsset,marker,&yaw) : nullptr;
+	float corpseDrop=0;
+	const auto* graphPose=overlay->unitAnimationGraphs ? overlay->unitAnimationGraphs->Resolve(unitPreview->sceneAsset,marker,&yaw,&corpseDrop) : nullptr;
+	if (marker.dead && !graphPose) return false;
 	const auto& bounds = unitPreview->sceneAsset.meshPreview;
 	const float meshScale = localView ? std::max(.1f, bounds.maxZ - bounds.minZ) * scale / 5.2f :
 		(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? .50f : .42f);
 
   glPushMatrix();
-  glTranslatef(x, baseY, z);
+	glTranslatef(x, baseY-corpseDrop*scale, z);
   glRotatef(yaw, 0.0f, 1.0f, 0.0f);
   glScalef(meshScale, meshScale, meshScale);
   const bool drawn = DrawLinuxHeroMeshPreview(
@@ -52994,7 +52998,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
 	// Decide the existing mesh-pass gates from the same immutable marker snapshot.
 	bool anyHeroMesh = false, anyCreepMesh = false;
 	for (const auto& marker : markers) {
-		if (marker.dead || !ShouldDrawLinuxDynamicWorldMarkerOverlay(marker)) continue;
+		if (marker.dead ? !marker.death.active : !ShouldDrawLinuxDynamicWorldMarkerOverlay(marker)) continue;
 		if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
 			ResolveLinuxMapHeroPreviewForMarker(marker, localMatchPreview, engineMapStartPreview, lineupHeroPreviews, selectedHeroPreview))
 			anyHeroMesh = true;
@@ -53012,7 +53016,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     for (size_t i = 0; i < markers.size() && heroMeshes < heroMeshLimit; ++i)
     {
       const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-      if (marker.dead ||
+      if ((marker.dead && !marker.death.active) ||
           marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
       {
         continue;
@@ -53061,7 +53065,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     for (size_t i = 0; i < markers.size() && creepMeshes < creepMeshLimit; ++i)
     {
       const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-      if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
+      if ((marker.dead && !marker.death.active) || !IsLinuxDynamicWorldCreepMarker(marker))
       {
         continue;
       }
@@ -74986,8 +74990,8 @@ int main(int argc, char** argv)
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
-		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu\n",
-			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces);
+		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu deaths=%zu corpseSamples=%zu\n",
+			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces,graphs.deathStarts,graphs.deathSamples);
 		overlay.unitAnimationGraphs.reset();
 	}
 	overlay.animatedMapResources.Clear();
