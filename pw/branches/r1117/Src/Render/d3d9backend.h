@@ -39,11 +39,11 @@ public:
   // --- кадр ---
   virtual HRESULT BeginScene();
   virtual HRESULT EndScene();
-  virtual HRESULT Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect);
+  virtual HRESULT Present(NativeWindow window, const BackendRect* pSrcRect, const BackendRect* pDstRect);
 
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp);
-  virtual void SetScissorRect(const RECT* pRect);
+  virtual void SetScissorRect(const BackendRect* pRect);
 
   // --- очистка ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil);
@@ -85,9 +85,9 @@ public:
   // --- поверхности ---
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA);
-  virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
-                              const RECT* pDstRect, EBackendFilter filter);
-  virtual HRESULT ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+  virtual HRESULT StretchRect(HSurface src, const BackendRect* pSrcRect, HSurface dst,
+                              const BackendRect* pDstRect, EBackendFilter filter);
+  virtual HRESULT ReadSurface(HSurface srcSurface, const BackendRect* pCropRect, void* pDstBuffer,
                               unsigned dstRowPitch, EBackendPixelLayout* pOutLayout);
   virtual HRESULT GetBackBuffer(HSurface* pOut);
   virtual HRESULT GetRenderTarget(unsigned index, HSurface* pOut);

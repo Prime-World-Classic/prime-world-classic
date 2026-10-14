@@ -377,6 +377,27 @@ Vulkan (там instanced draw + per-instance атрибуты), схему ме�
 сломало `AOERenderer.cpp` (тот не объявляет тип сам). Правя списки include в
 общих заголовках `Render/`, надо пересобирать полный граф, а не только свой TU.
 
+**Пятый шаг (2026-10-14) — `RECT` уходит из seam'а.** В `renderbackend.h`
+добавлен `BackendRect { long left, top, right, bottom; }` + `MakeBackendRect()`;
+`Present`, `SetScissorRect`, `StretchRect`, `ReadSurface` принимают его, а не
+Win32 `RECT`; конвертация `BackendRect` → `RECT` — только в `d3d9backend.cpp`
+(`ToD3DRect`). В `Renderer::Present` исчез `reinterpret_cast` `Render::Rect` →
+`RECT` (типы совпадали по размеру — `Rect.h` держит это `NI_STATIC_ASSERT`'ом,
+но seam не должен был этого знать).
+
+* **Гравля: `NULL`-прямоугольник в D3D9 означает «вся поверхность»**
+  (`StretchRect(src, 0, dst, 0, …)` — копирование целиком; `SetScissorRect(NULL)`
+  тоже отличается от пустого). Подмена null на `BackendRect{0,0,0,0}` молча
+  превращает копирование в пустое — поэтому null проходит сквозь seam как null
+  (`ToD3DRect` возвращает false, бэкенд передаёт `NULL`/`0`).
+* Публичный API `Renderer` пока **принимает `RECT` и `D3DTEXTUREFILTERTYPE`**
+  (`SetScissorRect`, `StretchSurfaceRect`, `SaveFrameToFile`): его зовут из
+  `PF_GameLogic` (3 места scissor) и из `Render/*` (surface-обёртки). Это
+  следующий слой типизации, к seam отношения не имеет.
+* Оставшиеся сырые scissor-вызовы устройства: `batch.cpp` (`GetScissorRect` +
+  `SetScissorRect` ×2) и `ShadowManager.cpp` (`GetScissorRect`) — в seam нет
+  `GetScissorRect`, он там и появится.
+
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
 `Src/Render/conststore.{h,cpp}`. D3D9 применяет каждую запись сразу
@@ -1361,9 +1382,13 @@ color-correct начинают получать настоящие веса) —
       `Renderer` хранит `NativeWindow`, `IRenderBackend::Present` — тоже
       `NativeWindow`; граница платформы — `RenderInterface.cpp`. Подробности и
       остаток — §2.8 «Четвёртый шаг».
-- [ ] **Типизация кэша viewport/scissor вне D3D9**: `BackendViewport` в seam
-      есть, но кэш в `SmartRenderer` и `RECT` в `Present`/`SetScissorRect`/
-      `StretchRect`/`ReadSurface` — Win32-структуры (§2.8, «осознанные течи»).
+- [x] **`RECT` из seam'а убран** (закрыто 2026-10-14): `BackendRect` в
+      `Present`/`SetScissorRect`/`StretchRect`/`ReadSurface`, конвертация только в
+      `d3d9backend.cpp`. Подробности и гравля с null — §2.8 «Пятый шаг».
+- [ ] **Публичный API `Renderer` вне Win32/D3D9-типов**: `SetScissorRect(RECT*)`,
+      `StretchSurfaceRect(RECT*, D3DTEXTUREFILTERTYPE)`, `SaveFrameToFile(RECT*)`
+      — зовут из `PF_GameLogic` и `Render/*`; плюс scissor-кэш в `SmartRenderer`
+      и `GetDevice()->GetViewport` (2 места) остаются D3D9-типизированы.
 - [ ] Linux-контур — **вне рамок этой ветки** (клиент пока Windows-only).
       Но `IRenderBackend` обязана не содержать `HWND`: сейчас
       `Renderer(HWND)` — окно вынести в platform-слой заранее, на этапе 2.

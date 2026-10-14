@@ -767,7 +767,16 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
     NI_PROFILE_BLOCK( "Present itself" )
 
     //HRESULT hr = GetDevice()->Present((const RECT*)sourceRect_, NULL, hWnd_, NULL);
-    hr = pBackend->Present(window_, (const RECT*)sourceRect_, (const RECT*)destRect_);
+    // Render::Rect -> BackendRect (раньше здесь был reinterpret_cast: типы
+    // совпадали по размеру, но seam не должен был знать про Win32).
+    BackendRect srcRect, dstRect;
+    if(sourceRect_)
+      srcRect = MakeBackendRect((long)sourceRect_->left, (long)sourceRect_->top,
+                                (long)sourceRect_->right, (long)sourceRect_->bottom);
+    if(destRect_)
+      dstRect = MakeBackendRect((long)destRect_->left, (long)destRect_->top,
+                                (long)destRect_->right, (long)destRect_->bottom);
+    hr = pBackend->Present(window_, sourceRect_ ? &srcRect : 0, destRect_ ? &dstRect : 0);
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
   }
@@ -888,7 +897,16 @@ void Renderer::GetViewport(D3DVIEWPORT9 &vp)
 
 void Renderer::SetScissorRect(const RECT *pRect)
 {
-  pBackend->SetScissorRect(pRect);
+  // Публичный API Renderer пока принимает Win32 RECT (его зовут из PF_GameLogic),
+  // но наружу, в seam, он уже не уходит.
+  BackendRect rect;
+  const BackendRect* pBackendRect = 0;
+  if(pRect)
+  {
+    rect = MakeBackendRect(pRect->left, pRect->top, pRect->right, pRect->bottom);
+    pBackendRect = &rect;
+  }
+  pBackend->SetScissorRect(pBackendRect);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -907,7 +925,23 @@ void Renderer::ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color)
 void Renderer::StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
                                   IDirect3DSurface9 *pDst, const RECT *pDstRect, D3DTEXTUREFILTERTYPE filter)
 {
-  HRESULT hr = pBackend->StretchRect(MakeBackendHandle<HSurface>(pSrc), pSrcRect, MakeBackendHandle<HSurface>(pDst), pDstRect,
+  // NULL-прямоугольник в D3D9 означает «вся поверхность» — подменять его нулевым
+  // нельзя (получился бы пустой copy), поэтому null проходит сквозь seam как null.
+  BackendRect srcRect, dstRect;
+  const BackendRect* pRectSrc = 0;
+  const BackendRect* pRectDst = 0;
+  if(pSrcRect)
+  {
+    srcRect = MakeBackendRect(pSrcRect->left, pSrcRect->top, pSrcRect->right, pSrcRect->bottom);
+    pRectSrc = &srcRect;
+  }
+  if(pDstRect)
+  {
+    dstRect = MakeBackendRect(pDstRect->left, pDstRect->top, pDstRect->right, pDstRect->bottom);
+    pRectDst = &dstRect;
+  }
+  HRESULT hr = pBackend->StretchRect(MakeBackendHandle<HSurface>(pSrc), pRectSrc,
+                                     MakeBackendHandle<HSurface>(pDst), pRectDst,
                                      filter == D3DTEXF_LINEAR ? IRenderBackend::bfLinear : IRenderBackend::bfPoint);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "StretchSurfaceRect");
@@ -980,8 +1014,8 @@ bool Renderer::SaveFrameToFile(const char* fileName, bool keepAlpha, const RECT*
   h = desc.Height;
 
   unsigned cw = w, ch = h;
-  RECT clamped = { 0, 0, (LONG)w, (LONG)h };
-  const RECT* pSrcRect = 0;
+  BackendRect clamped = MakeBackendRect(0, 0, (long)w, (long)h);
+  const BackendRect* pSrcRect = 0;
   if(pCropRect) {
     const LONG x0 = pCropRect->left  < 0 ? 0 : pCropRect->left;
     const LONG y0 = pCropRect->top   < 0 ? 0 : pCropRect->top;

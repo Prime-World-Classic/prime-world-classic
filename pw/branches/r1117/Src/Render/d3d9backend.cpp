@@ -21,10 +21,22 @@ HRESULT D3D9Backend::EndScene() {
   return pDevice->EndScene();
 }
 
-HRESULT D3D9Backend::Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect) {
+// BackendRect -> RECT: Win32-структура живёт только внутри D3D9-реализации
+// (seam обязан пережить не-Windows, см. renderbackend.h).
+static bool ToD3DRect(const BackendRect* pIn, RECT& out) {
+  if (!pIn)
+    return false;
+  out.left = pIn->left; out.top = pIn->top; out.right = pIn->right; out.bottom = pIn->bottom;
+  return true;
+}
+
+HRESULT D3D9Backend::Present(NativeWindow window, const BackendRect* pSrcRect, const BackendRect* pDstRect) {
   // Единственное место, где ручка seam'а становится HWND (окно — граница
   // платформы, см. renderwindow.h).
-  return pDevice->Present(pSrcRect, pDstRect, static_cast<HWND>(window.p), NULL);
+  RECT srcRect, dstRect;
+  return pDevice->Present(ToD3DRect(pSrcRect, srcRect) ? &srcRect : NULL,
+                          ToD3DRect(pDstRect, dstRect) ? &dstRect : NULL,
+                          static_cast<HWND>(window.p), NULL);
 }
 
 void D3D9Backend::GetViewport(BackendViewport& vp) {
@@ -38,8 +50,9 @@ void D3D9Backend::GetViewport(BackendViewport& vp) {
   vp.maxZ = d3dvp.MaxZ;
 }
 
-void D3D9Backend::SetScissorRect(const RECT* pRect) {
-  pDevice->SetScissorRect(pRect);
+void D3D9Backend::SetScissorRect(const BackendRect* pRect) {
+  RECT rect;
+  pDevice->SetScissorRect(ToD3DRect(pRect, rect) ? &rect : NULL);
 }
 
 HRESULT D3D9Backend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil) {
@@ -229,14 +242,17 @@ HRESULT D3D9Backend::ColorFill(HSurface surface, unsigned colorRGBA) {
   return pDevice->ColorFill(static_cast<IDirect3DSurface9*>(surface.p), NULL, colorRGBA);
 }
 
-HRESULT D3D9Backend::StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
-                                 const RECT* pDstRect, EBackendFilter filter) {
-  return pDevice->StretchRect(static_cast<IDirect3DSurface9*>(src.p), pSrcRect,
-                              static_cast<IDirect3DSurface9*>(dst.p), pDstRect,
+HRESULT D3D9Backend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSurface dst,
+                                 const BackendRect* pDstRect, EBackendFilter filter) {
+  RECT srcRect, dstRect;
+  return pDevice->StretchRect(static_cast<IDirect3DSurface9*>(src.p),
+                              ToD3DRect(pSrcRect, srcRect) ? &srcRect : 0,
+                              static_cast<IDirect3DSurface9*>(dst.p),
+                              ToD3DRect(pDstRect, dstRect) ? &dstRect : 0,
                               filter == bfLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
 }
 
-HRESULT D3D9Backend::ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+HRESULT D3D9Backend::ReadSurface(HSurface srcSurface, const BackendRect* pCropRect, void* pDstBuffer,
                                  unsigned dstRowPitch, EBackendPixelLayout* pOutLayout) {
   IDirect3DSurface9* pSrc = static_cast<IDirect3DSurface9*>(srcSurface.p);
   if (!pSrc || !pDstBuffer || !dstRowPitch)

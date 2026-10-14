@@ -23,7 +23,7 @@ namespace Render
 //
 // Что тут сознательно осталось D3D9-специфичным:
 //   * HRESULT   — тот же контракт у NVRHI, не мешает;
-//   * RECT      in Present/SetScissorRect — Win32, а не D3D9, нужен и
+//   * RECT      — вынесен в BackendRect (Present/Scissor/StretchRect/ReadSurface);
 //               Vulkan-свопчейну;
 //   * семантика Present (прямого swapchain-интерфейса у NVRHI нет, он
 //               остаётся наружу бэкенда, см. §3.1 плана).
@@ -38,6 +38,19 @@ enum EBackendClearFlag {
 
 // Область вывода. По составу совпадает с D3DVIEWPORT9, но не зависит от D3D9
 // (у Vulkan/OpenGL своя система координат и диапазон Z — переносит бэкенд).
+// Прямоугольник для seam'а (Present, scissor, StretchRect, readback).
+// RECT — Win32-структура, а seam обязан пережить не-Windows (ср.
+// BackendViewport); поля названы как в RECT, чтобы конвертация была
+// механической.
+struct BackendRect {
+  long left, top, right, bottom;
+};
+
+inline BackendRect MakeBackendRect(long left, long top, long right, long bottom) {
+  BackendRect r; r.left = left; r.top = top; r.right = right; r.bottom = bottom;
+  return r;
+}
+
 struct BackendViewport {
   unsigned x, y, width, height;
   float minZ, maxZ;
@@ -84,11 +97,11 @@ public:
   // --- кадр ---
   virtual HRESULT BeginScene() = 0;
   virtual HRESULT EndScene() = 0;
-  virtual HRESULT Present(NativeWindow window, const RECT* pSrcRect, const RECT* pDstRect) = 0;
+  virtual HRESULT Present(NativeWindow window, const BackendRect* pSrcRect, const BackendRect* pDstRect) = 0;
 
   // --- область вывода и маска отсечения ---
   virtual void GetViewport(BackendViewport& vp) = 0;
-  virtual void SetScissorRect(const RECT* pRect) = 0;
+  virtual void SetScissorRect(const BackendRect* pRect) = 0;
 
   // --- очистка привязанных поверхностей ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil) = 0;
@@ -167,8 +180,8 @@ public:
   enum EBackendFilter { bfPoint = 0, bfLinear = 1 };
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface) = 0;
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA) = 0;
-  virtual HRESULT StretchRect(HSurface src, const RECT* pSrcRect, HSurface dst,
-                              const RECT* pDstRect, EBackendFilter filter) = 0;
+  virtual HRESULT StretchRect(HSurface src, const BackendRect* pSrcRect, HSurface dst,
+                              const BackendRect* pDstRect, EBackendFilter filter) = 0;
 
   // Чтение пикселей поверхности в память вызывающего (32 бита на пиксель).
   // pCropRect — прямоугольник источника (0 = вся поверхность), dstRowPitch —
@@ -177,7 +190,7 @@ public:
   // они сначала копируются в системную память.
   // Требование: пиксель 32 бита (A8R8G8B8/X8R8G8B8) — другие форматы в клиенте
   // для readback не используются.
-  virtual HRESULT ReadSurface(HSurface srcSurface, const RECT* pCropRect, void* pDstBuffer,
+  virtual HRESULT ReadSurface(HSurface srcSurface, const BackendRect* pCropRect, void* pDstBuffer,
                               unsigned dstRowPitch, EBackendPixelLayout* pOutLayout) = 0;
 
   // Бэк-буфер текущего окна. Ручка действительна до конца вызова вызывающего
