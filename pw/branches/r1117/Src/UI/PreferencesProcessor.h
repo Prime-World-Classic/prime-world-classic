@@ -39,6 +39,7 @@ public:
   virtual void ApplyShortcuts();
   virtual void ApplyValuesOnly();
   virtual void Cancel();
+  virtual void SaveUserVars() {} // a setting was changed outside of Apply / Cancel
   bool NeedToApply() const;
 
   // Rows of the "Advanced" settings page exist only in the combat screen flash (main.swf).

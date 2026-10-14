@@ -99,6 +99,8 @@
 #include "HeroScoreWrapper.h"
 #include "PFHeroStatistics.h"
 #include "DBStats.h"
+#include "DBSmartChat.h"
+#include "System/Texts.h"
 
 #include "TargetSelectorFormulaPars.h"
 
@@ -191,6 +193,22 @@ static bool  g_pingSound             = true;  // soft sound for every ping of th
 static float g_pingSoundVolume       = 70.0f; // %, multiplied by the game sound volume
 static float g_pingSoundMinInterval  = 0.12f; // seconds, several pings at once make one sound
 
+// Chat wheel: the quick chat key (cmd_smart_chat, V) opens a wheel of the quick chat messages at the cursor
+// instead of the menu with the digits. Hold the key, point at a message, release the key.
+static bool  g_chatWheel             = true;
+static float g_chatWheelTransparency = 30.0f; // wheel background transparency, %
+static float g_chatWheelScale        = 100.0f; // wheel size, %
+static float g_chatWheelDeadZone     = 40.0f; // pixels (at 100%) around the wheel center that select nothing
+static bool  g_chatWheelCentered     = false; // the wheel always in the center of the screen (otherwise at the cursor)
+static const float CHAT_WHEEL_RADIUS = 183.0f; // wheel radius on the screen at 100%, pixels (main.swf: 512 px texture, R 244, shown at 0.75)
+// slots of the wheels (settings pages "Chat wheel" / "Ping wheel", the editor in main.swf), clockwise from the top:
+// chat - indices of the quick chat messages (SmartChatConfiguration), ping - ping types (s_pingTypes)
+// chat: numbers of the quick chat commands (cmd_smart_chat_<N>, SmartChatConfiguration), ping: ping types
+static string g_chatWheelItems       = "1,2,3,4,5,6,7";
+static string g_pingWheelItems       = "0,1,2,3,4";
+static const int WHEEL_MIN_ITEMS     = 4;
+static const int WHEEL_MAX_ITEMS     = 8;   // main.swf has the wheel textures for 4..8 sectors
+
 // Auto attack of our hero (idle / attack back); off = the hero attacks only by orders (synchronized by CmdSetAutoAttack)
 static bool  g_autoAttack            = true;
 
@@ -199,29 +217,114 @@ static bool  g_autoAttack            = true;
 // The option only shows the checkboxes; switches made with them keep working while the checkboxes are hidden.
 static bool  g_smartCastToggles      = false;
 
-// Praise: Alt + click on a hero portrait of the top bar, gives a part of our prime to that hero
+// Praise: Alt + click on a hero portrait of the top bar; free, gives nothing (only the notification for everybody)
 static bool  g_praise                = true;
-static int   g_praiseAmount          = 50;    // prime given with a praise
 static float g_praiseCooldown        = 5.0f;  // seconds
 static float g_praiseShowTime        = 5.0f;  // seconds a notification stays on the screen
 static int   g_praiseMaxShown        = 6;
 static float g_praisePanelTop        = 0.25f; // top of the first notification, part of the screen height
 #pragma warning( push )
 #pragma warning( disable : 4428 )
-// wheel items, clockwise from the top (index = signal type)
-static const wchar_t * const s_pingWheelLabels[] = { L"\u0418\u0434\u0443 \u0441\u044e\u0434\u0430", L"\u041d\u0430\u043f\u0430\u0434\u0430\u0435\u043c", L"\u041e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e", L"\u0412\u0440\u0430\u0436\u0435\u0441\u043a\u0438\u0439 \u0432\u0430\u0440\u0434", L"\u041d\u0443\u0436\u0435\u043d \u0432\u0430\u0440\u0434" };
+// ping types = the value sent with CmdTypedSignal; 0..4 - the first wheel, 5 - the ordinary ping, 6.. - added later.
+// Icons and beams: Data/UI/Styles/Icons/PingWheel/ping_icon<type>.dds, ping_beam<type>.dds (pw_art/UI/PingWheel).
+struct PingTypeDesc
+{
+  const wchar_t * label;
+  const wchar_t * labelEn;
+  int             color;
+  int             sound;   // Data/Audio/Ping/ping<sound>.wav
+};
+static const PingTypeDesc s_pingTypes[] =
+{
+  { L"\u0418\u0434\u0443 \u0441\u044e\u0434\u0430", L"Going here", 0x60B0FF, 0 }, // 0
+  { L"\u041d\u0430\u043f\u0430\u0434\u0430\u0435\u043c", L"Attack", 0xFFB040, 1 }, // 1
+  { L"\u041e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e", L"Careful", 0xFF5A3A, 2 }, // 2
+  { L"\u0412\u0440\u0430\u0436\u0435\u0441\u043a\u0438\u0439 \u0432\u0430\u0440\u0434", L"Enemy ward", 0xFF4090, 3 }, // 3
+  { L"\u041d\u0443\u0436\u0435\u043d \u0432\u0430\u0440\u0434", L"Need a ward", 0x70E070, 4 }, // 4
+  { L"", L"", 0x48C8FF, 5 }, // 5 ordinary ping
+  { L"\u041e\u0442\u0441\u0442\u0443\u043f\u0430\u0435\u043c", L"Retreat", 0xFFD040, 2 }, // 6
+  { L"\u041d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c", L"Need help", 0x60E0A0, 0 }, // 7
+  { L"\u0421\u043e\u0431\u0438\u0440\u0430\u0435\u043c\u0441\u044f \u0437\u0434\u0435\u0441\u044c", L"Gather here", 0x40D8FF, 0 }, // 8
+  { L"\u0417\u0430\u0449\u0438\u0449\u0430\u0435\u043c", L"Defend", 0x5A7CFF, 4 }, // 9
+  { L"\u0412\u0440\u0430\u0433 \u043f\u0440\u043e\u043f\u0430\u043b", L"Enemy missing", 0xFFE040, 3 }, // 10
+  { L"\u0426\u0435\u043b\u044c", L"Target", 0xFF3030, 1 }, // 11
+  { L"\u0417\u0430\u0441\u0430\u0434\u0430", L"Ambush", 0xC070FF, 3 }, // 12
+  { L"\u0417\u0430\u0445\u0432\u0430\u0442\u044b\u0432\u0430\u0435\u043c \u0444\u043b\u0430\u0433", L"Capture the flag", 0xFF9030, 1 }, // 13
+  { L"\u0418\u0434\u0443 \u0432 \u043b\u0435\u0441", L"Going to the forest", 0x80D050, 4 }, // 14
+};
 #pragma warning( pop )
-static const int s_pingWheelColors[] = { 0x60B0FF, 0xFFB040, 0xFF5A3A, 0xFF4090, 0x70E070 };
-static const int PING_WHEEL_ITEMS = sizeof( s_pingWheelColors ) / sizeof( s_pingWheelColors[0] );
-static const int PING_TYPE_PLAIN  = PING_WHEEL_ITEMS; // ordinary ping: "!" icon, no text
-static const int PING_PLAIN_COLOR = 0x48C8FF;
-// Data/Audio/Ping/ping<type>.wav: wheel items 0..4 + the ordinary ping (5)
+static const int PING_TYPE_COUNT  = sizeof( s_pingTypes ) / sizeof( s_pingTypes[0] );
+static const int PING_TYPE_PLAIN  = 5;  // ordinary ping: "!" icon, no text
+static const int PING_SOUND_COUNT = 6;  // ping0..5.wav
 static const char * const PING_SOUND_PATH = "/Audio/Ping/ping%d.wav";
 
-static NSoundScene::SoundDescription PingSoundDesc( int type )
+static bool IsWheelPingType( int type )
+{
+  return type >= 0 && type < PING_TYPE_COUNT && type != PING_TYPE_PLAIN;
+}
+
+static wstring PingTypeLabel( int type )
+{
+  if ( type < 0 || type >= PING_TYPE_COUNT )
+    return wstring();
+  return wstring( GetLanguageShortCode() == "en" ? s_pingTypes[type].labelEn : s_pingTypes[type].label );
+}
+
+// "a,b,c" -> slots of a wheel: ids of the catalog (valid), unique, WHEEL_MIN_ITEMS..WHEEL_MAX_ITEMS of them
+// (too few: completed with the first free ones of the catalog)
+static void ParseWheelItems( const string & text, const vector<int> & valid, vector<int> & items )
+{
+  items.clear();
+  int value = 0;
+  bool digits = false;
+  for ( int i = 0; i <= text.length(); ++i )
+  {
+    const char c = ( i < text.length() ) ? text[i] : ',';
+    if ( c >= '0' && c <= '9' )
+    {
+      value = value * 10 + ( c - '0' );
+      digits = true;
+      continue;
+    }
+    if ( digits && find( valid.begin(), valid.end(), value ) != valid.end() && find( items.begin(), items.end(), value ) == items.end() && items.size() < WHEEL_MAX_ITEMS )
+      items.push_back( value );
+    value = 0;
+    digits = false;
+  }
+  for ( int i = 0; i < valid.size() && items.size() < WHEEL_MIN_ITEMS; ++i )
+    if ( find( items.begin(), items.end(), valid[i] ) == items.end() )
+      items.push_back( valid[i] );
+}
+
+static void GetWheelPingTypes( vector<int> & types )
+{
+  types.clear();
+  for ( int t = 0; t < PING_TYPE_COUNT; ++t )
+    if ( IsWheelPingType( t ) )
+      types.push_back( t );
+}
+
+// "cmd_smart_chat_12" -> 12 (the id of a quick chat message in the wheel settings)
+static int SmartChatCommandNumber( const string & commandId )
+{
+  const int pos = commandId.rfind( '_' );
+  if ( pos < 0 )
+    return -1;
+  return NStr::ToInt( commandId.substr( pos + 1 ).c_str() );
+}
+
+static string JoinWheelItems( const vector<int> & items )
+{
+  string text;
+  for ( int i = 0; i < items.size(); ++i )
+    text += NStr::StrFmt( i ? ",%d" : "%d", items[i] );
+  return text;
+}
+
+static NSoundScene::SoundDescription PingSoundDesc( int sound )
 {
   NSoundScene::SoundDescription desc; // 2d, not looped
-  desc.soundFilename = NStr::StrFmt( PING_SOUND_PATH, type );
+  desc.soundFilename = NStr::StrFmt( PING_SOUND_PATH, sound );
   desc.category      = NSoundScene::SOUNDCATEGORY_INTERFACE;
   desc.looped        = false;
   return desc;
@@ -606,6 +709,10 @@ AdventureScreen::AdventureScreen()
 , pingWheelWorldPos(VNULL3)
 , pingWheelCursor(VNULL2)
 , pingWheelSelected(-1)
+, chatWheelShown(false)
+, chatWheelTimer(0.0f)
+, chatWheelCenter(VNULL2)
+, chatWheelSelected(-1)
 , pingRingChannelsUsed(0)
 , lastPingSoundTime(0)
 , praiseNextId(1)
@@ -2377,6 +2484,7 @@ void AdventureScreen::CommonStep( bool bAppActive )
 
   UpdateMoveOnHold( deltaTime );
   UpdatePingWheel( deltaTime );
+  UpdateChatWheel( deltaTime );
   UpdateAutoAttackOption();
   UpdateSmartCastBoxes( deltaTime );
 
@@ -3222,7 +3330,185 @@ void AdventureScreen::MsgSmartChatOpen()
   if (!isHotkeysEnabled || ( blockedHotKeys & ( 1 << FlashWindowsType::SmartChat ) ))
     return;
 
+  // no smart chat controller (a local game without the chat): the wheel is shown, the messages are not sent
+  if ( g_chatWheel && ( !IsValid( smartChatController ) || smartChatController->IsWheelAvailable() ) )
+  {
+    if ( !chatWheelShown && !StartChatWheel() && IsValid( smartChatController ) )
+      pLogic->ActivateSmartChat();
+    return;
+  }
+
   pLogic->ActivateSmartChat();
+}
+
+bool AdventureScreen::IsChatWheelKeyDown() const
+{
+  Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
+  if ( !binds )
+    return false;
+  Input::ICommandInstance * command = binds->FindCommand( "cmd_smart_chat" );
+  return command && command->IsActiveNow();
+}
+
+// the quick chat messages (SmartChatConfiguration) in their order: texts in the client language and the command numbers;
+// index i is the index of the message for SmartChatController::SendWheelMessage
+void AdventureScreen::GetChatWheelCatalog( vector<wstring> & texts, vector<int> & ids ) const
+{
+  texts.clear();
+  ids.clear();
+  if ( !IsValid( pUIData ) || !IsValid( pUIData->smartChat ) )
+    return;
+  for ( int i = 0; i < pUIData->smartChat->messages.size(); ++i )
+  {
+    NDb::Ptr<NDb::SmartChatMessage> message = pUIData->smartChat->messages[i];
+    texts.push_back( IsValid( message ) ? wstring( message->text.GetText() ) : wstring() );
+    ids.push_back( IsValid( message ) ? SmartChatCommandNumber( message->commandId ) : -1 );
+  }
+}
+
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+// the data of the wheel editors in the settings window ("Chat wheel" / "Ping wheel" pages)
+void AdventureScreen::SendWheelEditors()
+{
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash )
+    return;
+  const bool en = ( GetLanguageShortCode() == "en" );
+  const wstring texts = en ? wstring( L"Wheel slots|Drag a command into a slot of the wheel or onto the list of the slots|Slots" )
+                           : wstring( L"\u0421\u043b\u043e\u0442\u044b \u043a\u043e\u043b\u0435\u0441\u0430|\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u0432 \u0441\u0435\u043a\u0442\u043e\u0440 \u043a\u043e\u043b\u0435\u0441\u0430 \u0438\u043b\u0438 \u0432 \u0441\u043f\u0438\u0441\u043e\u043a \u0441\u043b\u043e\u0442\u043e\u0432|\u0421\u043b\u043e\u0442\u043e\u0432" );
+
+  vector<wstring> chatTexts;
+  vector<int> chatIds;
+  GetChatWheelCatalog( chatTexts, chatIds );
+  wstring labels;
+  string ids;
+  for ( int i = 0; i < chatTexts.size(); ++i )
+  {
+    labels += ( i ? L"|" : L"" ) + chatTexts[i];
+    ids += NStr::StrFmt( i ? "|%d" : "%d", chatIds[i] );
+  }
+  vector<int> items;
+  ParseWheelItems( g_chatWheelItems, chatIds, items );
+  flash->SetWheelEditor( 0, "chat_wheel_commands", ids, labels, "", JoinWheelItems( items ), texts );
+
+  labels.clear();
+  ids.clear();
+  string icons;
+  for ( int t = 0; t < PING_TYPE_COUNT; ++t )
+  {
+    if ( !IsWheelPingType( t ) )
+      continue;
+    const bool first = ids.empty();
+    labels += ( first ? L"" : L"|" ) + PingTypeLabel( t );
+    ids += NStr::StrFmt( first ? "%d" : "|%d", t );
+    icons += NStr::StrFmt( first ? "ping_icon%d.dds" : "|ping_icon%d.dds", t );
+  }
+  vector<int> pingTypes;
+  GetWheelPingTypes( pingTypes );
+  ParseWheelItems( g_pingWheelItems, pingTypes, items );
+  flash->SetWheelEditor( 1, "ping_wheel_items", ids, labels, icons, JoinWheelItems( items ), texts );
+}
+#pragma warning( pop )
+
+bool AdventureScreen::StartChatWheel()
+{
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || isPlayingMinigame )
+    return false;
+
+  vector<wstring> texts;
+  vector<int> ids;
+  GetChatWheelCatalog( texts, ids );
+  if ( texts.size() < WHEEL_MIN_ITEMS )
+    return false;
+  vector<int> commands;
+  ParseWheelItems( g_chatWheelItems, ids, commands );
+
+  // slot -> index of the message
+  chatWheelSlots.clear();
+  wstring labels;
+  for ( int i = 0; i < commands.size(); ++i )
+  {
+    const int index = find( ids.begin(), ids.end(), commands[i] ) - ids.begin();
+    chatWheelSlots.push_back( index );
+    if ( i )
+      labels += L"|";
+    labels += texts[index];
+  }
+
+  const UI::Point & res = UI::GetScreenResolution();
+  const float scale  = Min( Max( g_chatWheelScale, 30.0f ), 300.0f ) * 0.01f;
+  const float radius = CHAT_WHEEL_RADIUS * scale;
+  CVec2 center = vCursorPos;
+  if ( g_chatWheelCentered || center.x < 0.0f || center.y < 0.0f )
+    center = CVec2( res.x * 0.5f, res.y * 0.5f );
+  // the whole wheel stays on the screen
+  center.x = Max( Min( center.x, res.x - radius ), Min( radius, res.x * 0.5f ) );
+  center.y = Max( Min( center.y, res.y - radius ), Min( radius, res.y * 0.5f ) );
+
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false );
+  const float opacity = 1.0f - Min( Max( g_chatWheelTransparency, 0.0f ), 100.0f ) * 0.01f;
+  flash->ShowChatWheel( center.x / Max( (float)res.x, 1.0f ), center.y / Max( (float)res.y, 1.0f ), labels, opacity, scale );
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+
+  chatWheelShown    = true;
+  chatWheelTimer    = 0.0f;
+  chatWheelCenter   = center;
+  chatWheelSelected = -1;
+  return true;
+}
+
+// the wheel is on the screen while the key is held; released with the cursor in the center = no message
+void AdventureScreen::UpdateChatWheel( float deltaTime )
+{
+  if ( !chatWheelShown )
+    return;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || !g_chatWheel || isPlayingMinigame || ( GetAsyncKeyState( VK_ESCAPE ) & 0x8000 ) )
+  {
+    CloseChatWheel( false );
+    return;
+  }
+
+  chatWheelTimer += deltaTime;
+
+  // the item in the direction of the cursor from the wheel center (item 0 is at the top, clockwise)
+  const int count = chatWheelSlots.size();
+  const float dx = vCursorPos.x - chatWheelCenter.x;
+  const float dy = vCursorPos.y - chatWheelCenter.y;
+  const float deadZone = g_chatWheelDeadZone * Min( Max( g_chatWheelScale, 30.0f ), 300.0f ) * 0.01f;
+  int selected = -1;
+  if ( count > 0 && dx * dx + dy * dy > deadZone * deadZone )
+  {
+    float angle = atan2f( dy, dx ) * 180.0f / 3.14159265f + 90.0f; // 0 = up, screen y goes down
+    while ( angle < 0.0f )
+      angle += 360.0f;
+    const float sector = 360.0f / count;
+    selected = static_cast<int>( ( angle + sector * 0.5f ) / sector ) % count;
+  }
+  if ( selected != chatWheelSelected )
+  {
+    chatWheelSelected = selected;
+    flash->HighlightChatWheel( selected );
+  }
+
+  if ( !IsChatWheelKeyDown() )
+    CloseChatWheel( true );
+}
+
+void AdventureScreen::CloseChatWheel( bool send )
+{
+  if ( !chatWheelShown )
+    return;
+
+  chatWheelShown = false;
+  if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    flash->HideChatWheel();
+  if ( send && chatWheelSelected >= 0 && chatWheelSelected < chatWheelSlots.size() && IsValid( smartChatController ) )
+    smartChatController->SendWheelMessage( chatWheelSlots[chatWheelSelected] );
+  chatWheelSelected = -1;
 }
 
 
@@ -4931,8 +5217,8 @@ void AdventureScreen::UpdatePingWheel( float deltaTime )
       pingWheelShown = false;
       if ( flash )
         flash->HidePingWheel();
-      if ( pingWheelSelected >= 0 && GetHero() )
-        SendTypedSignal( pingWheelSelected );
+      if ( pingWheelSelected >= 0 && pingWheelSelected < pingWheelSlots.size() && GetHero() )
+        SendTypedSignal( pingWheelSlots[pingWheelSelected] );
     }
     else if ( GetHero() && m_state == STATE_NORMAL )
     {
@@ -4949,23 +5235,28 @@ void AdventureScreen::UpdatePingWheel( float deltaTime )
     if ( pingWheelTimer < Max( g_pingWheelDelay, 0.05f ) || !flash )
       return;
 
-    wstring labels, colors;
-    for ( int i = 0; i < PING_WHEEL_ITEMS; ++i )
+    vector<int> pingTypes;
+    GetWheelPingTypes( pingTypes );
+    ParseWheelItems( g_pingWheelItems, pingTypes, pingWheelSlots );
+    wstring labels, colors, types;
+    for ( int i = 0; i < pingWheelSlots.size(); ++i )
     {
       if ( i )
       {
         labels += L"|";
         colors += L"|";
+        types  += L"|";
       }
-      labels += s_pingWheelLabels[i];
-      colors += NStr::StrFmtW( L"%06X", s_pingWheelColors[i] );
+      labels += PingTypeLabel( pingWheelSlots[i] );
+      colors += NStr::StrFmtW( L"%06X", s_pingTypes[pingWheelSlots[i]].color );
+      types  += NStr::StrFmtW( L"%d", pingWheelSlots[i] );
     }
     const UI::Point & res = UI::GetScreenResolution();
     // textures are preloaded with the map; just in case don't assert if Flash still has to load something
     const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false );
     const float opacity = 1.0f - Min( Max( g_pingWheelTransparency, 0.0f ), 100.0f ) * 0.01f;
     const float scale   = Min( Max( g_pingWheelScale, 30.0f ), 300.0f ) * 0.01f;
-    flash->ShowPingWheel( pingWheelCursor.x / Max( (float)res.x, 1.0f ), pingWheelCursor.y / Max( (float)res.y, 1.0f ), labels, colors, opacity, scale );
+    flash->ShowPingWheel( pingWheelCursor.x / Max( (float)res.x, 1.0f ), pingWheelCursor.y / Max( (float)res.y, 1.0f ), labels, colors, types, opacity, scale );
     NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
     pingWheelShown    = true;
     pingWheelSelected = -1;
@@ -4981,8 +5272,9 @@ void AdventureScreen::UpdatePingWheel( float deltaTime )
     float angle = atan2f( dy, dx ) * 180.0f / 3.14159265f + 90.0f; // 0 = up, screen y goes down
     while ( angle < 0.0f )
       angle += 360.0f;
-    const float sector = 360.0f / PING_WHEEL_ITEMS;
-    selected = static_cast<int>( ( angle + sector * 0.5f ) / sector ) % PING_WHEEL_ITEMS;
+    const int count = Max( (int)pingWheelSlots.size(), 1 );
+    const float sector = 360.0f / count;
+    selected = static_cast<int>( ( angle + sector * 0.5f ) / sector ) % count;
   }
   if ( selected != pingWheelSelected )
   {
@@ -4995,7 +5287,7 @@ void AdventureScreen::UpdatePingWheel( float deltaTime )
 void AdventureScreen::SendTypedSignal( int type )
 {
   NWorld::PFBaseHero * pHero = GetHero();
-  if ( !pHero || type < 0 || type >= PING_WHEEL_ITEMS )
+  if ( !pHero || !IsWheelPingType( type ) )
     return;
 
   if ( !pingAbuseController->Use() )
@@ -5006,6 +5298,24 @@ void AdventureScreen::SendTypedSignal( int type )
   }
 
   SendGameCommand( NWorld::CreateCmdTypedSignal( pHero, pingWheelWorldPos, type, pHero->GetFaction() ), true );
+}
+
+void AdventureScreen::SetPlayerPingsMuted( int playerId, bool muted )
+{
+  if ( muted )
+    mutedPingPlayers.insert( playerId );
+  else
+    mutedPingPlayers.erase( playerId );
+}
+
+void AdventureScreen::OnWardUsed( NWorld::PFBaseHero const * pHero )
+{
+  if ( !pHero || !pHero->GetPlayer() )
+    return;
+  const int playerId = pHero->GetPlayer()->GetPlayerID();
+  const int count = ++wardCounts[playerId];
+  if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    flash->SetPlayerWards( playerId, count );
 }
 
 // minimap icon of a hero (the same picture as on the minimap and in the chat)
@@ -5022,7 +5332,9 @@ void AdventureScreen::OnTypedSignal( const CVec3 & pos, int type, NDb::EFaction 
 {
   if ( type < 0 )
     type = PING_TYPE_PLAIN;
-  if ( faction != GetPlayerFaction() || type > PING_TYPE_PLAIN )
+  if ( faction != GetPlayerFaction() || type >= PING_TYPE_COUNT ) // unknown type (a newer client)
+    return;
+  if ( pSender && pSender->GetPlayer() && mutedPingPlayers.find( pSender->GetPlayer()->GetPlayerID() ) != mutedPingPlayers.end() )
     return;
 
   PingMarker marker;
@@ -5047,7 +5359,7 @@ void AdventureScreen::PlayPingSound( int type )
 {
   if ( type < 0 )
     type = PING_TYPE_PLAIN;
-  if ( !g_pingSound || type > PING_TYPE_PLAIN )
+  if ( !g_pingSound || type >= PING_TYPE_COUNT )
     return;
 
   const unsigned long now = GetTickCount();
@@ -5060,7 +5372,7 @@ void AdventureScreen::PlayPingSound( int type )
     return;
   lastPingSoundTime = now;
 
-  const NSoundScene::SoundDescription desc = PingSoundDesc( type );
+  const NSoundScene::SoundDescription desc = PingSoundDesc( s_pingTypes[type].sound );
   const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // normally precached with the map
   float length = 0.0f;
   const int soundId = NSoundScene::PlaySound( desc, &length );
@@ -5112,8 +5424,10 @@ void AdventureScreen::PreloadPingVisuals( const NDb::AdvMapDescription * advMapD
     }
   }
 
-  for ( int i = 0; i <= PING_TYPE_PLAIN; ++i )
+  for ( int i = 0; i < PING_SOUND_COUNT; ++i )
     NSoundScene::PrecacheSound( PingSoundDesc( i ) );
+
+  SendWheelEditors();
 
   pingRingChannelsUsed = 0;
   pingRingMaterial = NDb::Get<NDb::AOEMaterial>( NDb::DBID( "Effects/UI/Ping/PingRing.MTRL.xdb" ) );
@@ -5167,8 +5481,8 @@ void AdventureScreen::UpdatePingMarkers( float deltaTime )
       continue;
     }
 
-    const bool  plain = ( m.type >= PING_WHEEL_ITEMS );
-    const int   color = plain ? PING_PLAIN_COLOR : s_pingWheelColors[m.type];
+    const bool  plain = ( m.type == PING_TYPE_PLAIN );
+    const int   color = s_pingTypes[m.type].color;
     const float alpha = Min( 1.0f, m.time / 0.12f ) * Min( 1.0f, ( lifeTime - m.time ) / 0.6f );
 
     // ground: a steady ring (pops in) + a ring pulsing outwards every second
@@ -5209,7 +5523,7 @@ void AdventureScreen::UpdatePingMarkers( float deltaTime )
       m.heroSent = true;
       flash->SetPingMarkerHero( m.id, m.heroIcon ); // before the marker is created by SetPingMarker
     }
-    flash->SetPingMarker( m.id, m.type, plain ? wstring() : wstring( s_pingWheelLabels[m.type] ), color, tx, ty, gx, gy, alpha );
+    flash->SetPingMarker( m.id, m.type, plain ? wstring() : PingTypeLabel( m.type ), color, tx, ty, gx, gy, alpha );
   }
 
   if ( pAOE )
@@ -5246,29 +5560,12 @@ bool AdventureScreen::TryPraiseHero( NWorld::PFBaseHero * pTarget )
     return true;
   }
 
-  const int amount = Max( g_praiseAmount, 1 );
-  if ( pHero->GetGold() < amount )
-  {
-    if ( IsValid( chatController ) )
-      chatController->AddChatMessage( wstring( NStr::StrFmtW( L"\u041d\u0435\u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e \u043f\u0440\u0430\u0439\u043c\u0430 \u0434\u043b\u044f \u043f\u043e\u0445\u0432\u0430\u043b\u044b (\u043d\u0443\u0436\u043d\u043e %d).", amount ) ), NDb::CHATCHANNEL_SYSTEM );
-    return true;
-  }
-
-  SendGameCommand( NWorld::CreateCmdPraise( pHero, pTarget, amount ), true );
+  SendGameCommand( NWorld::CreateCmdPraise( pHero, pTarget, 0 ), true ); // free: no prime is given
   lastPraiseTime = now;
   return true;
 }
 #pragma warning( pop )
 
-static wstring PraiseShortName( const wstring & name )
-{
-  const int maxLen = 14;
-  if ( name.length() <= maxLen )
-    return name;
-  wstring shortName = name.substr( 0, maxLen - 1 );
-  shortName += L"\x2026"; // ellipsis
-  return shortName;
-}
 
 void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBaseHero const * pTarget, int amount )
 {
@@ -5298,8 +5595,8 @@ void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBa
   praises.push_back( entry );
 
   const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // portraits are normally cached by the top bar
-  flash->ShowPraise( entry.id, senderIcon, PraiseShortName( pSender->GetPlayerName() ), senderColor,
-                     targetIcon, PraiseShortName( pTarget->GetPlayerName() ), targetColor, amount );
+  flash->ShowPraise( entry.id, senderIcon, pSender->GetPlayerName(), senderColor,
+                     targetIcon, pTarget->GetPlayerName(), targetColor, amount );
   flash->SetPraisePanel( entry.id, 1.0f, entry.row, 1.0f, g_praisePanelTop );
   NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
 }
@@ -8432,7 +8729,6 @@ REGISTER_VAR( "ping_sound", g_pingSound, STORAGE_USER );
 REGISTER_VAR( "auto_attack", g_autoAttack, STORAGE_USER );
 REGISTER_VAR( "smart_cast_toggles", g_smartCastToggles, STORAGE_USER );
 REGISTER_VAR( "praise", g_praise, STORAGE_USER );
-REGISTER_VAR( "praise_amount", g_praiseAmount, STORAGE_NONE );
 REGISTER_VAR( "praise_cooldown", g_praiseCooldown, STORAGE_NONE );
 REGISTER_VAR( "praise_show_time", g_praiseShowTime, STORAGE_NONE );
 REGISTER_VAR( "praise_panel_top", g_praisePanelTop, STORAGE_NONE );
@@ -8440,3 +8736,10 @@ REGISTER_VAR( "ping_sound_volume", g_pingSoundVolume, STORAGE_USER );
 REGISTER_VAR( "ping_sound_min_interval", g_pingSoundMinInterval, STORAGE_NONE );
 REGISTER_VAR( "chat_center_raise", g_chatCenterRaise, STORAGE_NONE );
 REGISTER_VAR( "team_portraits_scale", g_teamPortraitsScale, STORAGE_USER );
+REGISTER_VAR( "chat_wheel", g_chatWheel, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_transparency", g_chatWheelTransparency, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_scale", g_chatWheelScale, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_dead_zone", g_chatWheelDeadZone, STORAGE_NONE );
+REGISTER_VAR( "chat_wheel_commands", g_chatWheelItems, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_centered", g_chatWheelCentered, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_items", g_pingWheelItems, STORAGE_USER );

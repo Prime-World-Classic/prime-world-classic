@@ -369,7 +369,9 @@ Strong<IPrefVar> createControl( FlashInterface *pFlash, const string &varId, con
 // Rows whose variable is not registered in this build are skipped.
 // To add a setting: add one line to s_advancedVars.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-enum EAdvancedControl { ADV_CHECKBOX, ADV_SLIDER, ADV_HEADER, ADV_PAGE };
+enum EAdvancedControl { ADV_CHECKBOX, ADV_SLIDER, ADV_HEADER, ADV_PAGE, ADV_KEY, ADV_SLOT, ADV_NOTE };
+// ADV_KEY: varName = bind command, the key is set in Flash; ADV_SLOT: varName = a control of the main settings tab moved
+// to this place by Flash (still driven by the data-defined preferences); ADV_NOTE: small text under the previous row
 
 struct AdvancedVarDesc
 {
@@ -400,11 +402,11 @@ static const AdvancedVarDesc s_advancedVars[] =
 {
   { "adv_page_advanced", "", ADV_PAGE, 0.0f, 0.0f, 0, L"", "", L"", L"" },
   { "adv_hdr_move", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0414\u0432\u0438\u0436\u0435\u043d\u0438\u0435 \u0438 \u0430\u0442\u0430\u043a\u0430", L"Movement and attack" },
+  { "adv_slot_left_click", "leftClick_tb", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
   { "adv_auto_attack", "auto_attack", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0410\u0432\u0442\u043e\u0430\u0442\u0430\u043a\u0430", L"Auto attack" },
-  { "adv_move_on_hold", "move_on_hold", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0411\u0435\u0433 \u043f\u0440\u0438 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u041f\u041a\u041c", L"Move while holding RMB" },
-  { "adv_move_on_hold_marker", "move_on_hold_marker", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_move_on_hold", L"\u041c\u0430\u0440\u043a\u0435\u0440 \u043f\u0440\u0438 \u0431\u0435\u0433\u0435 \u0441 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u041f\u041a\u041c", L"Marker when moving with RMB held" },
-  { "adv_move_on_hold_interval", "move_on_hold_interval", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_move_on_hold", L"\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b \u043f\u043e\u0432\u0442\u043e\u0440\u0430 \u043f\u0440\u0438\u043a\u0430\u0437\u0430, \u0441", L"Move order repeat interval, s" },
-  { "adv_move_smooth_lag", "move_smooth_lag", ADV_SLIDER, 1.0f, 1.5f, 11, L"%.2f", "", L"\u0421\u0433\u043b\u0430\u0436\u0438\u0432\u0430\u043d\u0438\u0435 \u0434\u0432\u0438\u0436\u0435\u043d\u0438\u044f", L"Movement smoothing" },
+  { "adv_move_on_hold", "move_on_hold", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0411\u0435\u0433 \u043f\u0440\u0438 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u043a\u043d\u043e\u043f\u043a\u0435 \u043f\u0435\u0440\u0435\u0434\u0432\u0438\u0436\u0435\u043d\u0438\u044f", L"Move while holding the move button" },
+  { "adv_move_on_hold_marker", "move_on_hold_marker", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_move_on_hold", L"\u041c\u0430\u0440\u043a\u0435\u0440 \u043f\u0440\u0438 \u0431\u0435\u0433\u0435 \u0441 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u043a\u043d\u043e\u043f\u043a\u043e\u0439", L"Marker when moving with the button held" },
+  { "adv_move_on_hold_interval", "move_on_hold_interval", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_move_on_hold", L"\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b \u043f\u043e\u0432\u0442\u043e\u0440\u0430 \u043a\u043b\u0438\u043a\u043e\u0432, \u0441", L"Click repeat interval, s" },
   { "adv_hdr_abilities", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438", L"Abilities" },
   { "adv_smart_cast_toggles", "smart_cast_toggles", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043c\u0430\u0440\u0442\u043a\u0430\u0441\u0442: \u0433\u0430\u043b\u043e\u0447\u043a\u0438 \u043d\u0430 \u043f\u0430\u043d\u0435\u043b\u0438", L"Smart cast: checkboxes on the panel" },
   { "adv_dbl_click_selfcast", "dbl_click_selfcast", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0414\u0432\u043e\u0439\u043d\u043e\u0435 \u043d\u0430\u0436\u0430\u0442\u0438\u0435 - \u043d\u0430 \u0441\u0435\u0431\u044f", L"Double press - cast on self" },
@@ -415,16 +417,29 @@ static const AdvancedVarDesc s_advancedVars[] =
   { "adv_hdr_ping_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b", L"Signals" },
   { "adv_ping_middle_mouse", "ping_middle_mouse", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b \u043d\u0430 \u0441\u0440\u0435\u0434\u043d\u044e\u044e \u043a\u043d\u043e\u043f\u043a\u0443 \u043c\u044b\u0448\u0438", L"Signals on the middle mouse button" },
   { "adv_ping_ground_effect", "ping_ground_effect", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041c\u0435\u0442\u043a\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u0430 \u043d\u0430 \u0437\u0435\u043c\u043b\u0435", L"Signal mark on the ground" },
-  { "adv_ping_sound", "ping_sound", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0417\u0432\u0443\u043a \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal sound" },
-  { "adv_ping_sound_volume", "ping_sound_volume", ADV_SLIDER, 0.0f, 100.0f, 11, L"%.0f%%", "adv_ping_sound", L"\u0413\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c \u0437\u0432\u0443\u043a\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal sound volume" },
+  { "adv_ping_sound", "ping_sound", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041d\u043e\u0432\u044b\u0435 \u0437\u0432\u0443\u043a\u0438 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"New signal sounds" },
+  { "adv_hdr_praise", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430", L"Praise" },
+  { "adv_praise", "praise", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430 (Alt + \u043a\u043b\u0438\u043a \u043f\u043e \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u0443)", L"Praise (Alt + click on a portrait)" },
+  { "adv_hdr_chat", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442", L"Chat" },
+  { "adv_show_ability_status", "show_ability_status_messages", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0442\u044c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f \u043e \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0438 \u0441\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0435\u0439 \u0441\u043e\u044e\u0437\u043d\u0438\u043a\u043e\u0432", L"Show the ability status messages of the allies" },
+  { "adv_note_ability_status", "", ADV_NOTE, 0.0f, 0.0f, 0, L"", "", L"(Alt+\u041a\u043b\u0438\u043a \u043f\u043e \u0442\u0430\u043b\u0430\u043d\u0442\u0443)", L"(Alt + click on a talent)" },
+  { "adv_slot_bad_words", "useBadwordsFilter", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_slot_chat_off", "smartchat_cb", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_page_chat_wheel", "", ADV_PAGE, 2.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_chat_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0431\u044b\u0441\u0442\u0440\u044b\u0445 \u043a\u043e\u043c\u0430\u043d\u0434", L"Quick commands wheel" },
+  { "adv_chat_wheel", "chat_wheel", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0432\u043c\u0435\u0441\u0442\u043e \u043c\u0435\u043d\u044e \u0441 \u0446\u0438\u0444\u0440\u0430\u043c\u0438", L"Wheel instead of the numbered menu" },
+  { "adv_chat_wheel_centered", "chat_wheel_centered", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_chat_wheel", L"\u041a\u043e\u043b\u0435\u0441\u043e \u043f\u043e \u0446\u0435\u043d\u0442\u0440\u0443 \u044d\u043a\u0440\u0430\u043d\u0430", L"Wheel in the center of the screen" },
+  { "adv_key_smart_chat", "cmd_smart_chat", ADV_KEY, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043d\u043e\u043f\u043a\u0430 \u0431\u044b\u0441\u0442\u0440\u044b\u0445 \u043a\u043e\u043c\u0430\u043d\u0434", L"Quick commands key" },
+  { "adv_chat_wheel_transparency", "chat_wheel_transparency", ADV_SLIDER, 0.0f, 90.0f, 10, L"%.0f%%", "adv_chat_wheel", L"\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0444\u043e\u043d\u0430 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel background transparency" },
+  { "adv_chat_wheel_scale", "chat_wheel_scale", ADV_SLIDER, 60.0f, 160.0f, 11, L"%.0f%%", "adv_chat_wheel", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel size" },
+  { "adv_page_ping_wheel", "", ADV_PAGE, 3.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_ping_wheel_opts", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal wheel" },
   { "adv_ping_wheel", "ping_wheel", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432 (\u0443\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435)", L"Signal wheel (hold)" },
   { "adv_ping_wheel_delay", "ping_wheel_delay", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_ping_wheel", L"\u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430 \u043a\u043e\u043b\u0435\u0441\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432, \u0441", L"Signal wheel delay, s" },
   { "adv_ping_wheel_transparency", "ping_wheel_transparency", ADV_SLIDER, 0.0f, 90.0f, 10, L"%.0f%%", "adv_ping_wheel", L"\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0444\u043e\u043d\u0430 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel background transparency" },
   { "adv_ping_wheel_scale", "ping_wheel_scale", ADV_SLIDER, 60.0f, 160.0f, 11, L"%.0f%%", "adv_ping_wheel", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel size" },
-  { "adv_hdr_praise", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430", L"Praise" },
-  { "adv_praise", "praise", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430 (Alt + \u043a\u043b\u0438\u043a \u043f\u043e \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u0443)", L"Praise (Alt + click on a portrait)" },
-  { "adv_hdr_chat", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442", L"Chat" },
-  { "adv_alt_click_ability_status", "alt_click_ability_status", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"Alt+\u043a\u043b\u0438\u043a \u043f\u043e \u0441\u043a\u0438\u043b\u043b\u0443 - \u0432 \u0447\u0430\u0442", L"Alt + click on an ability - to chat" },
+  { "adv_page_game_sound", "", ADV_PAGE, 4.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_ping_sound_volume", "ping_sound_volume", ADV_SLIDER, 0.0f, 100.0f, 11, L"%.0f%%", "adv_ping_sound", L"\u0413\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal volume" }, // Flash puts it into the sound section (no value text)
 };
 #pragma warning( pop )
 
@@ -512,6 +527,7 @@ static const char szCancelFlashCommand[] = "PreferenceComponentsCancel";
 static const char szLoadPresetFlashCommand[] = "PreferenceComponentsLoadPreset";
 static const char szShortcutRebindFlashCommand[] = "PreferenceShortcutRebind";
 static const char szShortcutsApplyFlashCommand[] = "PreferenceShortcutsApply";
+static const char szSetVarFlashCommand[] = "PreferenceSetVar"; // "name value": settings edited by Flash itself (wheel editors)
 
 PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, const char* className ):
   FlashInterface(flashWnd, className), pPresets(0), advancedPageEnabled(true)
@@ -522,6 +538,7 @@ PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, cons
   flashWnd->AddFSListner( szLoadPresetFlashCommand, this );
   flashWnd->AddFSListner( szShortcutRebindFlashCommand, this );
   flashWnd->AddFSListner( szShortcutsApplyFlashCommand, this );
+  flashWnd->AddFSListner( szSetVarFlashCommand, this );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -547,12 +564,27 @@ void PreferencesProcessor::Init( const NDb::Preferences &desc )
 
     if( adv.type == ADV_PAGE )
     {
-      CallMethod( "SetAdvancedTargetPage", static_cast<int>( adv.minValue ) ); // following rows go to this page (0 = Advanced, 1 = Communication)
+      CallMethod( "SetAdvancedTargetPage", static_cast<int>( adv.minValue ) ); // following rows go to this page (0 = Advanced, 1 = Communication, 2 = Chat wheel, 3 = Ping wheel, 4 = Game: under the sound)
       continue;
     }
     if( adv.type == ADV_HEADER )
     {
       CallMethod( "AddAdvancedHeader", AdvancedLabel( adv ) ); // category title, no variable behind it
+      continue;
+    }
+    if( adv.type == ADV_SLOT )
+    {
+      CallMethod( "AddAdvancedSlot", adv.varId, adv.varName );
+      continue;
+    }
+    if( adv.type == ADV_NOTE )
+    {
+      CallMethod( "AddAdvancedNote", AdvancedLabel( adv ) );
+      continue;
+    }
+    if( adv.type == ADV_KEY )
+    {
+      CallMethod( "AddAdvancedKey", adv.varId, AdvancedLabel( adv ), adv.varName ); // key of a bind command, rebound by Flash
       continue;
     }
     if( !NGlobal::IsCommandRegistred( adv.varName ) )
@@ -780,6 +812,20 @@ void PreferencesProcessor::OnFSCommand( UI::FlashContainer2* _wnd, const char* l
   else if( strcmp(listenerID, szShortcutsApplyFlashCommand) == 0 )
   {
     ApplyShortcuts();
+  }
+  else if( strcmp(listenerID, szSetVarFlashCommand) == 0 )
+  {
+    string name;
+    for( ; *args != '\0' && *args != ' '; ++args )
+      name += *args;
+    if( *args == ' ' )
+      ++args;
+    // only the variables of the wheel editors: Flash must not change anything else this way
+    if( name == "chat_wheel_commands" || name == "ping_wheel_items" )
+    {
+      SetVar( name, VariantValue( string( args ) ) );
+      SaveUserVars();
+    }
   }
   else if( strcmp(listenerID, szUpdateFlashCommand) == 0 )
   {

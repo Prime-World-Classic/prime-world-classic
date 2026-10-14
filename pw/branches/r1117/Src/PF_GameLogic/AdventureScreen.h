@@ -390,6 +390,13 @@ struct GSClientSettings
     CPtr<PF_Core::WorldObjectBase> pingWheelObject;
     CVec2               pingWheelCursor;
     int                 pingWheelSelected;
+    vector<int>         pingWheelSlots;             // ping type of every slot (ping_wheel_items)
+    // Chat wheel: the quick chat key (V) held -> wheel of the quick chat messages instead of the menu with the digits
+    bool                chatWheelShown;
+    float               chatWheelTimer;
+    CVec2               chatWheelCenter;
+    int                 chatWheelSelected;
+    vector<int>         chatWheelSlots;             // message index of every slot (chat_wheel_items)
     struct PingMarker
     {
       int   id;
@@ -565,6 +572,20 @@ struct GSClientSettings
     void SendTalentStatusToTeam( int level, int slot );
     bool CastCurrentTalentOnSelf( NWorld::PFTalent * pTalent );
     void UpdatePingWheel( float deltaTime );
+    bool StartChatWheel();
+    void UpdateChatWheel( float deltaTime );
+    void CloseChatWheel( bool send );
+    bool IsChatWheelKeyDown() const;
+    void GetChatWheelCatalog( vector<wstring> & texts, vector<int> & ids ) const;
+    void SendWheelEditors();
+  public:
+    // pings of this player are not shown (button in the statistics window)
+    void SetPlayerPingsMuted( int playerId, bool muted );
+    // a ward (a lantern bought in the shop) was used: the count per hero for the statistics window; called by the world
+    void OnWardUsed( NWorld::PFBaseHero const * pHero );
+  private:
+    nstl::set<int>      mutedPingPlayers;
+    nstl::map<int, int> wardCounts;             // player id -> wards placed
     void UpdatePingMarkers( float deltaTime );
     void SendTypedSignal( int type );
     void PreloadPingVisuals( const NDb::AdvMapDescription * advMapDescription );

@@ -5,6 +5,7 @@
 
 #include "AdventureFlashInterface.h"
 #include "FlashFSCommands.h"
+#include "AdventureScreen.h"
 #include "ui/FlashContainer2.h"
 #include "Client/GameChatClient/IGameChatClient.h"
 
@@ -138,6 +139,16 @@ void IgnoreListController::OnFSCommand( UI::FlashContainer2* _wnd, const char* l
 {
   using namespace FlashFSCommands;
 
+  if (strcmp(listenerID, "PingMuteUser") == 0)
+  {
+    int playerId = -1;
+    int muted = 0;
+    sscanf_s(args, "%d %d", &playerId, &muted);
+    if (AdventureScreen* const screen = AdventureScreen::Instance())
+      screen->SetPlayerPingsMuted(playerId, muted != 0);
+    return;
+  }
+
   if (!ignoreListStorage)
     return;
 
@@ -204,6 +215,7 @@ void IgnoreListController::DoInit(UI::FlashContainer2* const flashContainer)
 
   flashContainer->AddFSListner(ConvertToString(IgnoreUser), this);
   flashContainer->AddFSListner(ConvertToString(RemoveIgnoreFromUser), this);
+  flashContainer->AddFSListner("PingMuteUser", this); // "<player id> <0|1>": pings of a player off (statistics window)
 }
 
 }

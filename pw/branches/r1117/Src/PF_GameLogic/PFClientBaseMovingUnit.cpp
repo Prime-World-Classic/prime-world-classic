@@ -30,7 +30,7 @@ namespace
   // exactly one step. With lag > 1 the model is still moving when the next logic position arrives, so it does
   // not stop-and-go when steps come a bit late or unevenly. Costs ~(lag-1)*step of visual delay (20 ms at 1.2).
   // 1.0 = old behaviour.
-  static float g_moveSmoothLag     = 1.2f;
+  static float g_moveSmoothLag     = 1.1f;
 
   class RotSpeedInitializer
   {
@@ -757,4 +757,4 @@ REGISTER_VAR("dota_turns", g_dotaTurnsEnabled,    STORAGE_NONE);
 REGISTER_VAR("dota_turn_max_speed", g_dotaTurnMaxSpeed,    STORAGE_NONE);
 REGISTER_VAR("dota_turn_min_speed", g_dotaTurnMinSpeed,    STORAGE_USER);
 REGISTER_VAR("dota_turn_ease", g_dotaTurnEase,    STORAGE_NONE);
-REGISTER_VAR("move_smooth_lag", g_moveSmoothLag,    STORAGE_USER);
+REGISTER_VAR("move_smooth_lag", g_moveSmoothLag,    STORAGE_NONE);

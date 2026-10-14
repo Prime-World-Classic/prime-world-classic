@@ -1258,6 +1258,22 @@
 						<propertyName>Options_Back</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_229_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>Options_ChatWheelPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_230_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_PingWheelPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_231_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Statistics_PingMute</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_232_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Statistics_PingUnmute</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_233_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />

@@ -1,4 +1,4 @@
-package EscMenu
+﻿package EscMenu
 {
 	public class Preferences
 	{
@@ -37,6 +37,21 @@ package EscMenu
 		public function AddAdvancedSlider(name:String, caption:String, maxValue:int):void
 		{
 			main.optionsWindow.AddAdvancedSlider(name, caption, maxValue);
+		}
+		
+		public function AddAdvancedKey(name:String, caption:String, command:String):void
+		{
+			main.optionsWindow.AddAdvancedKey(name, caption, command);
+		}
+
+		public function AddAdvancedSlot(name:String, controlName:String):void
+		{
+			main.optionsWindow.AddAdvancedSlot(name, controlName);
+		}
+		
+		public function AddAdvancedNote(text:String):void
+		{
+			main.optionsWindow.AddAdvancedNote(text);
 		}
 		
 		public function SetAdvancedTargetPage(page:int):void

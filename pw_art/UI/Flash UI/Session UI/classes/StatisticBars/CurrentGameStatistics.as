@@ -389,6 +389,15 @@
 		}
 			
 		
+		// wards placed by the player (C++ AdventureScreen::OnWardUsed)
+		public function SetWards(id:int, count:int):void
+		{
+			StatisticsBarPlayers.SetWardCount(id, count);
+			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
+			if (mateInfo != null)
+				mateInfo.UpdateWards();
+		}
+
 		public function SetIgnoreStatus(id:int, ignore:Boolean):void 
 		{
 			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);

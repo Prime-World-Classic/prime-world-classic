@@ -1765,6 +1765,10 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
       NGlobal::SetVar( "current_pet", persId, STORAGE_USER );      
   }
 
+  // wards = the lanterns of the shop (Items/Consumables/EyeOfSeeing*.ARCT), counted for the statistics window;
+  // checked before the use: the last one leaves the slot (pConsumable is a reference to the slot)
+  const bool isWard = pConsumable->GetDBDesc() && strstr( pConsumable->GetDBDesc()->GetDBID().GetFileName().c_str(), "EyeOfSeeing" ) != 0;
+
   pConsumable->GetAbility()->SetUsingConsumable( pConsumable );
   CObj<PFAbilityInstance> pInstance = CreateAbilityInstance( pConsumable->GetAbility(), target );
   if ( pInstance )
@@ -1780,6 +1784,12 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
     }
 
     CALL_CLIENT_6ARGS( OnUseAbility, pAbilityData->GetAbilityNode(), pAbilityData->GetAbilityMarker(), target, pAbilityData->GetTimeOffset( true ), lookAtTarget, pAbilityData->IsAbilitySupposedToStopUnit() );
+
+#ifndef VISUAL_CUTTED
+    if ( isWard )
+      if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
+        pScreen->OnWardUsed( this );
+#endif
 
     return pInstance;
   }

@@ -32,6 +32,7 @@
 	import VoiceChat.VoiceTeamOverlay;
 	import Controllers.SoundController;
 	import EscMenu.ShortcutItem;
+	import EscMenu.OptionsWindow;
 	import Effects.AttentionEffect;
 	import ActionBar.ActionButton;
 	import flash.display.Graphics;
@@ -60,7 +61,6 @@
 		
 		private var pingMarkers:Object;
 		
-		private var pingWheelBg:Loader;
 		
 		private var pingPreloaded:Array;
 		
@@ -69,6 +69,26 @@
 		private var praisePanels:Object;
 		
 		private var smartCastModes:Object;
+
+		// chat wheel (quick chat messages, C++ AdventureScreen::UpdateChatWheel)
+		private var chatWheel:Sprite;
+
+		private var chatWheelGfx:Sprite;
+
+
+		private var chatWheelHighlights:Array;
+
+		private var chatWheelLabels:Array;
+		
+		private var chatWheelBgs:Array;
+		
+		private var chatWheelCount:int;
+		
+		private var pingWheelBgs:Array;
+		
+		private var pingWheelSlots:Array;
+		
+		private var pingWheelCount:int;
 		
 
 		private var friendlyTeamController:MateInfoController;
@@ -1115,26 +1135,65 @@
 			return this.pingLayer;
 		}
 		
+		// text labels of pings, wheels and praises come from a pool: a new ShortcutItem for every ping / wheel / praise
+		// made the engine reach its limit of sprites ("Flash : Sprite count > 6000")
+		private var labelPool:Array = [];
+
 		private function CreatePingLabel(param1:String, param2:uint) : ShortcutItem
 		{
-			var _loc3_:ShortcutItem = new ShortcutItem();
+			var _loc3_:ShortcutItem = null;
+			if(this.labelPool.length > 0)
+			{
+				_loc3_ = ShortcutItem(this.labelPool.pop());
+			}
+			else
+			{
+				_loc3_ = new ShortcutItem();
+				_loc3_.SetBind("");
+				_loc3_.mouseEnabled = false;
+				_loc3_.mouseChildren = false;
+				_loc3_.valueFrame.visible = false;
+				_loc3_.value.visible = false;
+			}
 			_loc3_.SetName(param1);
-			_loc3_.SetBind("");
-			_loc3_.mouseEnabled = false;
-			_loc3_.mouseChildren = false;
-			_loc3_.valueFrame.visible = false;
-			_loc3_.value.visible = false;
 			_loc3_.text.textColor = param2;
+			_loc3_.x = 0;
+			_loc3_.y = 0;
+			_loc3_.alpha = 1;
+			_loc3_.visible = true;
 			return _loc3_;
 		}
+
+		private function ReleasePingLabel(param1:ShortcutItem) : void
+		{
+			if(param1 == null)
+			{
+				return;
+			}
+			if(param1.parent != null)
+			{
+				param1.parent.removeChild(param1);
+			}
+			this.labelPool.push(param1);
+		}
 		
-		// textures: Data/UI/Styles/Icons/PingWheel (wheel 256x256, icons 64x64)
+		// textures: Data/UI/Styles/Icons/PingWheel (pw_art/UI/PingWheel): wheels for 4..8 sectors (256x256), icons 64x64
 		private static const PING_TEX:String = "/UI/Styles/Icons/PingWheel/";
-		
+
 		private static const PING_ICON_SCALE:Number = 0.72;
-		
-		private static const PING_SLOT_RADIUS:Number = 84;
-		
+
+		private static const PING_SLOT_RADIUS:Number = 85;
+
+		// ping types that can be in the wheel (5 = the ordinary ping); same as s_pingTypes in AdventureScreen.cpp
+		private static const PING_TYPE_COUNT:int = 15;
+
+		// top-left corners of the sector highlights relative to the wheel center: [N][i * 2], [N][i * 2 + 1] (gen_pingwheel.py)
+		public static const PING_HL_OFFSETS:Array = [null,null,null,null,[-128,-128,0,-128,-128,0,-128,-128],[-128,-128,0,-128,-6,0,-122,0,-128,-128],[-64,-128,0,-117,0,-12,-64,0,-128,-12,-128,-117],[-64,-128,0,-124,0,-40,-17,0,-111,0,-128,-40,-128,-124],[-64,-128,0,-128,0,-64,0,0,-64,0,-128,0,-128,-64,-128,-128]];
+
+		private static const WHEEL_MIN:int = 4;
+
+		private static const WHEEL_MAX:int = 8;
+
 		private function LoadPingImage(param1:String) : Loader
 		{
 			var _loc2_:Loader = new Loader();
@@ -1142,56 +1201,77 @@
 			_loc2_.load(new URLRequest(MainInterface.PING_TEX + param1));
 			return _loc2_;
 		}
-		
-		private function PlacePingIcon(param1:Loader, param2:int, param3:Number) : void
+
+		// icon of slot `index` of `count`, scale of the 64 px icon
+		private function PlacePingIcon(param1:Loader, param2:int, param3:int, param4:Number) : void
 		{
-			var _loc4_:Number = (-90 + param2 * 72) * Math.PI / 180;
-			param1.scaleX = param3;
-			param1.scaleY = param3;
-			param1.x = Math.floor(Math.cos(_loc4_) * MainInterface.PING_SLOT_RADIUS - 32 * param3);
-			param1.y = Math.floor(Math.sin(_loc4_) * MainInterface.PING_SLOT_RADIUS - 32 * param3);
+			var _loc5_:Number = (-90 + param2 * 360 / param3) * Math.PI / 180;
+			param1.scaleX = param4;
+			param1.scaleY = param4;
+			param1.x = Math.floor(Math.cos(_loc5_) * MainInterface.PING_SLOT_RADIUS - 32 * param4);
+			param1.y = Math.floor(Math.sin(_loc5_) * MainInterface.PING_SLOT_RADIUS - 32 * param4);
 		}
-		
+
+		// all textures of the wheel exist as hidden loaders (loaded while the map is loading); a show only switches them
 		private function CreatePingWheel() : void
 		{
-			var _loc1_:int = 0;
-			var _loc2_:Loader = null;
+			var n:int = 0;
+			var i:int = 0;
+			var ld:Loader = null;
+			var offsets:Array = null;
+			var hls:Array = null;
 			this.pingWheel = new Sprite();
 			this.pingWheel.mouseEnabled = false;
 			this.pingWheel.mouseChildren = false;
-			_loc2_ = this.LoadPingImage("wheel_bg.dds");
-			_loc2_.x = -128;
-			_loc2_.y = -128;
-			this.pingWheel.addChild(_loc2_);
-			this.pingWheelBg = _loc2_;
+			this.pingWheelBgs = [];
 			this.pingWheelHighlights = [];
+			n = 0;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				this.pingWheelBgs.push(null);
+				this.pingWheelHighlights.push(null);
+				if(n >= MainInterface.WHEEL_MIN)
+				{
+					ld = this.LoadPingImage("ping_wheel_bg_" + n + ".dds");
+					ld.x = -128;
+					ld.y = -128;
+					ld.visible = false;
+					this.pingWheel.addChild(ld);
+					this.pingWheelBgs[n] = ld;
+					offsets = MainInterface.PING_HL_OFFSETS[n];
+					hls = [];
+					i = 0;
+					while(i < n)
+					{
+						ld = this.LoadPingImage("ping_wheel_hl_" + n + "_" + i + ".dds");
+						ld.x = int(offsets[i * 2]);
+						ld.y = int(offsets[i * 2 + 1]);
+						ld.visible = false;
+						this.pingWheel.addChild(ld);
+						hls.push(ld);
+						i++;
+					}
+					this.pingWheelHighlights[n] = hls;
+				}
+				n++;
+			}
 			this.pingWheelItems = [];
-			_loc1_ = 0;
-			while(_loc1_ < 5)
+			i = 0;
+			while(i < MainInterface.PING_TYPE_COUNT)
 			{
-				_loc2_ = this.LoadPingImage("wheel_hl" + _loc1_ + ".dds");
-				_loc2_.x = -128;
-				_loc2_.y = -128;
-				_loc2_.visible = false;
-				this.pingWheel.addChild(_loc2_);
-				this.pingWheelHighlights.push(_loc2_);
-				_loc1_++;
+				ld = this.LoadPingImage("ping_icon" + i + ".dds");
+				ld.visible = false;
+				this.pingWheel.addChild(ld);
+				this.pingWheelItems.push(ld);
+				i++;
 			}
-			_loc1_ = 0;
-			while(_loc1_ < 5)
-			{
-				_loc2_ = this.LoadPingImage("ping_icon" + _loc1_ + ".dds");
-				this.PlacePingIcon(_loc2_,_loc1_,MainInterface.PING_ICON_SCALE);
-				this.pingWheel.addChild(_loc2_);
-				this.pingWheelItems.push(_loc2_);
-				_loc1_++;
-			}
+			this.pingWheelSlots = [];
 			this.pingWheelText = this.CreatePingLabel("",16777215);
 			this.pingWheel.addChild(this.pingWheelText);
 			this.pingWheel.visible = false;
 			this.GetPingLayer().addChild(this.pingWheel);
 		}
-		
+
 		// called by C++ while the map is loading: textures must not be loaded after the game start
 		public function PreloadPingWheel() : void
 		{
@@ -1202,12 +1282,16 @@
 			{
 				this.CreatePingWheel();
 			}
+			if(this.chatWheel == null)
+			{
+				this.CreateChatWheel();
+			}
 			if(this.pingPreloaded == null)
 			{
-				// marker textures: beams of all ping types + the icon of the ordinary ping (kept hidden, only to load them now)
+				// marker textures: beams of all ping types (kept hidden, only to load them now); the icons are in the wheel
 				this.pingPreloaded = [];
 				_loc1_ = 0;
-				while(_loc1_ < 6)
+				while(_loc1_ < MainInterface.PING_TYPE_COUNT)
 				{
 					_loc2_ = this.LoadPingImage("ping_beam" + _loc1_ + ".dds");
 					_loc2_.visible = false;
@@ -1215,75 +1299,105 @@
 					this.pingPreloaded.push(_loc2_);
 					_loc1_++;
 				}
-				_loc2_ = this.LoadPingImage("ping_icon5.dds");
-				_loc2_.visible = false;
-				_loc3_.addChild(_loc2_);
-				this.pingPreloaded.push(_loc2_);
 				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_off.dds");
 				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_on.dds");
 				this.PreloadPingImage(MainInterface.PRAISE_TEX + "praise_bg.dds");
-				this.PreloadPingImage(MainInterface.PRAISE_TEX + "prime_drop.dds");
+				this.PreloadPingImage("/UI/Styles/Icons/Artifacts/EyeYellow.dds"); // wards in the statistics window
 			}
 		}
-		
-		// nx, ny: 0..1 of the screen; labels and colors (hex RRGGBB) separated by '|', item 0 at the top, clockwise;
-		// bgAlpha: background opacity 0..1, scale: wheel size (1 = 256 px)
-		public function ShowPingWheel(param1:Number, param2:Number, param3:String, param4:String, param5:Number, param6:Number) : void
+
+		// nx, ny: 0..1 of the screen; labels, colors (hex RRGGBB) and ping types of the slots separated by '|',
+		// slot 0 at the top, clockwise (4..8 slots); bgAlpha: background opacity 0..1, scale: wheel size (1 = 256 px)
+		public function ShowPingWheel(param1:Number, param2:Number, param3:String, param4:String, param5:String, param6:Number, param7:Number) : void
 		{
-			var _loc5_:int = 0;
-			var _loc6_:Array = null;
+			var i:int = 0;
+			var colors:Array = null;
+			var types:Array = null;
+			var n:int = 0;
 			this.GetPingLayer();
 			if(this.pingWheel == null)
 			{
 				this.CreatePingWheel();
 			}
+			this.GetPingLayer().setChildIndex(this.pingWheel,this.GetPingLayer().numChildren - 1);
 			this.pingWheelLabels = param3.split("|");
-			_loc6_ = param4.split("|");
+			colors = param4.split("|");
+			types = param5.split("|");
 			this.pingWheelColors = [];
-			_loc5_ = 0;
-			while(_loc5_ < _loc6_.length)
+			this.pingWheelSlots = [];
+			i = 0;
+			while(i < types.length && i < MainInterface.WHEEL_MAX)
 			{
-				this.pingWheelColors.push(uint(parseInt(_loc6_[_loc5_],16)));
-				_loc5_++;
+				this.pingWheelColors.push(uint(parseInt(String(colors[i]),16)));
+				this.pingWheelSlots.push(int(types[i]));
+				i++;
+			}
+			n = this.pingWheelSlots.length;
+			if(n < MainInterface.WHEEL_MIN)
+			{
+				n = MainInterface.WHEEL_MIN;
+			}
+			this.pingWheelCount = n;
+			i = MainInterface.WHEEL_MIN;
+			while(i <= MainInterface.WHEEL_MAX)
+			{
+				Loader(this.pingWheelBgs[i]).visible = i == n;
+				if(i == n)
+				{
+					Loader(this.pingWheelBgs[i]).alpha = param6;
+				}
+				i++;
+			}
+			i = 0;
+			while(i < this.pingWheelItems.length)
+			{
+				Loader(this.pingWheelItems[i]).visible = this.pingWheelSlots.indexOf(i) >= 0;
+				i++;
 			}
 			this.pingWheel.x = Math.floor(param1 * this.mainWindow.stage.stageWidth);
 			this.pingWheel.y = Math.floor(param2 * this.mainWindow.stage.stageHeight);
-			if(this.pingWheelBg != null)
-			{
-				this.pingWheelBg.alpha = param5;
-			}
-			this.pingWheel.scaleX = param6;
-			this.pingWheel.scaleY = param6;
+			this.pingWheel.scaleX = param7;
+			this.pingWheel.scaleY = param7;
 			this.HighlightPingWheel(-1);
 			this.pingWheel.visible = true;
 		}
-		
+
 		// highlighted sector + its name under the wheel; -1 = nothing
 		public function HighlightPingWheel(param1:int) : void
 		{
-			var _loc2_:int = 0;
-			var _loc3_:Number = NaN;
-			var _loc4_:Boolean = false;
+			var n:int = 0;
+			var i:int = 0;
+			var type:int = 0;
+			var scale:Number = NaN;
 			if(this.pingWheel == null)
 			{
 				return;
 			}
-			_loc2_ = 0;
-			while(_loc2_ < this.pingWheelItems.length)
+			n = MainInterface.WHEEL_MIN;
+			while(n <= MainInterface.WHEEL_MAX)
 			{
-				_loc4_ = false;
-				if(_loc2_ == param1)
+				i = 0;
+				while(i < this.pingWheelHighlights[n].length)
 				{
-					_loc4_ = true;
+					Loader(this.pingWheelHighlights[n][i]).visible = n == this.pingWheelCount && i == param1;
+					i++;
 				}
-				Loader(this.pingWheelHighlights[_loc2_]).visible = _loc4_;
-				_loc3_ = MainInterface.PING_ICON_SCALE;
-				if(_loc4_)
+				n++;
+			}
+			i = 0;
+			while(i < this.pingWheelSlots.length)
+			{
+				type = int(this.pingWheelSlots[i]);
+				if(type >= 0 && type < this.pingWheelItems.length)
 				{
-					_loc3_ = MainInterface.PING_ICON_SCALE * 1.18;
+					scale = MainInterface.PING_ICON_SCALE;
+					if(i == param1)
+					{
+						scale = MainInterface.PING_ICON_SCALE * 1.18;
+					}
+					this.PlacePingIcon(Loader(this.pingWheelItems[type]),i,this.pingWheelCount,scale);
 				}
-				this.PlacePingIcon(Loader(this.pingWheelItems[_loc2_]),_loc2_,_loc3_);
-				_loc2_++;
+				i++;
 			}
 			if(param1 < 0 || this.pingWheelLabels == null || param1 >= this.pingWheelLabels.length)
 			{
@@ -1296,7 +1410,7 @@
 			this.pingWheelText.y = Math.floor(136 - this.pingWheelText.text.y);
 			this.pingWheelText.visible = true;
 		}
-		
+
 		public function HidePingWheel() : void
 		{
 			if(this.pingWheel != null)
@@ -1304,7 +1418,266 @@
 				this.pingWheel.visible = false;
 			}
 		}
-		
+
+		// textures: Data/UI/Styles/Icons/ChatWheel (pw_art/UI/ChatWheel/gen_chatwheel.py): wheels for 4..8 sectors 512x512
+		private static const CHAT_TEX:String = "/UI/Styles/Icons/ChatWheel/";
+
+		// scale 1 (100% in the settings) shows the 512 px texture at 384 px
+		private static const CHAT_WHEEL_BASE_SCALE:Number = 0.75;
+
+		// radius of the label centers, texture pixels (wheel radius 244, center circle 58)
+		private static const CHAT_LABEL_RADIUS:Number = 152;
+
+		public static const CHAT_HL_OFFSETS:Array = [null,null,null,null,[-256,-256,0,-256,-256,0,-256,-256],[-256,-256,0,-256,-15,0,-241,0,-256,-256],[-128,-256,0,-231,0,-26,-128,0,-256,-26,-256,-231],[-128,-256,0,-243,0,-80,-36,0,-220,0,-256,-80,-256,-242],[-128,-256,-6,-251,0,-128,-6,-5,-128,0,-251,-5,-256,-128,-251,-251]];
+
+		private static const CHAT_LABEL_COLOR:uint = 15261109;
+
+		private static const CHAT_LABEL_SELECTED_COLOR:uint = 16777215;
+
+		private function CreateChatWheel() : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var ld:Loader = null;
+			var offsets:Array = null;
+			var hls:Array = null;
+			this.chatWheel = new Sprite();
+			this.chatWheel.mouseEnabled = false;
+			this.chatWheel.mouseChildren = false;
+			this.chatWheelGfx = new Sprite();
+			this.chatWheelGfx.mouseEnabled = false;
+			this.chatWheel.addChild(this.chatWheelGfx);
+			this.chatWheelBgs = [];
+			this.chatWheelHighlights = [];
+			n = 0;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				this.chatWheelBgs.push(null);
+				this.chatWheelHighlights.push(null);
+				if(n >= MainInterface.WHEEL_MIN)
+				{
+					ld = new Loader();
+					ld.mouseEnabled = false;
+					ld.load(new URLRequest(MainInterface.CHAT_TEX + "chat_wheel_bg_" + n + ".dds"));
+					ld.x = -256;
+					ld.y = -256;
+					ld.visible = false;
+					this.chatWheelGfx.addChild(ld);
+					this.chatWheelBgs[n] = ld;
+					offsets = MainInterface.CHAT_HL_OFFSETS[n];
+					hls = [];
+					i = 0;
+					while(i < n)
+					{
+						ld = new Loader();
+						ld.mouseEnabled = false;
+						ld.load(new URLRequest(MainInterface.CHAT_TEX + "chat_wheel_hl_" + n + "_" + i + ".dds"));
+						ld.x = int(offsets[i * 2]);
+						ld.y = int(offsets[i * 2 + 1]);
+						ld.visible = false;
+						this.chatWheelGfx.addChild(ld);
+						hls.push(ld);
+						i++;
+					}
+					this.chatWheelHighlights[n] = hls;
+				}
+				n++;
+			}
+			this.chatWheelLabels = [];
+			this.chatWheel.visible = false;
+			this.GetPingLayer().addChild(this.chatWheel);
+		}
+
+		// a long message goes to two lines (split at the space nearest to the middle)
+		private function SplitChatLabel(param1:String) : Array
+		{
+			var _loc2_:int = -1;
+			var _loc3_:int = 0;
+			var _loc4_:int = 0;
+			var _loc5_:int = 0;
+			if(param1.length <= 11)
+			{
+				return [param1];
+			}
+			_loc3_ = 0;
+			while(_loc3_ < param1.length)
+			{
+				if(param1.charAt(_loc3_) == " ")
+				{
+					_loc4_ = Math.abs(_loc3_ * 2 - param1.length);
+					if(_loc2_ < 0 || _loc4_ < _loc5_)
+					{
+						_loc2_ = _loc3_;
+						_loc5_ = _loc4_;
+					}
+				}
+				_loc3_++;
+			}
+			if(_loc2_ < 0)
+			{
+				return [param1];
+			}
+			return [param1.substr(0,_loc2_),param1.substr(_loc2_ + 1)];
+		}
+
+		// nx, ny: 0..1 of the screen; labels separated by '|' (4..8), item 0 at the top, clockwise;
+		// bgAlpha: background opacity 0..1, scale: wheel size (1 = 100% in the settings)
+		public function ShowChatWheel(param1:Number, param2:Number, param3:String, param4:Number, param5:Number) : void
+		{
+			var items:Array = null;
+			var lines:Array = null;
+			var row:Array = null;
+			var i:int = 0;
+			var j:int = 0;
+			var n:int = 0;
+			var label:ShortcutItem = null;
+			var scale:Number = NaN;
+			var angle:Number = NaN;
+			var radius:Number = NaN;
+			var lineHeight:Number = 16;
+			this.GetPingLayer();
+			if(this.chatWheel == null)
+			{
+				this.CreateChatWheel();
+			}
+			this.GetPingLayer().setChildIndex(this.chatWheel,this.GetPingLayer().numChildren - 1);
+			i = 0;
+			while(i < this.chatWheelLabels.length)
+			{
+				row = this.chatWheelLabels[i];
+				j = 0;
+				while(j < row.length)
+				{
+					this.ReleasePingLabel(ShortcutItem(row[j]));
+					j++;
+				}
+				i++;
+			}
+			this.chatWheelLabels = [];
+			scale = param5 * MainInterface.CHAT_WHEEL_BASE_SCALE;
+			this.chatWheelGfx.scaleX = scale;
+			this.chatWheelGfx.scaleY = scale;
+			items = param3.split("|");
+			if(items.length > MainInterface.WHEEL_MAX)
+			{
+				items.length = MainInterface.WHEEL_MAX;
+			}
+			n = items.length;
+			if(n < MainInterface.WHEEL_MIN)
+			{
+				n = MainInterface.WHEEL_MIN;
+			}
+			this.chatWheelCount = n;
+			i = MainInterface.WHEEL_MIN;
+			while(i <= MainInterface.WHEEL_MAX)
+			{
+				Loader(this.chatWheelBgs[i]).visible = i == n;
+				if(i == n)
+				{
+					Loader(this.chatWheelBgs[i]).alpha = param4;
+				}
+				i++;
+			}
+			i = 0;
+			while(i < items.length)
+			{
+				angle = (-90 + i * 360 / n) * Math.PI / 180;
+				radius = MainInterface.CHAT_LABEL_RADIUS * scale;
+				lines = this.SplitChatLabel(String(items[i]));
+				row = [];
+				j = 0;
+				while(j < lines.length)
+				{
+					label = this.CreatePingLabel(String(lines[j]),MainInterface.CHAT_LABEL_COLOR);
+					label.x = Math.floor(Math.cos(angle) * radius - label.text.x - label.text.textWidth / 2);
+					label.y = Math.floor(Math.sin(angle) * radius + (j - lines.length / 2) * lineHeight - label.text.y);
+					this.chatWheel.addChild(label);
+					row.push(label);
+					j++;
+				}
+				this.chatWheelLabels.push(row);
+				i++;
+			}
+			this.chatWheel.x = Math.floor(param1 * this.mainWindow.stage.stageWidth);
+			this.chatWheel.y = Math.floor(param2 * this.mainWindow.stage.stageHeight);
+			this.HighlightChatWheel(-1);
+			this.chatWheel.visible = true;
+		}
+
+		// highlighted sector and its message; -1 = nothing
+		public function HighlightChatWheel(param1:int) : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var j:int = 0;
+			var row:Array = null;
+			var color:uint = 0;
+			if(this.chatWheel == null)
+			{
+				return;
+			}
+			n = MainInterface.WHEEL_MIN;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				i = 0;
+				while(i < this.chatWheelHighlights[n].length)
+				{
+					Loader(this.chatWheelHighlights[n][i]).visible = n == this.chatWheelCount && i == param1;
+					i++;
+				}
+				n++;
+			}
+			i = 0;
+			while(i < this.chatWheelLabels.length)
+			{
+				color = MainInterface.CHAT_LABEL_COLOR;
+				if(i == param1)
+				{
+					color = MainInterface.CHAT_LABEL_SELECTED_COLOR;
+				}
+				row = this.chatWheelLabels[i];
+				j = 0;
+				while(j < row.length)
+				{
+					ShortcutItem(row[j]).text.textColor = color;
+					j++;
+				}
+				i++;
+			}
+		}
+
+		public function HideChatWheel() : void
+		{
+			if(this.chatWheel != null)
+			{
+				this.chatWheel.visible = false;
+			}
+		}
+
+		// wards placed by a player (lanterns of the shop), statistics window
+		public function SetPlayerWards(playerId:int, count:int) : void
+		{
+			try
+			{
+				this.mainWindow.statisticsBar_mc.allStats_mc.SetWards(playerId, count);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// wheel editors of the settings window (C++ AdventureScreen::SendWheelEditors)
+		public function SetWheelEditor(wheel:int, varName:String, ids:String, labels:String, icons:String, items:String, texts:String) : void
+		{
+			try
+			{
+				this.mainWindow.optionsWindow.SetWheelEditor(wheel, varName, ids, labels, icons, items, texts);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
 		// loads a texture now (absolute path, e.g. a hero minimap icon): files must not be loaded after the game start
 		public function PreloadPingImage(param1:String) : void
 		{
@@ -1359,6 +1732,10 @@
 			{
 				if(_loc12_ != null)
 				{
+					if(_loc12_.numChildren > 3)
+					{
+						this.ReleasePingLabel(_loc12_.getChildAt(3) as ShortcutItem);
+					}
 					if(_loc12_.parent != null)
 					{
 						_loc12_.parent.removeChild(_loc12_);
@@ -1608,7 +1985,28 @@
 			param1.y = Math.floor(param3 - param1.text.y);
 		}
 		
-		// children: 0 bg, 1 sender portrait, 2 target portrait, 3 title, 4 prime drop, 5 amount, 6 sender name, 7 target name
+		// width of a name under a portrait (centered under it, the panel is 320 px wide)
+		private static const PRAISE_NAME_WIDTH:Number = 76;
+		
+		private function FitPraiseName(param1:ShortcutItem, param2:Number) : void
+		{
+			var name:String = param1.text.text;
+			if(param1.text.textWidth <= param2)
+			{
+				return;
+			}
+			while(name.length > 1)
+			{
+				name = name.substr(0,name.length - 1);
+				param1.SetName(name + "...");
+				if(param1.text.textWidth <= param2)
+				{
+					return;
+				}
+			}
+		}
+		
+		// children: 0 bg, 1 sender portrait, 2 target portrait, 3 title, 4 sender name, 5 target name
 		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int) : void
 		{
 			var _loc9_:Sprite = this.GetPingLayer();
@@ -1639,25 +2037,14 @@
 			_loc10_.addChild(this.CreatePraisePortrait(param5,248));
 			_loc12_ = this.CreatePingLabel("ХВАЛИТ",15784080);
 			_loc10_.addChild(_loc12_);
-			this.PlacePraiseLabel(_loc12_,160,14);
-			_loc11_ = new Loader();
-			_loc11_.mouseEnabled = false;
-			_loc11_.load(new URLRequest(MainInterface.PRAISE_TEX + "prime_drop.dds"));
-			_loc11_.scaleX = 0.42;
-			_loc11_.scaleY = 0.42;
-			_loc10_.addChild(_loc11_);
-			_loc13_ = this.CreatePingLabel("+" + String(param8),8382664);
-			_loc10_.addChild(_loc13_);
-			_loc14_ = 27 + 3 + _loc13_.text.textWidth;
-			_loc15_ = Math.floor(160 - _loc14_ / 2);
-			_loc11_.x = _loc15_;
-			_loc11_.y = 34;
-			_loc13_.x = Math.floor(_loc15_ + 30 - _loc13_.text.x);
-			_loc13_.y = Math.floor(39 - _loc13_.text.y);
+			this.PlacePraiseLabel(_loc12_,160,40);
+			// the praise is free: no prime in the panel; long names are cut with "..." to stay inside the panel
 			_loc12_ = this.CreatePingLabel(param3,param4);
+			this.FitPraiseName(_loc12_,MainInterface.PRAISE_NAME_WIDTH);
 			_loc10_.addChild(_loc12_);
 			this.PlacePraiseLabel(_loc12_,42,74);
 			_loc12_ = this.CreatePingLabel(param6,param7);
+			this.FitPraiseName(_loc12_,MainInterface.PRAISE_NAME_WIDTH);
 			_loc10_.addChild(_loc12_);
 			this.PlacePraiseLabel(_loc12_,278,74);
 			_loc10_.visible = false;
@@ -1681,6 +2068,17 @@
 			}
 			if(param4 <= 0)
 			{
+				while(_loc7_.numChildren > 3)
+				{
+					if(_loc7_.getChildAt(3) is ShortcutItem)
+					{
+						this.ReleasePingLabel(ShortcutItem(_loc7_.getChildAt(3)));
+					}
+					else
+					{
+						_loc7_.removeChildAt(3);
+					}
+				}
 				if(_loc7_.parent != null)
 				{
 					_loc7_.parent.removeChild(_loc7_);
@@ -2322,7 +2720,15 @@
 			binds.push(bindString);
 			
 			mainWindow.optionsWindow.shortcutsTab.FillBindSettings(bindString);
-			
+
+			try
+			{
+				OptionsWindow.OnBindString(bindString); // key rows of the settings pages (quick commands key)
+			}
+			catch (e:Error)
+			{
+			}
+
 			if (bindString.indexOf(" ") == -1)
 				return;
 			
