@@ -6,6 +6,7 @@
 #include "vertexelementusage.h"
 #include "renderstates.h"
 #include "renderformat.h"
+#include "renderbackend.h"   // EBackendFormat/EBackendPool/EBackendUsage
 #include "sampler.h"
 
 namespace Render
@@ -35,5 +36,18 @@ const char* D3DFormat2Str(DWORD _format);
 
 /// get pool name
 const char* D3DPool2Str(D3DPOOL _pool);
+
+// D3D9-словари -> нейтральные словари seam'а (renderbackend.h). Обратные
+// переводы (EBackend* -> D3D*) живут в d3d9backend.cpp — там, где D3D9-реализация.
+// bfUnknown / BACKEND_POOL_COUNT наружу не отдаются: вызывающий обязан
+// отказать в создании ресурса, а не подменить формат молча.
+EBackendFormat RenderFormatToBackend(ERenderFormat format);
+EBackendFormat D3DFormatToBackend(D3DFORMAT fmt);
+// Пул и usage переводятся парой: в D3D9 «динамичность» — это флаг usage при
+// D3DPOOL_DEFAULT, в seam'е — отдельное значение EBackendPool.
+EBackendPool   D3DPoolToBackend(D3DPOOL pool, DWORD usage);
+// Только «назначение» (RENDERTARGET/DEPTHSTENCIL/AUTOGENMIPMAP); биты памяти
+// (DYNAMIC/WRITEONLY) отсекаются — их выражает пул.
+EBackendUsage  D3DUsageToBackend(DWORD usage);
 
 }; // namespace Render

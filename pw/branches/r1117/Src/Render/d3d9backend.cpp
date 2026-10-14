@@ -217,6 +217,121 @@ static void D3DPoolFromBackend(EBackendPool pool, DWORD& usage, D3DPOOL& d3dPool
   GetD3DPoolAndUsagesParamaters(usage, d3dPool, static_cast<PoolType>(pool));
 }
 
+// EBackendFormat -> D3DFORMAT. bfUnknown — отказ (D3DFMT_UNKNOWN): подменять
+// неизвестный формат каким-нибудь рабочим нельзя, молча поехавший формат/альфа
+// в логах не виден.
+static D3DFORMAT D3DFormatFromBackend(EBackendFormat format) {
+  switch (format) {
+    case bfA8R8G8B8:       return D3DFMT_A8R8G8B8;
+    case bfX8R8G8B8:       return D3DFMT_X8R8G8B8;
+    case bfA8:             return D3DFMT_A8;
+    case bfL8:             return D3DFMT_L8;
+    case bfL16:            return D3DFMT_L16;
+    case bfR5G6B5:         return D3DFMT_R5G6B5;
+    case bfR16F:           return D3DFMT_R16F;
+    case bfA16B16G16R16F:  return D3DFMT_A16B16G16R16F;
+    case bfR32F:           return D3DFMT_R32F;
+    case bfG32R32F:        return D3DFMT_G32R32F;
+    case bfA32B32G32R32F:  return D3DFMT_A32B32G32R32F;
+    case bfDXT1:           return D3DFMT_DXT1;
+    case bfDXT2:           return D3DFMT_DXT2;
+    case bfDXT3:           return D3DFMT_DXT3;
+    case bfDXT4:           return D3DFMT_DXT4;
+    case bfDXT5:           return D3DFMT_DXT5;
+    case bfD24S8:          return D3DFMT_D24S8;
+    default:               return D3DFMT_UNKNOWN;
+  }
+}
+
+static DWORD D3DUsageFromBackend(EBackendUsage usage) {
+  DWORD d3dUsage = 0;
+  if (usage & usageRenderTarget)  d3dUsage |= D3DUSAGE_RENDERTARGET;
+  if (usage & usageDepthStencil)  d3dUsage |= D3DUSAGE_DEPTHSTENCIL;
+  if (usage & usageAutoGenMipmap) d3dUsage |= D3DUSAGE_AUTOGENMIPMAP;
+  return d3dUsage;
+}
+
+// Пул + «назначение» -> D3DPOOL + D3DUSAGE_*: пуловая часть берётся из
+// D3DPoolFromBackend (он же проверяет паритет словарей пулов), биты назначения
+// добавляются сверху.
+static void D3DResPoolUsageFromBackend(EBackendPool pool, EBackendUsage usage,
+                                       DWORD& d3dUsage, D3DPOOL& d3dPool) {
+  D3DPoolFromBackend(pool, d3dUsage, d3dPool);
+  d3dUsage |= D3DUsageFromBackend(usage);
+}
+
+HRESULT D3D9Backend::CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
+                                     EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                     HTexture* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  const D3DFORMAT fmt = D3DFormatFromBackend(format);
+  if (fmt == D3DFMT_UNKNOWN)
+    return D3DERR_INVALIDCALL;
+  DWORD d3dUsage = 0;
+  D3DPOOL d3dPool = D3DPOOL_MANAGED;
+  D3DResPoolUsageFromBackend(pool, usage, d3dUsage, d3dPool);
+
+  IDirect3DTexture9* tex = 0;
+  const HRESULT hr = pDevice->CreateTexture(width, height, mipLevels, d3dUsage, fmt, d3dPool, &tex, 0);
+  *pOut = MakeBackendHandle<HTexture>(tex);
+  return hr;
+}
+
+HRESULT D3D9Backend::CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
+                                       EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                       HTexture* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  const D3DFORMAT fmt = D3DFormatFromBackend(format);
+  if (fmt == D3DFMT_UNKNOWN)
+    return D3DERR_INVALIDCALL;
+  DWORD d3dUsage = 0;
+  D3DPOOL d3dPool = D3DPOOL_MANAGED;
+  D3DResPoolUsageFromBackend(pool, usage, d3dUsage, d3dPool);
+
+  IDirect3DCubeTexture9* cube = 0;
+  const HRESULT hr = pDevice->CreateCubeTexture(edgeLen, mipLevels, d3dUsage, fmt, d3dPool, &cube, 0);
+  *pOut = MakeBackendHandle<HTexture>(cube);
+  return hr;
+}
+
+HRESULT D3D9Backend::CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
+                                   EBackendFormat format, EBackendPool pool, HSurface* pOut) {
+  if (!pOut)
+    return E_INVALIDARG;
+  const D3DFORMAT fmt = D3DFormatFromBackend(format);
+  if (fmt == D3DFMT_UNKNOWN)
+    return D3DERR_INVALIDCALL;
+
+  IDirect3DSurface9* surf = 0;
+  HRESULT hr;
+  // MSAA в клиенте не используется (замер: D3DMULTISAMPLE_NONE, качество 0),
+  // поэтому в сигнатуре seam'а его нет.
+  switch (kind) {
+    case ssDepthStencil:
+      hr = pDevice->CreateDepthStencilSurface(width, height, fmt, D3DMULTISAMPLE_NONE, 0, FALSE, &surf, 0);
+      break;
+    case ssRenderTarget:
+      hr = pDevice->CreateRenderTarget(width, height, fmt, D3DMULTISAMPLE_NONE, 0, FALSE, &surf, 0);
+      break;
+    default: {
+      DWORD d3dUsage = 0;
+      D3DPOOL d3dPool = D3DPOOL_SYSTEMMEM;
+      D3DPoolFromBackend(pool, d3dUsage, d3dPool);
+      hr = pDevice->CreateOffscreenPlainSurface(width, height, fmt, d3dPool, &surf, 0);
+      break;
+    }
+  }
+  *pOut = MakeBackendHandle<HSurface>(surf);
+  return hr;
+}
+
+HRESULT D3D9Backend::UpdateTexture(HTexture srcTexture, HTexture dstTexture) {
+  return pDevice->UpdateTexture(static_cast<IDirect3DBaseTexture9*>(srcTexture.p),
+                                static_cast<IDirect3DBaseTexture9*>(dstTexture.p));
+}
+
 HRESULT D3D9Backend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) {
   DWORD usage;
   D3DPOOL d3dPool;

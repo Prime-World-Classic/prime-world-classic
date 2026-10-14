@@ -3,6 +3,7 @@
 
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/SetTexture
 #include "Filter.h"
 #include "MaterialSpec.h"
 
@@ -301,7 +302,7 @@ void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pText
   statesManager.SetState( RenderState::NoBlendNoTest() );
   GetImmRenderer()->RenderScreenQuad( ImmRenderer::MaterialParams(pMaterial) );
 
-  GetDevice()->SetTexture(1, 0); // Unbind pTexture (because it is RT)
+  GetBackend()->SetTexture(1, HTexture()); // Unbind pTexture (because it is RT)
   if(useCoeffTexture)
     pCoeffTexture->UnBind();
 }

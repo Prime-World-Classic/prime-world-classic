@@ -2,6 +2,7 @@
 
 #include "rendersurface.h"
 #include "renderflagsconverter.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/HSurface/EBackend*
 
 // pSurface == 0, desc == 0  =>  empty
 // pSurface == 0, desc != 0  =>  waiting for OnResourcesReallocate()
@@ -50,20 +51,27 @@ void RenderSurface::CreateInternal()
   HRESULT hr = E_INVALIDARG;
   const bool wasNotManaged = (D3DPOOL_MANAGED != desc.Pool);
 
+  // Разделение «чем является поверхность» — за seam'ом (EBackendSurfaceKind):
+  // у Vulkan/DX12 это одна текстура с usage-флагами, а не три фабрики.
+  // Multisample не передаётся: в клиенте он D3DMULTISAMPLE_NONE (замер).
+  HSurface hSurf;
   if( desc.Format == D3DFMT_D24S8 )
   {
-    hr = GetDevice()->CreateDepthStencilSurface(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality,
-                                                FALSE, &pDirect3DSurface, NULL);
+    hr = GetBackend()->CreateSurface(ssDepthStencil, desc.Width, desc.Height,
+                                     D3DFormatToBackend(desc.Format), BACKEND_POOL_DEFAULT, &hSurf);
     desc.Pool = D3DPOOL_DEFAULT;
   }
   else if( D3DUSAGE_RENDERTARGET == desc.Usage )
   {
-    hr = GetDevice()->CreateRenderTarget(desc.Width, desc.Height, desc.Format, desc.MultiSampleType, desc.MultiSampleQuality,
-                                         FALSE, &pDirect3DSurface, NULL);
+    hr = GetBackend()->CreateSurface(ssRenderTarget, desc.Width, desc.Height,
+                                     D3DFormatToBackend(desc.Format), BACKEND_POOL_DEFAULT, &hSurf);
     desc.Pool = D3DPOOL_DEFAULT;
   }
   else if( D3DPOOL_MANAGED != desc.Pool )
-    hr = GetDevice()->CreateOffscreenPlainSurface(desc.Width, desc.Height, desc.Format, desc.Pool, &pDirect3DSurface, NULL);
+    hr = GetBackend()->CreateSurface(ssPlain, desc.Width, desc.Height,
+                                     D3DFormatToBackend(desc.Format),
+                                     D3DPoolToBackend(desc.Pool, desc.Usage), &hSurf);
+  pDirect3DSurface = static_cast<IDirect3DSurface9*>(hSurf.p);
 
   if( D3D_OK == hr )
   {
@@ -101,7 +109,9 @@ void RenderSurface::Unlock()
 
 void RenderSurface::StretchTo( IDirect3DSurface9 *other, bool bLinear )
 {
-	HRESULT hr = GetDevice()->StretchRect(Get(pSurface), 0, other, 0, bLinear ? D3DTEXF_LINEAR : D3DTEXF_POINT);
+	HRESULT hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSurface)), 0,
+	                                   MakeBackendHandle<HSurface>(other), 0,
+	                                   bLinear ? IRenderBackend::bfLinear : IRenderBackend::bfPoint);
   NI_DX_THROW(hr, __FUNCTION__);
 }
 

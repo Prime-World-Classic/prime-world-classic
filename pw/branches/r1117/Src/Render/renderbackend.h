@@ -73,6 +73,40 @@ struct HInputLayout { void* p = 0; };
 // ами в dxutils.cpp), поэтому вызывающий код продолжает писать RENDER_POOL_*.
 // Семантика за бэкендом: в D3D9 это D3DPOOL+usage, в Vulkan/DX12 MANAGED и
 // DYNAMIC становятся staging-копией + default-ресурсом + upload-кольцом.
+// Формат ресурса. Набор замкнут по тому, что реально создаётся в клиенте
+// (замер DDS-контента: A8R8G8B8, DXT1, DXT5, L8; кубы — DXT1/A8R8G8B8;
+// проектный ERenderFormat покрывает остальные; глубина — D24S8), а не по всему
+// пространству D3DFORMAT: перевод в D3DFORMAT знает только D3D9-реализация.
+enum EBackendFormat {
+  bfUnknown = 0,
+  bfA8R8G8B8, bfX8R8G8B8,
+  bfA8, bfL8, bfL16, bfR5G6B5,
+  bfR16F, bfA16B16G16R16F,
+  bfR32F, bfG32R32F, bfA32B32G32R32F,
+  bfDXT1, bfDXT2, bfDXT3, bfDXT4, bfDXT5,
+  bfD24S8,
+  BACKEND_FORMAT_COUNT
+};
+
+// Назначение ресурса (в D3D9 — флаги D3DUSAGE_*; набор замкнут по замеру:
+// RENDERTARGET, DEPTHSTENCIL, AUTOGENMIPMAP). Флаги памяти (DYNAMIC, WRITEONLY)
+// сюда НЕ кладутся: они выражены пулом (EBackendPool -> D3DPOOL + usage), иначе
+// одно и то же значение приходилось бы задавать дважды и оно могло бы разойтись.
+enum EBackendUsage {
+  usageNone          = 0,
+  usageRenderTarget  = 1 << 0,
+  usageDepthStencil  = 1 << 1,
+  usageAutoGenMipmap = 1 << 2,
+};
+
+// Чем именно является поверхность: у D3D9 под каждую — своя фабрика, у
+// Vulkan/DX12 — одна текстура с нужными usage-флагами.
+enum EBackendSurfaceKind {
+  ssPlain = 0,       // внекадровая плоская поверхность (staging для readback)
+  ssRenderTarget,    // цель рендеринга (цвет)
+  ssDepthStencil,    // цель рендеринга (глубина/трафарет)
+};
+
 enum EBackendPool {
   BACKEND_POOL_DEFAULT = 0,
   BACKEND_POOL_MANAGED,
@@ -173,6 +207,21 @@ public:
   // Начальных данных в сигнатуре нет намеренно: путь записи (Lock в D3D9 сегодня,
   // upload-кольцо в этапе 3) — отдельный, не надо плодить второй способ залить
   // буфер прямо на создании.
+  // mipLevels: 0 = вся mipmap-цепочка (как в D3D9).
+  virtual HRESULT CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
+                                  EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                  HTexture* pOut) = 0;
+  virtual HRESULT CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
+                                    EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                    HTexture* pOut) = 0;
+  // Multisample не передаётся: в клиенте MSAA не встречается (замер — во всех
+  // созданиях D3DMULTISAMPLE_NONE / качество 0).
+  virtual HRESULT CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
+                                EBackendFormat format, EBackendPool pool, HSurface* pOut) = 0;
+  // Копирование текстуры целиком (системная память -> DEFAULT). В D3D9 —
+  // UpdateTexture; у NVRHI есть copy-операция.
+  virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture) = 0;
+
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) = 0;
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) = 0;
 

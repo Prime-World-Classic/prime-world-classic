@@ -5,6 +5,8 @@
 #include "stdafx.h"
 #include "DDS.h"
 #include "ReadDDS.h"
+#include "renderbackend.h"        // seam этапа 2: GetBackend()/HTexture
+#include "renderflagsconverter.h"  // D3DFormatToBackend()
 
 #ifndef V_RETURN
   #define V_RETURN(x) { hr = (x); if( FAILED(hr) ) return hr; }
@@ -313,11 +315,12 @@ public:
   TextureHolder(UINT _mipCount, D3DFORMAT _fmt, UINT _width, UINT _height, const BYTE* _pSrcBound)
     : FaceHolder(_mipCount, _fmt, _width, _height, _pSrcBound)
   {
-    if( IDirect3DDevice9* const pDevice = GetDevice() )
+    if( GetDevice() )   // устройство есть (создание идёт через seam)
     {
-      IDirect3DTexture9* pTex = 0;
-      hr = pDevice->CreateTexture(_width, _height, _mipCount, 0, _fmt, D3DPOOL_MANAGED, &pTex, NULL);
-      pTexture.Attach(pTex);
+      HTexture hTex;
+      hr = GetBackend()->CreateTexture2D(_width, _height, _mipCount, usageNone,
+                                         D3DFormatToBackend(_fmt), BACKEND_POOL_MANAGED, &hTex);
+      pTexture.Attach(static_cast<IDirect3DTexture9*>(hTex.p));
     }
   }
   ~TextureHolder() {}
@@ -338,13 +341,14 @@ public:
   CubeTextureHolder(UINT _mipCount, D3DFORMAT _fmt, UINT _width, UINT _height, const BYTE* _pSrcBound)
     : FaceHolder(_mipCount, _fmt, _width, _height, _pSrcBound), face()
   {
-    if( IDirect3DDevice9* const pDevice = GetDevice() )
+    if( GetDevice() )   // устройство есть (создание идёт через seam)
     {
       NI_VERIFY(_width == _height, "Wrong cubemap: width not equal to height", hr = D3DXERR_INVALIDDATA; return);
 
-      IDirect3DCubeTexture9* pTex = 0;
-      hr = pDevice->CreateCubeTexture(_width, _mipCount, 0, _fmt, D3DPOOL_MANAGED, &pTex, NULL);
-      pTexture.Attach(pTex);
+      HTexture hTex;
+      hr = GetBackend()->CreateTextureCube(_width, _mipCount, usageNone,
+                                           D3DFormatToBackend(_fmt), BACKEND_POOL_MANAGED, &hTex);
+      pTexture.Attach(static_cast<IDirect3DCubeTexture9*>(hTex.p));
     }
   }
   ~CubeTextureHolder() {}

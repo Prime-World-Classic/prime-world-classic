@@ -80,6 +80,16 @@ public:
   virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut);
 
+  virtual HRESULT CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
+                                  EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                  HTexture* pOut);
+  virtual HRESULT CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
+                                    EBackendUsage usage, EBackendFormat format, EBackendPool pool,
+                                    HTexture* pOut);
+  virtual HRESULT CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
+                                EBackendFormat format, EBackendPool pool, HSurface* pOut);
+  virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture);
+
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);
 

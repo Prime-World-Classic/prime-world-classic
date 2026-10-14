@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "renderflagsconverter.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/HTexture/HBuffer
 #include "texture.h"
 #include "renderresourcemanager.h"
 #include "IConfigManager.h"
@@ -72,7 +73,14 @@ void Texture2D::CreateInternal()
 #ifdef TEXTURE_RETRY_CREATE
     for(int i = 0; i <= TEXTURE_NUM_RETRIES && FAILED(hr); ++i) {
 #endif
-      hr = GetDevice()->CreateTexture(desc.Width, desc.Height, levels, desc.Usage, desc.Format, desc.Pool, &pDirect3DTexture9, 0);
+      // Recreate с теми же параметрами: desc — D3D9-описание (замена на проектное
+      // описание — отдельная работа этапа 3), в seam уходит нейтральная лексика.
+      HTexture hTex;
+      hr = GetBackend()->CreateTexture2D(desc.Width, desc.Height, levels,
+                                         D3DUsageToBackend(desc.Usage),
+                                         D3DFormatToBackend(desc.Format),
+                                         D3DPoolToBackend(desc.Pool, desc.Usage), &hTex);
+      pDirect3DTexture9 = static_cast<IDirect3DTexture9*>(hTex.p);
 #ifdef TEXTURE_RETRY_CREATE
       if( SUCCEEDED(hr) )
         break;
@@ -170,7 +178,8 @@ static void GenerateSubLevels_1(uint _mipLevels, IDirect3DTexture9* _pTex)
     NI_DX_THROW(hr, "GenerateSubLevels_1: failed to lock");
 
     DXSurfaceRef pDest(pSurf, false);
-    hr = pDevice->StretchRect(Get(pSrc), 0, Get(pDest), 0, D3DTEXF_LINEAR);
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
+                                     MakeBackendHandle<HSurface>(Get(pDest)), 0, IRenderBackend::bfLinear);
     NI_DX_THROW(hr, "GenerateSubLevels_1: failed to stretch");
 
     Swap(pSrc, pDest);
@@ -192,23 +201,28 @@ static void GenerateSubLevels_2(uint _mipLevels, IDirect3DTexture9* _pTex)
 
   D3DSURFACE_DESC desc;
   hr = _pTex->GetLevelDesc(1, &desc);
-  hr = pDevice->CreateRenderTarget(desc.Width, desc.Height, desc.Format, D3DMULTISAMPLE_NONE, 0, FALSE, &pSurf, 0);
+  HSurface hSurf;
+  hr = GetBackend()->CreateSurface(ssRenderTarget, desc.Width, desc.Height,
+                                   D3DFormatToBackend(desc.Format), BACKEND_POOL_DEFAULT, &hSurf);
+  pSurf = static_cast<IDirect3DSurface9*>(hSurf.p);
   DXSurfaceRef tmp(pSurf, false);
   NI_DX_THROW(hr, "GenerateSubLevels_2: failed to create temporary surface");
 
-  RECT rect = {0};
+  BackendRect rect = MakeBackendRect(0, 0, 0, 0);
   for(uint n = 1; n < _mipLevels; ++n) {
     hr = _pTex->GetLevelDesc(n, &desc);
     rect.right = desc.Width;
     rect.bottom = desc.Height;
-    hr = pDevice->StretchRect(Get(pSrc), 0, Get(tmp), &rect, D3DTEXF_LINEAR);
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
+                                     MakeBackendHandle<HSurface>(Get(tmp)), &rect, IRenderBackend::bfLinear);
     NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
 
     hr = _pTex->GetSurfaceLevel(n, &pSurf);
     NI_DX_THROW(hr, "GenerateSubLevels_2: failed to lock");
 
     pSrc.Attach(pSurf);
-    hr = pDevice->StretchRect( Get(tmp), &rect, Get(pSrc), 0, D3DTEXF_LINEAR);
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(tmp)), &rect,
+                                     MakeBackendHandle<HSurface>(Get(pSrc)), 0, IRenderBackend::bfLinear);
     NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
   }
 }
@@ -229,7 +243,8 @@ void Texture2D::GenerateMipSubLevels_()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Texture2D::Update(Texture2D* pTex) 
 {
-	HRESULT hr = GetDevice()->UpdateTexture(pTex->GetDXTexture(), GetDXTexture());
+	HRESULT hr = GetBackend()->UpdateTexture(MakeBackendHandle<HTexture>(pTex->GetDXTexture()),
+	                                        MakeBackendHandle<HTexture>(GetDXTexture()));
 	NI_VERIFY( hr == D3D_OK, "can't update texture!", return false );
 	return true;
 }

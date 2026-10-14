@@ -3,6 +3,7 @@
 #include "WaterManager.h"
 #include "shadercompiler.h"
 #include "ImmediateRenderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/HSurface/Clear/StretchRect
 #include "GlobalMasks.h"
 
 static const bool noRefraction = true;
@@ -111,7 +112,7 @@ void WaterManager::StartRenderingToReflectionTexture(/*const Render::SceneConsta
   if(_clearColor)
     GetRenderer()->Clear(Color(77,138,175,0));
   else
-    GetDevice()->Clear(0, 0, D3DCLEAR_STENCIL|D3DCLEAR_ZBUFFER, 0, 1.0f, 0);
+    GetBackend()->Clear(bcZBuffer | bcStencil, 0, 1.0f, 0);
 
 	//// Transform plane
 	//CVec4 worldPlane(0.0f, 0.0f, 1.0f, -level + 0.05f);
@@ -264,9 +265,11 @@ void WaterManager::Update( float time )
 
 	// Copy main target to refraction surface
   const RenderMode &mode = GetRenderer()->GetCurrentRenderMode();
-  RECT srcRect = { 0, 0, mode.width3D, mode.height3D };
+  BackendRect srcRect = MakeBackendRect(0, 0, mode.width3D, mode.height3D);
 
-  GetDevice()->StretchRect(SmartRenderer::GetRenderTarget(0), &srcRect, ::Get(pRefrTexture->GetSurface(0)), NULL, D3DTEXF_LINEAR);
+  GetBackend()->StretchRect(MakeBackendHandle<HSurface>(SmartRenderer::GetRenderTarget(0)), &srcRect,
+                            MakeBackendHandle<HSurface>(::Get(pRefrTexture->GetSurface(0))), 0,
+                            IRenderBackend::bfLinear);
 }
 
 void WaterManager::AddWaterMesh(WaterMesh &mesh)

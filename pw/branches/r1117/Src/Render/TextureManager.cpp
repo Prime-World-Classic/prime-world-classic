@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "renderflagsconverter.h"
 #include "renderer.h"
+#include "renderbackend.h"   // seam этапа 2: GetBackend()/HTexture/EBackend*
 #include "TextureManager.h"
 #include "DxResourcesControl.h"
 #include "ReadDDS.h"
@@ -509,16 +510,17 @@ Texture2DRef CreateTextureFromFileInMemory(const char* pData, int sizeInFile, UI
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2DRef CreateTexture2D(unsigned int width, unsigned int height, unsigned int level, PoolType poolType, ERenderFormat formatType)
 {
-	DWORD usage;
-	D3DPOOL pool;
-	GetD3DPoolAndUsagesParamaters( usage, pool, poolType );
-	IDirect3DTexture9* pDirect3DTexture9 = 0;
-
+  // Пул и usage выбирает бэкенд (EBackendPool -> D3DPOOL + D3DUSAGE_*,
+  // GetD3DPoolAndUsagesParamaters вызывается внутри него). PoolType и EBackendPool —
+  // словари одинакового состава, паритет проверен static_assert'ом в бэкенде.
+  HTexture hTex;
   if(!RENDER_DISABLED) {
-    HRESULT hr = GetDevice()->CreateTexture(width, height, level, usage, ConvertRenderFormat(formatType), pool, &pDirect3DTexture9, 0);
+    HRESULT hr = GetBackend()->CreateTexture2D(width, height, level, usageNone,
+                                               RenderFormatToBackend(formatType),
+                                               static_cast<EBackendPool>(poolType), &hTex);
     NI_DX_THROW_CRITICAL( hr, "Couldn't create texture" );
   }
-	return Create<Texture2D>( pDirect3DTexture9 );
+	return Create<Texture2D>( static_cast<IDirect3DTexture9*>(hTex.p) );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -534,13 +536,13 @@ Texture2DRef CreateRenderTexture2D(unsigned int width, unsigned int height, ERen
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TextureCubeRef CreateRenderCubeTexture(unsigned int edgeLen, ERenderFormat formatType)
 {
-  IDirect3DCubeTexture9* d3dCubetexture = 0;
-
-  HRESULT res = GetDevice()->CreateCubeTexture(edgeLen, 1, D3DUSAGE_RENDERTARGET, ConvertRenderFormat(formatType), 
-    D3DPOOL_DEFAULT, &d3dCubetexture, NULL);
+  HTexture hTex;
+  HRESULT res = GetBackend()->CreateTextureCube(edgeLen, 1, usageRenderTarget,
+                                                RenderFormatToBackend(formatType),
+                                                BACKEND_POOL_DEFAULT, &hTex);
   NI_VERIFY( res == D3D_OK, "cant create rendertexture!", return TextureCubeRef(); )
 
-  return new TextureCube( d3dCubetexture ); // no safety in case of lost device [11/23/2009 smirnov]
+  return new TextureCube( static_cast<IDirect3DCubeTexture9*>(hTex.p) ); // no safety in case of lost device [11/23/2009 smirnov]
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -562,7 +564,9 @@ Texture2DRef Create2DTextureFromArray2D( const CArray2D<Render::Color> & src )
 	NI_VERIFY(w > 0 && h > 0, "Invalid CArray2D given for texture creation", return GetDefaultTexture2D(); );
 
 	IDirect3DTexture9* pD3DTexture = 0;
-  HRESULT hResult = GetDevice()->CreateTexture(w, h, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &pD3DTexture, NULL);
+  HTexture hTex;
+  HRESULT hResult = GetBackend()->CreateTexture2D(w, h, 0, usageNone, bfA8R8G8B8, BACKEND_POOL_MANAGED, &hTex);
+  pD3DTexture = static_cast<IDirect3DTexture9*>(hTex.p);
 
 	NI_VERIFY( SUCCEEDED( hResult ), NStr::StrFmt( "D3DXCreateTexture failed with result 0x%08X", hResult ), return GetDefaultTexture2D(); );
 

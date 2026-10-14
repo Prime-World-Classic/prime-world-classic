@@ -218,4 +218,79 @@ EVertexElementType Convert2VertexElementType(BYTE type)
   }
 }
 
+EBackendFormat RenderFormatToBackend(ERenderFormat format)
+{
+  switch (format)
+  {
+    case FORMAT_A8:             return bfA8;
+    case FORMAT_L8:             return bfL8;
+    case FORMAT_R32F:           return bfR32F;
+    case FORMAT_G32R32F:        return bfG32R32F;
+    case FORMAT_A8R8G8B8:       return bfA8R8G8B8;
+    case FORMAT_X8R8G8B8:       return bfX8R8G8B8;
+    case FORMAT_A16B16G16R16F:  return bfA16B16G16R16F;
+    case FORMAT_A32B32G32R32F:  return bfA32B32G32R32F;
+    case FORMAT_L16:            return bfL16;
+    case FORMAT_R16F:           return bfR16F;
+    case FORMAT_R5G6B5:         return bfR5G6B5;
+    case FORMAT_D24S8:          return bfD24S8;
+    default: NI_ALWAYS_ASSERT("Unknown render format"); return bfUnknown;
+  }
+}
+
+EBackendFormat D3DFormatToBackend(D3DFORMAT fmt)
+{
+  switch (fmt)
+  {
+    case D3DFMT_A8R8G8B8:       return bfA8R8G8B8;
+    case D3DFMT_X8R8G8B8:       return bfX8R8G8B8;
+    case D3DFMT_A8:             return bfA8;
+    case D3DFMT_L8:             return bfL8;
+    case D3DFMT_L16:            return bfL16;
+    case D3DFMT_R5G6B5:         return bfR5G6B5;
+    case D3DFMT_R16F:           return bfR16F;
+    case D3DFMT_A16B16G16R16F:  return bfA16B16G16R16F;
+    case D3DFMT_R32F:           return bfR32F;
+    case D3DFMT_G32R32F:        return bfG32R32F;
+    case D3DFMT_A32B32G32R32F:  return bfA32B32G32R32F;
+    // DXT1..5 — разные форматы (у DXT2/3 явный альфа-канал, у DXT4/5
+    // интерполируемый; DXT2/DXT4 — premultiplied). Сливать их в один нельзя:
+    // молча поехавший альфа — именно тот класс бага, который не виден в логах.
+    case D3DFMT_DXT1:           return bfDXT1;
+    case D3DFMT_DXT2:           return bfDXT2;
+    case D3DFMT_DXT3:           return bfDXT3;
+    case D3DFMT_DXT4:           return bfDXT4;
+    case D3DFMT_DXT5:           return bfDXT5;
+    case D3DFMT_D24S8:          return bfD24S8;
+    default:                    return bfUnknown;
+  }
+}
+
+EBackendPool D3DPoolToBackend(D3DPOOL pool, DWORD usage)
+{
+  if (pool == D3DPOOL_MANAGED)
+    return BACKEND_POOL_MANAGED;
+  if (pool == D3DPOOL_SYSTEMMEM)
+    return (usage & D3DUSAGE_DYNAMIC) ? BACKEND_POOL_SYSMEM_DYNAMIC : BACKEND_POOL_SYSMEM;
+  if (pool == D3DPOOL_DEFAULT)
+  {
+    if (usage & D3DUSAGE_DYNAMIC)
+      // RENDER_POOL_DYNAMIC добавляет WRITEONLY|DYNAMIC, RENDER_POOL_TEX_DYNAMIC —
+      // только DYNAMIC. Различаем по WRITEONLY, иначе round-trip меняет флаги.
+      return (usage & D3DUSAGE_WRITEONLY) ? BACKEND_POOL_DYNAMIC : BACKEND_POOL_TEX_DYNAMIC;
+    return BACKEND_POOL_DEFAULT;
+  }
+  NI_ALWAYS_ASSERT("D3D pool outside of backend dictionary");
+  return BACKEND_POOL_COUNT;
+}
+
+EBackendUsage D3DUsageToBackend(DWORD usage)
+{
+  EBackendUsage u = usageNone;
+  if (usage & D3DUSAGE_RENDERTARGET)   u = EBackendUsage(u | usageRenderTarget);
+  if (usage & D3DUSAGE_DEPTHSTENCIL)   u = EBackendUsage(u | usageDepthStencil);
+  if (usage & D3DUSAGE_AUTOGENMIPMAP)  u = EBackendUsage(u | usageAutoGenMipmap);
+  return u;
+}
+
 } // namespace Render

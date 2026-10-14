@@ -403,6 +403,50 @@ Win32 `RECT`; конвертация `BackendRect` → `RECT` — только �
   и E2E-smoke, а не исполнением. В `ShadowManager.cpp` scissor/viewport — под
   `#ifdef _DEBUG_VIEWPORT` (не компилируются).
 
+**Шестой шаг (2026-10-14) — текстуры и поверхности создаются через seam.**
+Живые обращения к устройству внутри `Render/` (кроме `d3d9backend.cpp` и
+`renderstatesmanager.cpp`): **66 → 48**, из них к самому устройству — 50 → 32
+(ещё 16 — это `pD3D->`, слой создания устройства, этап 4). Закрыто создание
+текстур/кубов/поверхностей, `UpdateTexture`, все `StretchRect`, `Clear` в
+`WaterManager`, unbind-`SetTexture` в `FullScreenFX`.
+
+* **Словари.** `EBackendFormat` — набор замкнут по фактическому контенту
+  (замер `tools/dds_inventory`: 8031 DDS — A8R8G8B8 3715, DXT5 3001, DXT1 1294,
+  L8 5; кубы DXT1 13 / A8R8G8B8 3; плюс проектный `ERenderFormat` и глубина
+  D24S8), а не по всему пространству `D3DFMT_*` (полный список `D3DFMT_*` в
+  `Render/` — это `D3DFormat2Str` и проверки адаптера, такие ресурсы не
+  создаются). `bfUnknown` = отказ создания (`D3DERR_INVALIDCALL`), а не подмена
+  формата: молча поехавший альфа-канал в логах не виден. DXT1..5 **не
+  сливать** в один: у DXT2/3 явный альфа-канал, у DXT4/5 интерполируемый,
+  DXT2/DXT4 — premultiplied.
+* **`EBackendUsage` — только «назначение»** (RENDERTARGET / DEPTHSTENCIL /
+  AUTOGENMIPMAP). Биты памяти (DYNAMIC, WRITEONLY) в него не кладутся: их
+  выражает пул, иначе одно значение задавалось бы дважды и разошлось бы с
+  `EBackendPool`.
+* **`D3DPoolToBackend(pool, usage)` — перевод парой.** В D3D9 «динамичность» —
+  флаг usage при `D3DPOOL_DEFAULT`, в seam'е — отдельное значение пула. Без
+  WRITEONLY round-trip ломается: `RENDER_POOL_DYNAMIC` даёт WRITEONLY|DYNAMIC,
+  `RENDER_POOL_TEX_DYNAMIC` — только DYNAMIC, и recreate текстуры
+  (`Texture2D::CreateInternal`) тихо менял бы флаги.
+* **`EBackendSurfaceKind`** (`ssPlain`/`ssRenderTarget`/`ssDepthStencil`): у D3D9
+  под каждую — своя фабрика, у Vulkan/DX12 — одна текстура с usage-флагами.
+  Multisample в сигнатуру не положен: в клиенте везде `D3DMULTISAMPLE_NONE`
+  (замер), качество 0.
+* **Куда легли конвертеры:** D3D→нейтральное — в `renderflagsconverter.{h,cpp}`
+  (это и есть D3D9-слой словарей, его уже включали все затронутые TU),
+  нейтральное→D3D — внутрь `d3d9backend.cpp` (`D3DFormatFromBackend`,
+  `D3DUsageFromBackend`, `D3DResPoolUsageFromBackend`).
+* **Что осталось D3D9-структурой:** `Texture2D`/`RenderSurface` хранят
+  `D3DSURFACE_DESC` и recreate делают из него, поэтому параметры в seam
+  переводятся обратно из D3D9 (`D3DFormatToBackend(desc.Format)` и т.п.).
+  Проектное описание ресурса (и отказ от `GetLevelDesc`/`GetSurfaceLevel`) —
+  отдельная работа этапа 3.
+* **Попутно зафиксировано:** в E2E-логе каждого прогона (и до правки, и после)
+  есть 2–3 строки `LoadTextureFromFileImpl(); Failed ... D3DERR_INVALIDCALL`.
+  Это не регрессия seam'а: форматы всех DDS контента покрыты словарём, а
+  `tools/dds_inventory` показывает битый файл `Data/Heroes/Gunslinger/S2/_.dds`
+  (объявлено 11 mipmap, данных на один уровень); счётчик 2↔3 — шум прогона.
+
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
 `Src/Render/conststore.{h,cpp}`. D3D9 применяет каждую запись сразу
@@ -1339,13 +1383,17 @@ color-correct начинают получать настоящие веса) —
       `DXVertexBufferDynamicRef` и т.п.) не менялись. Начальных данных в
       сигнатуре нет намеренно: путь записи — отдельный.
       **Остаток:** (а) запись — `Lock`/`Unlock` в `dxutils.cpp` (`FillVB`/
-      `FillIB`, динамические буферы) становятся upload-кольцом; (б) текстуры и
-      поверхности — `CreateTexture`/`CreateCubeTexture`/`CreateRenderTarget`/
-      `CreateDepthStencilSurface` ещё создаются устройством напрямую
-      (14 мест: `texture.cpp`, `TextureManager.cpp`, `rendersurface.cpp`,
-      `ShadowMap.cpp`, `ReadDDS.cpp`, `WaterManager.cpp`, `mesh.cpp`,
-      `ModelLoader.cpp`); (в) само разделение managed → staging+default живёт
-      в NvrhiBackend (этап 3), здесь только словарь пулов за seam'ом.
+      `FillIB`, динамические буферы) становятся upload-кольцом; (б) **закрыто
+      2026-10-14:** текстуры и поверхности тоже создаются через seam —
+      `CreateTexture2D`/`CreateTextureCube`/`CreateSurface`/`UpdateTexture` и
+      словари `EBackendFormat`/`EBackendUsage`/`EBackendSurfaceKind`
+      (подробности и замер форматов — §2.8 «Шестой шаг»); реально устройство
+      создавало ресурсы в 10 местах (`texture.cpp`, `TextureManager.cpp`,
+      `rendersurface.cpp`, `ReadDDS.cpp`), а не в 14: `ShadowMap.cpp` и
+      `WaterManager.cpp` зовут проектную фабрику `CreateDepthStencilSurface()`,
+      `mesh.cpp`/`ModelLoader.cpp` ресурсов не создают; (в) само разделение
+      managed → staging+default живёт в NvrhiBackend (этап 3), здесь только
+      словарь пулов за seam'ом.
 - Критерий: картинка не меняется, E2E зелёный.
 
 ### Этап 3. `NvrhiBackend`: DX12 + Vulkan (6–10 смен)
