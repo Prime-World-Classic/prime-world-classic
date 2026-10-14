@@ -403,7 +403,7 @@ void FlashRenderer::PreapreStates()
 
   Render::GetStatesManager()->SetStateDirect( D3DRS_CULLMODE, D3DCULL_NONE );
 
-  GetDevice()->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+  GetStatesManager()->SetStateDirect(D3DRS_ALPHABLENDENABLE, TRUE);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -462,9 +462,9 @@ void FlashRenderer::ChangeMatricies( Batch& nextBatch )
     GetRenderer()->SetVertexShaderConstantsMatrix( VIEW, nextBatch.viewMatrix );
     currentPixelScale = nextBatch.pixelScale;
 
-    GetDevice()->SetRenderState( D3DRS_STENCILENABLE, FALSE );
-    GetDevice()->SetRenderState( D3DRS_STENCILFUNC, D3DCMP_ALWAYS );
-    GetDevice()->SetRenderState( D3DRS_STENCILREF, 0 );
+    GetStatesManager()->SetStateDirect( D3DRS_STENCILENABLE, FALSE );
+    GetStatesManager()->SetStateDirect( D3DRS_STENCILFUNC, D3DCMP_ALWAYS );
+    GetStatesManager()->SetStateDirect( D3DRS_STENCILREF, 0 );
   }
 
   if ( nextBatch.needChangeModelMatrix )
@@ -641,9 +641,9 @@ void FlashRenderer::Render( int _firstElement, int _lastElement, const Render::T
         flashMaterial->SetFlashBlendModePin( NDb::FLASHBLENDMODEPIN_COPY_BACKGRUOND );
         flashMaterial->PrepareRenderer();
 
-        GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
-        GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-        GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+        GetStatesManager()->SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+        GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ONE);
+        GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ZERO);
 
         SmartRenderer::DrawPrimitive( nextBatch.dip );
         numRendered += nextBatch.dip.numVertices;
@@ -663,12 +663,12 @@ void FlashRenderer::Render( int _firstElement, int _lastElement, const Render::T
   }
 
   // $TODO check
-  GetDevice()->SetRenderState( D3DRS_BLENDOP, D3DBLENDOP_ADD );
-  GetDevice()->SetRenderState( D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD );
+  GetStatesManager()->SetStateDirect( D3DRS_BLENDOP, D3DBLENDOP_ADD );
+  GetStatesManager()->SetStateDirect( D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD );
 
   GetStatesManager()->SetStencilState(STENCILSTATE_INVALID);
-  GetDevice()->SetRenderState( D3DRS_STENCILENABLE, FALSE );
-  GetDevice()->SetRenderState( D3DRS_COLORWRITEENABLE, 0x0000000F );
+  GetStatesManager()->SetStateDirect( D3DRS_STENCILENABLE, FALSE );
+  GetStatesManager()->SetStateDirect( D3DRS_COLORWRITEENABLE, 0x0000000F );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -727,52 +727,52 @@ void FlashRenderer::ApplyBlendMode( EFlashBlendMode::Enum blendMode )
 
   flashMaterial->PrepareRenderer();
 
-  GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+  GetStatesManager()->SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 
   switch ( blendMode )
   {
   case EFlashBlendMode::ADD :
-     GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-     GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+     GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ONE);
+     GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ONE);
     break;
   case EFlashBlendMode::MULTIPLY :
-     GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
-     GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
+     GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+     GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
     break;
   case EFlashBlendMode::DARKEN :
-     GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-     GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-     GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MIN);
+     GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ONE);
+     GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ONE);
+     GetStatesManager()->SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_MIN);
     break;
   case EFlashBlendMode::SCREEN :
-    GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
-    GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+    GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
+    GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ONE);
     break;
   case EFlashBlendMode::LIGHTEN :
-    GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-    GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-    GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_MAX);
+    GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ONE);
+    GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ONE);
+    GetStatesManager()->SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_MAX);
     break;
   case EFlashBlendMode::SUBTRACT :
-    GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-    GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-    GetDevice()->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_REVSUBTRACT);
+    GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_ONE);
+    GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_ONE);
+    GetStatesManager()->SetStateDirect(D3DRS_BLENDOP, D3DBLENDOP_REVSUBTRACT);
     break;
   case EFlashBlendMode::INVERT :
-    GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
-    GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_INVDESTCOLOR);
+    GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     break;
 
   case EFlashBlendMode::_DIFFERENCE :
   case EFlashBlendMode::OVERLAY :
   case EFlashBlendMode::HARDLIGHT :
-    GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-    GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     break;
 
   default:
-     GetDevice()->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-     GetDevice()->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+     GetStatesManager()->SetStateDirect(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+     GetStatesManager()->SetStateDirect(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     break;
   }
 }
@@ -1497,35 +1497,35 @@ void FlashRenderer::BeginSubmitMaskApply()
 {
   if ( maskLevel == 0 )
   {
-    GetDevice()->SetRenderState(D3DRS_STENCILENABLE, TRUE);
-    GetDevice()->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
-    GetDevice()->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
-    GetDevice()->SetRenderState(D3DRS_STENCILFUNC, D3DCMP_EQUAL );
-    GetDevice()->SetRenderState(D3DRS_STENCILMASK, 0xFFFFFFFF);
-    GetDevice()->SetRenderState(D3DRS_STENCILWRITEMASK, 0xFFFFFFFF);
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILENABLE, TRUE);
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILFUNC, D3DCMP_EQUAL );
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILMASK, 0xFFFFFFFF);
+    GetStatesManager()->SetStateDirect(D3DRS_STENCILWRITEMASK, 0xFFFFFFFF);
 //    GetDevice()->Clear(0, NULL, D3DCLEAR_STENCIL, 0, 1.0f, 0);
   }
 
-  GetDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, 0x00000000);
-  GetDevice()->SetRenderState(D3DRS_STENCILREF, maskLevel);
-  GetDevice()->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_INCR);
+  GetStatesManager()->SetStateDirect(D3DRS_COLORWRITEENABLE, 0x00000000);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILREF, maskLevel);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILPASS, D3DSTENCILOP_INCR);
 
   maskLevel++;
 }
 
 void FlashRenderer::BeginUnSubmitMaskApply()
 {
-  GetDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, 0x00000000);
-  GetDevice()->SetRenderState(D3DRS_STENCILREF, maskLevel);
-  GetDevice()->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_DECR);
+  GetStatesManager()->SetStateDirect(D3DRS_COLORWRITEENABLE, 0x00000000);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILREF, maskLevel);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILPASS, D3DSTENCILOP_DECR);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FlashRenderer::EndSubmitMaskApply()
 {
-  GetDevice()->SetRenderState(D3DRS_STENCILREF, maskLevel);
-  GetDevice()->SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
-  GetDevice()->SetRenderState(D3DRS_COLORWRITEENABLE, 0x0000000F);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILREF, maskLevel);
+  GetStatesManager()->SetStateDirect(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
+  GetStatesManager()->SetStateDirect(D3DRS_COLORWRITEENABLE, 0x0000000F);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1542,8 +1542,8 @@ void FlashRenderer::DisableMaskApply()
 
   if ( maskLevel == 0 )
   {
-    GetDevice()->SetRenderState( D3DRS_STENCILENABLE, FALSE );
-    GetDevice()->SetRenderState( D3DRS_COLORWRITEENABLE, 0x0000000F );
+    GetStatesManager()->SetStateDirect( D3DRS_STENCILENABLE, FALSE );
+    GetStatesManager()->SetStateDirect( D3DRS_COLORWRITEENABLE, 0x0000000F );
   }
 }
 

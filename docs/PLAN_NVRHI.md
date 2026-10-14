@@ -1168,9 +1168,10 @@ color-correct начинают получать настоящие веса) —
       eviction по замерам этапа 0.
 - [ ] `ConstBlock` — «виртуальные регистры» c0..c255 одним буфером (§2.7),
       генерация раскладки из `GlobalMasks.h`.
-- [ ] **Состояние внутри `Src/Render`, обходящее `RenderStatesManager`**
-      (находка 2026-10-14; в §2.1 считались только утечки *снаружи* `Render`).
-      Прямых вызовов устройства внутри `Render` осталось **96** (`GetDevice()->…`),
+- [x] **Состояние внутри `Src/Render`, обходящее `RenderStatesManager`**
+      (находка 2026-10-14; в §2.1 считались только утечки *снаружи* `Render`;
+      закрыто в тот же день).
+      Прямых вызовов устройства внутри `Render` было **96** (`GetDevice()->…`),
       из них **55 `SetRenderState`**; `FlashRenderer.cpp` — 51 вызов устройства
       (33 «сырых» `SetRenderState`: SRCBLEND/DESTBLEND/BLENDOP, STENCIL*,
       COLORWRITEENABLE) и `uirenderer.cpp` — тот же обход менеджера состояний,
@@ -1181,6 +1182,22 @@ color-correct начинают получать настоящие веса) —
       (`GetRenderState`/`GetSamplerState`/`GetVertexShaderConstantF`/
       `GetPixelShaderConstantF`) — `conststore` (§2.9) его не покрывает, на
       uniform-буферах ответить будет нечем.
+      **Сделано:** все записи состояния вне менеджера переведены на
+      `SetStateDirect`/`SetSamplerStateDirect` — `FlashRenderer.cpp` (50 вызовов),
+      `uirenderer.cpp` (2, ALPHATESTENABLE), `smartrenderer.cpp` (1,
+      ALPHABLENDENABLE в `RenderDeferred2D`), `ShadowMap.cpp` (1,
+      `D3DSAMP_BORDERCOLOR` → `SetSamplerStateDirect`, BORDERCOLOR не входит в
+      пресет). Вызовы устройства те же и в том же порядке, но кэш менеджера теперь
+      инвалидируется → следующий `SetState()` с тем же пресетом обязан
+      перепримениться (это и есть чинившийся дефект, см. §2.1 про
+      `PFRenderInterface`). Прямых записей состояния/сэмплеров через `GetDevice()`
+      в `Render` не осталось (кроме самого `renderstatesmanager.cpp`);
+      `GetDevice()->` внутри `Render`: **96 → 42** (из них 7 — сам менеджер).
+      Остаток — не состояния: `GetViewport`/`Clear`/`CreateTexture`/`StretchRect`/
+      `UpdateTexture` (ресурсы и поверхности), `SetFVF`/`SetVertexShader`/
+      `SetTexture`/`DrawPrimitiveUP` в `RenderDeferred2D` (фиксированный блок,
+      §1.4), `Present`, и **чтение состояния обратно** — оно по-прежнему не
+      закрыто и для Vulkan-бэкенда потребует тени (по образцу `conststore`).
 - [ ] `DeviceLostHandler` → `OnReallocate` (интерфейс тот же, семантика —
       ресайз).
 - [ ] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
@@ -1567,6 +1584,27 @@ build-каталога под инструментальные сборки ск
 `2026.10.13-23.06.47`, `finish 4cd0a613…`): crop == область бэк-буфера пиксель в
 пиксель, кроп ограничен, `scene` == `bb`, кадры на N и N+100 различаются (§2.13).
 
+### Сделано (этап 2, состояния внутри `Render` — закрыто 2026-10-14)
+
+| Файл | Было (сырых записей через `GetDevice()`) | Стало |
+|---|---|---|
+| `Render/FlashRenderer.cpp` | 50 `SetRenderState` (SRCBLEND/DESTBLEND/BLENDOP/BLENDOPALPHA, STENCIL*, COLORWRITEENABLE, ALPHABLENDENABLE) | 0 — всё через `GetStatesManager()->SetStateDirect` |
+| `Render/uirenderer.cpp` | 2 `SetRenderState` (ALPHATESTENABLE вкл/выкл) | 0 |
+| `Render/smartrenderer.cpp` | 1 `SetRenderState` (ALPHABLENDENABLE в `RenderDeferred2D`) | 0 |
+| `Render/ShadowMap.cpp` | 1 `SetSamplerState(0, D3DSAMP_BORDERCOLOR, 0)` | 0 — `SetSamplerStateDirect` |
+
+Прямые вызовы устройства `GetDevice()->` внутри `Render`: **96 → 42**, из них 7 —
+сам `renderstatesmanager.cpp` (это законный владелец записей). Записей
+состояния/сэмплеров мимо менеджера не осталось.
+
+Гейт: x64 (Wine) + E2E tiny10 (`2026.10.13-23.15.03`, `finish a7c47f6e…`,
+дампов нет) + **клиентские снимки** (хук `auto_screenshot`, §2.13): кадр и UI
+отрисованы целиком, расхождения с предыдущим прогоном — только в зонах, где
+изменяется состояние боя (счётчики, миникарта, партиклы): панель портрета 7,5%,
+хотбар 0,6%, стрелки слева 0,0%, портрет 0,9% (max|d|=4). Точная сверка
+«до/после» пиксель-в-пиксель между разными прогонами невозможна (бой не
+детерминирован) — см. «Сознательные отклонения», п.3.
+
 ### Сознательные отклонения от «картинка не меняется»
 
 1. **PostFX sharp / color-correct.** `coeffMap` был не привязан (бинд в
@@ -1576,6 +1614,18 @@ build-каталога под инструментальные сборки ск
    (было `shadowFat && HasD24X() ? D24X8 : D16`, `shadowFat` — выключенный
    dev-var → фактически был `D16`). Разрядность глубины выросла →
    возможны сдвиги в bias-чувствительных местах.
+3. **Состояния, записанные мимо менеджера (этап 2, 2026-10-14).** Пока
+   `FlashRenderer`/`uirenderer`/`ShadowMap` писали состояние прямо в устройство,
+   кэш `RenderStatesManager` об этом не знал: следующий `SetState(preset)`
+   считал, что пресет уже выставлен, **пропускал** применение — и в устройстве
+   оставалось чужое значение (например `SRCBLEND=ONE` из Flash-прохода вместо
+   `SRC_ALPHA` из пресета материала). После перевода на `SetStateDirect` такой
+   пропуск невозможен, значит там, где код полагался на «протёкшее» состояние,
+   картинка **может измениться** — это и есть чинившийся дефект (§2.1), а не
+   регресс. Признак, если он вылезет: конкретный слой (Flash-панель, деколь,
+   тень) рисуется с неправильным блендом. Проверено клиентскими снимками
+   (`auto_screenshot`) и глазами: расхождений с предыдущим прогоном в
+   статичных зонах UI нет.
 
 ### Не сделано / под вопросом
 

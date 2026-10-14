@@ -273,7 +273,7 @@ void RenderDeferred2D()
     std::vector<Vertex2D>& verts = g_deferredVerts;   
 
     GetDevice()->SetVertexShader(NULL);
-    GetDevice()->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    Render::GetStatesManager()->SetStateDirect(D3DRS_ALPHABLENDENABLE, FALSE);
     GetDevice()->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
     GetDevice()->DrawPrimitiveUP(D3DPT_TRIANGLELIST, verts.size() / 3, &verts[0], sizeof(Vertex2D));
 

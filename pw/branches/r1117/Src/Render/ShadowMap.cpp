@@ -417,7 +417,9 @@ bool ShadowMapESM_Base::PostRender(void)
   samplerState.SetAddressV(NDb::TEXTUREADDRESSTYPE_BORDER);
 
   statesManager.SetSamplerState(0, samplerState);
-  GetDevice()->SetSamplerState(0, D3DSAMP_BORDERCOLOR, 0x00000000);
+  // SetSamplerStateDirect, а не SetSamplerState: BORDERCOLOR не входит в пресет, и
+  // обычная запись его не инвалидировала бы (docs/PLAN_NVRHI.md §2.1).
+  statesManager.SetSamplerStateDirect(0, D3DSAMP_BORDERCOLOR, 0x00000000);
 
   SmartRenderer::BindVertexShader( pSAVertexShader );
   SmartRenderer::BindVertexDeclaration( pSummedAreaVDecl );

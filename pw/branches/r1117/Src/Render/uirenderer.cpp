@@ -679,7 +679,7 @@ void UIRenderer::RenderPart( const SRenderPart & part, bool alphaTest )
     part.renderMaterial->PrepareRenderer();
 
   if ( alphaTest )
-    GetDevice()->SetRenderState( D3DRS_ALPHATESTENABLE, TRUE );
+    GetStatesManager()->SetStateDirect( D3DRS_ALPHATESTENABLE, TRUE );
 
   dipDesc.baseVertexIndex = part.quadFirst * QUAD_VERTEX_COUNT;	
   dipDesc.numVertices = part.quadCount * QUAD_VERTEX_COUNT;
@@ -688,7 +688,7 @@ void UIRenderer::RenderPart( const SRenderPart & part, bool alphaTest )
   SmartRenderer::DrawIndexedPrimitive( dipDesc );
 
   if ( alphaTest )
-    GetDevice()->SetRenderState( D3DRS_ALPHATESTENABLE, FALSE );
+    GetStatesManager()->SetStateDirect( D3DRS_ALPHATESTENABLE, FALSE );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
