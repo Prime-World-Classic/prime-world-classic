@@ -80,21 +80,27 @@ public:
 		// A suspended corpse is hidden instead of replaying death from its first frame.
 		if (restart && dying) return false;
 		if (restart) {
+			CancelAbility();
 			CancelAttack();
 			if (!blender->Restart(graph->GetDefNode())) return false;
 			target=-1; attackUntil=-1;
 		}
 		if (Attacking() && (moving || seconds>=attackUntil || !attackTiming.BoundedRate())) CancelAttack();
-		const int requested=dying ? death : stunned && !frozen ? (stun>=0 ? stun : idle) : Attacking() ? attack : moving ? move : idle;
+		if (Casting() && (moving || (abilityTiming && !abilityTiming->BoundedRate()))) CancelAbility();
+		const int requested=dying ? death : stunned && !frozen ? (stun>=0 ? stun : idle) : Casting() ? abilityNode : Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
 			target=requested;
 		}
 		double remaining=restart ? 0 : seconds-last;
 		do {
-			const float step=static_cast<float>(std::min(.1,remaining));
+			const double at=seconds-remaining;
+			if (Casting() && at>=abilityUntil) CancelAbility();
+			const float step=static_cast<float>(std::min(std::min(.1,remaining),Casting() ? abilityUntil-at : remaining));
 			if (!blender->Update(step)) return false;
 			remaining-=step;
+			// Sample a fire marker crossed in this frame before releasing the authored work window.
+			if (Casting() && seconds-remaining>=abilityUntil-1e-7) CancelAbility();
 		} while (remaining>1e-7);
 		auto* model=applicator->GetModel(); model->Update(false);
 		const auto* pose=model->GetSkeletonWrapper()->GetSkinWorldMatrices();
@@ -116,7 +122,7 @@ public:
 	{
 		if (dying || (stunned==nextStunned && frozen==nextFrozen)) return;
 		const bool thaw=frozen && !nextFrozen;
-		stunned=nextStunned; frozen=nextFrozen; CancelAttack(); dirty=true;
+		stunned=nextStunned; frozen=nextFrozen; CancelAbility(); CancelAttack(); dirty=true;
 		if (frozen) graph->Freeze(); else { graph->UnFreeze(); target=-1; }
 		// Original OnFreeze(false) forces idle; do not catch up the frozen interval.
 		if (thaw) last=-1;
@@ -131,6 +137,8 @@ public:
 		graph->UnFreeze();
 		if (!blender->SetMainAGTargetNode(death)) { if (frozen) graph->Freeze(); return false; }
 		attackTiming.Cancel();
+		if (abilityTiming) abilityTiming->Cancel();
+		abilityUntil=-1; abilityTiming=nullptr;
 		stunned=frozen=false;
 		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=death; dirty=true; return true;
 	}
@@ -144,7 +152,7 @@ public:
 	 */
 	bool BeginAttack(double period, double fireDelay=0, bool* synchronized=nullptr)
 	{
-		if (dying || stunned || frozen || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
+		if (dying || stunned || frozen || Casting() || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
 			!std::isfinite(period) || period<=0 || period>60 || !std::isfinite(fireDelay) || fireDelay<0 ||
 			fireDelay>60 || (fireDelay>0 && fireDelay<.001)) return false;
 		if (!blender->SetMainAGTargetNode(attack)) return false;
@@ -164,6 +172,46 @@ public:
 		if (Attacking()) { blender->SetMainAGTargetNode(idle); attackUntil=-1; target=-1; dirty=true; }
 	}
 	bool Attacking() const { return attackUntil>=0; }
+	/** Select the original normal graph by DB name. Unsupported marker timing keeps normal-rate playback.
+	 * Work time, not cooldown, owns the presentation window; absent metadata uses the original node duration.
+	 */
+	bool BeginAbility(const char* name,const char* marker,double work,double fire,bool* synchronized=nullptr)
+	{
+		if (dying || stunned || frozen || last<0 || !name || !marker || !name[0] ||
+			strnlen(name,129)>128 || strnlen(marker,129)>128 || !std::isfinite(work) || work<0 || work>60 ||
+			!std::isfinite(fire) || fire<0 || fire>60 || (fire>0 && fire<.001)) return false;
+		const auto node=graph->GetNodeIDByNameSlowQuite(name);
+		if (node>=graph->GetNumNodes()) return false;
+		const double duration=work>0 ? work : graph->GetNodeDuration(node);
+		if (!std::isfinite(duration) || duration<=0 || duration>60) return false;
+		CancelAbility(); CancelAttack();
+		if (!blender->SetMainAGTargetNode(node)) return false;
+		bool synced=false;
+		if (fire>0 && marker[0]) {
+			auto it=abilityTimings.find(marker);
+			if (it==abilityTimings.end() && abilityTimings.size()<16) {
+				auto timing=std::unique_ptr<LinuxAnimationGraphAttack>(new LinuxAnimationGraphAttack);
+				timing->Initialize(*graph,*component->animGraph,nstl::string(marker));
+				it=abilityTimings.emplace(marker,std::move(timing)).first;
+			}
+			if (it!=abilityTimings.end()) { abilityTiming=it->second.get(); synced=abilityTiming->Reach(fire); }
+			if (!synced && !blender->SetMainAGTargetNode(node)) { target=-1; dirty=true; return false; }
+		}
+		if (synchronized) *synchronized=synced;
+		abilityNode=node; target=node; abilityUntil=last+duration; dirty=true; return true;
+	}
+	/** Original target selection restores any temporary marker speed; it cannot cancel world work. */
+	void CancelAbility()
+	{
+		if (abilityTiming) abilityTiming->Cancel();
+		abilityTiming=nullptr;
+		if (Casting()) { blender->SetMainAGTargetNode(idle); abilityUntil=-1; target=idle; dirty=true; }
+	}
+	bool Casting() const { return abilityUntil>=0; }
+	unsigned AbilityMarkerHits() const
+	{
+		unsigned hits=0; for (const auto& timing : abilityTimings) hits+=timing.second->Hits(); return hits;
+	}
 	/** Last sampled world time, or -1 after creation/reset; bounds visible-only event catch-up. */
 	double LastSampleTime() const { return last; }
 	unsigned AttackMarkerHits() const { return attackTiming.Hits(); }
@@ -184,11 +232,15 @@ private:
 	std::unique_ptr<NScene::AnimGraphApplicator> applicator;
 	std::unique_ptr<NScene::AnimGraphBlender> blender;
 	LinuxAnimationGraphAttack attackTiming;
+	std::map<std::string,std::unique_ptr<LinuxAnimationGraphAttack>> abilityTimings;
+	LinuxAnimationGraphAttack* abilityTiming=nullptr;
 	std::unique_ptr<DiAnimGraph,DeleteGraph> graph;
 	std::unique_ptr<DiAnGrExtPars> parameters;
 	LinuxAnimationGraphLocomotion locomotion;
 	std::vector<Matrix43> matrices;
 	double last=-1,attackUntil=-1,deathCompletedAt=-1;
+	double abilityUntil=-1;
+	int abilityNode=-1;
 	int idle=-1,move=-1,attack=-1,death=-1,stun=-1,target=-1;
 	bool wasMoving=false,dirty=false,dying=false,deathFinished=false;
 	bool stunned=false,frozen=false;

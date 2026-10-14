@@ -804,6 +804,7 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
 		marker.frozen=marker.stunned && unit->CheckFlagType(NDb::UNITFLAGTYPE_FREEZE);
 		if (const auto* creature=dynamic_cast<const PFCreature*>(unit)) marker.death=creature->GetLinuxDeathPresentation();
 		if (const auto* attack=unit->GetAttackAbility()) marker.attack=attack->GetLinuxPresentation();
+		marker.ability=unit->GetLinuxAbilityPresentation();
 
     const NDb::Unit* unitDesc = unit->DbUnitDesc();
     if (unitDesc)

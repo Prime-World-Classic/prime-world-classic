@@ -1677,7 +1677,14 @@ CObj<PFAbilityInstance> PFBaseUnit::UseAbility(int id, Target const& target)
     return CObj<PFAbilityInstance>(0);
 
   if (!pAbility->IsMultiState())
-    return CreateAbilityInstance(pAbility, target);
+	{
+		CObj<PFAbilityInstance> instance=CreateAbilityInstance(pAbility,target);
+		if (instance) {
+			instance->PublishLinuxPresentation(pAbility->IsAbilitySupposedToStopUnit(),true);
+			EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+		}
+		return instance;
+	}
 
   pAbility->Toggle(target);
   return CObj<PFAbilityInstance>(0);
@@ -1696,7 +1703,9 @@ CObj<PFAbilityInstance> PFBaseUnit::UseExternalAbility(NDb::Ptr<NDb::Ability> co
     return CObj<PFAbilityInstance>(0);
 
   CObj<PFAbilityData> pAbilityData = new PFAbilityData(this, pDesc, NDb::ABILITYTYPEID_SPECIAL, false, true);
-  return CreateAbilityInstance(pAbilityData, target);
+	CObj<PFAbilityInstance> instance=CreateAbilityInstance(pAbilityData,target);
+	if (instance) instance->PublishLinuxPresentation(pAbilityData->IsAbilitySupposedToStopUnit(),false);
+	return instance;
 }
 
 void PFBaseUnit::RegisterExternalPassiveAbility(PFAbilityData* pAbilityData)

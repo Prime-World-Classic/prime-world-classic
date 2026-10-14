@@ -12,6 +12,8 @@ struct B13TimingSource : LinuxAbilityAnimationTiming
 	}
 };
 
+#include "ability_presentation_b13_tests.inc"
+
 /** Offscreen casts and attacks use world-owned timing, including quantization and terminal cancellation. */
 static void AbilityTimingB13(Checks& check)
 {
@@ -102,8 +104,42 @@ static void AbilityTimingB13(Checks& check)
 			"B13 immutable receipt survives later pool changes and cooldown ticks");
 	}
 	source->available = false;
+	{
+		source->available = true;
+		auto sender = B8BehaviourMoving(f.world, NDb::FACTION_FREEZE);
+		auto* spell = new NDb::Ability; NDb::Ptr<NDb::Ability> owned = spell;
+		spell->node = "ability12x3"; spell->marker = "cast";
+		spell->flags = NDb::ABILITYFLAGS_FOCUSONTARGET | NDb::ABILITYFLAGS_FOCUSINSTANTLY;
+		auto* immediate = new NDb::DispatchImmediate; immediate->instantApply = true; spell->dispatch = immediate;
+		check(sender->GetLinuxAbilityPresentation().sequence == 0, "B13 no speculative cast snapshot before admission");
+		auto first = sender->UseExternalAbility(owned, Target(CVec3(10, 15, 0)));
+		const auto cue = sender->GetLinuxAbilityPresentation();
+		check(first && cue.sequence && cue.instanceObjectId == first->GetObjectId() && !cue.cancelled &&
+			std::string(cue.node) == "ability12x3" && std::string(cue.marker) == "cast" &&
+			std::fabs(cue.workTime-.6f)<1e-6f && std::fabs(cue.fireOffset-.26f)<1e-6f,
+			"B13 accepted external cast snapshots original node, marker and instance timing before activation");
+		check(cue.hasTarget && cue.targetX == 10 && cue.targetY == 15 && cue.lookKind == TurnInstantly,
+			"B13 original focus policy and target are copied without retaining the target");
+		if (first) first->Cancel();
+		check(sender->GetLinuxAbilityPresentation().cancelled && sender->GetLinuxAbilityPresentation().sequence == cue.sequence,
+			"B13 cancellation preserves accepted cue identity");
+		auto second = sender->UseExternalAbility(owned, Target(CVec3(20, 25, 0)));
+		const auto next = sender->GetLinuxAbilityPresentation();
+		if (first) first->Interrupt();
+		check(second && next.sequence > cue.sequence && !sender->GetLinuxAbilityPresentation().cancelled &&
+			sender->GetLinuxAbilityPresentation().targetX == 20,
+			"B13 older instance interruption cannot cancel the newer accepted cast");
+		if (second) second->Interrupt();
+		check(sender->GetLinuxAbilityPresentation().cancelled, "B13 current instance interruption cancels its presentation");
+		spell->manaCost.sString = "999999";
+		check(!sender->UseExternalAbility(owned, Target(sender.GetPtr())) &&
+			sender->GetLinuxAbilityPresentation().sequence == next.sequence,
+			"B13 rejected admission cannot overwrite the last accepted cast");
+		source->available = false;
+	}
 	check(data->GetWorkTime() == 0 && data->GetTimeOffset() == 0, "B13 unavailable metadata retains explicit legacy fallback");
 	f.world->SetLinuxAbilityAnimationTiming({}); std::weak_ptr<B13TimingSource> weak = source; source.reset();
 	check(weak.expired(), "B13 replacing world source releases its owned metadata cache");
 	std::printf("Ability timing gameplay: checks=%d failures=%d\n", check.count-before, check.failed-failed);
+	AbilityPresentationB13(check);
 }

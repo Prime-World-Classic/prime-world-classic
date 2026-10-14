@@ -75006,8 +75006,9 @@ int main(int argc, char** argv)
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
-		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu deaths=%zu corpseSamples=%zu syncedAttacks=%zu fireMarkers=%zu\n",
-			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces,graphs.deathStarts,graphs.deathSamples,graphs.attackSyncStarts,graphs.attackMarkers);
+		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu deaths=%zu corpseSamples=%zu syncedAttacks=%zu fireMarkers=%zu casts=%zu syncedCasts=%zu castMarkers=%zu skippedCasts=%zu castFaces=%zu\n",
+			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces,graphs.deathStarts,graphs.deathSamples,graphs.attackSyncStarts,graphs.attackMarkers,
+			graphs.abilityStarts,graphs.abilitySyncStarts,graphs.abilityMarkers,graphs.abilitySkipped,graphs.abilityFaces);
 		overlay.unitAnimationGraphs.reset();
 	}
 	overlay.animatedMapResources.Clear();

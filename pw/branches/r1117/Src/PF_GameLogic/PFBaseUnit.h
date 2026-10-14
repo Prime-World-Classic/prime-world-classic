@@ -12,6 +12,9 @@
 #include "PFUnitAbilities.h"
 #include "PFWorldObjectBase.h"
 #include "Stat.hpp"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxAbilityPresentation.h"
+#endif
 
 
 #include "../System/NameMap.h"
@@ -989,6 +992,8 @@ public:
   virtual void             CloseWarFog(bool immediately = false);
 
 #if defined(PW_LINUX_NULL_RENDER)
+	/** Read-only accepted cast snapshot; it does not retain an ability, dispatch or target. */
+	const LinuxAbilityPresentation& GetLinuxAbilityPresentation() const { return linuxAbilityPresentation; }
 	/** Update all observers owned by one world, then flush FogOfWar once per tick. */
 	static void StepLinuxWarFog(PFWorld* world, float dtInSeconds);
 #endif
@@ -1031,6 +1036,11 @@ protected:
 private:
 
   void                     StepApplicators(float dtInSeconds);
+#if defined(PW_LINUX_NULL_RENDER)
+	friend class PFAbilityInstance;
+	LinuxAbilityPresentation linuxAbilityPresentation;
+	unsigned long long linuxAbilitySequence=0;
+#endif
   void                     StepApplicatorsHistory();
 
   void                     ResetWarFog();

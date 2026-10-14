@@ -612,7 +612,11 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
   pConsumable->GetAbility()->SetUsingConsumable( pConsumable );
 	AddConsumableCooldown(pConsumable);
 	CObj<PFAbilityInstance> instance = CreateAbilityInstance(pConsumable->GetAbility(), target);
-	if (instance) EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+	if (instance) {
+		const bool syncVisual=instance->GetData()->IsAbilitySupposedToStopUnit();
+		EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+		instance->PublishLinuxPresentation(syncVisual,true);
+	}
 	return instance;
 }
 CObj<PFAbilityInstance> PFBaseHero::UseConsumable(int slot, const Target& target, bool isLocal)

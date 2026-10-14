@@ -184,7 +184,7 @@ on map/world replacement or clock rewind. Pose-cache keys include graph identity
 so units sharing a mesh can display different states at the same timestamp.
 Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
 boundary; the Windows definitions are unchanged. This is presentation-only:
-cast events, upper-body graphs, dynamic external
+upper-body graphs, dynamic external
 parameters and gameplay animation callbacks remain unconnected.
 Live playback uses world time (including pauses), restarts after a gap over one second, and
 recreates graphs after offscreen eviction. Unadmitted assets and the separate
@@ -240,6 +240,25 @@ validation remains separate from this header-only timing reader. Run
 headless original-graph/shipped-Plane checks, alongside the real delayed-dispatch
 [gameplay tests](ability_timing_b13_tests.inc). Visual attack-marker synchronization
 uses a separate graph owner; rendered frames never drive damage.
+
+Ordinary unit abilities, talents, consumables and external abilities publish a
+bounded, nonserialized presentation snapshot at their original `OnUseAbility`
+admission sites. This is a windup request, not a successful activation receipt.
+Instance-owned names, raw timing and target coordinates survive synchronous
+callbacks; cancellation affects only that instance, and nested newer casts win.
+Original unit ability-start events and requested movement-facing updates are
+restored. Generic/passive dispatch construction does not publish a cast animation.
+
+Supported visible owners select the original normal-graph node by DB name and
+reuse bounded `ReachMarkerByTime`; unsupported marker timing keeps normal-rate
+node playback. Authored work time releases the cast independently of cooldown;
+absent work metadata uses the node duration. Cancellation, controls, death and
+movement take precedence. Empty-node abilities preserve the existing animation.
+Expired offscreen requests are not replayed, and visible catch-up cannot fire
+damage or payment. The native preview already places units at simulation positions;
+smooth `Turn` interpolation, overlapping/upper-body casts and full client effects
+remain unported. See [admission regressions](ability_presentation_b13_tests.inc)
+and [original-graph regressions](animation_graph_ability_probe.inc).
 
 Ordinary animated deaths expose a nonserialized corpse snapshot from the original
 creature lifecycle. Already-visible supported graphs request the session death

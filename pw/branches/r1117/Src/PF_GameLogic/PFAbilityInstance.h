@@ -2,6 +2,9 @@
 
 #include "PFUniTarget.h"
 #include "PFWorldObjectBase.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxAbilityPresentation.h"
+#endif
 
 namespace NWorld
 {
@@ -59,6 +62,8 @@ public:
 
   unsigned int          GetFlags() const;
 #if defined(PW_LINUX_NULL_RENDER)
+	/** Publish only from the original OnUseAbility admission sites, never from generic dispatch construction. */
+	void PublishLinuxPresentation(bool syncVisual, bool updateMoveDirection);
 	/** Nonserialized activation receipt, sampled at cooldown restart/payment rather than command admission. */
 	struct LinuxActivationReceipt {
 		bool activated = false, paymentObserved = false, spentLife = false;
@@ -99,6 +104,10 @@ private:
   void Activate();
 #if defined(PW_LINUX_NULL_RENDER)
 	LinuxActivationReceipt linuxActivationReceipt;
+	LinuxAbilityPresentation linuxPresentation;
+	bool linuxPresentationAccepted=false,linuxPresentationPublished=false;
+	/** Invalidate this instance only; older callbacks cannot cancel a newer unit snapshot. */
+	void CancelLinuxPresentation();
 #endif
 
   ZDATA_(PFWorldObjectBase)

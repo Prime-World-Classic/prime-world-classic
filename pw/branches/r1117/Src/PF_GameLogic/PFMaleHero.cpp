@@ -226,6 +226,7 @@ CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( PFTalent* talent, Target cons
 	if (instance)
 	{
 		EventHappened(PFBaseUnitAbilityStartEvent(instance.GetPtr()));
+		instance->PublishLinuxPresentation(talent->IsAbilitySupposedToSyncVisual(),true);
 		lastTalentUseStep = GetWorld() ? GetWorld()->GetStepNumber() : -1;
 		talent->SetLastUseStep(lastTalentUseStep);
 	}

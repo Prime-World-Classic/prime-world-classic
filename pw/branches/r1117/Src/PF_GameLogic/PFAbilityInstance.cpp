@@ -8,6 +8,11 @@
 #include "PFBaseUnitEvent.h"
 #include "PFDispatch.h"
 #include "PFDispatchFactory.h"
+#include "PFBaseMovingUnit.h"
+#include "PFWorld.h"
+#include <cmath>
+#include <cstring>
+#include <limits>
 
 namespace NWorld
 {
@@ -33,6 +38,24 @@ PFAbilityInstance::PFAbilityInstance( const CObj<PFAbilityData>& _pAbilityData, 
     activateDelay = passive ? 0.0f : pAbilityData->GetTimeOffset();
     clientActivateDelay = passive ? 0.0f : pAbilityData->GetTimeOffset( true );
     castTime = passive ? 0.0f : pAbilityData->GetWorkTime();
+		// Capture before synchronous dispatch/event callbacks can mutate the DB, target or timing source.
+		if (!passive && IsValid(pOwner) && pAbilityData->GetDBDesc()) {
+			auto& cue=linuxPresentation;
+			if (pOwner->linuxAbilitySequence<std::numeric_limits<unsigned long long>::max())
+				cue.sequence=++pOwner->linuxAbilitySequence;
+			cue.instanceObjectId=GetObjectId();
+			cue.startedAt=GetWorld() ? GetWorld()->GetTimeElapsed() : -1;
+			cue.workTime=castTime; cue.fireOffset=clientActivateDelay;
+			const auto* db=pAbilityData->GetDBDesc();
+			if (db->node.size()<=128) std::memcpy(cue.node,db->node.c_str(),db->node.size()+1);
+			if (db->marker.size()<=128) std::memcpy(cue.marker,db->marker.c_str(),db->marker.size()+1);
+			cue.lookKind=IsCasterShouldLookAtTarget();
+			if (target.IsValid(true)) {
+				const auto point=target.AcquirePosition();
+				cue.hasTarget=std::isfinite(point.x) && std::isfinite(point.y);
+				if (cue.hasTarget) { cue.targetX=point.x; cue.targetY=point.y; }
+			}
+		}
   }
 
   if ( IsValid( pOwner ) )
@@ -48,6 +71,26 @@ PFAbilityInstance::PFAbilityInstance( const CObj<PFAbilityData>& _pAbilityData, 
       castMasterPosition = pOwner->GetPos();
     }
   }
+}
+
+void PFAbilityInstance::PublishLinuxPresentation(bool syncVisual, bool updateMoveDirection)
+{
+	if (!linuxPresentationAccepted || linuxPresentationPublished || !linuxPresentation.sequence || !IsValid(pOwner)) return;
+	linuxPresentationPublished=true;
+	// A nested accepted cast in a synchronous effect/event callback is newer than this instance.
+	if (pOwner->linuxAbilityPresentation.sequence>=linuxPresentation.sequence) return;
+	linuxPresentation.syncVisual=syncVisual;
+	pOwner->linuxAbilityPresentation=linuxPresentation;
+	if (!linuxPresentation.cancelled && updateMoveDirection && linuxPresentation.hasTarget && linuxPresentation.lookKind!=DontLook)
+		if (auto* moving=dynamic_cast<PFBaseMovingUnit*>(pOwner.GetPtr()))
+			moving->SetMoveDirection(CVec2(linuxPresentation.targetX,linuxPresentation.targetY));
+}
+
+void PFAbilityInstance::CancelLinuxPresentation()
+{
+	linuxPresentation.cancelled=true;
+	if (IsValid(pOwner) && linuxPresentation.sequence && pOwner->linuxAbilityPresentation.sequence==linuxPresentation.sequence)
+		pOwner->linuxAbilityPresentation.cancelled=true;
 }
 
 void PFAbilityInstance::ApplyPassive( bool permanentStatModsOnly )
@@ -75,6 +118,8 @@ void PFAbilityInstance::ApplyPassive( bool permanentStatModsOnly )
 
 void PFAbilityInstance::Cancel()
 {
+	// Original use states also Cancel on ordinary successful completion, between rendered frames.
+	if (!linuxActivationReceipt.activated || !IsCastFinished()) CancelLinuxPresentation();
   activateDelay = -1.0f;
   castTime = -1.0f;
   dispatch.Cancel();
@@ -167,6 +212,7 @@ bool PFAbilityInstance::ApplyToTarget()
 		return false;
 	}
   dispatch.Attach(pDispatch.GetPtr());
+	linuxPresentationAccepted=true;
 	// Keep immediate and delayed payment/event/effect ordering in the original activation hook.
 	if (activateDelay < EPS_VALUE)
 		Activate();
@@ -176,6 +222,7 @@ bool PFAbilityInstance::ApplyToTarget()
 
 void PFAbilityInstance::OnDestroyContents()
 {
+	if (!linuxActivationReceipt.activated || !IsCastFinished()) CancelLinuxPresentation();
   PFWorldObjectBase::OnDestroyContents();
   Remove();
   pAbilityData = NULL;
@@ -267,6 +314,7 @@ void PFAbilityInstance::LogAbilityUsed() const
 
 void PFAbilityInstance::Interrupt()
 {
+	CancelLinuxPresentation();
 	// Interrupting dispatched work preserves effects; pending work has nothing to finish it.
 	if (!IsActivated())
 	{

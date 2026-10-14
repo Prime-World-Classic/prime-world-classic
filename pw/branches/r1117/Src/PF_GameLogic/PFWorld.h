@@ -18,6 +18,7 @@
 #include "Core/Scheduler.h"
 #if defined(PW_LINUX_NULL_RENDER)
 #include "LinuxAttackPresentation.h"
+#include "LinuxAbilityPresentation.h"
 #include "LinuxDeathPresentation.h"
 #include "LinuxAbilityAnimationTiming.h"
 #endif
@@ -89,6 +90,7 @@ class PFMinigamePlace;
 struct LinuxDynamicWorldMarker
 {
 	LinuxAttackPresentation attack;
+	LinuxAbilityPresentation ability;
 	LinuxDeathPresentation death;
 	float moveSpeed=0; ///< Current simulation speed, already including original movement scaling.
 	bool stunned=false,frozen=false; ///< Effective stacked control flags, never serialized.

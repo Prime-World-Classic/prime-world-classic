@@ -2,6 +2,7 @@
 #include "animation_graph_locomotion_probe.inc"
 #include "animation_graph_control_probe.inc"
 #include "animation_graph_attack_probe.inc"
+#include "animation_graph_ability_probe.inc"
 
 /** Shipped graph regression: Plane lists attack1 first, but its authored default is idle. */
 static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& environment)
@@ -46,6 +47,7 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 	const auto& component=*asset.animationComponent;
 	CheckLinuxGraphControls(check,asset,set);
 	CheckLinuxAttackMarkers(check,asset,set);
+	CheckLinuxAbilityGraphs(check,asset,set);
 	check(component.animations.size()>1 && component.animations[0].name=="attack1" &&
 		component.animGraph && component.animGraph->defaultNode=="idle","first listed clip is not the authored graph default");
 	auto player=LinuxAnimationGraphPlayback::Create(asset,set);
