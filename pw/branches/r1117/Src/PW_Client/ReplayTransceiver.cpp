@@ -18,6 +18,7 @@
 #include "PF_GameLogic/PFAIWorld.h"
 #include "PF_GameLogic/PFAIContainer.h"
 #include "PF_GameLogic/WorldChecker.h"
+#include "PF_GameLogic/AdventureScreen.h"
 
 #include "Client/MainTimer.h"
 #include "HybridServer/PeeredTypes.h"
@@ -474,6 +475,9 @@ void ReplayTransceiver::ApplyStartSnapshot()
     pfWorld->GetAIContainer()->OnReconnect();
 
   storage->SetReadPosition( snapshot.position );
+
+  if ( NGameX::AdventureScreen * screen = NGameX::AdventureScreen::Instance() )
+    screen->SetWardCounts( snapshot.wardCounts );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -744,6 +748,9 @@ void ReplayTransceiver::StartSnapshot( bool force )
   pendingSnapshot.step = step;
   pendingSnapshot.position = storage->GetReadPosition();
   pendingSnapshot.data = 0;
+  pendingSnapshot.wardCounts.clear();
+  if ( NGameX::AdventureScreen * screen = NGameX::AdventureScreen::Instance() )
+    pendingSnapshot.wardCounts = screen->GetWardCounts();
 
   snapshotThread = new threading::JobThread( snapshotJob, "ReplaySnapshot", 30000 );
 }

@@ -583,9 +583,13 @@ struct GSClientSettings
     void SetPlayerPingsMuted( int playerId, bool muted );
     // a ward (a lantern bought in the shop) was used: the count per hero for the statistics window; called by the world
     void OnWardUsed( NWorld::PFBaseHero const * pHero );
+    // the counts are not in the world: a replay keeps them with its world snapshots and restores them on a rewind
+    const nstl::map<int, int> & GetWardCounts() const { return wardCounts; }
+    void SetWardCounts( const nstl::map<int, int> & counts );
   private:
     nstl::set<int>      mutedPingPlayers;
     nstl::map<int, int> wardCounts;             // player id -> wards placed
+    nstl::map<int, int> unsentWardCounts;       // restored by SetWardCounts, sent to Flash once it is there
     void UpdatePingMarkers( float deltaTime );
     void SendTypedSignal( int type );
     void PreloadPingVisuals( const NDb::AdvMapDescription * advMapDescription );

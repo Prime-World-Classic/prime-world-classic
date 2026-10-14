@@ -2307,6 +2307,14 @@ void AdventureScreen::Step( bool bAppActive )
   if (IsValid(pLogic) && GetWorld())
     pLogic->UpdateDayNightState(GetWorld()->GetDayNightController());
 
+  if ( !unsentWardCounts.empty() )
+    if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    {
+      for ( nstl::map<int, int>::iterator it = unsentWardCounts.begin(); it != unsentWardCounts.end(); ++it )
+        flash->SetPlayerWards( it->first, it->second );
+      unsentWardCounts.clear();
+    }
+
   NGameX::AdventureScreenBase::Step( bAppActive );
 }
 
@@ -5317,6 +5325,12 @@ void AdventureScreen::OnWardUsed( NWorld::PFBaseHero const * pHero )
   const int count = ++wardCounts[playerId];
   if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
     flash->SetPlayerWards( playerId, count );
+}
+
+void AdventureScreen::SetWardCounts( const nstl::map<int, int> & counts )
+{
+  wardCounts = counts;
+  unsentWardCounts = counts;
 }
 
 // minimap icon of a hero (the same picture as on the minimap and in the chat)

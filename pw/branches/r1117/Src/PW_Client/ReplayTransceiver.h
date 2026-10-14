@@ -143,6 +143,7 @@ public:
     int step;                                // world steps played when the snapshot was taken
     ReplayStorage2::ReadPosition position;
     CObj<Stream> data;                       // compressed world (WorldChecker format)
+    nstl::map<int, int> wardCounts;          // wards placed per player: counted by the combat screen, not in the world
   };
 
 protected:
