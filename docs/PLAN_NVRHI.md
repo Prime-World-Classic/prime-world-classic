@@ -490,17 +490,40 @@ Vec3TransformCoordArray`, `Vec2TransformNormalArray`), ~55 мест вызова
   (`tools/render_shot`): кадр боя отрисован целиком (ландшафт, юнит с HP-полосой,
   партиклы, UI, миникарта), два кадра через 26 с отличаются на 9,6% (второй
   прогон — 5,3%) — рендер не залип.
-* **Что осталось непроверенным: readback на устройстве.** В E2E снимок никто не
-  вызывает, и в shipping его нечем вызвать: команда есть
+* **Readback проверен на устройстве (2026-10-14, хук `auto_screenshot`).** Точки
+  запуска снимка в shipping по-прежнему нет: команда есть
   (`REGISTER_CMD( screenshot, PF_Render::CommandScreenshot )`,
   `PF_GameLogic/PFRenderUtils.cpp`; опции `asis` и имя, файл в
-  `NProfile::FOLDER_SCREENSHOTS`, cvar `screenshot_ext`; исполняется в
-  `PFRenderUtils::DumpScreenshots()` на следующем кадре), но точки ввода команд в
-  shipping-сборке нет — `command_line` (`System/Commands.cpp`) никем не
-  вызывается, `PreferencesProcessor::Apply` гоняет только `applyCommandName` из
-  БД-предпочтений, игровой консоли на стенде нет. Закрывать либо dev-хуком
-  сброса снимка по счётчику кадров (тот же переключатель, что
-  `PW_RENDER_SHADER_STATS`), либо отдельной точкой входа — по мере надобности.
+  `NProfile::FOLDER_SCREENSHOTS`, cvar `screenshot_ext`), но вводить её нечем —
+  `command_line` (`System/Commands.cpp`) никем не вызывается,
+  `PreferencesProcessor::Apply` гоняет только `applyCommandName` из
+  БД-предпочтений, игровой консоли на стенде нет.
+  Поэтому в `SmartRenderer::OnFrameStart()` добавлен хук по переменной
+  `auto_screenshot` (`REGISTER_VAR`, `STORAGE_NONE`, по умолчанию 0 = выключено):
+  на кадре N и на N+100 снимаются три кадра — `pw_auto_scene_*` (поверхность
+  кадра, с альфой — путь `DumpScreenshot`), `pw_auto_bb_*` (бэк-буфер целиком —
+  путь `SocialConnection`) и `pw_auto_crop_*` (кроп, заведомо выходящий за кадр).
+  Файлы — в cwd процесса (на стенде `C:\pw64\Game\Bin`). Включается НЕ сборкой, а
+  `autoexec.cfg`, который клиент исполняет сам: `NGlobal::ExecuteConfig(
+  "autoexec.cfg", NProfile::FOLDER_GLOBAL )` (`PW_Client/Game.cpp:1413`),
+  `FOLDER_GLOBAL` = `<каталог exe>\..\Profiles\` (`ProfileManager.cpp:165`),
+  строка `setvar auto_screenshot 3000`. Формат конфига: построчно, комментарии
+  `;` и `//` (`System/ConfigFiles.cpp`, `LoadConfig`).
+* Замеры прогона (`2026.10.13-23.06.47`, кадр 3000 ≈ 166 с после старта — на
+  стенде ~18 к/с, бой к этому моменту идёт):
+  * `bb` 1024×768 RGB, `scene` 1024×768 RGBA (149 разных значений альфы —
+    альфа не обнулена), `crop` **200×200** при запросе 400×400 в `(W-200, H-200)`
+    — ограничение прямоугольника сработало;
+  * `crop` == `bb[W-200:H-200]` **пиксель в пиксель (0/40000)** — значит
+    смещения, шаг строки (`Pitch` ≠ `w*4` не бывает, но проверяется) и порядок
+    строк в `ReadSurface` верны;
+  * `scene` == `bb` пиксель в пиксель (0/786432): обе поверхности пула DEFAULT,
+    обе идут через `GetRenderTargetData` → одинаковый результат;
+  * `bb_3000` против `bb_3100` — 11,6% отличающихся пикселей: читается живой
+    кадр, а не залипший буфер;
+  * на клиентском кадре **нет** системной надписи «Activate Windows», которая
+    есть на VNC-снимке того же стенда → читается бэк-буфер, а не экран.
+  Гейт этого прогона: E2E зелёный (`finish 4cd0a613…` в dev-бэкенде), дампов нет.
 
 ### 2.12 Замер раскладки констант (2026-10-13, `conststore`)
 
@@ -1532,7 +1555,7 @@ build-каталога под инструментальные сборки ск
 | `Render/renderpixellayout.h` | новый заголовок: `plBGRA`/`plRGBA` — вынесен из интерфейса намеренно, чтобы читатель пикселей не зависел от D3D9/Windows/stdafx |
 | `Render/screenshot.{h,cpp}` | свои png/bmp/dds вместо `D3DXSaveSurfaceToFile*`; `ScreenshotFormatFromName` (jpg/hdr → png), `WriteScreenshotFile`, `BuildDdsImage` |
 | `Render/renderer.{h,cpp}` | `SaveFrameToFile` — общий путь (бэк-буфер или поверхность сцены, кроп, отброс альфы); `SaveScreenshotToFile` — обёртка; `GetBackBuffer`/`CreateOffscreenPlainSurface`/`D3DXLoadSurfaceFromSurface`/`D3DXSaveSurfaceToFileA` из `renderer.cpp` убраны |
-| `Render/smartrenderer.{h,cpp}` | `DumpScreenshot` — через `SaveFrameToFile`; `DumpScreenshotToMemory` удалена (единственный читатель — `EditorNative`, вне графа) |
+| `Render/smartrenderer.{h,cpp}` | `DumpScreenshot` — через `SaveFrameToFile`; `DumpScreenshotToMemory` удалена (единственный читатель — `EditorNative`, вне графа); в `OnFrameStart()` — хук `auto_screenshot` (кадр N и N+100: scene/bb/crop) для проверки readback'а на устройстве |
 | `PF_GameLogic/PFRenderUtils.cpp` | дефолт `screenshot_ext` `jpg` → `png`; снят Wine-гейт снимка (обход битого `D3DXSaveSurfaceToFile` в Wine <1.5.6) |
 | `Render/Render.vcproj` | `screenshot.{h,cpp}`, `renderpixellayout.h` |
 | `tools/screenshot_test/` | нативный смоук писателя (`main.cpp` + `check.py`): узоры 37×13, свой декодер png/bmp/dds + независимая сверка через PIL |
@@ -1540,8 +1563,9 @@ build-каталога под инструментальные сборки ск
 Детали и найденные смоуком баги (CRC PNG, смещения DDS-заголовка, смещения BMP
 в самом декодере теста) — §2.13. Гейт: x64 (Wine) + E2E tiny10 (`2026.10.13-22.42.41`,
 `finish 7e447f97…`) + скриншот-гейт (кадр боя полный, 5,3% между кадрами через
-26 с). Readback на устройстве не проверен — точки запуска снимка в shipping нет
-(§2.13, последний пункт).
+26 с). Readback на устройстве проверен хуком `auto_screenshot` (прогон
+`2026.10.13-23.06.47`, `finish 4cd0a613…`): crop == область бэк-буфера пиксель в
+пиксель, кроп ограничен, `scene` == `bb`, кадры на N и N+100 различаются (§2.13).
 
 ### Сознательные отклонения от «картинка не меняется»
 

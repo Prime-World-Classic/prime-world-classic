@@ -19,6 +19,15 @@ static DXWarnSignal s_DXWarnLevel;
 static bool nullrender = false;
 REGISTER_VAR( "nodip", nullrender, STORAGE_NONE );
 
+// Кадр, на котором клиент сам снимает картинку (0 — выключено). См. блок в
+// OnFrameStart: в shipping-сборке нечем ввести команду `screenshot`, а снимок
+// самим клиентом — единственный способ проверить readback бэкенда на реальном
+// устройстве. Включается autoexec.cfg, который клиент исполняет сам:
+//   setvar auto_screenshot 3000
+// (docs/PLAN_NVRHI.md §2.13).
+static int s_autoScreenshotAt = 0;
+REGISTER_VAR( "auto_screenshot", s_autoScreenshotAt, STORAGE_NONE );
+
 #ifdef _SUPRESS_HWI
 static bool s_supressDrawCall = false;
 static bool s_supressHWI = false;
@@ -394,6 +403,43 @@ void OnFrameStart()
   pairMap.clear();
   sortMap.clear();
 #endif // USE_RENDER_SHADER_STATS
+
+  // Снимок кадра самим клиентом (docs/PLAN_NVRHI.md §2.13): см. s_autoScreenshotAt.
+  {
+    static int s_frameNo = 0;
+    const int frame = ++s_frameNo;
+    if ( s_autoScreenshotAt > 0 &&
+         ( frame == s_autoScreenshotAt || frame == s_autoScreenshotAt + 100 ) )
+    {
+      Renderer* pR = GetRenderer();
+      if ( !pR || !pR->GetColorSurface() )
+      {
+        DebugTrace( "AutoShot: frame=%d пропущен — устройства/поверхности кадра ещё нет", frame );
+      }
+      else
+      {
+        char name[96];
+        // 1) поверхность, в которую нарисован кадр, с альфой — путь DumpScreenshot
+        sprintf_s(name, "pw_auto_scene_%d.png", frame);
+        DumpScreenshot(name, true);
+        // 2) бэк-буфер целиком, альфа отбрасывается — путь SocialConnection
+        sprintf_s(name, "pw_auto_bb_%d.png", frame);
+        const bool bb = pR->SaveScreenshotToFile(name, 0, 0, 0, 0, false);
+        // 3) кроп, заведомо выходящий за кадр, — проверяется ограничение
+        //    прямоугольника (иначе это молча отказ или чтение чужой памяти)
+        D3DSURFACE_DESC sd;
+        bool crop = false;
+        if ( SUCCEEDED( Get( pR->GetColorSurface() )->GetDesc(&sd) ) )
+        {
+          sprintf_s(name, "pw_auto_crop_%d.png", frame);
+          crop = pR->SaveScreenshotToFile(name, (int)sd.Width - 200,
+                                          (int)sd.Height - 200, 400, 400, true);
+        }
+        DebugTrace( "AutoShot: frame=%d bb=%d crop=%d (bb/crop — бэк-буфер, scene — поверхность кадра)",
+                    frame, bb ? 1 : 0, crop ? 1 : 0 );
+      }
+    }
+  }
   NullLastPointers();
 }
 
