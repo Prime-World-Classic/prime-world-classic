@@ -777,9 +777,9 @@ void AdventureFlashInterface::SetWheelEditor( int wheel, const string & varName,
 }
 
 void AdventureFlashInterface::ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,
-                                          const string & targetIcon, const wstring & targetName, int targetColor, int amount )
+                                          const string & targetIcon, const wstring & targetName, int targetColor, int praiseId, const wstring & text )
 {
-  CallMethod( "ShowPraise", id, senderIcon, senderName, senderColor, targetIcon, targetName, targetColor, amount );
+  CallMethod( "ShowPraise", id, senderIcon, senderName, senderColor, targetIcon, targetName, targetColor, praiseId, text );
 }
 
 void AdventureFlashInterface::SetPraisePanel( int id, float slide, float row, float alpha, float top )

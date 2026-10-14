@@ -706,10 +706,11 @@ namespace NWorld
     if ( !IsValid( pHero ) || !IsValid( pTarget ) || pTarget.GetPtr() == pHero.GetPtr() )
       return;
 
-    // the praise is free and gives nothing: no prime moves (amount is kept in the command for compatibility, always 0)
+    // the praise is free and gives nothing: no prime moves; amount = number of the praise chosen in the castle fair
+    // (0 - the standard one), only the notification text depends on it
 #ifndef VISUAL_CUTTED
     if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
-      pScreen->OnPraise( pHero.GetPtr(), pTarget.GetPtr(), 0 );
+      pScreen->OnPraise( pHero.GetPtr(), pTarget.GetPtr(), Max( (int)amount, 0 ) );
 #endif
   }
 

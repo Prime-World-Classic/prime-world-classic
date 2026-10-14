@@ -223,6 +223,9 @@ static float g_praiseCooldown        = 5.0f;  // seconds
 static float g_praiseShowTime        = 5.0f;  // seconds a notification stays on the screen
 static int   g_praiseMaxShown        = 6;
 static float g_praisePanelTop        = 0.25f; // top of the first notification, part of the screen height
+// Praise chosen in the castle fair (written to user.cfg by the launcher): its number goes to everybody in CmdPraise,
+// every client shows its own text of that number from praises.txt (also written by the launcher); 0 - the standard praise
+static int   g_praiseId              = 0;
 #pragma warning( push )
 #pragma warning( disable : 4428 )
 // ping types = the value sent with CmdTypedSignal; 0..4 - the first wheel, 5 - the ordinary ping, 6.. - added later.
@@ -5607,12 +5610,56 @@ bool AdventureScreen::TryPraiseHero( NWorld::PFBaseHero * pTarget )
     return true;
   }
 
-  SendGameCommand( NWorld::CreateCmdPraise( pHero, pTarget, 0 ), true ); // free: no prime is given
+  SendGameCommand( NWorld::CreateCmdPraise( pHero, pTarget, Max( g_praiseId, 0 ) ), true ); // free: no prime is given; amount = praise number
   lastPraiseTime = now;
   return true;
 }
 #pragma warning( pop )
 
+
+// praise texts by number from praises.txt (My Games folder, written by the launcher): "<number>\t<text>" per line, UTF-8;
+// read once, the game is started anew for every battle. Unknown number - empty text (the standard praise).
+static wstring GetPraiseText( int id )
+{
+  static nstl::vector< std::pair<int, wstring> > s_texts;
+  static bool s_loaded = false;
+  if ( !s_loaded )
+  {
+    s_loaded = true;
+    FILE * file = 0;
+    if ( fopen_s( &file, NProfile::GetFullFilePath( "praises.txt", NProfile::FOLDER_USER ).c_str(), "rb" ) == 0 && file )
+    {
+      char buffer[1024];
+      bool first = true;
+      while ( fgets( buffer, sizeof( buffer ), file ) )
+      {
+        char * line = buffer;
+        if ( first && (unsigned char)line[0] == 0xEF && (unsigned char)line[1] == 0xBB && (unsigned char)line[2] == 0xBF )
+          line += 3;
+        first = false;
+        for ( char * end = line + strlen( line ); end > line && ( end[-1] == '\n' || end[-1] == '\r' ); --end )
+          end[-1] = 0;
+        char * tab = strchr( line, '\t' );
+        if ( !tab )
+          continue;
+        *tab = 0;
+        const int number = atoi( line );
+        if ( number <= 0 )
+          continue;
+        wstring text;
+        NStr::UTF8ToUnicode( &text, string( tab + 1 ) );
+        if ( text.size() > 64 )
+          text.resize( 64 );
+        s_texts.push_back( std::pair<int, wstring>( number, text ) );
+      }
+      fclose( file );
+    }
+  }
+  for ( int i = 0; i < s_texts.size(); ++i )
+    if ( s_texts[i].first == id )
+      return s_texts[i].second;
+  return wstring();
+}
 
 void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBaseHero const * pTarget, int amount )
 {
@@ -5643,7 +5690,7 @@ void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBa
 
   const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // portraits are normally cached by the top bar
   flash->ShowPraise( entry.id, senderIcon, pSender->GetPlayerName(), senderColor,
-                     targetIcon, pTarget->GetPlayerName(), targetColor, amount );
+                     targetIcon, pTarget->GetPlayerName(), targetColor, amount, GetPraiseText( amount ) );
   flash->SetPraisePanel( entry.id, 1.0f, entry.row, 1.0f, g_praisePanelTop );
   NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
 }
@@ -8786,6 +8833,7 @@ REGISTER_VAR( "praise", g_praise, STORAGE_USER );
 REGISTER_VAR( "praise_cooldown", g_praiseCooldown, STORAGE_NONE );
 REGISTER_VAR( "praise_show_time", g_praiseShowTime, STORAGE_NONE );
 REGISTER_VAR( "praise_panel_top", g_praisePanelTop, STORAGE_NONE );
+REGISTER_VAR( "praise_id", g_praiseId, STORAGE_USER );
 REGISTER_VAR( "ping_sound_volume", g_pingSoundVolume, STORAGE_USER );
 REGISTER_VAR( "ping_sound_min_interval", g_pingSoundMinInterval, STORAGE_NONE );
 REGISTER_VAR( "chat_center_raise", g_chatCenterRaise, STORAGE_NONE );
