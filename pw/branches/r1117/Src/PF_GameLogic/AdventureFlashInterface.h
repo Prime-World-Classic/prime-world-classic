@@ -312,6 +312,7 @@ public:
   void HighlightChatWheel( int index );
   void HideChatWheel();
   void SetPlayerWards( int playerId, int count ); // wards placed, statistics window
+  void SetPingText( const wstring & text );       // ping under the minimap, empty - hidden
   // wheel editor of the settings window: wheel 0 = chat, 1 = ping; catalog ids / labels / icons separated by '|',
   // items = ids of the slots "a,b,c"; varName is set by Flash (PreferenceSetVar) when the slots change
   void SetWheelEditor( int wheel, const string & varName, const string & ids, const wstring & labels, const string & icons, const string & items, const wstring & texts );

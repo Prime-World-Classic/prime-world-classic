@@ -32,7 +32,7 @@
 
 static const float PROGRESS_SEND_INTERVAL = 0.33f;
 
-static float g_fHybridPingPeriod = 5.0; // по умолчанию - будем запрашивать пинг раз в столько секунд
+static float g_fHybridPingPeriod = 1.0; // RPC ping to the game server once a second (also the ping under the minimap)
 REGISTER_VAR( "hybrid_ping_period", g_fHybridPingPeriod, STORAGE_NONE);
 
 static float g_fHybridPingThreshold = 0.4f; // если пинг (в секундах) больше этого значения, будем ругацца (т.е. ставить флаг warning в DebugVar "hybrid_ping_value")

@@ -1657,6 +1657,18 @@
 			}
 		}
 
+		// ping to the game server under the minimap, "" - hidden (AdventureScreen::UpdatePingHud)
+		public function SetPingText(text:String) : void
+		{
+			try
+			{
+				this.mainWindow.miniMap_mc.miniMapAnim_mc.SetPing(text);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
 		// wards placed by a player (lanterns of the shop), statistics window
 		public function SetPlayerWards(playerId:int, count:int) : void
 		{

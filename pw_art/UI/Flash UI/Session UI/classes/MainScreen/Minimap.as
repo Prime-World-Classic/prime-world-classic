@@ -18,6 +18,8 @@
 	import Events.MouseRightEvents;
 	import Effects.AttentionEffect;
 	import Effects.TargetZoneEffect;
+	import flash.text.TextField;
+	import flash.text.TextFormat;
 	
 	public class Minimap extends MovieClip
 	{
@@ -59,6 +61,34 @@
 		
 		private var _targetZoneEffect:TargetZoneEffect = new TargetZoneEffect();
 		
+		// ping to the game server ("40 ms"): small text in the corner under the signal button (AdventureScreen::UpdatePingHud)
+		private static const PING_CENTER_X:Number = 252;  // signalBtn: 224..272 x 190..238, the camera button is left of the corner
+		private static const PING_TOP:Number = 246;
+		private var pingText:TextField;
+
+		public function SetPing(text:String):void
+		{
+			if (pingText == null)
+			{
+				var format:TextFormat = new TextFormat();
+				format.font = "DejaVu LGC Sans";
+				format.size = 11;
+				format.color = 0xE6E6E6;
+				pingText = new TextField();
+				pingText.selectable = false;
+				pingText.mouseEnabled = false;
+				pingText.defaultTextFormat = format;
+				pingText.height = 17;
+				pingText.y = PING_TOP;
+				addChild(pingText);
+			}
+			pingText.visible = text != "";
+			pingText.text = text;
+			// the engine ignores TextFormatAlign.CENTER: the field is as wide as the text and centred by x
+			pingText.width = Math.ceil(pingText.textWidth) + 4;
+			pingText.x = Math.round(PING_CENTER_X - pingText.width / 2);
+		}
+
 		public function Minimap()
 		{
 			this.mouseEnabled = false;

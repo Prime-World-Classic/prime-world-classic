@@ -411,6 +411,11 @@ struct GSClientSettings
     NDb::Ptr<NDb::AOEMaterial> pingRingMaterial;   // ground ring (Effects/UI/Ping/PingRing.MTRL)
     int                 pingRingChannelsUsed;
     unsigned long       lastPingSoundTime;          // GetTickCount() of the last ping sound
+    // ping to the game server under the minimap ("40 ms"): the last RPC ping (debug var hybrid_ping_value)
+    float               pingHudTimer;
+    int                 pingHudShown;               // the value on the screen, -1 = hidden
+    bool                replayHud;                  // a replay: no ping
+    void UpdatePingHud( float deltaTime );
     // praise notifications (right edge of the screen)
     struct PraiseEntry
     {

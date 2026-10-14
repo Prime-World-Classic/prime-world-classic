@@ -715,6 +715,9 @@ AdventureScreen::AdventureScreen()
 , chatWheelSelected(-1)
 , pingRingChannelsUsed(0)
 , lastPingSoundTime(0)
+, pingHudTimer(0.0f)
+, pingHudShown(-2)
+, replayHud(false)
 , praiseNextId(1)
 , lastPraiseTime(0)
 , autoAttackSent(-1)
@@ -2306,6 +2309,8 @@ void AdventureScreen::Step( bool bAppActive )
 
   if (IsValid(pLogic) && GetWorld())
     pLogic->UpdateDayNightState(GetWorld()->GetDayNightController());
+
+  UpdatePingHud( NMainLoop::GetTimeDelta() );
 
   if ( !unsentWardCounts.empty() )
     if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
@@ -5327,6 +5332,33 @@ void AdventureScreen::OnWardUsed( NWorld::PFBaseHero const * pHero )
     flash->SetPlayerWards( playerId, count );
 }
 
+// ping to the game server, small text under the minimap (like "40 ms" in LoL): the RPC ping of the game client
+// (LobbyGameClient.cpp, hybrid_ping_value: a request to the game server and back, measured every hybrid_ping_period s)
+void AdventureScreen::UpdatePingHud( float deltaTime )
+{
+  pingHudTimer -= deltaTime;
+  if ( pingHudTimer > 0.0f )
+    return;
+  pingHudTimer = 0.5f;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash )
+    return;
+
+  int ping = -1;
+  if ( !replayHud )
+    if ( NDebug::IDebugVar * var = NDebug::FindDebugVar( L"hybrid_ping_value" ) )
+      ping = static_cast<NDebug::DebugVar<int> *>( var )->GetValue();
+  if ( ping <= 0 ) // no game server (local game, replay) or no answer yet
+    ping = -1;
+  if ( ping == pingHudShown )
+    return;
+  pingHudShown = ping;
+
+  const bool en = ( GetLanguageShortCode() == "en" );
+  flash->SetPingText( ping < 0 ? wstring() : NStr::StrFmtW( en ? L"%d ms" : L"%d \u043c\u0441", ping ) );
+}
+
 void AdventureScreen::SetWardCounts( const nstl::map<int, int> & counts )
 {
   wardCounts = counts;
@@ -7541,6 +7573,7 @@ void AdventureScreen::HideReplayMsg()
 
 void AdventureScreen::UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended )
 {
+  replayHud = true;
   if ( pLogic )
     pLogic->UpdateReplayControls( playedSteps, totalSteps, stepLengthMs, speed, paused, seekTargetStep, ended );
 }

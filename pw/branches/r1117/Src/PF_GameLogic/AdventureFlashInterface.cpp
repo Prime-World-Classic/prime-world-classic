@@ -766,6 +766,11 @@ void AdventureFlashInterface::SetPlayerWards( int playerId, int count )
   CallMethod( "SetPlayerWards", playerId, count );
 }
 
+void AdventureFlashInterface::SetPingText( const wstring & text )
+{
+  CallMethod( "SetPingText", text );
+}
+
 void AdventureFlashInterface::SetWheelEditor( int wheel, const string & varName, const string & ids, const wstring & labels, const string & icons, const string & items, const wstring & texts )
 {
   CallMethod( "SetWheelEditor", wheel, varName, ids, labels, icons, items, texts );
