@@ -569,11 +569,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\DeviceLost.cpp"
+				RelativePath=".\Reallocate.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\DeviceLost.h"
+				RelativePath=".\Reallocate.h"
 				>
 			</File>
 			<File

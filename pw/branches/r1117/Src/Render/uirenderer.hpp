@@ -30,7 +30,7 @@ static const int QUAD_INDEX_COUNT = 6;
 static const unsigned int quadFirstTextOff = 0xFFFFFFFF;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class UIRenderer : public IUIRenderer, public Render::DeviceLostHandler
+class UIRenderer : public IUIRenderer, public Render::ReallocateHandler
 {
 protected:
   UIRenderer();
@@ -83,9 +83,9 @@ public:
   virtual IFlashRenderer* GetFlashRenderer() { return flashRenderer; }
   virtual IUITextureCache* GetTextureCache() { return textureCache; }
 
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceLost() {}
-  virtual void OnDeviceReset() { StartFrame(); }
+  // From Render::ReallocateHandler
+  virtual void OnResourcesRelease() {}
+  virtual void OnResourcesReallocate() { StartFrame(); }
 
 private:
 

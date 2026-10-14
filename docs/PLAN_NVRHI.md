@@ -417,6 +417,19 @@ Vec3TransformCoordArray`, `Vec2TransformNormalArray`), ~55 мест вызова
    `PW_Game.exe` (импорты exe — только `d3d9.dll` и `d3dx9_43.dll`), т.е. либо
    грузится другим модулем, либо мёртвый груз в доставке. Запомнено, по решению
    пользователя игнорируется (`PENDING.md` §10).
+7. **Swapchain / окно — через SDL, версия — SDL3 (3.2.x)** (решение от
+   2026-10-14). SDL3, а не SDL2: surface для Vulkan (`SDL_Vulkan_CreateSurface`,
+   `SDL_Vulkan_GetInstanceExtensions`), HWND для будущего DX12
+   (`SDL_GetWindowProperties` → `SDL_PROP_WINDOW_WIN32_HWND_POINTER`),
+   корректные события ресайза/минимизации/окклюзии/поворота — на них решается
+   `VK_ERROR_OUT_OF_DATE_KHR`, и полноэкранные режимы
+   (`SDL_GetFullscreenDisplayModes`/`SDL_SetWindowFullscreenMode`) вместо
+   `EnumDisplaySettings`-валидации. Статика, MIT, C ABI; `SDL_main` не
+   использовать (`SDL_SetMainReady()` / `SDL_MAIN_HANDLED`) — `WinMain` остаётся
+   наш. XP не поддерживается (для x64-клиента VS2022 не ограничение).
+   Запасной вариант — SDL2 2.32.x (`SDL_Vulkan_CreateSurface` есть с 2.0.7),
+   если упрёмся в Win7 или в поведение SDL3-окон; ресайз/fullscreen там хуже.
+   Подробности и границы — §3.x GAP: swapchain.
 
 ### 2.13 Скриншот: последние два D3DX-импорта в клиенте (2026-10-13)
 
@@ -669,6 +682,7 @@ ConstStore: VS c0..c234 (235 reg, 6342864 writes, 835944 changed)
   NotifyDeviceReset`, `RecoverFromDeviceLost`) — **интерфейс сохранить,
   семантику свести к «ресайз/ре-аллокация»**: в DX12/Vulkan device-lost нет.
   Это самый большой по числу файлов, но самый дешёвый по риску кусок.
+  **Сделано 2026-10-14** — см. §6 «Сделано (этап 2, ре-аллокация)».
 - `SharedD3DBufferST` / `DXVertexBufferDynamicRef` / `DXIndexBufferDynamicRef_`
   (`dxutils.h`) → NVRHI upload-heap / `writeBuffer`.
 
@@ -1223,8 +1237,25 @@ color-correct начинают получать настоящие веса) —
       возможностей (`GetDeviceCaps`, `GetProperties`, `TestCooperativeLevel`) и
       `GetViewport` (5 мест; в интерфейсе бэкенда он есть, но кэш viewport'а ещё
       D3D9-типизирован — §2.8).
-- [ ] `DeviceLostHandler` → `OnReallocate` (интерфейс тот же, семантика —
-      ресайз).
+- [x] **`DeviceLostHandler` → ре-аллокация** (закрыто 2026-10-14).
+      Реестр переименован в `ReallocateHandler` (`DeviceLost.{h,cpp}` →
+      `Reallocate.{h,cpp}`), методы — `OnResourcesRelease()` /
+      `OnResourcesReallocate()`, уведомления — `NotifyResourcesRelease()` /
+      `NotifyResourcesReallocate()`, обёртка — `ReallocateWrapper`.
+      `DeviceDeleteHandler` (`OnDeviceDelete`/`OnDeviceCreate`) назван не тронут:
+      это про сам объект устройства (CreateDevice/DeleteDevice), а не про размер
+      кадра.
+      **Находка по ходу (важнее самого переименования):** путь `Renderer::Start()`
+      → `ResetDevice()` (create-or-reset) **не уведомлял обработчики вообще** —
+      `NotifyDeviceLost/Reset` были только в `RecoverFromDeviceLost()` и
+      `InvalidateResources()`. Безопасно это лишь потому, что `Start()` в клиенте
+      вызывается один раз на старте (`Game.cpp:1441`, `EditorNative`, тест) и
+      смены разрешения на лету нет; с SDL-ресайзом (этап 3) этот путь станет
+      живым, и DEFAULT-пул/RT-поверхности без уведомлений остались бы висячими.
+      Поэтому `ResetDevice()` теперь делает release → `pDevice->Reset()` →
+      reallocate, а при неудачном `Reset()` остаётся в состоянии «отпущено»
+      (`bDeviceLost = true`), которое разберёт повторный `Start()` или
+      `RecoverFromDeviceLost()` на ближайшем `Present()`.
 - [ ] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
       (`dxutils.h::PoolType` сохраняется как enum).
 - Критерий: картинка не меняется, E2E зелёный.
@@ -1240,11 +1271,13 @@ color-correct начинают получать настоящие веса) —
       рассчитан на последующее добавление DX12 (никаких Vulkan-типов в
       заголовках вне реализации); dev-var `rndr_backend=vulkan` закладывается
       сразу, DX12 появится в нём позже.
-- [ ] Swapchain: **WSI (Vulkan)**; DXGI-часть — только для будущего DX12.
-      `isBorderless`/`vsyncCount` из
-      `RenderMode` → `IDXGISwapChain::Present(0|1)` / `vkQueuePresentKHR`;
-      `EnumDisplaySettings`-валидация ресов — только для нативного
-      fullscreen, на Linux — не нужна.
+- [ ] Swapchain: **через SDL3 (3.2.x), решение от 2026-10-14 — см. §3.x GAP:
+      swapchain**. Окно, Vulkan surface, кадры, ресайз/минимизация/
+      `OUT_OF_DATE_KHR` и полноэкранные режимы — на SDL; `isBorderless`/
+      `vsyncCount` из `RenderMode` → `SDL_SetWindowFullscreenMode` /
+      `SDL_WINDOW_BORDERLESS`; DX12-путь позже берёт HWND из
+      `SDL_PROP_WINDOW_WIN32_HWND_POINTER`. Ввод остаётся на существующем
+      `WndProc` (subclass), `SDL_main` не используется.
 - [ ] Шейдеры: `D3DCompile` → DXBC `vs_5_0/ps_5_0` (DX12) и DXC → SPIR-V
       (Vulkan); новый `.shd`-формат (этап 0); `ID3DXInclude` → `ID3DInclude`.
 - [ ] Тени: `D24S8`/`D32F` + depth SRV вместо DF16/DF24/INTZ; ESM без Fetch4;
@@ -1261,6 +1294,9 @@ color-correct начинают получать настоящие веса) —
 - [ ] `configdatabase`: синтез `D3DCAPS9`-совместимой структуры (§2.5) +
       прогон `config.txt` через новый матчер (регресс: пины не должны
       «уехать»).
+- [ ] **Окно: `Renderer(HWND)` перестаёт принимать HWND** — окно уходит в
+      platform-слой (Win32-окно пока как есть, SDL подменяет его на этапе 3).
+      Без этого `IRenderBackend` не может быть free of HWND (§2.8).
 - [ ] Linux-контур — **вне рамок этой ветки** (клиент пока Windows-only).
       Но `IRenderBackend` обязана не содержать `HWND`: сейчас
       `Renderer(HWND)` — окно вынести в platform-слой заранее, на этапе 2.
@@ -1299,16 +1335,54 @@ color-correct начинают получать настоящие веса) —
 пересобирать. Проверить на реальном железе (там `maxBoundDescriptorSets` может
 быть 7).
 
-### 3.x GAP: swapchain
+### 3.x GAP: swapchain — **решение: SDL3 (2026-10-14)**
 
 В NVRHI `6b96fb03` **нет ни `ISwapchain`, ни `createSwapchain`** (проверено
-по `include/` и по `doc/Tutorial.md`). Приложение само создаёт DXGI swapchain /
-`VkSwapchainKHR`, пересоздаёт при ресайзе, и оборачивает бэк-буфер через
-`IDevice::createHandleForNativeTexture`. Т.е. в плане это не «бэкенд сам всё
-сделает», а отдельный кусок работы: перечисление адаптеров, создание
-странического представления, получение кадров, обработка
-`VK_ERROR_OUT_OF_DATE_KHR` / `DXGI_STATUS_OC_RESIZED`. Это же — единственная
-часть, где придётся держать нативный Vulkan/DXGI код в обход NVRHI.
+по `include/` и по `doc/Tutorial.md`). Раньше это означало «приложение само
+создаёт DXGI swapchain / `VkSwapchainKHR`» — отдельный кусок нативного кода,
+единственный, где пришлось бы держать Vulkan/DXGI в обход NVRHI.
+
+**Принято: эту часть закрывает SDL3 (3.2.x)** — окно, surface, кадры и
+пересоздание при ресайзе отдаются SDL; нативного Vulkan-кода в клиенте не
+появляется (кроме `createHandleForNativeTexture` для бэк-буфера, если NVRHI
+потребует ручку вместо SDL-обёртки).
+
+Что берёт на себя SDL:
+- создание окна и message pump (`SDL_CreateWindow`, `SDL_PumpEvents`/`SDL_WaitEvent`);
+- Vulkan surface: `SDL_Vulkan_CreateSurface` + `SDL_Vulkan_GetInstanceExtensions`
+  (список расширений для `vkCreateInstance` — тоже оттуда);
+- HWND для будущего DX12-пути: `SDL_GetWindowProperties` →
+  `SDL_PROP_WINDOW_WIN32_HWND_POINTER`;
+- пересоздание при ресайзе/смене монитора: `SDL_EVENT_WINDOW_RESIZED`,
+  `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`, `SDL_EVENT_WINDOW_MINIMIZED`,
+  `SDL_EVENT_WINDOW_OCCLUDED`, `SDL_EVENT_DISPLAY_ORIENTATION` — на них же
+  обрабатывается `VK_ERROR_OUT_OF_DATE_KHR`/`VK_ERROR_SURFACE_LOST_KHR`
+  (минимизированное окно = нулевой размер, swapchain не создаётся);
+- режимы показа: `isBorderless`/`vsyncCount` из `RenderMode` →
+  `SDL_SetWindowFullscreenMode` + `SDL_WINDOW_BORDERLESS` вместо
+  `EnumDisplaySettings`-валидации ресов; `SDL_GetFullscreenDisplayModes` —
+  источник валидных ресов.
+
+Границы (чтобы не раздуть задачу):
+- **SDL забирает окно и pump, но НЕ ввод.** Клиент сам регистрирует класс окна и
+  обрабатывает `WndProc` (мышь/клава/курсор/IME). Решение: SDL создаёт окно,
+  существующая процедура ввода подсаживается subclass'ом
+  (`SetWindowLongPtrW(GWLP_WNDPROC)`); перевод ввода на SDL-события — отдельная
+  задача вне миграции рендера.
+- `SDL_main` не используется: `SDL_SetMainReady()` (или `SDL_MAIN_HANDLED`),
+  `WinMain` остаётся наш.
+- Линковка: статика (`/MT`-совместимая сборка SDL3); если со статикой проблемы —
+  `SDL3.dll` возим в `Bin/` по образцу `d3dx9_43.dll` (§2.15 п.3).
+- Порядок: **этап 2** — `Renderer(HWND)` перестаёт принимать HWND (окно уходит в
+  platform-слой, Win32-окно пока как есть); **этап 3** — это окно заменяется на
+  SDL-овское, к нему цепляются surface/swapchain.
+- SDL3 в `Vendor/` ещё нет — кладётся рядом с `Vendor/NVRHI/` (тот же
+  CMake-таргет, свои флаги, vcproj не правим).
+
+Запасной вариант — SDL2 2.32.x: `SDL_Vulkan_CreateSurface` есть с 2.0.7, но
+события ресайза/минимизации и fullscreen-режимы там хуже, а ветка 2.x —
+maintenance-ветка. К SDL2 переходим только при упоре в Win7 или в поведение
+SDL3-окон.
 
 ### 3.x Спайк A: HLSL -> SPIR-V (сделано 2026-10-13, `tools/spirv_probe`)
 
@@ -1651,6 +1725,40 @@ build-каталога под инструментальные сборки ск
 кадра, «грубых» отличий >64 — 0,13–0,33%) сопоставим с любой разницей до/после**:
 A-B 11,73% / B-C 10,67% / A-C 11,41% — сигнала регресса нет; кадр глазами — сцена,
 тени от построек и UI без изменений (ни acne, ни отрыва тени от объекта).
+
+### Сделано (этап 2, ре-аллокация вместо device-lost — закрыто 2026-10-14)
+
+| Было | Стало |
+|---|---|
+| `Render/DeviceLost.{h,cpp}` | `Render/Reallocate.{h,cpp}` (`git mv`, обновлены `Render.vcproj` и `Render/RendererUtils.component`) |
+| `DeviceLostHandler` | `ReallocateHandler` |
+| `OnDeviceLost()` / `OnDeviceReset()` | `OnResourcesRelease()` / `OnResourcesReallocate()` |
+| `NotifyDeviceLost()` / `NotifyDeviceReset()` | `NotifyResourcesRelease()` / `NotifyResourcesReallocate()` |
+| `DeviceLostWrapper`, `DeviceLostHandlerLoadable` | `ReallocateWrapper`, `ReallocateHandlerLoadable` |
+| `DeviceDeleteHandler` | без изменений (это про объект устройства, не про размер кадра) |
+
+Затронуто 32 файла (кроме `Render`: `PF_Core`, `PF_GameLogic`, `Scene`,
+`Terrain`, `PW_Client`). Лексика D3D9-устройства (`bDeviceLost`,
+`RecoverFromDeviceLost`, `TestCooperativeLevel`) сохранена намеренно: это
+реализация D3D9-пути, она уходит на этапе 4.
+
+**Правка семантики, а не только имён:** `Renderer::ResetDevice()` (путь
+`Renderer::Start()` → create-or-reset) раньше **не уведомлял обработчики** —
+уведомления были только в `RecoverFromDeviceLost()` и `InvalidateResources()`.
+Сейчас `ResetDevice()` = `NotifyResourcesRelease()` → `pDevice->Reset()` →
+`OnDeviceChanged()` → `NotifyResourcesReallocate()`; при неудачном `Reset()`
+состояние «ресурсы отпущены» сохраняется и разбирается повторным `Start()` либо
+восстановлением на ближайшем `Present()`. В текущем клиенте путь не исполняется
+(`Start()` вызывается один раз на старте, смены разрешения на лету нет) — правка
+кладётся заранее, под SDL-ресайз этапа 3 (§3.x GAP: swapchain).
+
+Гейт: x64 (Wine, 614 шагов графа — переименование задело `PF_Core`,
+`PF_GameLogic`, `Scene`, `Terrain`, `PW_Client`), `check_exe.py` OK
+(15 193 088 B) + E2E tiny10 (`2026.10.14-00.53.38`: AutoShot ×2,
+`Switch to EGameState::Finished`, `finish 47682709…` в dev-бэкенде, дампов нет,
+счётчики `LoadTextureFromFileImpl`/`FormulaVM` — как в предыдущем прогоне) +
+клиентский снимок: кадр и UI целы, «грубые» отличия от предыдущего прогона
+локализованы в светящемся портале (анимация партиклов), статичные зоны UI — 0.
 
 ### Сознательные отклонения от «картинка не меняется»
 

@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "DeviceLost.h"
+#include "Reallocate.h"
 #include "smartrenderer.h"
 #include "System/MultiReaderLock.h"
 
@@ -14,16 +14,16 @@ static threading::MultiReaderLock s_reset_mutex;
 static const int WAIT_TICKS = 10000;
 
 
-inline DeviceLostHandler::Ring& DeviceLostHandler::GetHandlers(int _priority)
+inline ReallocateHandler::Ring& ReallocateHandler::GetHandlers(int _priority)
 {
-  static Ring theHandlers[DeviceLostHandler::HANDLERPRIORITY_COUNT];
+  static Ring theHandlers[ReallocateHandler::HANDLERPRIORITY_COUNT];
   return theHandlers[_priority];
 }
 
 
-bool DeviceLostHandler::InitDeviceLostHandler()
+bool ReallocateHandler::InitReallocateHandler()
 {
-  static threading::Mutex theMutexes[DeviceLostHandler::HANDLERPRIORITY_COUNT];
+  static threading::Mutex theMutexes[ReallocateHandler::HANDLERPRIORITY_COUNT];
 
   mutexes = theMutexes;
   s_threaded_loading = NGlobal::GetVar( "render_threadsafe", 1 ).GetInt64();
@@ -55,9 +55,9 @@ public:
 };
 
 
-void DeviceLostHandler::SelfRegister()
+void ReallocateHandler::SelfRegister()
 {
-  static bool inited = InitDeviceLostHandler();
+  static bool inited = InitReallocateHandler();
 
 #ifdef _DEBUG
   static DWORD threadId = GetCurrentThreadId();
@@ -69,14 +69,14 @@ void DeviceLostHandler::SelfRegister()
   GetHandlers(priority).addLast(this);
 }
 
-void DeviceLostHandler::UnRegister()
+void ReallocateHandler::UnRegister()
 {
   LoadingMutexLock lock(mutexes[priority]);
-  DeviceLostHandler::Ring::remove(this);
+  ReallocateHandler::Ring::remove(this);
 }
 
 
-DeviceLostHandlerLoadable::LoaderCS::LoaderCS(volatile bool& _loadFinished)
+ReallocateHandlerLoadable::LoaderCS::LoaderCS(volatile bool& _loadFinished)
 : loadFinished(_loadFinished)
 {
   //int i = WAIT_TICKS;
@@ -90,44 +90,44 @@ DeviceLostHandlerLoadable::LoaderCS::LoaderCS(volatile bool& _loadFinished)
 }
 
 
-DeviceLostHandlerLoadable::LoaderCS::~LoaderCS()
+ReallocateHandlerLoadable::LoaderCS::~LoaderCS()
 {
   s_reset_mutex.UnlockAfterRead();
   loadFinished = true;
 }
 
 
-void NotifyDeviceLost()
+void NotifyResourcesRelease()
 {
-  DebugTrace("NotifyDeviceLost");
+  DebugTrace("NotifyResourcesRelease");
   
   s_reset_requested = true;
   threading::WriteLockGuard guard( s_reset_mutex );
 
   SmartRenderer::NullThePointers();
 
-  for (int i = 0; i < DeviceLostHandler::HANDLERPRIORITY_COUNT; i++)
+  for (int i = 0; i < ReallocateHandler::HANDLERPRIORITY_COUNT; i++)
   {
     LoadingMutexLock lock(mutexes[i]);
-    for(ring::Range<DeviceLostHandler::Ring> it(DeviceLostHandler::GetHandlers(i)); it; ++it)
-      it->OnDeviceLost();
+    for(ring::Range<ReallocateHandler::Ring> it(ReallocateHandler::GetHandlers(i)); it; ++it)
+      it->OnResourcesRelease();
   }
 }
 
-void NotifyDeviceReset()
+void NotifyResourcesReallocate()
 {
   {
-    DebugTrace("NotifyDeviceReset");
+    DebugTrace("NotifyResourcesReallocate");
     
     threading::WriteLockGuard guard( s_reset_mutex );
   
-    for (int i = 0; i < DeviceLostHandler::HANDLERPRIORITY_COUNT; i++)
+    for (int i = 0; i < ReallocateHandler::HANDLERPRIORITY_COUNT; i++)
     {
       LoadingMutexLock lock(mutexes[i]);
-      for(ring::Range<DeviceLostHandler::Ring> it(DeviceLostHandler::GetHandlers(i)); it; ++it)
+      for(ring::Range<ReallocateHandler::Ring> it(ReallocateHandler::GetHandlers(i)); it; ++it)
       {
         ASSERT(it.operator->());
-        it->OnDeviceReset();
+        it->OnResourcesReallocate();
       }
     }
   }
@@ -141,8 +141,8 @@ static threading::Mutex* ddMutexes = NULL;
 
 bool InitDeviceDeleteHandler()
 {
-  static DeviceDeleteHandler::Ring theHandlers[DeviceLostHandler::HANDLERPRIORITY_COUNT];
-  static threading::Mutex theMutexes[DeviceLostHandler::HANDLERPRIORITY_COUNT];
+  static DeviceDeleteHandler::Ring theHandlers[ReallocateHandler::HANDLERPRIORITY_COUNT];
+  static threading::Mutex theMutexes[ReallocateHandler::HANDLERPRIORITY_COUNT];
 
   ddHandlers = theHandlers;
   ddMutexes = theMutexes;
@@ -191,4 +191,4 @@ void DeviceDeleteHandler::NotifyDeviceDelete()
 
 } // namespace Render
 
-// end of DeviceLost.cpp
+// end of Reallocate.cpp

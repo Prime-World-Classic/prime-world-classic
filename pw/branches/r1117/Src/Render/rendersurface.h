@@ -3,7 +3,7 @@
 #include "Rect.h"
 #include "locktype.h"
 #include "DxIntrusivePtr.h"
-#include "DeviceLost.h"
+#include "Reallocate.h"
 
 namespace Render
 {
@@ -17,7 +17,7 @@ struct LockedRect
   LockedRect(int _pitch, uchar* _data) : pitch(_pitch), data(_data) {}
 };
 
-class RenderSurface : public CObjectBase, public DeviceLostHandler
+class RenderSurface : public CObjectBase, public ReallocateHandler
 {
   OBJECT_BASIC_METHODS( RenderSurface );
 
@@ -27,7 +27,7 @@ protected:
   explicit RenderSurface( D3DSURFACE_DESC const& desc_ );
 
 public:
-  typedef DeviceLostWrapper<RenderSurface> Wrapped;
+  typedef ReallocateWrapper<RenderSurface> Wrapped;
 
   ~RenderSurface();
 
@@ -44,8 +44,8 @@ public:
   D3DFORMAT GetD3DFormat() const { return desc.Format; }
 
   // Handle lost device
-  virtual void OnDeviceLost();
-  virtual void OnDeviceReset();
+  virtual void OnResourcesRelease();
+  virtual void OnResourcesReallocate();
 
 private:
   void CreateInternal();

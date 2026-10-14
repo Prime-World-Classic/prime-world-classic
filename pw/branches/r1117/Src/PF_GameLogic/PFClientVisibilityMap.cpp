@@ -86,7 +86,7 @@ int VisibilityMapClient::GetVisMapAllMode()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 VisibilityMapClient::VisibilityMapClient(NWorld::PFWorld * _world)
-  : DeviceLostHandler(HANDLERPRIORITY_LOW)
+  : ReallocateHandler(HANDLERPRIORITY_LOW)
   , m_texSource(NULL)
   , m_texBlended(NULL)
   , m_ratio(0)

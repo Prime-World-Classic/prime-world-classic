@@ -29,7 +29,7 @@ inline void Texture::SetTexture(IDirect3DBaseTexture9 *_tex)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2D::Texture2D(IDirect3DTexture9 *pTex, HandlerPriority deviceLostHandlerPriority)
   : TextureTyped(pTex)
-  , DeviceLostHandler(deviceLostHandlerPriority)
+  , ReallocateHandler(deviceLostHandlerPriority)
   , levels(0)
 {
   ZeroMemory(&desc, sizeof(desc));
@@ -42,7 +42,7 @@ Texture2D::Texture2D(IDirect3DTexture9 *pTex, HandlerPriority deviceLostHandlerP
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Texture2D::Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHandlerPriority)
   : TextureTyped(0)
-  , DeviceLostHandler(deviceLostHandlerPriority)
+  , ReallocateHandler(deviceLostHandlerPriority)
   , desc(desc_)
   , levels(1)
 {
@@ -236,7 +236,7 @@ bool Texture2D::Update(Texture2D* pTex)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Texture2D::OnDeviceLost()
+void Texture2D::OnResourcesRelease()
 {
   if (!pDXTexture)
     return;
@@ -252,7 +252,7 @@ void Texture2D::OnDeviceLost()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Texture2D::OnDeviceReset()
+void Texture2D::OnResourcesReallocate()
 {
   if (desc.Type == D3DRTYPE_SURFACE && desc.Pool == D3DPOOL_DEFAULT)
     CreateInternal();
@@ -282,7 +282,7 @@ TextureVtx::TextureVtx(const Sizes& _sizes)
 
   levels = 1;
 
-  OnDeviceReset();
+  OnResourcesReallocate();
 }
 
 
@@ -302,7 +302,7 @@ void TextureVtx::UnBind()
 }
 
 
-void TextureVtx::OnDeviceReset()
+void TextureVtx::OnResourcesReallocate()
 {
   desc.Width  = sizes.tex.cx;
   desc.Height = sizes.tex.cy;

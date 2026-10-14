@@ -44,7 +44,7 @@ class Renderer
   // живёт до его смерти.
   IRenderBackend*       pBackend;
 
-	DeviceLostWrapper<RenderStatesManager> statesMan;
+	ReallocateWrapper<RenderStatesManager> statesMan;
   LightsManager         lightsMan;
 
 	RenderMode            realRenderMode;

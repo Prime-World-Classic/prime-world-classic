@@ -137,7 +137,7 @@ void PostFXParamsManager::SetOverrideFXParams( const Render::FullScreenFX::Param
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PostFXParamsManager::PostFXParamsManager()
-  : DeviceLostHandler(HANDLERPRIORITY_LOW)
+  : ReallocateHandler(HANDLERPRIORITY_LOW)
   , dbParams(this, &PostFXParamsManager::OnDBParamsChanged)
   , currSurf()
   , isCoeffChanged(false)
@@ -197,14 +197,14 @@ void PostFXParamsManager::AcquireSurfaces()
 }
 
 
-void PostFXParamsManager::OnDeviceLost()
+void PostFXParamsManager::OnResourcesRelease()
 {
   std::fill_n( screenSurf, ARRAY_SIZE(screenSurf), DXSurfaceRef() );
   std::fill_n( mapSurf, ARRAY_SIZE(mapSurf), DXSurfaceRef() );
 }
 
 
-void PostFXParamsManager::OnDeviceReset()
+void PostFXParamsManager::OnResourcesReallocate()
 {
   if(disabled)
     return;

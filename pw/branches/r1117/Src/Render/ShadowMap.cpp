@@ -143,7 +143,7 @@ bool ShadowMapPCF::ShowTexture(const CTRect<float> &_rect) const
 //////////////////////////////////////////////////////////////////////////
 //  class ShadowMapPCF_DS
 //////////////////////////////////////////////////////////////////////////
-class ShadowMapPCF_DS : public ShadowMap, public DeviceLostHandler
+class ShadowMapPCF_DS : public ShadowMap, public ReallocateHandler
 {
   SHMatrix texScaleBiasMatrix;
 
@@ -163,15 +163,15 @@ public:
   virtual bool PostRender(void);
   virtual bool Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex);
 
-  // from DeviceLostHandler
-  virtual void OnDeviceLost()  { pDepthSurface.Attach(0); }
-  virtual void OnDeviceReset() { pDepthSurface = pDepth->GetSurface(0); }
+  // from ReallocateHandler
+  virtual void OnResourcesRelease()  { pDepthSurface.Attach(0); }
+  virtual void OnResourcesReallocate() { pDepthSurface = pDepth->GetSurface(0); }
 };
 
 //////////////////////////////////////////////////////////////////////////
 
 ShadowMapPCF_DS::ShadowMapPCF_DS(void)
-: DeviceLostHandler(HANDLERPRIORITY_LOW)
+: ReallocateHandler(HANDLERPRIORITY_LOW)
 {
   depthBias = 0;
   biasSlope = 1;
@@ -284,7 +284,7 @@ bool ShadowMapPCF_DS::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constant
 //////////////////////////////////////////////////////////////////////////
 //  class ShadowMapESM_Base
 //////////////////////////////////////////////////////////////////////////
-class ShadowMapESM_Base : public ShadowMap, public DeviceLostHandler
+class ShadowMapESM_Base : public ShadowMap, public ReallocateHandler
 {
   DipDescriptor    summedAreaDipDesc;
 
@@ -320,9 +320,9 @@ public:
   virtual bool PostRender(void);
   virtual bool Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex);
 
-  // from DeviceLostHandler
-  virtual void OnDeviceLost()  { needRefillSAMesh = true; }
-  virtual void OnDeviceReset() {}
+  // from ReallocateHandler
+  virtual void OnResourcesRelease()  { needRefillSAMesh = true; }
+  virtual void OnResourcesReallocate() {}
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -535,7 +535,7 @@ ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
   case NDb::SHADOWMODE_PCF:
     if(!s_forceMRT && pConfigManager->HasDSM() )
     {
-      pShadowMap = new DeviceLostWrapper<ShadowMapPCF_DS>;
+      pShadowMap = new ReallocateWrapper<ShadowMapPCF_DS>;
       break;
     }
     pShadowMap = new ShadowMapPCF;
@@ -543,7 +543,7 @@ ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
 
   //case NDb::SHADOWMODE_SAESM:
   default:
-    pShadowMap = new DeviceLostWrapper<ShadowMapESM>;
+    pShadowMap = new ReallocateWrapper<ShadowMapESM>;
     break;
   }
 

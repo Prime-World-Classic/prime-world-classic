@@ -63,7 +63,7 @@ namespace Terrain
     Grass::GrassRenderManager grassRenderManager;
 		Grass::GrassLayersManager grassManager;
     ScopedPtr<Render::BaseMaterial> aoeMaterial;
-    Render::DeviceLostWrapper<NatureMapVisual> natureMap;
+    Render::ReallocateWrapper<NatureMapVisual> natureMap;
     vector<TerrainElementId> nmTerrainElements;
     vector<NatureMapElementId> teNatureMapElements;
     vector<int> nmToTe, teToNm;

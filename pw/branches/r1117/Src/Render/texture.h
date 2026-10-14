@@ -2,7 +2,7 @@
 
 #include "rendersurface.h"
 #include "DxIntrusivePtr.h"
-#include "DeviceLost.h"
+#include "Reallocate.h"
 
 namespace Render
 {
@@ -58,12 +58,12 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Texture2D : public TextureTyped<IDirect3DTexture9>, public DeviceLostHandler
+class Texture2D : public TextureTyped<IDirect3DTexture9>, public ReallocateHandler
 {
   OBJECT_BASIC_METHODS( Texture2D );
 
 public:
-  typedef DeviceLostWrapper<Texture2D> Wrapped;
+  typedef ReallocateWrapper<Texture2D> Wrapped;
 
   unsigned int GetWidth()  const { return desc.Width; }
 	unsigned int GetHeight() const { return desc.Height; }
@@ -82,8 +82,8 @@ public:
 	DXSurfaceRef GetSurface(unsigned int level) const;
 
   // Handle lost device
-  virtual void OnDeviceLost();
-  virtual void OnDeviceReset();
+  virtual void OnResourcesRelease();
+  virtual void OnResourcesReallocate();
 
   // Set new texture
   void SetTexture(Texture2D const& pOther);
@@ -114,7 +114,7 @@ class TextureVtx : public Texture2D
   OBJECT_METHODS(0x3D897500, TextureVtx);
 
 public:
-  typedef DeviceLostWrapper<TextureVtx> Wrapped;
+  typedef ReallocateWrapper<TextureVtx> Wrapped;
 
   struct Sizes
   {
@@ -133,7 +133,7 @@ public:
   void UnBind();
   UINT GetPixelSize() const { return pixelSize; }
 
-  virtual void OnDeviceReset();
+  virtual void OnResourcesReallocate();
 
 protected:
   TextureVtx() { NI_ASSERT(FALSE, "Invalid TextureVtx constructor called!"); } // just to make OBJECT_METHODS happy

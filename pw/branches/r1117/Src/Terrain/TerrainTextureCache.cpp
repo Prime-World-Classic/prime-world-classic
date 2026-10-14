@@ -19,7 +19,7 @@ inline const TerrainElement* GetElement(const Batch* _pBatch)
 }
 
 // =======================================================================================
-class TerrainTextureCacheImpl : public DeviceLostHandler, public TerrainTextureCache
+class TerrainTextureCacheImpl : public ReallocateHandler, public TerrainTextureCache
 {
   static const uint START_TIME_STAMP = 17; // Any value greater than 1 will suffice
 
@@ -62,7 +62,7 @@ class TerrainTextureCacheImpl : public DeviceLostHandler, public TerrainTextureC
 
 
 public:
-  TerrainTextureCacheImpl(UINT _size, UINT _tileSize) : DeviceLostHandler(HANDLERPRIORITY_SUPER_LOW)
+  TerrainTextureCacheImpl(UINT _size, UINT _tileSize) : ReallocateHandler(HANDLERPRIORITY_SUPER_LOW)
     , currTimeStamp(START_TIME_STAMP), numTiles(maxTiles), tileSize(_tileSize), tileSizeUV(1.f/numTiles), isNatureChanging(false)
   {
     ClearTags();
@@ -83,8 +83,8 @@ public:
 
   virtual ~TerrainTextureCacheImpl(void) {}
 
-  virtual void OnDeviceLost()  { ClearTags(); }
-  virtual void OnDeviceReset() {}
+  virtual void OnResourcesRelease()  { ClearTags(); }
+  virtual void OnResourcesReallocate() {}
 
   virtual bool IsValid() { return IsValidPtr(tex); }
 

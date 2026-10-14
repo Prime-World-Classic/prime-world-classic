@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeviceLost.h"
+#include "Reallocate.h"
 
 namespace Render
 {

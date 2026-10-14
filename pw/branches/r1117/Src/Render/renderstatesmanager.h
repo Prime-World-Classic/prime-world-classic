@@ -24,7 +24,7 @@ enum StencilBit
   STENCILBIT_RENDERALLOW = 0x04,
 };
 
-class RenderStatesManager : public Render::DeviceLostHandler
+class RenderStatesManager : public Render::ReallocateHandler
 {
 protected:
   RenderStatesManager();
@@ -71,9 +71,9 @@ public:
   // debugging functionality
   static void DumpStates();
 
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceLost();
-  virtual void OnDeviceReset() { Init(); }
+  // From Render::ReallocateHandler
+  virtual void OnResourcesRelease();
+  virtual void OnResourcesReallocate() { Init(); }
 
 private:
   void Init();

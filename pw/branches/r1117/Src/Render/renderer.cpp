@@ -18,7 +18,7 @@
 #include "renderer.h"
 #include "ImmediateRenderer.h"
 #include "DxResourcesControl.h"
-#include "DeviceLost.h"
+#include "Reallocate.h"
 
 #include "smartrenderer.h"
 #include "ConfigManager.h"
@@ -107,7 +107,7 @@ Renderer::~Renderer()
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
 
-  NotifyDeviceLost();
+  NotifyResourcesRelease();
   DeviceDeleteHandler::NotifyDeviceDelete();
   DumpDXResourcesLeaks();
   delete pBackend;
@@ -461,6 +461,15 @@ bool Renderer::ResetDevice(D3DPRESENT_PARAMETERS& pp)
 {
   DebugTrace("Try to reset");
 
+  // Смена размера/формата кадра = ре-аллокация: всё, что привязано к бэк-буферу
+  // (в D3D9 — DEFAULT-пул), обязано быть отпущено до Reset() и пересоздано после.
+  // В текущем клиенте этот путь вызывается только при повторном Start() (смены
+  // разрешения на лету нет), поэтому раньше уведомления обработчиков здесь
+  // отсутствовали; ресайз из SDL на этапе 3 сделает путь живым, и корректным он
+  // обязан стать заранее (docs/PLAN_NVRHI.md §2.3, §3.x GAP: swapchain).
+  NotifyResourcesRelease();
+  bDeviceLost = true;
+
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
@@ -474,12 +483,16 @@ bool Renderer::ResetDevice(D3DPRESENT_PARAMETERS& pp)
   if (FAILED(hr))
   {
     systemLog(NLogg::LEVEL_CRITICAL) << "Renderer: ResetDevice() failed, hr = " << NStr::StrFmt("0x%08X (%s)", hr, DXGetErrorStringA(hr)) << endl;
+    // остаёмся в состоянии «ресурсы отпущены»: его разберёт либо повторный
+    // Start(), либо RecoverFromDeviceLost() на ближайшем Present()
     return false;
   }
 
   //systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: ResetDevice() successful." << endl;
   presentParams = pp;
   OnDeviceChanged();
+  bDeviceLost = false;
+  NotifyResourcesReallocate();
   return true;
 }
 
@@ -761,7 +774,7 @@ void Renderer::Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRec
 void Renderer::InvalidateResources()
 {
   ClearDeviceResources();
-  NotifyDeviceLost();
+  NotifyResourcesRelease();
   bDeviceLost = true;
   pDevice->EvictManagedResources();
 }
@@ -775,7 +788,7 @@ void Renderer::RecoverFromDeviceLost( D3DPRESENT_PARAMETERS& pp )
     if (!bDeviceLost)
     {
       bDeviceLost = true;
-      NotifyDeviceLost();
+      NotifyResourcesRelease();
     }
 
     const HRESULT coopLevel = pDevice->TestCooperativeLevel();
@@ -784,14 +797,14 @@ void Renderer::RecoverFromDeviceLost( D3DPRESENT_PARAMETERS& pp )
     {
       DebugTrace("Device lost!");
       ClearDeviceResources();
-      NotifyDeviceLost();
+      NotifyResourcesRelease();
       DumpDXResourcesInDefaultPool();
 
       for( int n = 30; bDeviceLost; --n )       
         if( ResetDevice(pp) )
           bDeviceLost = false;   
         else
-          NotifyDeviceLost();     
+          NotifyResourcesRelease();     
 
       if(bDeviceLost) 
       {
@@ -799,7 +812,7 @@ void Renderer::RecoverFromDeviceLost( D3DPRESENT_PARAMETERS& pp )
         exit(D3DERR_DEVICENOTRESET);
       }
       
-      NotifyDeviceReset();
+      NotifyResourcesReallocate();
     }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

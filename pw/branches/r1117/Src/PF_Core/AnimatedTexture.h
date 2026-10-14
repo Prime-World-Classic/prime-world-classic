@@ -47,8 +47,8 @@ private:
 class AnimatedTexture : public Render::Texture2D, public IUpdateableTexture
 {
 public:
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceReset() { }
+  // From Render::ReallocateHandler
+  virtual void OnResourcesReallocate() { }
 
   // From IUpdateableTexture
   virtual void Update(float renderTime);

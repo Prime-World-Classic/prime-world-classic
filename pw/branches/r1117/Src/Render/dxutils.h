@@ -4,7 +4,7 @@
 #include "Vendor/DirectX/Include/d3dx9.h"
 
 #include "DxIntrusivePtr.h"
-#include "DeviceLost.h"
+#include "Reallocate.h"
 
 template<typename T>
 T* Get(T* &p)
@@ -12,7 +12,7 @@ T* Get(T* &p)
   return p;
 }
 
-class DXVertexBufferDynamicRef : public Render::DeviceLostHandler
+class DXVertexBufferDynamicRef : public Render::ReallocateHandler
 {
   DXVertexBufferRef pDXBuffer;
   UINT size;
@@ -23,7 +23,7 @@ protected:
 
 public:
   typedef IDirect3DVertexBuffer9 Iface;
-  typedef Render::DeviceLostWrapper<DXVertexBufferDynamicRef> Wrapped;
+  typedef Render::ReallocateWrapper<DXVertexBufferDynamicRef> Wrapped;
 
   bool Resize(int size, bool nullOnLostDevice = false);
   UINT GetSize() const { return size; }
@@ -34,12 +34,12 @@ public:
   IDirect3DVertexBuffer9* __gEt__() const { return Get(pDXBuffer); }
 
   // Handle lost device
-  virtual void OnDeviceLost() 
+  virtual void OnResourcesRelease() 
 	{ 
 		NI_ASSERT( size > 0 || !pDXBuffer, "Invalid dynamic VB size"); 
 		pDXBuffer = 0; 
 	}
-  virtual void OnDeviceReset();
+  virtual void OnResourcesReallocate();
 };
 
 inline IDirect3DVertexBuffer9* Get(DXVertexBufferDynamicRef const& sp)
@@ -48,7 +48,7 @@ inline IDirect3DVertexBuffer9* Get(DXVertexBufferDynamicRef const& sp)
 }
 
 template<UINT elemSize>
-class DXIndexBufferDynamicRef_ : public Render::DeviceLostHandler
+class DXIndexBufferDynamicRef_ : public Render::ReallocateHandler
 {
   DXIndexBufferRef pDXBuffer;
   UINT size;
@@ -60,7 +60,7 @@ protected:
 
 public:
   typedef IDirect3DIndexBuffer9 Iface;
-  typedef Render::DeviceLostWrapper<DXIndexBufferDynamicRef_> Wrapped;
+  typedef Render::ReallocateWrapper<DXIndexBufferDynamicRef_> Wrapped;
 
   bool Resize(int _size);
   UINT GetSize() const { return size; }
@@ -71,13 +71,13 @@ public:
   IDirect3DIndexBuffer9* __gEt__() const { return Get(pDXBuffer); }
 
   // Handle lost device
-  virtual void OnDeviceLost()
+  virtual void OnResourcesRelease()
 	{ 
 		NI_ASSERT( size > 0 || !pDXBuffer, "Invalid dynamic IB size"); 
 		pDXBuffer = 0; 
 	}
 
-  virtual void OnDeviceReset();
+  virtual void OnResourcesReallocate();
 };
 
 typedef DXIndexBufferDynamicRef_<32> DXIndexBufferDynamicRef;
@@ -161,8 +161,8 @@ public :
 
   void Clear() { CheckForST(); Reset(); _DynBuffer::Reset(); }
 
-  virtual void OnDeviceLost()  { CheckForST(); Reset(); _DynBuffer::OnDeviceLost(); }
-  virtual void OnDeviceReset() { CheckForST(); _DynBuffer::OnDeviceReset(); }
+  virtual void OnResourcesRelease()  { CheckForST(); Reset(); _DynBuffer::OnResourcesRelease(); }
+  virtual void OnResourcesReallocate() { CheckForST(); _DynBuffer::OnResourcesReallocate(); }
 
   UINT GetSize()  const  { CheckForST(); return _DynBuffer::GetSize(); }
   UINT GetTimeStamp() const { CheckForST(); return timeStamp; }
@@ -222,9 +222,9 @@ public :
   }
 };  // class SharedD3DBufferST
 
-// DeviceLostWrapper MUST be terminal class! Don't inherit from SharedVB, only from SharedD3DBufferST!
-typedef DeviceLostWrapper< SharedD3DBufferST<DXVertexBufferDynamicRef> > SharedVB;
-typedef DeviceLostWrapper< SharedD3DBufferST<DXIndexBufferDynamicRef> >  SharedIB;
+// ReallocateWrapper MUST be terminal class! Don't inherit from SharedVB, only from SharedD3DBufferST!
+typedef ReallocateWrapper< SharedD3DBufferST<DXVertexBufferDynamicRef> > SharedVB;
+typedef ReallocateWrapper< SharedD3DBufferST<DXIndexBufferDynamicRef> >  SharedIB;
 
 
 //==== SharedD3DBufferST helper - holds info about acquired buffer space ====================================
@@ -436,10 +436,10 @@ private:
   Type p;
 };
 
-// holder for resources listening for OnDeviceLost
+// holder for resources listening for OnResourcesRelease
 // Initializer class must provide Delete(Initializer::Type &p) and Init(Initializer::Type &p)
 template<class Initializer>
-struct DefPoolResource : public Initializer, public DeviceLostHandler
+struct DefPoolResource : public Initializer, public ReallocateHandler
 {
   typedef typename Initializer::Type Type;
   typedef typename Shims::PointedType<Type>::pointer Pointer;
@@ -448,7 +448,7 @@ struct DefPoolResource : public Initializer, public DeviceLostHandler
   DefPoolResource(const Initializer& _initializer) : Initializer(_initializer), p() {}
   ~DefPoolResource() { Initializer::Delete(p); }
 
-  virtual void OnDeviceLost()
+  virtual void OnResourcesRelease()
   {
     Initializer::Delete(p);
   }

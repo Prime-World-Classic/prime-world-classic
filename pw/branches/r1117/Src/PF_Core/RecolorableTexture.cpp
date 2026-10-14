@@ -34,7 +34,7 @@ RecolorableTexture::RecolorableTexRing  RecolorableTexture::rtRing;
 // RecolorableTextureCache
 
 RecolorableTextureCache::RecolorableTextureCache(const NDb::TextureRecolorable &tex)
-  : Render::DeviceLostHandler(HANDLERPRIORITY_LOW)
+  : Render::ReallocateHandler(HANDLERPRIORITY_LOW)
 {
   baseTex = Render::LoadTexture2D(*tex.main);
   ASSERT(baseTex);
@@ -124,13 +124,13 @@ void RecolorableTextureCache::FillTexture(Render::Texture2DRef const& tex, Rende
   }
 }
 
-void RecolorableTextureCache::OnDeviceLost()
+void RecolorableTextureCache::OnResourcesRelease()
 {
   // clear cache
   textures.clear();
 }
 
-void RecolorableTextureCache::OnDeviceReset()
+void RecolorableTextureCache::OnResourcesReallocate()
 {
   //// re-render all textures
   //TextureMap::iterator it;
@@ -168,7 +168,7 @@ RecolorableTextureCache *RecolorableTextureManager::AcquireCache(const NDb::Text
   }
 
   // create new cache
-  RecolorableTextureCache *rtc = new Render::DeviceLostWrapper<RecolorableTextureCache>(tex);
+  RecolorableTextureCache *rtc = new Render::ReallocateWrapper<RecolorableTextureCache>(tex);
   cache[ tex.main->textureFileName ] = rtc;
   return rtc;
 }
@@ -252,7 +252,7 @@ void RecolorableTexture::ResetDXTexture()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Render::TextureRef LoadRecolorableTexture(const NDb::TextureRecolorable &tex)
 {
-	return new Render::DeviceLostWrapper<RecolorableTexture>( tex );
+	return new Render::ReallocateWrapper<RecolorableTexture>( tex );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

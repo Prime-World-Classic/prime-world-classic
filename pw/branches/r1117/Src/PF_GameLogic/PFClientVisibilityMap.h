@@ -220,13 +220,13 @@ namespace NGameX
 
 class VisibilityMapClient
   : public CObjectBase
-  , public Render::DeviceLostHandler
+  , public Render::ReallocateHandler
   , public DI::SelfProvider<VisibilityMapClient>
 {
   OBJECT_METHODS( 0x8B7A4380, VisibilityMapClient );
 
 public:
-  typedef Render::DeviceLostWrapper<VisibilityMapClient> Wrapped;
+  typedef Render::ReallocateWrapper<VisibilityMapClient> Wrapped;
 
   static bool SetVisMapMode(int visMapMode);
   static int GetVisMapMode();
@@ -277,9 +277,9 @@ public:
     return controller->GetCombine(faction);
   }
 
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceLost()  { m_initialized = false; m_disabled = true; }
-  virtual void OnDeviceReset() {}
+  // From Render::ReallocateHandler
+  virtual void OnResourcesRelease()  { m_initialized = false; m_disabled = true; }
+  virtual void OnResourcesReallocate() {}
 
 protected:
   VisibilityMapClient() : m_warfogParams() {}

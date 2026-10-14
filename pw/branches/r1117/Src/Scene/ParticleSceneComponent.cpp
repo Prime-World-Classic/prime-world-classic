@@ -51,7 +51,7 @@ ParticleSceneComponent::ParticleSceneComponent( const NDb::DBParticleSceneCompon
 	offset.GetPlacement().GetMatrix( &offsetMatrix );
   {
     static volatile bool fake;
-    Render::DeviceLostHandlerLoadable::LoaderCS lock(fake);
+    Render::ReallocateHandlerLoadable::LoaderCS lock(fake);
     Reset(pParticles, new Render::ParticleFX);
     pParticles->SetDBID(dbid);
     pParticles->Initialize( offsetMatrix, pObject, needDoubleBuffering );

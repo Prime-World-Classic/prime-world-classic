@@ -8,7 +8,7 @@
 
 namespace Terrain {
 
-class NatureMapVisual : public NatureMap, protected Render::DeviceLostHandlerLoadable
+class NatureMapVisual : public NatureMap, protected Render::ReallocateHandlerLoadable
 {
 private :
   struct AttackVisual
@@ -59,9 +59,9 @@ public :
   void GetElementVisualBounds(NatureMapElementId id, Render::AABB& aabb) const;
   bool OnRender(); // true if nature was changed
 
-public : // From Render::DeviceLostHandler
-  virtual void OnDeviceLost() {}
-  virtual void OnDeviceReset();
+public : // From Render::ReallocateHandler
+  virtual void OnResourcesRelease() {}
+  virtual void OnResourcesReallocate();
 
 protected:
   virtual bool OnCreate();

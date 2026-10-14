@@ -346,7 +346,7 @@ bool SharedD3DBufferST<_DynBuffer>::Lock() // returns false if Lock didn't succe
     return true;
 
   if( GetSize() && !Get(*this) )
-    _DynBuffer::OnDeviceReset();
+    _DynBuffer::OnResourcesReallocate();
 
   if( Get(*this) ) {
     if(ptr) {
@@ -431,7 +431,7 @@ bool DXVertexBufferDynamicRef::Resize(int _size, bool nullOnLostDevice /*= false
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void DXVertexBufferDynamicRef::OnDeviceReset()
+void DXVertexBufferDynamicRef::OnResourcesReallocate()
 {
 	if (size == 0)
 		return;
@@ -459,7 +459,7 @@ bool DXIndexBufferDynamicRef_<16>::Resize(int _size)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<>
-void DXIndexBufferDynamicRef_<32>::OnDeviceReset()
+void DXIndexBufferDynamicRef_<32>::OnResourcesReallocate()
 {
 	if (size == 0)
 		return;
@@ -468,7 +468,7 @@ void DXIndexBufferDynamicRef_<32>::OnDeviceReset()
 }
 
 template<>
-void DXIndexBufferDynamicRef_<16>::OnDeviceReset()
+void DXIndexBufferDynamicRef_<16>::OnResourcesReallocate()
 {
   if (size == 0)
     return;

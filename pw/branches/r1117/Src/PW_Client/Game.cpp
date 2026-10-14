@@ -652,7 +652,7 @@ struct MainVars
   CObj<Input::Binds> input;
   CObj<Input::SystemEvents> inputSystemMesages;
 
-  Render::DeviceLostWrapper<PF_Render::Interface>* renderingInterface;
+  Render::ReallocateWrapper<PF_Render::Interface>* renderingInterface;
   StrongMT<NLogg::EditBoxDumper> logBox;
 
   MainVars()
@@ -1432,7 +1432,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
   Render::RenderMode renderMode;
   
-  mainVars.renderingInterface = new Render::DeviceLostWrapper<PF_Render::Interface>;
+  mainVars.renderingInterface = new Render::ReallocateWrapper<PF_Render::Interface>;
   Render::GetRenderModeFromConfig(renderMode);
   Render::GetRenderer()->CorrectRenderMode(renderMode);
   PF_Render::Interface::CorrectRendermode( renderMode );

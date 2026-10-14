@@ -61,7 +61,7 @@ RenderStatesManager::~RenderStatesManager()
 {
 }
 
-void RenderStatesManager::OnDeviceLost()
+void RenderStatesManager::OnResourcesRelease()
 {
   // Значения тени относятся к теряемому устройству — после восстановления их
   // нужно читать заново.

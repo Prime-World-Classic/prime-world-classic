@@ -87,7 +87,7 @@ bool NatureMapVisual::AttackVisual::GetParams(CVec4 &params, float alpha, bool o
 
 NatureMapVisual::NatureMapVisual(bool editable_)
 : NatureMap(editable_)
-, DeviceLostHandlerLoadable(HANDLERPRIORITY_LOW)
+, ReallocateHandlerLoadable(HANDLERPRIORITY_LOW)
 , primitives(1)
 , mappingCoeff(VNULL4)
 , prevTime(0.0f)
@@ -287,7 +287,7 @@ void NatureMapVisual::FillRenderBuffers()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void NatureMapVisual::OnDeviceReset()
+void NatureMapVisual::OnResourcesReallocate()
 {
   if(!loadFinished)
     return;

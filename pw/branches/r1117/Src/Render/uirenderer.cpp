@@ -36,7 +36,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 IUIRenderer* GetUIRenderer()
 {
-  static DeviceLostWrapper<UIRenderer> uiRenderer;
+  static ReallocateWrapper<UIRenderer> uiRenderer;
   return &uiRenderer;
 }
 

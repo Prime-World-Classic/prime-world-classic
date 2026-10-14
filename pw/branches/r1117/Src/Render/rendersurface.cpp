@@ -4,7 +4,7 @@
 #include "renderflagsconverter.h"
 
 // pSurface == 0, desc == 0  =>  empty
-// pSurface == 0, desc != 0  =>  waiting for OnDeviceReset()
+// pSurface == 0, desc != 0  =>  waiting for OnResourcesReallocate()
 // pSurface != 0, desc != 0  =>  ready
 
 namespace Render
@@ -120,7 +120,7 @@ LockedRect RenderSurface::LockRectInternal( RECT* rect, ERenderLockType lockType
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RenderSurface::OnDeviceLost()
+void RenderSurface::OnResourcesRelease()
 {
   if (!pSurface)
     return;
@@ -136,7 +136,7 @@ void RenderSurface::OnDeviceLost()
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RenderSurface::OnDeviceReset()
+void RenderSurface::OnResourcesReallocate()
 {
   // skip empty surfaces and the ones that not in VRAM
   if (desc.Type == D3DRTYPE_SURFACE && desc.Pool == D3DPOOL_DEFAULT)

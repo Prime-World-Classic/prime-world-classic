@@ -151,7 +151,7 @@ static bool g_enableDecalUnion = true;
 
 static struct SRegister_InterfaceFactorySetter
 {
-  static Render::Interface * CreateRenderInterface(HWND hwnd) { return new Render::DeviceLostWrapper<PF_Render::Interface>(hwnd); }
+  static Render::Interface * CreateRenderInterface(HWND hwnd) { return new Render::ReallocateWrapper<PF_Render::Interface>(hwnd); }
   SRegister_InterfaceFactorySetter() { Render::Interface::RegisterFactory( &CreateRenderInterface ); }
 } interfaceFactorySetter;
 
@@ -352,7 +352,7 @@ static StretcherTwoPass stretcher(&Lanczos2);
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Interface::Interface(HWND hwnd) : 
   Render::Interface(hwnd),
-  DeviceLostHandler(HANDLERPRIORITY_LOW),
+  ReallocateHandler(HANDLERPRIORITY_LOW),
   mainBatchQueue(Render::BatchQueue::INDEX_MAIN, batchQueueSorter),
   tempBatchQueue(Render::BatchQueue::INDEX_SECONDARY, batchQueueSorter),
   shadowBatchQueue(Render::BatchQueue::INDEX_SECONDARY, batchQueueSorter),
@@ -1613,7 +1613,7 @@ void Interface::SetDefaultStates()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Interface::OnDeviceReset()
+void Interface::OnResourcesReallocate()
 {
   SmartRenderer::SetDefaultRenderTarget( GetRenderer()->GetColorSurface(), GetDepthSurface() );
   SmartRenderer::BindRenderTargetDefault();

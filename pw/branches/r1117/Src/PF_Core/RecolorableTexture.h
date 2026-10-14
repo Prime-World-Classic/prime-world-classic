@@ -14,16 +14,16 @@ namespace PF_Core
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////
-class RecolorableTextureCache : public Render::DeviceLostHandler
+class RecolorableTextureCache : public Render::ReallocateHandler
 {
 public:
   void Reset();
 
   Render::Texture2DRef AcquireTexture(Render::HDRColor const& recolor);
 
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceLost();
-  virtual void OnDeviceReset();
+  // From Render::ReallocateHandler
+  virtual void OnResourcesRelease();
+  virtual void OnResourcesReallocate();
 
 protected:
   // one shouldn't try to create his own cache but rather acquire it from RecolorableTextureManager
@@ -74,8 +74,8 @@ public:
   void Recolor(Render::HDRColor const& _recolor) { recolor = _recolor; ResetDXTexture(); }
   void ResetColor() { recolor  = pDBObj->baseRGB; ResetDXTexture(); }
 
-  // From Render::DeviceLostHandler
-  virtual void OnDeviceReset() { ResetDXTexture(); }
+  // From Render::ReallocateHandler
+  virtual void OnResourcesReallocate() { ResetDXTexture(); }
 
   void ResetDXTexture();
   

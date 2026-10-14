@@ -9,7 +9,7 @@ namespace PF_Render
 
 class Interface;
 
-class PostFXParamsManager : public Render::DeviceLostHandler
+class PostFXParamsManager : public Render::ReallocateHandler
 {
 protected:
   PostFXParamsManager();
@@ -23,9 +23,9 @@ public:
   void SetDBParams( const NDb::PostFXParams* params );
 
 
-  // DeviceLostHandler methods
-  virtual void OnDeviceLost();
-  virtual void OnDeviceReset();
+  // ReallocateHandler methods
+  virtual void OnResourcesRelease();
+  virtual void OnResourcesReallocate();
 
   static const Render::FullScreenFX::Params* GetPivotParams();
   static void SetOverrideFXParams( const Render::FullScreenFX::Params* params );
