@@ -201,6 +201,16 @@ invalid inputs reject before mutation. Normalized playback is bounded at 100 cyc
 per second to limit graph work. This does not alter simulation speed, shared DB data,
 network state, attack timing or the Windows controller.
 
+Native snapshots also publish current stacked stun and freeze ownership. Ordinary
+stun selects the session's authored stun alias and keeps that animation playing;
+a freeze modifier on an active stun holds the established pose through the original
+graph Freeze/UnFreeze API. Long frozen intervals consume world time without catch-up.
+Thaw forces a fresh living pose, controlled attack cues are consumed without replay,
+and death explicitly releases the graph freeze. An initially visible frozen unit
+gets one valid idle pose; missing optional stun aliases use idle. Mixed overlapping
+effects follow current flags instead of retaining stale client callback state.
+This does not change effect durations, flag counts or simulation command admission.
+
 Ordinary animated deaths expose a nonserialized corpse snapshot from the original
 creature lifecycle. Already-visible supported graphs request the session death
 alias and retain their last heading; the authored graph owns its final corpse pose.

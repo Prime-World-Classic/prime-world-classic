@@ -90,6 +90,7 @@ struct LinuxDynamicWorldMarker
 	LinuxAttackPresentation attack;
 	LinuxDeathPresentation death;
 	float moveSpeed=0; ///< Current simulation speed, already including original movement scaling.
+	bool stunned=false,frozen=false; ///< Effective stacked control flags, never serialized.
   enum EKind
   {
     KIND_HERO = 1,

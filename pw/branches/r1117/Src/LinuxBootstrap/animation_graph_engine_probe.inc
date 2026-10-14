@@ -1,5 +1,6 @@
 #include "Scene/AGHelpers.h"
 #include "animation_graph_locomotion_probe.inc"
+#include "animation_graph_control_probe.inc"
 
 /** Shipped graph regression: Plane lists attack1 first, but its authored default is idle. */
 static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& environment)
@@ -41,6 +42,7 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 		"one original Plane skeleton, animation component and hero state map");
 	if (!asset.animationComponent || !set) return false;
 	const auto& component=*asset.animationComponent;
+	CheckLinuxGraphControls(check,asset,set);
 	check(component.animations.size()>1 && component.animations[0].name=="attack1" &&
 		component.animGraph && component.animGraph->defaultNode=="idle","first listed clip is not the authored graph default");
 	auto player=LinuxAnimationGraphPlayback::Create(asset,set);
@@ -306,7 +308,10 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 	{
 		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set),death=LinuxAnimationGraphPlayback::Create(asset,set);
 		auto fast=LinuxAnimationGraphPlayback::Create(asset,set);
-		const bool ready=idle && move && fast && attack && death && fast->SetMoveSpeed(10) && fast->Advance(0,true) && fast->Advance(.4,true) &&
+		auto stunned=LinuxAnimationGraphPlayback::Create(asset,set);
+		if (stunned) stunned->SetControlState(true,false);
+		const bool ready=idle && move && fast && attack && death && stunned && stunned->Advance(0,false) && stunned->Advance(.4,false) &&
+			fast->SetMoveSpeed(10) && fast->Advance(0,true) && fast->Advance(.4,true) &&
 			move->SetMoveSpeed(5) && death->Advance(0,false) && death->BeginDeath() && death->Advance(.4,false) && idle->Advance(0,false) && move->Advance(0,true) &&
 			attack->Advance(0,false) && attack->BeginAttack(1) && attack->Advance(.4,false) &&
 			idle->Advance(.4,false) && move->Advance(.4,true);
@@ -334,15 +339,21 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 				std::vector<unsigned char> pixels(256*256*4); glReadPixels(0,0,256,256,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); return pixels;
 			};
 			const auto first=draw(idle.get()),second=draw(move.get()),faster=draw(fast.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),dying=draw(death.get()),repeated=draw(idle.get());
+			const auto stunPixels=draw(stunned.get());
+			fast->SetControlState(true,true);
+			check(fast->Advance(.8,true),"rendered graph consumes a frozen world interval");
+			const auto frozenPixels=draw(fast.get());
 			size_t visible=0; for (size_t i=0; i<first.size(); i+=4) if (first[i] || first[i+1] || first[i+2]) ++visible;
 			fprintf(stdout,"Animation graph pixels: visible=%zu different=%d repeated=%d builds=%zu hits=%zu\n",visible,first!=second,first==repeated,poses.builds,poses.hits);
 			check(visible>1000,"original Plane geometry produces visible pixels");
 			check(first!=second && first==repeated,"independent idle/move graph poses survive actual drawing and warm pose-cache reuse");
 			check(faster!=second && faster!=first,"different actual movement rates produce distinct original Plane pixels");
+			check(stunPixels!=first && stunPixels!=second && stunPixels!=dying,"authored stun produces distinct original Plane pixels");
+			check(frozenPixels==faster,"frozen original geometry preserves exact framebuffer pixels");
 			check(attacking!=first && attacking!=second,"accepted attack produces a distinct original skinned pose on screen");
 			check(turned!=attacking,"changed heading rotates original attack geometry without changing its cached pose");
 			check(dying!=first && dying!=second && dying!=attacking,"authored death produces a distinct original skinned pose");
-			check(poses.builds==5 && poses.hits==2,"pose cache separates independently scaled living and death graphs and reuses facing changes");
+			check(poses.builds==6 && poses.hits==3,"pose cache separates control-state owners and reuses frozen poses and facing changes");
 			for (const auto& texture : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&texture.second.texture);
 			glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(mode);
 			glPopClientAttrib(); glPopAttrib(); glActiveTexture(active);

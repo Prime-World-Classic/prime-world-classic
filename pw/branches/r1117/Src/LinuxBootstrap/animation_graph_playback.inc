@@ -45,6 +45,8 @@ public:
 			result->attack=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_ATTACK].commonNode.c_str());
 		if (set->states.size()>NDb::ANIMSTATES_DEATH && mapped(set->states[NDb::ANIMSTATES_DEATH]))
 			result->death=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_DEATH].commonNode.c_str());
+		if (set->states.size()>NDb::ANIMSTATES_STUN && mapped(set->states[NDb::ANIMSTATES_STUN]))
+			result->stun=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_STUN].commonNode.c_str());
 		// Match PFClientCreature's original normal-graph death-completion event, without world callbacks.
 		if (result->death>=0 && static_cast<unsigned>(result->death)<result->graph->GetNumNodes() &&
 			!result->graph->RegisterCallback(DIANGR_NODE,result->death,DeathComplete,DIANGR_CF_EXACT_PARAM,result.get(),.99f))
@@ -62,7 +64,13 @@ public:
 	bool Advance(double seconds, bool moving)
 	{
 		if (!std::isfinite(seconds) || seconds<0 || seconds>1e9) return false;
-		if (dying) moving=false;
+		if (dying || stunned || frozen) moving=false;
+		if (frozen && last>=0 && seconds>=last) {
+			// Consume world time while holding the established pose, including long frozen gaps.
+			last=seconds; wasMoving=false; dirty=false; return true;
+		}
+		// A first/rewound frozen owner needs one valid original pose before its graph is frozen.
+		if (frozen) graph->UnFreeze();
 		if (seconds==last && moving==wasMoving && !dirty) return true;
 		const bool restart=last<0 || seconds<last || seconds-last>1;
 		// A suspended corpse is hidden instead of replaying death from its first frame.
@@ -72,7 +80,7 @@ public:
 			target=-1; attackUntil=-1;
 		}
 		if (Attacking() && (moving || seconds>=attackUntil)) CancelAttack();
-		const int requested=dying ? death : Attacking() ? attack : moving ? move : idle;
+		const int requested=dying ? death : stunned && !frozen ? (stun>=0 ? stun : idle) : Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
 			target=requested;
@@ -92,17 +100,32 @@ public:
 		}
 		std::copy(pose,pose+matrices.size(),matrices.begin());
 		if (deathFinished && deathCompletedAt<0) deathCompletedAt=seconds;
+		if (frozen) graph->Freeze();
 		last=seconds; wasMoving=moving; dirty=false; ++updates; return true;
 	}
 	const std::vector<Matrix43>& Matrices() const { return matrices; }
 	/** Apply world movement speed to original locomotion coefficients only. */
 	bool SetMoveSpeed(double speed) { return locomotion.Apply(speed); }
+	/** Select original stun or freeze presentation without changing world flags. */
+	void SetControlState(bool nextStunned, bool nextFrozen)
+	{
+		if (dying || (stunned==nextStunned && frozen==nextFrozen)) return;
+		const bool thaw=frozen && !nextFrozen;
+		stunned=nextStunned; frozen=nextFrozen; CancelAttack(); dirty=true;
+		if (frozen) graph->Freeze(); else { graph->UnFreeze(); target=-1; }
+		// Original OnFreeze(false) forces idle; do not catch up the frozen interval.
+		if (thaw) last=-1;
+	}
+	bool Stunned() const { return stunned; }
+	bool Frozen() const { return frozen; }
 	/** Death presentation overrides locomotion and attack without firing simulation callbacks. */
 	bool BeginDeath()
 	{
 		if (dying) return true;
-		if (last<0 || death<0 || static_cast<unsigned>(death)>=graph->GetNumNodes() ||
-			!blender->SetMainAGTargetNode(death)) return false;
+		if (last<0 || death<0 || static_cast<unsigned>(death)>=graph->GetNumNodes()) return false;
+		graph->UnFreeze();
+		if (!blender->SetMainAGTargetNode(death)) { if (frozen) graph->Freeze(); return false; }
+		stunned=frozen=false;
 		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=death; dirty=true; return true;
 	}
 	/** Resurrection discards the previous death pose and clock. */
@@ -113,7 +136,7 @@ public:
 	/** Start one visual attack window; combat remains authoritative and independent. */
 	bool BeginAttack(double period)
 	{
-		if (dying || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
+		if (dying || stunned || frozen || last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
 			!std::isfinite(period) || period<=0 || period>60) return false;
 		if (!blender->SetMainAGTargetNode(attack)) return false;
 		target=attack; attackUntil=last+period; dirty=true; return true;
@@ -184,7 +207,8 @@ private:
 	LinuxAnimationGraphLocomotion locomotion;
 	std::vector<Matrix43> matrices;
 	double last=-1,attackUntil=-1,deathCompletedAt=-1;
-	int idle=-1,move=-1,attack=-1,death=-1,target=-1;
+	int idle=-1,move=-1,attack=-1,death=-1,stun=-1,target=-1;
 	bool wasMoving=false,dirty=false,dying=false,deathFinished=false;
+	bool stunned=false,frozen=false;
 	unsigned updates=0;
 };
