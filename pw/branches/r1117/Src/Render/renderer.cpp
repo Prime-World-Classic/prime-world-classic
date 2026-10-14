@@ -734,6 +734,10 @@ void Renderer::ClearDeviceResources()
 
   for(unsigned n = 0; n < caps.maxStreams; ++n)
     hr = pB->SetStreamSource(n, HBuffer(), 0, 4);
+
+  // Состояние, которое бэкенд кэширует для ленивой переустановки (частоты
+  // потоков инстансинга), после сброса устройства недействительно.
+  pB->InvalidateBoundState();
   
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;

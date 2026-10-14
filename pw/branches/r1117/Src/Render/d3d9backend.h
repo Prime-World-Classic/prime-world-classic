@@ -33,8 +33,26 @@ inline BackendViewport MakeBackendViewport(const D3DVIEWPORT9& vp) {
 class D3D9Backend : public IRenderBackend {
   IDirect3DDevice9* pDevice;
 
+  // Инстансинг D3D9 устроен на частотах потоков: поток геометрии повторяется
+  // (INDEXEDDATA|count), поток экземпляра читается один раз на экземпляр
+  // (INSTANCEDATA|1). Частоты — состояние устройства, поэтому они кэшируются
+  // здесь и применяются дельтой перед каждым рисованием (исторически этим
+  // занимался SmartRenderer::ApplyStates — ушёл сюда целиком).
+  // Граница 16 — прежний SmartRenderer::MAX_STREAMS_COUNT; в клиенте инстансные
+  // пути используют потоки 0 и 1.
+  static const unsigned kFreqStreams = 16;
+  unsigned streamFreq[kFreqStreams];   // что реально выставлено на устройстве
+  unsigned instanceCount;              // 0 — инстансный путь выключен
+
+  void ApplyInstanceFreqs();
+
 public:
-  explicit D3D9Backend(IDirect3DDevice9* _pDevice) : pDevice(_pDevice) {}
+  explicit D3D9Backend(IDirect3DDevice9* _pDevice) : pDevice(_pDevice), instanceCount(0) {
+    // Дефолт D3D9 — частота 1 у всех потоков; после Reset() устройство
+    // возвращается к нему же (см. InvalidateBoundState).
+    for (unsigned n = 0; n < kFreqStreams; ++n)
+      streamFreq[n] = 1;
+  }
 
   // --- кадр ---
   virtual HRESULT BeginScene();
@@ -74,6 +92,12 @@ public:
                                 const void* pVertexData, unsigned vertexStride);
   virtual HRESULT DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                          const void* pVertexData, unsigned vertexStride);
+
+  // --- инстансинг ---
+  virtual HRESULT SetInstanceCount(unsigned count);
+  virtual HRESULT CreateInstancedInputLayout(HInputLayout base, HInputLayout* pOut);
+
+  virtual void InvalidateBoundState();
 
   // --- создание ресурсов ---
   virtual HRESULT CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);

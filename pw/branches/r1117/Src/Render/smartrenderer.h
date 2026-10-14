@@ -68,13 +68,14 @@ void UnBindVertexBufferRaw(UINT streamNumber);
 ///  This function can modify stream number depending on 'instancing' state
 void UnBindVertexBuffer(UINT streamNumber);
 
-/// Enable hardware instancing for all streams from 0 to _lastGeomStream inclusive
-void EnableHardwareInstancing(UINT _numInstances, UINT _lastGeomStream = 0, UINT _instanceStream = UINT_MAX);
+/// Enable hardware instancing: рисовать _numInstances экземпляров текущей
+/// геометрии. Счётчик уходит бэкенду (механизм — за ним), а сдвиг потоков и
+/// инстансный вариант декларации остаются здесь (см. EnableHardwareInstancing в
+/// .cpp и docs/PLAN_NVRHI.md §2.10).
+void EnableHardwareInstancing(UINT _numInstances);
 
 ///
 void DisableHardwareInstancing();
-
-bool InstancingEnabled();
 
 ///
 // Ввод-вершин только с позицией (замена FVF D3DFVF_XYZ).

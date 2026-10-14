@@ -28,11 +28,6 @@ REGISTER_VAR( "nodip", nullrender, STORAGE_NONE );
 static int s_autoScreenshotAt = 0;
 REGISTER_VAR( "auto_screenshot", s_autoScreenshotAt, STORAGE_NONE );
 
-#ifdef _SUPRESS_HWI
-static bool s_supressDrawCall = false;
-static bool s_supressHWI = false;
-REGISTER_DEV_VAR( "supressHWI", s_supressHWI, STORAGE_NONE );
-#endif // _SUPRESS_HWI
 
 // Статистика по шейдерам: сколько уникальных VS/PS/пар биндится за кадр и за
 // сессию. Нужна для расчёта кэша графических пайплайнов (docs/PLAN_NVRHI.md,
@@ -114,17 +109,9 @@ namespace SmartRenderer
 static nstl::hash_map< VertexFormatDescriptor, DXVertexDeclarationRef > VertexDeclaraionsCash;
 typedef nstl::hash_map< VertexFormatDescriptor, DXVertexDeclarationRef >::iterator VertexDeclarationsCashIterator;
 
-enum StateValueType
-{
-  SVT_REQUESTED = 0,
-  SVT_ACTIVE,
-  SVT_TOTAL_NUM // this value MUST be last!
-};
-
 static const unsigned int MAX_STREAMS_COUNT = 16;
 static StaticArray<IDirect3DVertexBuffer9*,MAX_STREAMS_COUNT> lastVertexBuffersPtrs;
 static StaticArray<unsigned int,MAX_STREAMS_COUNT> lastVertexBuffersOffsets;
-static StaticArray<unsigned int,MAX_STREAMS_COUNT> lastStreamSourceFreqs[SVT_TOTAL_NUM];
 static IDirect3DIndexBuffer9* pLastIndexBuffer = 0; 
 
 struct SamplerInfo
@@ -191,28 +178,22 @@ namespace {
     IDirect3DVertexDeclaration9* Get(IDirect3DVertexDeclaration9 *_pDecl)
     {
       Cache::iterator it = cache.find(_pDecl);
-      if(cache.end() == it)
-      {
-        D3DVERTEXELEMENT9 decl[MAXD3DDECLLENGTH];
-        UINT numElements;
-        HRESULT hr = _pDecl->GetDeclaration(decl, &numElements); hr;
+      if(cache.end() != it)
+        return ::Get(it->second);
 
-        for(UINT n = 0; n < numElements-1; ++n)
-          if(decl[n].Stream)
-            ++decl[n].Stream;
-
-        static const D3DVERTEXELEMENT9 instanceElement = {1, 0, D3DDECLTYPE_SHORT2, 0, D3DDECLUSAGE_BLENDINDICES, 0};
-        static const D3DVERTEXELEMENT9 declEnd = D3DDECL_END();
-
-        decl[numElements-1] = instanceElement;
-        decl[numElements] = declEnd;
-
-        IDirect3DVertexDeclaration9 *pNewDecl = 0;
-        hr = GetDevice()->CreateVertexDeclaration(decl, &pNewDecl);
-        cache[_pDecl] = pNewDecl;
-        return pNewDecl;
-      }
-      return ::Get(it->second);
+      // Построение инстансного варианта раскладки — за бэкендом (для D3D9 это
+      // сдвиг потоков + SHORT2/BLENDINDICES в поток 1; для Vulkan номер
+      // экземпляра — встроенный SV_InstanceID, отдельного атрибута нет).
+      // Здесь остаётся только кэш: вариант создаётся один раз на исходную
+      // раскладку и живёт до удаления устройства (OnDeviceDelete выше).
+      HInputLayout instanced = {};
+      HRESULT hr = GetBackend()->CreateInstancedInputLayout(
+          MakeBackendHandle<HInputLayout>(_pDecl), &instanced);
+      NI_DX_THROW(hr, "CreateInstancedInputLayout");
+      // Ручка создана бэкендом уже со счётчиком ссылок — принимаем без AddRef.
+      cache[_pDecl] = DXVertexDeclarationRef(
+          static_cast<IDirect3DVertexDeclaration9*>(instanced.p), false);
+      return ::Get(cache[_pDecl]);
     }
   };
 
@@ -299,34 +280,8 @@ void ResetTriangleAndDipCount()
 
 // Lazy states application system
 //
-// Здесь остаётся прямой вызов устройства: SetStreamSourceFreq — механизм
-// D3D9-инстансинга (частота потока), аналога нет ни в NVRHI, ни в Vulkan
-// (там instanced draw + per-instance атрибуты). Менять схему будем на этапе 3,
-// см. docs/PLAN_NVRHI.md §2.8.
-static void ApplyStates()
-{
-  IDirect3DDevice9* const device = GetDevice();
-  StaticArray<unsigned int,MAX_STREAMS_COUNT> &ssfActive = lastStreamSourceFreqs[SVT_ACTIVE],
-                                              &ssfRequested = lastStreamSourceFreqs[SVT_REQUESTED];
-#ifndef _SUPRESS_HWI
-  //if(ssfActive[1] != ssfRequested[1] && ssfRequested[1] == 1)
-  //  UnBindVertexBufferRaw(1);
-
-  for(UINT n = 0; n < MAX_STREAMS_COUNT; ++n)
-    if( ssfActive[n] != ssfRequested[n] )
-      device->SetStreamSourceFreq(n, ssfActive[n] = ssfRequested[n]);
-#else
-  bool isInstanced = false;
-  for(UINT n = 0; n < MAX_STREAMS_COUNT; ++n)
-    if( ssfActive[n] != ssfRequested[n] )
-      if( s_supressHWI )
-        isInstanced |= ssfRequested[n] != 1;
-      else
-        device->SetStreamSourceFreq(n, ssfActive[n] = ssfRequested[n]);
-
-  s_supressDrawCall = s_supressHWI && isInstanced;
-#endif // _SUPRESS_HWI
-}
+// Частоты потоков (механизм D3D9-инстансинга) ушли в бэкенд: SetInstanceCount +
+// ленивая переустановка перед рисованием, см. docs/PLAN_NVRHI.md §2.10.
 
 //////////////////////////////////////////////////////////////////////////
 static void NullLastPointers()
@@ -523,35 +478,25 @@ void UnBindVertexBuffer(unsigned int streamNumber)
 }
 
 ///
-void EnableHardwareInstancing(UINT _numInstances, UINT _lastGeomStream, UINT _instanceStream)
+void EnableHardwareInstancing(UINT _numInstances)
 {
-  NI_VERIFY(_lastGeomStream < MAX_STREAMS_COUNT, "Invalid geometry streams number!", return; );
-  NI_VERIFY(_numInstances < D3DSTREAMSOURCE_INDEXEDDATA, "Invalid instances number!", return; );
+  NI_VERIFY(_numInstances, "Invalid instances number!", return; );
 
-  if(_instanceStream == UINT_MAX)
-    _instanceStream = _lastGeomStream + 1;
-
-  NI_VERIFY(_instanceStream < MAX_STREAMS_COUNT, "Invalid instance stream number!", return; );
-
+  // Счётчик уходит бэкенду (там D3D9-частоты потоков, в Vulkan — count в
+  // drawIndexedInstanced). Локальный флаг отвечает за соглашение клиента о
+  // раскладке: поток 1 занят под данные экземпляра, поэтому геометрийные
+  // потоки сдвигаются (BindVertexBuffer) и берётся инстансный вариант
+  // декларации (BindVertexDeclaration).
   instancingEnabled = true;
-
-  for(UINT stream = 0; stream <= _lastGeomStream; ++stream)
-  {
-    lastStreamSourceFreqs[SVT_REQUESTED][stream] = UINT(D3DSTREAMSOURCE_INDEXEDDATA)|_numInstances;
-  }
-  lastStreamSourceFreqs[SVT_REQUESTED][_instanceStream] = UINT(D3DSTREAMSOURCE_INSTANCEDATA)|1;
+  GetBackend()->SetInstanceCount(_numInstances);
 }
 
 ///
 void DisableHardwareInstancing()
 {
   instancingEnabled = false;
-  for(UINT stream = 0; stream < MAX_STREAMS_COUNT; ++stream)
-    lastStreamSourceFreqs[SVT_REQUESTED][stream] = 1;
+  GetBackend()->SetInstanceCount(0);
 }
-
-///                                                                     
-bool InstancingEnabled() { return instancingEnabled; }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FVF (fixed-function input layout) в клиенте больше не используется:
@@ -580,13 +525,6 @@ void DrawIndexedPrimitive(const DipDescriptor& _descr)
 {
   if(nullrender)
     return;
-
-  ApplyStates();
-
-#ifdef _SUPRESS_HWI
-  if(s_supressDrawCall)
-    return;
-#endif // _SUPRESS_HWI
 
 #ifdef _DEBUG_VIEWPORT
   D3DVIEWPORT9 vp;
@@ -632,13 +570,6 @@ void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData,
   if(nullrender)
     return;
 
-  ApplyStates();
-
-#ifdef _SUPRESS_HWI
-  if(s_supressDrawCall)
-    return;
-#endif // _SUPRESS_HWI
-
   NI_VERIFY(_descr.numVertices, "null dip", return; );
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
   HRESULT hr = GetBackend()->DrawIndexedUP( _descr.primitiveType,
@@ -659,13 +590,6 @@ void DrawPrimitive(const DipDescriptor& _descr)
 {
   if(nullrender)
     return;
-
-  ApplyStates();
-
-#ifdef _SUPRESS_HWI
-  if(s_supressDrawCall)
-    return;
-#endif // _SUPRESS_HWI
 
 #ifdef _DEBUG_VIEWPORT
   D3DVIEWPORT9 vp;
@@ -690,13 +614,6 @@ void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroD
 {
   if(nullrender)
     return;
-
-  ApplyStates();
-
-#ifdef _SUPRESS_HWI
-  if(s_supressDrawCall)
-    return;
-#endif // _SUPRESS_HWI
 
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
   HRESULT hr = GetBackend()->DrawUP(_descr.primitiveType,

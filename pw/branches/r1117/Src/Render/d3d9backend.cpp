@@ -129,17 +129,20 @@ HRESULT D3D9Backend::SetViewport(const BackendViewport& vp) {
 
 HRESULT D3D9Backend::DrawIndexed(ERenderPrimitiveType type, unsigned baseVertexIndex, unsigned minIndex,
                                  unsigned indexedVertexCount, unsigned startIndex, unsigned primitiveCount) {
+  ApplyInstanceFreqs();
   return pDevice->DrawIndexedPrimitive(ConvertPrimitiveType(type), baseVertexIndex, minIndex,
                                        indexedVertexCount, startIndex, primitiveCount);
 }
 
 HRESULT D3D9Backend::Draw(ERenderPrimitiveType type, unsigned startVertex, unsigned primitiveCount) {
+  ApplyInstanceFreqs();
   return pDevice->DrawPrimitive(ConvertPrimitiveType(type), startVertex, primitiveCount);
 }
 
 HRESULT D3D9Backend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexValue, unsigned indexCount,
                                    unsigned vertexCount, const void* pIndexData, bool index16,
                                    const void* pVertexData, unsigned vertexStride) {
+  ApplyInstanceFreqs();
   return pDevice->DrawIndexedPrimitiveUP(ConvertPrimitiveType(type), minIndexValue, indexCount, vertexCount,
                                          pIndexData, index16 ? D3DFMT_INDEX16 : D3DFMT_INDEX32,
                                          pVertexData, vertexStride);
@@ -147,6 +150,7 @@ HRESULT D3D9Backend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexV
 
 HRESULT D3D9Backend::DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                             const void* pVertexData, unsigned vertexStride) {
+  ApplyInstanceFreqs();
   return pDevice->DrawPrimitiveUP(ConvertPrimitiveType(type), primitiveCount, pVertexData, vertexStride);
 }
 
@@ -482,5 +486,78 @@ void D3D9Backend::SetClipPlane(bool enable, const float* pPlaneEquation) {
 
 void D3D9Backend::EvictManagedResources() {
   pDevice->EvictManagedResources();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Инстансинг (этап 2 плана, docs/PLAN_NVRHI.md §2.10). Механизм D3D9 целиком
+// здесь: раньше SmartRenderer держал массивы запрошенных/выставленных частот и
+// сам звал SetStreamSourceFreq в ApplyStates() перед каждым рисованием.
+
+HRESULT D3D9Backend::SetInstanceCount(unsigned count) {
+  // Число экземпляров кодируется в старших битах DWORD (младший занят под
+  // INSTANCEDATA/INDEXEDDATA) — прежняя проверка жила в EnableHardwareInstancing.
+  if (count >= D3DSTREAMSOURCE_INDEXEDDATA)
+    return D3DERR_INVALIDCALL;
+  instanceCount = count;
+  return D3D_OK;
+}
+
+// Частоты применяются дельтой и только перед рисованием: биндинги потоков к
+// этому моменту уже выполнены (исторический порядок ApplyStates — внутри
+// Draw*Primitive после биндингов), и переставлять его нечем оправдывать.
+void D3D9Backend::ApplyInstanceFreqs() {
+  unsigned requested[kFreqStreams];
+  for (unsigned n = 0; n < kFreqStreams; ++n)
+    requested[n] = 1;
+
+  if (instanceCount) {
+    // Поток 0 — геометрия: проходится заново на каждый экземпляр.
+    requested[0] = D3DSTREAMSOURCE_INDEXEDDATA | instanceCount;
+    // Поток 1 — данные экземпляра: одно значение на экземпляр.
+    requested[1] = D3DSTREAMSOURCE_INSTANCEDATA | 1;
+  }
+
+  for (unsigned n = 0; n < kFreqStreams; ++n)
+    if (streamFreq[n] != requested[n])
+      pDevice->SetStreamSourceFreq(n, streamFreq[n] = requested[n]);
+}
+
+HRESULT D3D9Backend::CreateInstancedInputLayout(HInputLayout base, HInputLayout* pOut) {
+  *pOut = HInputLayout();
+  IDirect3DVertexDeclaration9* pBase = static_cast<IDirect3DVertexDeclaration9*>(base.p);
+  if (!pBase)
+    return D3DERR_INVALIDCALL;
+
+  D3DVERTEXELEMENT9 decl[MAXD3DDECLLENGTH];
+  UINT numElements = 0;
+  HRESULT hr = pBase->GetDeclaration(decl, &numElements);
+  if (FAILED(hr))
+    return hr;
+  // Последний элемент — D3DDECL_END(); плюс новый элемент перед ним.
+  if (numElements < 2 || numElements >= MAXD3DDECLLENGTH)
+    return D3DERR_INVALIDCALL;
+
+  for (UINT n = 0; n + 1 < numElements; ++n)
+    if (decl[n].Stream)
+      ++decl[n].Stream;
+
+  static const D3DVERTEXELEMENT9 instanceElement = { 1, 0, D3DDECLTYPE_SHORT2, 0,
+                                                     D3DDECLUSAGE_BLENDINDICES, 0 };
+  static const D3DVERTEXELEMENT9 declEnd = D3DDECL_END();
+
+  decl[numElements - 1] = instanceElement;
+  decl[numElements] = declEnd;
+
+  IDirect3DVertexDeclaration9* pNew = 0;
+  hr = pDevice->CreateVertexDeclaration(decl, &pNew);
+  if (SUCCEEDED(hr))
+    *pOut = MakeBackendHandle<HInputLayout>(pNew);
+  return hr;
+}
+
+void D3D9Backend::InvalidateBoundState() {
+  instanceCount = 0;
+  for (unsigned n = 0; n < kFreqStreams; ++n)
+    streamFreq[n] = 1;
 }
 } // namespace Render
