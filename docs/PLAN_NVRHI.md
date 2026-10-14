@@ -394,9 +394,14 @@ Win32 `RECT`; конвертация `BackendRect` → `RECT` — только �
   (`SetScissorRect`, `StretchSurfaceRect`, `SaveFrameToFile`): его зовут из
   `PF_GameLogic` (3 места scissor) и из `Render/*` (surface-обёртки). Это
   следующий слой типизации, к seam отношения не имеет.
-* Оставшиеся сырые scissor-вызовы устройства: `batch.cpp` (`GetScissorRect` +
-  `SetScissorRect` ×2) и `ShadowManager.cpp` (`GetScissorRect`) — в seam нет
-  `GetScissorRect`, он там и появится.
+* Scissor закрыт полностью (тот же день): в seam добавлен
+  `GetScissorRect(BackendRect*)` (чтение нужно для save/restore; на этапе 3 на
+  этом месте — тень в бэкенде, динамического состояния у NVRHI нет),
+  `batch.cpp::ZeroScissor` переведён на `GetBackend()` + `BackendRect`
+  (`zeroRect` остался 1×1: пустой scissor D3D9 отвергает). Путь обёрнут в
+  `#ifndef _SHIPPING` — в shipping-сборке он вырезан, поэтому проверен компиляцией
+  и E2E-smoke, а не исполнением. В `ShadowManager.cpp` scissor/viewport — под
+  `#ifdef _DEBUG_VIEWPORT` (не компилируются).
 
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
