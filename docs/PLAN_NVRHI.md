@@ -1190,14 +1190,39 @@ color-correct начинают получать настоящие веса) —
       пресет). Вызовы устройства те же и в том же порядке, но кэш менеджера теперь
       инвалидируется → следующий `SetState()` с тем же пресетом обязан
       перепримениться (это и есть чинившийся дефект, см. §2.1 про
-      `PFRenderInterface`). Прямых записей состояния/сэмплеров через `GetDevice()`
-      в `Render` не осталось (кроме самого `renderstatesmanager.cpp`);
-      `GetDevice()->` внутри `Render`: **96 → 42** (из них 7 — сам менеджер).
-      Остаток — не состояния: `GetViewport`/`Clear`/`CreateTexture`/`StretchRect`/
-      `UpdateTexture` (ресурсы и поверхности), `SetFVF`/`SetVertexShader`/
-      `SetTexture`/`DrawPrimitiveUP` в `RenderDeferred2D` (фиксированный блок,
-      §1.4), `Present`, и **чтение состояния обратно** — оно по-прежнему не
-      закрыто и для Vulkan-бэкенда потребует тени (по образцу `conststore`).
+      `PFRenderInterface`).
+      **Второй заход (тот же день) — то, что первый замер пропустил.** Считать
+      «сырые» записи только по `GetDevice()->` недостаточно: в `Render` есть
+      обращения к устройству через локальные переменные (`pDev`, `pDevice`,
+      `device`). Так нашлись ещё 6 записей и 3 чтения состояния:
+      `ShadowManager.cpp` (save/restore `DEPTHBIAS`/`SLOPESCALEDEPTHBIAS` — 4
+      записи + 2 чтения) и `batch.cpp` (`ZeroScissor`, `SCISSORTESTENABLE` — 2
+      записи + 1 чтение). Всё переведено на менеджер.
+      **Чтение состояния обратно закрыто тенью состояний.** `RenderStatesManager`
+      держит `stateShadow[256]` (индекс — числовое значение `D3DRS_*`, максимум
+      209; тот же размер, что у `g_cachedStates`) + `stateShadowKnown[]`; все
+      записи менеджера (25 мест в `SetState`/`SetStencilState`/`SetStateDirect`)
+      идут через приватную `ApplyState()`, которая пишет в устройство и обновляет
+      тень; `GetStateDirectValue()` отвечает из тени, а неизвестное значение один
+      раз подтягивает с устройства. Тень обнуляется в `Init()` и в
+      `OnDeviceLost()` (значения относятся к теряемому устройству). `DumpStates()`
+      (dev-команда `dump_states`) читает из тени.
+      Оговорки: путь state-block (`USE_STATEBLOCK_CACHE`, `cached->Apply()`) тень
+      не наполняет — макрос выключен (`//#define` в начале файла), при включении
+      тень придётся синхронизировать с блоком; сэмплерные чтения (`GetSamplerState`
+      в `DumpStates()` и в `#ifdef _DEBUG`-проверках того же выключенного кэша)
+      остались обращены к устройству — функциональных чтений сэмплеров в коде нет.
+      Итог по прямым обращениям к устройству внутри `Render` (кроме менеджера и
+      `d3d9backend.cpp`, только живые строки): **60**, из них **0 записей и чтений
+      состояния**. Остаток — ресурсы и поверхности (`CreateTexture`/
+      `CreateRenderTarget`/`CreateCubeTexture`/`CreatePixelShader`/
+      `CreateVertexShader`/`CreateVertexDeclaration`/`CreateQuery`, `StretchRect`,
+      `Clear`, `SetScissorRect`/`GetScissorRect`, `EvictManagedResources`),
+      фиксированный блок `RenderDeferred2D` (`SetFVF`/`DrawPrimitiveUP`/
+      `SetVertexShader`/`SetTexture`/`SetStreamSource*`, §1.4), запросы
+      возможностей (`GetDeviceCaps`, `GetProperties`, `TestCooperativeLevel`) и
+      `GetViewport` (5 мест; в интерфейсе бэкенда он есть, но кэш viewport'а ещё
+      D3D9-типизирован — §2.8).
 - [ ] `DeviceLostHandler` → `OnReallocate` (интерфейс тот же, семантика —
       ресайз).
 - [ ] Пулы: `RENDER_POOL_MANAGED` → staging + default + upload-ring
@@ -1604,6 +1629,28 @@ build-каталога под инструментальные сборки ск
 хотбар 0,6%, стрелки слева 0,0%, портрет 0,9% (max|d|=4). Точная сверка
 «до/после» пиксель-в-пиксель между разными прогонами невозможна (бой не
 детерминирован) — см. «Сознательные отклонения», п.3.
+
+### Сделано (этап 2, тень состояний — 2026-10-14)
+
+| Файл | Было | Стало |
+|---|---|---|
+| `Render/renderstatesmanager.{h,cpp}` | состояние пишется в устройство из 25 мест, прочитать его можно только с устройства | все записи через приватную `ApplyState()` (устройство + тень `stateShadow[256]`/`stateShadowKnown[256]`); публичная `GetStateDirectValue()` — ответ из тени, неизвестное один раз подтягивается с устройства; тень сбрасывается в `Init()`/`OnDeviceLost()`; `DumpStates()` читает тень |
+| `Render/ShadowManager.cpp` | save/restore `DEPTHBIAS`/`SLOPESCALEDEPTHBIAS` через `pDev->GetRenderState`/`SetRenderState` (4+2) | `statesManager.GetStateDirectValue()` / `SetStateDirect()`; локальная переменная `pDev` из функции убрана |
+| `Render/batch.cpp` (`ZeroScissor`, `#ifndef _SHIPPING`) | `pDevice->GetRenderState`/`SetRenderState(D3DRS_SCISSORTESTENABLE)` (2+1) | через менеджер; `Get/SetScissorRect` остались на устройстве (прямоугольник отсечения — не состояние, кэш viewport/scissor ещё D3D9-типизирован, §2.8) |
+
+Живых записей и чтений состояния через устройство в `Render` (кроме менеджера и
+реализации D3D9-бэкенда) не осталось; всего живых обращений к устройству там же —
+**60** (ресурсы/поверхности, `RenderDeferred2D`, запросы возможностей,
+`GetViewport`).
+
+Гейт: x64 (Wine) + E2E tiny10 (`2026.10.13-23.47.31`, `finish 823a64bd…`,
+дампов нет, счётчики штатных `FAILED`/`LoadTextureFromFileImpl`/`FormulaVM` —
+столько же, сколько в предыдущем прогоне) + клиентские снимки (`auto_screenshot`,
+кадры 3000/3100). Сверка кадров между прогонами показала, что **шум между
+запусками того же стенда (~11% отличающихся пикселей на одном и том же номере
+кадра, «грубых» отличий >64 — 0,13–0,33%) сопоставим с любой разницей до/после**:
+A-B 11,73% / B-C 10,67% / A-C 11,41% — сигнала регресса нет; кадр глазами — сцена,
+тени от построек и UI без изменений (ни acne, ни отрыва тени от объекта).
 
 ### Сознательные отклонения от «картинка не меняется»
 

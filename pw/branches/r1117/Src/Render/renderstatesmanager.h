@@ -36,6 +36,13 @@ public:
   RenderState const& GetCurrentState() const { return lastRenderState; }
 
 	void SetStateDirect(D3DRENDERSTATETYPE State, DWORD Value);
+  // Чтение текущего значения состояния рендера. Менеджер — единственная точка
+  // записи состояния (docs/PLAN_NVRHI.md §2.1, §2.8), поэтому он же держит и его
+  // тень: save/restore-паттернам (ShadowManager — DEPTHBIAS/SLOPESCALEDEPTHBIAS,
+  // batch — SCISSORTESTENABLE) и DumpStates() на Vulkan-бэкенде читать состояние
+  // будет неоткуда. Возвращает false, если состояние вне диапазона D3DRS_* или
+  // его не удалось ни получить из тени, ни прочитать с устройства.
+  bool GetStateDirectValue(D3DRENDERSTATETYPE State, DWORD & outValue);
 	void SetStencilState(StencilState state, DWORD mask = 0xFFFFFFFF, DWORD bits = 0xFFFFFFFF);
   void SetStencilStateAddonBits(DWORD mask, DWORD bits);
 	void SetSamplerState(unsigned index, SamplerState const& state);
@@ -78,6 +85,17 @@ private:
   DWORD lastStencilBits;
   DWORD lastStencilMask;
   int   stencilLock;
+
+  // Пишет состояние в устройство и обновляет тень. Все записи состояния внутри
+  // менеджера обязаны идти через неё, иначе тень отстаёт от устройства и
+  // GetStateDirectValue() врёт.
+  void ApplyState(D3DRENDERSTATETYPE State, DWORD Value);
+
+  // Тень состояний: индекс — числовое значение D3DRS_* (max в d3d9types.h = 209;
+  // размер 256 — тот же, что у g_cachedStates).
+  static const int kRenderStateShadowSize = 256;
+  DWORD stateShadow[kRenderStateShadowSize];
+  bool  stateShadowKnown[kRenderStateShadowSize];
 
 	hash_map<unsigned long, DXStateBlockRef> renderStateCache;
   hash_map<unsigned long, DXStateBlockRef> samplerStateCache;

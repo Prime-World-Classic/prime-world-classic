@@ -117,8 +117,10 @@ public:
     {
       if(!isSet)
       {
-        pDevice->GetRenderState(D3DRS_SCISSORTESTENABLE, &oldVal);
-        pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE);
+        // Состояние — через менеджера (он же его тень, см. GetStateDirectValue):
+        // прямое чтение/запись мимо менеджера оставляли кэш врасплох.
+        GetStatesManager()->GetStateDirectValue(D3DRS_SCISSORTESTENABLE, oldVal);
+        GetStatesManager()->SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
 
         pDevice->GetScissorRect(&rect);
         pDevice->SetScissorRect(&zeroRect);
@@ -133,7 +135,7 @@ public:
         return;
 
       pDevice->SetScissorRect(&rect);
-      pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+      GetStatesManager()->SetStateDirect(D3DRS_SCISSORTESTENABLE, FALSE);
       GetRuntimePins().RenderModeValue = oldMode;
     }
 

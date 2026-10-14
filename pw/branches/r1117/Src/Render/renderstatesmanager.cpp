@@ -63,6 +63,9 @@ RenderStatesManager::~RenderStatesManager()
 
 void RenderStatesManager::OnDeviceLost()
 {
+  // Значения тени относятся к теряемому устройству — после восстановления их
+  // нужно читать заново.
+  std::fill( stateShadowKnown, stateShadowKnown + kRenderStateShadowSize, false );
   renderStateCache.clear();
   samplerStateCache.clear();
   std::fill( stencilStateCache, stencilStateCache + STENCILSTATE_COUNT, DXStateBlockRef() );
@@ -70,6 +73,9 @@ void RenderStatesManager::OnDeviceLost()
 
 void RenderStatesManager::Init()
 {
+  // Тень состояния пуста: неизвестные значения подтягиваются с устройства при
+  // первом запросе (GetStateDirectValue), остальные — при записи.
+  std::fill( stateShadowKnown, stateShadowKnown + kRenderStateShadowSize, false );
   lastRenderState.alwaysFailCompare = 1;
   for (int i = 0; i < ARRAY_SIZE(lastSamplerState); ++i)
     lastSamplerState[i].alwaysFailCompare = 1;
@@ -104,49 +110,49 @@ void RenderStatesManager::SetState(RenderState state)
   const bool emissive = (state.GetEmissive() == NDb::ONOFFSTATE_ON);
   const D3DBLEND SrcAlpha = /*emissive ? D3DBLEND_ONE :*/ D3DBLEND_SRCALPHA;
   const D3DBLEND InvSrcAlpha = /*emissive ? D3DBLEND_SRCALPHA :*/ D3DBLEND_INVSRCALPHA;
-	device->SetRenderState(D3DRS_ALPHABLENDENABLE, state.GetBlendMode() != NDb::BLENDMODE_OFF ? TRUE : FALSE);
+	ApplyState(D3DRS_ALPHABLENDENABLE, state.GetBlendMode() != NDb::BLENDMODE_OFF ? TRUE : FALSE);
 	switch (state.GetBlendMode())
 	{
 	case NDb::BLENDMODE_OFF:
 		break;
   case NDb::BLENDMODE_LERPBYALPHA:
-    device->SetRenderState(D3DRS_SRCBLEND,  SrcAlpha);
-    device->SetRenderState(D3DRS_DESTBLEND, InvSrcAlpha);
+    ApplyState(D3DRS_SRCBLEND,  SrcAlpha);
+    ApplyState(D3DRS_DESTBLEND, InvSrcAlpha);
     break;
   case NDb::BLENDMODE_PREMULTIPLIEDLERP:
-    device->SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-    device->SetRenderState(D3DRS_DESTBLEND, InvSrcAlpha);
+    ApplyState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
+    ApplyState(D3DRS_DESTBLEND, InvSrcAlpha);
     break;
 	case NDb::BLENDMODE_ADDCOLOR:
-		device->SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
-		device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+		ApplyState(D3DRS_SRCBLEND,  D3DBLEND_ONE);
+		ApplyState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 		break;
 	case NDb::BLENDMODE_ADDCOLORMULALPHA:
-		device->SetRenderState(D3DRS_SRCBLEND,  SrcAlpha);
-		device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+		ApplyState(D3DRS_SRCBLEND,  SrcAlpha);
+		ApplyState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 		break;
 	case NDb::BLENDMODE_MULCOLOR:
-		device->SetRenderState(D3DRS_SRCBLEND,  D3DBLEND_ZERO);
-		device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
+		ApplyState(D3DRS_SRCBLEND,  D3DBLEND_ZERO);
+		ApplyState(D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
 		break;
   case NDb::BLENDMODE_MULINVCOLOR:
-    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
-    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+    ApplyState(D3DRS_SRCBLEND, D3DBLEND_ZERO);
+    ApplyState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
     break;
 	default:
 		NI_ALWAYS_ASSERT("Invalid blend mode");
 	}
 
 	// Set alpha test states
-  device->SetRenderState(D3DRS_ALPHATESTENABLE, state.GetAlphaTest() == NDb::ONOFFSTATE_ON);
-  device->SetRenderState(D3DRS_ALPHAFUNC, emissive ? D3DCMP_LESSEQUAL : D3DCMP_GREATEREQUAL);
+  ApplyState(D3DRS_ALPHATESTENABLE, state.GetAlphaTest() == NDb::ONOFFSTATE_ON);
+  ApplyState(D3DRS_ALPHAFUNC, emissive ? D3DCMP_LESSEQUAL : D3DCMP_GREATEREQUAL);
   DWORD alphaRef = state.GetAlphaTestRef();
   if( emissive )
     alphaRef = 255 - alphaRef * BLOOM_ENCODING_THRESHOLD; 
-	device->SetRenderState(D3DRS_ALPHAREF, alphaRef );
+	ApplyState(D3DRS_ALPHAREF, alphaRef );
 
 	// Set culling state
-	device->SetRenderState(D3DRS_CULLMODE, state.GetCulling() == NDb::ONOFFSTATE_ON ? D3DCULL_CW : D3DCULL_NONE);
+	ApplyState(D3DRS_CULLMODE, state.GetCulling() == NDb::ONOFFSTATE_ON ? D3DCULL_CW : D3DCULL_NONE);
 
 	//// Mark emissive pixels in alpha channel
 	//device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, TRUE);
@@ -159,6 +165,37 @@ void RenderStatesManager::SetState(RenderState state)
 	device->EndStateBlock(&pStateBlock);
 	cached.Attach(pStateBlock);
 #endif // USE_STATEBLOCK_CACHE
+}
+
+void RenderStatesManager::ApplyState(D3DRENDERSTATETYPE State, DWORD Value)
+{
+	GetDevice()->SetRenderState(State, Value);
+
+	const DWORD idx = static_cast<DWORD>(State);
+	if (idx < kRenderStateShadowSize)
+	{
+		stateShadow[idx] = Value;
+		stateShadowKnown[idx] = true;
+	}
+}
+
+bool RenderStatesManager::GetStateDirectValue(D3DRENDERSTATETYPE State, DWORD & outValue)
+{
+	const DWORD idx = static_cast<DWORD>(State);
+	if (idx >= kRenderStateShadowSize)
+		return false;
+
+	if (!stateShadowKnown[idx])
+	{
+		// Состояние ни разу не писали через менеджера — берём текущее с устройства
+		// (один раз на состояние), дальше живём по тени.
+		if (FAILED(GetDevice()->GetRenderState(State, &stateShadow[idx])))
+			return false;
+		stateShadowKnown[idx] = true;
+	}
+
+	outValue = stateShadow[idx];
+	return true;
 }
 
 void RenderStatesManager::SetStateDirect(D3DRENDERSTATETYPE State, DWORD Value)
@@ -277,13 +314,13 @@ void RenderStatesManager::SetStencilState(StencilState state, DWORD mask /*= 0xF
   if(state > STENCILSTATE_IGNORE)
   {
     if( bits != lastStencilBits )
-      device->SetRenderState(D3DRS_STENCILREF, lastStencilBits = bits);
+      ApplyState(D3DRS_STENCILREF, lastStencilBits = bits);
 
     if( mask != lastStencilMask )
     {
       lastStencilMask = mask;
-      device->SetRenderState(D3DRS_STENCILMASK, lastStencilMask);
-      device->SetRenderState(D3DRS_STENCILWRITEMASK, lastStencilMask);
+      ApplyState(D3DRS_STENCILMASK, lastStencilMask);
+      ApplyState(D3DRS_STENCILWRITEMASK, lastStencilMask);
     }
   }
 
@@ -324,11 +361,11 @@ void RenderStatesManager::SetStencilState(StencilState state, DWORD mask /*= 0xF
   NI_ASSERT(presets[state].state == state, "Array of StencilStateParams corrupted.");
   StencilStateParams& params = presets[state];
 
-  device->SetRenderState(D3DRS_STENCILENABLE, params.enable);
-  device->SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
-  device->SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
-  device->SetRenderState(D3DRS_STENCILPASS, params.pass);
-  device->SetRenderState(D3DRS_STENCILFUNC, params.func);
+  ApplyState(D3DRS_STENCILENABLE, params.enable);
+  ApplyState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
+  ApplyState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
+  ApplyState(D3DRS_STENCILPASS, params.pass);
+  ApplyState(D3DRS_STENCILFUNC, params.func);
 
 #ifdef USE_STATEBLOCK_CACHE
 	// Store compiled states in cache
@@ -424,9 +461,9 @@ void RenderStatesManager::DumpStates()
 {
   for (int i = 0; i < ARRAY_SIZE(g_renderStates); i++)
   {
-    DWORD val;
-    HRESULT hr = GetDevice()->GetRenderState(g_renderStates[i].state, &val);
-    if (SUCCEEDED(hr))
+    DWORD val = 0;
+    // DumpStates() — статическая функция, тень живёт в экземпляре менеджера.
+    if (GetStatesManager()->GetStateDirectValue(g_renderStates[i].state, val))
     {
       DebugTrace("0x%08X = %s", val, g_renderStates[i].pName);
     }

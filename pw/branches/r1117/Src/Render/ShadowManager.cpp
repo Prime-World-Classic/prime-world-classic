@@ -275,12 +275,14 @@ namespace Render
       statesManager.SetState(state);
       statesManager.SetStateDirect(D3DRS_ZFUNC, D3DCMP_ALWAYS);
 
-      IDirect3DDevice9* const pDev = GetDevice();
+      // save/restore bias-состояний через менеджера: он единственная точка записи
+      // состояния, и только у него есть его тень (GetStateDirectValue) — на
+      // Vulkan-бэкенде читать состояние с устройства будет нечем.
       DWORD oldBias = 0, oldSlope = 0;
-      pDev->GetRenderState(D3DRS_DEPTHBIAS, &oldBias);
-      pDev->SetRenderState(D3DRS_DEPTHBIAS, 0);
-      pDev->GetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, &oldSlope);
-      pDev->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, 0);
+      statesManager.GetStateDirectValue(D3DRS_DEPTHBIAS, oldBias);
+      statesManager.SetStateDirect(D3DRS_DEPTHBIAS, 0);
+      statesManager.GetStateDirectValue(D3DRS_SLOPESCALEDEPTHBIAS, oldSlope);
+      statesManager.SetStateDirect(D3DRS_SLOPESCALEDEPTHBIAS, 0);
 
       static const Matrix43 unity( CVec3(0,0,0) );
       GetRenderer()->SetVertexShaderConstants(WORLD, 3, &unity);
@@ -302,8 +304,8 @@ namespace Render
       }
 #endif // _DEBUG
 
-      pDev->SetRenderState(D3DRS_DEPTHBIAS, oldBias);
-      pDev->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, oldSlope);
+      statesManager.SetStateDirect(D3DRS_DEPTHBIAS, oldBias);
+      statesManager.SetStateDirect(D3DRS_SLOPESCALEDEPTHBIAS, oldSlope);
       statesManager.SetStateDirect(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
       statesManager.SetState(oldState);
     }
