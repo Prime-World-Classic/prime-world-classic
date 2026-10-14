@@ -3,6 +3,9 @@
 
 #include "PFUniTarget.h"
 #include "PFDispatch.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxAttackPresentation.h"
+#endif
 
 
 namespace NWorld
@@ -76,8 +79,16 @@ public:
   typedef vector<CObj<PFBaseAttackInstance>> AttackInstances;
 
   const AttackInstances& GetAttackInstances() const { return rgAttackInstances; }
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Copyable read-only cue survives immediate instance retirement without retaining world objects. */
+	const LinuxAttackPresentation& GetLinuxPresentation() const { return linuxPresentation; }
+#endif
 private:
   PFBaseAttackData();
+#if defined(PW_LINUX_NULL_RENDER)
+	LinuxAttackPresentation linuxPresentation;
+	unsigned long long linuxCancelRevision=0;
+#endif
 
 	float GetAttackNodeDuration( NScene::SceneObject* pSO ) const;
 

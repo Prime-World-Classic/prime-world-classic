@@ -799,6 +799,7 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
       }
     }
     marker.dead = unit->IsDead();
+		if (const auto* attack=unit->GetAttackAbility()) marker.attack=attack->GetLinuxPresentation();
 
     const NDb::Unit* unitDesc = unit->DbUnitDesc();
     if (unitDesc)

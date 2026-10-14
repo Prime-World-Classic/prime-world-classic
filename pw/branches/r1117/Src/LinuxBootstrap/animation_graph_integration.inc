@@ -10,19 +10,25 @@ class LinuxAnimationGraphBank
 		std::unique_ptr<LinuxAnimationGraphPlayback> player;
 	};
 	std::map<int,Entry> entries;
+	struct Cue { int ability=-1; unsigned long long sequence=0; double seen=-1; };
+	std::map<int,Cue> cues;
 	const void* world=nullptr;
 	std::weak_ptr<const void> scene;
 	double clock=-1;
 public:
 	size_t created=0,unsupported=0,sampled=0,movingSamples=0,failed=0;
+	size_t attackStarts=0,attackSkipped=0;
 	/** Retain only the previous visible frame; at most 58 meshes are admitted by the caller. */
 	void Begin(const void* nextWorld,const std::shared_ptr<const void>& nextScene,double seconds)
 	{
-		if (world!=nextWorld || scene.lock()!=nextScene || seconds<clock) entries.clear();
+		if (world!=nextWorld || scene.lock()!=nextScene || seconds<clock) { entries.clear(); cues.clear(); }
 		world=nextWorld; scene=nextScene; clock=seconds;
 		for (auto it=entries.begin(); it!=entries.end();) {
 			if (!it->second.used) it=entries.erase(it);
 			else { it->second.used=false; ++it; }
+		}
+		for (auto it=cues.begin(); it!=cues.end();) {
+			if (seconds-it->second.seen>.25) it=cues.erase(it); else ++it;
 		}
 	}
 	/** Resolve the SessionVisualRoot's actual Hero/Creep aliases, never infer clip names. */
@@ -45,8 +51,27 @@ public:
 		}
 		if (!entry.player) return nullptr;
 		if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
+		// Retain light cue identities briefly after graph eviction; old offscreen attacks are never queued.
+		const auto& attack=marker.attack;
+		auto seen=cues.find(marker.objectId);
+		if (seen==cues.end() && cues.size()<128) seen=cues.emplace(marker.objectId,Cue{}).first;
+		if (seen!=cues.end()) {
+			auto& cue=seen->second;
+			const bool changed=cue.ability!=attack.abilityObjectId || cue.sequence!=attack.sequence;
+			cue.seen=clock; cue.ability=attack.abilityObjectId; cue.sequence=attack.sequence;
+			if (changed || attack.cancelled) entry.player->CancelAttack();
+			if (changed && attack.sequence && !attack.cancelled) {
+				const double age=clock-attack.startedAt;
+				if (attack.abilityObjectId>=0 && !marker.moving && std::isfinite(age) && age>=0 && age<=.25 &&
+					std::isfinite(attack.period) && attack.period>0 && attack.period<=60 &&
+					entry.player->BeginAttack(attack.period-age)) ++attackStarts;
+				else ++attackSkipped;
+			}
+			if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
+		}
 		++sampled; if (marker.moving) ++movingSamples;
 		return entry.player.get();
 	}
 	size_t Size() const { return entries.size(); }
+	size_t CueSize() const { return cues.size(); }
 };

@@ -5,6 +5,7 @@
 #include "PFBaseAttackData.h"
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
+#include "PFWorld.h"
 #include <cmath>
 
 namespace NWorld
@@ -140,6 +141,8 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
   if (!IsValid(GetOwner()) || !GetOwner()->IsTargetInAttackRange(target, true))
     return false;
 
+	const auto cancellation=linuxCancelRevision;
+	const double startedAt=GetOwner()->GetWorld() ? GetOwner()->GetWorld()->GetTimeElapsed() : -1;
   CObj<PFBaseAttackInstance> pInst = new PFBaseAttackInstance( this, target, allowAllies );
 	if (!pInst->ApplyAttack())
 		return false;
@@ -148,6 +151,12 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 
   const float fAttackSpeed = GetSpeed();
   RestartCooldown( fAttackSpeed < EPS_VALUE ? FP_MAX_VALUE : (1.0f / fAttackSpeed) );
+	// Publish only accepted attacks; callbacks during immediate damage may already have cancelled them.
+	if (++linuxPresentation.sequence==0) ++linuxPresentation.sequence;
+	linuxPresentation.abilityObjectId=GetObjectId();
+	linuxPresentation.startedAt=startedAt;
+	linuxPresentation.period=GetCurrentCooldown();
+	linuxPresentation.cancelled=linuxCancelRevision!=cancellation;
   return true;
 }
 
@@ -174,6 +183,8 @@ void PFBaseAttackData::Update(float dt, bool fullUpdate)
 
 void PFBaseAttackData::Cancel()
 {
+	++linuxCancelRevision;
+	linuxPresentation.cancelled=true;
   for (AttackInstances::iterator it = rgAttackInstances.begin(); it != rgAttackInstances.end(); ++it)
     if (IsValid(*it))
       (*it)->Cancel();

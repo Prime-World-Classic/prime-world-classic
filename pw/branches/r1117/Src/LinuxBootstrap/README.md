@@ -184,12 +184,23 @@ on map/world replacement or clock rewind. Pose-cache keys include graph identity
 so units sharing a mesh can display different states at the same timestamp.
 Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
 boundary; the Windows definitions are unchanged. This is presentation-only:
-attack/cast/death events, movement-speed scaling, upper-body graphs, dynamic
-external parameters and gameplay animation callbacks remain unconnected.
-Playback uses presentation time, restarts after a gap over one second, and
+cast/death events, movement-speed scaling, upper-body graphs, dynamic external
+parameters and gameplay animation callbacks remain unconnected.
+Live playback uses world time (including pauses), restarts after a gap over one second, and
 recreates graphs after offscreen eviction. Unadmitted assets and the separate
 character-inspection view retain the first-clip preview. The engine probe covers
 original graph transitions, malformed metadata, ownership and actual pose pixels.
+
+Accepted native base attacks publish a nonserialized presentation cue independent
+of their dispatch lifetime. Live markers carry the ability identity, sequence,
+world timestamp, cooldown period and cancellation. The original session attack
+alias drives whole-body playback for the remaining accepted cooldown window;
+movement, cancellation or expiry returns to locomotion. Bounded short-lived cue
+receipts prevent duplicate draws and quick offscreen reentry from restarting an
+attack. Unseen cues older than 250 ms, invalid intervals and missing attack aliases
+are skipped, not queued. This is visual state only: native `GetAttackTimeOffset()`
+still returns zero, so authored windup, damage-marker synchronization, attack-speed
+clip scaling, critical/special attacks and attack-facing alignment remain open.
 
 - Rendering uses real assets and selected original BasicFX/baked BasicMaterial
 	shaders, but most materials and presentation remain simplified. The

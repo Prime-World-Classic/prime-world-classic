@@ -39,6 +39,8 @@ public:
 		result->parameters->applyParamsToGraph(); result->graph->StoreDefaultValues();
 		result->idle=result->graph->GetNodeIDByNameSlowQuite(idle.commonNode.c_str());
 		result->move=result->graph->GetNodeIDByNameSlowQuite(move.commonNode.c_str());
+		if (set->states.size()>NDb::ANIMSTATES_ATTACK && mapped(set->states[NDb::ANIMSTATES_ATTACK]))
+			result->attack=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_ATTACK].commonNode.c_str());
 		if (result->idle<0 || result->move<0 || static_cast<unsigned>(result->idle)>=result->graph->GetNumNodes() ||
 			static_cast<unsigned>(result->move)>=result->graph->GetNumNodes()) return {};
 		result->matrices.resize(skeleton->GetData()->jointsCount);
@@ -46,18 +48,19 @@ public:
 		return result;
 	}
 	/** Advance once per timestamp, with bounded catch-up; rewind/long suspension restarts the graph.
-	 * The supplied clock is presentation time. It cannot fire gameplay damage/cast callbacks.
+	 * The supplied clock cannot fire gameplay damage/cast callbacks; live units use world time.
 	 */
 	bool Advance(double seconds, bool moving)
 	{
 		if (!std::isfinite(seconds) || seconds<0 || seconds>1e9) return false;
-		if (seconds==last && moving==wasMoving) return true;
+		if (seconds==last && moving==wasMoving && !dirty) return true;
 		const bool restart=last<0 || seconds<last || seconds-last>1;
 		if (restart) {
 			if (!blender->Restart(graph->GetDefNode())) return false;
-			target=-1;
+			target=-1; attackUntil=-1;
 		}
-		const int requested=moving ? move : idle;
+		if (Attacking() && (moving || seconds>=attackUntil)) CancelAttack();
+		const int requested=Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
 			target=requested;
@@ -76,9 +79,20 @@ public:
 			for (size_t j=0; j<12; ++j) if (!std::isfinite(values[j])) return false;
 		}
 		std::copy(pose,pose+matrices.size(),matrices.begin());
-		last=seconds; wasMoving=moving; ++updates; return true;
+		last=seconds; wasMoving=moving; dirty=false; ++updates; return true;
 	}
 	const std::vector<Matrix43>& Matrices() const { return matrices; }
+	/** Start one visual attack window; combat remains authoritative and independent. */
+	bool BeginAttack(double period)
+	{
+		if (last<0 || attack<0 || static_cast<unsigned>(attack)>=graph->GetNumNodes() ||
+			!std::isfinite(period) || period<=0 || period>60) return false;
+		if (!blender->SetMainAGTargetNode(attack)) return false;
+		target=attack; attackUntil=last+period; dirty=true; return true;
+	}
+	/** Cancel the presentation request without sending any simulation event. */
+	void CancelAttack() { if (Attacking()) { attackUntil=-1; target=-1; dirty=true; } }
+	bool Attacking() const { return attackUntil>=0; }
 	int CurrentNode() const { return static_cast<int>(graph->GetCurNodeUnsafe()); }
 	int TargetNode() const { return target; }
 	unsigned Updates() const { return updates; }
@@ -133,8 +147,8 @@ private:
 	std::unique_ptr<DiAnimGraph,DeleteGraph> graph;
 	std::unique_ptr<DiAnGrExtPars> parameters;
 	std::vector<Matrix43> matrices;
-	double last=-1;
-	int idle=-1,move=-1,target=-1;
-	bool wasMoving=false;
+	double last=-1,attackUntil=-1;
+	int idle=-1,move=-1,attack=-1,target=-1;
+	bool wasMoving=false,dirty=false;
 	unsigned updates=0;
 };

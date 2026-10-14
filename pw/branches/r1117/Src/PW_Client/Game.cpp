@@ -52930,7 +52930,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   world->GetLinuxDynamicWorldMarkers(markers, 640);
 	if (overlay) {
 		if (!overlay->unitAnimationGraphs) overlay->unitAnimationGraphs=std::make_shared<LinuxAnimationGraphBank>();
-		overlay->unitAnimationGraphs->Begin(world,selectedMapPreview->sceneCatalog,elapsedSeconds);
+		overlay->unitAnimationGraphs->Begin(world,selectedMapPreview->sceneCatalog,world->GetTimeElapsed());
 	}
 	if (localView && camera && camera->valid) {
 		const double focusX = camera->centerX - camera->panX / camera->scale;
@@ -74983,8 +74983,8 @@ int main(int argc, char** argv)
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
-		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu\n",
-			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size());
+		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu\n",
+			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize());
 		overlay.unitAnimationGraphs.reset();
 	}
 	overlay.animatedMapResources.Clear();

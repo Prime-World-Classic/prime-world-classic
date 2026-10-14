@@ -16,6 +16,9 @@
 #include "SmartRandom.h"
 #include "FPUState.h"
 #include "Core/Scheduler.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxAttackPresentation.h"
+#endif
 
 
 
@@ -83,6 +86,7 @@ class PFMinigamePlace;
 #if defined( PW_LINUX_NULL_RENDER )
 struct LinuxDynamicWorldMarker
 {
+	LinuxAttackPresentation attack;
   enum EKind
   {
     KIND_HERO = 1,

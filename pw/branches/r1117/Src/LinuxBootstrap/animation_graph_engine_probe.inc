@@ -128,10 +128,67 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 		check(bank.Size()==128 && !bank.Resolve(unsupported,first) && bank.Size()==128,"live animation ownership has a hard capacity bound");
 	}
 	{
-		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set);
-		const bool ready=idle && move && idle->Advance(0,false) && move->Advance(0,true) &&
+		auto attack=LinuxAnimationGraphPlayback::Create(asset,set);
+		check(attack && attack->Advance(0,false),"attack graph has an initial pose");
+		if (attack) {
+			const int idle=attack->TargetNode();
+			check(attack->BeginAttack(1) && attack->Attacking(),"accepted attack requests an authored attack state");
+			check(attack->Advance(.2,false) && attack->TargetNode()!=idle,"attack request is not overwritten by stationary idle");
+			check(attack->Advance(.5,false) && attack->Attacking(),"attack state survives within its accepted cooldown window");
+			check(attack->Advance(1,false) && !attack->Attacking() && attack->TargetNode()==idle,"attack window returns to authored idle");
+			check(attack->BeginAttack(1) && attack->Advance(1.1,true) && !attack->Attacking(),"movement interrupts the whole-body attack presentation");
+			check(attack->BeginAttack(1),"another accepted attack can start independently");
+			attack->CancelAttack();
+			check(attack->Advance(1.1,false) && !attack->Attacking() && attack->TargetNode()==idle,"cancellation at the same clock restores locomotion");
+			for (double bad : {0.,-1.,61.,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN()})
+				check(!attack->BeginAttack(bad) && !attack->Attacking(),"invalid attack interval preserves the previous graph state");
+		}
+		LinuxAnimationGraphBank bank; int world=0; auto map=std::make_shared<int>(1);
+		NWorld::LinuxDynamicWorldMarker marker; marker.objectId=1; marker.kind=marker.KIND_HERO;
+		marker.attack.sequence=1; marker.attack.abilityObjectId=2; marker.attack.startedAt=0; marker.attack.period=1;
+		bank.Begin(&world,map,0); auto* player=bank.Resolve(asset,marker);
+		check(player && player->Attacking() && bank.attackStarts==1,"live accepted cue starts a unit graph exactly once");
+		bank.Resolve(asset,marker);
+		check(bank.attackStarts==1,"repeated draws cannot replay an accepted attack");
+		marker.attack.cancelled=true; bank.Resolve(asset,marker);
+		check(player && !player->Attacking(),"live cancellation stops the graph at the same world clock");
+		marker.attack.cancelled=false; marker.attack.sequence=2; marker.attack.startedAt=.1;
+		bank.Begin(&world,map,.1); player=bank.Resolve(asset,marker);
+		check(player && player->Attacking() && bank.attackStarts==2,"later accepted cue starts after cancellation");
+		bank.Begin(&world,map,.15); bank.Begin(&world,map,.2); player=bank.Resolve(asset,marker);
+		check(player && !player->Attacking() && bank.attackStarts==2,"cue identity survives quick offscreen graph eviction");
+		bank.Begin(&world,map,.5); bank.Begin(&world,map,.6); player=bank.Resolve(asset,marker);
+		check(player && !player->Attacking() && bank.attackStarts==2,"offscreen eviction never replays an old attack on reentry");
+		for (int bad=0; bad<5; ++bad) {
+			marker.attack.sequence++; marker.attack.startedAt=.6; marker.attack.period=1;
+			if (bad==0) marker.attack.startedAt=.7;
+			if (bad==1) marker.attack.startedAt=std::numeric_limits<double>::quiet_NaN();
+			if (bad==2) marker.attack.period=std::numeric_limits<float>::infinity();
+			if (bad==3) marker.attack.period=0;
+			if (bad==4) marker.moving=true;
+			player=bank.Resolve(asset,marker);
+			check(player && !player->Attacking() && bank.attackStarts==2,"future, malformed and moving attack cues never queue a delayed request");
+		}
+		auto* altered=new NDb::AnimSet(*set); NDb::Ptr<NDb::AnimSet> missing=altered;
+		altered->states[NDb::ANIMSTATES_ATTACK].commonNode="missing";
+		auto unsupported=LinuxAnimationGraphPlayback::Create(asset,missing);
+		check(unsupported && unsupported->Advance(0,false) && !unsupported->BeginAttack(1),"unavailable attack alias preserves supported idle and move playback");
+		LinuxAnimationGraphBank bounded;
+		marker.moving=false; marker.attack.period=1; marker.attack.startedAt=0;
+		for (int i=0; i<129; ++i) {
+			marker.objectId=i; bounded.Begin(&world,map,i*.001); bounded.Resolve(asset,marker);
+		}
+		check(bounded.CueSize()==128 && bounded.Size()<=2 && bounded.attackStarts==128,
+			"brief cue receipts remain bounded independently of heavyweight graph eviction");
+		bounded.Begin(&world,map,1);
+		check(bounded.CueSize()==0,"expired cue receipts release their bounded capacity");
+	}
+	{
+		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set);
+		const bool ready=idle && move && attack && idle->Advance(0,false) && move->Advance(0,true) &&
+			attack->Advance(0,false) && attack->BeginAttack(1) && attack->Advance(.4,false) &&
 			idle->Advance(.4,false) && move->Advance(.4,true);
-		check(ready,"two original poses are ready for renderer integration");
+		check(ready,"three original poses are ready for renderer integration");
 		if (ready) {
 			glPushAttrib(GL_ALL_ATTRIB_BITS); glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
 			GLint mode=0,active=0; glGetIntegerv(GL_MATRIX_MODE,&mode); glGetIntegerv(GL_ACTIVE_TEXTURE,&active);
@@ -152,12 +209,13 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 				check(DrawLinuxHeroMeshPreview(&overlay,&hero,255,255,255,.4,false,&poses,pose),"original skinned mesh accepts graph-owned matrices");
 				std::vector<unsigned char> pixels(256*256*4); glReadPixels(0,0,256,256,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); return pixels;
 			};
-			const auto first=draw(idle.get()),second=draw(move.get()),repeated=draw(idle.get());
+			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),repeated=draw(idle.get());
 			size_t visible=0; for (size_t i=0; i<first.size(); i+=4) if (first[i] || first[i+1] || first[i+2]) ++visible;
 			fprintf(stdout,"Animation graph pixels: visible=%zu different=%d repeated=%d builds=%zu hits=%zu\n",visible,first!=second,first==repeated,poses.builds,poses.hits);
 			check(visible>1000,"original Plane geometry produces visible pixels");
 			check(first!=second && first==repeated,"independent idle/move graph poses survive actual drawing and warm pose-cache reuse");
-			check(poses.builds==2 && poses.hits==1,"pose cache separates shared-model unit graphs at the same timestamp");
+			check(attacking!=first && attacking!=second,"accepted attack produces a distinct original skinned pose on screen");
+			check(poses.builds==3 && poses.hits==1,"pose cache separates shared-model unit graphs at the same timestamp");
 			for (const auto& texture : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&texture.second.texture);
 			glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(mode);
 			glPopClientAttrib(); glPopAttrib(); glActiveTexture(active);
