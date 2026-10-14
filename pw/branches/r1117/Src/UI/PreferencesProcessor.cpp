@@ -413,6 +413,7 @@ static const AdvancedVarDesc s_advancedVars[] =
   { "adv_dbl_click_selfcast_time", "dbl_click_selfcast_time", ADV_SLIDER, 0.15f, 0.5f, 8, L"%.2f", "adv_dbl_click_selfcast", L"\u0412\u0440\u0435\u043c\u044f \u0434\u0432\u043e\u0439\u043d\u043e\u0433\u043e \u043d\u0430\u0436\u0430\u0442\u0438\u044f, \u0441", L"Double press time, s" },
   { "adv_hdr_interface", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0418\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441", L"Interface" },
   { "adv_team_portraits_scale", "team_portraits_scale", ADV_SLIDER, 50.0f, 200.0f, 16, L"%.0f%%", "", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u043e\u0432 \u043a\u043e\u043c\u0430\u043d\u0434", L"Team portraits size" },
+  { "adv_cursor_scale", "cursor_scale", ADV_SLIDER, 50.0f, 300.0f, 26, L"%.0f%%", "", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u0443\u0440\u0441\u043e\u0440\u0430", L"Cursor size" },
   { "adv_page_comm", "", ADV_PAGE, 1.0f, 0.0f, 0, L"", "", L"", L"" },
   { "adv_hdr_ping_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b", L"Signals" },
   { "adv_ping_middle_mouse", "ping_middle_mouse", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b \u043d\u0430 \u0441\u0440\u0435\u0434\u043d\u044e\u044e \u043a\u043d\u043e\u043f\u043a\u0443 \u043c\u044b\u0448\u0438", L"Signals on the middle mouse button" },
