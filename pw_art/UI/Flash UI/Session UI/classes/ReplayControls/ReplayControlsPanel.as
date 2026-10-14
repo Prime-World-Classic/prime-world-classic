@@ -42,6 +42,9 @@
 		private static const BAR_X:Number = 62;
 		private static const BAR_Y:Number = 46;
 		private static const BAR_H:Number = 6;
+		private static const TRACK_PAD:Number = 2; // насколько фон шкалы больше полосы с каждой стороны
+		private static const HIT_H:Number = BAR_H + 16; // тёмная полоса клика по шкале
+		private static const HIT_PAD:Number = HIT_H / 2 - BAR_H / 2; // выступ за концы шкалы: скругления концентричны
 		private static const TEXT_SIZE:int = 13;
 
 		private static const PANEL_COLOR:uint = 0x000000;
@@ -160,13 +163,11 @@
 			panel.addChild(speedText);
 
 			// Шкала сессии
-			timeText = CreateText(TEXT_SIZE, 0xFFFFFF, BAR_X - 10, TextFormatAlign.RIGHT);
-			timeText.x = 4;
+			timeText = CreateText(TEXT_SIZE, 0xFFFFFF, BAR_X - 10, TextFormatAlign.LEFT);
 			timeText.y = BAR_Y + BAR_H / 2 - timeText.height / 2;
 			panel.addChild(timeText);
 
 			totalText = CreateText(TEXT_SIZE, 0xC8C8C8, BAR_X - 10, TextFormatAlign.LEFT);
-			totalText.x = PANEL_W - BAR_X + 6;
 			totalText.y = timeText.y;
 			panel.addChild(totalText);
 
@@ -177,7 +178,9 @@
 			timeline.y = BAR_Y - 8;
 			var hit:Shape = new Shape(); // область клика выше и ниже тонкой полосы (тёмная полоса под шкалой)
 			hit.graphics.beginFill(0x000000, HIT_ALPHA);
-			hit.graphics.drawRect(0, 0, BarWidth(), BAR_H + 16);
+			// скруглена и выступает за концы шкалы так, что её скругления концентричны скруглениям фона шкалы:
+			// тёмная кайма вокруг шкалы одинаковой ширины
+			hit.graphics.drawRoundRect(-HIT_PAD, 0, BarWidth() + HIT_PAD * 2, HIT_H, HIT_H, HIT_H);
 			hit.graphics.endFill();
 			timeline.addChild(hit);
 			barShape = new Shape();
@@ -305,6 +308,13 @@
 			return text;
 		}
 
+		// Движок не выравнивает текст по центру поля: поле по ширине текста и центр вручную
+		private static function CenterText(text:TextField, centerX:Number):void
+		{
+			text.width = Math.ceil(text.textWidth) + 4;
+			text.x = Math.round(centerX - text.width / 2);
+		}
+
 		private static function BarWidth():Number
 		{
 			return PANEL_W - BAR_X * 2;
@@ -353,15 +363,20 @@
 			var width:Number = BarWidth();
 			var progress:Number = total > 0 ? Math.min(1, Math.max(0, time / total)) : 0;
 
+			// время — по центру полей слева и справа от шкалы
+			CenterText(timeText, (BAR_X - HIT_PAD) / 2);
+			CenterText(totalText, PANEL_W - (BAR_X - HIT_PAD) / 2);
+
+			// Фон шкалы шире и выше полосы на TRACK_PAD: скруглённая полоса лежит в нём ровной каймой
 			var g:* = barShape.graphics;
 			g.clear();
 			g.beginFill(BAR_COLOR, 0.9);
-			g.drawRect(0, 0, width, BAR_H);
+			g.drawRoundRect(-TRACK_PAD, -TRACK_PAD, width + TRACK_PAD * 2, BAR_H + TRACK_PAD * 2, BAR_H + TRACK_PAD * 2, BAR_H + TRACK_PAD * 2);
 			g.endFill();
 			if (progress > 0)
 			{
 				g.beginFill(PROGRESS_COLOR, 1);
-				g.drawRect(0, 0, Math.max(1, Math.round(width * progress)), BAR_H);
+				g.drawRoundRect(0, 0, Math.max(BAR_H, Math.round(width * progress)), BAR_H, BAR_H, BAR_H);
 				g.endFill();
 			}
 			// Куда идёт перемотка
@@ -375,7 +390,7 @@
 			// Ползунок
 			var knobX:Number = Math.round(width * progress);
 			g.beginFill(0xFFFFFF, 1);
-			g.drawRect(Math.max(0, Math.min(width - 4, knobX - 2)), -4, 4, BAR_H + 8);
+			g.drawRoundRect(Math.max(0, Math.min(width - 4, knobX - 2)), -4, 4, BAR_H + 8, 4, 4);
 			g.endFill();
 		}
 

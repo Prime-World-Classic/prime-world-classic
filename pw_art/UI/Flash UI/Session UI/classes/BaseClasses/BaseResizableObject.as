@@ -33,6 +33,12 @@
 		// Дополнительное увеличение размера (не позиции): панели портретов в бою.
 		protected var sizeBoost:Number = 1;
 
+		// увеличение сверх масштаба под разрешение (размер портретов команд); 1 = исходный
+		public function get SizeBoost():Number
+		{
+			return sizeBoost;
+		}
+
 		public function SetSizeBoost(value:Number):void
 		{
 			if (isNaN(value) || value <= 0 || value == sizeBoost)
