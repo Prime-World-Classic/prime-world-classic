@@ -24,6 +24,22 @@
   здесь только требования к коду (не тащить `HWND` в `IRenderBackend`).
 - Ветка — **`nvrhi`** (от `client-modern`).
 
+### Очередь работ (зафиксирована 2026-10-14)
+
+Шаги 1–4 не зависят от этапа 3 и закрывают хвосты этапа 2/0; 5–8 готовят
+этап 3. Каждый — отдельный коммит со своим гейтом (сборка + E2E + скриншот-дифф).
+
+| # | шаг | почему здесь |
+|---|---|---|
+| 1 | вендоринг `Vendor/NVRHI` + `Vendor/SDL3` | согласовано; в рантайме ничего не меняет, развязывает этап 3 |
+| 2 | дамп счётчиков `Statistics` при выходе + прогон | закрывает хвост этапа 0, даёт настоящие числа для кэша пайплайнов (§1.2.1) |
+| 3 | инстансинг, шаг 1: `DrawIndexedInstanced` в seam, D3D9-трюк внутрь бэкенда | без этого этап 3 начнётся с переделки draw-пути (§2.10) |
+| 4 | caps: `BackendSystemInfo` + дамп разрешённых пинов (эталон) | эталон надо снимать, пока D3D9 жив (§2.5) |
+| 5 | генератор `MaterialSpec` + `_sm6_compat.hlsl` + починка 3 DXC-провалов | этап 3 добавляет пины; править 4,3 тыс. строк generated-файла руками нельзя (§2.6) |
+| 6 | upload-кольцо (`Lock`/`Unlock` → staging-кольцо) | остаток пункта «пулы» в этапе 2 |
+| 7 | кэш пайплайнов по ключу (`sortId` + пара VS/PS) | делается уже по цифрам из шага 2 |
+| 8 | `ConstBlock` (c0..c255 → один буфер) | трение §2.7, обязательна перед Vulkan-бэкендом |
+
 ### Гейт качества (замена «золотых unitstats»)
 
 Рендер-этапы ломают байтовый паритет по определению, поэтому:
@@ -759,6 +775,39 @@ ConstStore: VS c0..c234 (235 reg, 6342864 writes, 835944 changed)
 Вариант «развернуть инстансы в N отдельных draw» отклоняем: именно он
 съедает выигрыш батчинга, ради которого всё и делалось.
 
+**Замер (2026-10-14): геометрия в батч-пути уже индексная.** `Primitive::Bind()`
+биндит `pIndexBuffer` + декларацию + поток 0, рисуется через `DrawIndexed`
+(`DipDescriptor`: `startIndex/primitiveCount/baseVertexIndex`). Значит
+D3D9-трюк `INDEXEDDATA|N` = «повторить тот же index buffer N раз» = **1:1**
+ложится на `drawIndexedInstanced` с тем же IB: пункт 2 выше про
+`BatchChunk`/`StaticMesh` **уже выполнен, формат данных менять не нужно.**
+
+**Решение (2026-10-14) — два шага, не пересекающихся по времени.**
+- **Шаг 1 (сейчас, только C++):** в seam кладётся
+  `DrawIndexedInstanced(type, …, instanceCount)`, а весь D3D9-механизм
+  (`SetStreamSourceFreq`, `s_pInstanceIndexVB`, подмена декларации
+  `s_instancedVDecl`) прячется **внутрь `D3D9Backend`** как реализация этого
+  метода; `EnableHardwareInstancing(n)` → `SetInstanceCount(n)`. Места вызова:
+  `batch.cpp`, `ParticleFX.cpp` ×2, `InstancedMeshResource.cpp`. Попутно уходит
+  скрытая мина: `BindVertexBuffer()` сдвигает номера потоков, когда инстансинг
+  включён (`if(instancingEnabled && streamNumber) ++streamNumber`) — один и тот
+  же логический поток живёт на разных слотах в зависимости от состояния.
+- **Шаг 2 (вместе с шейдерным пайплайном этапа 3):** HLSL берёт индекс из
+  `SV_InstanceID` вместо `int InstanceId : BLENDINDICES0`; ветка `NewInstancing`
+  (`(InstancingValue == PRESENT) && (SkeletalMeshPinValue == NONE)`) для этого
+  уже есть в `BasicMaterial.hlsl`/`ShadowMaterial.hlsl`.
+
+⚠️ **Ограничение, которого в первоначальной оценке не было:**
+`instanceData[MAX_INSTANCES_COUNT] : register(INSTANCE_DATA /*c20*/)` — данные
+инстансов лежат в **константных регистрах**, и шейдер индексирует их значением
+индекса инстанса (`instanceData[In.InstanceId]`). Vulkan запрещает динамически
+индексовать uniform-буфер не-униформным индексом (валидация это ловит), поэтому
+на этапе 3 `instanceData[]` обязан переехать в **storage/structured buffer**
+(DX12 — SRV, Vulkan — SSBO). На D3D9 это недоступно (SM3 не знает structured
+buffer) → форма `instanceData` становится зависящей от бэкенда; то же касается
+`PFX_MAX_INSTANCES 47` у партиклов. `MAX_INSTANCES_COUNT = 19` пока сохраняем
+(батчинг не меняется), лимит поднимаем позже отдельной задачей.
+
 ### 2.11 Стоимость итерации (2026-10-13)
 
 Две правки, которые надо держать, иначе каждый шаг этапа 2 стоит 30–40 минут:
@@ -882,6 +931,33 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
 пользовательские конфиги не начали давать другие пины. Отдельно проверить:
 `Session.ROOT_*_shader3compatibilityError.txt` — текст про нес-support SM3.0,
 тоже уходит.
+
+**Замер (2026-10-14), меняющий объём работы.** Боевой `Bin/config.txt`
+(2036 строк) **не использует ни одного ключа `D3DCAPS9`**: ноль вхождений
+`Caps/Caps2/DevCaps/RasterCaps/Max*/PixelShaderVersion/…`. Из «требований» в
+файле живут только `OS`, `CpuSpeed`, `Memory`, `VideoMemory`, `DirectX`,
+`DiskSpace`, `DisplayVendor` + блоки по ID устройства (`0xac0c = …`). При этом
+caps нужен **вне** матчера, в двух местах: `sysInfo.MaxVertexShaderConst`
+(`ConfigManager` → `ParticleFX.cpp:498`, из него считается лимит партиклов) и
+`HasD16T/HasD24X/HasDSM` (гейт аппаратных карт теней). Плюс `ConfigManager`
+подаёт в матчер **зашитые** `1024 / 64 / 1700` (RAM / VRAM / CPU) — «требования
+по железу» сейчас и так фиктивные.
+
+**Решение (2026-10-14): `D3DCAPS9` целиком не синтезировать.**
+1. матчер и словарь его ключей не трогать: мёртвые ключи остаются мёртвыми,
+   правка матчера = риск по пинам без выигрыша;
+2. в seam — маленький `BackendSystemInfo`: `vendorID`/`deviceID`/`description`
+   адаптера, `MaxVertexShaderConst`, флаг поддержки depth/stencil-текстур,
+   версии шейдерных моделей. Всё это Vulkan отдаёт напрямую
+   (`VkPhysicalDeviceProperties/Features`); PCI-ID в Vulkan совпадают с
+   D3D9-`VendorID`, поэтому строки вида `DisplayVendor = 0x10de` работают без
+   словаря-переводчика;
+3. `MaxVertexShaderConst` синтезировать **256** (наш ConstBlock и есть
+   c0..c255) — иначе партиклы молча поменяют лимит;
+4. зашитые `1024/64/1700` на время миграции не трогать: их «исправление» само
+   по себе меняет результат матчинга = лишний источник дрейфа пинов;
+5. регресс: dev-var, печатающий разрешённый набор пинов; эталон снимается на
+   D3D9 и диффится после этапа 3 — иначе «пины не уехали» непроверяемо.
 
 ### 2.6 Шейдеры
 
@@ -1089,6 +1165,46 @@ MaxTextureBlendStages/MaxSimultaneousTextures/PresentationIntervals/CursorCaps/
   возможно, но в Vulkan-константном буфере требует другой раскладки.
   См. §3.
 
+**Компилятор: DXC — единый для обоих новых бэкендов (решение 2026-10-14).**
+Замер на `dxc 1.9.2609` (`tools/spirv_probe/vendor/dxc`, качается
+`fetch_dxc.sh`):
+
+| профиль | вывод |
+|---|---|
+| `-spirv` | SPIR-V (magic `0x07230203`) |
+| `-T vs_5_0` / `ps_5_0` | **DXBC** (magic `DXBC`) — DX12 принимает SM5.x DXBC |
+| `-T vs_6_0` | DXIL-контейнер (тот же magic `DXBC`) |
+| `-T vs_3_0` | **ошибка `invalid profile vs_3_0`** |
+
+Следствия:
+1. Vulkan — `-spirv`; DX12 — `-T vs_5_0/ps_5_0` (DXBC SM5.1). DXIL (`vs_6_0`)
+   не берём: он требует валидации/подписи `dxil.dll` в рантайме, тогда как
+   SM5.x DXBC DX12 принимает без дополнительных зависимостей; SM6-фичи
+   (wave-операции, bind arrays) клиенту не нужны.
+2. **D3D9-путь DXC не покрывается** (SM3 недостижим): он остаётся на
+   `D3DCompile` (`vs_3_0/ps_3_0`), куда генератор уже перенесён (`006e8d356`),
+   и живёт до этапа 4. В генераторе значит два компилятора — легаси (SM3 DXBC
+   для D3D9) и DXC (SPIR-V + DXBC SM5 для новых бэкендов), **из одного и того
+   же `.hlsl`**.
+3. Прослойка SM3→SM6 из одноразового `shim.py` (спайк A) переезжает в дерево
+   как include `Shaders/_sm6_compat.hlsl` с guard'ами: fxc/SM3-путь не должен
+   её видеть, иначе легаси-контейнер перестанет собираться.
+4. Три DXC-провала спайка A (`UIFlashMaterial` — все `return` внутри `#if`,
+   `TerrainElementMaterial` — индекс в массиве сэмплеров) чинятся **в
+   исходниках до этапа 3**: они нужны обоим DXC-профилям, а `fxc` их и так
+   терпел.
+5. `.shd`-контейнер — один, с несколькими блобами (SM3 DXBC / DXBC SM5 /
+   SPIR-V) и выбором по бэкенду; `OnlineShaders/` (`.vsb`/`.psb`) получает тот
+   же набор, но выбор по имени.
+6. **Рантайм-компиляция не мёртвая — её надо убирать явно:**
+   `DebugRenderer::Initialize()` (зовётся безусловно, `PFRenderInterface.cpp:470`)
+   компилирует **8 шейдеров** (`Data/deprecated_shaders/{debug,debug3d,
+   debug_points2d,debug_points3d}_shader.hlsl` × VS/PS) через
+   `D3DXCompileShader`/`vs_3_0` (`shadercompiler.cpp:135`). DXC SM3 не умеет,
+   поэтому путь предкомпилируется в `OnlineShaders/` (механизм
+   `ImmRenderer::Get{V,P}Shader(name)` уже есть) и удаляется на этапе 3/4 —
+   вместе с последним рантайм-импортом D3DX в шейдерном пути.
+
 ### 2.7 `GlobalMasks.h` — главный источник трения
 
 Контракт HLSL↔C++ на абсолютных регистрах: `WORLD c0`, `VIEW c4`,
@@ -1147,9 +1263,14 @@ color-correct начинают получать настоящие веса) —
       `Vendor/BuildUtils/CompileShaders.cmd` (см. §2.6). Не входит в
       CMake-граф клиента, Win32/D3DX9 — переносить на `D3DCompile`/SM5/DXC
       нужно в рамках этапа 3.
-- [ ] **Генератор `MaterialSpec.{h,cpp}` из `MaterialSpec.xml` — отсутствует.**
-      Нужен, только если меняется набор пинов материала (например, убрать
-      `R2VBPinValue`). Пока пины не меняются — не блокер.
+- [ ] **Генератор `MaterialSpec.{h,cpp}` из `MaterialSpec.xml` — отсутствует.
+      Решение (2026-10-14): писать до этапа 3** (1–2 смены, Python по XML).
+      `MaterialSpec.h` — 4353 строки с шапкой «GENERATED AUTOMATICALLY, DON'T
+      CHANGE», источник — `Shaders/MaterialSpec.xml` (43 КБ); в файле уже есть
+      рукописный блок (`NI_DB_LAYOUT_ASSERT` с комментарием «генератора в дереве
+      нет — сохраните его при перегенерации»), т.е. ручное правление
+      генерированного файла уже произошло. Этап 3 всё равно добавляет пины
+      (бэкенд, инстансинг) → без генератора это правка 4,3 тыс. строк руками.
 - [x] **`tools/nvrhi_probe/` — сделано (2026-10-12).** NVRHI `6b96fb03`
       собирается cl 14.44 под Wine, C++17, статика, **`/MT`** — без ошибок,
       линкуется с приложением. Найденные при этом факты API (важнее самого
@@ -1195,12 +1316,20 @@ color-correct начинают получать настоящие веса) —
       в `tools/nvrhi_probe/README.md`.
       **Оговорка:** растер CPU → на этом стенде проверяется только
       *корректность*, но не производительность.
-- [ ] Зафиксировать: `d3dcompiler_47` vs DXC для SPIR-V; размер прироста;
-      какие DXGI/Vulkan-зависимости появляются.
+- [x] **Компилятор зафиксирован (2026-10-14): DXC — единый для обоих новых
+      бэкендов** (`-spirv` для Vulkan, `-T vs_5_0/ps_5_0` → DXBC SM5.1 для
+      DX12; DXIL не берём из-за `dxil.dll`). `d3dcompiler_47` остаётся только
+      за легаси-D3D9-генерацией (SM3) до этапа 4. DXC — **build-time**
+      инструмент, в `Bin/` не кладётся. Замер профилей и следствия — §2.6.
 - [x] Счётчики уникальных VS/PS/пар переведены на `USE_RENDER_SHADER_STATS`
       и доступны в shipping по `-DPW_RENDER_SHADER_STATS` (§1.2).
 - [ ] **Снять реальные цифры** (`numShaderPairTotal`, `numVSUniq`) в бою на
-      tiny10 + число уникальных `sortId`.
+      tiny10 + число уникальных `sortId`. Уточнение (2026-10-14): счётчики уже
+      компилируются во **всех не-shipping** сборках (`Render/stdafx.h`:
+      `#if !defined(_SHIPPING) || defined(PW_RENDER_SHADER_STATS)`), это
+      `NDebug::DebugVar` в группе `Statistics` — не хватает только способа их
+      прочитать: дамп группы при выходе (½ смены) либо прогон с
+      `-DPW_RENDER_SHADER_STATS`.
 
 ### Этап 1. Зачистка: удалить мёртвое и D3D9-утечки (2–3 смены)
 
@@ -1453,8 +1582,12 @@ color-correct начинают получать настоящие веса) —
       `SDL_WINDOW_BORDERLESS`; DX12-путь позже берёт HWND из
       `SDL_PROP_WINDOW_WIN32_HWND_POINTER`. Ввод остаётся на существующем
       `WndProc` (subclass), `SDL_main` не используется.
-- [ ] Шейдеры: `D3DCompile` → DXBC `vs_5_0/ps_5_0` (DX12) и DXC → SPIR-V
-      (Vulkan); новый `.shd`-формат (этап 0); `ID3DXInclude` → `ID3DInclude`.
+- [ ] Шейдеры: **DXC как единый компилятор обеих целей** (решение 2026-10-14):
+      `-spirv` (Vulkan) и `-T vs_5_0/ps_5_0` → DXBC SM5.1 (DX12); легаси
+      `D3DCompile` остаётся только за SM3/D3D9 до этапа 4. Новый `.shd`-формат
+      с несколькими блобами; `Shaders/_sm6_compat.hlsl` вместо `shim.py`;
+      предкомпиляция `deprecated_shaders/*` в `OnlineShaders/` и удаление
+      рантайм-компиляции. Замер профилей и следствия — §2.6.
 - [ ] Тени: `D24S8`/`D32F` + depth SRV вместо DF16/DF24/INTZ; ESM без Fetch4;
       NULL-RT → color-write 0. **Скриншот-дифф с ожиданием дрейфа** —
       зафиксировать новые эталоны.
@@ -1466,9 +1599,11 @@ color-correct начинают получать настоящие веса) —
       UP-вызовы → временные буферы; `StretchRect` →
       `copyTexture`/fullscreen-blit; `GetRenderTargetData` → `copyTextureRegion`
       в staging.
-- [ ] `configdatabase`: синтез `D3DCAPS9`-совместимой структуры (§2.5) +
-      прогон `config.txt` через новый матчер (регресс: пины не должны
-      «уехать»).
+- [ ] `configdatabase`: **`D3DCAPS9` целиком не синтезируется** (решение
+      2026-10-14, §2.5): в seam — `BackendSystemInfo` (идентичность адаптера,
+      `MaxVertexShaderConst=256`, поддержка depth-текстур, версии шейдерных
+      моделей), матчер и `config.txt` не меняются. Регресс — дифф дампа
+      разрешённых пинов (эталон снимается на D3D9).
 - [x] **Окно: `Renderer(HWND)` перестаёт принимать HWND** (закрыто 2026-10-14).
       `Render/renderwindow.h` (`NativeWindow` + `MakeNativeWindow`),
       `Renderer` хранит `NativeWindow`, `IRenderBackend::Present` — тоже
