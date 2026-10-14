@@ -843,8 +843,21 @@
 				return;
 			}
 			command = String(OptionsWindow.keyCommands[index]);
-			// smart chat commands are bound without a bind section (ShortcutsContainer.SendRebinds)
+			// smart chat commands are bound without a bind section, the others in adventure_screen (ShortcutsContainer.SendRebinds)
+			var isSmartChat:Boolean = command.search("cmd_smart_chat") != -1;
+			if (!isSmartChat)
+			{
+				FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "bindsection adventure_screen");
+			}
 			FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "rebind " + command + " " + item.GetRebindString());
+			if (command == "voice_overlay_unlock_on")
+			{
+				FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "rebind !voice_overlay_unlock_off " + item.GetRebindString());
+			}
+			if (!isSmartChat)
+			{
+				FSCommands.Send(FSCommands.PREFERENCE_SHORTCUT_REBIND, "bindsection");
+			}
 			FSCommands.Send(FSCommands.PREFERENCE_SHORTCUTS_APPLY);
 			if (OptionsWindow.bindTexts == null)
 			{

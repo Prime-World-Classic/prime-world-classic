@@ -172,7 +172,7 @@
 				CreateBindItem("self_cast_on");
 				CreateBindItem("cmd_portal");
 				CreateBindItem("actionbar_lock_off");
-				CreateBindItem("voice_overlay_unlock_on");
+				// voice_overlay_unlock_on - on the "Communication" page, "Voice chat" (PreferencesProcessor.cpp, adv_key_voice_overlay)
 				
 				scrollableHight += verticalSpaceHeaderPrev;
 				
