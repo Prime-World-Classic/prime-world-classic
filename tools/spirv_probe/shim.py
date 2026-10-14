@@ -26,7 +26,7 @@ SamplerState g_smp;
 """
 
 SAMPLER_DECL = re.compile(
-    r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(?::\s*register\s*\([^)]*\))?\s*;")
+    r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?\s*(?::\s*register\s*\([^)]*\))?\s*;")
 REG_ANY = re.compile(r"\s*:\s*register\s*\([^)]*\)")
 
 _TEXCOORD_CTR = [200]
@@ -37,22 +37,24 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
     # 1. combined-сэмплеры -> ресурс; сам SamplerState один общий
     def sampler_sub(m):
         kind, name = m.group(1), m.group(2)
+        arr = m.group(3) or ""   # sampler NAME[4] : register(...) - массив ресурсов
         if kind == "samplerCUBE":
             notes.append("samplerCUBE %s" % name)
-            return "TextureCube %s;" % name
+            return "TextureCube %s%s;" % (name, arr)
         if kind == "sampler_state":
             notes.append("sampler_state %s" % name)
             return "SamplerState %s;" % name
         notes.append("%s %s" % (kind, name))
-        return "Texture2D %s;" % name
+        return "Texture2D %s%s;" % (name, arr)
     src, n_samp = SAMPLER_DECL.subn(sampler_sub, src)
 
     # 2. register(...) во всех объявлениях — снимаем совсем
     src, n_reg = REG_ANY.subn("", src)
 
     # 3. выборки
-    src, n_t2 = re.subn(r"\btex2D\s*\(\s*(\w+)\s*,", r"\1.Sample(g_smp,", src)
-    src, n_cube = re.subn(r"\btexCUBE\s*\(\s*(\w+)\s*,", r"\1.Sample(g_smp,", src)
+    # operand may be an array element: tex2D( diffuseMapSampler[1], uv )
+    src, n_t2 = re.subn(r"\btex2D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
+    src, n_cube = re.subn(r"\btexCUBE\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
     # tex2Dlod( t, float4( uv2, 0, 0 ) ) -> t.SampleLevel(g_smp, uv2, 0)
     src, n_lod3 = re.subn(
         r"\btex2Dlod\s*\(\s*(\w+)\s*,\s*float4\s*\(\s*([^,()]+)\s*,\s*[^,()]+\s*,\s*[^,()]+\s*\)\s*\)",

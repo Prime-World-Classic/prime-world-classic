@@ -101,6 +101,12 @@ float2 PrepareUV( float2 vertexPosition, float2 defaultUV )
     #endif
   #endif
 #endif
+
+  // Fallback: with some PIN combinations no branch above survives (MorphShapes
+  // without UseUV, or no diffuse map at all). fxc tolerated the missing return,
+  // DXC errors out. defaultUV is the identity transform, i.e. what the callers
+  // expect when there is nothing to remap.
+  return defaultUV;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

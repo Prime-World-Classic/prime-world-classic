@@ -184,11 +184,18 @@ PS_OUT MainPass_PSMain( VS_OUT In, float4 PixelPos : VPOS )
   output.color.a = diffuseMap.a;
 #else
   // combine texture layers
-  for (int i = 1; i <= TextureCountPinValue; i++)
-  {
-    half4 layer = tex2D(diffuseMapSampler[i], In.UV.zw);
-    diffuseMap += layer * mask[i];
-  }
+  // TextureCountPinValue is a compile-time PIN, but the loop index subscripted a
+  // sampler from an array: fxc (SM3) folds it away, DXC/SM6 forbids dynamic
+  // resource indices. Unrolled over the pin value - same summation order.
+#if TextureCountPinValue >= 1
+  diffuseMap += tex2D(diffuseMapSampler[1], In.UV.zw) * mask[1];
+#endif
+#if TextureCountPinValue >= 2
+  diffuseMap += tex2D(diffuseMapSampler[2], In.UV.zw) * mask[2];
+#endif
+#if TextureCountPinValue >= 3
+  diffuseMap += tex2D(diffuseMapSampler[3], In.UV.zw) * mask[3];
+#endif
 
   // diffuse lighting
   half4 outputColor = In.Color * diffuseMap;
