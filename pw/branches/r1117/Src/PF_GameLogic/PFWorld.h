@@ -89,6 +89,7 @@ struct LinuxDynamicWorldMarker
 {
 	LinuxAttackPresentation attack;
 	LinuxDeathPresentation death;
+	float moveSpeed=0; ///< Current simulation speed, already including original movement scaling.
   enum EKind
   {
     KIND_HERO = 1,

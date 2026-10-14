@@ -790,6 +790,7 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
     if (PFBaseMovingUnit* movingUnit = dynamic_cast<PFBaseMovingUnit*>(unit))
     {
       marker.moving = movingUnit->IsMoving();
+			marker.moveSpeed=movingUnit->GetUnitSpeed();
       const CVec2 moveDir = movingUnit->GetMoveDirection();
       if (moveDir.x * moveDir.x + moveDir.y * moveDir.y > 0.0001f)
       {

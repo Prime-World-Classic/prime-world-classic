@@ -1,4 +1,5 @@
 #include "Scene/AGHelpers.h"
+#include "animation_graph_locomotion_probe.inc"
 
 /** Shipped graph regression: Plane lists attack1 first, but its authored default is idle. */
 static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& environment)
@@ -8,6 +9,7 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 		++checks; if (!good) ++failures;
 		fprintf(stdout,"Animation graph probe: %s result=%s\n",label,good ? "PASS" : "FAIL");
 	};
+	CheckLinuxGraphLocomotion(check);
 	{
 		// Existing original test doubles record the exact integer sequence IDs sent to the blender.
 		test::AnimationDataHolder data;
@@ -68,6 +70,39 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 				std::memcmp(held.data(),player->Matrices().data(),held.size()*sizeof(Matrix43))==0,"invalid clock preserves the last good pose");
 	}
 	check(!LinuxAnimationGraphPlayback::Create(LinuxHeroSceneAssetPreview{},set),"unprepared asset cannot reach original graph code");
+	{
+		auto normal=LinuxAnimationGraphPlayback::Create(asset,set),fast=LinuxAnimationGraphPlayback::Create(asset,set);
+		check(normal && fast && normal->SetMoveSpeed(5) && fast->SetMoveSpeed(10),"independent original Plane graphs admit different world speeds");
+		if (normal && fast) {
+			for (int i=0; i<=6; ++i) { normal->Advance(i*.1,true); fast->Advance(i*.1,true); }
+			check(std::memcmp(normal->Matrices().data(),fast->Matrices().data(),normal->Matrices().size()*sizeof(Matrix43))!=0,
+				"original Plane locomotion pose reflects independent movement speeds");
+			check(fast->SetMoveSpeed(0) && fast->Advance(.7,true),"zero speed pauses an already-entered locomotion node");
+			const auto stopped=fast->Matrices();
+			check(fast->Advance(.8,true) && std::memcmp(stopped.data(),fast->Matrices().data(),stopped.size()*sizeof(Matrix43))==0,
+				"zero world speed holds the current original locomotion pose");
+			check(fast->SetMoveSpeed(5) && fast->Advance(.9,true) &&
+				std::memcmp(stopped.data(),fast->Matrices().data(),stopped.size()*sizeof(Matrix43))!=0,
+				"original locomotion resumes after a zero speed interval");
+		}
+	}
+	{
+		LinuxAnimationGraphBank bank; int world=0; auto map=std::make_shared<int>(1);
+		NWorld::LinuxDynamicWorldMarker a; a.objectId=1; a.kind=a.KIND_HERO; a.moving=true; a.moveSpeed=5;
+		auto b=a; b.objectId=2; b.moveSpeed=10;
+		LinuxAnimationGraphPlayback *first=nullptr,*second=nullptr;
+		for (int i=0; i<=6; ++i) { bank.Begin(&world,map,i*.1); first=bank.Resolve(asset,a); second=bank.Resolve(asset,b); }
+		check(first && second && first!=second && bank.failed==0 &&
+			std::memcmp(first->Matrices().data(),second->Matrices().data(),first->Matrices().size()*sizeof(Matrix43))!=0,
+			"live unit cache applies each marker's actual movement speed before sampling");
+		const auto before=first ? first->Updates() : 0;
+		bank.Resolve(asset,a);
+		check(first && first->Updates()==before,"repeated world speed cannot advance a same-clock pose twice");
+		a.moveSpeed=std::numeric_limits<float>::infinity();
+		check(!bank.Resolve(asset,a) && first && first->Updates()==before,"invalid live movement speed never reaches graph update");
+		a.moveSpeed=2.5f; bank.Begin(&world,map,.7);
+		check(bank.Resolve(asset,a)==first,"valid later movement speed recovers the same owned graph");
+	}
 	check(sizeof(DiInt32)==sizeof(int) && sizeof(DiUInt32)==4 && sizeof(DiBool)==4,"native graph keeps the original 32-bit integer contract");
 	for (int malformed=0; malformed<5; ++malformed) {
 		auto* altered=new NDb::AnimSet(*set);
@@ -270,10 +305,12 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 	}
 	{
 		auto idle=LinuxAnimationGraphPlayback::Create(asset,set),move=LinuxAnimationGraphPlayback::Create(asset,set),attack=LinuxAnimationGraphPlayback::Create(asset,set),death=LinuxAnimationGraphPlayback::Create(asset,set);
-		const bool ready=idle && move && attack && death && death->Advance(0,false) && death->BeginDeath() && death->Advance(.4,false) && idle->Advance(0,false) && move->Advance(0,true) &&
+		auto fast=LinuxAnimationGraphPlayback::Create(asset,set);
+		const bool ready=idle && move && fast && attack && death && fast->SetMoveSpeed(10) && fast->Advance(0,true) && fast->Advance(.4,true) &&
+			move->SetMoveSpeed(5) && death->Advance(0,false) && death->BeginDeath() && death->Advance(.4,false) && idle->Advance(0,false) && move->Advance(0,true) &&
 			attack->Advance(0,false) && attack->BeginAttack(1) && attack->Advance(.4,false) &&
 			idle->Advance(.4,false) && move->Advance(.4,true);
-		check(ready,"three original poses are ready for renderer integration");
+		check(ready,"original idle movement scaled movement attack and death poses are ready for rendering");
 		if (ready) {
 			glPushAttrib(GL_ALL_ATTRIB_BITS); glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
 			GLint mode=0,active=0; glGetIntegerv(GL_MATRIX_MODE,&mode); glGetIntegerv(GL_ACTIVE_TEXTURE,&active);
@@ -296,15 +333,16 @@ static bool RunLinuxAnimationGraphEngineProbe(const LinuxClientEnvironment& envi
 				glPopMatrix();
 				std::vector<unsigned char> pixels(256*256*4); glReadPixels(0,0,256,256,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); return pixels;
 			};
-			const auto first=draw(idle.get()),second=draw(move.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),dying=draw(death.get()),repeated=draw(idle.get());
+			const auto first=draw(idle.get()),second=draw(move.get()),faster=draw(fast.get()),attacking=draw(attack.get()),turned=draw(attack.get(),90),dying=draw(death.get()),repeated=draw(idle.get());
 			size_t visible=0; for (size_t i=0; i<first.size(); i+=4) if (first[i] || first[i+1] || first[i+2]) ++visible;
 			fprintf(stdout,"Animation graph pixels: visible=%zu different=%d repeated=%d builds=%zu hits=%zu\n",visible,first!=second,first==repeated,poses.builds,poses.hits);
 			check(visible>1000,"original Plane geometry produces visible pixels");
 			check(first!=second && first==repeated,"independent idle/move graph poses survive actual drawing and warm pose-cache reuse");
+			check(faster!=second && faster!=first,"different actual movement rates produce distinct original Plane pixels");
 			check(attacking!=first && attacking!=second,"accepted attack produces a distinct original skinned pose on screen");
 			check(turned!=attacking,"changed heading rotates original attack geometry without changing its cached pose");
 			check(dying!=first && dying!=second && dying!=attacking,"authored death produces a distinct original skinned pose");
-			check(poses.builds==4 && poses.hits==2,"pose cache separates living and death graphs and reuses pure facing changes");
+			check(poses.builds==5 && poses.hits==2,"pose cache separates independently scaled living and death graphs and reuses facing changes");
 			for (const auto& texture : overlay.heroPreviewDiffuseTextureCache) glDeleteTextures(1,&texture.second.texture);
 			glMatrixMode(GL_MODELVIEW); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(mode);
 			glPopClientAttrib(); glPopAttrib(); glActiveTexture(active);

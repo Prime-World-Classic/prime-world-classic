@@ -184,12 +184,22 @@ on map/world replacement or clock rewind. Pose-cache keys include graph identity
 so units sharing a mesh can display different states at the same timestamp.
 Linux graph IDs/booleans retain Windows' 32-bit widths across the `int*` blender
 boundary; the Windows definitions are unchanged. This is presentation-only:
-cast events, movement-speed scaling, upper-body graphs, dynamic external
+cast events, attack-speed scaling, upper-body graphs, dynamic external
 parameters and gameplay animation callbacks remain unconnected.
 Live playback uses world time (including pauses), restarts after a gap over one second, and
 recreates graphs after offscreen eviction. Unadmitted assets and the separate
 character-inspection view retain the first-clip preview. The engine probe covers
 original graph transitions, malformed metadata, ownership and actual pose pixels.
+
+Living graph owners now consume the original world unit speed, including movement
+scaling. As in `PFAnimController`, only nodes with authored surface velocity scale
+their animation and surface rates by actual speed divided by the move alias's
+authored velocity length. Immutable per-owner base coefficients prevent compounding
+and allow zero speed followed by resume. Idle, attack and death nodes with zero
+surface velocity are unchanged. Zero authored move velocity keeps authored rates;
+invalid inputs reject before mutation. Normalized playback is bounded at 100 cycles
+per second to limit graph work. This does not alter simulation speed, shared DB data,
+network state, attack timing or the Windows controller.
 
 Ordinary animated deaths expose a nonserialized corpse snapshot from the original
 creature lifecycle. Already-visible supported graphs request the session death

@@ -86,6 +86,7 @@ public:
 		}
 		entry.player->EndDeath(); entry.deathSequence=0;
 		if (corpseDrop) *corpseDrop=0;
+		if (!entry.player->SetMoveSpeed(marker.moveSpeed)) { ++failed; return nullptr; }
 		if (!entry.player->Advance(clock,marker.moving)) { ++failed; return nullptr; }
 		if ((!entry.hasFacing || marker.moving) && marker.hasMoveDirection &&
 			LinuxBootstrap::FacingYaw(marker.moveDirX,marker.moveDirY,entry.heading)) entry.hasFacing=true;

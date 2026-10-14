@@ -1,3 +1,5 @@
+#include "animation_graph_locomotion.inc"
+
 /** Native presentation owner for the original animation graph and CPU skeletal blend.
  * Instances are independent; this adapter never sends gameplay events or mutates DB data.
  */
@@ -49,6 +51,7 @@ public:
 			result->death=-1;
 		if (result->idle<0 || result->move<0 || static_cast<unsigned>(result->idle)>=result->graph->GetNumNodes() ||
 			static_cast<unsigned>(result->move)>=result->graph->GetNumNodes()) return {};
+		if (!result->locomotion.Initialize(*result->graph,result->move)) return {};
 		result->matrices.resize(skeleton->GetData()->jointsCount);
 		result->applicator->GetModel()->GetSkeletonWrapper()->SetActiveBones(result->matrices.size());
 		return result;
@@ -92,6 +95,8 @@ public:
 		last=seconds; wasMoving=moving; dirty=false; ++updates; return true;
 	}
 	const std::vector<Matrix43>& Matrices() const { return matrices; }
+	/** Apply world movement speed to original locomotion coefficients only. */
+	bool SetMoveSpeed(double speed) { return locomotion.Apply(speed); }
 	/** Death presentation overrides locomotion and attack without firing simulation callbacks. */
 	bool BeginDeath()
 	{
@@ -176,6 +181,7 @@ private:
 	std::unique_ptr<NScene::AnimGraphBlender> blender;
 	std::unique_ptr<DiAnimGraph,DeleteGraph> graph;
 	std::unique_ptr<DiAnGrExtPars> parameters;
+	LinuxAnimationGraphLocomotion locomotion;
 	std::vector<Matrix43> matrices;
 	double last=-1,attackUntil=-1,deathCompletedAt=-1;
 	int idle=-1,move=-1,attack=-1,death=-1,target=-1;
