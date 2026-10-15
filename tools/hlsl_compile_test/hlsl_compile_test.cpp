@@ -7,12 +7,15 @@
 // d3dcompiler_46/42/40 — заглушки, D3DCompile в них возвращает E_NOTIMPL).
 //
 // Запуск: hlsl_compile_test <hlsl> <profile> <entry> [--def NAME=VALUE]...
-//         [--inc <dir>]... [--dll <d3dcompiler_XX.dll>]
+//         [--inc <dir>]... [--dll <d3dcompiler_XX.dll>] [--dump <файл>]
 // Профили/точки входа — как у генератора (Src/ShaderCompiler/ShaderCompiler.cpp):
 // vs_3_0/ps_3_0, MainPass_VSMain/MainPass_PSMain, флаги D3DXSHADER_OPTIMIZATION_LEVEL3.
 //
 // --def повторяет D3DXMACRO генератора: Name = pinName из MaterialSpec.xml,
 // Definition = число. Без --def компилируется с дефолтами самого .hlsl.
+// --dump пишет DXBC в файл: нужен для побайтовой сверки SM3-пути «до/после»
+// правки исходников (шаг 10 очереди, docs/PLAN_NVRHI.md §3.z п.2) — если
+// правка не задела SM3-ветку, хэш блоба обязан совпасть.
 
 #include <windows.h>
 #include <d3dcommon.h>
@@ -28,6 +31,30 @@ typedef HRESULT (WINAPI *CompileFn)(const void *pSrcData, SIZE_T SrcDataSize,
                                     ID3DInclude *pInclude, const char *pEntrypoint,
                                     const char *pTarget, UINT Flags1, UINT Flags2,
                                     ID3DBlob **ppCode, ID3DBlob **ppErrorMsgs);
+
+typedef HRESULT (WINAPI *DisassembleFn)(const void *pSrcData, SIZE_T SrcDataSize,
+                                        UINT Flags, const char *pComments,
+                                        ID3DBlob **ppDisassembly);
+
+// Дизассемблирование DXBC. Нужен в двух местах: шаг 10 — сверка «правка
+// исходника эквивалентна» (байты могут разойтись из-за кодогенерации, а
+// операции — совпадать), и шаг 14 — у 34 блобов OnlineShaders нет исходников,
+// восстанавливать придётся по ассемблеру.
+static int DoDisassemble(HMODULE h, const void *data, size_t size)
+{
+    DisassembleFn dis = (DisassembleFn)GetProcAddress(h, "D3DDisassemble");
+    if (!dis) { printf("D3DDisassemble: НЕТ в модуле\n"); return 5; }
+    ID3DBlob *txt = NULL;
+    HRESULT hr = dis(data, size, 0, NULL, &txt);
+    printf("D3DDisassemble hr=0x%08X\n", (unsigned)hr);
+    if (SUCCEEDED(hr) && txt)
+    {
+        printf("%.*s", (int)txt->GetBufferSize(), (const char *)txt->GetBufferPointer());
+        txt->Release();
+        return 0;
+    }
+    return 1;
+}
 
 // ---------------------------------------------------------------- include
 // Все include в наших .hlsl относительные и отсчитаны от каталога главного
@@ -96,7 +123,9 @@ int main(int argc, char **argv)
     if (argc < 4)
     {
         printf("использование: %s <hlsl> <profile> <entry> [--def NAME=VALUE]... "
-               "[--inc <dir>]... [--dll <dll>] [--flags <hex>]\n", argv[0]);
+               "[--inc <dir>]... [--dll <dll>] [--flags <hex>] [--dump <файл>] [--disasm]\n"
+               "             %s <hlsl> <profile> <entry> --blob <дxbc>  — дизассемблировать "
+               "готовый блоб (компиляция не выполняется)\n", argv[0], argv[0]);
         return 2;
     }
     std::string srcPath = argv[1], profile = argv[2], entry = argv[3];
@@ -104,6 +133,9 @@ int main(int argc, char **argv)
     std::vector<std::string> extraInc;
     const char *dll = NULL;
     UINT flags = 0x400;   // D3DCOMPILE_OPTIMIZATION_LEVEL3 == D3DXSHADER_OPTIMIZATION_LEVEL3
+    const char *dumpPath = NULL;
+    bool disasm = false;
+    const char *blobPath = NULL;
 
     for (int i = 4; i < argc; ++i)
     {
@@ -119,6 +151,9 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--inc") && i + 1 < argc) extraInc.push_back(argv[++i]);
         else if (!strcmp(argv[i], "--dll") && i + 1 < argc) dll = argv[++i];
         else if (!strcmp(argv[i], "--flags") && i + 1 < argc) flags = (UINT)strtoul(argv[++i], NULL, 16);
+        else if (!strcmp(argv[i], "--dump") && i + 1 < argc) dumpPath = argv[++i];
+        else if (!strcmp(argv[i], "--disasm")) disasm = true;
+        else if (!strcmp(argv[i], "--blob") && i + 1 < argc) blobPath = argv[++i];
     }
     macros.push_back(D3D_SHADER_MACRO());   // терминатор {0,0}
 
@@ -145,6 +180,14 @@ int main(int argc, char **argv)
            profile.c_str(), entry.c_str(), flags);
     if (!compile) return 5;
 
+    if (blobPath)
+    {
+        std::string blob = ReadFileAll(blobPath);
+        if (blob.empty()) { printf("не открылся %s\n", blobPath); return 3; }
+        printf("блоб: %s (%d байт)\n", blobPath, (int)blob.size());
+        return DoDisassemble(h, blob.data(), blob.size());
+    }
+
     ID3DBlob *code = NULL, *err = NULL;
     HRESULT hr = compile(src.data(), src.size(), srcPath.c_str(),
                          macros.empty() ? NULL : &macros[0], &inc,
@@ -160,6 +203,18 @@ int main(int argc, char **argv)
     if (code)
     {
         printf("DXBC: %lu байт\n", (unsigned long)code->GetBufferSize());
+        if (dumpPath)
+        {
+            FILE *f = fopen(dumpPath, "wb");
+            if (f)
+            {
+                fwrite(code->GetBufferPointer(), 1, code->GetBufferSize(), f);
+                fclose(f);
+                printf("DXBC записан: %s\n", dumpPath);
+            }
+            else printf("не удалось записать %s\n", dumpPath);
+        }
+        if (disasm) DoDisassemble(h, code->GetBufferPointer(), code->GetBufferSize());
         code->Release();
     }
     return SUCCEEDED(hr) ? 0 : 1;

@@ -11,7 +11,11 @@ struct InstanceData
 	float2   opacityAndPlane;
 };
 
+#if PW_MODERN_ARRAYS
+StructuredBuffer<InstanceData> instanceData;   // шаг 10, §3.z п.2: In.InstanceId
+#else
 InstanceData instanceData[MAX_INSTANCES_COUNT] : register ( INSTANCE_DATA );
+#endif
 #else
 float planeLevel : register(VSHADER_LOCALCONST0);
 #endif

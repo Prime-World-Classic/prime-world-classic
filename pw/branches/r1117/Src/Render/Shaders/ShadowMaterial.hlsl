@@ -8,7 +8,11 @@
 #define NewInstancing ((InstancingValue == PRESENT) && (SkeletalMeshPinValue == NONE))
 
 #if NewInstancing
+#if PW_MODERN_ARRAYS
+StructuredBuffer<float4x3> instanceData;       // шаг 10, §3.z п.2: In.InstanceId
+#else
 float4x3 instanceData[MAX_INSTANCES_COUNT] : register ( INSTANCE_DATA );
+#endif
 #endif // LightingPinValue == LIGHTINGINSTANCEDSH
 
 //

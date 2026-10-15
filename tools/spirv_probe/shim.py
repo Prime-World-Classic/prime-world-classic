@@ -99,6 +99,13 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
     if stage == "ps":
         src = re.sub(r"(\w+_PSMain\s*\([^)]*\))\s*:\s*COLOR\d*\b",
                      lambda m: m.group(1) + " : SV_TARGET", src)
+        # out-параметры PS — это тоже выходы в мишень; в SM6 произвольная
+        # пользовательская семантика на выходе запрещена («invalid usage of
+        # semantic 'TEXCOORD101' in shader profile ps» на WaterDummyMaterial),
+        # поэтому индекс сохраняем: COLOR1 -> SV_TARGET1 (возврат функции при
+        # этом выше стал SV_TARGET, то есть SV_TARGET0).
+        src = re.sub(r"(out\s+\w+\s+\w+\s*:\s*)COLOR(\d*)\b",
+                     lambda m: m.group(1) + "SV_TARGET" + (m.group(2) or "0"), src)
     elif stage == "vs":
         src = re.sub(r"(\w+_VSMain\s*\([^)]*\))\s*:\s*COLOR\d*\b",
                      lambda m: m.group(1) + " : TEXCOORD190", src)

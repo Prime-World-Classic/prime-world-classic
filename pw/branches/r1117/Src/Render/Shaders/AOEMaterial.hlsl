@@ -14,7 +14,11 @@ struct VS_OUT
 float radius : register(VSHADER_LOCALCONST0);
 
 #if CustomizedGeometryPinValue == PRESENT
+#if PW_MODERN_ARRAYS
+StructuredBuffer<float4> position;             // шаг 10, §3.z п.2: In.Index
+#else
 float4 position[9] : register(VSHADER_LOCALCONST1);
+#endif
 #endif
 
 VS_OUT MainPass_VSMain( VS_IN In, out float4 PositionCS: POSITION )

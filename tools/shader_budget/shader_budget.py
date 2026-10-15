@@ -210,7 +210,7 @@ class Module:
     def budget(self):
         res = {"textures": 0, "samplers": 0, "ubo": 0, "ssbo": 0,
                "ubo_bytes": 0, "ssbo_bytes": 0, "sets": set(), "bindings": set(),
-               "dyn_ubo": [], "names": []}
+               "dyn_ubo": [], "names": [], "ssbo_detail": [], "dyn_ssbo": []}
         for vid, vname, ptype, sc in self.variables:
             base = self.pointee(ptype)
             kind, _args = self.kind_of(base)
@@ -228,6 +228,26 @@ class Module:
                 sz = self.size_of(base)
                 res[kind] += 1
                 res[kind + "_bytes"] += sz
+                if kind == "ssbo":
+                    # раскладка SSBO: элементы массива (имя, длина, ArrayStride) —
+                    # это контракт для C++-писателя данных (шаг 10, §3.z п.2)
+                    stop, sargs = self.types.get(base, (None, ()))
+                    if stop == OP_TYPE_STRUCT:
+                        for midx, mid in enumerate(sargs):
+                            mop, margs = self.types.get(mid, (None, ()))
+                            if mop not in (OP_TYPE_ARRAY, OP_TYPE_RUNTIME_ARRAY):
+                                continue
+                            cnt = (self.const_value(margs[1])
+                                   if mop == OP_TYPE_ARRAY else "runtime")
+                            stride = next((a[0] for d, a in
+                                           self.decorates.get(mid, [])
+                                           if d == DEC_ARRAY_STRIDE), 0)
+                            off = next((a[0] for d, a in
+                                        self.member_decorates.get((base, midx), [])
+                                        if d == DEC_OFFSET), 0)
+                            res["ssbo_detail"].append(
+                                (vname, self.member_name.get((base, midx), "?"),
+                                 cnt, stride, off))
             if setn is not None and bind is not None:
                 res["sets"].add(setn)
                 res["bindings"].add((setn, bind))
@@ -248,9 +268,15 @@ class Module:
                 root[res_id] = root[base]
         for _rt, _res, base, idxs in self.accesses:
             info = root.get(base)
-            if not info or info[0] != SC_UNIFORM or not idxs:
+            if not info or info[0] not in (SC_UNIFORM, SC_STORAGE_BUFFER) or not idxs:
                 continue
             if not any(i not in self.const_ids for i in idxs):
+                continue
+            # класс определяем поDecoration'у корневого буфера (Block / BufferBlock),
+            # а не по storage class: DXC кладёт и StructuredBuffer, и uniform
+            # в storage class Uniform (2), различаются они только декорацией
+            rootkind, _rk = self.kind_of(self.pointee(var_pt.get(info[1], 0)))
+            if rootkind not in ("ubo", "ssbo"):
                 continue
             # первый индекс — номер члена struct (он константный), по нему
             # называем массив, который индексируется динамически
@@ -267,7 +293,7 @@ class Module:
                                    if d == DEC_ARRAY_STRIDE), 0)
                     named = "%s[%s x %d B]" % (self.member_name.get((struct, mi), "?"),
                                                cnt, stride)
-            res["dyn_ubo"].append(named)
+            res["dyn_ubo" if rootkind == "ubo" else "dyn_ssbo"].append(named)
         return res
 
 
@@ -295,6 +321,10 @@ def entries(path):
 SHIM = "--no-shim" not in sys.argv
 KEEP = "--keep" in sys.argv
 PINVAL = int(sys.argv[sys.argv.index("--pins") + 1]) if "--pins" in sys.argv else 0
+# --define NAME=ЗНАЧЕНИЕ (повторяемо): включает макросы шва исходников, например
+# -DPW_SSBO_ARRAYS=1 для замера SSBO-формы динамических массивов (шаг 10)
+EXTRA_DEFINES = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
+                 if a == "--define" and i + 1 < len(sys.argv)]
 SHIM_DIR = None
 
 
@@ -367,7 +397,7 @@ def main():
         if not os.path.exists(path):
             continue
         vs, ps = entries(path)
-        defines = ["%s=%d" % (p, PINVAL) for p, _ in pins]
+        defines = ["%s=%d" % (p, PINVAL) for p, _ in pins] + EXTRA_DEFINES
         for stage, lst in (("vs", vs), ("ps", ps)):
             if not lst:
                 continue
@@ -391,6 +421,9 @@ def main():
                 if b["dyn_ubo"]:
                     print("   ДИНАМИЧЕСКАЯ ИНДЕКСАЦИЯ UBO: %s"
                           % ", ".join(sorted(set(b["dyn_ubo"]))))
+                for vn, mn, cnt, stride, off in b["ssbo_detail"]:
+                    print("   SSBO %-18s %-18s [%s x %d B] offset=%d"
+                          % (vn, mn, cnt, stride, off))
 
     if not rows:
         print("нет успешных единиц (FAIL: %d)" % len(fails))
@@ -439,6 +472,17 @@ def main():
           % (len(dyn), len(rows)))
     for n, s, names in dyn[:20]:
         print("  %-30s %-3s %s" % (n, s, ", ".join(names)))
+
+    # раскладка SSBO — контракт для C++-писателя (шаг 10): элемент, его размер,
+    # смещение в буфере. Сравнивается с packing'ом тех же данных в c-регистрах.
+    ssbo = [(n, s, d) for n, s, b in rows for d in b["ssbo_detail"]]
+    if ssbo:
+        print("\nраскладка SSBO: %d буферов" % len(ssbo))
+        for n, s, (vn, mn, cnt, stride, off) in ssbo:
+            print("  %-30s %-3s %-14s %-18s [%s x %d B] offset=%d"
+                  % (n, s, vn, mn, cnt, stride, off))
+    else:
+        print("\nSSBO в корпусе: нет")
     if fails:
         print("\nне компилируются: %d" % len(fails))
         for k, e in fails[:10]:

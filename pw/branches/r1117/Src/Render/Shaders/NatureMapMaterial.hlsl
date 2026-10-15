@@ -18,7 +18,11 @@ struct VS_OUT
 sampler retreatMask : register(s0);
 float4 scaleOffset : register( VSHADER_LOCALCONST0 );
 float4 globalParams : register( VSHADER_LOCALCONST1 ); // maskTiling, -, - ,-
+#if PW_MODERN_ARRAYS
+StructuredBuffer<float4> hexParams;            // шаг 10, §3.z п.2: index от In.Index
+#else
 float4 hexParams[NUM_HEXES_SUPPORTED * CONSTANTS_PER_HEX] : register( VSHADER_LOCALCONST2 );
+#endif
 
 VS_OUT MainPass_VSMain( VS_IN In, out float4 PositionCS: POSITION )
 {

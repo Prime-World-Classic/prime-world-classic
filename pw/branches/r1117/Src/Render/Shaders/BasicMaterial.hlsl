@@ -128,9 +128,17 @@ float4 instancingDiffuse : register( INSTANCING_DIFFUSE_COEFF );
 float4 instancingColorMin : register( INSTANCING_COLOR_MIN );
 float4 instancingColorMax : register( INSTANCING_COLOR_MAX );
 
+#if PW_MODERN_ARRAYS
+StructuredBuffer<InstanceData> instanceData;   // шаг 10, §3.z п.2: In.InstanceId
+#else
 InstanceData instanceData[MAX_INSTANCES_COUNT] : register ( INSTANCE_DATA );
+#endif
 #elif NewInstancing
+#if PW_MODERN_ARRAYS
+StructuredBuffer<float4x3> instanceData;       // шаг 10, §3.z п.2
+#else
 float4x3 instanceData[MAX_INSTANCES_COUNT] : register ( VSHADER_LOCALCONST9 );
+#endif
 #endif // LightingPinValue == LIGHTINGINSTANCEDSH
 
 float3 processVectorVS( float3 v ) { return normalize(v); }

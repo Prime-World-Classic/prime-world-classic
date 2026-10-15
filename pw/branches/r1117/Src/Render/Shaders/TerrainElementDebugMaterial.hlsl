@@ -65,12 +65,22 @@ float4 MainPass_PSMain( VS_OUT In ) : COLOR
   float norm = dot(maximum, maximum);
   mask = norm > 1e-5f ? maximum / norm : float4(0, 0, 0, 0);
 */
+#if PW_MODERN_ARRAYS
+  // Развёрнуто вручную (шаг 10, §3.z п.2): DXC оставляет динамический индекс
+  // в uniform-буфере (в Vulkan — неопределённое поведение). Порядок сложения
+  // сохранён. SM3-ветка ниже не тронута: развёртка меняла DXBC (992 -> 816 Б).
+  diffuseMap.rgb += diffuseMapColor[0].rgb * mask.x;
+  diffuseMap.rgb += diffuseMapColor[1].rgb * mask.y;
+  diffuseMap.rgb += diffuseMapColor[2].rgb * mask.z;
+  diffuseMap.rgb += diffuseMapColor[3].rgb * mask.w;
+#else
   // combine texture layers
   for (int i = 0; i < 4; i++)
   {
     float4 layer = diffuseMapColor[i];
     diffuseMap.rgb += layer.rgb * mask[i];
   }
+#endif
 
   // diffuse lighting
   float4 outputColor;

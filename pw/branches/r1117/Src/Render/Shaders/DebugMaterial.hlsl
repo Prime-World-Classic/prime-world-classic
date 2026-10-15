@@ -7,7 +7,11 @@ float4x4 ViewProjection : register( c12 );
 float4   WEyePos        : register( c22 );
 
 #if SkeletalMeshPinValue == 1
+#if PW_MODERN_ARRAYS
+StructuredBuffer<float4x3> BonesMatrices;   // шаг 10, §3.z п.2 (см. _commonSkinning.hlsl)
+#else
 float4x3 BonesMatrices[MAX_BONES] : register( BONES );
+#endif
 #endif
 
 // Switch off some PINs

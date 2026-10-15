@@ -19,7 +19,7 @@ WOUT="Z:${OUT}"                       # wine cmd требует букву ди�
 {
   head -5 "$SRC_CMD"                       # @echo off, PATH, INCLUDE, LIB, WINEDEBUG
   echo "cd /d ${WOUT//\//\\}"
-  echo "cl /nologo /W3 /MT /EHsc /Fe:build\\hlsl_compile_test.exe hlsl_compile_test.cpp > build\\cc.log 2>&1"
+  echo "cl /nologo /W3 /MT /EHsc /Fe:build\\hlsl_compile_test.exe /Fo:build\\ hlsl_compile_test.cpp > build\\cc.log 2>&1"
   echo "if errorlevel 1 type build\\cc.log & exit /b 1"
   echo "echo BUILD OK"
 } > _build_tmp.cmd

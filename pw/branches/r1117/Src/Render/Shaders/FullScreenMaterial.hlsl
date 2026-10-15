@@ -93,12 +93,31 @@ VS_OUTPUT_VTF MainPass_VSMain(VS_INPUT Input, out float4 Position : POSITION)
 #if SharpPinValue == PRESENT
   float sharpPixelSize = 0, sharpCoef = 0;
   float weightsSum = 0; // Overkill - this should sum up to 1.0f
+#if PW_MODERN_ARRAYS
+  // Развёрнуто вручную (шаг 10, §3.z п.2): DXC цикл с постоянным пределом НЕ
+  // разворачивает — в uniform-буфере остаётся динамический индекс (в Vulkan —
+  // неопределённое поведение). Порядок сложения сохранён.
+  sharpPixelSize += g_sharpPixelSize[0] * weights[0];
+  sharpCoef += g_sharpCoef[0] * weights[0];
+  weightsSum += weights[0];
+  sharpPixelSize += g_sharpPixelSize[1] * weights[1];
+  sharpCoef += g_sharpCoef[1] * weights[1];
+  weightsSum += weights[1];
+  sharpPixelSize += g_sharpPixelSize[2] * weights[2];
+  sharpCoef += g_sharpCoef[2] * weights[2];
+  weightsSum += weights[2];
+#else
+  // SM3/D3D9: оставлено как было. fxc и здесь не разворачивает цикл (в DXBC
+  // видно «defi i0, 3, 0, 1, 0» + «loop aL … endloop» с c[aL]), т.е. развёртка
+  // меняла бы машинный код поставляемых шейдеров; побайтовая сверка
+  // tools/hlsl_sm3_check это и показывает (876 -> 776 байт).
   for(int i = 0; i < NATURE_TYPES_COUNT; ++i)
   {
     sharpPixelSize += g_sharpPixelSize[i] * weights[i];
 	sharpCoef += g_sharpCoef[i] * weights[i];
 	weightsSum += weights[i];
   }
+#endif
   sharpPixelSize /= weightsSum;
   sharpCoef /= weightsSum;
   
@@ -119,6 +138,34 @@ VS_OUTPUT_VTF MainPass_VSMain(VS_INPUT Input, out float4 Position : POSITION)
   float3 InMin = 0, InMax = 0, OutMin = 0, OutMax = 0, Color = 0;
   float3 GammaCoef = 0;
   float  colorCastCoef = 0;
+#if PW_MODERN_ARRAYS
+  // Развёрнуто вручную (шаг 10, §3.z п.2) — см. комментарий к циклу SharpPinValue.
+  // NATURE_TYPES_COUNT зафиксирован: при его изменении развёртку надо править.
+#if NATURE_TYPES_COUNT != 3
+#error "развёртка Params предполагает NATURE_TYPES_COUNT == 3"
+#endif
+  InMin += Params[PP_IN_MIN * NATURE_TYPES_COUNT + 0] * weights[0];
+  InMax += Params[PP_IN_MAX * NATURE_TYPES_COUNT + 0] * weights[0];
+  OutMin += Params[PP_OUT_MIN * NATURE_TYPES_COUNT + 0] * weights[0];
+  OutMax += Params[PP_OUT_MAX * NATURE_TYPES_COUNT + 0] * weights[0];
+  GammaCoef += Params[PP_GAMMA * NATURE_TYPES_COUNT + 0] * weights[0];
+  Color += Params[PP_COLOR * NATURE_TYPES_COUNT + 0] * weights[0];
+  colorCastCoef += ColorCastCoef[0] * weights[0];
+  InMin += Params[PP_IN_MIN * NATURE_TYPES_COUNT + 1] * weights[1];
+  InMax += Params[PP_IN_MAX * NATURE_TYPES_COUNT + 1] * weights[1];
+  OutMin += Params[PP_OUT_MIN * NATURE_TYPES_COUNT + 1] * weights[1];
+  OutMax += Params[PP_OUT_MAX * NATURE_TYPES_COUNT + 1] * weights[1];
+  GammaCoef += Params[PP_GAMMA * NATURE_TYPES_COUNT + 1] * weights[1];
+  Color += Params[PP_COLOR * NATURE_TYPES_COUNT + 1] * weights[1];
+  colorCastCoef += ColorCastCoef[1] * weights[1];
+  InMin += Params[PP_IN_MIN * NATURE_TYPES_COUNT + 2] * weights[2];
+  InMax += Params[PP_IN_MAX * NATURE_TYPES_COUNT + 2] * weights[2];
+  OutMin += Params[PP_OUT_MIN * NATURE_TYPES_COUNT + 2] * weights[2];
+  OutMax += Params[PP_OUT_MAX * NATURE_TYPES_COUNT + 2] * weights[2];
+  GammaCoef += Params[PP_GAMMA * NATURE_TYPES_COUNT + 2] * weights[2];
+  Color += Params[PP_COLOR * NATURE_TYPES_COUNT + 2] * weights[2];
+  colorCastCoef += ColorCastCoef[2] * weights[2];
+#else
   for(int i = 0; i < NATURE_TYPES_COUNT; ++i)
   {
     InMin += Params[PP_IN_MIN * NATURE_TYPES_COUNT + i] * weights[i];
@@ -129,6 +176,7 @@ VS_OUTPUT_VTF MainPass_VSMain(VS_INPUT Input, out float4 Position : POSITION)
     Color += Params[PP_COLOR * NATURE_TYPES_COUNT + i] * weights[i];
     colorCastCoef += ColorCastCoef[i] * weights[i];
   }
+#endif
   Output.InScale.xyz = 1.0f / (InMax - InMin);
   Output.InShift.xyz = -InMin * Output.InScale;
   Output.OutScale = (OutMax - OutMin);

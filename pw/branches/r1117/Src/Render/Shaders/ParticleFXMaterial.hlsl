@@ -14,7 +14,11 @@ struct INSTANCE_DATA
 };
 
 float4    cornersScale  : register(VSHADER_LOCALCONST0);
+#if PW_MODERN_ARRAYS
+StructuredBuffer<INSTANCE_DATA> data;          // шаг 10, §3.z п.2: id — индекс экземпляра
+#else
 INSTANCE_DATA data[PFX_MAX_INSTANCES] : register(VSHADER_LOCALCONST1);
+#endif
 
 struct VS_INPUT
 {
