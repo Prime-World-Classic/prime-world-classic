@@ -8784,7 +8784,7 @@ void EventProcessorPickupGlyph::Assign( const EventProcessorPickupGlyph& _eventP
 NWorld::PFEventProcessorBase* EventProcessorPickupGlyph::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorPickupGlyph( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorPickupGlyph( *this, world );

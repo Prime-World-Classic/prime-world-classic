@@ -7,6 +7,9 @@
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFDispatch.h"
+#include "PFDispatchFactory.h"
+#include "PFApplMod.h"
+#include "PFGlyph.h"
 #include "DBTalent.h"
 #include "PFApplUtils.h"
 #include "PFTargetSelector.h"
@@ -51,6 +54,20 @@ struct LinuxTriggerEventScope
 };
 thread_local std::vector<const PFTriggerApplicator*> LinuxTriggerEventScope::active;
 
+/** A response callback may redispatch the same pickup through a different trigger. */
+struct LinuxGlyphEventScope
+{
+	static thread_local std::vector<const PFBaseUnitEvent*> active;
+	bool entered;
+	explicit LinuxGlyphEventScope(const PFBaseUnitEvent* event)
+		: entered(active.size() < 128 && std::find(active.begin(), active.end(), event) == active.end())
+	{
+		if (entered) active.push_back(event);
+	}
+	~LinuxGlyphEventScope() { if (entered) active.pop_back(); }
+};
+thread_local std::vector<const PFBaseUnitEvent*> LinuxGlyphEventScope::active;
+
 /** Validate the complete expanded processor tree before installing any event listener. */
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 	std::vector<const NDb::EventProcessorBase*>& path, unsigned& nodes)
@@ -66,7 +83,9 @@ bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db)
 		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db)
 		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db) || dynamic_cast<const NDb::EventProcessorOnTarget*>(db)
-		|| dynamic_cast<const NDb::EventProcessorOnConsumableObtained*>(db);
+		|| dynamic_cast<const NDb::EventProcessorOnConsumableObtained*>(db)
+		// Group variables do not delegate to children; a glyph source must be the root processor.
+		|| (path.empty() && dynamic_cast<const NDb::EventProcessorPickupGlyph*>(db));
 }
 
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
@@ -250,6 +269,94 @@ bool PFEventProcessorOnConsumableObtained::ProcessEvent(const PFBaseUnitEvent* e
 	if (GetDB().consumable && GetDB().consumable->GetDBID() != acquired->GetDBConsumable()->GetDBID()) return false;
 	DoSpell();
 	return true;
+}
+
+const char* PFEventProcessorPickupGlyph::glyphNumberVariableName = "glyphNumber";
+
+/** Capture only a synchronous storage response with a live, correctly bound release upgrade.
+ * Ordinary pickup remains available on rejection. This is not a transaction for arbitrary spells:
+ * root effects are restricted to statuses and glyph upgrades, and deferred/upgradable responses
+ * are excluded. Original G290's nested status/program graph runs through the existing engine.
+ */
+bool PFEventProcessorPickupGlyph::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	const auto* pickup = dynamic_cast<const PFBaseUnitPickupEvent*>(event);
+	if (!pickup || pickup->GetType() != NDb::BASEUNITEVENT_PICKUP || !pickup->IsGlyph()
+		|| !pickup->NeedActivate() || !IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive() || !pOwner->IsEnabled()) return false;
+	LinuxGlyphEventScope scope(event); if (!scope.entered) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	CObj<PFAbilityInstance> ability(owner->GetAbility());
+	CObj<PFBaseUnit> receiver(owner->GetReceiver().GetPtr());
+	NDb::Ptr<NDb::Glyph> glyph = ResolveNativeGlyph(GetWorld(), pickup->GetGlyphNumber());
+	const NDb::Ptr<NDb::Spell> spell = GetDB().spell;
+	const auto* immediate = spell ? dynamic_cast<const NDb::DispatchImmediate*>(spell->dispatch.GetPtr()) : nullptr;
+	if (!glyph || !ability || !ability->GetData() || !IsValid(receiver) || receiver->IsDead()
+		|| !IsValid(owner->GetAbilityOwner()) || !immediate || !immediate->instantApply
+		|| (immediate->flags & NDb::DISPATCHFLAGS_UPGRADABLE) || spell->applicators.empty()) return false;
+	unsigned upgrades = 0;
+	for (const auto& db : spell->applicators)
+	{
+		if (const auto* upgrade = dynamic_cast<const NDb::AbilityUpgradeApplicator*>(db.GetPtr()))
+		{
+			if (!(upgrade->flags & NDb::ABILITYUPGRADEMODE_USEGLYPH)) return false;
+			++upgrades;
+		}
+		else if (!dynamic_cast<const NDb::StatusApplicator*>(db.GetPtr())) return false;
+	}
+	if (upgrades != 1) return false;
+	Target target; owner->MakeApplicationTarget(target, GetApplicationTarget());
+	if (!target.IsUnit() || target.GetUnit() != receiver.GetPtr()) return false;
+	std::vector<CObj<PFBaseApplicator>> previousRoots;
+	for (ring::Range<PFBaseApplicator::AppliedRing> it(receiver->GetAppliedApplicatorsRing()); it; ++it)
+		if (it->GetParentAppl() == owner.GetPtr()
+			&& (dynamic_cast<PFApplStatus*>(&*it) || dynamic_cast<PFApplAbilityUpgrade*>(&*it))) previousRoots.emplace_back(&*it);
+	const int previous = glyphNumber; glyphNumber = pickup->GetGlyphNumber();
+	const bool stored = [&]() {
+		CObj<PFDispatch> dispatch = CreateDispatch(ability, owner.GetPtr(), Target(owner->GetAbilityOwner().GetPtr()), target, spell, 0, false);
+		if (!dispatch) return false;
+		std::vector<CObj<PFBaseApplicator>> roots;
+		for (ring::Range<PFBaseApplicator::AppliedRing> it(dispatch->GetApplicators()); it; ++it) roots.emplace_back(&*it);
+		bool complete = roots.size() == static_cast<size_t>(spell->applicators.size());
+		for (const auto& root : roots)
+		{
+			const auto* buff = dynamic_cast<const PFApplBuff*>(root.GetPtr());
+			complete = complete && buff && (buff->GetDuration() == -1.f || buff->GetDuration() > 0.f);
+		}
+		if (!complete) { dispatch->Cancel(); return false; }
+		dispatch->Start();
+		complete = dispatch->HasApplied() && owner->PFBaseApplicator::IsAlive() && owner->IsEnabled()
+			&& IsValid(receiver) && !receiver->IsDead() && pickup->NeedActivate();
+		for (const auto& root : roots)
+		{
+			complete = complete && root->IsAlive() && root->IsEnabled() && root->IsLinkedToSentRing()
+				&& root->IsLinkedToAppliedRing() && root->GetReceiver() == receiver.GetPtr();
+			if (const auto* upgrade = dynamic_cast<const PFApplAbilityUpgrade*>(root.GetPtr()))
+				complete = complete && upgrade->GetNativeStoredGlyph() == glyph.GetPtr();
+		}
+		if (!complete)
+		{
+			// Unstarted roots have no ability count to release. Started roots own their child cleanup.
+			for (auto it = roots.rbegin(); it != roots.rend(); ++it)
+				if ((*it)->IsLinkedToSentRing()) { (*it)->Stop(); (*it)->RemoveFromRingsSafe(); }
+			dispatch->Cancel();
+		}
+		return complete;
+	}();
+	// The shipped talent retains only the latest glyph. Status conflict resolution can retire
+	// an older storage program before a later root is canceled; do not leave its upgrade orphaned.
+	bool displaced = stored;
+	for (const auto& root : previousRoots) displaced = displaced || !root->IsAlive();
+	if (displaced)
+		for (auto it = previousRoots.rbegin(); it != previousRoots.rend(); ++it)
+			if ((*it)->IsAlive() && (*it)->IsLinkedToSentRing()) { (*it)->Stop(); MemorizeApplicator(*it); }
+	if (!stored) { glyphNumber = previous; return false; }
+	pickup->SetNeedActivate(false);
+	return true;
+}
+
+float PFEventProcessorPickupGlyph::GetVariable(const char* name) const
+{
+	return name && strcmp(name, glyphNumberVariableName) == 0 ? glyphNumber : 0.f;
 }
 
 /** Construct independent child processors, including repeated descriptors but never recursive trees. */
@@ -549,6 +656,7 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorUnitDieNearMe, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnTarget, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnConsumableObtained, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorPickupGlyph, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

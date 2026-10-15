@@ -144,6 +144,8 @@ public:
 	{
 		f.Add(1, (DBLinker*)this); f.Add(2, &appliesCount); f.Add(3, &maxCount); f.Add(4, &nativeGlyph); return 0;
 	}
+	/** Pickup admission checks the retained descriptor after actual buff activation. */
+	const NDb::Ability* GetNativeStoredGlyph() const { return nativeGlyph.GetPtr(); }
 #else
   ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&appliesCount); f.Add(3,&maxCount); return 0; }
 #endif

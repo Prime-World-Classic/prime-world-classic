@@ -175,7 +175,12 @@ namespace NWorld
     WORLD_OBJECT_METHODS(0x37A78C41, PFEventProcessorPickupGlyph);
 
     ZDATA_(DBLinker)
+#if defined(PW_LINUX_NULL_RENDER)
+		/** Each trigger retains its own capture identity across other heroes' callbacks. */
+		int glyphNumber = -1;
+#else
     static int glyphNumber;
+#endif
   public:
     ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&glyphNumber); return 0; }
 

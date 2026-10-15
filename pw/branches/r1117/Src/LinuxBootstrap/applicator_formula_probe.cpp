@@ -1411,6 +1411,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "named_formula_b13_tests.inc"
 #include "named_cast_b13_tests.inc"
 #include "glyph_upgrade_b13_tests.inc"
+#include "glyph_capture_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1628,6 +1629,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	GlyphUpgradeB13(check);
 	GlyphReleaseSpellGuardB13(check, world);
 	if (dataRoot && *dataRoot) AuthoredGlyphUpgradeB13(check, dataRoot);
+	GlyphCaptureAdmissionB13(check);
+	if (dataRoot && *dataRoot) GlyphCaptureAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

@@ -41,6 +41,10 @@ public:
   bool NeedActivate() const { return needActivate; }
   void SetNeedActivate( bool val ) const { needActivate = val; }
   int GetGlyphNumber() const { return glyphNumber; }
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Distinguish glyph pickups from other objects even if a caller supplies a numeric index. */
+	bool IsGlyph() const { return isGlyph; }
+#endif
 
 private:
   string scriptName;
