@@ -10,7 +10,7 @@ namespace LinuxBootstrap
 /** Independent scalar bindings; false means unknown symbol or unavailable context. */
 using NumericSymbolResolver = std::function<bool(const std::string&, double&)>;
 
-/** abilityScale/damageScale use three or four arguments; random/ut_bldg/ut_hero use two.
+/** abilityScale/damageScale use three or four arguments; random/refineScale/ut_bldg/ut_hero use two.
  * Reserved __history_{s,r}_{taken,dealt} engine bindings use one argument.
  * Their _ex and _ex_misc variants pass two arguments: interval and bound mask.
  * Arguments and names are borrowed for the call; false means unavailable context.
@@ -71,6 +71,8 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * abilityScale/damageScale additionally accept three or four arguments through
  * the optional context callback. Arity is checked even in unselected branches.
  * random accepts exactly two arguments through that callback; this layer owns no RNG.
+ * refineScale passes exactly two evaluated arguments to the ability context;
+ * the parser owns neither a refinement rate nor an interpolation policy.
  * ut_bldg/ut_hero pass two evaluated arguments to the receiver-kind context callback.
  * Like FormulaBuilder's SwitchByBool, their arguments are eager unless the entire
  * call is in an unselected ?: branch. This layer does not classify game units.

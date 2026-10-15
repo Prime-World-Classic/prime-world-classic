@@ -608,6 +608,29 @@ void Ownership()
 }
 }
 
+/** The scalar parser transports refinement arguments without inventing a talent or caching context. */
+static void RefinementFunctions()
+{
+	int calls = 0;
+	const NumericFunctionResolver resolver = [&](const std::string& name, const double* args, std::size_t count, double& value) {
+		++calls; value = args[0] + 10 * args[1]; return name == "refineScale" && count == 2;
+	};
+	const auto result = EvaluateNumericFormula("refineScale(3,min(2,4))", {}, resolver);
+	Check(result.Succeeded() && result.value == 23 && calls == 1, "refinement passes two evaluated arguments to the real context callback");
+	for (const char* suffix : {"()", "(1)", "(1,2,3)", "(,1)", "(1,)", "(1,,2)"})
+		Check(!EvaluateNumericFormula(std::string("true ? 7 : refineScale") + suffix, {}, resolver).Succeeded() && calls == 1,
+			"refinement arity remains invalid even when its branch is not selected");
+	ExpectError("refineScale(1,2)", Error::MissingResolver);
+	Check(EvaluateNumericFormula("true ? 7 : refineScale(1/0,missing)").value == 7, "unselected refinement requires neither arguments nor context");
+	Check(EvaluateNumericFormula("refineScale(1/0,2)", {}, resolver).error == Error::NonFiniteValue && calls == 1,
+		"nonfinite refinement argument fails before context invocation");
+	Check(EvaluateNumericFormula("refineScale(1,2)+refineScale(1,2)", {}, resolver).value == 42 && calls == 3,
+		"selected refinement calls are not folded or cached across evaluations");
+	Check(EvaluateNumericFormula("refineScale(1,2)", {}, [](const std::string&, const double*, std::size_t, double& value) {
+		value = std::numeric_limits<double>::infinity(); return true;
+	}).error == Error::NonFiniteValue, "invalid refinement callback result cannot escape scalar validation");
+}
+
 int main()
 {
 	LiteralsAndOperators();
@@ -617,6 +640,7 @@ int main()
 	LazySymbols();
 	NumericFunctions();
 	ContextFunctions();
+	RefinementFunctions();
 	RejectedSyntax();
 	NumericFailures();
 	Bounds();

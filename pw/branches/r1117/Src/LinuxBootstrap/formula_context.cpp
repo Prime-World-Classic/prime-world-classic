@@ -373,6 +373,15 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "refineScale")
+		{
+			if (!ability || count != 2 || ability->GetRefineRate() == std::numeric_limits<int>::min()) return false;
+			for (std::size_t i = 0; i < count; ++i)
+				if (!std::isfinite(args[i]) || std::fabs(args[i]) > std::numeric_limits<float>::max()) return false;
+			// Applicator ability lookup already preserves original upgrader precedence.
+			value = ability->GetRefineAbilityScale(static_cast<float>(args[0]), static_cast<float>(args[1]));
+			return std::isfinite(value);
+		}
 		if (name == "__history_s_taken_ex" || name == "__history_s_dealt_ex" ||
 			name == "__history_r_taken_ex" || name == "__history_r_dealt_ex" ||
 			name == "__history_s_taken_ex_misc" || name == "__history_s_dealt_ex_misc" ||
@@ -482,6 +491,11 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name == "mRefineRate")
+		{
+			if (!ability) return false;
+			value = ability->GetRefineRate(); return true;
+		}
 		if (name == "mScale" || name == "mParentScale") return MiscScale(0, name == "mParentScale", value);
 		if (name.compare(0, 20, "__misc_parent_scale_") == 0)
 		{

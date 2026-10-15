@@ -32,6 +32,10 @@ namespace LinuxBootstrap
  * self-parent behavior is distinct from GetParentScale's default one. Applicator
  * ancestry is held and checked for cycles/depth > 128 before recursive getters;
  * nonfinite values and selected missing contexts fail, with transactional RNG.
+ * refineScale(base, increment) and mRefineRate use the original ability/upgrader
+ * refinement getters. Keep signed and zero rates; reject INT_MIN before the
+ * original rate-minus-one subtraction, unsafe float arguments and nonfinite
+ * results. Calls remain lazy and participate in the existing RNG transaction.
  * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited

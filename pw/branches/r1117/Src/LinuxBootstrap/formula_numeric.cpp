@@ -325,7 +325,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					translated += "(" + symbol("sTerrainType") + "==" + symbol("sFctn") + "?";
 					pendingNativeTerrain = true;
 				}
-				else if (name == "abilityScale" || name == "damageScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name) || IsExtendedHistoryFunction(name))
+				else if (name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name) || IsExtendedHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -393,7 +393,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					if (frame.arguments != 1) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveOne, frame.context, false);
 				}
-				else if (frame.context->name == "random" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero" || IsExtendedHistoryFunction(frame.context->name))
+				else if (frame.context->name == "random" || frame.context->name == "refineScale" || frame.context->name == "ut_bldg" || frame.context->name == "ut_hero" || IsExtendedHistoryFunction(frame.context->name))
 				{
 					if (frame.arguments != 2) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);
