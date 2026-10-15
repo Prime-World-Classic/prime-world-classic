@@ -33,6 +33,10 @@ inline BackendViewport MakeBackendViewport(const D3DVIEWPORT9& vp) {
 class D3D9Backend : public IRenderBackend {
   IDirect3DDevice9* pDevice;
 
+  // Буфер под BackendSystemInfo::description: D3DADAPTER_IDENTIFIER9 живёт на
+  // стеке вызова, а ссылку на него наружу возвращать нельзя.
+  char adapterDescription[128];
+
   // Инстансинг D3D9 устроен на частотах потоков: поток геометрии повторяется
   // (INDEXEDDATA|count), поток экземпляра читается один раз на экземпляр
   // (INSTANCEDATA|1). Частоты — состояние устройства, поэтому они кэшируются
@@ -48,11 +52,15 @@ class D3D9Backend : public IRenderBackend {
 
 public:
   explicit D3D9Backend(IDirect3DDevice9* _pDevice) : pDevice(_pDevice), instanceCount(0) {
+    adapterDescription[0] = 0;
     // Дефолт D3D9 — частота 1 у всех потоков; после Reset() устройство
     // возвращается к нему же (см. InvalidateBoundState).
     for (unsigned n = 0; n < kFreqStreams; ++n)
       streamFreq[n] = 1;
   }
+
+  // --- сведения об адаптере ---
+  virtual HRESULT GetSystemInfo(BackendSystemInfo& out);
 
   // --- кадр ---
   virtual HRESULT BeginScene();

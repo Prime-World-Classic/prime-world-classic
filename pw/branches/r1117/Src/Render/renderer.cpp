@@ -443,7 +443,7 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   GetConfigManager()->CheckDeviceCaps(pDevice);
 #ifndef NI_DISABLE_CRASHRPT
   CrashRptWrapper::AddTagToReport( "DXcapsOEM",  NStr::StrFmt("%#X", GetConfigManager()->GetAllFeatures()) );
-  CrashRptWrapper::AddTagToReport( "DXcapsOEM_version",  NStr::StrFmt("%d", IConfigManager::featuresVersion) );
+  CrashRptWrapper::AddTagToReport( "DXcapsOEM_version",  NStr::StrFmt("%d", featuresVersion) );
 #endif // NI_DISABLE_CRASHRPT
   //systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: CreateDevice() successful." << endl;
   presentParams = pp;

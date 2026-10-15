@@ -14,6 +14,7 @@
 #include "locktype.h"            // Render::ERenderLockType (режим блокировки буфера)
 #include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
 #include "vertexformatdescriptor.h"   // Render::VertexFormatDescriptor
+#include "Features.h"            // Render::Features (биты BackendSystemInfo::features)
 
 namespace Render
 {
@@ -125,9 +126,42 @@ inline H MakeBackendHandle(P* pObj) {
   return h;
 }
 
+// Сведения об адаптере, нейтральные по отношению к графическому API
+// (шаг 4, docs/PLAN_NVRHI.md §2.5). Заполняет бэкенд; это точка, где D3DCAPS9
+// перестаёт течь в клиентский код: MaxVertexShaderConst (лимит партиклов,
+// ParticleFX.cpp:498), гейт аппаратных карт теней (features -> HasDSM(),
+// IConfigManager.h:45-50) и отчёты/дампы (description, vendor, device) читают
+// только структуру. На этапе 3 вместо D3DCAPS9+GetAdapterIdentifier здесь
+// появится синтез из Vulkan/DX12-свойств — и обязан дать те же значения
+// (эталон пинов снят, §2.5).
+//
+// Чего здесь СОЗНАТЕЛЬНО нет: десятков масок caps (DevCaps, RasterCaps,
+// TextureCaps, BlendCaps, …) и полей адаптера (SubSysId, Revision,
+// DeviceIdentifier-GUID), которые читает матчер config.txt
+// (configdatabase.cpp:942-1032, 1157-1162, 1383-1425, 1900-1993). Под них
+// нейтральный словарь не синтезирован: матчер пока получает D3D9-структуры
+// напрямую (ConfigManager::CheckDeviceCaps), и это единственный оставшийся
+// D3D9-вход в ConfigManager.
+struct BackendSystemInfo {
+  // идентичность адаптера — входы матчера и отчётов
+  unsigned vendorId;
+  unsigned deviceId;
+  unsigned long long driverVersion; // целиком, не HighPart/LowPart
+  const char* description;          // буфер бэкенда, живёт пока жив бэкенд
+
+  // возможности
+  unsigned maxVertexShaderConst;    // 256 и на D3D9-железе, и на стенде (замер §2.5)
+  bool isNullRef;                   // «пустой» референсный девайс (nullrender-путь)
+  unsigned features;                // биты Render::Features
+};
+
 class IRenderBackend {
 public:
   virtual ~IRenderBackend() {}
+
+  // --- сведения об адаптере ---
+  // Вызывается один раз после создания устройства (Renderer::CreateDevice).
+  virtual HRESULT GetSystemInfo(BackendSystemInfo& out) = 0;
 
   // --- кадр ---
   virtual HRESULT BeginScene() = 0;

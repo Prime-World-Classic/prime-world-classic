@@ -1,5 +1,9 @@
 #pragma once
 
+#include "Features.h"   // Render::Features — вынесен из тела struct: тот же
+                        // словарь заполняет теперь бэкенд (renderbackend.h),
+                        // а определить enum в двух областях-потомках нельзя
+
 namespace Render
 {
   typedef pair<string, string> StringPair;
@@ -7,8 +11,6 @@ namespace Render
 // Effect-side Config Manager interface
 struct NOVTABLE IConfigManager
 {
-#include "Features.h"
-
   typedef vector<StringPair> ConfigParams;
 
   struct TechniqueDesc

@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "ConfigManager.h"
 #include "configdatabase.h"
+#include "renderer.h"        // GetBackend() — caps приходят от бэкенда (шаг 4)
+#include "renderbackend.h"   // BackendSystemInfo
 #include "System/CmdLineLite.h"
 
 
@@ -21,8 +23,7 @@ public:
   ConfigManagerImpl(void);
   ~ConfigManagerImpl(void) {}
 
-  HRESULT CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats/* = true*/);
-  void    CheckFormats(IDirect3D9* _pD3D, UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT AdapterFormat);
+  HRESULT CheckDeviceCaps(IDirect3DDevice9* _pDevice);
 
   // SetPerfomanceLevel - level 0 is of most quality
   void SetPerfomanceLevel(ResourceType _type, UINT _level);
@@ -55,12 +56,8 @@ ConfigManagerImpl::ConfigManagerImpl() : caps()
 }
 
 
-inline void SetFlag(DWORD _flag, bool _val, DWORD *_pDest)
-{
-  NI_STATIC_ASSERT((0 == int(false)) && (1 == int(true)), WRONG_ASSUMPTION_ABOUT_BOOL_REPRESENTATION);
-
-  *_pDest = (~_flag & *_pDest) | (-int(_val) & _flag);
-}
+// SetFlag удалён: флаги caps больше не выставляются по одному — маску
+// приносит бэкенд целиком (BackendSystemInfo::features, шаг 4).
 
 // Дамп разрешённых пинов config.txt (docs/PLAN_NVRHI.md §2.5).
 // config.txt — это матчер: из идентификатора адаптера, caps и переданных
@@ -83,16 +80,50 @@ static bool DumpConfigPinsRequested()
       || CmdLineLite::Instance().IsKeyDefined( "-dumpConfigPins" );
 }
 
+// Форс флагов depth-текстур (hasD16T/hasD24X/hasD24S) — замена отсутствующему
+// GPU-железу по части корректности: без этих битов HasDSM() (единый гейт
+// аппаратных карт теней) путь shadow maps не исполняется вообще.
+//
+// НА E2E-СТЕНДЕ (tiny10, «Microsoft Basic Render Driver») БЕСПОЛЕЗЕН И ОПАСЕН:
+// устройство не умеет depth-форматы как текстуру — CheckDeviceFormat
+// (DEPTHSTENCIL, TEXTURE) = no для D16/D24X8/D24S8, а реальная попытка
+// CreateTexture даёт 0x8876086C (замер tools/dsm_probe, 2026-10-15,
+// docs/PLAN_NVRHI.md §2.15 п.9). Форс превратил бы «путь не исполняется» в
+// NI_DX_THROW на создании ресурса. Механизм оставлен для машин с реальным
+// D3D9-железом и для прогонов поверх NvrhiBackend (этап 3), где depth-текстуры
+// есть; в E2E на tiny10 не включается и новый визуальный эталон не создаётся.
+static bool s_forceDsm = false;
+REGISTER_DEV_VAR( "force_dsm", s_forceDsm, STORAGE_NONE );
 
-HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats)
+static bool ForceDsmRequested()
+{
+  return s_forceDsm
+      || CmdLineLite::Instance().IsKeyDefined( "forceDsm" )
+      || CmdLineLite::Instance().IsKeyDefined( "-forceDsm" );
+}
+
+
+HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice)
 {
   ASSERT(_pDevice);
 
   HRESULT hr = E_FAIL;
 
+  // Возможности приходят от бэкенда (шаг 4): D3DCAPS9 здесь больше НЕ источник
+  // caps — он остался только матчеру config.txt (AdapterOrdinal/DeviceType/маски
+  // caps), у которого нейтрального словаря пока нет (§2.5).
+  BackendSystemInfo backendInfo = {};
+  hr = GetBackend()->GetSystemInfo( backendInfo );
+  NI_DX_THROW( hr, "IRenderBackend::GetSystemInfo failed" );
+
+  sysInfo.MaxVertexShaderConst = backendInfo.maxVertexShaderConst;
+  sysInfo.IsNullRef            = backendInfo.isNullRef;
+  caps                         = backendInfo.features;
+  if( ForceDsmRequested() )
+    caps |= hasD16T | hasD24X | hasD24S;    // см. комментарий у dev-var'а
+
   D3DCAPS9 caps9;
   _pDevice->GetDeviceCaps(&caps9);
-  sysInfo.MaxVertexShaderConst = caps9.MaxVertexShaderConst;
 
   // Диагностика порядка запуска: дамп пинов завязан на ключ командной строки, а
   // CmdLineLite инициализируется в PseudoWinMain — проверяем, что к моменту
@@ -120,13 +151,6 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
   if(D3DDEVTYPE_REF == caps9.DeviceType)  // Probably this mean it is NULLREF actually.
     sysInfo.IsNullRef = NGlobal::GetVar("nullrender").GetInt64();
 
-  if( _checkFormats ) {
-    D3DDISPLAYMODE displayMode;
-    pD3D->GetAdapterDisplayMode(caps9.AdapterOrdinal, &displayMode);
-
-    CheckFormats(::Get(pD3D), caps9.AdapterOrdinal, caps9.DeviceType, displayMode.Format);
-  }
-
   if( IConfigDatabase* const pCDB = IConfigDatabase::Create() )
   {
     SOUND_DEVICE sndDev;
@@ -139,13 +163,16 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
       // Входы матчера: без них список пинов нельзя воспроизвести на другом
       // железе (или при другом синтезе caps). 1024/64/1700 — жёстко зашитые
       // SystemMemory/VideoMemory/CPUSpeed, их решение менять не будем (§2.5).
+      // Идентичность и возможности печатаются из BackendSystemInfo — т.е. из
+      // того же источника, что теперь читает клиент (шаг 4); сравнение с
+      // эталоном 2026-10-14 (§2.5) работает без изменений.
       // Форматтер клиента %llu не понимает (в Render такого нет нигде) —
-      // версия драйвера печатается двумя половинками LARGE_INTEGER.
+      // версия драйвера печатается двумя половинками.
       DebugTrace( "ConfigPins: adapter=\"%s\" vendor=0x%04x device=0x%04x driver=%u.%u "
                   "mem=1024 vid=64 cpu=1700 MaxVertexShaderConst=%u IsNullRef=%d caps=0x%x pins=%d",
-                  adapterID.Description, adapterID.VendorId, adapterID.DeviceId,
-                  (unsigned)(adapterID.DriverVersion.QuadPart >> 32),
-                  (unsigned)(adapterID.DriverVersion.QuadPart & 0xffffffffULL),
+                  backendInfo.description, backendInfo.vendorId, backendInfo.deviceId,
+                  (unsigned)(backendInfo.driverVersion >> 32),
+                  (unsigned)(backendInfo.driverVersion & 0xffffffffULL),
                   sysInfo.MaxVertexShaderConst, (int)sysInfo.IsNullRef, caps,
                   (int)config_params.size() );
       for( size_t i = 0; i < config_params.size(); ++i )
@@ -164,20 +191,6 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
   }
 
   return hr;
-}
-
-
-void ConfigManagerImpl::CheckFormats(IDirect3D9* _pD3D, UINT _Adapter, D3DDEVTYPE _DeviceType, D3DFORMAT _AdapterFormat)
-{
-  ASSERT(_pD3D);
-
-#define CHECK_SUPPORT(usage, type, fmt) (D3D_OK == _pD3D->CheckDeviceFormat(_Adapter, _DeviceType, _AdapterFormat, usage, type, fmt))
-
-  SetFlag(hasD16T, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D16),  &caps);
-  SetFlag(hasD24X, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D24X8), &caps);
-  SetFlag(hasD24S, CHECK_SUPPORT(D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, D3DFMT_D24S8), &caps);
-
-#undef CHECK_SUPPORT
 }
 
 

@@ -1,3 +1,5 @@
+#pragma once
+
 // Аппаратные фичи, влияющие на выбор путей рендера.
 //
 // Из набора удалены vendor-специфичные расширения D3D9-эпохи:
@@ -9,6 +11,12 @@
 //   hasNLRT — null render target. Заменяется color-write маской.
 // hasD16T/hasD24X/hasD24S оставлены как единый гейт «аппаратные карты
 // теней читаются как depth-текстура» (см. HasDSM()).
+//
+// Область видимости — namespace Render (раньше enum объявлялся внутри тела
+// IConfigManager через #include в struct; теперь его заполняет ещё и бэкенд,
+// а дублировать enum в двух областях нельзя).
+namespace Render
+{
 enum Features {
   hasD16T = 1,            // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D16
   hasD24X = hasD16T << 1, // Depth/Stencil textures (hardware shadow maps) - D3DFMT_D24X8
@@ -18,3 +26,4 @@ enum Features {
 // Меняется при несовместимом изменении набора флагов (в отчёты уходит
 // только маска caps, см. renderer.cpp).
 static const int featuresVersion = 2;
+}; // namespace Render

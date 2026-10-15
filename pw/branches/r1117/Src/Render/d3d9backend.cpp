@@ -8,6 +8,63 @@ namespace Render
 
 
 //////////////////////////////////////////////////////////////////////////
+// Сведения об адаптере (шаг 4, docs/PLAN_NVRHI.md §2.5). Это МЕСТО, где D3D9
+// перестаёт быть источником caps для клиентского кода: D3DCAPS9 +
+// GetAdapterIdentifier здесь превращаются в нейтральный BackendSystemInfo,
+// а NvrhiBackend на этапе 3 обязан выдать тот же контракт (эталон пинов
+// матчера снят заранее — §2.5).
+
+HRESULT D3D9Backend::GetSystemInfo(BackendSystemInfo& out) {
+  D3DCAPS9 caps9;
+  ZeroMemory(&caps9, sizeof(caps9));
+  HRESULT hr = pDevice->GetDeviceCaps(&caps9);
+  if (FAILED(hr))
+    return hr;
+
+  out.maxVertexShaderConst = caps9.MaxVertexShaderConst;
+  out.isNullRef = (D3DDEVTYPE_NULLREF == caps9.DeviceType);
+
+  IDirect3D9* pRawD3D = NULL;
+  hr = pDevice->GetDirect3D(&pRawD3D);
+  if (FAILED(hr) || !pRawD3D)
+    return hr;
+  IntrusivePtr<IDirect3D9> pD3D;
+  pD3D.Attach(pRawD3D);
+
+  D3DADAPTER_IDENTIFIER9 id;
+  ZeroMemory(&id, sizeof(id));
+  hr = pD3D->GetAdapterIdentifier(caps9.AdapterOrdinal, 0, &id);
+  if (FAILED(hr))
+    return hr;
+
+  out.vendorId      = id.VendorId;
+  out.deviceId      = id.DeviceId;
+  out.driverVersion = (unsigned long long)id.DriverVersion.QuadPart;
+  // Описание — в собственный буфер: id живёт на стеке вызова.
+  lstrcpynA(adapterDescription, id.Description, (int)sizeof(adapterDescription));
+  out.description = adapterDescription;
+
+  // Depth-текстуры (гейт аппаратных карт теней). Прежний запрос из
+  // ConfigManager::CheckFormats переехал сюда без изменений — иначе на стенде
+  // (базовый драйвер) caps остались бы другими и матчер config.txt разрешил бы
+  // другой список пинов.
+  out.features = 0;
+  D3DDISPLAYMODE dm;
+  if (SUCCEEDED(pD3D->GetAdapterDisplayMode(caps9.AdapterOrdinal, &dm))) {
+#define HAS_DEPTH_TEXTURE(fmt) \
+    (D3D_OK == pD3D->CheckDeviceFormat(caps9.AdapterOrdinal, caps9.DeviceType, dm.Format, \
+                                       D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_TEXTURE, fmt))
+    if (HAS_DEPTH_TEXTURE(D3DFMT_D16))   out.features |= hasD16T;
+    if (HAS_DEPTH_TEXTURE(D3DFMT_D24X8)) out.features |= hasD24X;
+    if (HAS_DEPTH_TEXTURE(D3DFMT_D24S8)) out.features |= hasD24S;
+#undef HAS_DEPTH_TEXTURE
+  }
+
+  return S_OK;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
 // Переносится КАК ЕСТЬ: вызовы соответствуют прежним местам в renderer.cpp
 // (см. docs/PLAN_NVRHI.md §Этап 2 — «D3D9Backend — перенос
 // SmartRenderer/Renderer как есть»). Логика здесь не меняется: иначе пропадает

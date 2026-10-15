@@ -8,7 +8,7 @@ namespace Render
 class NOVTABLE ConfigManager
 {
 public:
-  virtual HRESULT CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats = true) = 0;
+  virtual HRESULT CheckDeviceCaps(IDirect3DDevice9* _pDevice) = 0;
   // SetPerfomanceLevel - level 0 is of most quality
   virtual void SetPerfomanceLevel(IConfigManager::ResourceType _type, UINT _level) = 0;
   // Get adapter video memory in MB; _pAvailableVidMem shows total video memory minus driver-reserved memory
