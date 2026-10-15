@@ -31,6 +31,18 @@ namespace LinuxBootstrap
  * Finite in-range fractional arguments truncate as in C++; missing selected units
  * and unsafe conversions fail. Receiver queries keep actual candidate context,
  * and the reserved transport names cannot be injected by authored expressions.
+ * sender/receiver.applName(SCOPE), including pFirst/pSecond-> spellings, delegates
+ * to the original live named ring. SCOPE is exactly GLOBAL, UNIT, ABILITY, DISPATCH
+ * or UNIT_AND_SUMMONS. Only whole-operand ==/!= pMisc comparisons and numeric
+ * .GetVariable reads of exactly "LifeTime", "Duration" and "glyphNumber" are
+ * exposed, never pointer values or mutation. Other variables, including statMod's
+ * formula-recalculating getter, require separate checked transaction support.
+ * Preserve first-match order, disabled live effects, original scope filtering and
+ * missing-match fallback to the actual miscellaneous context (not null). Selected
+ * reads require a real unit and ability/applicator context; unknown miscellaneous
+ * wrappers remain unsupported. Getter results must be finite; lazy context checks
+ * and staged RNG remain intact. At most 64 evaluation-local query descriptors are
+ * accepted, with ASCII identifier literals and no escapes or concatenation.
  * mScale/mParentScale and exact pMisc->/appl. getter spellings read original
  * miscellaneous scale values. mObjectParent->...->GetScale() and equivalent
  * GetObjectParent() calls allow at most 16 explicit parent hops. Original root
@@ -57,7 +69,7 @@ namespace LinuxBootstrap
  * third argument is exactly pMisc; ability-identity selection requires a real applicator.
  * No arbitrary object paths or generic virtual fallback is added.
  * pMisc->GetVariable("damageDealed") and pMisc->GetVariable("isAutoAttack")
- * are the only applicator accessors and require an applicator context.
+ * are the only direct miscellaneous variable accessors and require an applicator context.
  * Unknown properties or selected missing units fail, never silently substitute zero.
  * Constants use the existing local/global ability lookup. Recursion is limited
  * to 16 active names and 128 expressions; cycles and missing constants fail.

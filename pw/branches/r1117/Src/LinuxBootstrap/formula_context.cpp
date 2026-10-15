@@ -207,12 +207,82 @@ bool BindMiscScalar(const std::string& source, const std::string& root, std::siz
 	return false;
 }
 
+/** An evaluation-local query descriptor, never a numeric encoding of an engine pointer. */
+struct NamedFormulaQuery
+{
+	std::string name, variable;
+	ApplicatorSearchType scope = GLOBAL;
+	bool receiver = false, equal = false;
+};
+
+/** Lower one FormulaBuilder applName(scope) macro with a closed identity or numeric suffix. */
+bool BindNamedQuery(const std::string& source, std::size_t start, std::size_t& pos,
+	bool receiver, std::map<std::string, NamedFormulaQuery>& queries, std::string& result)
+{
+	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
+	const auto space = [&]() { while (pos < source.size() && (source[pos] == ' ' || source[pos] == '\t' || source[pos] == '\r' || source[pos] == '\n')) ++pos; };
+	NamedFormulaQuery query;
+	query.receiver = receiver;
+	if (pos == source.size() || source[pos] < 'A' || source[pos] > 'Z') return false;
+	const std::size_t begin = pos;
+	while (pos < source.size() && nameChar(source[pos])) ++pos;
+	query.name = source.substr(begin, pos - begin);
+	if (pos == source.size() || source[pos++] != '(') return false;
+	bool scopeFound = false;
+	for (const auto& scope : {std::make_pair("GLOBAL)", GLOBAL), std::make_pair("UNIT)", UNIT),
+		std::make_pair("ABILITY)", ABILITY), std::make_pair("DISPATCH)", DISPATCH), std::make_pair("UNIT_AND_SUMMONS)", UNIT_AND_SUMMONS)})
+	{
+		const std::size_t length = std::strlen(scope.first);
+		if (source.compare(pos, length, scope.first) != 0) continue;
+		query.scope = scope.second; pos += length; scopeFound = true; break;
+	}
+	if (!scopeFound) return false;
+	space();
+	const std::string getter = ".GetVariable";
+	if (source.compare(pos, getter.size(), getter) == 0)
+	{
+		pos += getter.size(); space();
+		if (pos == source.size() || source[pos++] != '(') return false;
+		space(); if (pos == source.size() || source[pos++] != '"') return false;
+		const std::size_t variable = pos;
+		if (pos == source.size() || !nameChar(source[pos]) || (source[pos] >= '0' && source[pos] <= '9')) return false;
+		while (pos < source.size() && nameChar(source[pos])) ++pos;
+		query.variable = source.substr(variable, pos - variable);
+		// Other getters (notably statMod) can evaluate fresh formulas or consume RNG.
+		// Admit only audited stored fields until those callbacks have a checked transaction.
+		if (query.variable != "LifeTime" && query.variable != "Duration" && query.variable != "glyphNumber") return false;
+		if (pos == source.size() || source[pos++] != '"') return false;
+		space(); if (pos == source.size() || source[pos++] != ')') return false;
+	}
+	else
+	{
+		// Identity is a whole boolean operand. Consuming a prefix of pointer arithmetic
+		// would silently change its precedence into arithmetic on a boolean transport.
+		const std::size_t preceding = source.find_last_not_of(" \t\r\n", start ? start - 1 : 0);
+		if (start && preceding != std::string::npos && source[preceding] != '(' && source[preceding] != ',' &&
+			source[preceding] != '?' && source[preceding] != ':' &&
+			!(preceding && (source.compare(preceding - 1, 2, "&&") == 0 || source.compare(preceding - 1, 2, "||") == 0))) return false;
+		query.equal = source.compare(pos, 2, "==") == 0;
+		if (!query.equal && source.compare(pos, 2, "!=") != 0) return false;
+		pos += 2; space();
+		if (source.compare(pos, 5, "pMisc") != 0) return false;
+		pos += 5; space();
+		if (pos < source.size() && source[pos] != ')' && source[pos] != ',' && source[pos] != '?' && source[pos] != ':' &&
+			source.compare(pos, 2, "&&") != 0 && source.compare(pos, 2, "||") != 0) return false;
+	}
+	if (queries.size() >= NumericFormulaMaxSymbols) return false;
+	const std::string symbol = "__named_" + std::to_string(queries.size());
+	queries.emplace(symbol, query);
+	result += " " + symbol + " ";
+	return true;
+}
+
 /** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
  */
 bool BindCombatAccessors(const std::string& source, std::string& result, bool positionContext,
-	std::map<std::string,std::string>& talents, unsigned nesting = 0)
+	std::map<std::string,std::string>& talents, std::map<std::string, NamedFormulaQuery>& queries, unsigned nesting = 0)
 {
 	if (source.size() > NumericFormulaMaxLength || nesting > NumericFormulaMaxNesting) return false;
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
@@ -225,7 +295,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
 			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
 			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0 ||
-			name.compare(0, 11, "__recommend") == 0) return false;
+			name.compare(0, 11, "__recommend") == 0 || name.compare(0, 8, "__named_") == 0) return false;
 		if (name == "tal")
 		{
 			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
@@ -277,6 +347,13 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		else if (name == "sender" || name == "receiver" || name == "pFirst" || name == "pSecond")
 		{
 			const bool pointer = name == "pFirst" || name == "pSecond";
+			const std::string named = std::string(pointer ? "->" : ".") + "appl";
+			if (source.compare(pos, named.size(), named) == 0)
+			{
+				pos += named.size();
+				if (!BindNamedQuery(source, start, pos, name == "receiver" || name == "pSecond", queries, result)) return false;
+				continue;
+			}
 			const std::string recommendation = std::string(pointer ? "->" : ".") + "IsRecommended";
 			if (source.compare(pos, recommendation.size(), recommendation) == 0)
 			{
@@ -310,7 +387,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 							args[2].find_last_not_of(" \t\r\n") - first + 1) != "pMisc") return false;
 					}
 					std::string interval;
-					if (!BindCombatAccessors(args[0], interval, positionContext, talents, nesting + 1)) return false;
+					if (!BindCombatAccessors(args[0], interval, positionContext, talents, queries, nesting + 1)) return false;
 					result += boundName + (args.size() == 3 ? "_ex_misc(" : "_ex(") + interval + "," + std::to_string(mask) + ")";
 					pos = open; history = true; break;
 				}
@@ -368,8 +445,11 @@ struct Context
 		if (++expressions > 128) return {NumericFormulaError::LimitExceeded};
 		std::string bound;
 		std::map<std::string,std::string> talents;
-		if (!BindCombatAccessors(expression, bound, position != nullptr, talents)) return {NumericFormulaError::UnsupportedSyntax};
+		std::map<std::string, NamedFormulaQuery> queries;
+		if (!BindCombatAccessors(expression, bound, position != nullptr, talents, queries)) return {NumericFormulaError::UnsupportedSyntax};
 		return EvaluateNumericFormula(bound, [&](const std::string& name, double& value) {
+			const auto query = queries.find(name);
+			if (query != queries.end()) return ReadNamed(query->second, value);
 			const auto found = talents.find(name);
 			if (found != talents.end())
 			{
@@ -384,6 +464,24 @@ struct Context
 		}, [&](const std::string& name, const double* args, std::size_t count, double& value) {
 			return Scale(name, args, count, value);
 		});
+	}
+
+	/** Use original scope/order and missing-match fallback; keep objects out of the scalar parser. */
+	bool ReadNamed(const NamedFormulaQuery& query, double& value) const
+	{
+		const auto* unit = dynamic_cast<const NWorld::PFBaseUnit*>(query.receiver ? target : sender);
+		const IMiscFormulaPars* misc = applicator ? static_cast<const IMiscFormulaPars*>(applicator) : ability;
+		if (!unit || !misc) return false;
+		const auto* found = unit->FindApplicator(query.name.c_str(), misc, query.scope);
+		if (!found) return false;
+		if (query.variable.empty())
+		{
+			value = query.equal ? found == misc : found != misc;
+			return true;
+		}
+		const CObj<NWorld::PFBaseApplicator> held = const_cast<NWorld::PFBaseApplicator*>(dynamic_cast<const NWorld::PFBaseApplicator*>(found));
+		value = found->GetVariable(query.variable.c_str());
+		return std::isfinite(value);
 	}
 
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
