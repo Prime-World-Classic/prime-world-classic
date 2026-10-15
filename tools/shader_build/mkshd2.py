@@ -172,6 +172,7 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
     sections = {t: TargetSection(t) for t in targets if t != TAG_SM3}
 
     stats = {}
+    bank_stats = {}
     for index in live_indices:
         decoded = dxcdrv.decode_index(index, pins)
         if decoded is None:
@@ -185,7 +186,7 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
         for stage in ("vs", "ps"):
             entry = dxcdrv.ENTRY_VS if stage == "vs" else dxcdrv.ENTRY_PS
             if tree is not None:
-                tree.build(stage)
+                tree.build(stage, os.path.basename(path)[:-4], defines)
             code, err, spv = dxcdrv.compile_dxc(src, stage, entry, defines,
                                                 tree=tree)
             if code != 0:
@@ -194,11 +195,17 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
                                             stage, first))
                 blobs[stage] = None
                 continue
+            if tree is not None and getattr(tree, "bank_members", None):
+                bank_stats.setdefault(index, {})[stage] = len(tree.bank_members)
             blobs[stage] = open(spv, "rb").read()
         for sec in sections.values():
             sec.add(index, blobs.get("vs"), blobs.get("ps"))
         stats[index] = [(len(blobs.get("vs") or b"")), (len(blobs.get("ps") or b""))]
 
+    if bank_stats:
+        mx = max((max(v.values()) for v in bank_stats.values() if v), default=0)
+        log("  канонический банк: пар %d, членов на пару макс %d"
+            % (len(bank_stats), mx))
     out = bytearray(v1)
     base = len(out)
     offsets = []
@@ -330,6 +337,10 @@ def main():
                     help="НЕ раскладывать ресурсы по descriptor set (макет §3.z "
                          "п.1 по умолчанию: $Globals set0, SSBO set1, текстуры "
                          "set2, сэмплеры set3); нужно только для сравнения")
+    ap.add_argument("--cbank", action="store_true",
+                    help="канонический c-банк: вместо авто-$Globals — один "
+                         "`cbuffer pwCBankVS/PS` с packoffset по номерам c из "
+                         "исходников (set 0, binding 0/1); см. §3.z п.2")
     args = ap.parse_args()
 
     def log(*a):
@@ -359,7 +370,7 @@ def main():
     want = set(m.strip() for m in args.materials.split(",")) if args.materials \
         else None
     tree = None if TAG_SPIRV not in targets else dxcdrv.ShimTree(
-        set_layout=not args.flat_sets)
+        set_layout=not args.flat_sets, cbank=args.cbank)
     total_missing = 0
     done = 0
     for name in sorted(live):

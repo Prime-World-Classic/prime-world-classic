@@ -92,10 +92,13 @@ class ShimTree:
     `pw/branches/r1117/Src/Render/zzz_probe_shaders_*/`).
     """
 
-    def __init__(self, prefix="zzz_build_shaders_", set_layout=False):
+    def __init__(self, prefix="zzz_build_shaders_", set_layout=False, cbank=False):
         self.prefix = prefix
         self.set_layout = set_layout
+        self.cbank = cbank
+        self.bank_members = []
         self.dir = None
+        self.src = None
 
     def _struct_names(self):
         names_ps, names_vs = set(), set()
@@ -109,11 +112,31 @@ class ShimTree:
                 names_vs.add(m.group(1))
         return tuple(sorted(names_ps)), tuple(sorted(names_vs))
 
-    def build(self, stage):
+    def build(self, stage, material=None, defines=()):
+        """Дерево под один прогон DXC.
+
+        `material` + `defines` нужны режиму `cbank`: банк строится по
+        ФАКТИЧЕСКИ дошедшим объявлениям этой пары (пины меняют набор членов),
+        поэтому он общий для всей пары VS+PS, но не для материала целиком.
+        """
         names_ps, names_vs = self._struct_names()
         self.cleanup()
         self.dir = os.path.join(RENDER, self.prefix + stage)
-        os.makedirs(self.dir, exist_ok=True)
+        # Зеркало на уровень глубже: в исходниках есть `#include
+        # "..\OnlineShaders\_commonDepthRead.h"` и `#include "../GlobalMasks.h"`,
+        # поэтому `..` от файла дерева обязан попадать в зеркало, а не в настоящий
+        # Src/Render (иначе под дерево подпадают НАСТОЯЩИЕ OnlineShaders с
+        # неснятыми c-объявлениями → «redefinition of 'madValueUV'»)
+        self.src = os.path.join(self.dir, "src")
+        os.makedirs(self.src, exist_ok=True)
+        bank_txt = None
+        if self.cbank and material:
+            import cbank as cb
+            entry = os.path.join(SH, material + ".hlsl")
+            text = cb.preprocess(entry, defines)
+            bank_txt, members, _dead, _drop = cb.bank_block(
+                entry, cb.mask_map(), stage, text=text)
+            self.bank_members = [(m[0], m[1], m[2]) for m in members]
         for fn in os.listdir(SH):
             src = os.path.join(SH, fn)
             if not os.path.isfile(src):
@@ -121,17 +144,43 @@ class ShimTree:
             if fn.endswith(".hlsl"):
                 out, _st, _n = shim.rewrite(
                     open(src, encoding="utf-8", errors="replace").read(), stage,
-                    names_ps, names_vs, set_layout=self.set_layout)
-                open(os.path.join(self.dir, fn), "w", encoding="utf-8").write(out)
+                    names_ps, names_vs, set_layout=self.set_layout,
+                    cbank=self.cbank)
+                if bank_txt is not None and fn == material + ".hlsl":
+                    # банк — ОТДЕЛЬНЫМ файлом и включается ПЕРВЫМ: члены должны
+                    # быть видны функциям из `#include "_common.hlsl"`, а не
+                    # только телу точки входа
+                    open(os.path.join(self.src, "pw_cbank_%s.hlsl" % stage),
+                         "w", encoding="utf-8").write(bank_txt + "\n")
+                    out = '#include "pw_cbank_%s.hlsl"\n' % stage + out
+                open(os.path.join(self.src, fn), "w", encoding="utf-8").write(out)
             elif fn.endswith(".h"):
-                open(os.path.join(self.dir, fn), "wb").write(open(src, "rb").read())
+                open(os.path.join(self.src, fn), "wb").write(open(src, "rb").read())
+        # заголовки вне Shaders/, доходящие через `../`
+        gm = os.path.join(RENDER, "GlobalMasks.h")
+        if os.path.isfile(gm):
+            shutil.copyfile(gm, os.path.join(self.dir, "GlobalMasks.h"))
+        osh = os.path.join(RENDER, "OnlineShaders")
+        if os.path.isdir(osh):
+            d2 = os.path.join(self.dir, "OnlineShaders")
+            os.makedirs(d2, exist_ok=True)
+            for fn in sorted(os.listdir(osh)):
+                if not fn.endswith((".h", ".hlsl")):
+                    continue
+                out, _st, _n = shim.rewrite(
+                    open(os.path.join(osh, fn), encoding="utf-8",
+                         errors="replace").read(), stage,
+                    names_ps, names_vs, set_layout=self.set_layout,
+                    cbank=self.cbank)
+                open(os.path.join(d2, fn), "w", encoding="utf-8").write(out)
         return self.dir
 
     def cleanup(self):
-        for stage in ("vs", "ps"):
-            d = os.path.join(RENDER, self.prefix + stage)
-            if os.path.isdir(d):
-                shutil.rmtree(d, ignore_errors=True)
+        if os.path.isdir(RENDER):
+            for fn in os.listdir(RENDER):
+                d = os.path.join(RENDER, fn)
+                if fn.startswith(self.prefix) and os.path.isdir(d):
+                    shutil.rmtree(d, ignore_errors=True)
         self.dir = None
 
 
@@ -144,8 +193,9 @@ def compile_dxc(path, stage, entry, defines, tree=None, out_spv=None,
     спайка B0). entry задаётся явно: DXC не знает имени точки входа из SM3-кода.
     """
     if tree is not None and tree.dir:
-        path = os.path.join(tree.dir, os.path.basename(path))
-        inc = tree.dir
+        base = getattr(tree, "src", None) or tree.dir
+        path = os.path.join(base, os.path.basename(path))
+        inc = base
     else:
         inc = SH
     if out_spv is None:

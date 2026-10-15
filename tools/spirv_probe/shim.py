@@ -44,6 +44,23 @@ SamplerState g_smp : register(s0, space%d);
 SAMPLER_DECL = re.compile(
     r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?\s*(?::\s*register\s*\([^)]*\))?\s*;")
 REG_ANY = re.compile(r"\s*:\s*register\s*\(([^)]*)\)")
+
+# Объявление константы c-банка: [const] ТИП имя[массив] : register( МАКРОС|cN );
+# Один источник для прослойки (гасит их в режиме канонического банка) и для
+# tools/shader_build/cbank.py (строит из них банк).
+CDECL = re.compile(
+    r"^[ \t]*(?P<const>const\s+)?(?P<type>float4x4|float4x3|float4x2|float3x4|"
+    r"float3x3|float2x4|float2x2|matrix|float4|float3|float2|float|half4|half3|"
+    r"half2|half|int4|int3|int2|int|bool4|bool3|bool2|bool|uint4|uint3|uint2|uint)"
+    r"[ \t]+(?P<name>\w+)[ \t]*(?P<arr>\[[^]]*\])?[ \t]*:[ \t]*register[ \t]*"
+    r"\([ \t]*(?P<reg>c[ \t]*\d+|[A-Z_][A-Z0-9_]*)[ \t]*\)[ \t]*;",
+    re.M)
+
+
+def strip_cdecls(src):
+    """Снимает объявления c-банка (имена приходят из сгенерированного банка)."""
+    out, n = CDECL.subn("", src)
+    return out, n
 # ресурсы, у которых в исходниках register нет (наши StructuredBuffer из шага 10
 # и Texture2D, выросшие из sampler2D) — им номер назначаем здесь
 AUTO_RES = re.compile(r"\b(Texture2D|Texture2DArray|TextureCube|StructuredBuffer|"
@@ -52,9 +69,18 @@ AUTO_RES = re.compile(r"\b(Texture2D|Texture2DArray|TextureCube|StructuredBuffer
 
 _TEXCOORD_CTR = [200]
 
-def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=False):
+def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=False,
+            cbank=False):
     notes = []
     _TEXCOORD_CTR[0] = 100   # счётчик — на файл, иначе семантика уезжает за лимит
+    # 0. канонический банк: объявления c-констант снимаются совсем — имена
+    #    приходят из сгенерированного `cbuffer pwCBankXX` (см. cbank.bank_block).
+    #    Делается ДО прохода register(...), иначе от объявления останется голый
+    #    `float4 имя;` и член банка продублируется на авто-$Globals.
+    if cbank:
+        src, n_cb = strip_cdecls(src)
+        if n_cb:
+            notes.append("cbank: снято объявлений c-банка: %d" % n_cb)
     # 1. combined-сэмплеры -> ресурс; сам SamplerState один общий
     def sampler_sub(m):
         kind, name = m.group(1), m.group(2)
