@@ -71,7 +71,6 @@ void FemaleMaleAssistEffect::PlayEffect( CPtr<PFBaseUnit> pKiller, CPtr<PFBaseUn
 namespace
 {
 NDb::UnitLogicParameters g_linuxDefaultUnitLogicParameters;
-NDb::AILogicParameters g_linuxDefaultAILogicParameters;
 wstring g_linuxEmptyFactionName;
 Render::HDRColor g_linuxDefaultColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -180,7 +179,8 @@ PFAIWorld::PFAIWorld( PFWorld * _world )
     pColoringScheme = pRoot->visualRoot->teamColoringScheme;
 
   if (!IsValid(pAILogicParameters))
-    pAILogicParameters = &g_linuxDefaultAILogicParameters;
+		// The DB pointer owns its resource; a static fallback cannot survive its final release.
+		pAILogicParameters = new NDb::AILogicParameters;
 }
 
 const NDb::UnitLogicParameters& PFAIWorld::GetUnitParameters(NDb::EUnitType type) const

@@ -1422,6 +1422,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "permanent_terrain_cost_b13_tests.inc"
 #include "road_nature_b13_tests.inc"
 #include "fixture_lifetime_b13_tests.inc"
+#include "ai_defaults_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 {
@@ -1434,6 +1435,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
 	FixtureLifetimeB13(check);
+	AiDefaultsB13(check);
 	{
 		NDb::Terrain* terrain = new NDb::Terrain; terrain->elemXCount = 4; terrain->elemYCount = 3; terrain->tilesPerElement = 4;
 		NDb::AdvMap* map = new NDb::AdvMap; map->terrain = terrain;
