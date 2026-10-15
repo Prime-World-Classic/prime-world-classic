@@ -19,6 +19,18 @@
 namespace Render
 {
 
+// «Виртуальные регистры» констант шейдера (GlobalMasks.h, §2.7 плана).
+// Лексикон живёт здесь, а не в conststore.h: seam обязан уметь и записать,
+// и прочитать регистр, а тень констант — только один из владельцев.
+const int SHADER_CONST_REGISTERS = 256;
+
+enum EShaderConstStage
+{
+  csVertex = 0,
+  csPixel  = 1,
+  csConstStageCount
+};
+
 // План предполагал каталог Src/Render/Backend/, но список файлов Render.vcproj
 // плоский (подкаталогов в нём нет), а из этого списка строится CMake-граф
 // клиента — поэтому файлы лежат рядом с остальными исходниками Render.
@@ -181,6 +193,15 @@ public:
   // --- константы шейдеров: «виртуальные регистры» c0..c255 (GlobalMasks.h) ---
   virtual HRESULT SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData) = 0;
   virtual HRESULT SetPixelShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData) = 0;
+
+  // Чтение тех же регистров обратно. Нужно не «для полноты»: на D3D9 у
+  // устройства есть Get{Vertex,Pixel}ShaderConstantF, и им сверяют тень
+  // констант (conststore, шаг 7); на uniform-буферах ответить нечем, поэтому
+  // отвечать будет блок, собранный из тени. Пока бэкенд D3D9 отвечает из
+  // устройства — расхождение с тенью означает, что где-то в клиенте константы
+  // пишутся мимо Renderer::Set*ShaderConstants (или устройство сбрасывалось).
+  virtual HRESULT GetShaderConstants(EShaderConstStage stage, unsigned startRegister,
+                                     unsigned registerCount, void* pData) = 0;
 
   // Плоскость отсечения: включение/выключение и запись в слот 0 одним вызовом
   // (в D3D9 это два разных вызова — SetRenderState(D3DRS_CLIPPLANEENABLE) и

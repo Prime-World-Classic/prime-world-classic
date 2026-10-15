@@ -28,6 +28,14 @@ REGISTER_VAR( "nodip", nullrender, STORAGE_NONE );
 static int s_autoScreenshotAt = 0;
 REGISTER_VAR( "auto_screenshot", s_autoScreenshotAt, STORAGE_NONE );
 
+// Шаг 7 плана NVRHI (docs/PLAN_NVRHI.md §2.9): сверка тени констант с тем, что
+// реально стоит в устройстве. Без этого замера мы не знаем, можно ли на этапе
+// 3 делать тень единственным источником констант — на uniform-буферах
+// Get*ShaderConstantF ответить нечем. Включается так же, как auto_screenshot:
+//   setvar verify_const_block 1
+static int s_verifyConstBlock = 0;
+REGISTER_VAR( "verify_const_block", s_verifyConstBlock, STORAGE_NONE );
+
 
 // Статистика по шейдерам: сколько уникальных VS/PS/пар биндится за кадр и за
 // сессию. Нужна для расчёта кэша графических пайплайнов (docs/PLAN_NVRHI.md,
@@ -344,6 +352,25 @@ void OnFrameStart()
     // Раскладка констант (docs/PLAN_NVRHI.md §2.7): какие c0..c255 реально
     // пишутся — по этому выбирается размер/число uniform-буферов на этапе 3.
     DebugTrace( "%s", GetConstStore().StatsLine() );
+    // Побитовая сверка тени с состоянием устройства (шаг 7, §2.9). Делается
+    // ДО Turn(), но Turn() счётчики не трогает тень — только статистику.
+    // Смысл замера: mismatch>0 означает, что в клиенте остались пути записи
+    // констант мимо Renderer::Set*ShaderConstants (или устройство
+    // пересоздавалось — тогда сравнение невалидно в принципе).
+    if ( s_verifyConstBlock )
+    {
+      IRenderBackend* pB = GetBackend();
+      const ConstVerifyResult vs = VerifyConstStoreAgainstBackend( pB, csVertex );
+      const ConstVerifyResult ps = VerifyConstStoreAgainstBackend( pB, csPixel );
+      // Двумя строками: DebugTrace/PrintfFormatter принимает не больше 10
+      // аргументов, а полей на стадию — как раз шесть.
+      DebugTrace( "ConstVerify VS: checked=%u mismatch=%u first=c%u worst=c%u shadow=0x%08x device=0x%08x hr=0x%x",
+                  vs.regsChecked, vs.mismatches, vs.firstMismatch, vs.worstRegister,
+                  vs.worstShadowBits, vs.worstDeviceBits, (unsigned)vs.hr );
+      DebugTrace( "ConstVerify PS: checked=%u mismatch=%u first=c%u worst=c%u shadow=0x%08x device=0x%08x hr=0x%x",
+                  ps.regsChecked, ps.mismatches, ps.firstMismatch, ps.worstRegister,
+                  ps.worstShadowBits, ps.worstDeviceBits, (unsigned)ps.hr );
+    }
     GetConstStore().Stage( csVertex ).Turn();
     GetConstStore().Stage( csPixel ).Turn();
   }

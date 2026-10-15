@@ -78,6 +78,8 @@ public:
   // --- константы шейдеров ---
   virtual HRESULT SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData);
   virtual HRESULT SetPixelShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData);
+  virtual HRESULT GetShaderConstants(EShaderConstStage stage, unsigned startRegister,
+                                     unsigned registerCount, void* pData);
 
   // --- биндинги ---
   virtual HRESULT SetStreamSource(unsigned slot, HBuffer vertexBuffer, unsigned byteOffset, unsigned stride);

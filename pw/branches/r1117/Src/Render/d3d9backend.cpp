@@ -139,6 +139,17 @@ HRESULT D3D9Backend::SetPixelShaderConstants(unsigned startRegister, unsigned re
   return pDevice->SetPixelShaderConstantF(startRegister, static_cast<const float*>(pData), registerCount);
 }
 
+HRESULT D3D9Backend::GetShaderConstants(EShaderConstStage stage, unsigned startRegister,
+                                        unsigned registerCount, void* pData) {
+  if (!pData || !registerCount || startRegister + registerCount > (unsigned)SHADER_CONST_REGISTERS)
+    return D3DERR_INVALIDCALL;
+  // Никогда не писавшийся регистр D3D9 отдаёт нулями — ровно так же, как
+  // пустая тень, поэтому сравнение не даёт ложных расхождений на «мусоре».
+  return stage == csVertex
+    ? pDevice->GetVertexShaderConstantF(startRegister, static_cast<float*>(pData), registerCount)
+    : pDevice->GetPixelShaderConstantF(startRegister, static_cast<float*>(pData), registerCount);
+}
+
 HRESULT D3D9Backend::SetStreamSource(unsigned slot, HBuffer vertexBuffer, unsigned byteOffset, unsigned stride) {
   return pDevice->SetStreamSource(slot, static_cast<IDirect3DVertexBuffer9*>(vertexBuffer.p), byteOffset, stride);
 }
