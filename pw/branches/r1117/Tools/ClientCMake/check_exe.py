@@ -239,6 +239,20 @@ def main():
     if not i["manifest"]:
         bad.append("нет ресурса манифеста (процесс падает сразу, 0xC0000135)")
 
+    # Шаг 12a (PLAN_NVRHI.md §3.z): Vulkan обязан грузиться динамически
+    # (LoadLibrary в Src/Render/nvrhibackend.cpp), а не импортом: машина без
+    # Vulkan-драйвера должна запускать клиент как раньше. Проверяется и у
+    # nvrhi_vk: в статической сборке NVRHI хранилище динамического диспетчера и
+    # его init обёрнуты в NVRHI_SHARED_LIBRARY_BUILD, т.е. импорт-библиотека
+    # vulkan-1.lib ему тоже не нужна.
+    if i["mach"] == 0x8664:
+        for dll, _ in imports(exe):
+            if dll.lower() == "vulkan-1.dll":
+                bad.append("в импортах exe есть vulkan-1.dll: Vulkan должен "
+                           "грузиться через LoadLibrary (иначе клиент не стартует "
+                           "там, где нет Vulkan-драйвера)")
+                break
+
     fv = i["version"].get("FileVersion") or ".".join(str(x) for x in i["version"].get("_file", ()))
     print(f"   FileVersion в exe: {fv or 'НЕТ'}")
     if "--imports" in flags:

@@ -125,6 +125,28 @@ X64_EXTRA_SRC = {
                    # _set_FMA3_enable(0) в .CRT$XCT + побитовая самопроверка.
                    # В vcproj тоже нет — x86 (msvcr90/x87) не затронут.
                    "System/FpDeterminism.cpp"],
+    # Vulkan-бэкенд поверх NVRHI (шаг 12a, PLAN_NVRHI.md §3.z). В vcproj его нет
+    # принципиально: x86-контур VS2008 NVRHI не собирает (нужен C++17).
+    "Render": ["Render/nvrhibackend.cpp"],
+}
+
+# --- x64: пофайловые опции для источников вне vcproj ------------------------
+# Их нет в model.json, поэтому per_file для них пустой и опции задаются здесь.
+# /std:c++17 получает ТОЛЬКО nvrhibackend.cpp: NVRHI и Vulkan-Hpp на C++14 не
+# собираются, а переводить весь Render (и остальные TU клиента) на C++17 —
+# значит пересобирать артефакт ради одного файла; замеры FLAGS в
+# build/x64-wine/build.ninja показывают, что /std: в графе стоит только у
+# вендорских целей. /EHsc — NVRHI работает на try/catch (в графе клиента /EHsc
+# вычищен). /I — include-пути вендора: у цели Render их нет, а вендорские цели
+# объявляются в CMakeLists позже, поэтому полагаться на их INTERFACE нельзя.
+X64_EXTRA_OPTS = {
+    "Render": {
+        "Render/nvrhibackend.cpp": [
+            "/std:c++17", "/EHsc",
+            "/I${R1117}/Vendor/NVRHI/include",
+            "/I${R1117}/Vendor/Vulkan-Headers/include",
+        ],
+    },
 }
 
 # --- x64: политика FP (см. Src/System/FpDeterminism.cpp) --------------------
@@ -487,6 +509,11 @@ class Proj:
                     self.srcs.append(("src", rel))
                 else:
                     print(f"  !! {name}: нет x64-источника {rel}", file=sys.stderr)
+            # пофайловые опции для этих же источников (см. X64_EXTRA_OPTS)
+            for rel, opts in X64_EXTRA_OPTS.get(name, {}).items():
+                key = ("src", rel)
+                prev_o, prev_d = self.per_file.get(key, ([], []))
+                self.per_file[key] = (list(opts) + prev_o, prev_d)
 
         self.rc_incs_prefixed = ["/i${PW_SRC}/" + x for x in self.rc_includes]
         # PCH-пары считаем всегда (дёшево), но флаги/обёртки добавляются только
@@ -763,10 +790,12 @@ def main():
     # собирает. Деревья лежат в Vendor/ и качаются Vendor/fetch_render_deps.sh
     # (версии зафиксированы там же).
     #
-    # В линковку PW_Game они ПОКА НЕ входят: кода рендер-бэкенда ещё нет.
-    # EXCLUDE_FROM_ALL — чтобы не попадали в default-цель ninja; проверяются
-    # отдельной целью render_vendor (её собирает build_client_x64_wine.sh
-    # --vendor). Так вендоринг проверяется нашим тулчейном, не трогая артефакт.
+    # В линковку PW_Game входят только nvrhi + nvrhi_vk (шаг 12a, §3.z) — см.
+    # конец блока. EXCLUDE_FROM_ALL оставлено: вендор не попадает в default-цель
+    # сам по себе, но линковка PW_Game делает его зависимостью, так что
+    # `ninja PW_Game` собирает nvrhi_vk автоматически; целью render_vendor
+    # (--vendor) проверяется, что вендор собирается нашим тулчейном целиком
+    # (включая SDL3 и dx12-цель, которые клиент пока не линкует).
     #
     # Порядок важен: Vulkan::Headers и add_subdirectory(DirectX-Headers) обязаны
     # быть ДО add_subdirectory(NVRHI) — NVRHI ищет готовые цели и иначе уходит
@@ -829,14 +858,38 @@ foreach(_vt nvrhi nvrhi_vk nvrhi_d3d12 DirectX-Headers DirectX-Guids SDL3-static
 endforeach()
 # /EHsc: верхний CMakeLists обнуляет CMAKE_CXX_FLAGS (флаги приходят из vcproj,
 # где /EHsc вычищен), а NVRHI работает на try/catch (vulkan-device.cpp и др.) —
-# без него cl даёт C4530 и стек-развёртка не работает
+# без него cl даёт C4530 и стек-развёртка не работает.
+# /O2 + NDEBUG: вендор обязан собираться как Release, по трём причинам.
+# 1) В графе клиента нет -DNDEBUG для вендорских целей (флаги-то из vcproj), а
+#    Vulkan-Hpp в каждом wrapper'е проверяет VULKAN_HPP_ASSERT(
+#    d.getVkHeaderVersion() == VK_HEADER_VERSION) (Vendor/Vulkan-Headers/include/
+#    vulkan/vulkan_funcs.hpp:1748). Под Wine winevulkan сообщает СВОЮ версию
+#    заголовков (у Vulkan-Headers pinned 1.4.352, VK_HEADER_VERSION=352), и на
+#    первом же vk::Device::createSemaphore из nvrhi вылезает окно
+#    «Assertion failed! ... Expression: d.getVkHeaderVersion() ==
+#    VK_HEADER_VERSION» — поток рендера зависает на модальном диалоге, клиент
+#    стоит. Замер 2026-10-15, прогон PW_VK_SPIKE.
+# 2) Клиентский TU собирается с /O2 -DNDEBUG — вендор должен совпадать.
+# 3) Замеры шага 14 бессмысленны на неоптимизированном вендоре.
+# В спайке tools/nvrhi_probe это было снято само: там CMAKE_BUILD_TYPE=Release
+# и в флагах nvrhi_vk стоят /O2 /DNDEBUG (build/build.ninja:1073).
 foreach(_vt nvrhi nvrhi_vk nvrhi_d3d12)
   if(MSVC AND TARGET ${_vt})
-    target_compile_options(${_vt} PRIVATE /EHsc)
+    target_compile_options(${_vt} PRIVATE /EHsc /O2 /Ob2)
+    target_compile_definitions(${_vt} PRIVATE NDEBUG)
   endif()
 endforeach()
 add_custom_target(render_vendor DEPENDS nvrhi nvrhi_vk nvrhi_d3d12
-                  DirectX-Headers DirectX-Guids SDL3-static)""")
+                  DirectX-Headers DirectX-Guids SDL3-static)
+# Шаг 12a (PLAN_NVRHI.md §3.z): PW_Game линкует NVRHI. Только nvrhi и nvrhi_vk:
+# dx12-цель клиентом не используется (NVRHI_WITH_DX12 оставлен ON, чтобы набор
+# собираемых целей совпадал со спайком), SDL3 нужен шагу «окно и ввод».
+# Vulkan-либы НЕ линкуем: nvrhi_vk и nvrhibackend.cpp грузят vulkan-1.dll
+# динамически (Vendor/NVRHI/src/vulkan/vulkan-device.cpp:31,46 — хранилище
+# диспетчера и его init обёрнуты в NVRHI_SHARED_LIBRARY_BUILD, т.е. в статике
+# это обязанность приложения). Проверка «в импортах exe нет vulkan-1.dll» —
+# check_exe.py; на спайке tools/nvrhi_probe она проходила.
+target_link_libraries(PW_Game PRIVATE nvrhi_vk nvrhi)""")
 
     write_if_changed(
         os.path.join(out, "CMakeLists.txt"),

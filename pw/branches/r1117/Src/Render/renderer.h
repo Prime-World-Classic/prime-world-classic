@@ -41,6 +41,7 @@ struct Caps
 // в тех TU, которые реально дергают бэкенд (Render/*.cpp). Иначе любое касание
 // интерфейса пересобирает полмира — renderer.h включается почти везде.
 class IRenderBackend;
+class NvrhiBackend;   // Vulkan-бэкенд (шаг 12a, §3.z): живёт рядом с D3D9, не подменяет его
 struct BackendRect;   // тот же нейтральный прямоугольник, что и в seam: публичный
                       // API Renderer больше не берёт Win32 RECT (§2.8). Полный тип
                       // нужен вызывающему коду (он и подключает renderbackend.h).
@@ -52,6 +53,13 @@ class Renderer
   // Создаётся вместе с устройством (реализация — D3D9Backend, см. renderer.cpp),
   // живёт до его смерти.
   IRenderBackend*       pBackend;
+
+  // Шаг 12a (docs/PLAN_NVRHI.md §3.z): Vulkan-бэкенд поверх NVRHI, поднимаемый
+  // ДОПОЛНИТЕЛЬНО по env PW_VK_SPIKE=1. Он не подменяет pBackend: его кадр
+  // (clear + present) кладётся поверх D3D9-вывода, а счётчик незакрытых методов
+  // seam'а даёт work-list шага 13 по фактическим вызовам клиента. Живёт ровно
+  // столько, сколько pBackend (пересоздаётся вместе с устройством).
+  NvrhiBackend*         pVkSpike;
 
 	ReallocateWrapper<RenderStatesManager> statesMan;
   LightsManager         lightsMan;
@@ -225,6 +233,8 @@ public:
 
 	IDirect3DDevice9* GetDevice() { return pDevice; }
   IRenderBackend*     GetBackend() { return pBackend; }
+  // 0, если PW_VK_SPIKE не выставлен (в проде не выставлен никогда).
+  NvrhiBackend*       GetVkSpike() { return pVkSpike; }
   IDirect3D9*       GetD3D() { return pD3D; }
   
 	bool IsRunningUnderPerfHUD() const { return isRunningUnderPerfHUD; }

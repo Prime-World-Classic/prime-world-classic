@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Vendor/DirectX/Include/DxErr.h"
 #include "d3d9backend.h"   // seam этапа 2: здесь единственном создаётся реализация
+#include "nvrhibackend.h"  // шаг 12a (§3.z): Vulkan-поверх-NVRHI, только по PW_VK_SPIKE
 #include "conststore.h"
 
 #include "System/AssertDumper.h"
@@ -81,6 +82,7 @@ Renderer::Renderer(NativeWindow _window) :
 	pD3D(0), 
 	pDevice(0),
 	pBackend(0),
+  pVkSpike(0),
 	window(_window),
 	bDeviceLost(true),
   bResetDevice(false),
@@ -111,6 +113,10 @@ Renderer::~Renderer()
   DumpDXResourcesLeaks();
   delete pBackend;
   pBackend = 0;
+  // Порядок важен: nvrhi-объекты живут внутри бэкенда и должны умереть раньше
+  // VkDevice, а VkDevice — раньше, чем освободится загрузка vulkan-1.dll.
+  delete pVkSpike;
+  pVkSpike = 0;
   if (pDevice)
     pDevice->Release();
   pDevice = 0;
@@ -439,6 +445,26 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   // не меняет (см. ResetDevice()), а вот CreateDevice() меняет.
   delete pBackend;
   pBackend = new D3D9Backend(pDevice);
+
+  // Шаг 12a (docs/PLAN_NVRHI.md §3.z): поднимает Vulkan-бэкенд на ТОМ ЖЕ окне,
+  // что и D3D9. Включается только env PW_VK_SPIKE=1 (в проде его нет, поэтому
+  // блок не исполняется). Проверяется то, что нельзя проверить спайком: граф
+  // сборки клиента (пофайловый /std:c++17 /EHsc, CRT-согласованность с nvrhi_vk),
+  // динамический диспетчер Vulkan внутри PW_Game.exe и пригодность HWND seam'а
+  // для VkSurfaceKHR. Отсутствие Vulkan не должно ронять клиент: Create()
+  // возвращает 0, причина — в логе.
+  delete pVkSpike;
+  pVkSpike = 0;
+  {
+    char vkSpikeFlag[8] = { 0 };
+    if (GetEnvironmentVariableA("PW_VK_SPIKE", vkSpikeFlag, sizeof(vkSpikeFlag) - 1) > 0 &&
+        vkSpikeFlag[0] == '1')
+    {
+      pVkSpike = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight);
+      systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_SPIKE "
+                                     << (pVkSpike ? "up" : "FAILED") << endl;
+    }
+  }
 
   GetConfigManager()->CheckDeviceCaps(pDevice);
 #ifndef NI_DISABLE_CRASHRPT
@@ -786,6 +812,17 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
       dstRect = MakeBackendRect((long)destRect_->left, (long)destRect_->top,
                                 (long)destRect_->right, (long)destRect_->bottom);
     hr = pBackend->Present(window_, sourceRect_ ? &srcRect : 0, destRect_ ? &dstRect : 0);
+
+    // Шаг 12a: кадр Vulkan-бэкенда идёт ПОСЛЕ D3D9-вывода — по цвету заливки в
+    // скриншоте видно, чей вывод лёг последним. Его результат в hr не попадает:
+    // потеря D3D-устройства определяется ниже по hr именно D3D-вызова.
+    if (pVkSpike)
+    {
+      pVkSpike->Present(window_, sourceRect_ ? &srcRect : 0, destRect_ ? &dstRect : 0);
+      static unsigned s_vkSpikeFrames = 0;
+      if ((++s_vkSpikeFrames % 300) == 0)
+        pVkSpike->DumpStats("frame");
+    }
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
   }
