@@ -29,12 +29,13 @@ namespace Render
 			Render::ShaderPair& GetShaderPairByIndex( unsigned int index );
 
 			// .shd v2: есть ли у контейнера секция цели tag и что в ней для
-			// комбинации пинов index. Смещения абсолютные в образе файла;
-			// 0 = комбинация в контейнер не положена (её компилирует рантайм).
+			// комбинации пинов index. Смещения абсолютные в образе файла,
+			// размеры — длина блоба; offset = 0 = комбинация в контейнер не
+			// положена (её компилирует рантайм).
 			// Нужно шагу 12/13: выбирать блоб под бэкенд (SPIR-V), а не SM3.
 			bool HasShaderTarget( unsigned tag ) const;
 			bool GetShaderTargetOffsets( unsigned tag, unsigned index,
-				unsigned &vsOffset, unsigned &psOffset ) const;
+				unsigned &vsOffset, unsigned &vsSize, unsigned &psOffset, unsigned &psSize ) const;
 			unsigned GetV1Size() const { return v1Size; }
 
 			void ReloadShaders();

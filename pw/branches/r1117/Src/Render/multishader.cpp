@@ -130,9 +130,9 @@ namespace Render
 		}
 
 		bool MultiShader::GetShaderTargetOffsets( unsigned tag, unsigned index,
-			unsigned &vsOffset, unsigned &psOffset ) const
+			unsigned &vsOffset, unsigned &vsSize, unsigned &psOffset, unsigned &psSize ) const
 		{
-			vsOffset = psOffset = 0;
+			vsOffset = vsSize = psOffset = psSize = 0;
 			if ( !pInfo || !v1Size )
 				return false;
 			const Shd2Section *sec = Shd2FindSection( targets, tag );
@@ -141,7 +141,7 @@ namespace Render
 			// тот же трюк, что в GetShaderPairByIndex: образ файла начинается на 4
 			// байта раньше таблицы, смещения в контейнере абсолютные
 			const unsigned char *pBase = (const unsigned char*)pInfo - 4;
-			return Shd2Lookup( pBase, imageSize, *sec, index, vsOffset, psOffset );
+			return Shd2Lookup( pBase, imageSize, *sec, index, vsOffset, vsSize, psOffset, psSize );
 		}
 
 		ShaderPair& MultiShader::GetShaderPairByIndex(unsigned int index)
@@ -164,8 +164,9 @@ namespace Render
 			//NI_VERIFY((int)index < pairs.size() && index >= 0, NStr::StrFmt("out of pins! #%d", index), return defaultShaderPair; );
 			if ( s_shaderTarget )
 			{
-				unsigned vsOff = 0, psOff = 0;
-				const bool found = GetShaderTargetOffsets( (unsigned)s_shaderTarget, index, vsOff, psOff );
+				unsigned vsOff = 0, vsSz = 0, psOff = 0, psSz = 0;
+				const bool found = GetShaderTargetOffsets( (unsigned)s_shaderTarget, index,
+					vsOff, vsSz, psOff, psSz );
 				const UINT64 key = FileNameKey( fileName.c_str() ) ^
 					( (UINT64)index * 0x9e3779b97f4a7c15ull ) ^ ((UINT64)s_shaderTarget << 1);
 				const size_t before = s_seenTargetPairs.size();
@@ -173,9 +174,9 @@ namespace Render
 				{
 					s_seenTargetPairs.insert( key );
 					if ( s_seenTargetPairs.size() != before )
-						DebugTrace( "ShaderTarget: %s #%u — смещения блобов цели %u/%u, "
+						DebugTrace( "ShaderTarget: %s #%u — блоб цели %u+%u / %u+%u Б, "
 							"бэкенд цель ещё не умеет (шаг 12), беру SM3", fileName.c_str(), index,
-							vsOff, psOff );
+							vsOff, vsSz, psOff, psSz );
 				}
 				else if ( HasShaderTarget( (unsigned)s_shaderTarget ) )
 				{

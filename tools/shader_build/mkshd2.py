@@ -13,8 +13,15 @@
                                            u32 offsets[2*shadersCount] (абсолютные)
                                            блобы (общие по CRC)
   [секция цели, одна на формат]            u32 tag; u32 entryCount
-                                           entryCount x {u32 index; u32 vsOff; u32 psOff}
+                                           entryCount x {u32 index; u32 vsOff; u32 vsSize;
+                                                          u32 psOff; u32 psSize}
                                            блобы этой цели
+
+Размеры в записи цели (20 Б, а не 12) — не «на всякий случай»: D3D9-читателю
+длина не нужна (`CreateVertexShader` сама идёт по блобу до конца), а SPIR-V в
+Vulkan передаётся парой «указатель + длина» (`IDevice::createShader(desc,
+binary, binarySize)`), и выводить длину из соседних смещений нельзя — блобы
+дедуплицированы и идут в произвольном порядке относительно записей.
   [заголовок v2]                           'V2H\\0'; u32 version; u32 v1Size; u32 targetCount
                                            targetCount x {u32 tag; u32 off; u32 count}
   [трэйлер 16 Б в конце файла]             'SHD2'; u32 v2HeaderOffset; u32 version; 'SHD2'
@@ -130,20 +137,22 @@ class TargetSection:
         self.entries.append((index, keys[0], keys[1]))
 
     def size(self):
-        return 8 + 12 * len(self.entries) + sum(len(b) for b in self.blobs.values())
+        return 8 + 20 * len(self.entries) + sum(len(b) for b in self.blobs.values())
 
     def emit(self, base):
         pos = {}
-        off = base + 8 + 12 * len(self.entries)
+        off = base + 8 + 20 * len(self.entries)
         for key, blob in self.blobs.items():
             pos[key] = off
             off += len(blob)
         out = bytearray(struct.pack("<II", self.tag, len(self.entries)))
         for index, vs_key, ps_key in self.entries:
+            sizes = (len(self.blobs[vs_key]) if vs_key else 0,
+                     len(self.blobs[ps_key]) if ps_key else 0)
             out += struct.pack(
-                "<III", index,
-                pos.get(vs_key, 0) if vs_key else 0,
-                pos.get(ps_key, 0) if ps_key else 0)
+                "<IIIII", index,
+                pos.get(vs_key, 0) if vs_key else 0, sizes[0],
+                pos.get(ps_key, 0) if ps_key else 0, sizes[1])
         for key, blob in self.blobs.items():
             assert len(out) + base == pos[key], "смещение блоба уехало"
             out += blob
@@ -261,20 +270,28 @@ def verify(path, log, ref_path=None):
             log("  !! секция %s: заголовок не совпал" % TAG_NAME.get(tag, tag))
             ok = False
             continue
-        # блобы идут ПОСЛЕ таблицы из 12-байтных записей; смещения абсолютные
-        blob_lo = off + 8 + 12 * cnt
+        # блобы идут ПОСЛЕ таблицы из 20-байтных записей; смещения абсолютные
+        blob_lo = off + 8 + 20 * cnt
         checked = bad = 0
         smallest = None
         for j in range(cnt):
-            index, vs_off, ps_off = struct.unpack_from("<III", sec, 8 + 12 * j)
-            for o in (vs_off, ps_off):
+            index, vs_off, vs_size, ps_off, ps_size = \
+                struct.unpack_from("<IIIII", sec, 8 + 20 * j)
+            for o, sz in ((vs_off, vs_size), (ps_off, ps_size)):
                 if o == 0:
+                    if sz:
+                        log("  !! запись #%d: смещение 0, но размер %d" % (index, sz))
+                        ok = False
                     bad += 1
                     continue
                 checked += 1
-                if o < blob_lo or o + 4 > sec_end:
-                    log("  !! смещение %d вне блоб-области цели %s [%d,%d)"
-                        % (o, TAG_NAME.get(tag, tag), blob_lo, sec_end))
+                if not sz:
+                    log("  !! запись #%d: смещение %d с нулевым размером" % (index, o))
+                    ok = False
+                    continue
+                if o < blob_lo or o + sz > sec_end:
+                    log("  !! блоб %d+%d вне области цели %s [%d,%d)"
+                        % (o, sz, TAG_NAME.get(tag, tag), blob_lo, sec_end))
                     ok = False
                     continue
                 if tag == TAG_SPIRV:

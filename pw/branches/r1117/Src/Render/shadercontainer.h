@@ -13,8 +13,9 @@
 //
 //   [v1 часть]                                байт-в-байт как v1, длина v1Size
 //   [секция цели]  u32 tag; u32 entryCount;
-//                  entryCount × { u32 index; u32 vsOffset; u32 psOffset }
-//                  затем блобы (смещения абсолютные; 0 = комбинации нет)
+//                  entryCount × { u32 index; u32 vsOffset; u32 vsSize;
+//                                 u32 psOffset; u32 psSize }        (20 Б на запись)
+//                  затем блобы (смещения абсолютные; offset = 0 = комбинации нет)
 //   [заголовок v2] 'V2H\0'; u32 version; u32 v1Size; u32 targetCount;
 //                  targetCount × { u32 tag; u32 offset; u32 count }
 //   [трэйлер]      'SHD2'; u32 v2HeaderOffset; u32 version; 'SHD2'   (16 Б)
@@ -43,6 +44,12 @@ namespace Render
 		};
 
 		const unsigned kShd2TrailerSize = 16;
+		// Запись таблицы цели — 20 Б, а не 12: размеры блобов обязательны.
+		// D3D9-читателю длина не нужна (CreateVertexShader идёт по блобу сам),
+		// а IDevice::createShader для SPIR-V принимает пару «указатель + длина»;
+		// выводить длину из соседних смещений нельзя — блобы дедуплицированы и
+		// их порядок не связан с порядком записей.
+		const unsigned kShd2EntrySize = 20;
 		const char kShd2TrailerMagic[4] = { 'S', 'H', 'D', '2' };
 		const char kShd2HeaderMagic[4]  = { 'V', '2', 'H', '\0' };
 		const unsigned kShd2Version = 1;
@@ -114,7 +121,7 @@ namespace Render
 					return false;
 				if ( s.offset < v1Size || s.offset >= hdrOffset )
 					return false;
-				if ( s.offset + 8 + 12 * s.count > hdrOffset )
+				if ( s.offset + 8 + kShd2EntrySize * s.count > hdrOffset )
 					return false;
 			}
 			return true;
@@ -125,25 +132,31 @@ namespace Render
 		// маленькая (десятки записей), поэтому линейный поиск, а не хэш.
 		// Возвращает false, если записи нет; vsOffset/psOffset = 0 означает
 		// «комбинация в контейнер не положена» (её компилирует рантайм).
+		// vsSize/psSize — точная длина блоба (для createShader), у пустой записи 0.
 		inline bool Shd2Lookup( const unsigned char *pBase, unsigned size,
-			const Shd2Section &s, unsigned index, unsigned &vsOffset, unsigned &psOffset )
+			const Shd2Section &s, unsigned index,
+			unsigned &vsOffset, unsigned &vsSize, unsigned &psOffset, unsigned &psSize )
 		{
-			vsOffset = psOffset = 0;
+			vsOffset = vsSize = psOffset = psSize = 0;
 			const unsigned table = s.offset + 8;		// за tag/count
-			if ( table + 12 * s.count > size )
+			if ( table + kShd2EntrySize * s.count > size )
 				return false;
 			for ( unsigned i = 0; i < s.count; ++i )
 			{
-				const unsigned char *e = pBase + table + 12 * i;
+				const unsigned char *e = pBase + table + kShd2EntrySize * i;
 				if ( Shd2U32( e ) != index )
 					continue;
 				vsOffset = Shd2U32( e + 4 );
-				psOffset = Shd2U32( e + 8 );
+				vsSize   = Shd2U32( e + 8 );
+				psOffset = Shd2U32( e + 12 );
+				psSize   = Shd2U32( e + 16 );
 				// блобы секции идут сразу за её таблицей
-				const unsigned blobLo = table + 12 * s.count;
-				if ( vsOffset && ( vsOffset < blobLo || vsOffset + 4 > size ) )
+				const unsigned blobLo = table + kShd2EntrySize * s.count;
+				// непустая запись обязана влезать в блоб-область: иначе читатель
+				// SPIR-V уйдёт за границу секции
+				if ( vsOffset && ( vsOffset < blobLo || vsOffset + vsSize > size || !vsSize ) )
 					return false;
-				if ( psOffset && ( psOffset < blobLo || psOffset + 4 > size ) )
+				if ( psOffset && ( psOffset < blobLo || psOffset + psSize > size || !psSize ) )
 					return false;
 				return true;
 			}
