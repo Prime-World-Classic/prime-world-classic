@@ -2277,7 +2277,11 @@ subclass `WndProc`, `SDL_main` не используется.
   depth-текстуры не создаются (`tools/dsm_probe`, §2.15 п.9) — путь теней и
   половина caps стендом не покрываются. Железо есть на хосте (RTX 3060, Linux,
   Vulkan 1.4), но клиент Windows-ный: нужен либо Windows-контур с NVIDIA,
-  либо запуск клиента под Wine на хосте. Это решение пользователя.
+  либо запуск клиента под Wine на хосте. **Второй путь 2026-10-15 стал
+  заметно дешевле:** Vulkan-смоук под Wine на RTX 3060 проходит целиком
+  (риск 5), осталось проверить, что сам клиент под Wine запускается — проба
+  дешёвая (раскладка каталогов + wined3d), но её никто не делал. Это решение
+  пользователя.
 - **Порядок**: сначала `NvrhiBackend` + Vulkan и переключение по env, или
   сначала переделка констант/инстансинга (п.2, п.5) на D3D9? Замеры говорят в
   пользу второго: обе правки проверяемы на текущем стенде и без них бэкенд
@@ -2547,18 +2551,30 @@ uniform-буферы (16 сэмплеров, таблица из 261 текст�
    этапа 3 возможны (хост, Linux/Vulkan). Чего не снимает: DX12-путь проверять
    негде (Windows+NVIDIA нет, tiny10 = WARP D3D11) — DX12-ветка бэкенда остаётся
    непроверенной до появления железа (вариант (в)).
-   **Wine как среда Vulkan-смоука закрыта (2026-10-15, замер).**
-   `tools/nvrhi_probe/build/nvrhi_probe.exe` под Wine на живом GPU падает на
-   `vkCreateInstance` с `res=-7` (`VK_ERROR_INCOMPATIBLE_DRIVER`);
-   `VK_LOADER_DEBUG=error` даёт причину: `loader_validate_instance_extensions:
+   **Wine как среда Vulkan-смоука: была закрыта, снова открыта (2026-10-15,
+   два замера).** Первый замер: `tools/nvrhi_probe/build/nvrhi_probe.exe`
+   под Wine на живом GPU падает на `vkCreateInstance` с `res=-7`
+   (`VK_ERROR_INCOMPATIBLE_DRIVER`); `VK_LOADER_DEBUG=error` даёт причину:
+   `loader_validate_instance_extensions:
    Extension VK_WINE_nulldrv_surface not found in list of known instance
-   extensions` — на headless-хосте (`DISPLAY` пуст) winevulkan выставляет свой
-   null-driver surface и передаёт его host-загрузчику, который его не знает.
+   extensions` — при пустом `DISPLAY` winevulkan выставляет свой null-driver
+   surface и передаёт его host-загрузчику, который его не знает.
    Вины NVIDIA нет: тот же ICD (`/usr/share/vulkan/icd.d/nvidia_icd.json` →
-   `libGLX_nvidia.so.0`) в нативном Linux-пути работает целиком. Если
-   понадобится Windows-Vulkan на этом железе: поднять display-сервер на GPU
-   (winevulkan тогда даёт штатные surface-расширения) либо просить
-   surface-расширения опционально и смоукать offscreen.
+   `libGLX_nvidia.so.0`) в нативном Linux-пути работает целиком.
+   **Повторный замер в тот же день (после загрузки nvidia-модулей): вывод
+   снимается достаточно `DISPLAY=:97`** (это Xvfb 1280×1024, настоящий
+   X-сервер не нужен): `vkCreateInstance со surface-расширениями` OK,
+   `2 устройств(а); выбрано: NVIDIA GeForce RTX 3060 (api 1.4.329)`,
+   `vkCreateDevice ext: swapchain + synchronization2 + dynamic_rendering`,
+   далее `win32: окно 128×128` → `VkSurfaceKHR` → `VkSwapchainKHR 120×94,
+   картинок 3, формат 44` → `vkQueuePresentKHR` PASS, `итог: d3d11=1
+   vulkan=1`. Все спайки B0 на RTX 3060 под Wine тоже проходят.
+   Следствие: Windows-клиент под Wine на хосте с реальным GPU — кандидат на
+   среду разработки/замеров этапа 3 (без гонки исходников на tiny10 и без
+   растера lavapipe). Не проверено: что **сам клиент** под Wine запускается
+   (раскладка `Game/Bin` + `Data` + `Packs/result.pile`, `config.txt`,
+   D3D9-часть через wined3d, ввод/окно) — это отдельная проба, см. §3.z
+   «Открытые вопросы».
 6. **Производительность.** Текущий рендер заточен под D3D9-дешевизну
    `SetRenderState`. После этапа 2 (кэш пайплайнов) узкое место — число
    `setGraphicsState`. Замерить на этапе 3 (`numDIP`, `numVS/numPS`).
