@@ -51,7 +51,7 @@
 |---|---|---|
 | 9 | ✅ инстансинг, шаг 2 — закрыто 2026-10-15 (§2.10): лексика шва `kInstanceStream` (маркер потока данных экземпляра) + `SetInstanceSource(HBuffer, stride, offset)` + `SetInstanceCount`; сдвиг геометрийных потоков, VB-счётчик `0..N-1`, частоты потоков и инстансный вариант декларации — внутри `D3D9Backend`; в клиенте остались только `BindInstanceCounter`/`BindInstanceSource` | сделано до бэкенда (§3.z п.5): Vulkan-цели не нужны ни VB-счётчик, ни атрибут экземпляра в раскладке (`SV_InstanceID`); замер: раскладок на бой **15** (было бы ~30 с подменой деклараций), инстансных рисований 39/кадр |
 | 10 | ✅ динамические массивы из `c`-регистров → SSBO-форма — закрыто 2026-10-15 (§3.z п.2): макрос `PW_MODERN_ARRAYS` в 11 `.hlsl` (`StructuredBuffer<T>` вместо `T name[count] : register(...)`), развёртка циклов с постоянным пределом — только под макрос; SM3-путь побайтово не изменился (32/32 единицы, `tools/hlsl_sm3_check`) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); замер: единиц с неконстантной индексацией членов UBO **13 → 0**, байт UBO макс **7040 → 796**, среднее **811,0 → 358,0**, различных `(set,binding)` 9 → 10 (max binding 8 → 9) |
-| 11 | мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V + общий `sortId`/ключ) + драйвер компиляции DXC (`-spirv`, `-T vs_5_0`, `-Zpr`, `setEntryName`, shim SM3→SM6 из `tools/spirv_probe/shim.py`) — **подготовлено 2026-10-15 (шаг 11.0, §6): паритет генератора 34/35, список живых индексов снят (58 пар / 48 816)** | compile-only: рантайм не трогается, но без этого нечем кормить Vulkan; параллельно второй контейнер для `OnlineShaders/` (§3.z п.3, п.4) |
+| 11 | ✅ мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V) + драйвер компиляции DXC — закрыто 2026-10-15 (§3.z п.3): писатель `tools/shader_build/mkshd2.py` (SM3-слой копируется, SPIR-V только для живых индексов), читатель v2 `Src/Render/shadercontainer.h` + `multishader.cpp` (dev-var `shader_target`), корпус 15 контейнеров / 58 индексов / 0 пропусков | compile-only: рантайм D3D9-путь не тронут (читатель под dev-var'ом, по умолчанию SM3); `OnlineShaders/` — шаг 14 |
 | 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
 | 13 | перевод проходов на NVRHI по work-list'у ключей (206 на бой, 85 активных) + кэш пайплайнов (открытая таблица без LRU, компиляция синхронная) | объём и порядок работ зафиксированы замером §1.4; метрика прогресса — доля DIP'ов, идущих через новый путь |
 | 14 | портирование 34 блобов `OnlineShaders/` через дизассемблирование SM3; 10 мёртвых удалить сразу (§2.15 п.12) | без них этап 4 (удаление D3D9) недостижим; порядок: `default_shader`/`VertexShader` → `ShadowPass*`/`SA*` → остальное |
@@ -2566,6 +2566,77 @@ for (int i = totalPinsCnt - 1; i > -1; --i) {
 Решение не трогать `Src/ShaderCompiler` пересматривается, если понадобится
 собирать SPIR-V внутри Windows-сборки (тогда нужен `dxcompiler.dll`).
 
+**Шаг 11 закрыт (2026-10-15).** Реализовано ровно то, что описано выше, с двумя
+отклонениями от проекта — оба сознательные:
+
+* пины в заголовок **не положены**: рантайм-фолбэк DXC отложен вместе с SPIR-V-
+  веткой (шейдеры из SPIR-V пока нечем создавать — шаг 12/13), а без фолбэка
+  таблица пинов мёртвая. Итоговый заголовок: `V2H\0`, version, **v1Size**,
+  targetsCount, `{tag, offset, count}` × целей; в конце файла трэйлер `SHD2`,
+  `v2HeaderOffset`, version, `SHD2` (16 Б) — по нему читатель отличает v2, а
+  читатель v1 остаётся внутри v1-префикса и не выходит за него;
+* таблица цели **разреженная** (`{index, vsOffset, psOffset}` только для живых
+  индексов), а не плотная `shadersCount × 8`: плотная стоила бы 4 Б × 36 864
+  индексов у `BasicMaterial` (147 КБ) против 58 записей на весь корпус.
+  Пропуск = отсутствие записи → в клиенте это ветка «нужен рантайм-компилятор».
+
+Инструменты: `tools/shader_build/dxcdrv.py` — общий драйвер компиляции
+(`spec_materials`, `total_pairs`, `decode_index` — тот же разбор, что
+`ShaderCompiler.cpp:186-201`, `ShimTree`, `compile_dxc` с `-Zpr` по умолчанию);
+`tools/shader_build/mkshd2.py` — писатель (`--live`, `--targets`, `--materials`,
+`--verify`, `--ref`); `tools/shader_budget/shader_budget.py` переведён на
+`dxcdrv` (числа бюджета не поехали: прогон `--pins 1 --only AOEMaterial` даёт
+те же 560 Б и `position[9 x 16 B]`).
+
+Замер корпуса: **15 контейнеров, 58 индексов, 0 пропусков**; v1-часть
+2 724 840 Б → v2 3 026 868 Б, секции SPIR-V **302 028 Б (+11 %)** — бюджет
+подтверждает оценку «0,2–0,6 МБ» выше.
+
+Две правки исходников, которые вскрыл DXC (обе — только под `PW_MODERN_ARRAYS`,
+SM3-ветка дословно старая):
+
+* `Src/Render/Shaders/UIBaseMaterial.hlsl:98` — `volatile float line_factor;`
+  (квалификатор SM3, fxc принимает) → DXC: `error: 'volatile' is a reserved
+  keyword in HLSL`. Под современной целью — обычный `float`.
+* `tools/spirv_probe/shim.py` — `UIFlashMaterial/ps` падал с
+  `generated SPIR-V is invalid: [VUID-StandaloneSpirv-OpEntryPoint-09658]
+  OpEntryPoint contains duplicate input variables with FragCoord builtin`:
+  прослойка переводит `: POSITION` → `: SV_POSITION` в структуре, которой VS
+  возвращает себя, а та же структура входит в параметр PS, у которого есть
+  `VPOS` → два FragCoord. Починка: в PS-входе позиция такой структуры →
+  `TEXCOORD191`. **Долг шага 13:** у PS с `VPOS` позиция из входа убрана, а
+  читать её нечем — нужен `PixelPos` (прослойка печатает об этом заметку).
+  Профиль `tools/hlsl_sm3_check --profile affected` дополнен `UIBaseMaterial
+  Stripes=1` — профиль обязан расти вместе с любой правкой исходника.
+
+Читатель v2 — `Src/Render/shadercontainer.h` (inline-парсер: `Shd2FindTrailer`,
+`Shd2ParseHeader`, `Shd2Lookup`, `Shd2FindSection`, `enum ShaderTargetTag
+{ stSm3=0, stDxbcSm5=1, stSpirv=2 }`) + `multishader.{h,cpp}`: `OpenFile()`
+разбирает трэйлер и печатает `ShaderContainer: <имя> — v2, v1 N Б, целей K`
+(при неудаче — откат к v1 с явной строкой), `GetShaderPairByIndex` под
+dev-var'ом `shader_target` ищет индекс в цели и печатает `ShaderTarget: <имя>
+#index — смещения блобов цели A/B, бэкенд цель ещё не умеет (шаг 12), беру SM3`.
+В `pInfo` копируется весь файл, поэтому смещения секций остаются абсолютными.
+Ветка создания шейдеров из SPIR-V сознательно не написана (нечем кормить до
+шага 12) — мёртвый код в рантайме.
+
+Доставка контейнеров на стенд: `python3 tools/shader_pile/mkpile.py build
+--root /tmp/packdir --out /tmp/zzzresult_v2.pile --mask '*.shd'` на хосте и scp
+в `C:\pw64\Game\Packs\zzzresult.pile` (бэкап старого обязателен). Тул
+`FilePileCompiler.exe` на tiny10 сейчас **молчит** (RC=0, пустой `pile.log`,
+pile не создаётся) — тупик, не воспроизводить.
+
+Отклонение по картинке (сознательное, §2.15 п.15): вместе с шагом 11
+перегенерирован `Data/Shaders/UberShaders/TerrainElementMaterial.shd` — он
+устарел от исходников с `562b4c1fb` (развёртка цикла с динамическим индексом
+сэмплера), отличались 12 из 41 PS-блобов (`texld_pp` → `texld`). A/B на стенде
+один к одному (тот же exe, разный pile): старый контейнер против эталона этапа
+2 — **0,36 %** грубых (верх полосы), новый против эталона — **0,59 %**, старый
+против нового — **0,59 %**; значит читатель v2 побайтово-нейтрален, а сдвиг
+даёт именно перегенерация. Новый эталон закоммичен:
+`tools/render_shot/refs/stage3-shd2-2026-10-15/{pw_auto_bb_3000.png,
+pw_auto_crop_3000.png}` (прогон `2026.10.15-11.50.52`) — дальше сверять по нему.
+
 **4. Драйвер компиляции.** DXC — единый компилятор двух целей (`-spirv` и
 `-T vs_5_0`); обязательные флаги из спайков: `-Zpr` (row-major, иначе
 `mul(v,M)` теряет перевод), `setEntryName` (DXC сохраняет имя функции HLSL),
@@ -3568,3 +3639,63 @@ no operator found … 'nstl::_Ht_it<…>'`, `error C2088`) — дедуп по �
 `size()`; `D3DDisassemble` не читает SM3-блобы (первые байты `00 03 FF FF`, а
 не `DXBC`) — для SM3 нужен `D3DXDisassembleShader` из `d3dx9_43.dll`;
 `--out<путь>` генератора не создаёт каталог (нужен `mkdir -p` до запуска).
+
+### Сделано (шаг 11 очереди: `.shd` v2 — мультиблоб + DXC-драйвер + читатель — закрыто 2026-10-15)
+
+Дизайн, отклонения от проекта и числа — §3.z п.3 (блок «Шаг 11 закрыт»).
+
+| файл | что изменилось |
+|---|---|
+| `Src/Render/shadercontainer.h` (новый) | inline-парсер v2: `ShaderTargetTag`, `Shd2FindTrailer`, `Shd2ParseHeader`, `Shd2Lookup`, `Shd2FindSection` |
+| `Src/Render/multishader.h` | поля `v1Size`, `imageSize`, `nstl::vector<Shd2Section> targets`; `HasShaderTarget`, `GetShaderTargetOffsets`, `GetV1Size` |
+| `Src/Render/multishader.cpp` | `OpenFile()` разбирает трэйлер (`ShaderContainer: … v2, v1 N Б, целей K`, при провале — откат к v1), `GetShaderPairByIndex` под dev-var'ом `shader_target` ищет индекс в SPIR-V-цели и печатает `ShaderTarget: …`; ветка создания шейдеров из SPIR-V не написана (бэкенда нет) |
+| `Src/Render/Shaders/UIBaseMaterial.hlsl` | `volatile` → `float` только под `PW_MODERN_ARRAYS` (DXC резервирует ключевое слово) |
+| `tools/spirv_probe/shim.py` | починка дубля `FragCoord` в PS-входе (`UIFlashMaterial`), позиция структуры → `TEXCOORD191` + заметка про `PixelPos` (долг шага 13) |
+| `tools/shader_build/dxcdrv.py` (новый) | общий DXC-драйвер: `spec_materials`, `total_pairs`, `decode_index`, `ShimTree`, `compile_dxc` (`-Zpr` по умолчанию) |
+| `tools/shader_build/mkshd2.py` (новый) | писатель v2: SM3-слой из существующего `.shd`, SPIR-V по живым индексам, `--verify`, `--ref`, `--targets`, `--materials` |
+| `tools/shader_budget/shader_budget.py` | переведён на `dxcdrv` (числа бюджета сохранены) |
+| `tools/hlsl_sm3_check/hlsl_sm3_check.py` | профиль `affected` + `UIBaseMaterial Stripes=1` |
+| `Data/Shaders/UberShaders/TerrainElementMaterial.shd` | перегенерирован (устарел с `562b4c1fb`): 12 из 41 PS-блобов, `texld_pp` → `texld` |
+| `tools/render_shot/refs/stage3-shd2-2026-10-15/` | новый кадр-эталон (следствие перегенерации) |
+| `.gitignore` | `zzz_budget_shaders_*/`, `zzz_build_shaders_*/` |
+
+Гейты (все пройдены):
+
+* x64 Wine `./build_client_x64_wine.sh` — `ИТОГ: OK`, `build/PW_Game.exe`
+  **15 206 400 Б** (было 15 202 816), 0 `warning C`, `check_exe.py` OK.
+* x64 native на tiny10 (`PwNativeBuild`, синк 15 файлов zip'ом, md5
+  `multishader.cpp` совпал): `RC=0`, `C:\pwbuild\pwc\build\PW_Game.exe`
+  15 196 160 Б, `check_exe.py` OK.
+* E2E tiny10 с v2-контентом (pile 231 314 Б, 36 записей), лог
+  `2026.10.15-11.42.13`: **15 строк `ShaderContainer: … v2`** (все контейнеры
+  разобраны), **58 строк `ShaderTarget:`** — ровно по снимку живых индексов,
+  **0 строк «нужен рантайм-компилятор»** ⇒ SPIR-V-секции покрывают все живые
+  пары; login `Success(5) uid=131` → `gs_svcid=gamesvc_00` → `Switch to
+  EGameState::Finished by 3`, asserts 0, `ConfigPins` дословно как эталон.
+* визуальный гейт + A/B-атрибуция (один exe, старый pile против нового):
+  старый pile против эталона этапа 2 — 4,62 % / **0,36 %** грубых; новый — 4,44 %
+  / **0,59 %**; старый против нового — 3,98 % / 0,59 %; внутри прогона
+  5,45–6,18 % / 1,07–2,30 % (анимация). Вывод: читатель v2 нейтрален, сдвиг
+  даёт перегенерация `TerrainElementMaterial` (в бою он используется — пары
+  #95/#155/#215). Новый эталон закоммичен.
+
+Воспроизведение контента для стенда (v2-корпус в репозиторий НЕ кладётся —
+артефакт 3,0 МБ, выводится детерминированно):
+
+```sh
+python3 tools/shader_build/mkshd2.py \
+        --live tools/shader_build/live_indices-2026-10-15-moba1p.json \
+        --out /tmp/shd2_v2 --verify --ref pw/branches/r1117/Data/Shaders/UberShaders
+mkdir -p /tmp/packdir/Shaders/UberShaders
+cp pw/branches/r1117/Data/Shaders/UberShaders/*.shd /tmp/packdir/Shaders/UberShaders/
+cp /tmp/shd2_v2/*.shd /tmp/packdir/Shaders/UberShaders/
+python3 tools/shader_pile/mkpile.py build --root /tmp/packdir \
+        --out /tmp/zzzresult_v2.pile --mask '*.shd'
+# scp /tmp/zzzresult_v2.pile pw-tiny10:C:/pw64/Game/Packs/zzzresult.pile (с бэкапом старого)
+```
+
+Грабли: `nstl::vector::operator[]` берёт `difference_type` → `warning C4267` на
+`size_t`-счётчике; `FilePileCompiler.exe` на tiny10 молчит (pile собирается
+хостовым `mkpile.py`); `schtasks /run` по уже идущей задаче даёт «is currently
+running» и прогон не стартует — перед запуском нужен `taskkill /f /im
+PW_Game.exe` и проверка `schtasks /query … /fo LIST | findstr Status`.
