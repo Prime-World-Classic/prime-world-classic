@@ -2458,6 +2458,16 @@ array разрешён только в SSBO); при генерации таки
 `StructuredBuffer` (легально), либо следствие динамической индексации
 компоненты `float4`. Реальная правка — п.2 (SSBO-форма), она сделана шагом 10.
 
+Ограничение среды генерации (замер 2026-10-15): **компилировать SM3-цели под
+Wine нельзя** — встроенный в Wine `d3dcompiler` реализован через vkd3d и на
+части материалов даёт `E5017: Aborting due to not yet implemented feature: SM1
+cast from bool to integer` (`AOEMaterial`), `Failed to compile shader, vkd3d
+result -5`; то же касается `ShaderCompiler.exe`, прогоняемого под Wine. DXC —
+нативный (Linux/Windows), поэтому SPIR-V-цель из-под Wine не зависит от этого,
+но перегенерация `.shd` (SM3 и DXBC SM5) обязана идти на Windows-конуре
+(tiny10 / нативный билд). Проверка эквивалентности SM3 при правках корпуса —
+`tools/hlsl_sm3_check --remote pw-tiny10` (шаг 10: 32/32 одинаковых DXBC).
+
 **5. Инстансинг, шаг 2** (§2.10) — **закрыт 2026-10-15 (шаг 9 очереди)**:
 лексика шва — маркер `kInstanceStream` в описании раскладки и в
 `BindVertexBuffer` + `SetInstanceSource` (источник данных экземпляра: пустая
