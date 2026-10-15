@@ -5364,7 +5364,7 @@ void AdventureScreen::UpdatePingHud( float deltaTime )
   pingHudShown = ping;
 
   const bool en = ( GetLanguageShortCode() == "en" );
-  flash->SetPingText( ping < 0 ? wstring() : NStr::StrFmtW( en ? L"%d ms" : L"%d \u043c\u0441", ping ) );
+  flash->SetPingText( ping < 0 ? wstring() : NStr::StrFmtW( en ? L"%d ms" : L"%d \x043c\x0441", ping ) );
 }
 
 void AdventureScreen::SetWardCounts( const nstl::map<int, int> & counts )
