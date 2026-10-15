@@ -1397,6 +1397,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "death_events_b13_tests.inc"
 #include "death_triggers_b13_tests.inc"
 #include "nearby_death_b13_tests.inc"
+#include "target_trigger_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1582,6 +1583,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	LastHitTriggerB13(check, world);
 	OnDeathTriggerB13(check);
 	NearbyDeathB13(check);
+	TargetTriggerB13(check, world);
+	TargetTriggerConditionB13(check);
+	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) NearbyDeathAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) BrewerDeathAuthoredB13(check, world, dataRoot);
 	if (dataRoot && *dataRoot) TriggerCancellationAuthoredB13(check, world, dataRoot);

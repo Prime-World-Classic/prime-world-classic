@@ -1191,8 +1191,15 @@ void PFConditionTargetSelector::ForAllTargets(ITargetAction& action, const Reque
     {
       if (!target.IsObjectValid())
         return;
-      if (selector->GetDB().condition(pars.pOwner, target.GetObject(), pars.pMiscPars, true))
-        action(target);
+		const auto& expression = selector->GetDB().condition;
+		// Preserve the candidate receiver and original default, not the literal-only bootstrap fallback.
+		if (!expression.sString.empty() || !expression.compiledString.empty())
+		{
+			const auto result = LinuxBootstrap::EvaluateSelectorConditionFormula(expression.sString.c_str(),
+				pars.pOwner, target.GetObject(), pars.pMiscPars);
+			if (!result.Succeeded() || result.value == 0.f) return;
+		}
+		action(target);
     }
     const PFConditionTargetSelector* selector;
     ITargetAction& action;

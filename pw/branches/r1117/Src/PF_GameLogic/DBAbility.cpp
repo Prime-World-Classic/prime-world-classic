@@ -8603,7 +8603,7 @@ void EventProcessorOnTarget::Assign( const EventProcessorOnTarget& _eventProcess
 NWorld::PFEventProcessorBase* EventProcessorOnTarget::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorOnTarget( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorOnTarget( *this, world );

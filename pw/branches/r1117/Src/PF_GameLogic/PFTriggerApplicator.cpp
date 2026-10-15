@@ -7,6 +7,7 @@
 #include "PFDispatch.h"
 #include "DBTalent.h"
 #include "PFApplUtils.h"
+#include "PFTargetSelector.h"
 #include "PFAIWorld.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <algorithm>
@@ -62,7 +63,7 @@ bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 	}
 	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db)
 		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db)
-		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db);
+		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db) || dynamic_cast<const NDb::EventProcessorOnTarget*>(db);
 }
 
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
@@ -347,6 +348,35 @@ bool PFEventProcessorLastHit::ProcessEvent(const PFBaseUnitEvent* event)
 	return true;
 }
 
+/** The original selector belongs to the processor and preserves mode state across count/fire and later ticks. */
+PFEventProcessorOnTarget::PFEventProcessorOnTarget(CreateParams const& db, PFWorld* world) : Base(db, world)
+{
+	if (GetDB().targetSelector) pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFEventProcessorOnTarget::Initialize(CPtr<PFTriggerApplicator> const& owner) { Base::Initialize(owner); }
+
+/** Preserve original two-pass dispatch, rejecting invalid thresholds and cancellation between passes. */
+bool PFEventProcessorOnTarget::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	if (!event || event->GetType() != NDb::BASEUNITEVENT_APPLICATORSTEP || !IsValid(pOwner)
+		|| !pOwner->PFBaseApplicator::IsAlive() || !IsValid(pOwner->GetAbilityOwner()) || !IsValid(GetReceiver())
+		|| !pOwner->GetAbility() || !pOwner->GetAbility()->GetData()
+		|| (GetDB().targetSelector && !pTargetSelector)) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	CObj<PFTargetSelector> selector(pTargetSelector);
+	const auto& authored = GetDB().minTargets;
+	LinuxBootstrap::NumericFormulaResult minimum{LinuxBootstrap::NumericFormulaError::None, 1.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		minimum = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *owner);
+	if (!minimum.Succeeded()) return false;
+	const int count = SendSpell2Targets(owner.GetPtr(), GetDB().spell, selector.GetPtr(), true);
+	if (!owner->PFBaseApplicator::IsAlive() || !IsValid(owner->GetAbilityOwner()) || !IsValid(GetReceiver())
+		|| count < minimum.value) return false;
+	SendSpell2Targets(owner.GetPtr(), GetDB().spell, selector.GetPtr(), false);
+	return true;
+}
+
 /** Original killer, victim and sender-match filters precede range evaluation and its possible RNG use. */
 bool PFEventProcessorUnitDieNearMe::ProcessEvent(const PFBaseUnitEvent* event)
 {
@@ -501,6 +531,7 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorCancelDispatch, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnDeath, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorUnitDieNearMe, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnTarget, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

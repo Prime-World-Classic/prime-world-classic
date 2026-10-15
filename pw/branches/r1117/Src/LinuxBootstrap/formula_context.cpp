@@ -508,6 +508,21 @@ NumericFormulaResult EvaluatePositionNumericFormula(const std::string& expressio
 	return context.Evaluate(expression);
 }
 
+NumericFormulaResult EvaluateSelectorConditionFormula(const std::string& expression,
+	const IUnitFormulaPars* sender, const IUnitFormulaPars* candidate, const IMiscFormulaPars* miscellaneous)
+{
+	const auto* app = dynamic_cast<const NWorld::PFBaseApplicator*>(miscellaneous);
+	const auto* ability = app ? app->GetAbilityData() : dynamic_cast<const NWorld::PFAbilityData*>(miscellaneous);
+	const CPtr<NWorld::PFBaseUnit> owner = app ? app->GetAbilityOwner() : ability ? ability->GetOwner() : nullptr;
+	NWorld::PFWorld* world = IsValid(owner) ? owner->GetWorld() : nullptr;
+	if (app && app->GetWorld() != world) world = nullptr;
+	NRandom::RandomGenerator staged = world ? *world->GetRndGen() : NRandom::RandomGenerator();
+	Context context{sender, candidate, ability, world ? &staged : nullptr, app};
+	const auto result = context.Evaluate(expression);
+	if (result.Succeeded() && world) *world->GetRndGen() = staged;
+	return result;
+}
+
 NumericFormulaResult EvaluateDamageReductionNumericFormula(const std::string& expression,
 	const IUnitFormulaPars* sender, const IUnitFormulaPars* receiver,
 	const NWorld::PFBaseApplicator* app)

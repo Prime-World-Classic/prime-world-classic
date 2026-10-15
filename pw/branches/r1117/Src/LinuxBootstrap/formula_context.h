@@ -4,6 +4,7 @@
 
 struct IUnitFormulaPars;
 struct ICustomFormulaPars;
+struct IMiscFormulaPars;
 namespace NWorld { class PFAbilityData; class PFBaseApplicator; }
 
 namespace LinuxBootstrap
@@ -63,6 +64,15 @@ NumericFormulaResult EvaluatePositionNumericFormula(const std::string& expressio
  */
 NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& expression,
 	const NWorld::PFBaseApplicator& applicator);
+
+/** Evaluate a selector condition with the original candidate and miscellaneous context.
+ * Applicator/upgrader constants and variables are retained without substituting its
+ * receiver for the candidate. Ability/applicator RNG commits only after success;
+ * unknown miscellaneous implementations cannot supply constants or randomness.
+ */
+NumericFormulaResult EvaluateSelectorConditionFormula(const std::string& expression,
+	const IUnitFormulaPars* sender, const IUnitFormulaPars* candidate,
+	const IMiscFormulaPars* miscellaneous);
 
 /** Reduction uses the actual damage recipient, which can differ after delegation.
  * Applicator constants/variables remain available, but reduction cannot consume RNG.
