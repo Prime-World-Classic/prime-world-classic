@@ -1,0 +1,166 @@
+{
+ "sources": [
+  "/tmp/dxvk_idx_log.txt"
+ ],
+ "materials": {
+  "BasicFXMaterial": {
+   "total": 96,
+   "indices": [
+    0,
+    6,
+    24,
+    26,
+    30,
+    32,
+    72
+   ]
+  },
+  "BasicMaterial": {
+   "total": 36864,
+   "indices": [
+    0,
+    12,
+    24,
+    36,
+    386,
+    1548,
+    1560,
+    1572,
+    4608,
+    4644,
+    6144,
+    6180,
+    9216,
+    10752,
+    13824,
+    15360,
+    27648,
+    27660,
+    27672,
+    27684,
+    29196,
+    29208,
+    29220,
+    32256,
+    32292,
+    33792,
+    33828
+   ]
+  },
+  "DecalMaterial": {
+   "total": 384,
+   "indices": [
+    6,
+    198
+   ]
+  },
+  "DropMaterial": {
+   "total": 6720,
+   "indices": [
+    1890,
+    1900,
+    2450
+   ]
+  },
+  "FullScreenMaterial": {
+   "total": 128,
+   "indices": [
+    113
+   ]
+  },
+  "NatureMapMaterial": {
+   "total": 2,
+   "indices": [
+    0
+   ]
+  },
+  "ParticleFXMaterial": {
+   "total": 128,
+   "indices": [
+    4,
+    100
+   ]
+  },
+  "RoadMaterial": {
+   "total": 40,
+   "indices": [
+    0,
+    20
+   ]
+  },
+  "SilhouetteMaterial": {
+   "total": 4,
+   "indices": [
+    0,
+    2
+   ]
+  },
+  "SkyMaterial": {
+   "total": 2,
+   "indices": [
+    0
+   ]
+  },
+  "TerrainElementMaterial": {
+   "total": 240,
+   "indices": [
+    60,
+    70,
+    90,
+    100,
+    130,
+    150,
+    160,
+    180,
+    190,
+    210,
+    220
+   ]
+  },
+  "UIBaseMaterial": {
+   "total": 96,
+   "indices": [
+    0,
+    48,
+    72
+   ]
+  },
+  "UIFlashMaterial": {
+   "total": 4096,
+   "indices": [
+    0,
+    64,
+    256,
+    270,
+    320,
+    1024,
+    1038,
+    1048,
+    1054,
+    1088,
+    1152,
+    1536
+   ]
+  },
+  "UIFontMaterial": {
+   "total": 8,
+   "indices": [
+    4,
+    6
+   ]
+  },
+  "WaterDummyMaterial": {
+   "total": 4,
+   "indices": [
+    0
+   ]
+  },
+  "WaterMaterial": {
+   "total": 8,
+   "indices": [
+    0,
+    1
+   ]
+  }
+ }
+}

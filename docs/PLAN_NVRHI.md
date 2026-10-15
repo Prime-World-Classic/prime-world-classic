@@ -4487,3 +4487,69 @@ VB D3D9 тоже не знает (в seam-слоте `indexCount` лежит ч�
 `smartrenderer.cpp` 21, `dxutils.h` 18, `TextureManager.cpp` 18,
 `DxResourcesControl.cpp` 18, `renderer.cpp` 16) — без этого «переворот» бэкенда
 (шаг 13.4) рвётся на `Release()` и на `GetDesc` в учёте ресурсов.
+
+### Сделано (шаг 13.4-разведка: второй снимок живых индексов + карта COM-связности — 2026-10-16)
+
+**Второй снимок живых индексов — DXVK/NVIDIA-профиль** (`tools/shader_build/
+live_indices-2026-10-15-dxvk.json`, прогон `2026.10.15-22.31.06` под Wine с DXVK,
+dev-var `dump_shader_index 1` в `wine-client/Game/Profiles/autoexec.cfg`):
+**79 пар по 16 материалам** против 58 пар по 15 материалам в прежнем снимке
+(WARP на tiny10). Новый материал — `SilhouetteMaterial` (2 пары).
+
+Главное: **пересечение двух профилей пустое** (58 + 79 = 137 пар в объединении).
+Индексы разъезжаются не из-за устройства, а из-за **рантайм-пинов**, которые
+умножаются в индекс пары:
+
+- `DoDepthOutValue` ставится в `PF_GameLogic/PFRenderInterface.cpp:1501`
+  (`= s_readableDepth ? FALSE : TRUE`) — у WARP-профиля он 1 у большинства
+  материалов, у DXVK-профиля 0 (BasicMaterial #1 против #0, Sky #1 против #0,
+  WaterDummy #1 против #0);
+- `RenderModeValue` (`RENDERTOSHADOW` / `RENDERSHAPEONLY` / `RENDERNORMAL`) и
+  `InstancingValue` — `Render/batch.cpp:129-754` (теневой проход и инстансинг
+  добавляют отдельные комбинации);
+- PostFX расходится сильнее всего: `FullScreenMaterial` #113 против #120 —
+  `BloomPinValue` 2→0, `ColorCorrectPinValue` 1→0, `DoDepthOutValue` 2→0.
+
+Следствие (подтверждает решение шага 11 «живые комбинации + рантайм-фолбэк DXC»):
+корпус нельзя строить по одному прогону — он строится из **объединения** снимков,
+а промах по индексу обязан вести в рантайм-компиляцию, а не в `default_shader`.
+
+Корпус на объединении (`mkshd2.py --live live_indices-2026-10-15-union.json
+--cbank`): **16 контейнеров, 137 пар, 0 пропусков**; байты 2 979 260 → 3 120 012
+(+4,7%), SPIR-V-блобы 252 480 → 389 456 Б (+52%) — дедупликация блобов съедает
+половину роста, цена второго профиля копеечная.
+
+**Карта COM-связности клиента (блоке­ры «переворота» `pBackend = NvrhiBackend`).**
+Прямые обращения к `IDirect3DDevice9` вне `d3d9backend` (13 в `HwInput.cpp` — это
+DINPUT, не считается):
+
+1. *Жизненный цикл устройства*: `renderer.cpp:121 Release`, `:252 GetDisplayMode`,
+   `:305` и `:732 CreateQuery(D3DQUERYTYPE_EVENT)` (синхронизация кадров),
+   `:511 Reset`, `:561 GetDeviceCaps`, `:893 TestCooperativeLevel`, `:1041
+   GetDirect3D`, `:1046 GetCreationParameters` (машинерия device-lost целиком
+   D3D9-ная).
+2. *Фиксированный конвейер 2D*: `smartrenderer.cpp:238-241` —
+   `SetVertexShader(NULL)` + `SetFVF(D3DFVF_XYZRHW|D3DFVF_DIFFUSE)` +
+   `DrawPrimitiveUP` — путь «без шейдера», в Vulkan требует шейдера и раскладки.
+3. *Загрузка текстур через D3DX*: `TextureManager.cpp:483
+   D3DXCreateTextureFromFileInMemoryEx(GetDevice(), …)` — DDS-текстуры создаются
+   COM'ом мимо seam'а (`ReadDDS.cpp:318,344` тоже смотрят на устройство);
+   закрывается декодером в клиенте + `LockTexture2D` (метод уже есть).
+4. *Состояния*: `renderstatesmanager.cpp` (11 сайтов: `SetRenderState`,
+   `SetSamplerState`, блоки состояний) — пункт 3 очереди шага 13.
+5. *Чтение состояния*: `smartrenderer.cpp:588,659 GetViewport`,
+   `ShadowManager.cpp:351,353 GetViewport/GetScissorRect` — в seam такие методы
+   есть, сайты их обходят.
+6. *Владение ручками*: seam-ручка сегодня и есть COM-указатель, поэтому клиент
+   делает `Attach`/`Release` (`renderer.cpp:299-302 pDeviceDepthSurface/
+   pDeviceColorSurface`) и обратные `MakeBackendHandle<…>(COM*)` — **34 сайта**
+   (`smartrenderer.cpp` 9, `texture.cpp` 8, `renderer.cpp` 6, `rendersurface.cpp`
+   5, `dxutils.cpp` 4, `WaterManager.cpp` 2, последний передаёт
+   `SmartRenderer::GetRenderTarget(0)` прямо в `StretchRect`). Учёт памяти
+   `DxResourcesControl.cpp:185-215` (`GetLevelCount/GetType/GetLevelDesc`)
+   переносится на `GetTextureInfo` без изменений в семантике.
+
+Порядок, в котором это раскрывается: (6) владение → (5) чтение состояния →
+(4) состояния/сэмплеры → (3) загрузка DDS → (2) фиксированный 2D-путь →
+(1) жизненный цикл (его можно оставить на D3D9-устройстве до полноценного
+Vulkan-_present-пути, но тогда «переворот» остаётся гибридом).

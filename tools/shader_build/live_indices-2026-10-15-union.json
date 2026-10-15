@@ -1,0 +1,225 @@
+{
+ "sources": [
+  "moba1p: WARP/tiny10 (2026-10-15)",
+  "dxvk: NVIDIA/DXVK под Wine (2026-10-15)"
+ ],
+ "materials": {
+  "BasicFXMaterial": {
+   "total": 96,
+   "indices": [
+    0,
+    3,
+    6,
+    9,
+    24,
+    26,
+    27,
+    29,
+    30,
+    32,
+    33,
+    35,
+    72,
+    75
+   ]
+  },
+  "BasicMaterial": {
+   "total": 36864,
+   "indices": [
+    0,
+    1,
+    12,
+    13,
+    24,
+    25,
+    36,
+    37,
+    386,
+    387,
+    1548,
+    1560,
+    1572,
+    4608,
+    4609,
+    4644,
+    4645,
+    6144,
+    6180,
+    9216,
+    9217,
+    10752,
+    13824,
+    13825,
+    15360,
+    27648,
+    27649,
+    27660,
+    27661,
+    27672,
+    27673,
+    27684,
+    27685,
+    29196,
+    29208,
+    29220,
+    32256,
+    32257,
+    32292,
+    32293,
+    33792,
+    33828
+   ]
+  },
+  "DecalMaterial": {
+   "total": 384,
+   "indices": [
+    6,
+    30,
+    198,
+    222
+   ]
+  },
+  "DropMaterial": {
+   "total": 6720,
+   "indices": [
+    1890,
+    1895,
+    1900,
+    1905,
+    2450
+   ]
+  },
+  "FullScreenMaterial": {
+   "total": 128,
+   "indices": [
+    113,
+    120
+   ]
+  },
+  "NatureMapMaterial": {
+   "total": 2,
+   "indices": [
+    0,
+    1
+   ]
+  },
+  "ParticleFXMaterial": {
+   "total": 128,
+   "indices": [
+    4,
+    6,
+    100,
+    102
+   ]
+  },
+  "RoadMaterial": {
+   "total": 40,
+   "indices": [
+    0,
+    10,
+    20,
+    30
+   ]
+  },
+  "SilhouetteMaterial": {
+   "total": 4,
+   "indices": [
+    0,
+    2
+   ]
+  },
+  "SkyMaterial": {
+   "total": 2,
+   "indices": [
+    0,
+    1
+   ]
+  },
+  "TerrainElementMaterial": {
+   "total": 240,
+   "indices": [
+    60,
+    65,
+    70,
+    90,
+    95,
+    100,
+    130,
+    150,
+    155,
+    160,
+    180,
+    185,
+    190,
+    210,
+    215,
+    220
+   ]
+  },
+  "UIBaseMaterial": {
+   "total": 96,
+   "indices": [
+    0,
+    2,
+    48,
+    50,
+    72,
+    74
+   ]
+  },
+  "UIFlashMaterial": {
+   "total": 4096,
+   "indices": [
+    0,
+    1,
+    64,
+    65,
+    256,
+    257,
+    270,
+    271,
+    320,
+    321,
+    1024,
+    1025,
+    1038,
+    1039,
+    1048,
+    1049,
+    1054,
+    1055,
+    1088,
+    1089,
+    1152,
+    1153,
+    1536,
+    1537
+   ]
+  },
+  "UIFontMaterial": {
+   "total": 8,
+   "indices": [
+    4,
+    5,
+    6,
+    7
+   ]
+  },
+  "WaterDummyMaterial": {
+   "total": 4,
+   "indices": [
+    0,
+    1
+   ]
+  },
+  "WaterMaterial": {
+   "total": 8,
+   "indices": [
+    0,
+    1,
+    6,
+    7
+   ]
+  }
+ }
+}
