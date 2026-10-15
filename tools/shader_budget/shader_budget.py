@@ -21,13 +21,14 @@ import os, re, sys, atexit, shutil, subprocess, collections, xml.etree.ElementTr
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROBE = os.path.abspath(os.path.join(HERE, "..", "spirv_probe"))
 sys.path.insert(0, PROBE)
-import shim                                             # noqa: E402
+sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "shader_build")))
+import dxcdrv                                           # noqa: E402
 
 R1117 = os.path.abspath(os.path.join(HERE, "..", "..", "pw", "branches", "r1117"))
 SH = os.path.join(R1117, "Src", "Render", "Shaders")
 RENDER = os.path.join(R1117, "Src", "Render")
-DXC = os.path.join(PROBE, "vendor", "dxc", "bin", "dxc")
-ENV = dict(os.environ, LD_LIBRARY_PATH=os.path.join(PROBE, "vendor", "dxc", "lib"))
+DXC = dxcdrv.DXC
+ENV = dxcdrv.ENV
 
 # ---------------------------------------------------------------- SPIR-V read
 # Разбор минимальный: только то, что нужно для бюджета. Значения опкодов и
@@ -298,17 +299,9 @@ class Module:
 
 
 # ------------------------------------------------------------------ компиляция
-def spec_materials():
-    root = ET.parse(os.path.join(SH, "MaterialSpec.xml")).getroot()
-    out = []
-    for item in root.iter("Item"):
-        name = item.findtext("shaderName")
-        if not name:
-            continue
-        pins = [(p.findtext("pinName"), int(p.findtext("pinMultiplier", "1")))
-                for p in item.iter("Item") if p.findtext("pinName")]
-        out.append((name, pins))
-    return out
+# Разбор спеки, прослойка и запуск DXC — в tools/shader_build/dxcdrv.py (общий
+# вход с писателем контейнера .shd v2). Здесь остаётся только бюджет.
+spec_materials = dxcdrv.spec_materials
 
 
 def entries(path):
@@ -325,63 +318,23 @@ PINVAL = int(sys.argv[sys.argv.index("--pins") + 1]) if "--pins" in sys.argv els
 # -DPW_SSBO_ARRAYS=1 для замера SSBO-формы динамических массивов (шаг 10)
 EXTRA_DEFINES = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
                  if a == "--define" and i + 1 < len(sys.argv)]
-SHIM_DIR = None
+TREE = dxcdrv.ShimTree(prefix="zzz_budget_shaders_")
 
 
-def cleanup_shim_trees():
-    """Сгенерированное дерево живёт внутри Src/Render (иначе DXC не находит
-    stdafx.h и относительные include шейдеров) и не должно оставаться в
-    рабочем дереве репозитория."""
-    if KEEP:
-        return
-    for stage in ("vs", "ps"):
-        d = os.path.join(RENDER, "zzz_budget_shaders_" + stage)
-        if os.path.isdir(d):
-            shutil.rmtree(d, ignore_errors=True)
+def _cleanup_trees():
+    if not KEEP:
+        TREE.cleanup()
 
 
-atexit.register(cleanup_shim_trees)
-
-
-def build_shim_tree(stage):
-    names_ps, names_vs = set(), set()
-    for fn in os.listdir(SH):
-        if not fn.endswith(".hlsl"):
-            continue
-        t = open(os.path.join(SH, fn), encoding="utf-8", errors="replace").read()
-        for m in re.finditer(r"^\s*(\w+)\s+\w+_PSMain\s*\(", t, re.M):
-            names_ps.add(m.group(1))
-        for m in re.finditer(r"^\s*(\w+)\s+\w+_VSMain\s*\(", t, re.M):
-            names_vs.add(m.group(1))
-    global SHIM_DIR
-    SHIM_DIR = os.path.join(RENDER, "zzz_budget_shaders_" + stage)
-    os.makedirs(SHIM_DIR, exist_ok=True)
-    for fn in os.listdir(SH):
-        src = os.path.join(SH, fn)
-        if not os.path.isfile(src):
-            continue
-        if fn.endswith(".hlsl"):
-            out, _st, _n = shim.rewrite(
-                open(src, encoding="utf-8", errors="replace").read(), stage,
-                tuple(sorted(names_ps)), tuple(sorted(names_vs)))
-            open(os.path.join(SHIM_DIR, fn), "w", encoding="utf-8").write(out)
-        elif fn.endswith(".h"):
-            open(os.path.join(SHIM_DIR, fn), "wb").write(open(src, "rb").read())
-    return SHIM_DIR
+atexit.register(_cleanup_trees)
 
 
 def compile_unit(path, stage, entry, defines):
-    if SHIM:
-        path = os.path.join(SHIM_DIR, os.path.basename(path))
-    inc = SHIM_DIR if SHIM else SH
-    out_spv = "/tmp/shader_budget_%s_%s.spv" % (os.path.basename(path), stage)
-    cmd = [DXC, "-T", stage + "_6_0", "-E", entry, "-spirv",
-           "-I", inc, "-I", RENDER]
-    for d in defines:
-        cmd += ["-D", d]
-    cmd += [path, "-Fo", out_spv]
-    p = subprocess.run(cmd, env=ENV, capture_output=True, text=True)
-    return p.returncode, (p.stdout or "") + (p.stderr or ""), out_spv
+    # -Zpr здесь НЕ передаётся намеренно: числа бюджета сверяются с прежними
+    # замерами (§3.z в). Писатель контейнера (.shd v2) обязан компилировать С
+    # -Zpr — иначе mul(v, M) теряет перенос (замер спайка B0).
+    return dxcdrv.compile_dxc(path, stage, entry, defines,
+                              tree=TREE if SHIM else None, extra_args=())
 
 
 def main():
@@ -397,13 +350,12 @@ def main():
         if not os.path.exists(path):
             continue
         vs, ps = entries(path)
-        defines = ["%s=%d" % (p, PINVAL) for p, _ in pins] + EXTRA_DEFINES
+        defines = ["%s=%d" % (p, PINVAL) for p, _mx, _mult in pins] + EXTRA_DEFINES
         for stage, lst in (("vs", vs), ("ps", ps)):
             if not lst:
                 continue
-            global SHIM_DIR
             if SHIM:
-                SHIM_DIR = build_shim_tree(stage)
+                TREE.build(stage)
             code, err, spv = compile_unit(path, stage,
                                           lst[0] + "_" + stage.upper() + "Main",
                                           defines)

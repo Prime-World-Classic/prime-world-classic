@@ -239,3 +239,8 @@ pw/branches/r1117/_EditorRun/
 # Shaders/, чтобы #include "../GlobalMasks.h" продолжал работать) — артефакт
 # прогона, в ветке не нужен
 pw/branches/r1117/Src/Render/zzz_probe_shaders_*/
+# сгенерированные деревья прослойки SM3->SM6 (tools/shader_budget, tools/shader_build):
+# DXC видит только файлы на диске, поэтому переписанный корпус кладётся рядом с
+# исходниками и удаляется по завершении (atexit)
+pw/branches/r1117/Src/Render/zzz_budget_shaders_*/
+pw/branches/r1117/Src/Render/zzz_build_shaders_*/

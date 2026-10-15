@@ -136,6 +136,35 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
         _TEXCOORD_CTR[0] += 1
         return ": TEXCOORD%d" % _TEXCOORD_CTR[0]
     src, n_col = re.subn(r":\s*COLOR\d*\b", color_field, src)
+
+    # PS-вход: позиция в структуре-параметре — это выход VS (мы только что
+    # сделали из него SV_POSITION). Если PS-точка входа одновременно объявляет
+    # VPOS (-> SV_Position), DXC видит два входа с FragCoord и отказывает:
+    # «OpEntryPoint contains duplicate input variables with FragCoord builtin»
+    # (UIFlashMaterial). Для PS эта позиция — обычный интерполятор, поэтому
+    # уводим её в незанятую пользовательскую семантику; если тело PS её и
+    # правда читает, это работа для шага 13 (исходник обязан перейти на
+    # PixelPos), и мы помечаем материал в notes.
+    n_pspos = 0
+    if stage == "ps":
+        for pm in re.finditer(r"^\s*\w[\w:]*\s+\w+_PSMain\s*\(\s*(\w+)", src, re.M):
+            st = pm.group(1)
+            sm = re.search(r"struct\s+%s\s*\{(.*?)\n\s*\};" % st, src, re.S)
+            if not sm:
+                if re.search(r"\b\w+_PSMain\s*\(\s*%s" % st, src) and \
+                        re.search(r"\bVPOS\b", src):
+                    notes.append("PS-структура %s вне файла — позицию из PS-входа "
+                                 "не убрали" % st)
+                continue
+            newbody, k = re.subn(r":\s*(SV_POSITION|POSITION)\b", ": TEXCOORD191",
+                                 sm.group(1))
+            if k:
+                src = src[:sm.start(1)] + newbody + src[sm.end(1):]
+                n_pspos += k
+                if re.search(r"\bVPOS\b", src):
+                    notes.append("PS %s: позиция убрана из входа, нужен PixelPos"
+                                 % st)
+
     src, n_vpos = re.subn(r"\bVPOS\b", "SV_Position", src)
     # FragCoord по Vulkan-спеке — обязательно 4-компонентный; в исходниках
     # float2 PixelPos : VPOS, поэтому расширяем до float4 (использование .xy не меняется)
@@ -144,7 +173,7 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
 
     stats = dict(samplers=n_samp, regs=n_reg, tex2D=n_t2, texCUBE=n_cube,
                  tex2Dlod=n_lod + n_lod_var + n_lod3, tex2Dproj=n_proj, position=n_pos,
-                 color=n_col, vpos=n_vpos + n_frag, vface=n_vface)
+                 color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface)
     return HEADER + src, stats, notes
 
 if __name__ == "__main__":

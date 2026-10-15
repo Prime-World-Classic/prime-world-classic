@@ -56,6 +56,11 @@ AFFECTED = [
     ("ShadowMaterial",             "SkeletalMeshPinValue=1"),
     ("SilhouetteMaterial",         "SkeletalMeshPinValue=1"),
     ("TerrainElementDebugMaterial", ""),
+    # шаг 11: `volatile` в UIBaseMaterial (Stripes == PRESENT) — DXC его
+    # резервирует, SM3-ветка осталась дословной. Профиль обязан расти вместе с
+    # любой правкой исходника, иначе «SM3 побайтово не изменился» ничего не
+    # доказывает для затронутой ветки пинов.
+    ("UIBaseMaterial",             "Stripes=1"),
 ]
 import hashlib
 import json

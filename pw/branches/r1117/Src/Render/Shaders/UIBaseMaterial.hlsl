@@ -95,7 +95,15 @@ VS_OUTPUT MainPass_VSMain( VS_INPUT Input )
   #if Stripes == PRESENT
     const float screen_x = Input.Texcoord3.x * resolutionCoef.z - stripesCoefs.x;
 
+#if PW_MODERN_ARRAYS
+    // `volatile` — qualifier SM3 (fxc принимает, смысл «не переносить значения
+    // через блоки»), в DXC это зарезервированное слово: «error: 'volatile' is a
+    // reserved keyword in HLSL». В modern-ветке qualifier убираем — на результат
+    // он не влияет, а DXC и так не переносит значения между блоками.
+    float line_factor;
+#else
     volatile float line_factor;
+#endif
 
     {
       line_factor = screen_x % stripesCoefs.y;
