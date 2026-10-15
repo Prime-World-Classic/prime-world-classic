@@ -732,6 +732,11 @@ void Renderer::ClearDeviceResources()
   for(unsigned n = 0; n < caps.numSimultaneousRTs; ++n)
     hr = pB->SetRenderTarget(n, HSurface());
 
+  // Инстансный путь выключается до отвязки потоков: иначе отображение
+  // «логический поток -> физический слот» со сдвигом, и перебор ниже не
+  // накрывает последний слот (даёт INVALIDCALL на несуществующем слоте).
+  hr = pB->SetInstanceCount(0);
+
   for(unsigned n = 0; n < caps.maxStreams; ++n)
     hr = pB->SetStreamSource(n, HBuffer(), 0, 4);
 

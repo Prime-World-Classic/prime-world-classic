@@ -151,7 +151,43 @@ HRESULT D3D9Backend::GetShaderConstants(EShaderConstStage stage, unsigned startR
 }
 
 HRESULT D3D9Backend::SetStreamSource(unsigned slot, HBuffer vertexBuffer, unsigned byteOffset, unsigned stride) {
-  return pDevice->SetStreamSource(slot, static_cast<IDirect3DVertexBuffer9*>(vertexBuffer.p), byteOffset, stride);
+  return SetStreamSlot(MapStream(slot), static_cast<IDirect3DVertexBuffer9*>(vertexBuffer.p),
+                       byteOffset, stride);
+}
+
+// Логический номер потока -> физический слот (шаг 9 очереди, §2.10). Поток 0 —
+// геометрия — на своём месте всегда; когда включён инстансный путь, слот 1
+// занят под данные экземпляра и геометрийные потоки клиента уезжают выше —
+// ровно как сдвигает ненулевые потоки раскладка с атрибутом экземпляра
+// (InstancedVariant). Раньше этот сдвиг делал SmartRenderer::BindVertexBuffer.
+unsigned D3D9Backend::MapStream(unsigned logical) const {
+  if (logical == kInstanceStream)
+    return kInstanceSlot;
+  if (instanceCount && logical)
+    return logical + 1;
+  return logical;
+}
+
+HRESULT D3D9Backend::SetStreamSlot(unsigned physical, IDirect3DVertexBuffer9* pVB,
+                                   unsigned offset, unsigned stride) {
+  if (physical >= kFreqStreams)
+    return D3DERR_INVALIDCALL;
+  StreamSlot& slot = streamSlot[physical];
+  if (slot.pVB == pVB && slot.offset == offset && slot.stride == stride)
+    return D3D_OK;
+  slot.pVB = pVB;
+  slot.offset = offset;
+  slot.stride = stride;
+  return pDevice->SetStreamSource(physical, pVB, offset, stride);
+}
+
+bool D3D9Backend::IsStreamBufferBound(const void* pVertexBuffer) const {
+  if (!pVertexBuffer)
+    return false;
+  for (unsigned n = 0; n < kFreqStreams; ++n)
+    if (streamSlot[n].pVB == pVertexBuffer)
+      return true;
+  return false;
 }
 
 HRESULT D3D9Backend::SetIndices(HBuffer indexBuffer) {
@@ -159,7 +195,12 @@ HRESULT D3D9Backend::SetIndices(HBuffer indexBuffer) {
 }
 
 HRESULT D3D9Backend::SetInputLayout(HInputLayout layout) {
-  return pDevice->SetVertexDeclaration(static_cast<IDirect3DVertexDeclaration9*>(layout.p));
+  IDirect3DVertexDeclaration9* pDecl = static_cast<IDirect3DVertexDeclaration9*>(layout.p);
+  // Инстансный путь со счётчиком: базовая раскладка атрибута номера экземпляра
+  // не имеет, её подставляет бэкенд (кэш по указателю базовой раскладки).
+  if (instanceCount && instanceCounterSource)
+    pDecl = InstancedVariant(pDecl);
+  return pDevice->SetVertexDeclaration(pDecl);
 }
 
 HRESULT D3D9Backend::SetVertexShader(HShader shader) {
@@ -197,20 +238,20 @@ HRESULT D3D9Backend::SetViewport(const BackendViewport& vp) {
 
 HRESULT D3D9Backend::DrawIndexed(ERenderPrimitiveType type, unsigned baseVertexIndex, unsigned minIndex,
                                  unsigned indexedVertexCount, unsigned startIndex, unsigned primitiveCount) {
-  ApplyInstanceFreqs();
+  ApplyInstanceState();
   return pDevice->DrawIndexedPrimitive(ConvertPrimitiveType(type), baseVertexIndex, minIndex,
                                        indexedVertexCount, startIndex, primitiveCount);
 }
 
 HRESULT D3D9Backend::Draw(ERenderPrimitiveType type, unsigned startVertex, unsigned primitiveCount) {
-  ApplyInstanceFreqs();
+  ApplyInstanceState();
   return pDevice->DrawPrimitive(ConvertPrimitiveType(type), startVertex, primitiveCount);
 }
 
 HRESULT D3D9Backend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexValue, unsigned indexCount,
                                    unsigned vertexCount, const void* pIndexData, bool index16,
                                    const void* pVertexData, unsigned vertexStride) {
-  ApplyInstanceFreqs();
+  ApplyInstanceState();
   return pDevice->DrawIndexedPrimitiveUP(ConvertPrimitiveType(type), minIndexValue, indexCount, vertexCount,
                                          pIndexData, index16 ? D3DFMT_INDEX16 : D3DFMT_INDEX32,
                                          pVertexData, vertexStride);
@@ -218,7 +259,7 @@ HRESULT D3D9Backend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexV
 
 HRESULT D3D9Backend::DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                             const void* pVertexData, unsigned vertexStride) {
-  ApplyInstanceFreqs();
+  ApplyInstanceState();
   return pDevice->DrawPrimitiveUP(ConvertPrimitiveType(type), primitiveCount, pVertexData, vertexStride);
 }
 
@@ -252,7 +293,9 @@ HRESULT D3D9Backend::CreateInputLayout(const VertexFormatDescriptor& descr, HInp
     const VertexElementDescriptor& element = descr.GetVertexElement(i);
 
     D3DVERTEXELEMENT9 d3d_element;
-    d3d_element.Stream       = static_cast<unsigned short>(element.stream);
+    // kInstanceStream -> физический слот экземпляра (тот же MapStream, что и
+    // для биндингов: раскладка и потоки обязаны сходиться).
+    d3d_element.Stream       = static_cast<unsigned short>(MapStream(element.stream));
     d3d_element.Offset       = static_cast<unsigned short>(element.offset);
     d3d_element.Type         = ConvertVertexElementType(element.type);
     d3d_element.Method       = D3DDECLMETHOD_DEFAULT;
@@ -596,10 +639,13 @@ HRESULT D3D9Backend::SetInstanceCount(unsigned count) {
   return D3D_OK;
 }
 
-// Частоты применяются дельтой и только перед рисованием: биндинги потоков к
-// этому моменту уже выполнены (исторический порядок ApplyStates — внутри
-// Draw*Primitive после биндингов), и переставлять его нечем оправдывать.
-void D3D9Backend::ApplyInstanceFreqs() {
+// Состояние инстансинга применяется дельтой и только перед рисованием:
+// биндинги потоков к этому моменту уже выполнены (исторический порядок
+// ApplyStates — внутри Draw*Primitive после биндингов), и переставлять его
+// нечем оправдывать. Сюда же входит привязка слота данных экземпляра — она
+// зависит от instanceCount (размер счётчика), а вызывающий вправе задать
+// источник и до, и после SetInstanceCount.
+void D3D9Backend::ApplyInstanceState() {
   unsigned requested[kFreqStreams];
   for (unsigned n = 0; n < kFreqStreams; ++n)
     requested[n] = 1;
@@ -607,8 +653,15 @@ void D3D9Backend::ApplyInstanceFreqs() {
   if (instanceCount) {
     // Поток 0 — геометрия: проходится заново на каждый экземпляр.
     requested[0] = D3DSTREAMSOURCE_INDEXEDDATA | instanceCount;
-    // Поток 1 — данные экземпляра: одно значение на экземпляр.
-    requested[1] = D3DSTREAMSOURCE_INSTANCEDATA | 1;
+    // Слот экземпляра: одно значение на экземпляр.
+    requested[kInstanceSlot] = D3DSTREAMSOURCE_INSTANCEDATA | 1;
+
+    if (instanceCounterSource) {
+      if (SUCCEEDED(EnsureInstanceCounter(instanceCount)))
+        SetStreamSlot(kInstanceSlot, pInstanceCounterVB, 0, sizeof(int));
+    } else if (instanceSourceVB) {
+      SetStreamSlot(kInstanceSlot, instanceSourceVB, instanceSourceOffset, instanceSourceStride);
+    }
   }
 
   for (unsigned n = 0; n < kFreqStreams; ++n)
@@ -616,26 +669,83 @@ void D3D9Backend::ApplyInstanceFreqs() {
       pDevice->SetStreamSourceFreq(n, streamFreq[n] = requested[n]);
 }
 
-HRESULT D3D9Backend::CreateInstancedInputLayout(HInputLayout base, HInputLayout* pOut) {
-  *pOut = HInputLayout();
-  IDirect3DVertexDeclaration9* pBase = static_cast<IDirect3DVertexDeclaration9*>(base.p);
-  if (!pBase)
-    return D3DERR_INVALIDCALL;
+// Источник данных экземпляра (шаг 9 очереди, §2.10). Раньше счётчик 0..N-1
+// жил в клиенте (SmartRenderer::InitIdxVB / s_pInstanceIndexVB) и туда же
+// уходело решение «какой слот под ним занят».
+// Здесь только запись намерения: привязка к слоту — ленивая, в
+// ApplyInstanceState (перед рисованием), поэтому порядок SetInstanceCount /
+// SetInstanceSource / биндингов геометрии не важен.
+HRESULT D3D9Backend::SetInstanceSource(HBuffer perInstanceData, unsigned stride, unsigned offset) {
+  instanceCounterSource = (perInstanceData.p == 0);
+  instanceSourceVB = static_cast<IDirect3DVertexBuffer9*>(perInstanceData.p);
+  instanceSourceStride = stride;
+  instanceSourceOffset = offset;
+  return D3D_OK;
+}
+
+HRESULT D3D9Backend::EnsureInstanceCounter(unsigned count) {
+  if (pInstanceCounterVB && instanceCounterEntries >= count)
+    return D3D_OK;
+
+  const unsigned entries = count < 64 ? 64 : count;
+  if (pInstanceCounterVB) {
+    pInstanceCounterVB->Release();
+    pInstanceCounterVB = 0;
+    instanceCounterEntries = 0;
+  }
+
+  IDirect3DVertexBuffer9* pVB = 0;
+  HRESULT hr = pDevice->CreateVertexBuffer(entries * sizeof(int), 0, 0 /* FVF: без FVF, раскладка у декларации */, D3DPOOL_MANAGED, &pVB, NULL);
+  if (FAILED(hr) || !pVB)
+    return hr;
+
+  // Значение — номер экземпляра; формат int (не float): раскладка читает
+  // младшие 16 бит, float-счётчик дал бы мусор в вершинах (грабля
+  // InstancedMeshResource::Init).
+  int* pValues = 0;
+  hr = pVB->Lock(0, entries * sizeof(int), reinterpret_cast<void**>(&pValues), 0);
+  if (SUCCEEDED(hr)) {
+    for (unsigned n = 0; n < entries; ++n)
+      pValues[n] = static_cast<int>(n);
+    pVB->Unlock();
+  }
+
+  pInstanceCounterVB = pVB;
+  instanceCounterEntries = entries;
+  return hr;
+}
+
+// Раскладка с атрибутом номера экземпляра: сдвиг ненулевых потоков на 1 вверх
+// (их забирает слот экземпляра — тот же сдвиг, что делает MapStream для
+// биндингов) и SHORT2/BLENDINDICES0 в слот экземпляра (шиммер HLSL читает его
+// как InstanceId). Кэшируется по базовой раскладке — раньше этим кэшем владел
+// SmartRenderer (DeclMap/s_instancedVDecl).
+IDirect3DVertexDeclaration9* D3D9Backend::InstancedVariant(IDirect3DVertexDeclaration9* base) {
+  if (!base)
+    return 0;
+
+  void* const key = static_cast<void*>(base);
+  InstancedDeclMap::const_iterator found = instancedDecls.find(key);
+  if (found != instancedDecls.end())
+    return found->second;
 
   D3DVERTEXELEMENT9 decl[MAXD3DDECLLENGTH];
   UINT numElements = 0;
-  HRESULT hr = pBase->GetDeclaration(decl, &numElements);
-  if (FAILED(hr))
-    return hr;
+  if (FAILED(base->GetDeclaration(decl, &numElements)))
+    return base;
   // Последний элемент — D3DDECL_END(); плюс новый элемент перед ним.
   if (numElements < 2 || numElements >= MAXD3DDECLLENGTH)
-    return D3DERR_INVALIDCALL;
+    return base;
+
+  for (UINT n = 0; n + 1 < numElements; ++n)
+    if (decl[n].Usage == D3DDECLUSAGE_BLENDINDICES && decl[n].UsageIndex == 0)
+      return base;   // атрибут номера экземпляра уже описан (InstancedMeshResource)
 
   for (UINT n = 0; n + 1 < numElements; ++n)
     if (decl[n].Stream)
       ++decl[n].Stream;
 
-  static const D3DVERTEXELEMENT9 instanceElement = { 1, 0, D3DDECLTYPE_SHORT2, 0,
+  static const D3DVERTEXELEMENT9 instanceElement = { kInstanceSlot, 0, D3DDECLTYPE_SHORT2, 0,
                                                      D3DDECLUSAGE_BLENDINDICES, 0 };
   static const D3DVERTEXELEMENT9 declEnd = D3DDECL_END();
 
@@ -643,15 +753,36 @@ HRESULT D3D9Backend::CreateInstancedInputLayout(HInputLayout base, HInputLayout*
   decl[numElements] = declEnd;
 
   IDirect3DVertexDeclaration9* pNew = 0;
-  hr = pDevice->CreateVertexDeclaration(decl, &pNew);
-  if (SUCCEEDED(hr))
-    *pOut = MakeBackendHandle<HInputLayout>(pNew);
-  return hr;
+  if (FAILED(pDevice->CreateVertexDeclaration(decl, &pNew)) || !pNew)
+    return base;
+
+  instancedDecls[key] = pNew;
+  return pNew;
+}
+
+void D3D9Backend::ReleaseInstancedDecls() {
+  for (InstancedDeclMap::iterator i = instancedDecls.begin(); i != instancedDecls.end(); ++i)
+    if (i->second && static_cast<void*>(i->second) != i->first)
+      i->second->Release();
+  instancedDecls.clear();
 }
 
 void D3D9Backend::InvalidateBoundState() {
   instanceCount = 0;
-  for (unsigned n = 0; n < kFreqStreams; ++n)
+  instanceCounterSource = false;
+  instanceSourceVB = 0;
+  instanceSourceStride = 0;
+  instanceSourceOffset = 0;
+  for (unsigned n = 0; n < kFreqStreams; ++n) {
     streamFreq[n] = 1;
+    // Устройство после Reset() (или нового CreateDevice) без биндингов — и
+    // кэш дедупа обязан об этом знать, иначе первый же биндинг того же буфера
+    // будет пропущен.
+    streamSlot[n].pVB = 0;
+    streamSlot[n].offset = 0;
+    streamSlot[n].stride = 0;
+  }
+  // Декларации живут на устройстве — после сброса/пересоздания они мертвы.
+  ReleaseInstancedDecls();
 }
 } // namespace Render

@@ -48,15 +48,71 @@ class D3D9Backend : public IRenderBackend {
   unsigned streamFreq[kFreqStreams];   // что реально выставлено на устройстве
   unsigned instanceCount;              // 0 — инстансный путь выключен
 
-  void ApplyInstanceFreqs();
+  // Физический слот, который D3D9 читает с частотой INSTANCEDATA.
+  static const unsigned kInstanceSlot = 1;
+
+  // Таблица «что стоит в вершинном слоте» — по ней дедупятся вызовы устройства.
+  // Живёт здесь, а не в SmartRenderer: слоты выбирает бэкенд (MapStream), и
+  // клиентская таблица по логическим номерам разъехалась бы с устройством,
+  // когда геометрийный поток уезжает на слот выше (или наоборот).
+  struct StreamSlot {
+    IDirect3DVertexBuffer9* pVB;
+    unsigned offset;
+    unsigned stride;
+  };
+  StreamSlot streamSlot[kFreqStreams];
+
+  // Счётчик экземпляров 0..N-1 для SetInstanceSource без буфера. D3D9 читает
+  // его атрибутом SHORT2 (младшие 16 бит int'а; раскладка обязана быть
+  // int'овой, float-счётчик ломает вершины — грабля InstancedMeshResource).
+  IDirect3DVertexBuffer9* pInstanceCounterVB;
+  unsigned instanceCounterEntries;
+  // Источник данных экземпляра: свой счётчик или per-instance буфер клиента
+  // (партиклы). Записывается в слот экземпляра лениво, перед рисованием —
+  // порядок SetInstanceCount / SetInstanceSource / биндингов геометрии при этом
+  // не важен (на Vulkan биндинг буфера и count в draw-вызове тоже независимы).
+  bool instanceCounterSource;
+  IDirect3DVertexBuffer9* instanceSourceVB;
+  unsigned instanceSourceStride;
+  unsigned instanceSourceOffset;
+
+  // Базовая раскладка -> её вариант с атрибутом номера экземпляра
+  // (InstancedVariant). Кэш действителен, пока живо устройство:
+  // InvalidateBoundState его чистит.
+  // Ключ — void*: для указателей в nstl::hash_map нужна специализация
+  // nstl::hash, она есть только для void* (так же, как в прежнем DeclMap).
+  typedef nstl::hash_map<void*, IDirect3DVertexDeclaration9*> InstancedDeclMap;
+  InstancedDeclMap instancedDecls;
+
+  void ApplyInstanceState();  // частоты потоков + слот данных экземпляра (дельтой, перед рисованием)
+  // Логический номер потока -> физический слот устройства.
+  unsigned MapStream(unsigned logical) const;
+  HRESULT SetStreamSlot(unsigned physical, IDirect3DVertexBuffer9* pVB, unsigned offset, unsigned stride);
+  HRESULT EnsureInstanceCounter(unsigned count);
+  // Раскладка с атрибутом номера экземпляра (или base, если он там уже есть).
+  IDirect3DVertexDeclaration9* InstancedVariant(IDirect3DVertexDeclaration9* base);
+  void ReleaseInstancedDecls();
 
 public:
-  explicit D3D9Backend(IDirect3DDevice9* _pDevice) : pDevice(_pDevice), instanceCount(0) {
+  explicit D3D9Backend(IDirect3DDevice9* _pDevice) : pDevice(_pDevice), instanceCount(0),
+      pInstanceCounterVB(0), instanceCounterEntries(0), instanceCounterSource(false),
+      instanceSourceVB(0), instanceSourceStride(0), instanceSourceOffset(0) {
     adapterDescription[0] = 0;
     // Дефолт D3D9 — частота 1 у всех потоков; после Reset() устройство
     // возвращается к нему же (см. InvalidateBoundState).
-    for (unsigned n = 0; n < kFreqStreams; ++n)
+    for (unsigned n = 0; n < kFreqStreams; ++n) {
       streamFreq[n] = 1;
+      streamSlot[n].pVB = 0;
+      streamSlot[n].offset = 0;
+      streamSlot[n].stride = 0;
+    }
+  }
+  ~D3D9Backend() {
+    ReleaseInstancedDecls();
+    if (pInstanceCounterVB) {
+      pInstanceCounterVB->Release();
+      pInstanceCounterVB = 0;
+    }
   }
 
   // --- сведения об адаптере ---
@@ -105,7 +161,8 @@ public:
 
   // --- инстансинг ---
   virtual HRESULT SetInstanceCount(unsigned count);
-  virtual HRESULT CreateInstancedInputLayout(HInputLayout base, HInputLayout* pOut);
+  virtual HRESULT SetInstanceSource(HBuffer perInstanceData, unsigned stride, unsigned offset);
+  virtual bool IsStreamBufferBound(const void* pVertexBuffer) const;
 
   virtual void InvalidateBoundState();
 

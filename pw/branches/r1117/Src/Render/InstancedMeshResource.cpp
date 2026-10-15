@@ -4,6 +4,7 @@
 
 #include "../MeshConverter/MeshHeader.h"
 #include "smartrenderer.h"
+#include "renderbackend.h"   // kInstanceStream
 #include "InstancedMeshResource.h"
 #include <MemoryLib/UserMessage.h>
 
@@ -159,7 +160,7 @@ InstancedMeshGeometry::InstancedMeshGeometry( const H6GeometryFileHeader* pH6Geo
 	// Make vertex declaration
 	VertexFormatDescriptor formatDescriptor;
 	formatDescriptor.AssignVertexElements( fragment.vertexElementDescriptor[0], fragment.vertexElementDescriptor.size() );
-	formatDescriptor.AddVertexElement(VertexElementDescriptor(1, 0, VERTEXELEMENTTYPE_SHORT2, VERETEXELEMENTUSAGE_BLENDINDICES, 0));
+	formatDescriptor.AddVertexElement(VertexElementDescriptor(kInstanceStream, 0, VERTEXELEMENTTYPE_SHORT2, VERETEXELEMENTUSAGE_BLENDINDICES, 0));
 	pDeclaration = SmartRenderer::GetVertexFormatDeclaration(formatDescriptor);
 
 	const char*   pVBSrcData = (const char*)pH6GeometryFileHeader + pH6GeometryFileHeader->vbOffset;
@@ -244,7 +245,7 @@ void InstancedMeshGeometry::Draw(InstancedPrimitive *pP)
   dd.numVertices     = numVertices;
   dd.primitiveCount  = numPrimitives;
   SmartRenderer::EnableHardwareInstancing(pP->numInstances);
-  SmartRenderer::BindInstanceVB();
+  SmartRenderer::BindInstanceCounter();
 
 	SmartRenderer::DrawIndexedPrimitive(dd);
 

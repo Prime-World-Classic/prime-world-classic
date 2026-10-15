@@ -450,7 +450,7 @@ protected:
       }
       pMaterial->RegisterInstancedBatch(*pBatch);
       SmartRenderer::EnableHardwareInstancing(numInstances + 1);
-      SmartRenderer::BindInstanceVB();
+      SmartRenderer::BindInstanceCounter();
       pBatch->Draw();
       numInstances = 0;
     }

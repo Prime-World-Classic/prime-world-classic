@@ -56,16 +56,19 @@ const DXVertexDeclarationRef & GetVertexFormatDeclaration(const VertexFormatDesc
 ///
 void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset = 0);
 
-///  This function can modify stream number depending on 'instancing' state
+///  Номер потока — ЛОГИЧЕСКИЙ: физический слот (и сдвиг, когда занят слот
+///  данных экземпляра) выбирает бэкенд, см. docs/PLAN_NVRHI.md §2.10.
 void BindVertexBuffer(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset = 0);
 
-///  set instance Id VB to stream 1
-void BindInstanceVB(unsigned int offset = 0);
+///  Поток данных экземпляра: встроенный счётчик 0..N-1 (буфер и атрибут
+///  раскладки строит бэкенд) или per-instance данные клиента.
+void BindInstanceCounter();
+void BindInstanceSource(IDirect3DVertexBuffer9* pPerInstanceData, unsigned int stride, unsigned int offset = 0);
 
 ///
 void UnBindVertexBufferRaw(UINT streamNumber);
 
-///  This function can modify stream number depending on 'instancing' state
+///  Номер потока — ЛОГИЧЕСКИЙ (см. BindVertexBuffer)
 void UnBindVertexBuffer(UINT streamNumber);
 
 /// Enable hardware instancing: рисовать _numInstances экземпляров текущей

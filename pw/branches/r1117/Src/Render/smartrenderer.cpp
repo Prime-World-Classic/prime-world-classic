@@ -78,6 +78,14 @@ namespace
   // цена перекачки констант на рисование) и для того, чтобы число ключей
   // читалось как «переключений на кадр», а не абстракция.
   unsigned pipeDrawsFrame = 0, pipeDrawsTotal = 0;
+  // Шаг 9 очереди: раскладка вершин как часть ключа. До шага 9 инстансный
+  // вариант раскладки был отдельной декларацией (клиент подставлял её в
+  // BindVertexDeclaration), и один материал давал в ключе две раскладки;
+  // теперь декларация одна — сдвиг потоков и атрибут экземпляра живут в
+  // бэкенде. Меряем число уникальных раскладок и число рисований инстансным
+  // путём (покрывается ли инстансинг вообще на E2E-стенде).
+  hash_set<UINT64, PairHash> pipeDeclMap, pipeDeclMapTotal;
+  unsigned pipeInstDrawsFrame = 0, pipeInstDrawsTotal = 0;
 }
 
 // Вызывается из Batch::Prepare() (см. Render/renderstats.h)
@@ -98,37 +106,19 @@ namespace SmartRenderer
 {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  struct InitIdxVB : public IntrusivePtrDeleter
-  {
-    typedef DXVertexBufferRef Type;
-
-    void Init(Type& _result)
-    {
-      // Create & fill second vertex buffer
-      _result = CreateVB(MAX_INSTANCES_COUNT * sizeof(int), RENDER_POOL_MANAGED);
-      NI_VERIFY( _result, "Couldn't create instance idx VB", return );
-
-      if( int * const pBuff = LockVB<int>(Get(_result), LOCK_DEFAULT) )
-      {
-        for(size_t i = 0; i < MAX_INSTANCES_COUNT; i++)
-          pBuff[i] = i;
-
-        BackendUnlockBuffer(Get(_result));
-      }
-      else
-        _result.Attach(0);
-    }
-  };
-
-  static ManagedResource<InitIdxVB> s_pInstanceIndexVB;
+  // Счётчик экземпляров 0..N-1 жил здесь (VB + подмена декларации) до шага 9
+  // очереди: теперь и буфер, и вариант раскладки с атрибутом номера экземпляра
+  // принадлежат бэкенду (docs/PLAN_NVRHI.md §2.10).
 
 ///////////////////////////////////// 
 static nstl::hash_map< VertexFormatDescriptor, DXVertexDeclarationRef > VertexDeclaraionsCash;
 typedef nstl::hash_map< VertexFormatDescriptor, DXVertexDeclarationRef >::iterator VertexDeclarationsCashIterator;
 
+// Верхняя граница ЛОГИЧЕСКИХ номеров потоков, которые клиент просит забиндить
+// (kInstanceStream — отдельный способ задать источник, см. renderbackend.h).
+// Физические слоты и дедуп биндингов — за бэкендом: таблицы потоков здесь
+// больше нет, потому что слот выбирает бэкенд.
 static const unsigned int MAX_STREAMS_COUNT = 16;
-static StaticArray<IDirect3DVertexBuffer9*,MAX_STREAMS_COUNT> lastVertexBuffersPtrs;
-static StaticArray<unsigned int,MAX_STREAMS_COUNT> lastVertexBuffersOffsets;
 static IDirect3DIndexBuffer9* pLastIndexBuffer = 0; 
 
 struct SamplerInfo
@@ -186,44 +176,10 @@ static D3DVIEWPORT9 viewport = { 0 };
 
 namespace {
   bool useViewport = false;
+  // Признак включённого инстансного пути. На решение о раскладке потоков он
+  // больше не влияет (сдвиг и атрибут экземпляра — за бэкендом, шаг 9 очереди);
+  // остаётся как часть ключа пайплайна (NotePipeline) и для диагностики.
   bool instancingEnabled = false;
-
-
-  class DeclMap : public DeviceDeleteHandler
-  {
-    typedef nstl::hash_map<void*, DXVertexDeclarationRef> Cache;
-
-    Cache cache;
-
-  public:
-    virtual void OnDeviceDelete()
-    {
-      cache.clear();
-    }
-
-    IDirect3DVertexDeclaration9* Get(IDirect3DVertexDeclaration9 *_pDecl)
-    {
-      Cache::iterator it = cache.find(_pDecl);
-      if(cache.end() != it)
-        return ::Get(it->second);
-
-      // Построение инстансного варианта раскладки — за бэкендом (для D3D9 это
-      // сдвиг потоков + SHORT2/BLENDINDICES в поток 1; для Vulkan номер
-      // экземпляра — встроенный SV_InstanceID, отдельного атрибута нет).
-      // Здесь остаётся только кэш: вариант создаётся один раз на исходную
-      // раскладку и живёт до удаления устройства (OnDeviceDelete выше).
-      HInputLayout instanced = {};
-      HRESULT hr = GetBackend()->CreateInstancedInputLayout(
-          MakeBackendHandle<HInputLayout>(_pDecl), &instanced);
-      NI_DX_THROW(hr, "CreateInstancedInputLayout");
-      // Ручка создана бэкендом уже со счётчиком ссылок — принимаем без AddRef.
-      cache[_pDecl] = DXVertexDeclarationRef(
-          static_cast<IDirect3DVertexDeclaration9*>(instanced.p), false);
-      return ::Get(cache[_pDecl]);
-    }
-  };
-
-  static DeclMap s_instancedVDecl;
 }
 
 
@@ -313,11 +269,8 @@ void ResetTriangleAndDipCount()
 static void NullLastPointers()
 {
   pLastIndexBuffer = 0;
-  for (unsigned int i = 0; i < MAX_STREAMS_COUNT; ++i) 
-  {
-    lastVertexBuffersPtrs[i] = 0;
-    lastVertexBuffersOffsets[i] = 0;
-  }
+  // Таблица биндингов потоков живёт в бэкенде (он выбирает слоты) — её чистит
+  // D3D9Backend::InvalidateBoundState.
   for (unsigned int i = 0; i < lastTexturesPtrs.capacity(); ++i)
   {
     lastTexturesPtrs[i].pTex = 0;
@@ -371,10 +324,12 @@ void OnFrameStart()
     // теневым D3DRS_*. «Frame» — число уникальных ключей в одном кадре:
     // именно столько переключений пайплайна приходится на кадр, если кэш
     // устроен по этому ключу.
-    DebugTrace( "PipeStats: semTotal=%d semFrame=%d rawTotal=%d rawFrame=%d drawsFrame=%d drawsTotal=%d",
+    DebugTrace( "PipeStats: semTotal=%d semFrame=%d rawTotal=%d rawFrame=%d drawsFrame=%d drawsTotal=%d declTotal=%d declFrame=%d instDrawsFrame=%d instDrawsTotal=%d",
       (int)pipeSemMapTotal.size(), (int)pipeSemMap.size(),
       (int)pipeRawMapTotal.size(), (int)pipeRawMap.size(),
-      (int)pipeDrawsFrame, (int)pipeDrawsTotal );
+      (int)pipeDrawsFrame, (int)pipeDrawsTotal,
+      (int)pipeDeclMapTotal.size(), (int)pipeDeclMap.size(),
+      (int)pipeInstDrawsFrame, (int)pipeInstDrawsTotal );
     // Раскладка констант (docs/PLAN_NVRHI.md §2.7): какие c0..c255 реально
     // пишутся — по этому выбирается размер/число uniform-буферов на этапе 3.
     DebugTrace( "%s", GetConstStore().StatsLine() );
@@ -412,7 +367,9 @@ void OnFrameStart()
   sortMap.clear();
   pipeSemMap.clear();
   pipeRawMap.clear();
+  pipeDeclMap.clear();
   pipeDrawsFrame = 0;
+  pipeInstDrawsFrame = 0;
 #endif // USE_RENDER_SHADER_STATS
 
   // Снимок кадра самим клиентом (docs/PLAN_NVRHI.md §2.13): см. s_autoScreenshotAt.
@@ -469,9 +426,8 @@ bool IsResourceBound(const IUnknown* const ptr)
 		  if( ptr == Get(pTex->GetDXTexture()) )
         return true;
 
-  for(UINT n = 0; n < MAX_STREAMS_COUNT; ++n)
-	  if( ptr == lastVertexBuffersPtrs[n] )
-      return true;
+  if (GetBackend()->IsStreamBufferBound(ptr))
+    return true;
 
     return false;
 }
@@ -485,16 +441,14 @@ void Init()
 }
 
 ///
+// Биндинг геометрийного потока: номер — ЛОГИЧЕСКИЙ, физический слот выбирает
+// бэкенд (шаг 9 очереди). Дедуп тоже за бэкендом: клиентская таблица по
+// логическим номерам разъехалась бы с устройством, когда поток уезжает выше.
 void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
 {
 	NI_VERIFY(streamNumber < MAX_STREAMS_COUNT, "Invalid vertex stream number!", return; );
 	NI_VERIFY(buffer != 0, "Invalid vertex buffer!", return; );
 
-	if (lastVertexBuffersPtrs[streamNumber] == buffer && lastVertexBuffersOffsets[streamNumber] == offset) 
-		return;
-
-	lastVertexBuffersPtrs[streamNumber] = buffer;
-  lastVertexBuffersOffsets[streamNumber] = offset;
 	HRESULT hr = GetBackend()->SetStreamSource(streamNumber, MakeBackendHandle<HBuffer>(buffer), offset, stride);
   NI_DX_THROW(hr, "BindVertexBufferRaw");
 }
@@ -502,14 +456,23 @@ void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buff
 ///
 void BindVertexBuffer(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
 {
-  if(instancingEnabled && streamNumber)
-    ++streamNumber;
   BindVertexBufferRaw(streamNumber, buffer, stride, offset);
 }
 
-void BindInstanceVB(unsigned int offset)
+// Поток данных экземпляра. Счётчик 0..N-1 — встроенный (его VB и атрибут
+// раскладки строит бэкенд); per-instance данные клиента — второй вариант
+// (партиклы), их атрибуты уже описаны раскладкой потоком kInstanceStream.
+void BindInstanceCounter()
 {
-  BindVertexBufferRaw(1, s_pInstanceIndexVB.Get(), 4, offset);
+  HRESULT hr = GetBackend()->SetInstanceSource(HBuffer(), 0, 0);
+  NI_DX_THROW(hr, "BindInstanceCounter");
+}
+
+void BindInstanceSource(IDirect3DVertexBuffer9* pPerInstanceData, unsigned int stride, unsigned int offset)
+{
+  NI_VERIFY(pPerInstanceData != 0, "Invalid instance vertex buffer!", return; );
+  HRESULT hr = GetBackend()->SetInstanceSource(MakeBackendHandle<HBuffer>(pPerInstanceData), stride, offset);
+  NI_DX_THROW(hr, "BindInstanceSource");
 }
 
 ///
@@ -517,19 +480,12 @@ void UnBindVertexBufferRaw(unsigned int streamNumber)
 {
   NI_VERIFY(streamNumber < MAX_STREAMS_COUNT, "Invalid vertex stream number!", return; );
 
-  if(!lastVertexBuffersPtrs[streamNumber]) 
-    return;
-
-  lastVertexBuffersPtrs[streamNumber] = 0;
-  lastVertexBuffersOffsets[streamNumber] = 0;
   GetBackend()->SetStreamSource(streamNumber, HBuffer{}, 0, 0);
 }
 
 ///
 void UnBindVertexBuffer(unsigned int streamNumber)
 {
-  if(instancingEnabled && streamNumber)
-    ++streamNumber;
   UnBindVertexBufferRaw(streamNumber);
 }
 
@@ -607,6 +563,12 @@ namespace
     h = PipeMix(h, (UINT64)curDepthSurfaceFormat);
     pipeSemMap.insert(h);
     pipeSemMapTotal.insert(h);
+    pipeDeclMap.insert((UINT64)(size_t)pLastVertexDeclaration);
+    pipeDeclMapTotal.insert((UINT64)(size_t)pLastVertexDeclaration);
+    if (instancingEnabled) {
+      ++pipeInstDrawsFrame;
+      ++pipeInstDrawsTotal;
+    }
     ++pipeDrawsFrame;
     ++pipeDrawsTotal;
     const UINT64 hraw = PipeMix(h, sm->GetRenderStateShadowHash());
@@ -760,9 +722,9 @@ const DXVertexDeclarationRef & GetVertexFormatDeclaration(const VertexFormatDesc
 ///
 void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
 {
-	if(pLastVertexDeclaration == pDecl) 
-		return;
-
+  // Дедуп по самой раскладке убран: при инстансном пути со счётчиком бэкенд
+  // подставляет её вариант (InstancedVariant), и сверять надо именно
+  // подставленную раскладку — а её знает только бэкенд.
   HRESULT hr = GetBackend()->SetInputLayout(MakeBackendHandle<HInputLayout>(pDecl));
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "BindVertexDeclarationRaw");
@@ -772,11 +734,7 @@ void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
 ///
 void BindVertexDeclaration(DXVertexDeclarationRef const &pDecl)
 {
-	IDirect3DVertexDeclaration9 *decl = Get(pDecl);
-  if(instancingEnabled)
-    decl = s_instancedVDecl.Get(decl);
-
-	BindVertexDeclarationRaw(decl);
+	BindVertexDeclarationRaw(Get(pDecl));
 }
 
 
