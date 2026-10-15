@@ -374,17 +374,18 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
     progress->SetPartialProgress(EMapLoadStages::Scene, 1.0f);
   }
 
-  if (!LoadSceneMapObjects(advMapDescription, playersInfo, IsValid(advMapDescription) && advMapDescription->mapType == NDb::MAPTYPE_TUTORIAL, progress, talents))
-    return false;
-
-  LoadPrecachedResources(advMapDescription);
-
   NDb::Ptr<NDb::AdvMapSettings> advMapSettings;
   if (IsValid(advMapDescription))
   {
     advMapSettings = IsValid(advMapDescription->mapSettings) ? advMapDescription->mapSettings :
       (IsValid(advMapDescription->map) ? advMapDescription->map->mapSettings : NDb::Ptr<NDb::AdvMapSettings>());
   }
+	// As on Windows, map-backed managers must exist before authored spawner constructors run.
+	if (pAIWorld) pAIWorld->SetMapData(advMapDescription, advMapSettings);
+  if (!LoadSceneMapObjects(advMapDescription, playersInfo, IsValid(advMapDescription) && advMapDescription->mapType == NDb::MAPTYPE_TUTORIAL, progress, talents))
+    return false;
+
+  LoadPrecachedResources(advMapDescription);
 	// Match the Windows map's authored per-team allocation, not proof-only grants.
 	if (IsValid(advMapSettings) && IsValid(advMapDescription))
 	{
@@ -401,9 +402,6 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
     pAIContainer = new PFAIContainer(this, 0);
   if (pAIContainer && IsValid(advMapDescription) && IsValid(advMapDescription->map))
     pAIContainer->SetScriptAreas(advMapDescription->map->scriptAreas);
-  if (pAIWorld)
-    pAIWorld->SetMapData(advMapDescription, advMapSettings);
-
   const NDb::BotsSettings* botsSettings = GetBotsSettings();
   linuxAIBotsSettingsAvailable = botsSettings ? 1 : 0;
   linuxAIBotsEnabled = botsSettings ? (botsSettings->enableBotsAI ? 1 : 0) : -1;
@@ -554,11 +552,15 @@ bool PFWorld::Step(float dtInSeconds, float)
 	vector<CObj<PFDispatch> > detachedDispatches;
 	vector<CObj<PFBaseUnit> > lifecycleUnits;
 	vector<CObj<PFBaseUnit> > movementSteppedUnits;
+	vector<CObj<PFGlyphSpawner> > glyphSpawners;
 	auto collectLifecycle = [&](PF_Core::WorldObjectBase& object) {
 		PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(&object);
 		if (unit && unit->GetWorld() == this && !unit->IsObjectDead()
 			&& (unit->IsDead() || !dynamic_cast<PFBaseMovingUnit*>(unit)))
 			lifecycleUnits.push_back(CObj<PFBaseUnit>(unit));
+		PFGlyphSpawner* glyphSpawner = dynamic_cast<PFGlyphSpawner*>(&object);
+		if (glyphSpawner && glyphSpawner->GetWorld() == this && !glyphSpawner->IsObjectDead())
+			glyphSpawners.push_back(glyphSpawner);
 	};
 	// Effects, corpse timers and hero respawn still advance after death; living movement owns its ticks.
 	// A strong pre-tick snapshot allows callback removal and defers newborn objects to the next tick.
@@ -583,6 +585,14 @@ bool PFWorld::Step(float dtInSeconds, float)
   if (pAIWorld)
   {
     pAIWorld->Update(dtInSeconds);
+		// Glyph spawners are not PFBaseSpawner units and do not participate in movement ticking.
+		for (const auto& spawner : glyphSpawners)
+		{
+			ProcessAddRemove();
+			if (IsValid(spawner) && !spawner->IsObjectDead() && spawner->GetWorld() == this
+				&& IsSubscribed(spawner.GetPtr()) && GetObjectById(spawner->GetObjectId()) == spawner.GetPtr())
+				static_cast<PFWorldObjectBase*>(spawner.GetPtr())->Step(dtInSeconds);
+		}
     if (dtInSeconds > 0.0f)
     {
       vector<CPtr<PFBaseSpawner> > spawners;

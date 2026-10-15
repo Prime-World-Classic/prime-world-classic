@@ -14,6 +14,9 @@
 #include "PFMaleHero.h"
 #include "TileMap.h"
 #include "WarFog.h"
+#include "PFGlyphManager.h"
+#include <cmath>
+#include <limits>
 
 namespace NWorld
 {
@@ -83,6 +86,18 @@ static int ResolveLinuxGlyphNumber(PFWorld* world, const NDb::Glyph* descriptor)
 	return -1;
 }
 
+/** Original delays use Next(int,int), including truncation and no draw for equal endpoints. */
+static bool NativeGlyphSettingsValid(const NDb::GlyphSettings& settings)
+{
+	const auto delay = [](float value) { return std::isfinite(value) && value >= 0 && double(value) <= std::numeric_limits<int>::max(); };
+	return delay(settings.minNormalSpawnDelay) && delay(settings.maxNormalSpawnDelay)
+		&& delay(settings.minAfterPickupSpawnDelay) && delay(settings.maxAfterPickupSpawnDelay)
+		&& settings.minNormalSpawnDelay <= settings.maxNormalSpawnDelay
+		&& settings.minAfterPickupSpawnDelay <= settings.maxAfterPickupSpawnDelay
+		&& std::isfinite(settings.spawnAttemptDelayDecrease) && settings.spawnAttemptDelayDecrease >= 0
+		&& (settings.spawnMode == NDb::GLYPHSPAWNMODE_RANDOMWEIGHT || settings.spawnMode == NDb::GLYPHSPAWNMODE_ORDERED);
+}
+
 PFGlyphSpawner::PFGlyphSpawner( const CPtr<PFWorld>& pWorld, const NDb::AdvMapObject &dbObject )
 : PFWorldObjectBase( pWorld, 1 )
 , position( dbObject.offset.GetPlace().pos )
@@ -92,27 +107,51 @@ PFGlyphSpawner::PFGlyphSpawner( const CPtr<PFWorld>& pWorld, const NDb::AdvMapOb
 {
   pDesc = dynamic_cast<const NDb::GlyphSpawner*>( dbObject.gameObject.GetPtr() );
   scriptName = dbObject.scriptName;
-  pSpawnedGlyph = CreateGlyph(position);
+	if (pWorld && pWorld->GetAIWorld()) pManager = pWorld->GetAIWorld()->GetGlyphsManager();
+	if (!pDesc || !IsValid(pManager) || !NativeGlyphSettingsValid(GetSettings())) return;
+	const auto& settings = GetSettings();
+	spawnOffset = pWorld->GetRndGen()->Next(static_cast<int>(settings.minNormalSpawnDelay), static_cast<int>(settings.maxNormalSpawnDelay));
 }
 
 const NDb::GlyphSettings& PFGlyphSpawner::GetSettings() const
 {
-  return pDesc->settings;
+	return pDesc->useGlyphManager ? pManager->GetSettings() : pDesc->settings;
 }
 
 CPtr<NWorld::PFGlyph> PFGlyphSpawner::CreateGlyph( CVec3 const& position )
 {
-  if (!pDesc || !pDesc->glyphs || pDesc->glyphs->glyphs.empty())
-    return 0;
-
-  const int glyphIndex = lastGlyph % pDesc->glyphs->glyphs.size();
-  const NDb::GlyphEntry& glyphEntry = pDesc->glyphs->glyphs[glyphIndex];
-  lastGlyph = (lastGlyph + 1) % pDesc->glyphs->glyphs.size();
-  if (!glyphEntry.glyph)
-    return 0;
-
-  CPtr<NWorld::PFGlyph> glyph = new PFGlyph(GetWorld(), glyphEntry.glyph, position);
-  glyph->SetMapObject(true);
+	if (!pDesc || !IsValid(pManager) || !GetWorld() || !std::isfinite(position.x) || !std::isfinite(position.y)
+		|| !std::isfinite(position.z) || position.x < 0 || position.y < 0
+		|| position.x >= GetWorld()->GetMapSize().x || position.y >= GetWorld()->GetMapSize().y) return nullptr;
+	CPtr<PFGlyph> glyph;
+	if (pDesc->useGlyphManager) glyph = pManager->CreateGlyph(position);
+	else
+	{
+		const NDb::GlyphsDB* table = pDesc->glyphs ? pDesc->glyphs.GetPtr() : pManager->GetGlyphsDB();
+		if (!table || table->glyphs.empty()) return nullptr;
+		const NDb::GlyphEntry* entry = nullptr;
+		if (pDesc->settings.spawnMode == NDb::GLYPHSPAWNMODE_RANDOMWEIGHT)
+		{
+			int64 total = 0;
+			for (const auto& candidate : table->glyphs)
+			{
+				if (candidate.weight < 0 || (candidate.weight > 0 && !candidate.glyph)) return nullptr;
+				total += candidate.weight;
+				if (total > std::numeric_limits<int>::max()) return nullptr;
+			}
+			if (total == 0) return nullptr;
+			struct WeightGetter { int operator()(const NDb::GlyphEntry& item) const { return item.weight; } } weight;
+			entry = &GetWorld()->GetRndGen()->RollFromContainerByWeight(table->glyphs, weight);
+		}
+		else if (pDesc->settings.spawnMode == NDb::GLYPHSPAWNMODE_ORDERED)
+		{
+			if (lastGlyph < 0 || lastGlyph >= table->glyphs.size() || !table->glyphs[lastGlyph].glyph) return nullptr;
+			entry = &table->glyphs[lastGlyph]; lastGlyph = (lastGlyph + 1) % table->glyphs.size();
+		}
+		if (!entry || !entry->glyph) return nullptr;
+		glyph = new PFGlyph(GetWorld(), entry->glyph, position);
+	}
+	if (!IsValid(glyph)) return nullptr;
   glyph->Hide(hidden);
   if (!scriptName.empty())
   {
@@ -136,7 +175,28 @@ void PFGlyphSpawner::Hide(bool hide)
 
 bool PFGlyphSpawner::Step(float dtInSeconds)
 {
-  (void)dtInSeconds;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0 || !pDesc || !IsValid(pManager)
+		|| !std::isfinite(spawnOffset) || !NativeGlyphSettingsValid(GetSettings())) return false;
+	if (!IsValid(pSpawnedGlyph) || pSpawnedGlyph->IsObjectDead())
+	{
+		const auto& settings = GetSettings();
+		if (spawnOffset < 0)
+			spawnOffset = GetWorld()->GetRndGen()->Next(static_cast<int>(settings.minAfterPickupSpawnDelay), static_cast<int>(settings.maxAfterPickupSpawnDelay));
+		else
+		{
+			spawnOffset -= dtInSeconds;
+			if (spawnOffset < EPS_VALUE)
+			{
+				pSpawnedGlyph = CreateGlyph(position);
+				if (IsValid(pSpawnedGlyph)) spawnOffset = -1;
+				else
+				{
+					spawnOffset = GetWorld()->GetRndGen()->Next(static_cast<int>(settings.minNormalSpawnDelay), static_cast<int>(settings.maxNormalSpawnDelay));
+					spawnOffset = Max(settings.minNormalSpawnDelay, spawnOffset - settings.spawnAttemptDelayDecrease);
+				}
+			}
+		}
+	}
   return PFWorldObjectBase::Step(dtInSeconds);
 }
 

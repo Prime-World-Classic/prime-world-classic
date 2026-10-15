@@ -181,6 +181,7 @@ PFAIWorld::PFAIWorld( PFWorld * _world )
   if (!IsValid(pAILogicParameters))
 		// The DB pointer owns its resource; a static fallback cannot survive its final release.
 		pAILogicParameters = new NDb::AILogicParameters;
+	pGlyphsManager = new PFGlyphsManager(pWorld);
 }
 
 const NDb::UnitLogicParameters& PFAIWorld::GetUnitParameters(NDb::EUnitType type) const
@@ -962,6 +963,7 @@ int PFAIWorld::GetAveragePriestessLvl( NDb::EFaction faction ) const
 
 void PFAIWorld::SetMapData( NDb::AdvMapDescription const * advMapDescription, NDb::AdvMapSettings const * advMapSettings)
 {
+	if (pGlyphsManager) pGlyphsManager->Init(advMapSettings ? advMapSettings->overrideGlyphSettings.GetPtr() : nullptr);
   isTutorial = advMapDescription && advMapDescription->mapType == NDb::MAPTYPE_TUTORIAL;
   canUseSkins = !advMapDescription || advMapDescription->canUseSkins;
   if (advMapSettings)
