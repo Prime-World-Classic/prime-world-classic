@@ -9,14 +9,13 @@
 namespace Game
 {
 
-const timer::Time s_StepTime = 0.1;
-
-LocalCmdScheduler::LocalCmdScheduler( int _clientId ) :
+LocalCmdScheduler::LocalCmdScheduler( int _clientId, int _stepLengthMs ) :
 clientId( _clientId ),
 localTime( 0 ),
 gameReady( false ),
 stepIndex( 0 ),
-nextStepTime( 0 )
+nextStepTime( 0 ),
+stepTime( Max( _stepLengthMs, 1 ) / 1000.0 )
 {
   currentSegment = new NCore::SyncSegment( stepIndex );
 }
@@ -69,10 +68,10 @@ void LocalCmdScheduler::Step( float dt )
   if ( gameReady && nextSegment )
     return;
 
-  // Keep a steady 10 steps per second. 'localTime + 0.1' restarted the schedule from the current frame,
+  // Keep a steady step rate (stepTime). 'localTime + 0.1' restarted the schedule from the current frame,
   // so every step lasted 0.1 s plus part of a frame (~0.108 s on average at 60 fps, uneven 6/7 frames):
   // the game ran slower than real time and units visibly stuttered between steps.
-  nextStepTime += s_StepTime;
+  nextStepTime += stepTime;
   if ( nextStepTime < localTime ) // more than a whole step late (hitch, pause): resync instead of catching up
     nextStepTime = localTime;
 

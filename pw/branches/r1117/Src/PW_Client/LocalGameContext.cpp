@@ -514,7 +514,7 @@ void LocalGameContext::StartGame()
   NI_VERIFY( state == ELocalGameState::ShowingLoadingScreen, "", return );
   NI_VERIFY( !scheduler && !transceiver, "Game can be started only once", return );
 
-  scheduler = new LocalCmdScheduler( clientId );
+  scheduler = new LocalCmdScheduler( clientId, GetLocalStepLength() );
   transceiver = new NCore::Transceiver( scheduler, GetLocalStepLength(), true );
 
   if (replayWriter)

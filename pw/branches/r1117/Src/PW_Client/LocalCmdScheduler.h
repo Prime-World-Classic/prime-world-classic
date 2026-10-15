@@ -19,7 +19,7 @@ class LocalCmdScheduler : public NCore::ICommandScheduler, public BaseObjectMT
   NI_DECLARE_REFCOUNT_CLASS_2( LocalCmdScheduler, ICommandScheduler, BaseObjectMT );
 
 public:
-  LocalCmdScheduler( int _clientId );
+  LocalCmdScheduler( int _clientId, int _stepLengthMs = 100 );
 
   virtual void    Reinit( NCore::IServerNode * _server, NCore::ISessionRunner * _asyncProcessor ) {}
   virtual void    SendMessage( CObjectBase * pMsg, bool isPlayerCommand );
@@ -53,6 +53,7 @@ private:
   CObj<NCore::SyncSegment>  nextSegment;
   int                       stepIndex;
   timer::Time               nextStepTime;
+  timer::Time               stepTime; // seconds, must match the Transceiver step length
   NCore::StepsDelaySettings defaultStepsDelaySettings;
   WeakMT<NCore::ReplayWriter> replayWriter;
 };
