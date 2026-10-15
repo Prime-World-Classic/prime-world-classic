@@ -63,6 +63,8 @@ protected:
   virtual void SetDeveloperParty( int party );
 
 private:
+  EOperationResult::Enum SpectateWebGame( const nstl::string & sessionToken, const nstl::string & token );
+
   StrongMT<IConfigProvider> config;
   EConnectionStatus::Enum status;
   WeakMT<ServerNode>      server;
@@ -72,6 +74,7 @@ private:
 
   SUserInfo               userInfo;
   int                     clientRevision;
+  int                     webSpectateGameId; // game this connection spectates (web spectator), 0 - none
 };
 
 } //namespace lobby

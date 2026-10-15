@@ -5,6 +5,7 @@
 #include <Shared/WebSessionParse.h>
 #include <Shared/WebSessionRegistry.h>
 #include <Shared/Sha256.h>
+#include <Shared/WebSpectatorKey.h>
 
 NI_DEFINE_REFCOUNT( newLogin::IClientAuth );
 
@@ -158,7 +159,31 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
   char idBuf[16];
   int uid = 0;
   bool matched = false;
-  for ( size_t i = 0; i < session.players.size(); ++i )
+  bool spectator = false;
+
+  // Spectator (live match viewing, Shared/WebSpectatorKey.h): the key carries
+  // the user id and is signed for this session. A session player may not log
+  // in as a spectator of the same match.
+  if ( WebSession::IsSpectatorPlayerKey( _hello.playerKey.c_str() ) )
+  {
+    if ( !WebSession::VerifySpectatorKey( token, _hello.playerKey.c_str(), keyApi, uid ) )
+    {
+      ErrorTrace( "Invalid spectator key. token=%s", token.c_str() );
+      _reply.code = Login::ELoginResult::AccessDenied;
+      return;
+    }
+    for ( size_t i = 0; i < session.players.size(); ++i )
+      if ( session.players[i].id == uid )
+      {
+        ErrorTrace( "Spectator is a player of the session. token=%s, uid=%d", token.c_str(), uid );
+        _reply.code = Login::ELoginResult::AccessDenied;
+        return;
+      }
+    matched = true;
+    spectator = true;
+  }
+
+  for ( size_t i = 0; !matched && i < session.players.size(); ++i )
   {
     const int playerId = session.players[i].id;
     sprintf( idBuf, "%d", playerId );
@@ -194,8 +219,8 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
   _reply.uid = uid;
   _reply.webSession = webMatch;
 
-  MessageTrace( "Web mode authorization ok. uid=%d, mapId=%s, players=%d",
-    uid, webMatch.mapId.c_str(), webMatch.playersCount );
+  MessageTrace( "Web mode authorization ok. uid=%d, mapId=%s, players=%d%s",
+    uid, webMatch.mapId.c_str(), webMatch.playersCount, spectator ? ", spectator" : "" );
 }
 
 
