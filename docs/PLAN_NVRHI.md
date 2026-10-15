@@ -4257,3 +4257,100 @@ elementStride`), поэтому кэш раскладки обязан учит�
 т.е. расхождение ниже шума. Сетка `--grid` показывает кластеры у юнита/портала
 (максимум 1633 в ячейке), полос нет → регресса нет. Правки 12b в D3D9-пути
 отсутствуют (всё под env `PW_VK_SPIKE`/`PW_VK_DIP`), гейт снят для полноты.
+
+### Сделано (шаг 13.1: текстуры и сэмплеры через seam — 2026-10-15, `e88dc7238`)
+
+Seam (`Src/Render/renderbackend.h:345`) получил `LockTexture2D(HTexture, unsigned
+level, const BackendRect*, ERenderLockType, void** ppData, unsigned* pRowPitch)` и
+`UnlockTexture2D(HTexture, unsigned level)`. Основание: клиент наполнял текстуры
+**мимо seam'а** — напрямую через COM (`Render/texture.cpp:106` `LockRect`,
+`Render/rendersurface.cpp:89`), в Vulkan-контуре эти вызовы просто некуда
+переводить. Шаг строки возвращает бэкенд: у D3D9 он кратен 4 и не обязан равняться
+`width*4`, у Vulkan — как у staging-текстуры, поэтому вызывать seam'у «свой шаг»
+нельзя.
+
+Реализации. D3D9 (`d3d9backend.cpp:450`): `IDirect3DTexture9::LockRect/UnlockRect`,
+подпрямоугольник и уровень пробрасываются как есть. Vulkan (`nvrhibackend.cpp`):
+CPU-зеркало уровня 0 (`TextureObj::mirror`) + staging (`mapStagingTexture` →
+построчный перенос) + `copyTexture` на Unlock; `level != 0`, cube и сжатые форматы
+→ `E_FAIL` с логом (`BppOf` знает только незапечатанные форматы). mip-цепочка через
+seam не грузится вовсе, `usageAutoGenMipmap` игнорируется (`mipLevels=0` → 1 mip) —
+клиент создаёт текстуры с автогенерацией (`texture.cpp:104`
+`usageAutoGenMipmap | usageRenderTarget`, `BACKEND_POOL_MANAGED`), значит mip'ы —
+отдельная работа шага 13.
+
+Остальное закрыто в том же коммите: `CreateTexture2D/CreateTextureCube`
+(`keepInitialState` обязателен), `UpdateTexture` = `copyTexture` целиком,
+`SetTexture(samplerIndex, HTexture)` — слот сэмплера D3D9 = `binding` в наборе 2.
+Набор текстур строится лениво по подписи привязок (`TexSignature`, FNV-1a по
+`(binding, texture)`, кэш `setCache` с очисткой при >4096), сэмплеры статичны —
+один `defSampler` (линейный/wrap), потому что **состояние сэмплера через seam не
+приходит**: `RenderStatesManager` пишет фильтры прямо в D3D9 (`GetSamplerShadowHash`
+из шага 8 — заготовка, в seam она не используется). В несвязанный слот кладётся
+`dummyTex` 1×1, промах считается в `VkTex: … (промахов текстур N)`.
+
+Писатель (`tools/spirv_probe/shim.py`): номер D3D9-сэмплера становится номером
+`binding` в наборе текстур (`register(sN)` → `register(tN, space2)`). Прежняя
+нумерация по порядку объявлений молча уводила привязку клиента
+(`SetTexture(samplerIndex, …)`) в чужой слот — без ошибки и без изменения
+SM3-слоя (правка касается только SPIR-V).
+
+Два дефекта, найденных тестом (оба — «молчаливые»):
+1. `SpvResScan`: `OpTypePointer` (код 32) входит в диапазон объявлений типов
+   19..33, и проверка диапазона стояла **до** ветки указателей → ветка
+   недостижима, `ptrStore` пуст, не находился **ни один** ресурс: в логе
+   `ResMap — OK наборов 0, текстур 0, сэмплеров 0` у PS, который читает текстуру.
+   Починка — разбирать `OpTypePointer` первым.
+2. `SetPixelShaderConstants` не выставлял `uboDirty[csPixel]` → PS-банк никогда не
+   загружался, `outputMul` (SAMPLER0_MUL = c20) читался нулём → чёрный вывод при
+   полностью исправной геометрии. Косвенный признак, по которому нашли: `загруз=5`
+   вместо 6 (не хватало одной загрузки UBO).
+
+Инструмент: `tools/shader_build/spv_scan_check.py` — офлайн-порт клиентского
+сканера (читает `.shd` v2, печатает ресурсы пары). Он дешевле прогона клиента:
+по корпусу с каноническим банком — **58 пар, tex 97, smp 54, ubo 125, ssbo 13,
+макс binding 7** (прежние цифры спайка smp 52 / ubo 109 снимались до явных PS-банков).
+Заодно проверил, что `binding` = номер слота D3D9 (у `WaterMaterial` PS — наборы
+`2:1..2:5`).
+
+Тест: `NvrhiBackend::RunTextureDipTest()` (`SkyMaterial` #1: VS — `World` c0,
+`ViewProjection` c8, `uvOffset` c20; PS — одна текстура `s0`, один сэмплер `s0`,
+`outputMul` c20 = 1, `outputAdd` c21 = 0). Треугольник покрывает весь offscreen RT
+256×256, ожидание — весь кадр равен цвету текстуры. `PW_VK_DIP` теперь битовая
+маска: 1 = геометрия (`WaterDummyMaterial`), 2 = текстура, 3 = оба. Прогон под Wine
+на RTX 3060 (`2026.10.15-20.06.39`): `TexDIP: текстура доехала — OK комбинация #1,
+блобы VS 1628 Б / PS 1664 Б, питч 32; залито 65536/65536, цвет текстуры
+65536/65536; выборка BGRA=0,64,255,255`, рядом `DIP: пиксели на месте — OK`,
+`VkTex: текстуры=1 наборы=1/2 (промахов текстур 0)`, `VkRes: … загруз=6`. То есть
+путь «CPU-пиксели → seam → staging → текстура → набор 2/3 → сэмпл → пиксель»
+работает, и PS-банк доезжает.
+
+Регресс-гейт D3D9-контура на tiny10 (прогон `2026.10.15-18.12.52`, задача
+`PwE2E64W`, exe 15 684 096 Б, откат `PW_Game.exe.bak-2026-10-15-131`): `login reply`
+1, `all map objects loaded` 1, `ShaderContainer` 15 / `ShaderTarget` 58, «нужен
+рантайм-компилятор» 0, `CRC32 mismatch` 0; кадр против
+`refs/stage3-shd2-2026-10-15/` — **diff 5,99%, грубых 0,71%** при шуме анимации
+того же прогона 5,15% / **1,15%**; сетка — кластеры у юнита/портала, полос нет.
+Гейт обязателен: в этом коммите правился общий заголовок `renderbackend.h` и
+`d3d9backend.cpp`.
+
+Грабли. Сессия для tiny10 обязана генерироваться с `-e PW_VERSION=2.16.1`
+(`pw-api/objects/sessionLaunch.js:15` `LAUNCH_VERSION = process.env.PW_VERSION ||
+'2.16.0'`): с версией 2.16.0 в URL клиент печатает `Protocol server base port:` и
+зависает на модалке «Game update has failed!» (в рабочем наборе это выглядело как
+«клиент запустился, но логина нет»: `login reply` 0, рабочий набор процесса 14 МБ).
+`++d.texMissing` стоял вне `else` — счётчик показывал «промах» даже при успешной
+привязке (первый прогон дал «промахов текстур 1» при корректной текстуре).
+
+Не закрыто (очередь шага 13, по актуальному списку заглушек — 6: `DrawIndexedUP`,
+`DrawUP`, `GetRenderTargetData`, `ColorFill`, `StretchRect`, `GetRenderTarget`):
+(1) **перевести вызовы клиента** с COM на `LockTexture2D/UnlockTexture2D`
+(`texture.cpp`, `rendersurface.cpp`, `ReadDDS.cpp`) — иначе реальный клиент текстуры
+в Vulkan не получит, тестовый путь их не заменит; (2) mip'ы и `usageAutoGenMipmap`;
+(3) состояние сэмплера в seam (`GetSamplerShadowHash` из шага 8) — сейчас везде
+линейный/wrap; (4) SSBO в наборе 1 (per-instance данные: seam несёт их как вершинный
+буфер, SPIR-V ждёт `StructuredBuffer`); (5) `DrawUP/DrawIndexedUP` (PostFX) и
+группа surface-операций; (6) ключ пайплайна из шага 8 вместо
+`(vs,ps,layout,rt,ds,prim)`; (7) диапазон загрузки UBO из `ConstBlock::TakeDirty()`
+вместо 4 КБ на стадию; (8) шаг потока в кэше раскладки (Vulkan зашивает stride в
+раскладку → второй VB с другим шагом получит чужую молча).
