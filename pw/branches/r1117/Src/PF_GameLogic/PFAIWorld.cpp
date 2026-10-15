@@ -13,6 +13,11 @@
 #include "PFPredefinedUnitVariables.h"
 #include "PFWorld.h"
 #include "PFWorldNatureMap.h"
+#include "PFApplInstant.h"
+#include "../LinuxBootstrap/kill_damage_totals.h"
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
 namespace NWorld
 {
@@ -489,15 +494,142 @@ bool PFAIWorld::IsNeutralSpecialAwardingRequired( PFBaseUnit const* pVictim ) co
 
 void PFAIWorld::GetKiller(CPtr<PFBaseUnit> const &pVictim, CPtr<PFBaseUnit> &pKiller ) const
 {
-  (void)pVictim;
-  pKiller = 0;
+	const PFApplDamage* damage = nullptr;
+	GetKiller(pVictim, pKiller, damage);
 }
 
+namespace
+{
+/** Own the history while selecting its original newest-first chronological suffix. */
+template<class Visitor>
+bool LinuxVisitKillHistory(const PFBaseUnit& victim, float interval, Visitor& visitor)
+{
+	const PFWorld* world = victim.GetWorld();
+	if (!world || !std::isfinite(interval)) return false;
+	const float now = world->GetTimeElapsed();
+	if (!std::isfinite(now) || now < 0.f) return false;
+	if (interval <= 0.f) return true;
+	std::vector<CObj<PFBaseApplicator>> history;
+	auto collect = [&](const CObj<PFBaseApplicator>& app) { history.push_back(app); };
+	victim.ForAllAppliedApplicatorsInHistory(collect);
+	for (auto it = history.rbegin(); it != history.rend(); ++it)
+	{
+		if (!*it) return false;
+		const float age = now - (*it)->GetMarkerTime();
+		if (!std::isfinite((*it)->GetMarkerTime()) || !std::isfinite(age) || age < 0.f) return false;
+		if (age >= interval) break;
+		if (!visitor(it->GetPtr())) return false;
+	}
+	return true;
+}
+}
+
+/** Restore original attribution precedence; malformed selected context preserves both caller outputs. */
 void PFAIWorld::GetKiller(CPtr<PFBaseUnit> const &pVictim, CPtr<PFBaseUnit> &pKiller, PFApplDamage const*& pRefDamageApplicator ) const
 {
-  (void)pVictim;
-  pKiller = 0;
-  pRefDamageApplicator = 0;
+	if (!IsValid(pVictim) || !IsValid(pKiller) || pKiller->IsTrueHero()
+		|| pKiller->GetFaction() == NDb::FACTION_NEUTRAL || pKiller->GetFaction() == pVictim->GetFaction()) return;
+	if (!GetWorld() || pVictim->GetWorld() != GetWorld() || pKiller->GetWorld() != GetWorld()) return;
+	CObj<PFBaseUnit> victim(pVictim.GetPtr()), candidate(pKiller.GetPtr());
+	std::vector<CObj<PFBaseUnit>> owners;
+	for (;;)
+	{
+		if (owners.size() >= 128 || std::find_if(owners.begin(), owners.end(),
+			[&](const CObj<PFBaseUnit>& unit) { return unit.GetPtr() == candidate.GetPtr(); }) != owners.end()) return;
+		owners.push_back(candidate);
+		if (!IsValid(candidate->GetMasterUnit())) break;
+		candidate = candidate->GetMasterUnit().GetPtr();
+		if (candidate->GetWorld() != GetWorld()) return;
+	}
+	if (candidate->IsTrueHero()) { pKiller = candidate.GetPtr(); return; }
+	if (!pAILogicParameters) return;
+	const auto& times = pAILogicParameters->killTimeIntervals;
+	const PFApplDamage* selectedDamage = pRefDamageApplicator;
+	if (victim->IsTrueHero())
+	{
+		bool found = false;
+		CObj<PFBaseUnit> deadHero;
+		auto latest = [&](const PFBaseApplicator* app) {
+			if (found || app->GetTypeId() != PFApplDamage::typeId) return true;
+			const auto& owner = app->GetAbilityOwner();
+			if (IsValid(owner) && owner->IsTrueHero() && owner->GetFaction() == candidate->GetFaction())
+			{
+				found = true;
+				if (owner->IsDead()) deadHero = owner.GetPtr();
+			}
+			return true;
+		};
+		if (!LinuxVisitKillHistory(*victim, times.heroKillerDeadInterval, latest)) return;
+		if (deadHero) { pKiller = deadHero.GetPtr(); return; }
+		const auto* hero = dynamic_cast<const PFBaseHero*>(victim.GetPtr());
+		if (!hero) return;
+		// Hero statistics are still optional in native worlds; never manufacture damage history.
+		if (hero->GetHeroStatistics())
+		{
+			const float now = GetWorld()->GetTimeElapsed(), interval = times.heroKillDamageInterval;
+			if (!std::isfinite(now) || !std::isfinite(interval) || !std::isfinite(now - interval)) return;
+			LinuxBootstrap::KillDamageTotals totals(hero->GetOppositeFaction());
+			ForAllHeroes(totals, totals.faction);
+			hero->GetHeroStatistics()->ForAllDamageHistoryAfterTime(now - interval, totals);
+			if (!totals.valid) return;
+			const int best = totals.Best();
+			if (IsValid(totals.entries[best].hero))
+			{
+				float neutralDamage = 0.f;
+				auto neutrals = [&](const PFBaseApplicator* app) {
+					if (!IsValid(app->GetAbilityOwner()) || app->GetAbilityOwner()->GetFaction() != NDb::FACTION_NEUTRAL) return true;
+					const auto* damage = dynamic_cast<const PFApplDamage*>(app);
+					if (!damage) return true;
+					const float dealt = damage->GetDamageDealed();
+					if (!std::isfinite(dealt)) return false;
+					if (dealt > 0.f) neutralDamage += dealt;
+					return std::isfinite(neutralDamage);
+				};
+				if (!LinuxVisitKillHistory(*victim, interval, neutrals)) return;
+				if (auto* qualified = totals.Qualified(neutralDamage)) candidate = qualified;
+			}
+		}
+	}
+	else
+	{
+		const auto* map = GetWorld()->GetMapDescription();
+		if (!map) return;
+		const auto& name = map->GetDBID().GetFileName();
+		const bool specialMap = name == "Maps/Multiplayer/ARAM/_.ADMPDSCR.xdb" || name == "Maps/Multiplayer/Tournament/_1.ADMPDSCR.xdb";
+		const float extra = specialMap ? 0.f : .4f;
+		const auto type = victim->GetUnitType();
+		const bool building = type == NDb::UNITTYPE_BUILDING || type == NDb::UNITTYPE_TOWER || type == NDb::UNITTYPE_MAINBUILDING;
+		const float interval = building ? times.buildingKillInterval : times.creepKillInterval;
+		CObj<PFBaseUnit> recent;
+		const PFApplDamage* damage = nullptr;
+		auto latest = [&](const PFBaseApplicator* app) {
+			if (recent || app->GetTypeId() != PFApplDamage::typeId) return true;
+			const auto& owner = app->GetAbilityOwner();
+			if (IsValid(owner) && owner->IsTrueHero() && owner->GetFaction() == candidate->GetFaction())
+			{
+				recent = owner.GetPtr(); damage = dynamic_cast<const PFApplDamage*>(app);
+				return damage != nullptr;
+			}
+			return true;
+		};
+		if (!std::isfinite(interval) || !LinuxVisitKillHistory(*victim, interval + extra, latest)) return;
+		if (recent)
+		{
+			bool accepted = true;
+			if (!specialMap)
+			{
+				const auto* hero = dynamic_cast<const PFBaseHero*>(recent.GetPtr());
+				if (!hero || !std::isfinite(hero->GetRaiting())) return;
+				const float bonus = Min(1.f, Max(0.f, (1500.f - hero->GetRaiting()) / (1500.f - 1100.f))) * extra;
+				const float limit = interval + bonus;
+				if (!std::isfinite(limit)) return;
+				accepted = GetWorld()->GetTimeElapsed() - damage->GetMarkerTime() < limit;
+			}
+			if (accepted) { candidate = recent; selectedDamage = damage; }
+		}
+	}
+	pKiller = candidate.GetPtr();
+	pRefDamageApplicator = selectedDamage;
 }
 
 void PFAIWorld::GetAssistants(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pAggressor, vector<PFBaseHero* > &assistants) const
