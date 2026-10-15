@@ -29,27 +29,58 @@
 #include "PF_GameLogic/SessionData.h"
 
 
-// Loading screen chosen in the castle fair (written to user.cfg by the launcher): name of a background in
+// Loading screens chosen in the castle fair (written to user.cfg by the launcher): a name or a comma list of backgrounds in
 // /UI/Styles/LoadingBack/Fair/<name>.dds; it is seen only by this player. Empty or missing file - the map background.
 static string g_fairLoadscreen;
 REGISTER_VAR( "fair_loadscreen", g_fairLoadscreen, STORAGE_USER );
 
 namespace
 {
+  // the background picked for the current loading screen (one pick per LoadingScreenLogic, see the constructor)
+  string g_fairPickedBack;
+  bool g_fairPicked = false;
+
+  bool IsFairLoadscreenName( const string & name )
+  {
+    if ( name.empty() || name.size() > 64 )
+      return false;
+    for ( int i = 0; i < name.size(); ++i )
+    {
+      const char c = name[i];
+      if ( !( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) || c == '_' || c == '-' ) )
+        return false;
+    }
+    return true;
+  }
+
+  // fair_loadscreen is one name or a rotation "name1,name2,..." - a random existing one is shown each battle
   string FairLoadingBack( const char * mapBack )
   {
-    if ( g_fairLoadscreen.empty() || g_fairLoadscreen.size() > 64 )
-      return mapBack;
-    for ( int i = 0; i < g_fairLoadscreen.size(); ++i )
+    if ( !g_fairPicked )
     {
-      const char c = g_fairLoadscreen[i];
-      if ( !( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) || c == '_' || c == '-' ) )
-        return mapBack;
+      g_fairPicked = true;
+      g_fairPickedBack.clear();
+      vector<string> paths;
+      string name;
+      for ( int i = 0; i <= g_fairLoadscreen.size() && paths.size() < 32; ++i )
+      {
+        if ( i < g_fairLoadscreen.size() && g_fairLoadscreen[i] != ',' )
+        {
+          name += g_fairLoadscreen[i];
+          continue;
+        }
+        if ( IsFairLoadscreenName( name ) )
+        {
+          const string path = string( "/UI/Styles/LoadingBack/Fair/" ) + name + ".dds";
+          if ( RootFileSystem::GetFileInfo( 0, path ) )
+            paths.push_back( path );
+        }
+        name.clear();
+      }
+      if ( !paths.empty() )
+        g_fairPickedBack = paths[GetTickCount() % paths.size()];
     }
-    const string path = string( "/UI/Styles/LoadingBack/Fair/" ) + g_fairLoadscreen + ".dds";
-    if ( !RootFileSystem::GetFileInfo( 0, path ) )
-      return mapBack;
-    return path;
+    return g_fairPickedBack.empty() ? string( mapBack ) : g_fairPickedBack;
   }
 }
 
@@ -112,8 +143,9 @@ LoadingScreenLogic::LoadingScreenLogic( NGameX::LoadingStatusHandler * statusHan
 , isSpectator( _isSpectator )
 , isTutorial( _isTutorial )
 , leftTeamForce(0), rightTeamForce(0),
-isShowTeamForce(true),partyFlag(true),tamburFlag(true) 
+isShowTeamForce(true),partyFlag(true),tamburFlag(true)
 {
+  g_fairPicked = false; // a new battle - a new background from the fair rotation
 
   levelToExp = NDb::SessionRoot::GetRoot()->logicRoot->aiLogic->levelToExperienceTable; 
 }
