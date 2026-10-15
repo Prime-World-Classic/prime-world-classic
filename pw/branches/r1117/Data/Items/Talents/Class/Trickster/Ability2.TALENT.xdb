@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/Items/Talents/Trickster.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Trickster_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Trickster/Ability2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Trickster/Ability2_SUP.TALENT" Count="1" />
