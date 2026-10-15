@@ -17,7 +17,15 @@
 #   python3 tools/hlsl_sm3_check/hlsl_sm3_check.py --compare /tmp/sm3_before.json
 # Опции: --pins N (все пины = N; по умолчанию 1), --only NAME,
 #        --materials A,B,C (список материалов из MaterialSpec.xml),
-#        --stages vs|ps|both
+#        --stages vs|ps|both, --remote <ssh-хост>, --dll <d3dcompiler_47.dll>
+# Встроенный в Wine d3dcompiler построен на vkd3d и на SM3 умеет не всё
+# (AOEMaterial vs_3_0 → «E5017: Aborting due to not yet implemented feature:
+# SM1 cast from bool to integer»). Лечится нативной MS-библиотекой: --dll
+# <путь> передаёт её в LoadLibrary по полному пути, Wine грузит её как native.
+# Замер 2026-10-15: SDK-ная и OS-ная d3dcompiler_47.dll (обе x64, привезены с
+# tiny10) дают под Wine DXBC, побайтово совпадающий с полученным на ВМ
+# (AOEMaterial vs_3_0 — 632 Б, md5 77c15e7c…). Тогда SM3-контур доступен целиком
+# на Linux; без --dll прогон либо падает, либо врёт — нужен --remote.
 # Единицы с включёнными пинами компилируются долго (BasicFXMaterial vs_3_0 при
 # всех пинах = 1 — 2m55s и 1,4 МБ DXBC), поэтому для регулярной сверки берут
 # только затронутые материалы (--materials), а не весь корпус.
@@ -68,6 +76,8 @@ OUTDIR = "/tmp/hlsl_sm3_check"
 # --define NAME=ЗНАЧЕНИЕ (повторяемо) — дополнительные макросы шва исходников
 EXTRA_DEFINES = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
                  if a == "--define" and i + 1 < len(sys.argv)]
+# нативная MS-библиотека компилятора вместо wine-ного builtin (vkd3d)
+NATIVE_DLL = ""
 
 
 def zpath(p):
@@ -98,8 +108,11 @@ def entries(path):
 def compile_one_remote(path, stage, entry, defines, dump):
     """Прогон на ВМ — настоящий d3dcompiler_47 от Microsoft.
 
-    Для vs_3_0 обязателен: компилятор Wine построен на vkd3d и умеет не всё.
-    Пример: AOEMaterial vs_3_0 c CustomizedGeometryPinValue=1 в Wine даёт
+    Альтернатива без ВМ — --dll <нативная d3dcompiler_47.dll> в локальном
+    режиме: Wine грузит её как native, DXBC побайтово совпадает с ВМ-ным.
+    Без обоих вариантов для vs_3_0 прогон неполон: компилятор Wine построен на
+    vkd3d и умеет не всё. Пример: AOEMaterial vs_3_0 c
+    CustomizedGeometryPinValue=1 в Wine даёт
     «E5017: Aborting due to not yet implemented feature: SM1 cast from bool to
     integer» (hr=0x80004001), на ВМ — OK, DXBC 632 Б.
     Дерево исходников на ВМ (--rroot): Src/Render/{Shaders,GlobalMasks.h}
@@ -140,6 +153,8 @@ def compile_one(path, stage, entry, defines, dump):
            "--flags", "400", "--dump", zpath(dump)]
     for d in defines:
         cmd += ["--def", d]
+    if NATIVE_DLL:
+        cmd += ["--dll", zpath(NATIVE_DLL)]
     env = dict(os.environ, WINEPREFIX=WINEPREFIX, WINEDEBUG="-all")
     # stdout в файл, не в PIPE: Wine пишет консольный вывод программы мимо
     # пайпа, и через capture_output сообщения компилятора теряются.
@@ -179,6 +194,12 @@ def main():
     REMOTE = args[args.index("--remote") + 1] if "--remote" in args else ""
     RROOT = args[args.index("--rroot") + 1] if "--rroot" in args else "C:\\pwbuild\\shaders"
     RTOOL = args[args.index("--rtool") + 1] if "--rtool" in args else "C:\\tools\\hlsl\\hlsl_compile_test.exe"
+    global NATIVE_DLL
+    NATIVE_DLL = args[args.index("--dll") + 1] if "--dll" in args else ""
+    if NATIVE_DLL and not os.path.exists(NATIVE_DLL):
+        sys.exit("нет %s — нативная d3dcompiler_47.dll (x64) берётся с Windows-хоста:\n"
+                 "  C:\\Windows\\System32\\D3DCompiler_47.dll или "
+                 "C:\\pwbuild\\vs2022\\Windows Kits\\10\\bin\\10.0.26100.0\\x64\\" % NATIVE_DLL)
     if REMOTE:
         subprocess.run('ssh -o BatchMode=yes %s "mkdir %s\\dumps"' % (REMOTE, RROOT),
                        shell=True, capture_output=True)

@@ -40,8 +40,38 @@ typedef HRESULT (WINAPI *DisassembleFn)(const void *pSrcData, SIZE_T SrcDataSize
 // исходника эквивалентна» (байты могут разойтись из-за кодогенерации, а
 // операции — совпадать), и шаг 14 — у 34 блобов OnlineShaders нет исходников,
 // восстанавливать придётся по ассемблеру.
+// SM3 (vs_3_0/ps_3_0) — легаси-контейнер (не «DXBC» SM4+): D3DDisassemble его
+// не читает, нужен D3DXDisassembleShader из d3dx9_43.dll. Это тот же формат,
+// что у 34 живых блобов Data/Shaders/OnlineShaders/*.psb|.vsb (шаг 14).
+// ID3DXBuffer = IUnknown + GetBufferPointer/GetBufferSize (слоты 3 и 4); на x64
+// все вызовы в одной ABI, поэтому «this» первым аргументом корректен.
+typedef HRESULT (WINAPI *DisassembleShaderFn)(const DWORD *pShader, BOOL colorCode,
+                                              const char *comments, void **ppOut);
+
+static int DoDisassembleSM3(const void *data, size_t size)
+{
+    HMODULE d3dx = LoadLibraryA("d3dx9_43.dll");
+    if (!d3dx) { printf("d3dx9_43.dll: не загрузился (нужен рядом с exe)\n"); return 5; }
+    DisassembleShaderFn dis =
+        (DisassembleShaderFn)GetProcAddress(d3dx, "D3DXDisassembleShader");
+    if (!dis) { printf("D3DXDisassembleShader: НЕТ в d3dx9_43\n"); return 5; }
+    void *buf = NULL;
+    HRESULT hr = dis((const DWORD *)data, FALSE, NULL, &buf);
+    printf("D3DXDisassembleShader hr=0x%08X\n", (unsigned)hr);
+    if (FAILED(hr) || !buf) return 1;
+    void **vtbl = *(void ***)buf;
+    const char *(*getPtr)(void *) = (const char *(*)(void *))vtbl[3];
+    size_t (*getSize)(void *) = (size_t (*)(void *))vtbl[4];
+    const char *p = getPtr(buf);
+    printf("%.*s", (int)getSize(buf), p);
+    ((void (*)(void *))vtbl[2])(buf);   // Release
+    return 0;
+}
+
 static int DoDisassemble(HMODULE h, const void *data, size_t size)
 {
+    if (size < 4 || memcmp(data, "DXBC", 4) != 0)
+        return DoDisassembleSM3(data, size);
     DisassembleFn dis = (DisassembleFn)GetProcAddress(h, "D3DDisassemble");
     if (!dis) { printf("D3DDisassemble: НЕТ в модуле\n"); return 5; }
     ID3DBlob *txt = NULL;
@@ -157,8 +187,12 @@ int main(int argc, char **argv)
     }
     macros.push_back(D3D_SHADER_MACRO());   // терминатор {0,0}
 
-    std::string src = ReadFileAll(srcPath.c_str());
-    if (src.empty()) return 3;
+    std::string src;
+    if (!blobPath)   // при --blob исходник не нужен
+    {
+        src = ReadFileAll(srcPath.c_str());
+        if (src.empty()) return 3;
+    }
 
     IncludeHandler inc;
     size_t slash = srcPath.find_last_of("/\\");

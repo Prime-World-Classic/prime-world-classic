@@ -21,6 +21,25 @@ namespace Render
 			unsigned int psOffset;
 		};
 
+		// Шаг 11.0 (PLAN_NVRHI §3.z п.3): список ЖИВЫХ пар (материал, индекс пинов).
+		// Нужен как входной набор генератора при переходе на .shd v2: в контейнер
+		// кладутся только используемые комбинации, остальные компилируются в
+		// рантайме. Печатается один раз на пару, включается dev-var'ом
+		// `setvar dump_shader_index 1` (по умолчанию выключен).
+		static int s_dumpShaderIndex = 0;
+		REGISTER_VAR( "dump_shader_index", s_dumpShaderIndex, STORAGE_NONE );
+
+		struct PairKeyHash { size_t operator()(UINT64 _k) const { return size_t(_k ^ (_k >> 32)); } };
+		static hash_set<UINT64, PairKeyHash> s_seenShaderPairs;
+
+		static UINT64 FileNameKey( const char *name )
+		{
+			UINT64 h = 0xcbf29ce484222325ull;
+			for ( ; name && *name; ++name )
+				h = ( h ^ (unsigned char)*name ) * 0x100000001b3ull;
+			return h;
+		}
+
 		static ShaderPair defaultShaderPair;
 
 		void MultiShader::InitializeDefaultShaderPair()
@@ -71,6 +90,18 @@ namespace Render
 			NI_VERIFY(pInfo, "pInfo is invalid!", return defaultShaderPair; );
 			if ( !(0 <= index && (int)index < pairs.size()) )
 				return defaultShaderPair;
+			if ( s_dumpShaderIndex )
+			{
+				const UINT64 key = FileNameKey( fileName.c_str() ) ^
+					( (UINT64)index * 0x9e3779b97f4a7c15ull );
+				// nstl::hash_set::find отдаёт итератор (_Ht_it), проверять его на «!»
+				// нельзя — факт вставки определяем по изменению размера.
+				const size_t before = s_seenShaderPairs.size();
+				s_seenShaderPairs.insert( key );
+				if ( s_seenShaderPairs.size() != before )
+					DebugTrace( "ShaderIndex: %s #%u (of %u)", fileName.c_str(), index,
+						(unsigned int)pairs.size() );
+			}
 			//NI_VERIFY((int)index < pairs.size() && index >= 0, NStr::StrFmt("out of pins! #%d", index), return defaultShaderPair; );
 			if( !pairs[index].pVertexShader )
 			{
