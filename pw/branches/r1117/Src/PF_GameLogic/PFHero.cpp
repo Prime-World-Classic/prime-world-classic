@@ -605,7 +605,8 @@ bool PFBaseHero::Step(float dtInSeconds)
       if( !IsClone() && IsLocal() )
       {
         const NDb::Ptr<NDb::SoundRoot>& soundRoot = NDb::SoundRoot::GetRoot();
-        if ( (int)(respawnDelay-0.1f) != (int)(respawnDelay-0.11f)  )
+        // tick when the next step crosses a whole second (any step length)
+        if ( (int)(respawnDelay-dtInSeconds-0.005f) != (int)(respawnDelay-0.005f) )
         {
           NSoundScene::EventStart( soundRoot->timerSounds.deadTimerSound );
         }

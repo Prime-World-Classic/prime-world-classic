@@ -40,6 +40,15 @@ namespace Game
 static string s_localNickname( "Very Local Player" );
 REGISTER_DEV_VAR( "local_nickname", s_localNickname, STORAGE_NONE );
 
+// Simulation step of the local game, ms (100 = 10 Hz, 33 = 30 Hz)
+static int s_localStepLength = 33;
+REGISTER_DEV_VAR( "local_step_length", s_localStepLength, STORAGE_NONE );
+
+static int GetLocalStepLength()
+{
+  return Max( s_localStepLength, 10 );
+}
+
 
 
 LocalGameContext::LocalGameContext( bool _isSpectator ) :
@@ -410,7 +419,7 @@ void LocalGameContext::SetReady( lobby::EGameMemberReadiness::Enum readiness )
       clientSettings.minigameEnabled = true;
 
       replayWriter->WriteLobbyData(0, gameLineup, params);
-      replayWriter->WriteGSData(100, clientSettings, empty);
+      replayWriter->WriteGSData(GetLocalStepLength(), clientSettings, empty);
     }
 
     if ( heroScreen )
@@ -506,7 +515,7 @@ void LocalGameContext::StartGame()
   NI_VERIFY( !scheduler && !transceiver, "Game can be started only once", return );
 
   scheduler = new LocalCmdScheduler( clientId );
-  transceiver = new NCore::Transceiver( scheduler, DEFAULT_GAME_STEP_LENGTH, true );
+  transceiver = new NCore::Transceiver( scheduler, GetLocalStepLength(), true );
 
   if (replayWriter)
   {
@@ -518,7 +527,7 @@ void LocalGameContext::StartGame()
   advScreeen->SetLobbyCallback( this );
   advScreeen->Construct( chatController, NULL, ignoreListStorage, isSpectator, false );
   
-  if ( !advScreeen->InitAdventures( mapStartInfo, transceiver, 0, lobby::EGameType::Custom, clientId, resourceCollection, 0, 0 ) )
+  if ( !advScreeen->InitAdventures( mapStartInfo, transceiver, 0, lobby::EGameType::Custom, clientId, resourceCollection, 0, 0, GetLocalStepLength() ) )
     return;
 
   advScreeen->InitPlayerNames(mapStartInfo, clientId, mapDescription->Description);

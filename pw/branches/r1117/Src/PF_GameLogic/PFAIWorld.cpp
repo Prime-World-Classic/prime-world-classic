@@ -142,7 +142,8 @@ void PFAIWorld::Update(float dtInSeconds)
 
   if ( battleStartDelay >= 0 )
   {
-    if ( (int)(battleStartDelay-0.1f) != (int)(battleStartDelay-0.11f) && (battleStartDelay-0.11f) < soundRoot->timerSounds.timeToTickOnStart )
+    // tick when the next step crosses a whole second (any step length)
+    if ( (int)(battleStartDelay-dtInSeconds-0.005f) != (int)(battleStartDelay-0.005f) && (battleStartDelay-dtInSeconds-0.005f) < soundRoot->timerSounds.timeToTickOnStart )
     {
       NSoundScene::EventStart( soundRoot->timerSounds.startTimerSound );
     }
