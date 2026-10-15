@@ -4,8 +4,11 @@
 #include "PFBaseUnit.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
+#include "PFDispatch.h"
+#include "DBTalent.h"
 #include "PFApplUtils.h"
 #include "../LinuxBootstrap/formula_context.h"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -36,6 +39,56 @@ struct LinuxTriggerEventScope
 	~LinuxTriggerEventScope() { if (entered) active.pop_back(); }
 };
 thread_local std::vector<const PFTriggerApplicator*> LinuxTriggerEventScope::active;
+
+/** Validate the complete expanded processor tree before installing any event listener. */
+bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
+	std::vector<const NDb::EventProcessorBase*>& path, unsigned& nodes)
+{
+	if (!db || ++nodes > 128 || path.size() >= 128 || std::find(path.begin(), path.end(), db) != path.end()) return false;
+	if (const auto* group = dynamic_cast<const NDb::EventProcessorGroup*>(db))
+	{
+		path.push_back(db);
+		for (const auto& child : group->processors)
+			if (!LinuxTriggerTreeValid(child.GetPtr(), path, nodes)) { path.pop_back(); return false; }
+		path.pop_back(); return true;
+	}
+	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db);
+}
+
+bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
+{
+	std::vector<const NDb::EventProcessorBase*> path; unsigned nodes = 0;
+	return LinuxTriggerTreeValid(db, path, nodes);
+}
+
+/** Original filter precedence: origin, target shape, condition, explicit list, class rarity, type bit. */
+bool LinuxTriggerAbilityMatches(const NDb::TriggerAbilitiesFilter& filter, const PFAbilityData* upgrader,
+	const PFAbilityData* ability, bool allied, const PFTriggerApplicator& owner)
+{
+	if (!ability || !ability->GetDBDesc()) return false;
+	if (filter.exceptThis && owner.GetAbility() && owner.GetAbility()->GetData() == ability) return false;
+	if (!(filter.flags & (allied ? NDb::TRIGGERABILITIESABILITIESFLAGS_FROMALLY : NDb::TRIGGERABILITIESABILITIESFLAGS_FROMENEMY))) return false;
+	if (filter.onlySingleTarget && !ability->IsSingleTarget() && ability->GetAbilityTypeId() != NDb::ABILITYTYPEID_BASEATTACK) return false;
+	const auto& authored = filter.abilityCondition;
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+	{
+		// Windows passes only the dispatch upgrader as pMisc here, not its fallback or the trigger ability.
+		const auto result = LinuxBootstrap::EvaluateUnitNumericFormula(authored.sString.c_str(),
+			owner.GetAbilityOwner().GetPtr(), owner.GetReceiver().GetPtr(), upgrader);
+		if (!result.Succeeded() || result.value == 0.f) return false;
+	}
+	if (filter.flags & NDb::TRIGGERABILITIESABILITIESFLAGS_FROMLIST)
+		for (const auto& candidate : filter.abilitiesList)
+			if (candidate && candidate->GetDBID() == ability->GetDBDesc()->GetDBID()) return true;
+	if ((filter.flags & NDb::TRIGGERABILITIESABILITIESFLAGS_ONLYCLASSTALENT) == NDb::TRIGGERABILITIESABILITIESFLAGS_ONLYCLASSTALENT)
+	{
+		const int rarity = ability->GetTalentRarity();
+		if (rarity != -1) return rarity == NDb::TALENTRARITY_CLASS;
+	}
+	const int type = ability->GetAbilityTypeId();
+	return type >= 0 && type < NDb::KnownEnum<NDb::EAbilityTypeId>::SizeOf()
+		&& (static_cast<unsigned>(filter.flags) & (1u << type)) != 0;
+}
 }
 
 PFTriggerApplicator::PFTriggerApplicator(const PFApplCreatePars& cp)
@@ -46,10 +99,11 @@ bool PFTriggerApplicator::Start()
 {
 	if (!Base::IsAlive()) return true;
 	const auto& authored = GetDB().actionsCount;
+	const bool supported = LinuxTriggerTreeValid(GetDB().processor.GetPtr());
 	LinuxBootstrap::NumericFormulaResult count{LinuxBootstrap::NumericFormulaError::None, 0.f};
-	if (!authored.sString.empty() || !authored.compiledString.empty())
+	if (supported && (!authored.sString.empty() || !authored.compiledString.empty()))
 		count = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
-	if (count.Succeeded() && double(count.value) >= std::numeric_limits<int>::min()
+	if (supported && count.Succeeded() && double(count.value) >= std::numeric_limits<int>::min()
 		&& double(count.value) <= std::numeric_limits<int>::max() && GetDB().processor)
 	{
 		maxActionsCount = static_cast<int>(count.value);
@@ -171,6 +225,66 @@ bool PFEventProcessorCondition::ProcessEvent(const PFBaseUnitEvent* event)
 	return true;
 }
 
+/** Construct independent child processors, including repeated descriptors but never recursive trees. */
+void PFEventProcessorGroup::Initialize(const CPtr<PFTriggerApplicator>& owner)
+{
+	Base::Initialize(owner); processors.clear();
+	if (!LinuxTriggerTreeValid(&GetDB())) return;
+	for (const auto& db : GetDB().processors)
+	{
+		CObj<PFEventProcessorBase> child(db->Create(GetWorld()));
+		if (!child) { processors.clear(); return; }
+		child->Initialize(owner); processors.push_back(child);
+	}
+}
+
+int PFEventProcessorGroup::GetAccessibleEventsMask() const
+{
+	int mask = 0;
+	for (const auto& child : processors) if (child) mask |= child->GetAccessibleEventsMask();
+	return mask;
+}
+
+/** Snapshot children across callbacks; parent retirement cancels the undispatched remainder. */
+bool PFEventProcessorGroup::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	if (!IsValid(pOwner)) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	const vector<CObj<PFEventProcessorBase>> pending(processors);
+	bool result = false;
+	for (const auto& child : pending)
+	{
+		if (!owner->PFBaseApplicator::IsAlive() || !owner->IsEnabled()) break;
+		if (child && LinuxTriggerAccepts(child->GetAccessibleEventsMask(), event)) result = child->ProcessEvent(event) || result;
+	}
+	if (result && owner->PFBaseApplicator::IsAlive() && owner->IsEnabled()) DoSpell();
+	return result;
+}
+
+/** Cancel admission before payload delivery, then dispatch the authored response to its original target. */
+bool PFEventProcessorCancelDispatch::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	const auto* arrival = dynamic_cast<const PFBaseUnitDispatchEvent*>(event);
+	if (!arrival || arrival->GetType() != NDb::BASEUNITEVENT_DISPATCHAPPLIED || !arrival->GetDispatch()
+		|| !IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive() || !IsValid(pOwner->GetReceiver())) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	const PFDispatch* dispatch = arrival->GetDispatch();
+	CObj<PFBaseUnit> sender(dispatch->GetSender());
+	if (!IsValid(sender) || !dispatch->GetAbility() || !dispatch->GetAbility()->GetData()) return false;
+	const PFAbilityData* upgrader = dispatch->GetUpgraderAbilityData();
+	const PFAbilityData* ability = upgrader ? upgrader : dispatch->GetAbility()->GetData();
+	if (!LinuxTriggerAbilityMatches(GetDB().filter, upgrader, ability,
+		sender->GetFaction() == owner->GetReceiver()->GetFaction(), *owner)) return false;
+	if (GetDB().checkSender & NDb::TRIGGEREVENTCHECKSENDER_MATCHTARGET)
+	{
+		Target target; owner->MakeApplicationTarget(target, GetDB().senderMatchTarget);
+		if (!target.IsUnit() || target.GetUnit().GetPtr() != sender.GetPtr()) return false;
+	}
+	arrival->CancelDispatch();
+	DoSpell(CPtr<PFBaseUnit>(sender.GetPtr()));
+	return true;
+}
+
 PFAbsorbShieldApplicator::PFAbsorbShieldApplicator(const PFApplCreatePars& cp)
 	: Base(cp), shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
 
@@ -270,6 +384,8 @@ REGISTER_WORLD_OBJECT_NM(PFAbsorbShieldApplicator, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFTriggerApplicator, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorBase, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorCondition, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorGroup, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorCancelDispatch, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

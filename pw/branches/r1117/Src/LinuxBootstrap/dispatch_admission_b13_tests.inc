@@ -39,7 +39,7 @@ struct DispatchAdmissionFixtureB13
 	bool cancel = false;
 
 	DispatchAdmissionFixtureB13(PFBaseUnit* source, PFBaseUnit* target, bool base = true,
-		bool evadable = true, bool always = false) : sender(source), receiver(target)
+		bool evadable = true, bool always = false, PFAbilityData* upgrader = nullptr) : sender(source), receiver(target)
 	{
 		db = B11AttackDescriptor(0);
 		auto* raw = const_cast<NDb::DispatchImmediate*>(static_cast<const NDb::DispatchImmediate*>(db->dispatch.GetPtr()));
@@ -50,6 +50,7 @@ struct DispatchAdmissionFixtureB13
 		cast = new PFAbilityInstance(data, Target(receiver.GetPtr()), false);
 		const Target parentTarget(receiver.GetPtr());
 		PFApplCreatePars cp(cast, parentTarget); cp.pWorld = sender->GetWorld(); cp.pOwner = sender;
+		cp.pUpgraderAbilityData = upgrader;
 		cp.pDBAppl = new NDb::DamageApplicator;
 		parent = new DispatchAdmissionParentB13(cp);
 		const NDb::Ptr<NDb::Spell> spell = db.GetPtr();

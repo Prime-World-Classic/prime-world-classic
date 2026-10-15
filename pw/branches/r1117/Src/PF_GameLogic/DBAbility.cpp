@@ -8120,7 +8120,7 @@ void EventProcessorCancelDispatch::Assign( const EventProcessorCancelDispatch& _
 NWorld::PFEventProcessorBase* EventProcessorCancelDispatch::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorCancelDispatch( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorCancelDispatch( *this, world );
@@ -8323,7 +8323,7 @@ void EventProcessorGroup::Assign( const EventProcessorGroup& _eventProcessorGrou
 NWorld::PFEventProcessorBase* EventProcessorGroup::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorGroup( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorGroup( *this, world );

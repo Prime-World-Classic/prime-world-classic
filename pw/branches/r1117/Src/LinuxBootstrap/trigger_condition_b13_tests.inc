@@ -183,7 +183,7 @@ static void TriggerConditionB13(Checks& check, PFWorld* world)
 	}
 	for (bool absent : {false, true})
 	{
-		F f(world); NDb::Ptr<NDb::EventProcessorBase> proc = absent ? nullptr : new NDb::EventProcessorCancelDispatch;
+		F f(world); NDb::Ptr<NDb::EventProcessorBase> proc = absent ? nullptr : new NDb::EventProcessorDamageTransformer;
 		NDb::Ptr<NDb::TriggerApplicator> db = F::Descriptor(proc); auto app = f.Apply(check, db); if (!app) continue;
 		f.Event(); check(!app->IsAlive() && f.Delta() == 0 && f.instance->GetActiveApplicatorsCount() == 0,
 			"B13 missing or still-unsupported processors terminate without leaving a subscribed inert buff");
