@@ -36,7 +36,7 @@
 | 3 | ✅ инстансинг, шаг 1: механизм D3D9 в бэкенде (закрыто 2026-10-14, §2.10) | без этого этап 3 начнётся с переделки draw-пути (§2.10) |
 | 4 | ⚠️ caps: эталонный дамп пинов снят (2026-10-14, §2.5); `BackendSystemInfo` ещё не сделан | эталон надо снимать, пока D3D9 жив (§2.5) |
 | 5 | ✅ генератор `MaterialSpec` + 3 DXC-провала (70/70) — закрыто 2026-10-14; преконпиляция `deprecated_shaders` перенесена на этап 3 (в shipping рантайм-компиляции нет, §2.6 п.6) | этап 3 добавляет пины — перегенерация воспроизводит дерево побайтово (§2.6) |
-| 6 | upload-кольцо (`Lock`/`Unlock` → staging-кольцо) | остаток пункта «пулы» в этапе 2 |
+| 6 | ⚠️ механизм блокировки буферов переведён в seam; staging-кольцо — этап 3. **Состояние: правки в рабочем дереве, не закоммичены** (2026-10-14, §2.8 «Восьмой шаг») | остаток пункта «пулы» в этапе 2 |
 | 7 | кэш пайплайнов по ключу (`sortId` + пара VS/PS) | делается уже по цифрам из шага 2 |
 | 8 | `ConstBlock` (c0..c255 → один буфер) | трение §2.7, обязательна перед Vulkan-бэкендом |
 
@@ -526,6 +526,56 @@ Win32 `RECT`; конвертация `BackendRect` → `RECT` — только �
 прогонами (на старом кадре строение левее, кольцо арены уже); центр кадра — земля и
 тени — 0,0% грубых отличий, UI-зоны чистые. То есть «gross выше шума» само по себе
 не регрессия: надо смотреть, где именно различия (тени/земля vs анимация/камера).
+
+**Восьмой шаг (2026-10-14) — блокировка буферов уходит в seam.** Состояние:
+правки **в рабочем дереве, не закоммичены**. Гейты: сборка 120/120 (0 ошибок),
+`check_exe` ИТОГ: OK (15 199 232 B), E2E `2026.10.14-22.29.10` —
+`Switch to EGameState::Finished by 3`, дампов нет, asserts 0, `FAILED` 0,
+`LoadTextureFromFileImpl` 2 (известный битый DDS), в бэкенде `finish` есть.
+Визуальный гейт не прогонялся.
+
+* `locktype.h`: `ERenderLockType` становится словарём режимов блокировки;
+  добавлен `LOCK_NOSYSLOCK` — D3D9-подсказка, которую запрашивали конкретные
+  вызовы (`RoadPrimitive`); молча терять её нельзя, остальные бэкенды игнорируют.
+* `IRenderBackend`: `LockVertexBuffer`/`UnlockVertexBuffer`/`LockIndexBuffer`/
+  `UnlockIndexBuffer`. Раздельно по типу намеренно: в D3D9
+  `IDirect3DVertexBuffer9` и `IDirect3DIndexBuffer9` — разные COM-интерфейсы, у
+  `Lock`/`Unlock` разные слоты vtable, поэтому один метод с `HBuffer` и кастом
+  внутри был бы UB.
+* карта режимов одна — `ConvertRenderLockType()` (`renderflagsconverter.cpp`),
+  она уже использовалась для поверхностей; отдельную карту в `D3D9Backend`
+  заводить не стали (фактически завели бы второй источник истины).
+* `size == 0` сохранено как «весь буфер» (семантика D3D9; ср.
+  NULL-прямоугольник у `StretchRect`, «Пятый шаг»).
+* кольцо `SharedD3DBufferST` (`dxutils.{h,cpp}`) остаётся **клиентской
+  политикой**: курсор записи, `timeStamp`, рост через `QuerySize`/`Resize`,
+  `SpaceHolder`, `UnlockAll`/`ResetAll`. В seam уехал только механизм: режимы
+  `LOCK_NOOVERWRITE` (append) и `LOCK_DISCARD` (flash) приходят параметром, а не
+  константами D3D9 (внутренний enum `LOCK_FLAGS` удалён). Для Vulkan/DX12
+  кольцом записи становится тот же курсор + барьеры по фенсам — политику
+  переписывать не придётся.
+* переведены все живые точки: `dxutils` (`LockVB`/`LockIB`/`FillVB`/`FillIB`),
+  `Render` (debugrenderer, smartrenderer, ParticleFX, ShadowMap, FlashRenderer,
+  ImmediateRenderer, StaticMesh, renderresourcemanager, InstancedMeshResource,
+  VertexColorStream), `PF_GameLogic/Minimap`, `Scene` (RoadGeometryBuilder,
+  RoadSceneObject, TraceFXGeo, VertexColorManager), `Terrain` (NatureMapVisual,
+  RoadPrimitive, TerrainGeometryManager). Аудит `\->Lock(` / `\->Unlock()` по
+  всему `Src/`: **0** обращений к буферам устройства вне бэкенда; остались
+  блокировки поверхностей (`RenderSurface::Lock` — это шаг текстур/поверхностей)
+  и не-буферные `Lock` (mutex, умные указатели).
+
+Находка при аудите: `Render/mesh.cpp` и `Scene/ModelLoader.cpp` лежат в дереве,
+но **не собираются** (нет в `Render.vcproj`/component-списках и в CMake-графе;
+проверка — список `.obj` в
+`Tools/ClientCMake/build/x64-wine/CMakeFiles/<Target>.dir/`). Они ссылаются на
+тип `IVertexBuffer`, который в дереве не объявлен. При аудитах обращений к
+устройству их надо исключать, иначе счётчик и правки уходят в мёртвый код
+(в частности, прежний счётчик «40 обращений» включал `mesh.cpp`).
+
+Чего в этом шаге **нет**: самого staging-кольца. `D3D9Backend` по-прежнему
+прокидывает `Lock`/`Unlock` устройству — кольцо появится как реализация этих
+четырёх методов в `NvrhiBackend` (курсор + фенсы + пересоздание буфера на
+`Resize`), и проверяется только вместе с Vulkan-бэкендом (этап 3).
 
 ### 2.9 Тень константных регистров (`conststore`) — 2026-10-13
 
@@ -1697,8 +1747,12 @@ color-correct начинают получать настоящие веса) —
       34 места-потребителя (`CreateVB`/`CreateIB`/`CreateIB16`,
       `DXVertexBufferDynamicRef` и т.п.) не менялись. Начальных данных в
       сигнатуре нет намеренно: путь записи — отдельный.
-      **Остаток:** (а) запись — `Lock`/`Unlock` в `dxutils.cpp` (`FillVB`/
-      `FillIB`, динамические буферы) становятся upload-кольцом; (б) **закрыто
+      **Остаток:** (а) **механизм записи переведён в seam (2026-10-14; правки в
+      рабочем дереве, не закоммичены — §2.8 «Восьмой шаг»):** `Lock`/`Unlock`
+      буферов идут через `IRenderBackend`, режим — `ERenderLockType`;
+      прямых обращений к буферам устройства вне бэкенда по всему `Src/` — 0.
+      Само staging-кольцо — реализация этих методов в `NvrhiBackend` (этап 3);
+      (б) **закрыто
       2026-10-14:** текстуры и поверхности тоже создаются через seam —
       `CreateTexture2D`/`CreateTextureCube`/`CreateSurface`/`UpdateTexture` и
       словари `EBackendFormat`/`EBackendUsage`/`EBackendSurfaceKind`
