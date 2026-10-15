@@ -2222,11 +2222,18 @@ float PFBaseUnit::OnHealEnergy(CPtr<PFBaseUnit>, float amount)
 }
 void PFBaseUnit::OnAddGold(CPtr<PFBaseUnit>, float amount, bool)
 {
-  gold = Max<float>(0.0f, gold + amount);
+	const float before = gold;
+	if (!std::isfinite(amount) || !std::isfinite(before) || before < 0
+		|| double(before) > std::numeric_limits<int>::max()) return;
+	const float after = before + amount;
+	// GetGold exposes this float as int; do not publish a balance its callers cannot read.
+	if (!std::isfinite(after) || double(after) > std::numeric_limits<int>::max()) return;
+	gold = Max<float>(0.0f, after);
 }
 float PFBaseUnit::OnRemoveGold(CPtr<PFBaseUnit>, float amount)
 {
-  if (amount <= 0.0f)
+  if (!std::isfinite(amount) || amount <= 0.0f || !std::isfinite(float(gold)) || gold < 0
+		|| double(gold) > std::numeric_limits<int>::max())
     return 0.0f;
   float removed = Min<float>(Max<float>(0.0f, gold), amount);
   gold -= removed;

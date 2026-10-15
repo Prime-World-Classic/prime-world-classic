@@ -24193,9 +24193,12 @@ void ProbeEffectsPoolRuntime(
       CObj<NWorld::PFBaseUnit> instantKillReceiver(
         new NWorld::PFBaseUnit(0, CVec3(80.0f, 30.0f, 0.0f), 0)
       );
-      CObj<NWorld::PFBaseUnit> instantNaftaReceiver(
-        new NWorld::PFBaseUnit(0, CVec3(81.0f, 30.0f, 0.0f), 0)
-      );
+		// AddNafta has the original hero-only contract, including in bootstrap diagnostics.
+		NWorld::PFBaseHero::SpawnInfo naftaSpawn;
+		naftaSpawn.pHero = new NDb::Hero;
+		naftaSpawn.placement = Placement(CVec3(81, 30, 0), QNULL, CVec3(1, 1, 1));
+		CObj<NWorld::PFBaseHero> instantNaftaReceiver = new NWorld::PFBaseHero(0, naftaSpawn,
+			NDb::UNITTYPE_HEROMALE, NDb::FACTION_BURN, NDb::FACTION_BURN);
       CObj<NWorld::PFBaseUnit> instantAttackReceiver(
         new NWorld::PFBaseUnit(0, CVec3(82.0f, 30.0f, 0.0f), 0)
       );

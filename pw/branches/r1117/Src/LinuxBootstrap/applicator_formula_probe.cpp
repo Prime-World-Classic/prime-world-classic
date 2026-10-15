@@ -1413,6 +1413,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "glyph_upgrade_b13_tests.inc"
 #include "glyph_capture_b13_tests.inc"
 #include "glyph_spawn_b13_tests.inc"
+#include "nafta_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1636,6 +1637,11 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	GlyphSpawnerB13(check);
 	GlyphSpawnerTimersB13(check);
 	if (dataRoot && *dataRoot) GlyphSpawnerAuthoredB13(check, dataRoot);
+	NaftaApplicatorB13(check, world);
+	NaftaBalanceB13(check, world);
+	NaftaTargetVariableB13(check, world);
+	NaftaMainBuildingB13(check);
+	if (dataRoot && *dataRoot) NaftaRuneAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

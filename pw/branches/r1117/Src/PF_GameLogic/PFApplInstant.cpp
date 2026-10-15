@@ -476,16 +476,21 @@ PFAddNaftaApplicator::PFAddNaftaApplicator(PFApplCreatePars const &cp)
 
 bool PFAddNaftaApplicator::Start()
 {
-  PFBaseApplicator::Start();
-  nafta = RetrieveParam(GetDB().nafta, 0.0f);
-  if (IsValid(pReceiver))
-    pReceiver->OnAddGold(GetAbilityOwner(), nafta, false);
-  return true;
+	if (PFBaseApplicator::Start()) return true;
+	PFBaseHero* hero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
+	if (!IsValid(hero)) return true;
+	const float amount = ReadLinuxApplicatorAmount(*this, GetDB().nafta);
+	if (!std::isfinite(amount) || amount == 0) return true;
+	nafta = amount;
+	if (nafta > 0) hero->OnAddGold(GetAbilityOwner(), nafta);
+	// Retain original signed routing; the native withdrawal API rejects negative requests.
+	else nafta = hero->OnRemoveGold(GetAbilityOwner(), nafta);
+	return true;
 }
 
 float PFAddNaftaApplicator::GetVariable(const char* sVariableName) const
 {
-  if (strcmp(sVariableName, "Nafta") == 0)
+  if (strcmp(sVariableName, "nafta") == 0 || strcmp(sVariableName, "Nafta") == 0)
     return nafta;
   return PFBaseApplicator::GetVariable(sVariableName);
 }

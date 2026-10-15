@@ -807,28 +807,23 @@ bool PFConvertTargetToLand::FindTarget(const RequestParams &pars, Target &target
 
 bool PFMainBuildingTargetSelector::FindTarget(const RequestParams &pars, Target &target)
 {
-  if (!pars.pOwner)
-    return false;
-
-  vector<CPtr<PFBaseUnit> > units;
-  LinuxCollectCandidateUnits(units, pars);
-  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
-  {
-    PFBaseUnit* unit = it->GetPtr();
-    if (!unit || unit->GetUnitType() != NDb::UNITTYPE_MAINBUILDING || unit->GetFaction() != pars.pOwner->GetFaction())
-      continue;
-    Target candidate(unit);
-    if (!CheckTargetCondition(candidate, pars))
-      continue;
-    target = candidate;
-    DUMP_SELECTOR_TARGET(target);
-    return true;
-  }
-  return false;
+	if (!IsValid(pars.pOwner) || !pars.pOwner->GetWorld() || !pars.pOwner->GetWorld()->GetAIWorld()) return false;
+	// Original lookup is world-local and ignores the ability's ordinary target condition.
+	// The selected building can supply a variable even when the effect applies to its owner.
+	m_pMainBuilding = nullptr;
+	m_faction = pars.pOwner->GetFaction();
+	pars.pOwner->GetWorld()->GetAIWorld()->ForAllUnits(*this);
+	PFBaseUnit* building = dynamic_cast<PFBaseUnit*>(m_pMainBuilding.GetPtr());
+	if (!IsValid(building)) return false;
+	target.SetUnit(building);
+	DUMP_SELECTOR_TARGET(target);
+	return true;
 }
 
-void PFMainBuildingTargetSelector::operator()(PFLogicObject&)
+void PFMainBuildingTargetSelector::operator()(PFLogicObject& object)
 {
+	if (object.GetUnitType() == NDb::UNITTYPE_MAINBUILDING && object.GetFaction() == m_faction)
+		m_pMainBuilding = &object;
 }
 
 bool PFFountainTargetSelector::FindTarget(const RequestParams &pars, Target &target)

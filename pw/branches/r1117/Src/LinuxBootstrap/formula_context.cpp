@@ -295,6 +295,26 @@ bool BindNamedQuery(const std::string& source, std::size_t start, std::size_t& p
 	return true;
 }
 
+/** Lower only the original target macro's read-only variable getter, not a C++ object API. */
+bool BindTargetVariable(const std::string& source, std::size_t& pos, std::string& result)
+{
+	const std::string prefix = "$ApplTarget->GetVariable";
+	if (source.compare(pos, prefix.size(), prefix) != 0) return false;
+	pos += prefix.size();
+	const auto space = [&]() { while (pos < source.size() && (source[pos] == ' ' || source[pos] == '\t' || source[pos] == '\r' || source[pos] == '\n')) ++pos; };
+	const auto letter = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'; };
+	space(); if (pos == source.size() || source[pos++] != '(') return false;
+	space(); if (pos == source.size() || source[pos++] != '"') return false;
+	if (pos == source.size() || !letter(source[pos])) return false;
+	const std::size_t begin = pos++;
+	while (pos < source.size() && (letter(source[pos]) || (source[pos] >= '0' && source[pos] <= '9'))) ++pos;
+	const std::string variable = source.substr(begin, pos - begin);
+	if (pos == source.size() || source[pos++] != '"') return false;
+	space(); if (pos == source.size() || source[pos++] != ')') return false;
+	result += " __applvar_" + variable + " ";
+	return true;
+}
+
 /** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
@@ -306,6 +326,11 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
 	for (std::size_t pos = 0; pos < source.size();)
 	{
+		if (source[pos] == '$')
+		{
+			if (!BindTargetVariable(source, pos, result)) return false;
+			continue;
+		}
 		if (!nameChar(source[pos])) { result += source[pos++]; continue; }
 		const std::size_t start = pos;
 		while (pos < source.size() && nameChar(source[pos])) ++pos;
@@ -313,7 +338,8 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
 			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
 			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0 ||
-			name.compare(0, 11, "__recommend") == 0 || name.compare(0, 8, "__named_") == 0) return false;
+			name.compare(0, 11, "__recommend") == 0 || name.compare(0, 8, "__named_") == 0 ||
+			name.compare(0, 10, "__applvar_") == 0) return false;
 		if (name == "tal")
 		{
 			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
@@ -638,6 +664,14 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name.compare(0, 10, "__applvar_") == 0)
+		{
+			if (!applicator) return false;
+			const auto* unit = dynamic_cast<const NWorld::PFBaseUnit*>(applicator->GetObject("Target"));
+			if (!unit) return false;
+			value = unit->GetVariable(name.c_str() + 10);
+			return std::isfinite(value);
+		}
 		if (name == "mPreparedness" || name == "mCooldown")
 		{
 			if (!ability || (ability->GetState() != EAbilityState::First && ability->GetState() != EAbilityState::Second)) return false;
