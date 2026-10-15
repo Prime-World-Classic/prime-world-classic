@@ -116,8 +116,9 @@ static void HeroMovementB13(Checks& check)
 		CObj<NCore::WorldCommand> queued=CreateCmdMoveHero(hero.GetPtr(),CVec2(20,20),false);
 		check(queued->CanExecute(),"B13 late-control fixture first admits movement");
 		hero->AddFlag(NDb::UNITFLAG_FORBIDPLAYERCONTROL); queued->Execute(f.world); f.Tick();
-		check(!hero->IsMoving() && !hero->HasQueuedStates() && !hero->GetCurrentState(),
-			"B13 queued movement rechecks controls before changing the hero state");
+		check(!hero->IsMoving() && !hero->HasQueuedStates() && hero->IsHoldingPosition()
+			&& dynamic_cast<const PFHeroHoldState*>(hero->GetCurrentState()),
+			"B13 rejected movement leaves only the original automatic idle hold");
 		hero->Cleanup();
 	}
 	{
@@ -168,8 +169,9 @@ static void HeroMovementB13(Checks& check)
 		hero->Move(CVec2(50,25)); f.Tick();
 		CObj<NCore::WorldCommand> stop=CreateCmdStopHero(hero.GetPtr()); stop->Execute(f.world);
 		const CVec2 stopped=hero->GetPos(); f.Tick();
-		check(!hero->IsMoving() && !hero->GetCurrentState() && !hero->HasQueuedStates() && hero->GetPos()==stopped,
-			"B13 ordinary stop drops the hero route and queued/current move state");
+		check(!hero->IsMoving() && dynamic_cast<const PFHeroSuspendState*>(hero->GetCurrentState())
+			&& !hero->HasQueuedStates() && hero->GetPos()==stopped,
+			"B13 ordinary stop replaces movement with the original long reacquisition pause");
 		hero->Cleanup();
 	}
 	{

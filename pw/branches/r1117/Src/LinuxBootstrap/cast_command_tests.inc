@@ -146,9 +146,10 @@ static void ConsumableCommandTargetsB10(Checks& check, PFWorld* world)
 	{
 		CObj<NCore::WorldCommand> invalid = CreateCmdUseConsumable(hero.GetPtr(), 0, Target(point));
 		check(!invalid->CanExecute(), "consumable command rejects malformed or off-map positions");
+		const CObj<IPFState> stoppedState = hero->GetCurrentState();
 		invalid->Execute(world);
-		check(!hero->HasQueuedStates() && !hero->GetCurrentState() && hero->GetMana() == 200,
-			"invalid position cannot enqueue an order even if execution is called directly");
+		check(!hero->HasQueuedStates() && hero->GetCurrentState() == stoppedState && hero->GetMana() == 200,
+			"invalid position preserves the stopped hero state even when execution is called directly");
 		hero->DoStop();
 	}
 	CObj<NCore::IWorldBase> foreignOwner = PFWorld::CreatePFWorld();
@@ -394,8 +395,9 @@ static void QueuedCastControlLossB10(Checks& check, PFWorld* world)
 		for (int i = 0; i < 50; ++i) hero->Simulate(0.1f);
 		check(hero->GetMana() == 200 && (kind != 0 || hero->GetConsumable(0)->GetQuantity() == 2),
 			"pending casts cannot pay after player-control loss or minigame entry");
-		check(!hero->IsMoving() && !hero->HasQueuedStates() && !hero->GetCurrentState(),
-			"control loss releases the queued cast and its active movement child");
+		check(!hero->IsMoving() && !hero->HasQueuedStates() && hero->IsHoldingPosition()
+			&& dynamic_cast<const PFHeroHoldState*>(hero->GetCurrentState()),
+			"control loss releases the cast and movement child, leaving only original idle hold");
 		hero->RemoveFlag(flag); hero->DoStop();
 	}
 }

@@ -18,6 +18,7 @@ template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatisti
 #include "PFHero.h"
 #include "PFMaleHero.h"
 #include "PFBaseUnitStates.h"
+#include "PFHeroStates.h"
 #include "PFAbilityInstance.h"
 #include "PFBaseUnitEvent.h"
 #include "PFTalent.h"
@@ -168,6 +169,13 @@ bool PFBaseHero::Step(float dtInSeconds)
         RecalculateRedeemCost();
     }
   }
+	else if (!isolated && !GetCurrentState() && !HasQueuedStates()
+		&& !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK)
+		&& !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK))
+	{
+		// Ordinary idle heroes enter the original hold state before base-unit targeting.
+		OnIdle();
+	}
 
 	// Cached descriptor data survives item removal; shared stacks must tick only once.
 	for (auto& ability : rgConsumablesAbilities)
@@ -870,8 +878,20 @@ void PFBaseHero::OnGameFinished(const NDb::EFaction failedFaction)
 	PFCreature::OnGameFinished(failedFaction);
 }
 void PFBaseHero::SetHappy() {}
-void PFBaseHero::OnStopped() {}
-void PFBaseHero::OnTargetDropped() {}
+/** Player stop retains the original long reacquisition pause when no order owns the hero. */
+void PFBaseHero::OnStopped()
+{
+	PFCreature::OnStopped();
+	if (!IsDead() && !IsClone() && !GetCurrentState())
+		PushState(new PFHeroSuspendState(this, true));
+}
+/** Target loss uses the original escaping short pause, allowing later player orders to replace it. */
+void PFBaseHero::OnTargetDropped()
+{
+	PFCreature::OnTargetDropped();
+	if (!IsDead() && !IsClone())
+		PushState(new PFHeroSuspendState(this, false));
+}
 void PFBaseHero::NotifyMoving( bool teleported ) { (void)teleported; }
 void PFBaseHero::OnScrollReceived() {}
 void PFBaseHero::OnGlyphPickUp( const PFGlyph* pGlyph ) { (void)pGlyph; }
@@ -910,7 +930,14 @@ float PFBaseHero::GetCustomEnergyRegeneration() const
 {
 	return customEnergy && pDbHero && pDbHero->uniqueResource && customEnergyRegeneration ? customEnergyRegeneration->GetValue() : 0.f;
 }
-void PFBaseHero::OnIdle() {}
+/** Automatic hold owns in-range acquisition without moving an idle hero toward distant enemies. */
+void PFBaseHero::OnIdle()
+{
+	// Native completion keeps lifecycle ticks alive, but must not start another combat order.
+	if (!IsClone() && !IsHoldingPosition() && IsValid(GetWorld()) &&
+		GetWorld()->GetAIWorld() && !GetWorld()->GetAIWorld()->WasGameFinished())
+		PushState(new PFHeroHoldState(GetWorld(), this, false));
+}
 void PFBaseHero::OnAfterSuspend(bool isLongSuspend) { (void)isLongSuspend; }
 void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc )
 {

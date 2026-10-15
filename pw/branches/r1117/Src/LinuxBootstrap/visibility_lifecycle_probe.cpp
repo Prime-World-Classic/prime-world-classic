@@ -9,6 +9,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFBaseMovingUnit.h"
 #include "../PF_GameLogic/PFHero.h"
+#include "../PF_GameLogic/PFHeroStates.h"
 #include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFWorld.h"
@@ -810,6 +811,8 @@ static void AttackStateLifecycle(Checks& checks)
 		spawn.placement.pos.x = 28;
 		CObj<PFBaseHero> target = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Enemy, Enemy);
 		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET); target->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		// This fixture observes explicit-order retirement, not the subsequent automatic hold.
+		hero->AddFlag(NDb::UNITFLAG_FORBIDAUTOATTACK);
 		fixture.Tick();
 		hero->EnqueueState(new PFBaseUnitAttackState(fixture.world, hero.GetPtr(), target.GetPtr(), true, false, script, false, reason != 4), true);
 		hero->SetUnitSpeed(4); hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
@@ -820,6 +823,10 @@ static void AttackStateLifecycle(Checks& checks)
 		if (reason == 3) hero->AddFlag(NDb::UNITFLAG_FORBIDMOVE);
 		hero->Step(0.1f);
 		const bool survives = reason == 2 && script;
+		checks.Check(survives || !hero->GetCurrentTarget(), "invalid explicit attack target is dropped before suspend retirement");
+		// Target loss pushes the original short pause; attack leave may add the long stop pause.
+		for (int tick = 0; !survives && !hero->IsIdle() && tick < 20; ++tick)
+			hero->Step(.1f);
 		if (hero->IsIdle() == survives || (!survives && (hero->GetCurrentTarget() || hero->IsMoving())))
 			std::printf("Attack state context: reason=%d script=%d idle=%d moving=%d visible=%d forbidMove=%d\n",
 				reason, script, hero->IsIdle(), hero->IsMoving(), target->IsVisibleForFaction(Ally),

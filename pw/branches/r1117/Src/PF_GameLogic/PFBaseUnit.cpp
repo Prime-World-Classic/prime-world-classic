@@ -7,6 +7,7 @@
 #include "PFBaseAttackData.h"
 #include "PFBaseMovingUnit.h"
 #include "PFBaseUnit.h"
+#include "PFHeroStates.h"
 #include "PFBehaviour.h"
 #include "PFSummoned.h"
 #include "PFWorld.h"
@@ -221,7 +222,11 @@ void PFFsm::EnqueueState(CObj<IPFState> pState, bool flushQueue)
     stateQueue.insert(stateQueue.end(), pState);
 }
 
-bool PFFsm::IsIdle() const { return GetCurrentState() == 0; }
+/** Original passive hero hold remains idle for behavior and queued-order admission. */
+bool PFFsm::IsIdle() const
+{
+	return !GetCurrentState() || GetCurrentState()->GetTypeId() == PFHeroHoldState::typeId;
+}
 
 void PFFsm::PauseFSM(bool pause)
 {
@@ -1811,7 +1816,8 @@ bool PFBaseUnit::Step(float dtInSeconds)
 			dtInSeconds, 0.0f, !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDENERGYRESTORE));
   }
 
-  if (!IsDead() &&
+	// Heroes now own attack admission through their original hold/suspend/attack states.
+	if (!IsDead() && !IsHero() &&
       !GetCurrentState() && !HasQueuedStates() &&
       IsUnitValid(pCurrentTarget) &&
       pCurrentTarget != this &&
@@ -2842,8 +2848,9 @@ bool PFBaseUnit::IsPriorityTarget(const CPtr<PFBaseUnit>& pTarget) const
 void PFBaseUnit::RemoveLastAttackData() { lastAttack.Clear(); }
 void PFBaseUnit::RemoveLastHeroAttackData() { lastHeroAttack.Clear(); }
 void PFBaseUnit::OnBecameIdle() {}
-void PFBaseUnit::ForceIdle() { DropTarget(); OnBecameIdle(); }
-void PFBaseUnit::Idle() { ForceIdle(); }
+/** Original idle hooks affect client presentation only, never simulation target ownership. */
+void PFBaseUnit::ForceIdle() {}
+void PFBaseUnit::Idle() {}
 void PFBaseUnit::DumpInfo(NLogg::CChannelLogger&) const {}
 void PFBaseUnit::ForAllSummons(ISummonAction& action, NDb::SummonType type)
 {

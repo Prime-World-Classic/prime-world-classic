@@ -53,8 +53,10 @@ static void CombatMoveLifecycle(Checks& checks)
 	for (int i = 0; i < 3; ++i) hero->Step(0);
 	checks.Check(hero->GetCurrentTarget() == enemy.GetPtr(), "hero alert move also acquires its enemy");
 	enemy->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
-	for (int i = 0; i < 4; ++i) hero->Step(0);
-	checks.Check(hero->IsIdle() && !hero->IsMoving(), "hero alert move ends after its combat state finishes");
+	for (int i = 0; i < 20; ++i) hero->Step(.1f);
+	checks.Check(dynamic_cast<const PFHeroHoldState*>(hero->GetCurrentState()) && hero->IsHoldingPosition()
+		&& !hero->IsMoving() && !hero->GetCurrentTarget(),
+		"hero alert move retires combat and suspension before returning to stationary idle hold");
 }
 
 /** Building combat may briefly engage nearby enemies but never chase away from its order. */

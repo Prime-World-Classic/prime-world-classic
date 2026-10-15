@@ -586,8 +586,9 @@ void PFHeroSuspendState::OnEnter()
 {
 	if (IsOwnerSuitable())
 	{
-		const NDb::UnitTargetingParameters& params = pOwner->GetTargetingParams();
-		suspendTimeout = isSuspendLong ? params.longSuspendTimeout : params.sortSuspendTimeout;
+		// Orphan/partial native data has no AI defaults; retain the zero-duration initialization.
+		if (const NDb::UnitTargetingParameters* params = pOwner->GetTargetingParamsPtr())
+			suspendTimeout = isSuspendLong ? params->longSuspendTimeout : params->sortSuspendTimeout;
 	}
 }
 
