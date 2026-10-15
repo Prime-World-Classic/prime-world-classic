@@ -264,7 +264,7 @@ bool RenderData::InitBuffers(int vbSize)
   int ibSize = (vbSize / sizeof(Points)) * INDEX_COUNT_PER_QUAD * sizeof(unsigned int);
   pIndexBuffer = CreateIB( ibSize, RENDER_POOL_MANAGED );
   NI_VERIFY(pIndexBuffer, "Failed to create index buffer", return false;);
-  unsigned int* pIBData = LockIB( ::Get(pIndexBuffer), 0 );
+  unsigned int* pIBData = LockIB( ::Get(pIndexBuffer), LOCK_DEFAULT );
   int quadNum = 0;
   for( int i = 0, endI = ibSize / sizeof(unsigned int); i < endI; i+=6 )
   {
@@ -277,7 +277,7 @@ bool RenderData::InitBuffers(int vbSize)
       pIBData[i+5] = quadNum * 4 + 2;
       ++quadNum;
   }
-  pIndexBuffer->Unlock();
+  BackendUnlockBuffer(::Get(pIndexBuffer));
   return bRet;
 #endif // _SHIPPING
 }
@@ -367,14 +367,14 @@ void RenderData::PrepareData3D()
   if (vbSize == 0)
     return;
 
-  if( char *vbData = LockVB<char>(::Get(pVertexBuffer), D3DLOCK_DISCARD, vbSize) )
+  if( char *vbData = LockVB<char>(::Get(pVertexBuffer), LOCK_DISCARD, vbSize) )
   {
     PrepareVertexBuffer(points3D , Points);
     PrepareVertexBuffer(points3DZ, Points);
     PrepareVertexBuffer(lines3D  , UberLine);
     PrepareVertexBuffer(lines3DZ , UberLine);
 
-    pVertexBuffer->Unlock();
+    BackendUnlockBuffer(::Get(pVertexBuffer));
   }
 }
 
@@ -383,14 +383,14 @@ void RenderData::PrepareData3D()
 void RenderData::PrepareData2D()
 {
   if( int vbSize = GetMemoryUsed3D() + GetMemoryUsed2D() )
-    if( char *vbData = LockVB<char>(::Get(pVertexBuffer), D3DLOCK_DISCARD, vbSize) ) 
+    if( char *vbData = LockVB<char>(::Get(pVertexBuffer), LOCK_DISCARD, vbSize) ) 
     {
       vbData += GetMemoryUsed3D();
 
       PrepareVertexBuffer(points2D, Points);
       PrepareVertexBuffer(lines2D , UberLine);
 
-      pVertexBuffer->Unlock();
+      BackendUnlockBuffer(::Get(pVertexBuffer));
     }
 }
 

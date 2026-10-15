@@ -151,7 +151,7 @@ void ImmRenderer::RenderScreenQuad( const CTPoint<float> poly[4], const BasicPar
 	// prepare the mesh
 	IDirect3DVertexBuffer9* pVB = ::Get( pFullVB );
 	if( poly )
-		if( float* pData = LockVB<float>(::Get(pRectVB), D3DLOCK_DISCARD) )
+		if( float* pData = LockVB<float>(::Get(pRectVB), LOCK_DISCARD) )
     {
 		  *(pData++) = poly[0].x;
 		  *(pData++) = poly[0].y;
@@ -169,7 +169,7 @@ void ImmRenderer::RenderScreenQuad( const CTPoint<float> poly[4], const BasicPar
 		  *(pData++) = poly[3].y;
 		  *(pData++) = 1.0f;
 		  *(pData++) = 1.0f;
-		  pRectVB->Unlock();
+		  BackendUnlockBuffer( ::Get( pRectVB ) );
 		  pVB = ::Get( pRectVB );
 	  }
 

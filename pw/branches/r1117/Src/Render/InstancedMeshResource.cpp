@@ -184,20 +184,20 @@ void InstancedMeshGeometry::CreateBuffersHWI(char const *pVtxData, unsigned int 
   if(!pVB)
     UserMessage::ShowMessageAndTerminate(EXCEPTION_BREAKPOINT, "Can't allocate DX resources");
 
-  if( char *pBuff = LockVB<char>(Get(pVB), 0) )
+  if( char *pBuff = LockVB<char>(Get(pVB), LOCK_DEFAULT) )
 	{
 		memcpy(pBuff, pVtxData, originalVBSize);
-		pVB->Unlock();
+		BackendUnlockBuffer(Get(pVB));
 	}
 
 	// Create & fill index buffer
 	const UINT dataSize = numPrimitives * 3 * sizeof(UINT);
 	pIB = CreateIB(dataSize, RENDER_POOL_MANAGED);
 	{
-		if( UINT* const pBuff = LockIB(Get(pIB), 0) )
+		if( UINT* const pBuff = LockIB(Get(pIB), LOCK_DEFAULT) )
     {
 			memcpy(pBuff, pIdxData, dataSize);
-      pIB->Unlock();
+      BackendUnlockBuffer(Get(pIB));
 		}
 	}
 }

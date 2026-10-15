@@ -393,8 +393,8 @@ void StaticMesh::DoCalculateLighting(const SceneConstants& sceneConst, const DXV
   NI_ASSERT(stride * numVertices == desc.Size, "Invalid number of vertices");
   NI_ASSERT(stride >= sizeof(Vertex), "Vertex too small to hold required data");
 
-  unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), 0);
-  Render::Color *colors = LockVB<Render::Color>(Get(vb), 0);
+  unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), LOCK_DEFAULT);
+  Render::Color *colors = LockVB<Render::Color>(Get(vb), LOCK_DEFAULT);
 
   for (int i = 0; i < pMeshGeom->fragmentCount; ++i)
   {
@@ -452,8 +452,8 @@ void StaticMesh::DoCalculateLighting(const SceneConstants& sceneConst, const DXV
     }
   }
 
-  vb->Unlock();
-  pMeshGeom->primitives[0]->GetVertexBuffer()->Unlock();
+  BackendUnlockBuffer(Get(vb));
+  BackendUnlockBuffer(Get(pMeshGeom->primitives[0]->GetVertexBuffer()));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -494,9 +494,9 @@ void StaticMesh::AddGeometryCRC(Crc32Checksum &crc)
 
   D3DVERTEXBUFFER_DESC desc;
   pMeshGeom->primitives[0]->GetVertexBuffer()->GetDesc(&desc);
-  unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), 0);
+  unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), LOCK_DEFAULT);
   crc.Add(geovb, desc.Size);
-  pMeshGeom->primitives[0]->GetVertexBuffer()->Unlock();
+  BackendUnlockBuffer(Get(pMeshGeom->primitives[0]->GetVertexBuffer()));
 }
 
 }; // namespace Render

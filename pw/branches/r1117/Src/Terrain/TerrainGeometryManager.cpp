@@ -528,7 +528,7 @@ namespace Terrain
       TerrainElement* pElement = pOwner->GetElementManager().GetElement(id);
       if (pElement)
       {
-        TerrainElementStrideNew* pVertex = Render::LockVB<TerrainElementStrideNew>(Get(pElement->mesh.GetVertexBuffer()), D3DLOCK_READONLY);
+        TerrainElementStrideNew* pVertex = Render::LockVB<TerrainElementStrideNew>(Get(pElement->mesh.GetVertexBuffer()), Render::LOCK_READONLY);
         unsigned numVertices = pElement->mesh.GetDipDescriptor().numVertices;
         for (unsigned i = 0; i < numVertices; i++, pVertex++)
         {
@@ -591,7 +591,7 @@ namespace Terrain
       allFlags |= request.flags;
 
 			TerrainElement* pElement = pOwner->GetElementManager().GetElement(request.id);
-      request.pData = Render::LockVB<unsigned char>(Get(pElement->mesh.GetVertexBuffer()), 0);
+      request.pData = Render::LockVB<unsigned char>(Get(pElement->mesh.GetVertexBuffer()), Render::LOCK_DEFAULT);
 
 			const int id = request.id;
 			GeometryInformationContainer::iterator it = geometryInformations.find( id );
@@ -627,7 +627,7 @@ namespace Terrain
 
 			request.finished = true;
 
-			pElement->mesh.GetVertexBuffer()->Unlock();
+			Render::BackendUnlockBuffer(Get(pElement->mesh.GetVertexBuffer()));
 
       // notify about geometry modification
     }
@@ -1259,9 +1259,9 @@ namespace Terrain
         const Render::TerrainElementGeometryRaw& elementRawData = it->second;
         TerrainElementStrideNew* pSrc = (TerrainElementStrideNew*)elementRawData.vertexBuffer;
         TerrainElement* pElement = pOwner->GetElementManager().GetElement(id);
-        TerrainElementStrideNew* pDst = Render::LockVB<TerrainElementStrideNew>(Get(pElement->mesh.GetVertexBuffer()), 0);
+        TerrainElementStrideNew* pDst = Render::LockVB<TerrainElementStrideNew>(Get(pElement->mesh.GetVertexBuffer()), Render::LOCK_DEFAULT);
         memcpy(pDst, pSrc, elementRawData.vertexBufferSize);
-        pElement->mesh.GetVertexBuffer()->Unlock();
+        Render::BackendUnlockBuffer(Get(pElement->mesh.GetVertexBuffer()));
       }
     }
 

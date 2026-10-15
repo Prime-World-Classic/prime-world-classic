@@ -208,7 +208,7 @@ RoadGeometryBuilder::TerrainElementInfo& RoadGeometryBuilder::CollectInfo( Terra
   info.marks.SetSize(numVertices);
   info.marks.FillZero();
 
-  TerrainElementStrideNew const* pSourceVertices = Render::LockVB<TerrainElementStrideNew>(Get(pSourceVB), D3DLOCK_READONLY);
+  TerrainElementStrideNew const* pSourceVertices = Render::LockVB<TerrainElementStrideNew>(Get(pSourceVB), Render::LOCK_READONLY);
   NI_VERIFY(pSourceVertices, "Unable to lock TerrainElement vertices for reading", return info);
 
   //////////////////////////////////////////////////////////////////////////
@@ -219,7 +219,7 @@ RoadGeometryBuilder::TerrainElementInfo& RoadGeometryBuilder::CollectInfo( Terra
 
   ProjectVertices(pSourceVertices, numVertices, info.projected, info.marks);
 
-  pSourceVB->Unlock();
+  Render::BackendUnlockBuffer(Get(pSourceVB));
   // early cull for the entire terrain element
   if (info.marks.IsZeroFilled())
   {
@@ -234,13 +234,13 @@ RoadGeometryBuilder::TerrainElementInfo& RoadGeometryBuilder::CollectInfo( Terra
   // cull triangles that are entirely outside
   info.indices.clear();
   {
-    unsigned const* pSourceIndices = Render::LockIB(Get(pSourceIB), D3DLOCK_READONLY);
-    NI_VERIFY(pSourceIndices, "Unable to lock TerrainElement indices for reading", pSourceVB->Unlock(); return info);
+    unsigned const* pSourceIndices = Render::LockIB(Get(pSourceIB), Render::LOCK_READONLY);
+    NI_VERIFY(pSourceIndices, "Unable to lock TerrainElement indices for reading", Render::BackendUnlockBuffer(Get(pSourceVB)); return info);
 
     CullTriangles(pSourceIndices, numIndices, info.marks, info.projected, info.indices);
     NI_ASSERT(!info.indices.empty(), "No affected triangles found but this case is checked earlier with 'marks' array");
 
-    pSourceIB->Unlock();
+    Render::BackendUnlockBuffer(Get(pSourceIB));
   }
 
   // mark used vertices
@@ -281,7 +281,7 @@ void RoadGeometryBuilder::AddTerrainElement( Terrain::TerrainElement const* pEle
 
   DXVertexBufferRef pSourceVB = pElement->mesh.GetVertexBuffer();
   NI_VERIFY(Get(pSourceVB), "NULL vertex buffer in TerrainElement", return);
-  TerrainElementStrideNew const* pSourceVertices = Render::LockVB<TerrainElementStrideNew>(Get(pSourceVB), D3DLOCK_READONLY);
+  TerrainElementStrideNew const* pSourceVertices = Render::LockVB<TerrainElementStrideNew>(Get(pSourceVB), Render::LOCK_READONLY);
   NI_VERIFY(pSourceVertices, "Unable to lock TerrainElement vertices for reading", return);
 
   unsigned prevNumVertices = roadVertices.size();
@@ -300,7 +300,7 @@ void RoadGeometryBuilder::AddTerrainElement( Terrain::TerrainElement const* pEle
     NI_ASSERT(roadIndices.size() == (int)prevNumIndices + info.indices.size(), "Failed to add all indices correctly");
   }
 
-  pSourceVB->Unlock();
+  Render::BackendUnlockBuffer(Get(pSourceVB));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

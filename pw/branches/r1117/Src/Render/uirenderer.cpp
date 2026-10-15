@@ -736,7 +736,7 @@ void UIRenderer::Render( ERenderWhat::Enum what, const Render::Texture2DRef& pMa
 
   GetStatesManager()->SetStateDirect( D3DRS_CULLMODE, D3DCULL_NONE );
 
-	FillVB( Get(pVB), queue.quadCounter * sizeof(QuadStride), &queue.quadsQueue, D3DLOCK_DISCARD );
+	FillVB( Get(pVB), queue.quadCounter * sizeof(QuadStride), &queue.quadsQueue, LOCK_DISCARD );
 
 	GetRenderer()->SetPixelShaderConstantsVector4( PSHADER_LOCALCONST3, resolutionCoefs );
 	GetRenderer()->SetVertexShaderConstantsVector4( VSHADER_LOCALCONST3, resolutionCoefs );

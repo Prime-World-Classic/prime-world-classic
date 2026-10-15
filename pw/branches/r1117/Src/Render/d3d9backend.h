@@ -117,6 +117,14 @@ public:
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);
 
+  // --- запись в буферы ---
+  virtual HRESULT LockVertexBuffer(HBuffer vb, unsigned offset, unsigned size,
+                                   ERenderLockType mode, void** ppData);
+  virtual HRESULT UnlockVertexBuffer(HBuffer vb);
+  virtual HRESULT LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
+                                  ERenderLockType mode, void** ppData);
+  virtual HRESULT UnlockIndexBuffer(HBuffer ib);
+
   // --- поверхности ---
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);
   virtual HRESULT ColorFill(HSurface surface, unsigned colorRGBA);

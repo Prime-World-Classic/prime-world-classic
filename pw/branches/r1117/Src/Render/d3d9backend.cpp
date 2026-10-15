@@ -360,6 +360,32 @@ HRESULT D3D9Backend::CreateIndexBuffer(unsigned size, bool index32, EBackendPool
   return hr;
 }
 
+// Режим блокировки -> флаги D3D9: общая таблица ConvertRenderLockType()
+// (renderflagsconverter.cpp), та же, что для поверхностей.
+HRESULT D3D9Backend::LockVertexBuffer(HBuffer vb, unsigned offset, unsigned size,
+                                      ERenderLockType mode, void** ppData) {
+  if (!vb.p || !ppData) return D3DERR_INVALIDCALL;
+  return static_cast<IDirect3DVertexBuffer9*>(vb.p)->Lock(offset, size, ppData,
+                                                          ConvertRenderLockType(mode));
+}
+
+HRESULT D3D9Backend::UnlockVertexBuffer(HBuffer vb) {
+  if (!vb.p) return D3DERR_INVALIDCALL;
+  return static_cast<IDirect3DVertexBuffer9*>(vb.p)->Unlock();
+}
+
+HRESULT D3D9Backend::LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
+                                     ERenderLockType mode, void** ppData) {
+  if (!ib.p || !ppData) return D3DERR_INVALIDCALL;
+  return static_cast<IDirect3DIndexBuffer9*>(ib.p)->Lock(offset, size, ppData,
+                                                         ConvertRenderLockType(mode));
+}
+
+HRESULT D3D9Backend::UnlockIndexBuffer(HBuffer ib) {
+  if (!ib.p) return D3DERR_INVALIDCALL;
+  return static_cast<IDirect3DIndexBuffer9*>(ib.p)->Unlock();
+}
+
 HRESULT D3D9Backend::GetRenderTargetData(HSurface srcSurface, HSurface dstSurface) {
   return pDevice->GetRenderTargetData(static_cast<IDirect3DSurface9*>(srcSurface.p),
                                       static_cast<IDirect3DSurface9*>(dstSurface.p));

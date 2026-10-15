@@ -11,6 +11,7 @@
 //
 #include "renderwindow.h"        // Render::NativeWindow (окно вывода seam'а)
 #include "renderpixellayout.h"   // Render::EBackendPixelLayout (формат пикселя при readback)
+#include "locktype.h"            // Render::ERenderLockType (режим блокировки буфера)
 #include "renderprimitivetype.h"   // Render::ERenderPrimitiveType
 #include "vertexformatdescriptor.h"   // Render::VertexFormatDescriptor
 
@@ -252,6 +253,28 @@ public:
 
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) = 0;
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) = 0;
+
+  // --- запись в буферы ---
+  // Режим блокировки — намерение, а не флаг D3D9 (см. locktype.h):
+  //   LOCK_DEFAULT    - обычная запись (D3D9: 0)
+  //   LOCK_DISCARD    - прежнее содержимое не нужно, взять свежий диапазон
+  //                     (D3D9: D3DLOCK_DISCARD; Vulkan/DX12: шаг кольца
+  //                     записи за пределы того, что уже в полёте)
+  //   LOCK_NOOVERWRITE- дописать в текущий диапазон, не трогать то, что может
+  //                     читаться GPU (D3D9: D3DLOCK_NOOVERWRITE)
+  //   LOCK_READONLY   - чтение (D3D9: D3DLOCK_READONLY)
+  //   LOCK_NOSYSLOCK  - D3D9-подсказка, остальные бэкенды игнорируют
+  // size == 0 означает «весь буфер» — семантика D3D9; подменять её нулевым
+  // диапазоном нельзя по той же причине, что и NULL-прямоугольник у
+  // StretchRect (см. §2.8 «Пятый шаг»). Раздельно для VB и IB, потому что в
+  // D3D9 это разные COM-интерфейсы с разными слотами vtable для Lock/Unlock —
+  // кастом между ними не обойтись.
+  virtual HRESULT LockVertexBuffer(HBuffer vb, unsigned offset, unsigned size,
+                                   ERenderLockType mode, void** ppData) = 0;
+  virtual HRESULT UnlockVertexBuffer(HBuffer vb) = 0;
+  virtual HRESULT LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
+                                  ERenderLockType mode, void** ppData) = 0;
+  virtual HRESULT UnlockIndexBuffer(HBuffer ib) = 0;
 
   // --- поверхности ---
   // Фильтр при копировании прямоугольника: замер вызовов показал, что в клиенте

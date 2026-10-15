@@ -149,14 +149,14 @@ void MeshVertexColorsManager::SceneComponentVCStore(int componentIdx, StaticScen
       vb->GetDesc(&desc);
       int numVertices = desc.Size / sizeof(Render::Color);
 
-      Render::Color *colors = LockVB<Render::Color>(Get(vb), 0);
+      Render::Color *colors = LockVB<Render::Color>(Get(vb), Render::LOCK_DEFAULT);
 
       sc.colors0.resize(numVertices);
 
       for (int j = 0; j < numVertices; ++j)
         sc.colors0[j] = colors[j];
 
-      vb->Unlock();
+      BackendUnlockBuffer(Get(vb));
     }
 
     if (DXVertexBufferRef vb = comp->GetVertexColors()->pVB2)
@@ -165,14 +165,14 @@ void MeshVertexColorsManager::SceneComponentVCStore(int componentIdx, StaticScen
       vb->GetDesc(&desc);
       int numVertices = desc.Size / sizeof(Render::Color);
 
-      Render::Color *colors = LockVB<Render::Color>(Get(vb), 0);
+      Render::Color *colors = LockVB<Render::Color>(Get(vb), Render::LOCK_DEFAULT);
 
       sc.colors1.resize(numVertices);
 
       for (int j = 0; j < numVertices; ++j)
         sc.colors1[j] = colors[j];
 
-      vb->Unlock();
+      BackendUnlockBuffer(Get(vb));
     }
 
     // calculate CRC

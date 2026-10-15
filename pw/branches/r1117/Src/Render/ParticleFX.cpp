@@ -289,14 +289,14 @@ namespace {
       _result = CreateVB(4*sizeof(DWORD), RENDER_POOL_MANAGED);
       NI_VERIFY( _result, "Couldn't create Quad VB", return );
 
-      if( PDWORD const pData = LockVB<DWORD>(::Get(_result), 0) )
+      if( PDWORD const pData = LockVB<DWORD>(::Get(_result), LOCK_DEFAULT) )
       {
         pData[0] = 0x00010100;
         pData[1] = 0x00000101;
         pData[2] = 0x01000001;
         pData[3] = 0x01010000;
 
-        _result->Unlock();
+        BackendUnlockBuffer(Get(_result));
       }
       else
         _result.Attach(0);

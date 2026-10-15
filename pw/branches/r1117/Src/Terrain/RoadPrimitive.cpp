@@ -37,7 +37,7 @@ PatchMapping::PatchMapping(const Render::MeshGeometry *_pGeometry)
     const uint numVertices = vbDesc.Size / sizeof(Vertex);
 #endif // _DEBUG
 
-    if( Index* pInd = LockIB(Get(pIB), D3DLOCK_NOSYSLOCK) )
+    if( Index* pInd = LockIB(Get(pIB), LOCK_NOSYSLOCK) )
     {
       const DipDescriptor& desc = prim.GetDipDescriptor();
       uint step = UINT_MAX;
@@ -52,7 +52,7 @@ PatchMapping::PatchMapping(const Render::MeshGeometry *_pGeometry)
       Index* pIndices = pInd + desc.startIndex;
       const uint numIndices =  3 + step * (desc.primitiveCount - 1);
 
-      if( const Vertex* pVertices = LockVB<Vertex>(Get(pVB), D3DLOCK_READONLY) )
+      if( const Vertex* pVertices = LockVB<Vertex>(Get(pVB), LOCK_READONLY) )
       {
         const Index* const indEnd = pIndices + numIndices;
 #ifdef _DEBUG
@@ -67,7 +67,7 @@ PatchMapping::PatchMapping(const Render::MeshGeometry *_pGeometry)
                          pVertices[triangle[2]].position.AsVec2D();
           patchIDs.push_back( pGetter->GetScaledPatchID(center) ); 
         }
-        pVB->Unlock();
+        BackendUnlockBuffer(Get(pVB));
       }
 
       patchIDs.push_back(UINT_MAX); // make barrier - UINT_MAX should be invalid patch ID
@@ -78,7 +78,7 @@ PatchMapping::PatchMapping(const Render::MeshGeometry *_pGeometry)
       memcpy( Get(pTmp), pIndices, numIndices * sizeof(Index) );
       MergePatches( pIndices, Get(pTmp) );
 
-      pIB->Unlock();
+      BackendUnlockBuffer(Get(pIB));
     }
 
     Patch* currPatch = &patches[0];

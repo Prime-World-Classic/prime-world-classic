@@ -39,12 +39,12 @@ namespace
       pVDecl = Render::SmartRenderer::GetVertexFormatDeclaration( vf );
 
       WORD* pIndex;
-      if(pIB->Lock(0, 0, (void**)&pIndex, 0) == D3D_OK)
+      if(SUCCEEDED(Render::BackendLockBuffer(Get(pIB), 0, 0, Render::LOCK_DEFAULT, (void**)&pIndex)))
       {
         unsigned int n = TraceFXGeo::MAX_SEGMENTS * 2;
         for (unsigned int i = 0; i < 2 * n; i++)
           pIndex[i] = i % n;
-        pIB->Unlock();
+        Render::BackendUnlockBuffer(Get(pIB));
       }
     }
   };

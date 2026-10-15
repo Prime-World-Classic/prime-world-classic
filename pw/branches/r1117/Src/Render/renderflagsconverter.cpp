@@ -162,6 +162,7 @@ DWORD ConvertRenderLockType(ERenderLockType type)
 		case LOCK_DISCARD:		 return D3DLOCK_DISCARD;
 		case LOCK_NOOVERWRITE: return D3DLOCK_NOOVERWRITE;
 		case LOCK_READONLY: return D3DLOCK_READONLY;
+		case LOCK_NOSYSLOCK: return D3DLOCK_NOSYSLOCK;
 		case LOCK_DEFAULT:		 return 0;
 		default: NI_ALWAYS_ASSERT("Invalid ERenderLockType");
 		return 0;

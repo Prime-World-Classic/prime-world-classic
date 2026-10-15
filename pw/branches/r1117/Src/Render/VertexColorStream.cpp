@@ -28,13 +28,13 @@ void MeshVertexColors::InitializeBuffer(const MeshGeometry &mesh, bool fake)
       if (!vb)
         return false;
 
-      nival::uint32_t* pColors = LockVB<nival::uint32_t>(Get(vb), 0U);
+      nival::uint32_t* pColors = LockVB<nival::uint32_t>(Get(vb), LOCK_DEFAULT);
 
       NI_VERIFY(pColors != NULL, "Unable to lock vertex buffer when assigning vertex colors.", return false);
 
       nstl::fill_n(pColors, numVertices, (fake ? 0x01000000U : 0x01FFFFFFU));
 
-      vb->Unlock();
+      BackendUnlockBuffer(Get(vb));
 
       return true;
     }

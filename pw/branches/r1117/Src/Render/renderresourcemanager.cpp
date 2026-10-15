@@ -314,9 +314,9 @@ void SaveMeshGeometry( MeshGeometry const *pGeometry, Stream *pStream )
     DXVertexBufferRef vb = pGeometry->primitives[0]->GetVertexBuffer();
     D3DVERTEXBUFFER_DESC vbDesc;
     vb->GetDesc(&vbDesc);
-    void *pData = LockVB(Get(vb), D3DLOCK_READONLY);
+    void *pData = LockVB(Get(vb), LOCK_READONLY);
     pStream->Write(pData, vbDesc.Size);
-    vb->Unlock();
+    BackendUnlockBuffer(Get(vb));
   }
 
   ///////////////////////////////////////////////////
@@ -327,9 +327,9 @@ void SaveMeshGeometry( MeshGeometry const *pGeometry, Stream *pStream )
     DXIndexBufferRef ib = prim->GetIndexBuffer();
     D3DINDEXBUFFER_DESC ibDesc;
     ib->GetDesc(&ibDesc);
-    unsigned int *pData = LockIB(Get(ib), D3DLOCK_READONLY);
+    unsigned int *pData = LockIB(Get(ib), LOCK_READONLY);
     pStream->Write(pData, ibDesc.Size);
-    ib->Unlock();
+    BackendUnlockBuffer(Get(ib));
   }
 }
 //////////////////////////////////////////////////////////////////////////

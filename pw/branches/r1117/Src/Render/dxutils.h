@@ -5,6 +5,7 @@
 
 #include "DxIntrusivePtr.h"
 #include "Reallocate.h"
+#include "locktype.h"   // Render::ERenderLockType — режим блокировки буфера
 
 template<typename T>
 T* Get(T* &p)
@@ -120,12 +121,6 @@ class SharedD3DBufferST : protected _DynBuffer
   float minSizeScale;
   bool  isLocked;
 
-  enum LOCK_FLAGS
-  {
-    LOCKFLAGS_FLUSH  = D3DLOCK_DISCARD,
-    LOCKFLAGS_APPEND = D3DLOCK_NOOVERWRITE
-  };
-
   void Init() // Call this ONCE in constructor
   {
     ptr = 0; position = 0; timeStamp = 0;
@@ -197,7 +192,7 @@ public :
   {
     CheckForST();
     if(isLocked) {
-      (*this)->Unlock();
+      BackendUnlockBuffer(Get(*this));
       isLocked = false;
     }
   }
@@ -269,20 +264,31 @@ enum PoolType
 
 void GetD3DPoolAndUsagesParamaters(DWORD& usage, D3DPOOL& pool, PoolType poolType);
 
+// Блокировка буферов — за бэкендом (этап 2 плана NVRHI, §2.3): режим приходит
+// из locktype.h, механика (флаги D3D9, а на этапе 3 — кольцо записи и
+// догоняющие барьеры) у бэкенда. Раздельно для VB и IB: в D3D9 это разные
+// COM-интерфейсы, у Lock/Unlock разные слоты vtable, кастом не обойтись.
+INTERMODULE_EXPORT HRESULT BackendLockBuffer(IDirect3DVertexBuffer9* pBuff, unsigned offset, unsigned size,
+                                             ERenderLockType mode, void** ppData);
+INTERMODULE_EXPORT HRESULT BackendLockBuffer(IDirect3DIndexBuffer9* pBuff, unsigned offset, unsigned size,
+                                             ERenderLockType mode, void** ppData);
+INTERMODULE_EXPORT HRESULT BackendUnlockBuffer(IDirect3DVertexBuffer9* pBuff);
+INTERMODULE_EXPORT HRESULT BackendUnlockBuffer(IDirect3DIndexBuffer9* pBuff);
+
 DXVertexBufferRef CreateVB(int size, PoolType type, void const *pData = 0);
-void* LockVB(IDirect3DVertexBuffer9 *pBuff, unsigned int flags, int size = 0);
-void FillVB(IDirect3DVertexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags = 0);
+void* LockVB(IDirect3DVertexBuffer9 *pBuff, ERenderLockType mode, int size = 0);
+void FillVB(IDirect3DVertexBuffer9 *pBuff, int size, void const *pData, ERenderLockType lockFlags = LOCK_DEFAULT);
 
 template <typename T>
-T* LockVB(IDirect3DVertexBuffer9 *pBuff, unsigned int flags, int size = 0)
+T* LockVB(IDirect3DVertexBuffer9 *pBuff, ERenderLockType mode, int size = 0)
 {
-	return reinterpret_cast<T*>( LockVB(pBuff, flags, size) );
+	return reinterpret_cast<T*>( LockVB(pBuff, mode, size) );
 }
 
 DXIndexBufferRef CreateIB(int size, PoolType poolType, UINT const *pData = 0);
 DXIndexBufferRef CreateIB16(int size, PoolType poolType, WORD const *pData = 0);
-unsigned int* LockIB(IDirect3DIndexBuffer9 *pBuff, unsigned int flags, int size = 0);
-void FillIB(IDirect3DIndexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags);
+unsigned int* LockIB(IDirect3DIndexBuffer9 *pBuff, ERenderLockType mode, int size = 0);
+void FillIB(IDirect3DIndexBuffer9 *pBuff, int size, void const *pData, ERenderLockType lockFlags);
 
 int D3DFormatNumBits(D3DFORMAT format);
 

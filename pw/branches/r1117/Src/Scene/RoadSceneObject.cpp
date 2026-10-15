@@ -372,7 +372,7 @@ void RoadSceneObject::BuildAABB()
       pVB->GetDesc(&vbDesc);
       unsigned numVertices = vbDesc.Size / sizeof(RoadGeometryBuilder::RoadGeometryVertex);
 
-      RoadGeometryBuilder::RoadGeometryVertex const* pVertex = Render::LockVB<RoadGeometryBuilder::RoadGeometryVertex>(Get(pVB), D3DLOCK_READONLY);
+      RoadGeometryBuilder::RoadGeometryVertex const* pVertex = Render::LockVB<RoadGeometryBuilder::RoadGeometryVertex>(Get(pVB), Render::LOCK_READONLY);
       NI_VERIFY(pVertex, "Unable to lock road vertices for reading", return);
 
       for (unsigned j = 0; j < numVertices; ++j, ++pVertex)
@@ -380,7 +380,7 @@ void RoadSceneObject::BuildAABB()
         worldAABB.AddPoint(pVertex->position);
       }
 
-      pVB->Unlock();
+      Render::BackendUnlockBuffer(Get(pVB));
     }
   }
 }

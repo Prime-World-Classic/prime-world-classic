@@ -361,14 +361,14 @@ void ShadowMapESM_Base::FillSummedAreaMesh()
 
   needRefillSAMesh = false;
 
-  VertexStride* vertices = (VertexStride*) Render::LockVB( ::Get( pSummedAreaVB ), D3DLOCK_DISCARD );
+  VertexStride* vertices = (VertexStride*) Render::LockVB( ::Get( pSummedAreaVB ), Render::LOCK_DISCARD );
 
   vertices[ 0 ].x = -1.f; vertices[ 0 ].y = -1.f; 
   vertices[ 1 ].x = -1.f; vertices[ 1 ].y =  1.f; 
   vertices[ 2 ].x =  1.f; vertices[ 2 ].y = -1.f; 
   vertices[ 3 ].x =  1.f; vertices[ 3 ].y =  1.f; 
 
-  pSummedAreaVB->Unlock();
+  BackendUnlockBuffer( ::Get( pSummedAreaVB ) );
 }
 
 

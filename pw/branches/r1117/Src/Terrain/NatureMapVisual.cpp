@@ -252,7 +252,7 @@ void NatureMapVisual::FillRenderBuffers()
   if(pVertexBuffer)
   {
     // fill the vertex buffer
-    NatureMapVertex* pVertices = Render::LockVB<NatureMapVertex>(Get(pVertexBuffer), 0);
+    NatureMapVertex* pVertices = Render::LockVB<NatureMapVertex>(Get(pVertexBuffer), Render::LOCK_DEFAULT);
     NI_VERIFY(pVertices, "Unable to lock vertices", return);
     NatureMapVertex* pVertex = pVertices;
     float step = GetElementSize();
@@ -269,19 +269,19 @@ void NatureMapVisual::FillRenderBuffers()
       }
     }
 
-    pVertexBuffer->Unlock();
+    Render::BackendUnlockBuffer(Get(pVertexBuffer));
   }
 
   if( ::Get(pIndexBuffer) )
   {
-    unsigned* pIndices = Render::LockIB(Get(pIndexBuffer), D3DLOCK_DISCARD);
+    unsigned* pIndices = Render::LockIB(Get(pIndexBuffer), Render::LOCK_DISCARD);
     unsigned indices[Primitive::INDICES_PER_ELEMENT] = { 0, 5, 4, 0, 4, 1, 1, 4, 3, 1, 3, 2 };
     for(unsigned i = 0, vOffset = 0, iOffset = 0; i != Primitive::NUM_HEXES_SUPPORTED;
         ++i, vOffset += numHexVertices, iOffset += Primitive::INDICES_PER_ELEMENT)
       for(unsigned j = 0, endJ = Primitive::INDICES_PER_ELEMENT; j != endJ; ++j)
         pIndices[iOffset + j] = vOffset + indices[j];
 
-    pIndexBuffer->Unlock();
+    Render::BackendUnlockBuffer(Get(pIndexBuffer));
   }
 }
 

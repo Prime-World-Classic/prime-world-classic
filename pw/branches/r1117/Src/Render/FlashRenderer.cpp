@@ -349,8 +349,8 @@ void FlashRenderer::BeginQueue()
   numDIP = 0;
   numTargetSwitches = 0;
   batches[numBatches].Clear();
-  vertexBufferRaw = LockVB<FlashVertex>( Get( vertexBuffer ), D3DLOCK_DISCARD );
-  vertexBufferShapeRaw = LockVB<ShapeVertex>( Get( vertexBufferShape ), D3DLOCK_DISCARD );
+  vertexBufferRaw = LockVB<FlashVertex>( Get( vertexBuffer ), LOCK_DISCARD );
+  vertexBufferShapeRaw = LockVB<ShapeVertex>( Get( vertexBufferShape ), LOCK_DISCARD );
   isLocked = true;
   colorMatrixStack.clear();
 }
@@ -361,9 +361,9 @@ void FlashRenderer::EndQueue()
   NI_ASSERT( isLocked, "Buffer is not locked!" );
   isLocked = false;
 
-  vertexBuffer->Unlock();
+  BackendUnlockBuffer( Get( vertexBuffer ) );
   vertexBufferRaw = 0;
-  vertexBufferShape->Unlock();
+  BackendUnlockBuffer( Get( vertexBufferShape ) );
   vertexBufferShapeRaw = 0;
 }
 

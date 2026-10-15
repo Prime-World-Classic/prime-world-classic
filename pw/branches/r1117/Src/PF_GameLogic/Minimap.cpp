@@ -936,16 +936,16 @@ bool Minimap::BeginUpdate( float deltaTime )
 template <typename T>
 struct VertexBufferLock
 {
-  explicit VertexBufferLock(DXVertexBufferDynamicRef::Wrapped& vb, const unsigned flags = D3DLOCK_DISCARD, const int size = 0)
+  explicit VertexBufferLock(DXVertexBufferDynamicRef::Wrapped& vb, const Render::ERenderLockType mode = Render::LOCK_DISCARD, const int size = 0)
     : vb(vb)
     , data(0)
   {
-    data = Render::LockVB<T>(::Get(vb), flags, size);
+    data = Render::LockVB<T>(::Get(vb), mode, size);
   }
 
   ~VertexBufferLock()
   {
-    vb->Unlock();
+    Render::BackendUnlockBuffer(::Get(vb));
   }
 
   operator T*()

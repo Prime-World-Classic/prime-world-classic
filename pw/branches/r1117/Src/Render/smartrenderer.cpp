@@ -91,12 +91,12 @@ namespace SmartRenderer
       _result = CreateVB(MAX_INSTANCES_COUNT * sizeof(int), RENDER_POOL_MANAGED);
       NI_VERIFY( _result, "Couldn't create instance idx VB", return );
 
-      if( int * const pBuff = LockVB<int>(Get(_result), 0) )
+      if( int * const pBuff = LockVB<int>(Get(_result), LOCK_DEFAULT) )
       {
         for(size_t i = 0; i < MAX_INSTANCES_COUNT; i++)
           pBuff[i] = i;
 
-        _result->Unlock();
+        BackendUnlockBuffer(Get(_result));
       }
       else
         _result.Attach(0);
