@@ -727,11 +727,51 @@ void PFAIWorld::AwardKillers(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller)
   killerHero->OnKill(pVictim, pKiller.GetPtr() == killerHero);
 }
 
+namespace
+{
+/** Death callbacks may kill other units, but cannot rebroadcast the same in-flight victim. */
+struct LinuxDeathNotificationScope
+{
+	static thread_local std::vector<const PFBaseUnit*> active;
+	bool entered;
+	explicit LinuxDeathNotificationScope(const PFBaseUnit* victim)
+		: entered(active.size() < 128 && std::find(active.begin(), active.end(), victim) == active.end())
+	{
+		if (entered) active.push_back(victim);
+	}
+	~LinuxDeathNotificationScope() { if (entered) active.pop_back(); }
+};
+thread_local std::vector<const PFBaseUnit*> LinuxDeathNotificationScope::active;
+}
+
+/** Original hero-faction, victim, nonhero-killer event order with callback-stable recipients. */
 void PFAIWorld::SendUnitDieNotification(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller, PFBaseUnitDamageDesc const* pDamageDesc) const
 {
-  (void)pVictim;
-  (void)pKiller;
-  (void)pDamageDesc;
+	(void)pDamageDesc; // Script/statistics callbacks remain outside the native unit-event path.
+	if (!IsValid(pVictim) || !GetWorld() || pVictim->GetWorld() != GetWorld()
+		|| (IsValid(pKiller) && pKiller->GetWorld() != GetWorld())) return;
+	LinuxDeathNotificationScope scope(pVictim.GetPtr()); if (!scope.entered) return;
+	CObj<PFBaseUnit> victim(pVictim.GetPtr()), actual(IsValid(pKiller) ? pKiller.GetPtr() : nullptr);
+	CPtr<PFBaseUnit> qualified(actual.GetPtr());
+	GetKiller(pVictim, qualified);
+	CObj<PFBaseUnit> qualifiedHolder(IsValid(qualified) ? qualified.GetPtr() : nullptr);
+	struct Recipient { CObj<PFBaseHero> hero; NDb::EFaction faction; };
+	std::vector<Recipient> recipients;
+	auto collect = [&](PFBaseHero& hero) {
+		if (&hero != victim.GetPtr()) recipients.push_back({CObj<PFBaseHero>(&hero), hero.GetFaction()});
+	};
+	ForAllHeroes(collect, NDb::FACTION_FREEZE); ForAllHeroes(collect, NDb::FACTION_BURN);
+	const PFBaseUnitEventUnitDeath event(CPtr<PFBaseUnit>(victim.GetPtr()), CPtr<PFBaseUnit>(actual.GetPtr()),
+		CPtr<PFBaseUnit>(qualifiedHolder.GetPtr()));
+	for (const auto& recipient : recipients)
+	{
+		PFBaseHero* hero = recipient.hero.GetPtr();
+		if (IsValid(hero) && hero->GetWorld() == GetWorld() && !hero->IsObjectDead()
+			&& GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero
+			&& hero->GetFaction() == recipient.faction && hero->factionRingPart.isLinked()) hero->EventHappened(event);
+	}
+	if (IsValid(victim) && !victim->IsObjectDead()) victim->EventHappened(event);
+	if (IsValid(actual) && !actual->IsObjectDead() && !actual->IsTrueHero()) actual->EventHappened(event);
 }
 
 void PFAIWorld::LogNaftaIncome(CPtr<PFBaseHero> pKiller, CPtr<PFBaseUnit> pVictim, float nafta, float naftaSpec, float teamNafta) const
@@ -789,8 +829,20 @@ float PFAIWorld::GetHeroLevelDiffCoeff( int difference, bool useAlternateTable )
   return 1.0f;
 }
 
-void PFAIWorld::RegisterHero(PFBaseHero* pHero) { (void)pHero; }
-void PFAIWorld::UnregisterHero(PFBaseHero* pHero) { (void)pHero; }
+/** Faction rings own attached heroes; moving or removing membership cannot destroy an in-flight caller. */
+void PFAIWorld::RegisterHero(PFBaseHero* pHero)
+{
+	if (!IsValid(pHero) || pHero->GetWorld() != GetWorld() || pHero->IsObjectDead()) return;
+	CObj<PFBaseHero> holder(pHero);
+	PFBaseHero::FactionRing::safeRemove(pHero);
+	if (auto* ring = const_cast<PFBaseHero::FactionRing*>(GetRingByFaction(pHero->GetFaction()))) ring->addLast(pHero);
+}
+void PFAIWorld::UnregisterHero(PFBaseHero* pHero)
+{
+	if (!IsValid(pHero) || pHero->GetWorld() != GetWorld()) return;
+	CObj<PFBaseHero> holder(pHero);
+	PFBaseHero::FactionRing::safeRemove(pHero);
+}
 
 void PFAIWorld::GetLinuxRouteRegistryCounts( size_t* routeCount, size_t* levelCount, size_t* towerCount, size_t* buildingCount, size_t* spawnerCount, size_t* quarterDestroyedCount, size_t* borderCount ) const
 {

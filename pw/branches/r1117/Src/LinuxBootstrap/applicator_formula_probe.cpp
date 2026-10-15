@@ -1394,6 +1394,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "trigger_condition_b13_tests.inc"
 #include "trigger_composition_b13_tests.inc"
 #include "kill_attribution_b13_tests.inc"
+#include "death_events_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1574,6 +1575,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	TriggerGroupsB13(check, world);
 	TriggerCancellationB13(check, world);
 	KillAttributionB13(check);
+	HeroRegistryB13(check);
+	DeathEventsB13(check);
 	if (dataRoot && *dataRoot) TriggerCancellationAuthoredB13(check, world, dataRoot);
 	if (dataRoot && *dataRoot) TriggerConditionAuthoredB13(check, world, dataRoot);
 	if (dataRoot && *dataRoot) AbsorbShieldAuthoredB13(check, world, dataRoot);

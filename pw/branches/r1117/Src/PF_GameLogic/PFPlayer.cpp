@@ -66,6 +66,9 @@ PFPlayer::PFPlayer()
 
 void PFPlayer::AttachHero(PFBaseHero* pNewHero)
 {
+	if (pHero.GetPtr() == pNewHero) return;
+	CObj<PFBaseHero> previous(IsValid(pHero) ? pHero.GetPtr() : nullptr);
+	if (previous) previous->DetachFromPlayer();
   pHero = pNewHero;
 }
 
@@ -123,6 +126,8 @@ bool PFPlayer::Step(float dtInSeconds)
 
 void PFPlayer::OnDestroyContents()
 {
+	CObj<PFBaseHero> hero(IsValid(pHero) ? pHero.GetPtr() : nullptr);
+	if (hero && hero->GetPlayer().GetPtr() == this) hero->DetachFromPlayer();
   pHero = 0;
   behaviourTracker = 0;
   PF_Core::WorldObjectBase::OnDestroyContents();

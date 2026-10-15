@@ -93,30 +93,46 @@ void PFBaseHero::PlayAskSound( int id, NWorld::PFBaseHero const * pTarget, int a
 void PFBaseHero::OnDestroyContents() { consumables.clear(); clones.clear(); pStatistics = 0; pProfile = 0; PFCreature::OnDestroyContents(); }
 void PFBaseHero::Reset() { PFCreature::Reset(); }
 void PFBaseHero::ClientAttachToPlayer() {}
+/** Transfer both player links before publishing the hero in its new faction ring. */
 void PFBaseHero::AttachToPlayer(CPtr<PFPlayer> const& pNewPlayer)
 {
-  if (IsValid(pPlayer))
-    pPlayer->DetachHero();
+	if (pPlayer == pNewPlayer) return;
+	if (IsValid(pNewPlayer) && pNewPlayer->GetWorld() != GetWorld()) return;
+	CObj<PFBaseHero> holder(this);
+	CObj<PFPlayer> next(IsValid(pNewPlayer) ? pNewPlayer.GetPtr() : nullptr);
+	DetachFromPlayer();
 
-  pPlayer = pNewPlayer;
-  playerId = IsValid(pPlayer) ? pPlayer->GetPlayerID() : -1;
-  if (IsValid(pPlayer))
-  {
-    faction = NWorld::GetFaction(pPlayer);
-    if (!pPlayer->IsBot() && !g_zzSexSameAsGender)
-      playerGender = pPlayer->GetZZimaSex();
-    else
-      playerGender = PlayerGenderFromDbGender();
-    pPlayer->AttachHero(this);
-  }
-  else
-  {
-    playerGender = PlayerGenderFromDbGender();
-  }
+	pPlayer = next.GetPtr();
+	playerId = IsValid(pPlayer) ? pPlayer->GetPlayerID() : -1;
+	if (IsValid(pPlayer))
+	{
+		faction = NWorld::GetFaction(pPlayer);
+		if (!pPlayer->IsBot() && !g_zzSexSameAsGender)
+			playerGender = pPlayer->GetZZimaSex();
+		else
+			playerGender = PlayerGenderFromDbGender();
+		pPlayer->AttachHero(this);
+	}
+	else
+	{
+		faction = NDb::FACTION_NEUTRAL;
+		playerGender = PlayerGenderFromDbGender();
+	}
 
-  ClientAttachToPlayer();
+	ClientAttachToPlayer();
+	if (GetWorld() && GetWorld()->GetAIWorld()) GetWorld()->GetAIWorld()->RegisterHero(this);
 }
-void PFBaseHero::DetachFromPlayer() { pPlayer = 0; }
+/** Clear both player links even when its weak shell is already being destroyed. */
+void PFBaseHero::DetachFromPlayer()
+{
+	CObj<PFBaseHero> holder(this);
+	const bool attached = pPlayer.GetPtr() != nullptr;
+	if (IsValid(pPlayer) && pPlayer->GetHero() == this) pPlayer->DetachHero();
+	pPlayer = nullptr;
+	if (attached) { playerId = -1; faction = NDb::FACTION_NEUTRAL; }
+	playerGender = PlayerGenderFromDbGender();
+	if (GetWorld() && GetWorld()->GetAIWorld()) GetWorld()->GetAIWorld()->UnregisterHero(this);
+}
 bool PFBaseHero::UpdateClientColor() { return false; }
 int PFBaseHero::GetStatisticsUid() const { return IsValid(pPlayer) ? pPlayer->GetUserID() : 0; }
 void PFBaseHero::Initialize(InitData const& data)

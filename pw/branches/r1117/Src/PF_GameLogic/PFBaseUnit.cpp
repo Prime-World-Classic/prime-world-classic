@@ -2309,6 +2309,8 @@ void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamage
 
     if ((flags & UNITDIEFLAGS_UNSUMMON) == 0)
       aiWorld->SendUnitDieNotification(this, pKiller, pDamageDesc);
+    else
+      EventHappened(PFBaseUnitEventUnitDeath(this, nullptr, nullptr, true));
   }
 
   if (HasBehaviour())
