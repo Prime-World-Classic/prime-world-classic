@@ -49,7 +49,7 @@
 
 | # | шаг | почему здесь |
 |---|---|---|
-| 9 | инстансинг, шаг 2: `SV_InstanceID` вместо `int InstanceId : BLENDINDICES0`, лексема шва `SetInstanceSource` (сдвиг физического потока остаётся в клиентской части — `ParticleFX` биндит поток 1 через `BindVertexBufferRaw`) | меняет лексику шва и корпус: надо зафиксировать до бэкенда (§3.z п.5, §2.10) |
+| 9 | ✅ инстансинг, шаг 2 — закрыто 2026-10-15 (§2.10): лексика шва `kInstanceStream` (маркер потока данных экземпляра) + `SetInstanceSource(HBuffer, stride, offset)` + `SetInstanceCount`; сдвиг геометрийных потоков, VB-счётчик `0..N-1`, частоты потоков и инстансный вариант декларации — внутри `D3D9Backend`; в клиенте остались только `BindInstanceCounter`/`BindInstanceSource` | сделано до бэкенда (§3.z п.5): Vulkan-цели не нужны ни VB-счётчик, ни атрибут экземпляра в раскладке (`SV_InstanceID`); замер: раскладок на бой **15** (было бы ~30 с подменой деклараций), инстансных рисований 39/кадр |
 | 10 | динамические массивы из `c`-регистров → SSBO-форма + явные размеры неизвестных массивов: `BonesMatrices` 70×48, `instanceData` 19×160 (Decal/DecalTerrain 19×64), PFX `data` 47×80, `hexParams` 40×16, `position` 9×16, `Params` 18×16 — 13 единиц из 69; плюс динамическая индексация компоненты `float4` (`g_sharpCoef[i]` и др.) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); UBO падает до ~1 КБ, цена констант на рисование — с 1,72 МБ/кадр до ~1 КБ |
 | 11 | мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V + общий `sortId`/ключ) + драйвер компиляции DXC (`-spirv`, `-T vs_5_0`, `-Zpr`, `setEntryName`, shim SM3→SM6 из `tools/spirv_probe/shim.py`) | compile-only: рантайм не трогается, но без этого нечем кормить Vulkan; параллельно второй контейнер для `OnlineShaders/` (§3.z п.3, п.4) |
 | 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
@@ -879,6 +879,14 @@ Vec3TransformCoordArray`, `Vec2TransformNormalArray`), ~55 мест вызова
     DXVK может починить D3D9-референс на новом стенде. В продукт DXVK не идёт
     (этап 3 = собственный Vulkan через NVRHI); D3D9-регресс пока остаётся на
     tiny10.
+14. **Лексика инстансинга в seam — маркер потока, а не отдельный вызов**
+    (2026-10-15, шаг 9): вместо планировавшегося `SetInstanceSource` как
+    единственной ручки источник экземпляра задаётся маркером `kInstanceStream`
+    в описании раскладки и в `BindVertexBuffer`, а `SetInstanceSource` отвечает
+    только за данные. Основание: `ParticleFX` сам описывает per-instance
+    атрибуты и биндит их обычным `BindVertexBuffer(1, …)` — отдельный вызов
+    пришлось бы вставлять в каждый такой путь, маркер же приезжает вместе с
+    раскладкой и не создаёт второй источник истины. Числа и реализация — §2.10.
 
 ### 2.13 Скриншот: последние два D3DX-импорта в клиенте (2026-10-13)
 
@@ -1121,6 +1129,55 @@ D3D9-трюк `INDEXEDDATA|N` = «повторить тот же index buffer N 
 buffer) → форма `instanceData` становится зависящей от бэкенда; то же касается
 `PFX_MAX_INSTANCES 47` у партиклов. `MAX_INSTANCES_COUNT = 19` пока сохраняем
 (батчинг не меняется), лимит поднимаем позже отдельной задачей.
+
+**Шаг 9 закрыт (2026-10-15): сдвиг потоков и атрибут экземпляра ушли в
+бэкенд.** Лексика шва оказалась **маркером в описании раскладки**, а не отдельной
+функцией (`SetInstanceSource` как планировалось — теперь это имя несёт только
+источник данных):
+
+* `renderbackend.h:81` — `const unsigned kInstanceStream = 0xffffffffu;`
+  клиент называет этим потоки данных экземпляра в `VertexFormatDescriptor` и в
+  `BindVertexBuffer`; бэкенд сам решает, в какой физический слот их положить
+  (`D3D9Backend::kInstanceSlot = 1`, геометрийные потоки сдвигаются внутри
+  `SetStreamSource`). Маркер выбран вместо отдельного вызова потому, что
+  `ParticleFX` описывает per-instance атрибуты **сам** и биндит их через
+  обычный `BindVertexBuffer(1, …)`: отдельный вызов пришлось бы вставлять в
+  каждый такой путь, а маркер приезжает вместе с раскладкой;
+* `SetInstanceSource(HBuffer perInstanceData, unsigned stride, offset)` —
+  источник данных экземпляра: пустая ручка = встроенный счётчик `0..N-1`
+  (бэкенд сам строит VB и атрибут; на Vulkan это `SV_InstanceID`, VB не нужен),
+  непустая = per-instance данные клиента (партиклы). Порядок относительно
+  `SetInstanceCount` и биндингов геометрии не фиксирован: `D3D9Backend`
+  применяет состояние дельтой в `ApplyInstanceState()` перед каждым `Draw*`;
+* `CreateInstancedInputLayout` переименован в `CreateInputLayout(descr, out)`:
+  инстансный вариант — не отдельный запрос клиента, а свойство раскладки
+  (`kInstanceStream` в описании), кэш вариантов живёт в бэкенде
+  (`InstancedVariant` + `instancedDecls`, ключ `void*` — см. грабли ниже);
+* из клиента удалены `ApplyStates`, `lastStreamSourceFreqs`, `DeclMap`
+  подмены, `s_pInstanceIndexVB`/`s_instancedVDecl`, `BindInstanceVB` →
+  `BindInstanceCounter()` / `BindInstanceSource()` (`smartrenderer.h:65-66`).
+  Клиентский флаг `instancingEnabled` остался: он отвечает за соглашение о
+  раскладке (сдвиг в `BindVertexBuffer`, выбор инстансного варианта в
+  `BindVertexDeclaration`), а не за механизм устройства.
+
+Замер после правки (инструментальный билд, E2E tiny10, лог
+`2026.10.15-08.35.58`, бой):
+`PipeStats: semTotal=206 semFrame=85 rawTotal=210 rawFrame=85 drawsFrame=458
+drawsTotal=1916677 declTotal=15 declFrame=14 instDrawsFrame=39
+instDrawsTotal=165749`. Мощность ключа пайплайна **не изменилась** против шага 8
+(206 / 85 / +4): в ключе уже был бит инстансинга, поэтому слияние деклараций её
+не меняет — зато раскладок (входных layout'ов, которые надо создавать на Vulkan)
+стало **15 на бой, 14 в кадре** вместо ~двух вариантов на материал. Инстансный
+путь стендом покрывается реально: 39 инстансных рисований на кадр, 165 749 за
+сессию. `ConstStore`-строка не изменилась (VS 235 reg / 3760 B, PS 221 / 3536 B).
+
+Грабли правки: `nstl::hash` специализован только для `void*` (ключ `hash_map`
+для указателя на класс — `error C2079: uses undefined struct 'nstl::hash<_Key>'`);
+`IDirect3DDevice9::CreateVertexBuffer` в SDK 10.0.26100 — 6 аргументов (FVF
+обязателен, `0` для раскладки у декларации); `kInstanceStream` требует явного
+`#include "renderbackend.h"` в `InstancedMeshResource.cpp` и `ParticleFX.cpp`
+(они не видят seam через `smartrenderer.h`); VB-счётчик обязан быть **int**
+(`InstancedMeshResource` это и проверял — float-счётчик ломает вершины).
 
 ### 2.11 Стоимость итерации (2026-10-13)
 
@@ -2313,12 +2370,27 @@ D3D12, а не NVIDIA; 32 не повод разбрасывать сеты.
 невалидно (runtime array разрешён только в SSBO); при генерации такие массивы
 обязаны получить явный размер или уехать в SSBO (п.2).
 
-**5. Инстансинг, шаг 2** (§2.10): `SV_InstanceID` вместо
-`int InstanceId : BLENDINDICES0`; лексема шва `SetInstanceSource` решает, откуда
-берётся индекс (поток сдвигается только в клиентской части — `ParticleFX`
-привязывает физический поток 1 через `BindVertexBufferRaw`, сдвиг в
-`BindVertexBuffer` в бэкенд не переезжает); `instanceData` из `c`-регистров —
-в SSBO (п.2).
+**5. Инстансинг, шаг 2** (§2.10) — **закрыт 2026-10-15 (шаг 9 очереди)**:
+лексика шва — маркер `kInstanceStream` в описании раскладки и в
+`BindVertexBuffer` + `SetInstanceSource` (источник данных экземпляра: пустая
+ручка = встроенный счётчик бэкенда, непустая = данные клиента) +
+`SetInstanceCount`. Клиент больше не сдвигает потоки сам и не подменяет
+декларацию: `D3D9Backend` держит слот экземпляра (`kInstanceSlot = 1`), VB-
+счётчик и кэш инстансных вариантов декларации; `NvrhiBackend` от этого пути не
+нужно ничего, кроме `instanceCount` в `drawIndexedInstanced`. Осталось на шаге 10:
+`instanceData` из `c`-регистров → SSBO (п.2).
+
+Замер семантики для драйвера компиляции — `tools/sem_probe` (DXC, 10 режимов
+объявления индекса экземпляра, обе цели): `SV_InstanceID` **обязан быть `uint`**
+(`error: SV_InstanceID must be uint.` в DXBC-пути, при этом SPIR-V-путь с `int`
+компилируется молча — расхождение целей не видно на одной цели); макрос
+раскрывается и в позиции семантики, и во всём объявлении, и если объявление
+передаёт драйвер (`-D "INSTANCE_INDEX_DECL=uint inst : SV_InstanceID"`), т.е.
+один исходник на обе цели реализуем без генерации текста; выдуманная семантика
+(`V_SV_InstanceID`) компилируется как обычный вход потока — опечатку ловит только
+декодирование SPIR-V (там `uint inst : SV_InstanceID` → `BuiltIn InstanceIndex`);
+`-T vs_5_0` DXC поднимает до SM6 (`Promoting older shader model profile to 6.0
+version`) — настоящего SM5 DXBC этим компилятором нет, для SM5 нужен `fxc`.
 
 **6. Ориентация и Y.** NVRHI отдаёт viewport с отрицательной высотой →
 `frontCounterClockwise = true` во **всех** пайплайнах (замер B0: `b0cull`
@@ -3117,3 +3189,45 @@ D3D9-регресс остаётся на tiny10.
   D3DX-математика (`D3DXMatrix*`, `D3DXVec3*`, `D3DXSHEvalDirection` в
   `Scene/SHGridCalculator.cpp`) перенесена в этап 4: это зависимость от
   `d3dx9_43.dll`, а не утечка D3D9-устройства, этапу 2/3 она не мешает.
+
+### Сделано (шаг 9 очереди: сдвиг потоков и атрибут экземпляра уходят в бэкенд — 2026-10-15)
+
+Смысл: клиент перестаёт знать механизм инстансинга. В seam уходит лексика
+(«это поток данных экземпляра»), в бэкенд — реализация (частоты потоков D3D9,
+VB-счётчик `0..N-1`, инстансный вариант декларации). Реализация и обоснование
+выбора лексики — §2.10 («Шаг 9 закрыт»), семантика для драйвера компиляции —
+§3.z п.5 + `tools/sem_probe`.
+
+| файл | что |
+|---|---|
+| `Src/Render/renderbackend.h` | `kInstanceStream = 0xffffffffu` (маркер потока данных экземпляра), `SetInstanceCount(unsigned)`, `SetInstanceSource(HBuffer, stride, offset)`, `CreateInstancedInputLayout` → `CreateInputLayout(const VertexFormatDescriptor&, HInputLayout*)` |
+| `Src/Render/d3d9backend.{h,cpp}` | `kInstanceSlot = 1`; `ApplyInstanceState()` — дельта частот потоков + слот данных экземпляра перед каждым `Draw*`; `EnsureInstanceCounter(count)` — VB-счётчик (`int`, не float); `InstancedVariant(base)` + кэш `instancedDecls` (ключ `void*`); в `CreateInputLayout` — добавление атрибута `SHORT2/BLENDINDICES` и сдвиг потоков |
+| `Src/Render/smartrenderer.{h,cpp}` | `BindInstanceVB` → `BindInstanceCounter()` / `BindInstanceSource()`; `EnableHardwareInstancing`/`DisableHardwareInstancing` вызывают `SetInstanceCount`; удалены `ApplyStates`, `lastStreamSourceFreqs`, `DeclMap`-подмена; в `NotePipeline` — новые счётчики `declTotal/declFrame`, `instDrawsFrame/instDrawsTotal` |
+| `Src/Render/batch.cpp`, `InstancedMeshResource.cpp`, `ParticleFX.cpp` | потоки объявляются логически (`kInstanceStream`), сдвига в клиенте нет; `ParticleFX` биндит per-instance данные тем же `BindVertexBuffer`, что и геометрию |
+| `Src/Render/renderer.cpp` | после `Reset()`/`ClearDeviceResources` — `SetInstanceCount(0)` вместе с `InvalidateBoundState()` |
+| `tools/sem_probe/{sem_probe.hlsl, sem_probe.sh, README.md}` | проба семантики индекса экземпляра в DXBC и SPIR-V (10 режимов, см. §3.z п.5) |
+
+Гейты (все пройдены):
+
+* x64 Wine `./build_client_x64_wine.sh` — `ИТОГ: OK`, `build/PW_Game.exe`
+  **15 200 256 Б** (−1024 против 15 201 280 до правки), `check_exe.py` OK
+  (x64 PE32+, subsystem 2, Characteristics 0x0022, манифест id 1, 2.16.1.0).
+* x64 native на tiny10 (задача `PwNativeBuild`, `C:\pwbuild\native_build.log`):
+  `RC=0`, `C:\pwbuild\pwc\build\PW_Game.exe` 15 196 160 Б, `check_exe.py` OK.
+* E2E обычный билд, лог `2026.10.15-08.44.10`: login `Success(5) uid=131` →
+  lobby → `gs_svcid=gamesvc_00` → `Switch to EGameState::Finished by 3`,
+  asserts 0, `ConfigPins: … MaxVertexShaderConst=256 IsNullRef=0 caps=0x0
+  pins=0` дословно как эталон, сервер: `Game result delivered … attempts=0`.
+* E2E инструментальный билд (`-DPW_RENDER_SHADER_STATS`), лог
+  `2026.10.15-08.35.58`: числа выше (`semTotal=206`, `declTotal=15`,
+  `instDrawsTotal=165749`).
+* скриншот-гейт `tools/render_shot/shot_diff.py` против эталона
+  `tools/render_shot/refs/stage2-2026-10-15/pw_auto_bb_3000.png`: diff **4,64%**,
+  gross **0,40%** (внутри прогона bb_3000↔bb_3100 — 4,83% / 1,07%); грубые
+  пиксели кластером в колонках 11–12 / рядах 4–6 (анимированная сцена), полос
+  нет; кадр глазами корректен (база, герой, эффекты, UI, миникарта).
+
+Грабли прогона (в скиле `pw-client`): после `Switch to EGameState::Finished`
+процесс `PW_Game.exe` **продолжает жить**, поэтому `C:\tools\pw_exit.txt`
+протухает, а `move /y` поверх `PW_Game.exe` даёт «Access is denied» — перед
+деплоем нового бинарника нужен `taskkill /f /im PW_Game.exe`.
