@@ -50,11 +50,9 @@ static void SetupLinuxGlyphTileState(PFWorld* pWorld, NDb::GameObject const* gam
   pObject->SetObjectSizes(objectSize, objectTileSize, objectDynTileSize);
 }
 
-static int ResolveLinuxGlyphNumber(PFWorld* pWorld, const NDb::Glyph* pGlyphDesc)
+/** An authored override owns its index space even when its table is empty or malformed. */
+static const NDb::GlyphsDB* NativeGlyphTable(const PFWorld* pWorld)
 {
-  if (!pGlyphDesc)
-    return -1;
-
   const NDb::AdvMapSettings* mapSettings = 0;
   if (pWorld && pWorld->GetMapDescription())
   {
@@ -64,28 +62,25 @@ static int ResolveLinuxGlyphNumber(PFWorld* pWorld, const NDb::Glyph* pGlyphDesc
       mapSettings = pWorld->GetMapDescription()->map->mapSettings.GetPtr();
   }
 
-  if (mapSettings && IsValid(mapSettings->overrideGlyphSettings) && IsValid(mapSettings->overrideGlyphSettings->glyphs))
-  {
-    for (int i = 0; i < mapSettings->overrideGlyphSettings->glyphs->glyphs.size(); ++i)
-    {
-      if (mapSettings->overrideGlyphSettings->glyphs->glyphs[i].glyph &&
-          pGlyphDesc->GetDBID() == mapSettings->overrideGlyphSettings->glyphs->glyphs[i].glyph->GetDBID())
-        return i;
-    }
-  }
+	if (mapSettings && IsValid(mapSettings->overrideGlyphSettings))
+		return mapSettings->overrideGlyphSettings->glyphs.GetPtr();
+	const auto& root = NDb::SessionRoot::GetRoot();
+	return root && root->logicRoot ? root->logicRoot->glyphsDB.GetPtr() : nullptr;
+}
 
-  NDb::Ptr<NDb::SessionRoot> pRoot = NDb::SessionRoot::GetRoot();
-  if (pRoot && pRoot->logicRoot && pRoot->logicRoot->glyphsDB)
-  {
-    for (int i = 0; i < pRoot->logicRoot->glyphsDB->glyphs.size(); ++i)
-    {
-      if (pRoot->logicRoot->glyphsDB->glyphs[i].glyph &&
-          pGlyphDesc->GetDBID() == pRoot->logicRoot->glyphsDB->glyphs[i].glyph->GetDBID())
-        return i;
-    }
-  }
+const NDb::Glyph* ResolveNativeGlyph(const PFWorld* world, int number)
+{
+	const auto* table = NativeGlyphTable(world);
+	return table && number >= 0 && number < table->glyphs.size() ? table->glyphs[number].glyph.GetPtr() : nullptr;
+}
 
-  return -1;
+static int ResolveLinuxGlyphNumber(PFWorld* world, const NDb::Glyph* descriptor)
+{
+	const auto* table = NativeGlyphTable(world);
+	if (descriptor && table)
+		for (int i = 0; i < table->glyphs.size(); ++i)
+			if (table->glyphs[i].glyph && descriptor->GetDBID() == table->glyphs[i].glyph->GetDBID()) return i;
+	return -1;
 }
 
 PFGlyphSpawner::PFGlyphSpawner( const CPtr<PFWorld>& pWorld, const NDb::AdvMapObject &dbObject )

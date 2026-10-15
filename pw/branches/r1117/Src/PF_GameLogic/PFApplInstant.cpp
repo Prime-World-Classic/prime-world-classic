@@ -240,9 +240,10 @@ bool PFApplRefreshCooldown::Start()
   return true;
 }
 
+/** Preserve the original disabled/retired start result before producing nested spell effects. */
 bool PFApplSpell::Start()
 {
-  PFBaseApplicator::Start();
+	if (PFBaseApplicator::Start()) return true;
   numSpellsSent = SendSpell2Targets(this, GetDB().spell, GetDB().targetSelector);
   if (IsValid(pParent))
     pParent->OnNotification(*this, numSpellsSent > 0 ? NDb::PARENTNOTIFICATION_DONE : NDb::PARENTNOTIFICATION_CANCEL);

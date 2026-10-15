@@ -134,8 +134,19 @@ class PFApplAbilityUpgrade : public DBLinker<PFApplBuff, NDb::AbilityUpgradeAppl
   ZDATA_(DBLinker);
   int appliesCount;
   int maxCount;
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Retain the glyph selected at admission, independent of subsequent pickup callbacks. */
+	NDb::Ptr<NDb::Ability> nativeGlyph;
+#endif
 public:
+#if defined(PW_LINUX_NULL_RENDER)
+	ZEND int operator&(IBinSaver& f)
+	{
+		f.Add(1, (DBLinker*)this); f.Add(2, &appliesCount); f.Add(3, &maxCount); f.Add(4, &nativeGlyph); return 0;
+	}
+#else
   ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&appliesCount); f.Add(3,&maxCount); return 0; }
+#endif
 
   PFApplAbilityUpgrade(PFApplCreatePars const &cp) : Base(cp), appliesCount(0), maxCount(0) {}
   PFApplAbilityUpgrade() {/*NI_ALWAYS_ASSERT("Should be never invoked.");*/}

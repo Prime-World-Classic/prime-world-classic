@@ -19,6 +19,10 @@ namespace NWorld
 class PFBaseMaleHero;
 class PFGlyphsManager;
 class PFGlyph;
+#if defined(PW_LINUX_NULL_RENDER)
+/** Resolve a checked glyph index in the authoritative map override or session table. */
+const NDb::Glyph* ResolveNativeGlyph(const PFWorld* world, int number);
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 class PFGlyphSpawner : public PFWorldObjectBase

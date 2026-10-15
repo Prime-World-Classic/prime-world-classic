@@ -13,6 +13,7 @@
 #include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFBaseAttackData.h"
 #include "../PF_GameLogic/PFHero.h"
+#include "../PF_GameLogic/PFGlyph.h"
 #include "../PF_GameLogic/PFCreep.h"
 #include "../PF_GameLogic/PFCommonCreep.h"
 #include "../PF_GameLogic/CollisionResolver.h"
@@ -1409,6 +1410,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "preparedness_b13_tests.inc"
 #include "named_formula_b13_tests.inc"
 #include "named_cast_b13_tests.inc"
+#include "glyph_upgrade_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1621,6 +1623,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	DirectNamedFormulaB13(check);
 	CompletedUseDispatchB13(check);
 	AuthoredNamedCastB13(check, dataRoot);
+	GlyphUpgradeB13(check);
+	GlyphReleaseSpellGuardB13(check, world);
+	if (dataRoot && *dataRoot) AuthoredGlyphUpgradeB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

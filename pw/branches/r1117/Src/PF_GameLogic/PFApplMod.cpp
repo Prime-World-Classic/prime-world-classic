@@ -11,6 +11,7 @@
 #include "PFCreep.h"
 #include "PFDispatchFactory.h"
 #include "PFHero.h"
+#include "PFGlyph.h"
 #include "PFMaleHero.h"
 #include "PFNeutralCreep.h"
 #include "PFPredefinedUnitVariables.h"
@@ -21,6 +22,7 @@
 #include "libdb/ClonedPtr.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <cmath>
+#include <limits>
 #include <map>
 #include <set>
 #include <vector>
@@ -554,8 +556,21 @@ void PFApplAbilityMod::Reset()
   }
 }
 
+/** Validate and retain saved glyph identity before registering the original upgrade buff. */
 bool PFApplAbilityUpgrade::Start()
 {
+	if (GetDB().flags & NDb::ABILITYUPGRADEMODE_USEGLYPH)
+	{
+		const auto& parent = GetParentAppl();
+		const float number = IsValid(parent) ? parent->GetVariable("glyphNumber") : -1.f;
+		if (std::isfinite(number) && number >= 0.f && double(number) <= std::numeric_limits<int>::max()
+			&& std::trunc(number) == number)
+			nativeGlyph = ResolveNativeGlyph(GetWorld(), static_cast<int>(number));
+		if (!nativeGlyph)
+		{
+			PFBaseApplicator::Start(); SetEnabled(false); return true;
+		}
+	}
   maxCount = RetrieveParam(GetDB().applyCount, 0);
   return PFApplBuff::Start();
 }
@@ -613,32 +628,9 @@ void PFApplAbilityUpgrade::UpgradeAbilityApplicators(CPtr<PFAbilityData> const& 
 
   if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEGLYPH)
   {
-    PFBaseApplicator* const pParentApplicator = GetParentAppl();
     CPtr<PFBaseUnit> pAbilityOwner = GetAbilityOwner();
-    const int glyphNumber = pParentApplicator ? pParentApplicator->GetVariable("glyphNumber") : -1;
-
-    if (IsValid(pAbilityOwner) && glyphNumber >= 0)
-    {
-      NDb::Ptr<NDb::Ability> glyph;
-      PFWorld* const pWorld = GetWorld();
-      const NDb::AdvMapDescription* mapDescription = pWorld ? pWorld->GetMapDescription() : 0;
-      const NDb::AdvMapSettings* settings = 0;
-      if (mapDescription)
-        settings = IsValid(mapDescription->mapSettings) ? mapDescription->mapSettings.GetPtr() : (IsValid(mapDescription->map) ? mapDescription->map->mapSettings.GetPtr() : 0);
-
-      if (settings && IsValid(settings->overrideGlyphSettings) && glyphNumber < settings->overrideGlyphSettings->glyphs->glyphs.size())
-        glyph = settings->overrideGlyphSettings->glyphs->glyphs[glyphNumber].glyph;
-      else
-      {
-        NDb::Ptr<NDb::SessionRoot> pRoot = NDb::SessionRoot::GetRoot();
-        NDb::Ptr<NDb::GlyphsDB> pDBGlyphs = pRoot && pRoot->logicRoot ? pRoot->logicRoot->glyphsDB : 0;
-        if (pDBGlyphs && glyphNumber < pDBGlyphs->glyphs.size())
-          glyph = pDBGlyphs->glyphs[glyphNumber].glyph;
-      }
-
-      if (glyph)
-        pAbilityOwner->UseExternalAbility(glyph, Target(pAbilityOwner));
-    }
+		if (IsValid(pAbilityOwner) && nativeGlyph)
+			pAbilityOwner->UseExternalAbility(nativeGlyph, Target(pAbilityOwner));
   }
 
   if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_DONTUSEORIGINAL)
