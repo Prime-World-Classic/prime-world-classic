@@ -44,11 +44,13 @@ bool PFBaseUseState::IsBlocking() const
 	return !(db && db->isUnitFreeAfterCast ? pAbilityInstance->IsCastFinished() : pAbilityInstance->IsFinished());
 }
 bool PFBaseUseState::IsEjecting() const { return !(GetAbilityFlags() & NDb::ABILITYFLAGS_MOMENTARY); }
-/** Cancel work and approach, retaining instance metadata for momentary after-leave policy. */
+/** Release completed cast control without killing its native simulation-owned dispatch. */
 void PFBaseUseState::OnLeave()
 {
+	// Windows detaches launched dispatches; native instances retain them for unit-owned ticking.
+	const bool completed = IsCastFinished() && !IsBlocking();
 	Cleanup();
-	if (IsValid(pAbilityInstance)) pAbilityInstance->Cancel();
+	if (IsValid(pAbilityInstance) && !completed) pAbilityInstance->Cancel();
 }
 /** An authored alternative activity overrides the base ability's flags. */
 unsigned int PFBaseUseState::GetAbilityFlags() const

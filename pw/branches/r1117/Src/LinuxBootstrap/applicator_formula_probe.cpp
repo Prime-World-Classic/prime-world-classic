@@ -1408,6 +1408,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "recommended_stats_b13_tests.inc"
 #include "preparedness_b13_tests.inc"
 #include "named_formula_b13_tests.inc"
+#include "named_cast_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1617,6 +1618,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	if (dataRoot && *dataRoot) AuthoredPreparednessB13(check, dataRoot);
 	NamedFormulaB13(check);
 	AuthoredNamedFormulaB13(check, dataRoot);
+	DirectNamedFormulaB13(check);
+	CompletedUseDispatchB13(check);
+	AuthoredNamedCastB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

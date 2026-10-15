@@ -215,30 +215,48 @@ struct NamedFormulaQuery
 	bool receiver = false, equal = false;
 };
 
-/** Lower one FormulaBuilder applName(scope) macro with a closed identity or numeric suffix. */
+/** Lower a named macro or exact three-argument FindApplicator call with the same closed suffix. */
 bool BindNamedQuery(const std::string& source, std::size_t start, std::size_t& pos,
-	bool receiver, std::map<std::string, NamedFormulaQuery>& queries, std::string& result)
+	bool receiver, bool direct, std::map<std::string, NamedFormulaQuery>& queries, std::string& result)
 {
 	const auto nameChar = [](char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || (c >= '0' && c <= '9'); };
 	const auto space = [&]() { while (pos < source.size() && (source[pos] == ' ' || source[pos] == '\t' || source[pos] == '\r' || source[pos] == '\n')) ++pos; };
 	NamedFormulaQuery query;
 	query.receiver = receiver;
-	if (pos == source.size() || source[pos] < 'A' || source[pos] > 'Z') return false;
+	if (direct)
+	{
+		space(); if (pos == source.size() || source[pos++] != '(') return false;
+		space(); if (pos == source.size() || source[pos++] != '"') return false;
+	}
+	if (pos == source.size() || !nameChar(source[pos]) || (source[pos] >= '0' && source[pos] <= '9') ||
+		(!direct && (source[pos] < 'A' || source[pos] > 'Z'))) return false;
 	const std::size_t begin = pos;
 	while (pos < source.size() && nameChar(source[pos])) ++pos;
 	query.name = source.substr(begin, pos - begin);
-	if (pos == source.size() || source[pos++] != '(') return false;
-	bool scopeFound = false;
-	for (const auto& scope : {std::make_pair("GLOBAL)", GLOBAL), std::make_pair("UNIT)", UNIT),
-		std::make_pair("ABILITY)", ABILITY), std::make_pair("DISPATCH)", DISPATCH), std::make_pair("UNIT_AND_SUMMONS)", UNIT_AND_SUMMONS)})
+	if (direct)
 	{
-		const std::size_t length = std::strlen(scope.first);
-		if (source.compare(pos, length, scope.first) != 0) continue;
-		query.scope = scope.second; pos += length; scopeFound = true; break;
+		if (pos == source.size() || source[pos++] != '"') return false;
+		space(); if (pos == source.size() || source[pos++] != ',') return false;
+		space(); if (source.compare(pos, 5, "pMisc") != 0) return false;
+		pos += 5; space(); if (pos == source.size() || source[pos++] != ',') return false;
+		space();
+	}
+	else if (pos == source.size() || source[pos++] != '(') return false;
+	const std::size_t scopeBegin = pos;
+	while (pos < source.size() && nameChar(source[pos])) ++pos;
+	const std::string scopeName = source.substr(scopeBegin, pos - scopeBegin);
+	bool scopeFound = false;
+	for (const auto& scope : {std::make_pair("GLOBAL", GLOBAL), std::make_pair("UNIT", UNIT),
+		std::make_pair("ABILITY", ABILITY), std::make_pair("DISPATCH", DISPATCH), std::make_pair("UNIT_AND_SUMMONS", UNIT_AND_SUMMONS)})
+	{
+		if (scopeName != scope.first) continue;
+		query.scope = scope.second; scopeFound = true; break;
 	}
 	if (!scopeFound) return false;
+	if (direct) space();
+	if (pos == source.size() || source[pos++] != ')') return false;
 	space();
-	const std::string getter = ".GetVariable";
+	const std::string getter = direct ? "->GetVariable" : ".GetVariable";
 	if (source.compare(pos, getter.size(), getter) == 0)
 	{
 		pos += getter.size(); space();
@@ -347,11 +365,18 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		else if (name == "sender" || name == "receiver" || name == "pFirst" || name == "pSecond")
 		{
 			const bool pointer = name == "pFirst" || name == "pSecond";
+			const std::string find = std::string(pointer ? "->" : ".") + "FindApplicator";
+			if (source.compare(pos, find.size(), find) == 0)
+			{
+				pos += find.size();
+				if (!BindNamedQuery(source, start, pos, name == "receiver" || name == "pSecond", true, queries, result)) return false;
+				continue;
+			}
 			const std::string named = std::string(pointer ? "->" : ".") + "appl";
 			if (source.compare(pos, named.size(), named) == 0)
 			{
 				pos += named.size();
-				if (!BindNamedQuery(source, start, pos, name == "receiver" || name == "pSecond", queries, result)) return false;
+				if (!BindNamedQuery(source, start, pos, name == "receiver" || name == "pSecond", false, queries, result)) return false;
 				continue;
 			}
 			const std::string recommendation = std::string(pointer ? "->" : ".") + "IsRecommended";

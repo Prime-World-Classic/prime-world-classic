@@ -43,6 +43,11 @@ namespace LinuxBootstrap
  * wrappers remain unsupported. Getter results must be finite; lazy context checks
  * and staged RNG remain intact. At most 64 evaluation-local query descriptors are
  * accepted, with ASCII identifier literals and no escapes or concatenation.
+ * Exact sender/receiver.FindApplicator("Name", pMisc, SCOPE) and corresponding
+ * pFirst/pSecond-> calls share the same binding, including ->GetVariable suffixes.
+ * Direct names are case-sensitive nonempty ASCII identifiers; argument whitespace
+ * is accepted, but indices, alternate miscellaneous expressions and arbitrary
+ * string syntax are not. No second registry, lookup policy or pointer API is added.
  * mScale/mParentScale and exact pMisc->/appl. getter spellings read original
  * miscellaneous scale values. mObjectParent->...->GetScale() and equivalent
  * GetObjectParent() calls allow at most 16 explicit parent hops. Original root
