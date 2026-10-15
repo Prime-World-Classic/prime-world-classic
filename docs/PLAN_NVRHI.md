@@ -4344,9 +4344,11 @@ SM3-слоя (правка касается только SPIR-V).
 
 Не закрыто (очередь шага 13, по актуальному списку заглушек — 6: `DrawIndexedUP`,
 `DrawUP`, `GetRenderTargetData`, `ColorFill`, `StretchRect`, `GetRenderTarget`):
-(1) **перевести вызовы клиента** с COM на `LockTexture2D/UnlockTexture2D`
-(`texture.cpp`, `rendersurface.cpp`, `ReadDDS.cpp`) — иначе реальный клиент текстуры
-в Vulkan не получит, тестовый путь их не заменит; (2) mip'ы и `usageAutoGenMipmap`;
+(1) **перевести вызовы клиента** с COM на `LockTexture2D/UnlockTexture2D` —
+**закрыто шагом 13.2** (остатки COM перечислены в секции 13.2: учёт ресурсов
+`DxResourcesControl`, заполнение mip'ов в `TextureManager` при загрузке DDS,
+`Texture2D::GetSurface`); (2) mip'ы и `usageAutoGenMipmap` — **закрыто 13.2**
+(`GenerateMipmaps` в обоих бэкендах, ветка `IsRunnedUnderWine` из `texture.h` убрана);
 (3) состояние сэмплера в seam (`GetSamplerShadowHash` из шага 8) — сейчас везде
 линейный/wrap; (4) SSBO в наборе 1 (per-instance данные: seam несёт их как вершинный
 буфер, SPIR-V ждёт `StructuredBuffer`); (5) `DrawUP/DrawIndexedUP` (PostFX) и
