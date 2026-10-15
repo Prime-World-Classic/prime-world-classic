@@ -74,6 +74,8 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   data.playerId = info.playerId;
   data.pObjectDesc = info.pHero;
   Initialize(data);
+	// Match original identity before a player is attached, including authored female heroes.
+	playerGender = PlayerGenderFromDbGender();
   pProfile = new PFBetweenSessionsData(pWorld);
 	consumables.resize(32);
 	// Ordinary heroes own the behavior consumed by unit target/damage dispatch.

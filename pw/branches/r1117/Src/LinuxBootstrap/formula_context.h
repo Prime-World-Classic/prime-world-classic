@@ -16,6 +16,9 @@ namespace LinuxBootstrap
  * with sender faction, including neutral equality, without a fresh grid query.
  * UnitKind and Fctn bind the integer engine enums. ut_bldg/ut_hero use the receiver's
  * original UnitCheck and float-argument SwitchByBool, including eager arguments.
+ * ZZimaSex uses the original integer player-sex getter, including undefined for
+ * nonheroes and authored gender for unattached heroes/bots. Exact ZZSEX_UNDEFINED,
+ * ZZSEX_MALE and ZZSEX_FEMALE constants do not require unit context.
  * sender.vName and receiver.vName bind live GetVariable values; Name follows
  * FormulaBuilder's [A-Z][A-Za-z_0-9]* rule. Missing variables retain the engine's
  * zero default without creating a variable. No general member/string API is exposed.

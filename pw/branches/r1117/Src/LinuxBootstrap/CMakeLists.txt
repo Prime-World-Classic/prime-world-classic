@@ -1004,7 +1004,8 @@ add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-gri
 add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 add_test(NAME LinuxApplicatorFormula COMMAND PrimeWorldLinuxClient --bootstrap-applicator-formula-probe
 	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
-set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 30)
+# This full-engine suite includes authored item lifetimes and exceeds 30 seconds in serial runs.
+set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")

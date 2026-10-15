@@ -20,6 +20,7 @@ namespace
  * This fixed whitelist covers pools/maxima, direct combat/movement stats,
  * regeneration/drain/evasion/critical multiplier and their corresponding base values.
  * BaseAttack is a modified stat; BaseBaseAttack is its unmodified counterpart.
+ * ZZimaSex retains its integer getter and original player-versus-hero semantics.
  * Derived getters are explicitly listed; other economy, object and boolean
  * properties are not inferred. Combat accessors below have a separate whitelist.
  */
@@ -27,9 +28,11 @@ struct UnitNumericProperty
 {
 	const char* name;
 	float (IUnitFormulaPars::*getter)() const;
+	int (IUnitFormulaPars::*integerGetter)() const = nullptr;
 };
 
 constexpr UnitNumericProperty unitNumericProperties[] = {
+	{"ZZimaSex", nullptr, &IUnitFormulaPars::GetZZimaSex},
 	{"Life", &IUnitFormulaPars::GetLife},
 	{"Energy", &IUnitFormulaPars::GetEnergy},
 	{"MaxLife", &IUnitFormulaPars::GetMaxLife},
@@ -504,6 +507,9 @@ struct Context
 		if (name == "TERR_N") { value = TERR_N; return true; }
 		if (name == "TERR_A") { value = TERR_A; return true; }
 		if (name == "TERR_B") { value = TERR_B; return true; }
+		if (name == "ZZSEX_UNDEFINED") { value = ZZSEX_UNDEFINED; return true; }
+		if (name == "ZZSEX_MALE") { value = ZZSEX_MALE; return true; }
+		if (name == "ZZSEX_FEMALE") { value = ZZSEX_FEMALE; return true; }
 		if (name == "__combat_damageDealed" || name == "__combat_isAutoAttack")
 		{
 			if (!applicator) return false;
@@ -555,7 +561,7 @@ struct Context
 		for (const auto& binding : unitNumericProperties)
 			if (property == binding.name)
 			{
-				value = (unit->*binding.getter)();
+				value = binding.integerGetter ? (unit->*binding.integerGetter)() : (unit->*binding.getter)();
 				return true;
 			}
 		return false;
