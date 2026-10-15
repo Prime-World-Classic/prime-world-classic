@@ -51,7 +51,7 @@
 |---|---|---|
 | 9 | ✅ инстансинг, шаг 2 — закрыто 2026-10-15 (§2.10): лексика шва `kInstanceStream` (маркер потока данных экземпляра) + `SetInstanceSource(HBuffer, stride, offset)` + `SetInstanceCount`; сдвиг геометрийных потоков, VB-счётчик `0..N-1`, частоты потоков и инстансный вариант декларации — внутри `D3D9Backend`; в клиенте остались только `BindInstanceCounter`/`BindInstanceSource` | сделано до бэкенда (§3.z п.5): Vulkan-цели не нужны ни VB-счётчик, ни атрибут экземпляра в раскладке (`SV_InstanceID`); замер: раскладок на бой **15** (было бы ~30 с подменой деклараций), инстансных рисований 39/кадр |
 | 10 | ✅ динамические массивы из `c`-регистров → SSBO-форма — закрыто 2026-10-15 (§3.z п.2): макрос `PW_MODERN_ARRAYS` в 11 `.hlsl` (`StructuredBuffer<T>` вместо `T name[count] : register(...)`), развёртка циклов с постоянным пределом — только под макрос; SM3-путь побайтово не изменился (32/32 единицы, `tools/hlsl_sm3_check`) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); замер: единиц с неконстантной индексацией членов UBO **13 → 0**, байт UBO макс **7040 → 796**, среднее **811,0 → 358,0**, различных `(set,binding)` 9 → 10 (max binding 8 → 9) |
-| 11 | мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V + общий `sortId`/ключ) + драйвер компиляции DXC (`-spirv`, `-T vs_5_0`, `-Zpr`, `setEntryName`, shim SM3→SM6 из `tools/spirv_probe/shim.py`) | compile-only: рантайм не трогается, но без этого нечем кормить Vulkan; параллельно второй контейнер для `OnlineShaders/` (§3.z п.3, п.4) |
+| 11 | мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V + общий `sortId`/ключ) + драйвер компиляции DXC (`-spirv`, `-T vs_5_0`, `-Zpr`, `setEntryName`, shim SM3→SM6 из `tools/spirv_probe/shim.py`) — **подготовлено 2026-10-15 (шаг 11.0, §6): паритет генератора 34/35, список живых индексов снят (58 пар / 48 816)** | compile-only: рантайм не трогается, но без этого нечем кормить Vulkan; параллельно второй контейнер для `OnlineShaders/` (§3.z п.3, п.4) |
 | 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
 | 13 | перевод проходов на NVRHI по work-list'у ключей (206 на бой, 85 активных) + кэш пайплайнов (открытая таблица без LRU, компиляция синхронная) | объём и порядок работ зафиксированы замером §1.4; метрика прогресса — доля DIP'ов, идущих через новый путь |
 | 14 | портирование 34 блобов `OnlineShaders/` через дизассемблирование SM3; 10 мёртвых удалить сразу (§2.15 п.12) | без них этап 4 (удаление D3D9) недостижим; порядок: `default_shader`/`VertexShader` → `ShadowPass*`/`SA*` → остальное |
@@ -2494,6 +2494,78 @@ feature: SM1 cast from bool to integer` на `AOEMaterial` (замер 2026-10-1
 промахе; промах не должен ронять рендер — это тот же код, что обрабатывает
 отсутствующий шейдер сегодня.
 
+***Формат `.shd`: что есть сейчас (снято с кода 2026-10-15).*** Писатель —
+`Src/ShaderCompiler/ShaderCompiler.cpp:591` (`shaderCount =
+shader.GetTotalCount()`) + `UberShaderDesc.cpp`; макет:
+`{ uint32 shadersCount, [ {uint32 vsOffset, uint32 psOffset} × count ], блобы }`.
+Читатель — `Src/Render/multishader.cpp:38-60`: `shadersCount = *(unsigned*)pBegin`,
+таблица копируется в выровненный блок, смещения **абсолютные от начала файла**
+(в `:80` `unsigned char* pBegin = (unsigned char*)pInfo - 4;`). Шейдеры
+создаются лениво — на первом обращении `GetShaderPairByIndex(index)`
+(`multishader.cpp:69-90`), при промахе по индексу возвращается
+`defaultShaderPair` (`:24-31`, `:72`). Индекс пары = `Σ pinValue ×
+pinMultiplier`: генерируется в `Src/Render/MaterialSpec.h:213`
+(`GetShaderIndex() { return staticShaderIndex + GetDynamicShaderIndex(); }`,
+пример `:200` `1 * GetRuntimePins().DoDepthOutValue`; ручной пример —
+`DebugMaterial.h:55` `1 * DebugPinValue + 3 * SkeletalMeshPinValue`).
+Обратное преобразование (индекс → значения пинов) в генераторе УЖЕ есть —
+`ShaderCompiler.cpp:186-201`:
+```cpp
+int currentPinValue = idx;
+for (int i = totalPinsCnt - 1; i > -1; --i) {
+  int temp = currentPinValue / curPin.pinMultiplier;   // значение пина
+  currentPinValue = currentPinValue % curPin.pinMultiplier;
+}
+```
+и `GetTotalCount() = pins.back().maxPinValue * pins.back().pinMultiplier`
+(`UberShaderDesc.cpp:25-29`).
+
+***Проект `.shd` v2 (для шага 11).*** Семантика индекса НЕ меняется
+(`GetShaderIndex()`/`BindShader` не трогаются), меняется заголовок:
+```c
+{ uint32 magic 'SHD2', uint32 version,
+  uint32 pinsCount,   { uint16 maxPinValue, uint16 pinMultiplier } × pinsCount,
+  uint32 targetsCount,{ uint32 targetTag,   uint32 tableOffset }      × targetsCount,
+  uint32 shadersCount,
+  для каждой цели: [ {uint32 vsOffset, uint32 psOffset} × shadersCount ] }
+```
+* `targetTag`: 0 = SM3 DXBC (D3D9), 1 = DXBC SM5 (DX12), 2 = SPIR-V (Vulkan);
+  цель выбирает `MultiShader::OpenFile` по типу бэкенда (п.1-2 §3.z), а не
+  dev-var'ом — второго источника истины быть не должно;
+* плотная таблица сохраняется, **отсутствующая комбинация = offset 0**
+  (0 никогда не валидное смещение: заголовок занимает начало файла) — это и
+  есть «живой» бюджет пинов без смены индексации;
+* таблица пинов в заголовке нужна только для рантайм-фолбэка: по ней клиент
+  декодирует индекс в `D3D_SHADER_MACRO`-определения (тот же код, что
+  `ShaderCompiler.cpp:186-201`) и компилирует `Shaders/<материал>.hlsl`
+  DXC'ом. Исходники надо класть в контент: 49 `.hlsl` + `GlobalMasks.h` =
+  **272 КБ** на весь корпус — копейки против 3,1 МБ текущих `.shd`;
+* обратная совместимость: нет магии → читать как старый заголовок (SM3-only),
+  чтобы старый контент пережил выкатку;
+* промах фолбэка (нет исходника/ошибка компиляции) → `defaultShaderPair`,
+  счётчик через `DebugVar` (по образцу `render_TranslationCount`,
+  `multishader.cpp:12`), молча — не ронять рендер.
+
+**Шаг 11.0 (перед кодом): снять список живых индексов.** Нужен входной набор
+для генератора: dev-var `dump_shader_index` печатает пары
+(`multiShaderIndex` = имя материала, `shaderIndex`) по всем
+`GetShaderPairByIndex`/`BindShader` за прогон; прогоны — E2E-бой + несколько
+локаций/режимов. Ориентир по объёму уже есть: 185 различных пар VS/PS на бой
+(§1.4) ⇒ SPIR-V-набор ≈ 185 пар × 1–3 КБ ≈ 0,2–0,6 МБ на весь контент против
+3,1 МБ SM3-блобов.
+
+**Порядок реализации шага 11 (принят 2026-10-15).** SM3-слой НЕ перегенерируется:
+он уже лежит в `Data/Shaders/UberShaders/*.shd` и доказан побайтовым паритетом
+тула, поэтому v2 собирается **из существующего `.shd`** (таблица + блобы SM3
+переносятся как есть) плюс SPIR-V для живых индексов. Писатель v2 — Python
+(`tools/shader_build/`), а не C++: DXC нативный, прослойка SM3→SM6 (`shim.py`)
+уже на Python, итерировать формат быстрее, чем в `Src/ShaderCompiler`. Тул
+`ShaderCompiler.exe` остаётся производителем SM3 (для случаев, когда контент
+пересобирается целиком) и не меняется. Клиентская часть — читатель v2 в
+`Src/Render/multishader.cpp` (выбор цели по бэкенду, offset 0 → DXC в рантайме).
+Решение не трогать `Src/ShaderCompiler` пересматривается, если понадобится
+собирать SPIR-V внутри Windows-сборки (тогда нужен `dxcompiler.dll`).
+
 **4. Драйвер компиляции.** DXC — единый компилятор двух целей (`-spirv` и
 `-T vs_5_0`); обязательные флаги из спайков: `-Zpr` (row-major, иначе
 `mul(v,M)` теряет перевод), `setEntryName` (DXC сохраняет имя функции HLSL),
@@ -3434,5 +3506,65 @@ affected --remote pw-tiny10` — 16 комбинаций пинов × 2 ста�
   storage class `Uniform` (2);
 * `float4x3` в SSBO — 64 Б, в `c`-регистрах — 48 Б: без wrapper-структ байты
   блока констант не совпали бы с макетом буфера;
-* `ShaderCompiler.exe` под Wine прогонять нельзя (тот же vkd3d), и полный
-  прогон корпуса на 600 с не укладывается — это работа шага 11.
+* `ShaderCompiler.exe` под Wine раньше считался непрогоняемым (vkd3d) — снято:
+  с нативной `d3dcompiler_47.dll` рядом с exe и
+  `WINEDLLOVERRIDES="d3dcompiler_47=n,b"` корпус прогоняется и даёт побайтово
+  верный DXBC (§6 «шаг 11.0»); полный прогон корпуса — ~30 мин.
+
+### Сделано (шаг 11.0: паритет генератора `.shd` + список живых индексов — 2026-10-15)
+
+**Паритет генератора под Wine.** `WINEDLLOVERRIDES="d3dcompiler_47=n,b" wine
+../Tools/ClientCMake/build/x64-wine/ShaderCompiler.exe
+../Src/Render/Shaders/MaterialSpec.xml '--outZ:\tmp\shd_wine_all\'` (cwd =
+`pw/branches/r1117/Bin`, нативная `d3dcompiler_47.dll` копируется рядом с exe).
+35 материалов, ~30 мин (`BasicMaterial` — 49 966 пар, ~32 пары/с). Результат:
+**34 из 35 контейнеров побайтово совпали с репозиторными**. OS-ная и SDK-ная
+`d3dcompiler_47.dll` (обе x64, привезены с tiny10) дают идентичный вывод —
+версия компилятора исключена.
+
+**Единственное расхождение — устаревший контент.**
+`Data/Shaders/UberShaders/TerrainElementMaterial.shd`: таблица идентична
+(240 пар, смещения совпали), различаются **12 из 41** уникальных PS-блобов
+(35 байт в файле, все в диапазоне 15610..22406). Дизассемблирование
+(`tools/hlsl_compile_test --blob`, для SM3 — `D3DXDisassembleShader` из
+`d3dx9_43.dll`): в репозиторном блобе `texld_pp` (point-sampled), в свежем —
+`texld`. Причина: `562b4c1fb` (10-14 23:48) развернул цикл
+`for (i = 1; i <= TextureCountPinValue; ++i) tex2D(diffuseMapSampler[i], …)`
+(динамический индекс сэмплера запрещён DXC/SM6), а контейнеры перегенялись
+раньше — `ee747a959` (10-13). Вывод: **контейнер устарел относительно
+исходников**; при сборке `.shd` v2 SM3-слой этого материала обязан быть
+перегенерирован, и картинка terrain-кэша может сдвинуться → визуальный гейт с
+новым эталоном (отдельная задача, трогает контент).
+
+**Осиротевший контент.** `BasicWeatherMaterial.shd` (95 492 Б) лежит в
+`Data/Shaders/UberShaders/` и числится в
+`Src/System/FileSystem/processing_filelists/files.list`, но его нет ни в
+`MaterialSpec.xml`, ни в коде материалов — генератор его не производит.
+Кандидат на удаление (отдельная задача: контент-репо). Рядом в том же
+каталоге — `.codes`, `.codes2`, `.shd2`: остатки SM2.0-пути, после зачистки
+`--sm20` тул их больше не пишет.
+
+**Список живых индексов (вход для генератора v2).** Новый dev-var
+`dump_shader_index` (`Src/Render/multishader.cpp`, печатает
+`ShaderIndex: Shaders/UberShaders/<Материал> #<индекс> (of <всего>)` один раз
+на пару) + `tools/shader_build/collect_live_indices.py` + снимок
+`tools/shader_build/live_indices-2026-10-15-moba1p.json`: по одному E2E-бою —
+**58 живых пар по 15 материалам из 48 816 возможных индексов (0,12 %)**.
+Топ: `BasicMaterial` 15 из 36 864, `UIFlashMaterial` 12 из 4 096,
+`BasicFXMaterial` 7 из 96, `TerrainElementMaterial` 5 из 240. Это
+количественное подтверждение выбранного варианта «живые комбинации +
+рантайм-фолбэк» (§2.15 п.16). Покрытие сценария узкое (одна карта, один
+режим) — список обязан расширяться прогонами других локаций/режимов.
+
+Гейт. E2E tiny10 с включённым dev-var'ом (лог `2026.10.15-10.20.40`):
+login `Success(5) uid=131` → lobby → `gs_svcid=gamesvc_00` →
+`Switch to EGameState::Finished by 3`; `ConfigPins: … MaxVertexShaderConst=256
+IsNullRef=0 caps=0x0 pins=0` — как эталон. Wine-сборка `build/PW_Game.exe`
+15 202 816 Б, `check_exe.py` OK. Визуальный гейт не снимался: правка под
+dev-var'ом, по умолчанию выключена.
+
+Грабли: `nstl::hash_set::find` возвращает итератор (`error C2678: binary '!':
+no operator found … 'nstl::_Ht_it<…>'`, `error C2088`) — дедуп по изменению
+`size()`; `D3DDisassemble` не читает SM3-блобы (первые байты `00 03 FF FF`, а
+не `DXBC`) — для SM3 нужен `D3DXDisassembleShader` из `d3dx9_43.dll`;
+`--out<путь>` генератора не создаёт каталог (нужен `mkdir -p` до запуска).
