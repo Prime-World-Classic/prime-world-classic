@@ -4177,3 +4177,73 @@ cbuffer pwCBankVS : register(b0, space0) {   // PS — b1
 уточниться на шаге 13. Перегенерация и коммит — вместе с потреблением. В репо
 сейчас лежат v1-контейнеры (`Data/Shaders/UberShaders/*.shd`, 35 файлов), v2
 доставлялся на стенд pile'ом (`Packs/zzzresult.pile`).
+
+### Сделано (шаг 12b: первый вывод через seam внутри PW_Game.exe — 2026-10-15, `386cf1016`)
+
+`Src/Render/nvrhibackend.cpp` 934 → ~1900 строк: закрыта 28-методная часть
+work-list'а (заглушек осталось 10: `SetTexture`, `DrawIndexedUP`, `DrawUP`,
+`CreateTexture2D`, `CreateTextureCube`, `UpdateTexture`, `GetRenderTargetData`,
+`ColorFill`, `StretchRect`, `GetRenderTarget` — это и есть очередь шага 13).
+
+Что заработало: `CreateVertexBuffer/CreateIndexBuffer` (CPU-зеркало
+`std::vector<unsigned char> cpu`, на `Unlock*` — `writeBuffer` целиком),
+`CreateVertexShader/CreatePixelShader` через `SpvScan` (мини-сканер SPIR-V:
+`OpEntryPoint` — имя точки входа, `OpVariable` класса Input + `OpDecorate
+Location` — входы VS; заголовок SPIR-V — **5 слов**, разбор обязан начинаться с
+`i = 5`), `CreateInputLayout` + `BuildInputLayout` (location берётся из SPIR-V по
+имени семантики, `elementStride` — из `SetStreamSource`, `isInstanced` — из
+`kInstanceStream`), `FindOrCreatePipeline` (кэш по
+`vs,ps,layout,rt,ds,prim`; ключ шага 8 ещё не участвует), `CreateSurface` (RT
+`BGRA8_UNORM`, глубина `D24S8` + `setInitialState(DepthWrite)` +
+`setKeepInitialState(true)`), `Clear`, `SetViewport`/сциссор, `Draw`/`DrawIndexed`
+(`drawIndexed.setVertexCount` = число индексов), `ReadSurface` (ленивая
+staging-текстура → `copyTexture` → `mapStagingTexture`, ответ `plBGRA`).
+Константы: два UBO по 4096 Б в set 0 (`binding 0` = VS-банк, `1` = PS-банк),
+загрузка = срез тени, смещение члена = `16*номер регистра` — таблица переноса не
+нужна (подтверждение §3.z п.2, шаг 13.0).
+
+КЛЮЧЕВОЙ ДЕФЕКТ, найденный только тестом. `FindOrCreatePipeline` строил
+раскладку в `LayoutObj::il`, а в `setInputLayout` передавал пустой локальный
+handle. Vulkan-бэкенд обёрнут в `if (inputLayout)`
+(`Vendor/NVRHI/src/vulkan/vulkan-graphics.cpp:300`) → пайплайн создавался
+**без** вершинных описаний, атрибуты читались нулями, геометрия вырождалась
+молча: `пайплайны=1/1, вывод=1, загруз=2`, нарисовано 0 пикселей, ни одного
+сообщения об ошибке. Правка — `il = d.layoutObjs[d.curLayout].il` + проверка на
+ноль.
+
+Гейт (`RunSeamDipTest`, env `PW_VK_DIP=1`, однократно на 30-м кадре спайка;
+прогон `2026.10.15-19.13.35`, exe 15 655 424 Б, Wine + Xvfb :97, DXVK не нужен):
+`DIP: пиксели на месте — OK комбинация #1, блобы VS 1120 Б / PS 448 Б; нарисовано
+16384/65536 пикселей, каналы чистые 16384, справа 0, макс R=255, выборка
+BGRA=0,0,0,255` → `Renderer: PW_VK_DIP OK`. 16384 = ровно площадь треугольника
+(-1,-1)-(0,-1)-(-1,1) в offscreen 256×256; правая половина пуста. Это доказывает
+одновременно: атрибуты доходят из VB, банк разложен побайтово как в D3D9 (при
+нулевом банке `World`/`ViewProjection` обнулились бы → пикселей не было бы), PS
+пишет в цвет. Индекс комбинации берётся из первой записи SPIR-V-секции
+(`Shd2U32(base + spv->offset + 8)`), а не из нулевого члена таблицы.
+
+Диагностика, добавленная по ходу. (1) `nvrhi::vulkan::DeviceDesc::errorCB` →
+`VkMsg[severity]: текст` (без колбэка сообщения NVRHI уходят в
+`OutputDebugStringA`, который под Wine не виден вовсе — wine-лог прогона пуст).
+(2) `RecreateSurface()` — при входе в бой клиент пересоздаёт окно, surface
+оставался привязан к мёртвому HWND: `surface capabilities — НЕ УДАЛОСЬ` /
+`VK_ERROR_SURFACE_LOST_KHR` (с DXVK), без DXVK не проявлялось. (3) `VkRes%s:`
+счётчики ресурсов/пайплайнов/вывода/загруз. (4) `VkNote` в systemLog-ветке
+склеивал имя и деталь без пробела.
+
+Грабли. Порог теста `painted > W*H/4` отсекал точное попадание (16384 при
+пороге >16384) — теперь сравнение с ожидаемой площадью с допуском `2*W` и
+проверкой пустоты правой половины. `cd X && nohup … &` фоновит всю цепочку (cwd
+не меняется → деплой exe падал). URL обязателен в argv: без него клиент печатает
+`Unknown command or variable "protocol"` и живёт без игры — для прогонов
+использовать `wine-client/run_vk_dip.sh` (читает `/tmp/vkurl.txt`).
+
+Не закрыто (очередь шага 13): текстуры и сэмплеры (`SetTexture`,
+`CreateTexture2D/Cube`, `UpdateTexture` — 97 текстур и 52 сэмплера по корпусу,
+макет set 2/set 3 уже размечен писателем), `DrawUP/DrawIndexedUP` (PostFX),
+`GetRenderTarget/GetRenderTargetData/ColorFill/StretchRect`, ключ пайплайна из
+шага 8 вместо `(vs,ps,layout,rt,ds,prim)`, диапазон загрузки UBO из
+`ConstBlock::TakeDirty()` вместо 4 КБ на стадию, и **шаг раскладки**: в Vulkan
+шаг вершины зашит в раскладку (`bindingMap[bufferIndex].stride =
+elementStride`), поэтому кэш раскладки обязан учитывать шаг потока, иначе
+второй VB с другим шагом получит чужую раскладку молча.
