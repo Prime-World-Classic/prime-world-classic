@@ -24507,9 +24507,11 @@ void ProbeEffectsPoolRuntime(
       CObj<NWorld::PFBaseUnit> chainPeriodicReceiver(
         new NWorld::PFBaseUnit(0, CVec3(89.0f, 30.0f, 0.0f), 0)
       );
-      CObj<NWorld::PFBaseUnit> chainProbabilityReceiver(
-        new NWorld::PFBaseUnit(0, CVec3(90.0f, 30.0f, 0.0f), 0)
-      );
+			// Probability dispatch requires the original world RNG, not a worldless success fallback.
+			CObj<NCore::IWorldBase> probabilityWorldOwner = NWorld::PFWorld::CreatePFWorld();
+			NWorld::PFWorld* probabilityWorld = dynamic_cast<NWorld::PFWorld*>(probabilityWorldOwner.GetPtr());
+			CObj<NWorld::PFBaseUnit> chainProbabilityOwner(new NWorld::PFBaseUnit(probabilityWorld, CVec3(84.f, 30.f, 0.f), 0));
+			CObj<NWorld::PFBaseUnit> chainProbabilityReceiver(new NWorld::PFBaseUnit(probabilityWorld, CVec3(90.f, 30.f, 0.f), 0));
 
       unitChainUnitsReady =
         chainFreezeOwner &&
@@ -24518,7 +24520,7 @@ void ProbeEffectsPoolRuntime(
         chainProxyReceiver &&
         chainStatusReceiver &&
         chainPeriodicReceiver &&
-        chainProbabilityReceiver;
+        chainProbabilityReceiver && chainProbabilityOwner && probabilityWorld;
 
       if (unitChainUnitsReady)
       {
@@ -24529,6 +24531,7 @@ void ProbeEffectsPoolRuntime(
         chainStatusReceiver->ChangeFaction(NDb::FACTION_BURN);
         chainPeriodicReceiver->ChangeFaction(NDb::FACTION_BURN);
         chainProbabilityReceiver->ChangeFaction(NDb::FACTION_BURN);
+				chainProbabilityOwner->ChangeFaction(NDb::FACTION_FREEZE);
 
         NDb::Ability* spellAbility = new NDb::Ability();
         spellAbility->type = NDb::ABILITYTYPE_ACTIVE;
@@ -24721,7 +24724,7 @@ void ProbeEffectsPoolRuntime(
         probabilityAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainProbabilityDb));
         unitChainProbabilityBefore = chainProbabilityReceiver->GetHealth();
         CObj<NWorld::PFAbilityInstance> probabilityInstance =
-          chainFreezeOwner->UseExternalAbility(
+          chainProbabilityOwner->UseExternalAbility(
             NDb::Ptr<NDb::Ability>(probabilityAbility),
             NWorld::Target(chainProbabilityReceiver.GetPtr())
           );
@@ -24734,6 +24737,7 @@ void ProbeEffectsPoolRuntime(
           unitChainProbabilityAfter < 0.94f;
         if (probabilityInstance)
           probabilityInstance->Cancel();
+				chainProbabilityReceiver->Cleanup(); chainProbabilityOwner->Cleanup();
       }
     }
 

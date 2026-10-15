@@ -7,6 +7,9 @@
 #include "PFApplUtils.h"
 #include "PFDispatchFactory.h"
 #include "PFTargetSelector.h"
+#include "PFWorld.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <limits>
 
 namespace NWorld
 {
@@ -115,19 +118,29 @@ bool PFApplSpellPeriodicallyVisual::Step(float dtInSeconds)
   return false;
 }
 
+/** Preserve the original integer roll and reject invalid formulas without casting either response. */
 bool PFApplSpellProbability::Start()
 {
-  PFBaseApplicator::Start();
-  Target targ;
-  MakeApplicationTarget(targ);
-
-  const float probability = RetrieveParam(GetDB().probability, 0.0f);
-  if (Roll(probability))
-    CreateDispatch(pAbility, this, targ, targ, GetDB().spell);
-  else if (GetDB().spellIfFailed)
-    CreateDispatch(pAbility, this, targ, targ, GetDB().spellIfFailed);
-
-  return true;
+	if (PFBaseApplicator::Start() || !GetWorld()) return true;
+	const auto& authored = GetDB().probability;
+	const NRandom::RandomGenerator before(*GetWorld()->GetRndGen());
+	LinuxBootstrap::NumericFormulaResult probability{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		probability = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	if (!probability.Succeeded() || double(probability.value) < std::numeric_limits<int>::min()
+		|| double(probability.value) > std::numeric_limits<int>::max())
+	{
+		// A valid expression may consume randomness before producing an out-of-range integer.
+		*GetWorld()->GetRndGen() = before;
+		return true;
+	}
+	const bool success = GetWorld()->GetRndGen()->Next(100) < static_cast<int>(probability.value);
+	if (success || GetDB().spellIfFailed)
+	{
+		Target target; MakeApplicationTarget(target);
+		CreateDispatch(pAbility, this, target, target, success ? GetDB().spell : GetDB().spellIfFailed);
+	}
+	return true;
 }
 
 }

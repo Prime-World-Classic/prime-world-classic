@@ -1708,7 +1708,8 @@ CObj<PFAbilityInstance> PFBaseUnit::UseExternalAbility(NDb::Ptr<NDb::Ability> co
   if (!pDesc)
     return CObj<PFAbilityInstance>(0);
 
-  CObj<PFAbilityData> pAbilityData = new PFAbilityData(this, pDesc, NDb::ABILITYTYPEID_SPECIAL, false, true);
+	// Original external abilities retain the world for deferred effects and seeded formulas.
+  CObj<PFAbilityData> pAbilityData = new PFAbilityData(this, pDesc, NDb::ABILITYTYPEID_SPECIAL, true, true);
 	CObj<PFAbilityInstance> instance=CreateAbilityInstance(pAbilityData,target);
 	if (instance) instance->PublishLinuxPresentation(pAbilityData->IsAbilitySupposedToStopUnit(),false);
 	return instance;

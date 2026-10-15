@@ -8484,7 +8484,7 @@ void EventProcessorOnConsumableObtained::Assign( const EventProcessorOnConsumabl
 NWorld::PFEventProcessorBase* EventProcessorOnConsumableObtained::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorOnConsumableObtained( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorOnConsumableObtained( *this, world );

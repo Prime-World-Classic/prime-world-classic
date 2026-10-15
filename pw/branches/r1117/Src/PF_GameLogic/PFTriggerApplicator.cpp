@@ -2,6 +2,8 @@
 #if defined(PW_LINUX_NULL_RENDER)
 #include "PFTriggerApplicator.h"
 #include "PFBaseUnit.h"
+#include "PFHero.h"
+#include "DBConsumable.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFDispatch.h"
@@ -63,7 +65,8 @@ bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 	}
 	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db)
 		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db)
-		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db) || dynamic_cast<const NDb::EventProcessorOnTarget*>(db);
+		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db) || dynamic_cast<const NDb::EventProcessorOnTarget*>(db)
+		|| dynamic_cast<const NDb::EventProcessorOnConsumableObtained*>(db);
 }
 
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
@@ -232,6 +235,19 @@ bool PFEventProcessorCondition::ProcessEvent(const PFBaseUnitEvent* event)
 		if (!source || !source->GetDBDesc() || !data || !data->GetDBDesc()
 			|| source->GetDBDesc()->GetDBID() != data->GetDBDesc()->GetDBID()) return false;
 	}
+	DoSpell();
+	return true;
+}
+
+/** Filter actual inventory acquisitions by original origin bits and optional resource identity. */
+bool PFEventProcessorOnConsumableObtained::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	const auto* acquired = dynamic_cast<const PFHeroEventConsumableObtained*>(event);
+	if (!acquired || !acquired->GetDBConsumable() || !IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive()) return false;
+	const int origin = acquired->GetOrigin();
+	if (origin < 0 || origin >= NDb::KnownEnum<NDb::EConsumableOrigin>::SizeOf()
+		|| !(static_cast<unsigned>(GetDB().origin) & (1u << origin))) return false;
+	if (GetDB().consumable && GetDB().consumable->GetDBID() != acquired->GetDBConsumable()->GetDBID()) return false;
 	DoSpell();
 	return true;
 }
@@ -532,6 +548,7 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnDeath, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorUnitDieNearMe, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnTarget, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnConsumableObtained, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"
