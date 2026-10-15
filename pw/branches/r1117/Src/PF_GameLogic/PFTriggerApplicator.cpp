@@ -61,7 +61,8 @@ bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 		path.pop_back(); return true;
 	}
 	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db)
-		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db);
+		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db)
+		|| dynamic_cast<const NDb::EventProcessorUnitDieNearMe*>(db);
 }
 
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
@@ -346,6 +347,56 @@ bool PFEventProcessorLastHit::ProcessEvent(const PFBaseUnitEvent* event)
 	return true;
 }
 
+/** Original killer, victim and sender-match filters precede range evaluation and its possible RNG use. */
+bool PFEventProcessorUnitDieNearMe::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	const auto* death = dynamic_cast<const PFBaseUnitEventUnitDeath*>(event);
+	if (!death || death->GetType() != NDb::BASEUNITEVENT_DEATH || !IsValid(pOwner)
+		|| !pOwner->PFBaseApplicator::IsAlive() || !IsValid(GetReceiver())) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	if (!CheckKiller(death->GetKiller()) || !CheckVictim(death->GetVictim())) return false;
+	CObj<PFBaseUnit> victim(death->GetVictim().GetPtr());
+	if (GetDB().checkSender & NDb::TRIGGEREVENTCHECKSENDER_MATCHTARGET)
+	{
+		Target target; owner->MakeApplicationTarget(target, GetDB().senderMatchTarget);
+		if (!target.IsUnit() || target.GetUnit().GetPtr() != victim.GetPtr()) return false;
+	}
+	const auto& authored = GetDB().range;
+	LinuxBootstrap::NumericFormulaResult range{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		range = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *owner);
+	if (!range.Succeeded()) return false;
+	if (range.value > EPS_VALUE)
+	{
+		const float distance = fabs(victim->GetPosition().AsVec2D() - GetReceiver()->GetPosition().AsVec2D());
+		if (!std::isfinite(distance) || range.value < distance) return false;
+	}
+	DoSpell(CPtr<PFBaseUnit>(victim.GetPtr()));
+	return true;
+}
+
+/** Summon credit tests the immediate master, not the separately qualified killer in the event. */
+bool PFEventProcessorUnitDieNearMe::CheckKiller(const CPtr<PFBaseUnit>& killer) const
+{
+	if (!IsValid(killer) || !IsValid(GetReceiver()) || killer->GetWorld() != GetReceiver()->GetWorld()) return false;
+	const auto flags = GetDB().killerFlags;
+	return flags == NDb::UNITDIEKILLERSFLAGS_KILLEDBYALL
+		|| ((flags & NDb::UNITDIEKILLERSFLAGS_KILLEDBYME) && killer == GetReceiver())
+		|| ((flags & NDb::UNITDIEKILLERSFLAGS_KILLEDBYMYSUMMONS) && killer->GetMasterUnit() == GetReceiver())
+		|| ((flags & NDb::UNITDIEKILLERSFLAGS_KILLEDBYALLIES) && killer->GetFaction() == GetReceiver()->GetFaction())
+		|| ((flags & NDb::UNITDIEKILLERSFLAGS_KILLEDBYENEMY) && killer->GetFaction() != GetReceiver()->GetFaction());
+}
+
+/** This processor has its own original faction/type predicate, not the broader UnitMaskingPredicate policy. */
+bool PFEventProcessorUnitDieNearMe::CheckVictim(const CPtr<PFBaseUnit>& victim) const
+{
+	if (!IsValid(victim) || !IsValid(GetReceiver()) || victim->GetWorld() != GetReceiver()->GetWorld()) return false;
+	const int type = victim->GetUnitType();
+	if (type < 0 || type >= NDb::KnownEnum<NDb::EUnitType>::SizeOf()) return false;
+	const auto relation = victim->GetFaction() == GetReceiver()->GetFaction() ? NDb::SPELLTARGET_ALLY : NDb::SPELLTARGET_ENEMY;
+	return (GetDB().targets & relation) && (static_cast<unsigned>(GetDB().targets) & (1u << type));
+}
+
 PFAbsorbShieldApplicator::PFAbsorbShieldApplicator(const PFApplCreatePars& cp)
 	: Base(cp), shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
 
@@ -449,6 +500,7 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorGroup, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorCancelDispatch, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnDeath, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorUnitDieNearMe, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

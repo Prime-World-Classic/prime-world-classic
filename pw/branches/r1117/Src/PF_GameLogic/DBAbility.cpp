@@ -8852,7 +8852,7 @@ void EventProcessorUnitDieNearMe::Assign( const EventProcessorUnitDieNearMe& _ev
 NWorld::PFEventProcessorBase* EventProcessorUnitDieNearMe::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorUnitDieNearMe( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorUnitDieNearMe( *this, world );
