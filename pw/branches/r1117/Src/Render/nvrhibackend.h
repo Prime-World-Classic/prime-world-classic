@@ -127,6 +127,15 @@ public:
   virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch);
   virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level);
+  // Описание и mip-цепочка (шаг 13.2) — см. renderbackend.h:363
+  virtual HRESULT GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo);
+  virtual HRESULT GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo);
+  virtual HRESULT GenerateMipmaps(HTexture texture);
+  // Блокировка поверхности (шаг 13.2) — RenderSurface::LockRect в клиенте звал
+  // COM напрямую
+  virtual HRESULT LockSurface(HSurface surface, const BackendRect* pRect,
+                              ERenderLockType mode, void** ppData, unsigned* pRowPitch);
+  virtual HRESULT UnlockSurface(HSurface surface);
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);
 

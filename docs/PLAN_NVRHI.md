@@ -4354,3 +4354,59 @@ SM3-слоя (правка касается только SPIR-V).
 `(vs,ps,layout,rt,ds,prim)`; (7) диапазон загрузки UBO из `ConstBlock::TakeDirty()`
 вместо 4 КБ на стадию; (8) шаг потока в кэше раскладки (Vulkan зашивает stride в
 раскладку → второй VB с другим шагом получит чужую молча).
+
+### Сделано (шаг 13.2: текстурный контур клиента убран из COM — 2026-10-15, `9d1b6a331`)
+
+Seam дополнен пятью методами: `GetTextureInfo`, `GetSurfaceInfo`, `GenerateMipmaps`,
+`LockSurface`, `UnlockSurface` (`Src/Render/renderbackend.h`; `GetSurfaceInfo` не
+было — правка клиента не компилировалась). Реализованы в обоих бэкендах.
+
+Нейтральный словарь форматов/использований/пулов (`renderflagsconverter.*`):
+`D3DFormatToBackend`/`BackendFormatToD3D`, `D3DUsageToBackend`/`BackendUsageToD3D`,
+`D3DPoolToBackend`/`BackendPoolToD3D` + `CheckTextureInfoRoundTrip` (печатает
+`round-trip` при расхождении). Это обязательный инвариант: клиентские классы
+хранят `D3DSURFACE_DESC` и по нему принимают решения (деструктор — `D3DPOOL_MANAGED
+!= desc.Pool` → снимает учёт; `OnResourcesReallocate` пересоздаёт только
+`D3DRTYPE_SURFACE`), поэтому восстановление описания из seam-структуры обязано быть
+побитовым. `desc.Type` сохраняется явно; мультисэмплирование в `BackendTextureInfo`
+не описано — для поверхностей восстанавливается `D3DMULTISAMPLE_NONE` (созданных с
+MSAA в клиенте нет).
+
+Клиент: `texture.cpp` — конструктор `Texture2D(IDirect3DTexture9*)`,
+`GetMipSubLevelsCount()`, `LockRect`/`UnlockRect` (все три перегрузки),
+`GenerateMipSubLevels_()` (стал виртуальным); `rendersurface.cpp` — конструктор,
+`LockRectInternal`, `Unlock`; `renderer.cpp` — снимок экрана через `GetSurfaceInfo`.
+Ветка `Compatibility::IsRunnedUnderWine()` из `texture.h` убрана: выбор способа
+генерации mipmap переехал в бэкенд (у D3D9 — цепочка `StretchRect` по уровням,
+перенесена в `D3D9Backend::GenerateMipmaps` из `GenerateSubLevels_1/2`).
+
+Vulkan: `LockTexture2D`/`UnlockTexture2D` и `LockSurface`/`UnlockSurface` —
+CPU-зеркало + staging + `copyTexture` (глубина → `E_FAIL`, сжатые форматы →
+`E_FAIL`, питч возвращает бэкенд); `GenerateMipmaps` — цепочка уровней через
+`copyTexture` без фильтрации (то же качество, что прежняя Wine-цепочка), cube →
+`E_FAIL` с `VkNote`.
+
+Дефект, вскрытый прогоном со спайком: после пересоздания swapchain'а картинки
+бэк-буфера добавляются в КОНЕЦ `d.surfaces` (там уже лежат поверхности клиента), а
+`Present` брал `d.surfaces[d.imageIndex]` → мёртвая запись с `tex == nullptr` →
+`clearTextureFloat(nullptr,…)` → access violation (`exception.dmp`, лог обрывается
+на `RdpChannel: Delayed active channel established`). Починка: индекс берётся из
+`backSurfaceIdx`, добавлена проверка живости ручки; `DestroySwapchain` отпускает
+только записи бэк-буферов и чистит `pipes`/`setCache` (framebuffer'ы кэша указывают
+на мёртвые картинки).
+
+Гейты. Wine со спайком (`2026.10.15-21.14.27`, exe 15 692 800 Б, `PW_VK_DIP=3`):
+краха нет, `Entered lobby` 1, `all map objects loaded` 1, `DIP: пиксели на месте —
+OK`, `TexDIP: текстура доехала — OK`, `VkMsg` 0, `round-trip` 0. Регресс D3D9 на
+tiny10 (`2026.10.15-19.17.38`, откат `PW_Game.exe.bak-2026-10-15-132`): login 1,
+`all map objects loaded` 1, `ShaderContainer` 15 / `ShaderTarget` 58, «нужен
+рантайм-компилятор» 0, `CRC32 mismatch` 0, `round-trip` 0, `Texture2D: формат …` 0;
+кадр против `refs/stage3-shd2-2026-10-15/` — **diff 2,52%, грубых 0,19%** (ниже
+полосы шума разных прогонов 0,13–0,35%).
+
+Остаток COM в текстурном контуре (переносить отдельно): `DxResourcesControl.cpp:190,
+197,206,215,233,245,258,668,676,684,692,700` (учёт потерянных ресурсов — под Vulkan
+вызовет `GetDesc` на не-COM указателе), `smartrenderer.cpp:400,843,853,870`,
+`renderresourcemanager.cpp:316,329`, `StaticMesh.cpp:390,496`,
+`TextureManager.cpp:188,194` (заполнение mip-уровней при загрузке DDS),
+`Texture2D::GetSurface(level)`.

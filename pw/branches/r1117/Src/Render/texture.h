@@ -31,17 +31,17 @@ public:
 	unsigned int GetMipSubLevelsCount() const;
 
   const DXBaseTextureRef& GetDXTexture() const { return pDXTexture; }
+  // Цепочку mip'ов строит бэкенд (шаг 13.2): у D3D9 это autogen драйвера, а под
+  // Wine/CrossOver — ручная цепочка по COM-поверхностям через StretchRect;
+  // выбор — за бэкендом, клиенту нужен только сам факт.
   void  GenerateMipSubLevels()
   {
-    if( Compatibility::IsRunnedUnderWine() )
-      GenerateMipSubLevels_(); // Wine did not implemented automipmaps yet
-    else
-      if( IDirect3DBaseTexture9* pTex = Get(GetDXTexture()) )
-        pTex->GenerateMipSubLevels();
+    if( pDXTexture )
+      GenerateMipSubLevels_();
   }
 
 protected:
-  virtual void GenerateMipSubLevels_() {}
+  virtual void GenerateMipSubLevels_();
   void SetTexture(IDirect3DBaseTexture9 *_tex);
 
 	DXBaseTextureRef pDXTexture;
@@ -94,8 +94,6 @@ protected:
   explicit Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHandlerPriority = HANDLERPRIORITY_NORMAL);
 
   void CreateInternal();
-
-  virtual void GenerateMipSubLevels_();
 
   UINT levels;
   D3DSURFACE_DESC desc;

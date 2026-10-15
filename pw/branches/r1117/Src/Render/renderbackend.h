@@ -346,6 +346,39 @@ public:
                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch) = 0;
   virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level) = 0;
 
+  // Описание текстуры таким, каким бэкенд его создал (шаг 13.2). Клиент хранит
+  // D3D9-подобное описание (D3DSURFACE_DESC) и до этой правки читал его напрямую
+  // из COM (IDirect3DTexture9::GetLevelDesc/GetLevelCount в texture.cpp) — под
+  // другим бэкендом таких вызовов нет. Нейтральные словари обратно в D3D9
+  // переводит клиент (renderflagsconverter.h), round-trip проверяет бэкенд.
+  struct BackendTextureInfo
+  {
+    unsigned width, height, levels;
+    EBackendFormat format;
+    EBackendUsage usage;
+    EBackendPool pool;
+    BackendTextureInfo() : width(0), height(0), levels(1), format(bfUnknown),
+                           usage(usageNone), pool(BACKEND_POOL_DEFAULT) {}
+  };
+  virtual HRESULT GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo) = 0;
+
+  // То же описание для поверхности: в D3D9 HTexture и HSurface — разные
+  // COM-объекты, а размеры нужны и по RT/бэк-буферу (снимок экрана,
+  // пересоздание после потери устройства).
+  virtual HRESULT GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo) = 0;
+
+  // Построение цепочки mip'ов (шаг 13.2). До правки клиент строил её сам:
+  // либо IDirect3DBaseTexture9::GenerateMipSubLevels, либо по COM-поверхностям
+  // через StretchRect (texture.cpp, GenerateSubLevels_1/2). Способ выбора — за
+  // бэкендом (у D3D9 autogen есть только на настоящем драйвере).
+  virtual HRESULT GenerateMipmaps(HTexture texture) = 0;
+
+  // Блокировка поверхности (шаг 13.2) — то же, что LockTexture2D, но для
+  // HSurface: RenderSurface::LockRect в клиенте звал COM напрямую.
+  virtual HRESULT LockSurface(HSurface surface, const BackendRect* pRect,
+                              ERenderLockType mode, void** ppData, unsigned* pRowPitch) = 0;
+  virtual HRESULT UnlockSurface(HSurface surface) = 0;
+
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) = 0;
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) = 0;
 

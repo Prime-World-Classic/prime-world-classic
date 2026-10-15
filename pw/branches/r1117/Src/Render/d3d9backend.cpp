@@ -2,6 +2,7 @@
 #include "d3d9backend.h"
 #include "renderflagsconverter.h"
 #include "dxutils.h"   // GetD3DPoolAndUsagesParamaters + PoolType (D3D9-реализация знает про D3D9)
+#include "System/Compatibility.h"   // IsRunnedUnderWine / IsRunnedUnderCrossOverWine (mip-цепочка)
 
 namespace Render
 {
@@ -334,36 +335,16 @@ static void D3DPoolFromBackend(EBackendPool pool, DWORD& usage, D3DPOOL& d3dPool
 
 // EBackendFormat -> D3DFORMAT. bfUnknown — отказ (D3DFMT_UNKNOWN): подменять
 // неизвестный формат каким-нибудь рабочим нельзя, молча поехавший формат/альфа
-// в логах не виден.
+// в логах не виден. Таблица — в renderflagsconverter.h (BackendFormatToD3D),
+// здесь только обёртка: словарь форматов обязан жить в одном месте.
 static D3DFORMAT D3DFormatFromBackend(EBackendFormat format) {
-  switch (format) {
-    case bfA8R8G8B8:       return D3DFMT_A8R8G8B8;
-    case bfX8R8G8B8:       return D3DFMT_X8R8G8B8;
-    case bfA8:             return D3DFMT_A8;
-    case bfL8:             return D3DFMT_L8;
-    case bfL16:            return D3DFMT_L16;
-    case bfR5G6B5:         return D3DFMT_R5G6B5;
-    case bfR16F:           return D3DFMT_R16F;
-    case bfA16B16G16R16F:  return D3DFMT_A16B16G16R16F;
-    case bfR32F:           return D3DFMT_R32F;
-    case bfG32R32F:        return D3DFMT_G32R32F;
-    case bfA32B32G32R32F:  return D3DFMT_A32B32G32R32F;
-    case bfDXT1:           return D3DFMT_DXT1;
-    case bfDXT2:           return D3DFMT_DXT2;
-    case bfDXT3:           return D3DFMT_DXT3;
-    case bfDXT4:           return D3DFMT_DXT4;
-    case bfDXT5:           return D3DFMT_DXT5;
-    case bfD24S8:          return D3DFMT_D24S8;
-    default:               return D3DFMT_UNKNOWN;
-  }
+  D3DFORMAT fmt = D3DFMT_UNKNOWN;
+  BackendFormatToD3D(format, &fmt);
+  return fmt;
 }
 
 static DWORD D3DUsageFromBackend(EBackendUsage usage) {
-  DWORD d3dUsage = 0;
-  if (usage & usageRenderTarget)  d3dUsage |= D3DUSAGE_RENDERTARGET;
-  if (usage & usageDepthStencil)  d3dUsage |= D3DUSAGE_DEPTHSTENCIL;
-  if (usage & usageAutoGenMipmap) d3dUsage |= D3DUSAGE_AUTOGENMIPMAP;
-  return d3dUsage;
+  return D3DUsageFromBackendBits(usage);
 }
 
 // Пул + «назначение» -> D3DPOOL + D3DUSAGE_*: пуловая часть берётся из
@@ -477,6 +458,207 @@ HRESULT D3D9Backend::UnlockTexture2D(HTexture texture, unsigned level) {
   if (!texture.p)
     return E_INVALIDARG;
   return static_cast<IDirect3DTexture9*>(texture.p)->UnlockRect(level);
+}
+
+// ---------------------------------------------------------------------------
+// Шаг 13.2: описание текстуры, mip-цепочка и блокировка поверхности.
+//
+// До этой правки клиент читал D3DSURFACE_DESC и счётчик уровней напрямую из COM
+// (texture.cpp) и сам строил mip'ы по COM-поверхностям. Здесь те же вызовы, но
+// через seam: D3D9-путь обязан остаться побитово прежним, а нейтральный словарь
+// не должен терять биты — поэтому round-trip проверяется здесь, где настоящие
+// D3D9-значения ещё видны.
+
+// Проверка round-trip: нейтральный словарь -> D3D9 должно давать ровно то, что
+// сообщил COM. Расхождение = словарь потерял бит (например пул или DYNAMIC), и
+// молча восстановленный desc уронит текстуру при потере устройства.
+static void CheckTextureInfoRoundTrip(const D3DSURFACE_DESC& d, unsigned levels,
+                                      const IRenderBackend::BackendTextureInfo& info) {
+  static unsigned s_checked = 0, s_bad = 0;
+  ++s_checked;
+  D3DFORMAT fmt = D3DFMT_UNKNOWN;
+  D3DPOOL   pool = D3DPOOL_DEFAULT;
+  DWORD     usage = 0;
+  bool ok = BackendFormatToD3D(info.format, &fmt) &&
+            BackendPoolUsageToD3D(info.pool, info.usage, &pool, &usage);
+  if (ok && (fmt != d.Format || pool != d.Pool || usage != d.Usage ||
+             info.width != d.Width || info.height != d.Height || info.levels != levels))
+    ok = false;
+  if (ok)
+    return;
+  ++s_bad;
+  if (s_bad <= 20)
+  {
+    DebugTrace("D3D9Backend: round-trip описания текстуры разошёлся (проверено %u): "
+               "COM %ux%u fmt %s pool %d usage 0x%X levels %u",
+               s_checked, d.Width, d.Height, (unsigned)d.Format, (int)d.Pool,
+               (unsigned)d.Usage, levels);
+    DebugTrace("D3D9Backend:   через seam %ux%u fmt %d pool %d usage 0x%X levels %u",
+               info.width, info.height, (int)info.format, (int)info.pool,
+               (unsigned)usage, info.levels);
+  }
+}
+
+HRESULT D3D9Backend::GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo) {
+  if (!texture.p || !pInfo)
+    return E_INVALIDARG;
+  IDirect3DBaseTexture9* base = static_cast<IDirect3DBaseTexture9*>(texture.p);
+  D3DSURFACE_DESC d;
+  ZeroMemory(&d, sizeof(d));
+  // GetLevelDesc(D3DSURFACE_DESC) есть только у 2D- и cube-текстур, но не у
+  // базового IDirect3DBaseTexture9 — тип берём из GetType().
+  HRESULT hr = E_INVALIDARG;
+  if (base->GetType() == D3DRTYPE_TEXTURE)
+    hr = static_cast<IDirect3DTexture9*>(texture.p)->GetLevelDesc(0, &d);
+  else if (base->GetType() == D3DRTYPE_CUBETEXTURE)
+    hr = static_cast<IDirect3DCubeTexture9*>(texture.p)->GetLevelDesc(0, &d);
+  if (FAILED(hr))
+    return hr;
+  const unsigned levels = base->GetLevelCount();
+  pInfo->width  = d.Width;
+  pInfo->height = d.Height;
+  pInfo->levels = levels;
+  pInfo->format = D3DFormatToBackend(d.Format);
+  pInfo->usage  = D3DUsageToBackend(d.Usage);
+  pInfo->pool   = D3DPoolToBackend(d.Pool, d.Usage);
+  CheckTextureInfoRoundTrip(d, levels, *pInfo);
+  return S_OK;
+}
+
+// Описание поверхности (шаг 13.2): прежний путь — IDirect3DSurface9::GetDesc в
+// клиенте (rendersurface.cpp, renderer.cpp). levels у поверхности — 1.
+HRESULT D3D9Backend::GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo) {
+  if (!surface.p || !pInfo)
+    return E_INVALIDARG;
+  IDirect3DSurface9* pSurf = static_cast<IDirect3DSurface9*>(surface.p);
+  D3DSURFACE_DESC d;
+  ZeroMemory(&d, sizeof(d));
+  const HRESULT hr = pSurf->GetDesc(&d);
+  if (FAILED(hr))
+    return hr;
+  pInfo->width  = d.Width;
+  pInfo->height = d.Height;
+  pInfo->levels = 1u;
+  pInfo->format = D3DFormatToBackend(d.Format);
+  pInfo->usage  = D3DUsageToBackend(d.Usage);
+  pInfo->pool   = D3DPoolToBackend(d.Pool, d.Usage);
+  CheckTextureInfoRoundTrip(d, 1u, *pInfo);
+  return S_OK;
+}
+
+// Перенос mip-цепочки из texture.cpp (шаг 13.2) — без изменений: те же
+// GetSurfaceLevel + StretchRect через seam.
+static void GenerateSubLevels_1(uint mipLevels, IDirect3DTexture9* pTex) {
+  IDirect3DSurface9 *pSurf = 0;
+  HRESULT hr = pTex->GetSurfaceLevel(0, &pSurf);
+  DXSurfaceRef pSrc(pSurf, false);
+  NI_DX_THROW(hr, "GenerateSubLevels_1: failed to lock");
+
+  for(uint n = 1; n < mipLevels; ++n) {
+    hr = pTex->GetSurfaceLevel(n, &pSurf);
+    NI_DX_THROW(hr, "GenerateSubLevels_1: failed to lock");
+
+    DXSurfaceRef pDest(pSurf, false);
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
+                                   MakeBackendHandle<HSurface>(Get(pDest)), 0,
+                                   IRenderBackend::bfLinear);
+    NI_DX_THROW(hr, "GenerateSubLevels_1: failed to stretch");
+
+    Swap(pSrc, pDest);
+  }
+}
+
+static void GenerateSubLevels_2(uint mipLevels, IDirect3DTexture9* pTex) {
+  if(mipLevels <= 1)
+    return;
+
+  IDirect3DSurface9 *pSurf = 0;
+  HRESULT hr = pTex->GetSurfaceLevel(0, &pSurf);
+  DXSurfaceRef pSrc(pSurf, false);
+  NI_DX_THROW(hr, "GenerateSubLevels_2: failed to lock");
+
+  D3DSURFACE_DESC desc;
+  hr = pTex->GetLevelDesc(1, &desc);
+  HSurface hSurf;
+  hr = GetBackend()->CreateSurface(ssRenderTarget, desc.Width, desc.Height,
+                                   D3DFormatToBackend(desc.Format), BACKEND_POOL_DEFAULT, &hSurf);
+  pSurf = static_cast<IDirect3DSurface9*>(hSurf.p);
+  DXSurfaceRef tmp(pSurf, false);
+  NI_DX_THROW(hr, "GenerateSubLevels_2: failed to create temporary surface");
+
+  BackendRect rect = MakeBackendRect(0, 0, 0, 0);
+  for(uint n = 1; n < mipLevels; ++n) {
+    hr = pTex->GetLevelDesc(n, &desc);
+    rect.right = desc.Width;
+    rect.bottom = desc.Height;
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
+                                   MakeBackendHandle<HSurface>(Get(tmp)), &rect,
+                                   IRenderBackend::bfLinear);
+    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
+
+    hr = pTex->GetSurfaceLevel(n, &pSurf);
+    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to lock");
+
+    pSrc.Attach(pSurf);
+    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(tmp)), &rect,
+                                   MakeBackendHandle<HSurface>(Get(pSrc)), 0,
+                                   IRenderBackend::bfLinear);
+    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
+  }
+}
+
+HRESULT D3D9Backend::GenerateMipmaps(HTexture texture) {
+  if (!texture.p)
+    return E_INVALIDARG;
+  IDirect3DBaseTexture9* base = static_cast<IDirect3DBaseTexture9*>(texture.p);
+  // Выбор способа — за бэкендом (ветки те же, что были в texture.h/texture.cpp:
+  // на настоящем драйвере autogen есть, под Wine его нет, под CrossOver —
+  // другая последовательность StretchRect).
+  if(!Compatibility::IsRunnedUnderWine())
+  {
+    // GenerateMipSubLevels возвращает void (d3d9.h:1122) — статуса у него нет
+    base->GenerateMipSubLevels();
+    return S_OK;
+  }
+  if(D3DRTYPE_TEXTURE != base->GetType())
+    // Под Wine цепочку для cube клиент не строил и раньше (TextureCube не
+    // переопределял GenerateMipSubLevels_), так что отказа это не меняет.
+    return E_FAIL;
+  IDirect3DTexture9* tex = static_cast<IDirect3DTexture9*>(base);
+  const uint mipLevels = tex->GetLevelCount();
+  if(Compatibility::IsRunnedUnderCrossOverWine())
+    GenerateSubLevels_1(mipLevels, tex);
+  else
+    GenerateSubLevels_2(mipLevels, tex);
+  return S_OK;
+}
+
+HRESULT D3D9Backend::LockSurface(HSurface surface, const BackendRect* pRect,
+                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch) {
+  if (!surface.p || !ppData)
+    return E_INVALIDARG;
+  IDirect3DSurface9* surf = static_cast<IDirect3DSurface9*>(surface.p);
+  D3DLOCKED_RECT lr;
+  lr.pBits = 0;
+  lr.Pitch = 0;
+  RECT r, *pR = 0;
+  if (pRect)
+  {
+    r.left = pRect->left; r.top = pRect->top;
+    r.right = pRect->right; r.bottom = pRect->bottom;
+    pR = &r;
+  }
+  const HRESULT hr = surf->LockRect(&lr, pR, ConvertRenderLockType(mode));
+  *ppData = lr.pBits;
+  if (pRowPitch)
+    *pRowPitch = (unsigned)lr.Pitch;
+  return hr;
+}
+
+HRESULT D3D9Backend::UnlockSurface(HSurface surface) {
+  if (!surface.p)
+    return E_INVALIDARG;
+  return static_cast<IDirect3DSurface9*>(surface.p)->UnlockRect();
 }
 
 HRESULT D3D9Backend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) {

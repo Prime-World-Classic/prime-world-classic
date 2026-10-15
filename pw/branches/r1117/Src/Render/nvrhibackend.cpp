@@ -209,7 +209,22 @@ struct SurfaceObj
   nvrhi::TextureHandle tex;
   nvrhi::StagingTextureHandle staging;  // для ReadSurface (создаётся лениво)
   bool backBuffer;
-  SurfaceObj() : backBuffer(false) {}
+  // для GetSurfaceInfo/LockSurface (шаг 13.2): размеры и seam-формат нужны
+  // клиенту, а COM-описания у Vulkan-поверхности нет
+  nvrhi::Format fmt;
+  unsigned w, h;
+  EBackendFormat seamFormat;
+  EBackendPool pool;
+  EBackendUsage usage;
+  bool depth;
+  // CPU-зеркало уровня 0 — как у текстур: у Vulkan нет приведённой памяти
+  std::vector<unsigned char> mirror;
+  bool locked;
+  long lockX, lockY, lockW, lockH;
+  SurfaceObj() : backBuffer(false), fmt(nvrhi::Format::UNKNOWN), w(0), h(0),
+                 seamFormat(bfUnknown), pool(BACKEND_POOL_DEFAULT), usage(usageNone),
+                 depth(false), locked(false),
+                 lockX(0), lockY(0), lockW(0), lockH(0) {}
 };
 
 // NVRHI пишет сюда ошибки трекера состояний, несовпадений наборов и т.п. Без
@@ -254,6 +269,10 @@ struct NvrhiBackendImpl
   nvrhi::CommandListHandle commandList;
 
   std::vector<nvrhi::TextureHandle> backTextures;   // по одному на картинку swapchain'а
+  // Индексы картинок swapchain'а в d.surfaces. Отдельный список нужен потому,
+  // что пересоздание swapchain'а НЕ имеет права чистить d.surfaces целиком:
+  // там же поверхности, созданные клиентом (RT/DS), а их ручки — индексы.
+  std::vector<unsigned> backSurfaceIdx;
   std::vector<SurfaceObj> surfaces;                 // индекс + 1 = значение HSurface.p
   unsigned currentSurface;                          // поверхность текущего бэк-буфера
 
@@ -325,6 +344,11 @@ struct NvrhiBackendImpl
     nvrhi::Format fmt;
     unsigned w, h, mipLevels;
     bool cube;
+    // seam-атрибуты (шаг 13.2): клиент читает описание текстуры через
+    // GetTextureInfo, а COM-описания у Vulkan-текстуры нет
+    EBackendFormat seamFormat;
+    EBackendUsage usage;
+    EBackendPool pool;
     // CPU-зеркало уровня 0: у Vulkan нет «приведённой» памяти, поэтому
     // LockTexture2D отдаёт указатель сюда, а UnlockTexture2D грузит её целиком
     // (зеркало авторитетно, поэтому частичная блокировка не затирает остальное)
@@ -332,6 +356,7 @@ struct NvrhiBackendImpl
     bool locked;
     long lockX, lockY, lockW, lockH;
     TextureObj() : fmt(nvrhi::Format::UNKNOWN), w(0), h(0), mipLevels(1), cube(false),
+                   seamFormat(bfUnknown), usage(usageNone), pool(BACKEND_POOL_DEFAULT),
                    locked(false), lockX(0), lockY(0), lockW(0), lockH(0) {}
   };
   struct ResMapObj
@@ -849,6 +874,14 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
     SurfaceObj so;
     so.tex = h;
     so.backBuffer = true;
+    // описание заполняется здесь же: GetSurfaceInfo обязан работать и на
+    // бэк-буфере (по нему клиент берёт размеры для снимка экрана)
+    so.fmt = nf;
+    so.w = d.width; so.h = d.height;
+    so.seamFormat = (nf == nvrhi::Format::BGRA8_UNORM) ? bfA8R8G8B8 : bfUnknown;
+    so.pool = BACKEND_POOL_DEFAULT;
+    so.usage = usageRenderTarget;
+    d.backSurfaceIdx.push_back((unsigned)d.surfaces.size());
     d.surfaces.push_back(so);
   }
 
@@ -872,11 +905,24 @@ void NvrhiBackend::DestroySwapchain()
   if (d.nvrhiDevice)
     d.nvrhiDevice->waitForIdle();
   // Картинки принадлежат swapchain'у: NVRHI-обёртки и SurfaceObj отпускаем ДО
-  // vkDestroySwapchainKHR. Индексы surfaces при пересоздании восстанавливаются
-  // те же (то же число картинок, тот же порядок), поэтому выданные GetBackBuffer
-  // указатели (index+1) остаются осмысленными.
+  // vkDestroySwapchainKHR. d.surfaces целиком НЕ чистится: там поверхности
+  // клиента (RT/DS), чьи ручки — индексы этого же вектора; отпускаются только
+  // записи бэк-буферов (их индексы лежат в backSurfaceIdx, и выданные
+  // GetBackBuffer ручки становятся пустыми — клиент обязан взять бэк-буфер
+  // заново после пересоздания).
+  for (size_t i = 0; i < d.backSurfaceIdx.size(); ++i)
+    if (d.backSurfaceIdx[i] < d.surfaces.size())
+    {
+      d.surfaces[d.backSurfaceIdx[i]].tex = nullptr;
+      d.surfaces[d.backSurfaceIdx[i]].staging = nullptr;
+    }
+  d.backSurfaceIdx.clear();
   d.backTextures.clear();
-  d.surfaces.clear();
+  // Кэш пайплайнов держит framebuffer'ы, построенные по RT/DS; после
+  // пересоздания swapchain'а часть из них указывает на мёртвые картинки,
+  // поэтому сбрасываем (дороже, но молча рисовать по чужой картинке — хуже).
+  d.pipes.clear();
+  d.setCache.clear();
   d.currentSurface = 0;
   if (d.acquired) { VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySemaphore(d.device, d.acquired, 0); d.acquired = 0; }
   if (d.swapchain) { VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySwapchainKHR(d.device, d.swapchain, 0); d.swapchain = 0; }
@@ -1106,9 +1152,18 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
     return E_FAIL;
   }
 
-  if (d.imageIndex >= d.backTextures.size())
+  if (d.imageIndex >= d.backTextures.size() || d.imageIndex >= d.backSurfaceIdx.size())
     return E_FAIL;
-  SurfaceObj& so = d.surfaces[d.imageIndex];
+  // Индекс бэк-буфера берём из backSurfaceIdx: после пересоздания swapchain'а
+  // картинки добавляются в КОНЕЦ d.surfaces (там уже лежат поверхности клиента),
+  // поэтому «imageIndex» как индекс вектора больше не годится — он указывал бы
+  // на мёртвую запись с tex == nullptr, и clearTextureFloat(null) ронял клиент
+  // (замер 2026-10-15, прогон 2026.10.15-21.03.40: access violation сразу после
+  // «пересоздание swapchain'а #1»). Заодно проверяем, что ручка жива.
+  const unsigned sIdx = d.backSurfaceIdx[d.imageIndex];
+  if (sIdx >= d.surfaces.size() || !d.surfaces[sIdx].tex)
+    return E_FAIL;
+  SurfaceObj& so = d.surfaces[sIdx];
 
   // 12b: если этим кадром уже записаны вызовы (Clear/Draw/writeBuffer), они
   // уходят ОТДЕЛЬНЫМ списком до очистки бэк-буфера: в 12a заливка и была всем
@@ -1452,7 +1507,7 @@ bool BuildInputLayout(NvrhiBackendImpl& d, unsigned layoutIdx)
 // SurfaceFormat — тот же, что и для поверхностей (bfA8R8G8B8 -> BGRA8_UNORM).
 static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned height,
                                    unsigned mipLevels, EBackendUsage usage, EBackendFormat format,
-                                   bool cube, HTexture* pOut)
+                                   EBackendPool pool, bool cube, HTexture* pOut)
 {
   if (!width || !height || !pOut) return D3DERR_INVALIDCALL;
   if (!d.nvrhiDevice) return E_FAIL;
@@ -1491,6 +1546,7 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
   NvrhiBackendImpl::TextureObj to;
   to.tex = tex; to.fmt = fmt; to.w = width; to.h = height;
   to.mipLevels = mipLevels ? mipLevels : 1u; to.cube = cube;
+  to.seamFormat = format; to.usage = usage; to.pool = pool;
   d.textures.push_back(to);
   pOut->p = Idx2Hnd((unsigned)d.textures.size() - 1u);
   return S_OK;
@@ -1500,16 +1556,14 @@ HRESULT NvrhiBackend::CreateTexture2D(unsigned width, unsigned height, unsigned 
                                       EBackendUsage usage, EBackendFormat format, EBackendPool pool,
                                       HTexture* pOut)
 {
-  (void)pool;   // пул в Vulkan не различается: у NVRHI своя политика памяти
-  return CreateTextureCommon(*m_pImpl, width, height, mipLevels, usage, format, false, pOut);
+  return CreateTextureCommon(*m_pImpl, width, height, mipLevels, usage, format, pool, false, pOut);
 }
 
 HRESULT NvrhiBackend::CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
                                         EBackendUsage usage, EBackendFormat format, EBackendPool pool,
                                         HTexture* pOut)
 {
-  (void)pool;
-  return CreateTextureCommon(*m_pImpl, edgeLen, edgeLen, mipLevels, usage, format, true, pOut);
+  return CreateTextureCommon(*m_pImpl, edgeLen, edgeLen, mipLevels, usage, format, pool, true, pOut);
 }
 
 HRESULT NvrhiBackend::UpdateTexture(HTexture srcTexture, HTexture dstTexture)
@@ -1620,6 +1674,79 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level)
   d.nvrhiDevice->unmapStagingTexture(stg);
   if (!EnsureRecording()) return E_FAIL;
   d.commandList->copyTexture(to.tex, nvrhi::TextureSlice(), stg, nvrhi::TextureSlice());
+  ++d.uploads;
+  return S_OK;
+}
+
+// Описание текстуры (шаг 13.2): клиенту нужен D3DSURFACE_DESC-эквивалент — по
+// нему текстура пересоздаётся после потери устройства (Render/texture.cpp) и
+// проверяется пул в деструкторе. Значения возвращаем те, что просили при
+// создании: у Vulkan-текстуры COM-описания нет.
+HRESULT NvrhiBackend::GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo)
+{
+  if (!pInfo) return E_INVALIDARG;
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned t = Hnd2Idx(texture.p);
+  if (t == kNoRes || t >= d.textures.size() || !d.textures[t].tex)
+  {
+    VkNote("GetTextureInfo: вне Vulkan-пути", false, 0);
+    return E_FAIL;
+  }
+  const NvrhiBackendImpl::TextureObj& to = d.textures[t];
+  pInfo->width  = to.w;
+  pInfo->height = to.h;
+  pInfo->levels = to.mipLevels;
+  pInfo->format = to.seamFormat;
+  pInfo->usage  = to.usage;
+  pInfo->pool   = to.pool;
+  return S_OK;
+}
+
+// Цепочку mip'ов выбирает бэкенд (шаг 13.2): D3D9 — autogen драйвера, а под
+// Wine/CrossOver — ручная цепочка по COM-поверхностям через StretchRect
+// (прежние GenerateSubLevels_1/2 в texture.cpp). Здесь — те два шага через
+// copyTexture: уровень n-1 -> временная текстура -> уровень n. Копия Vulkan не
+// фильтрует (как и StretchRect), т.е. поведение совпадает с Wine-цепочкой, а не
+// с autogen драйвера — на этом контуре так и было.
+HRESULT NvrhiBackend::GenerateMipmaps(HTexture texture)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned t = Hnd2Idx(texture.p);
+  if (t == kNoRes || t >= d.textures.size() || !d.textures[t].tex) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl::TextureObj& to = d.textures[t];
+  if (to.mipLevels <= 1u) return S_OK;   // цепочки нет
+  if (to.cube)
+  {
+    VkNote("GenerateMipmaps: cube-цепочка не переведена", false, 0);
+    return E_FAIL;
+  }
+  if (!d.nvrhiDevice || !EnsureRecording()) return E_FAIL;
+  for (unsigned n = 1; n < to.mipLevels; ++n)
+  {
+    const unsigned sw = (to.w >> (n - 1u)) ? (to.w >> (n - 1u)) : 1u;
+    const unsigned sh = (to.h >> (n - 1u)) ? (to.h >> (n - 1u)) : 1u;
+    const unsigned dw = (to.w >> n) ? (to.w >> n) : 1u;
+    const unsigned dh = (to.h >> n) ? (to.h >> n) : 1u;
+    nvrhi::TextureHandle tmp = d.nvrhiDevice->createTexture(
+        nvrhi::TextureDesc()
+          .setDimension(nvrhi::TextureDimension::Texture2D)
+          .setWidth(sw).setHeight(sh).setFormat(to.fmt).setMipLevels(1)
+          .setInitialState(nvrhi::ResourceStates::ShaderResource).setKeepInitialState(true)
+          .setDebugName("seam mip chain"));
+    if (!tmp)
+    {
+      char det[64];
+      snprintf(det, sizeof(det), "уровень %u, %ux%u", n, sw, sh);
+      VkNote("GenerateMipmaps: временная текстура", false, det);
+      return E_FAIL;
+    }
+    d.commandList->copyTexture(tmp, nvrhi::TextureSlice(),
+                               to.tex, nvrhi::TextureSlice().setMipLevel(n - 1u)
+                                       .setWidth(sw).setHeight(sh));
+    d.commandList->copyTexture(to.tex, nvrhi::TextureSlice().setMipLevel(n)
+                                       .setWidth(dw).setHeight(dh),
+                               tmp, nvrhi::TextureSlice());
+  }
   ++d.uploads;
   return S_OK;
 }
@@ -2272,15 +2399,16 @@ HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, un
 
   nvrhi::TextureDesc td;
   td.setDimension(nvrhi::TextureDimension::Texture2D).setWidth(width).setHeight(height);
+  nvrhi::Format fmtSel = nvrhi::Format::UNKNOWN;
   bool depth = false;
   switch (format)
   {
-    case bfD24S8:  td.setFormat(nvrhi::Format::D24S8); depth = true; break;
+    case bfD24S8:  fmtSel = nvrhi::Format::D24S8; td.setFormat(fmtSel); depth = true; break;
     // у NVRHI нет формата B8G8R8A8 — BGRA8_UNORM даёт в памяти те же байты
     // B,G,R,A, что D3D9 A8R8G8B8/X8R8G8B8 (замер спайка: RT BGRA8_UNORM +
     // readback пиксель-в-пиксель); X8 у нас читается как A, потерь в коде нет
     case bfA8R8G8B8:
-    case bfX8R8G8B8: td.setFormat(nvrhi::Format::BGRA8_UNORM); break;
+    case bfX8R8G8B8: fmtSel = nvrhi::Format::BGRA8_UNORM; td.setFormat(fmtSel); break;
     default:
     {
       char det[96];
@@ -2310,8 +2438,106 @@ HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, un
   SurfaceObj so;
   so.tex = tex;
   so.backBuffer = false;
+  so.fmt = fmtSel;
+  so.w = width; so.h = height;
+  so.seamFormat = format;
+  so.pool = pool;
+  so.usage = (kind == ssDepthStencil) ? usageDepthStencil
+           : (kind == ssRenderTarget) ? usageRenderTarget : usageNone;
+  so.depth = depth;
   d.surfaces.push_back(so);
   pOut->p = Idx2Hnd((unsigned)d.surfaces.size() - 1u);
+  return S_OK;
+}
+
+// Блокировка поверхности (шаг 13.2): прежний путь — LockRect/UnlockRect у
+// COM-поверхности (rendersurface.cpp), теперь — seam. Зеркало полное, поэтому
+// частичная блокировка не затирает остальное; шаг строки сообщает бэкенд.
+HRESULT NvrhiBackend::LockSurface(HSurface surface, const BackendRect* pRect,
+                                  ERenderLockType mode, void** ppData, unsigned* pRowPitch)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!surface.p || !ppData) return E_INVALIDARG;
+  *ppData = 0;
+  const unsigned s = Hnd2Idx(surface.p);
+  if (s == kNoRes || s >= d.surfaces.size() || !d.surfaces[s].tex) return D3DERR_INVALIDCALL;
+  SurfaceObj& so = d.surfaces[s];
+  const unsigned bpp = BppOf(so.fmt);
+  if (so.depth || !bpp)
+  {
+    char det[96];
+    snprintf(det, sizeof(det), "глубина=%d формат=%d", (int)so.depth, (int)so.seamFormat);
+    VkNote("LockSurface: вне Vulkan-пути", false, det);
+    return E_FAIL;
+  }
+  long x0 = 0, y0 = 0, x1 = (long)so.w, y1 = (long)so.h;
+  if (pRect)
+  {
+    if (pRect->left > x0) x0 = pRect->left;
+    if (pRect->top > y0) y0 = pRect->top;
+    if (pRect->right < x1) x1 = pRect->right;
+    if (pRect->bottom < y1) y1 = pRect->bottom;
+    if (x1 < x0) x1 = x0;
+    if (y1 < y0) y1 = y0;
+  }
+  so.mirror.resize((size_t)so.w * so.h * bpp);
+  so.locked = true;
+  so.lockX = x0; so.lockY = y0; so.lockW = x1 - x0; so.lockH = y1 - y0;
+  *ppData = &so.mirror[(size_t)y0 * so.w * bpp + (size_t)x0 * bpp];
+  if (pRowPitch) *pRowPitch = so.w * bpp;
+  (void)mode;   // режим — намерение (locktype.h), зеркало всегда полное
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::UnlockSurface(HSurface surface)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!surface.p) return E_INVALIDARG;
+  const unsigned s = Hnd2Idx(surface.p);
+  if (s == kNoRes || s >= d.surfaces.size() || !d.surfaces[s].tex) return D3DERR_INVALIDCALL;
+  SurfaceObj& so = d.surfaces[s];
+  if (!so.locked || so.mirror.empty()) return E_FAIL;
+  so.locked = false;
+  const unsigned bpp = BppOf(so.fmt);
+  nvrhi::StagingTextureHandle stg = d.nvrhiDevice->createStagingTexture(
+      nvrhi::TextureDesc()
+        .setDimension(nvrhi::TextureDimension::Texture2D)
+        .setWidth(so.w).setHeight(so.h).setFormat(so.fmt).setMipLevels(1)
+        .setInitialState(nvrhi::ResourceStates::CopyDest).setKeepInitialState(true)
+        .setDebugName("seam surface staging"),
+      nvrhi::CpuAccessMode::Write);
+  if (!stg) { VkNote("UnlockSurface: staging", false, 0); return E_FAIL; }
+  size_t pitch = 0;
+  void* pDst = d.nvrhiDevice->mapStagingTexture(stg, nvrhi::TextureSlice(),
+                                                nvrhi::CpuAccessMode::Write, &pitch);
+  if (!pDst) { VkNote("UnlockSurface: mapStagingTexture", false, 0); return E_FAIL; }
+  for (unsigned y = 0; y < so.h; ++y)
+    memcpy((unsigned char*)pDst + (size_t)y * pitch, &so.mirror[(size_t)y * so.w * bpp],
+           (size_t)so.w * bpp);
+  d.nvrhiDevice->unmapStagingTexture(stg);
+  if (!EnsureRecording()) return E_FAIL;
+  d.commandList->copyTexture(so.tex, nvrhi::TextureSlice(), stg, nvrhi::TextureSlice());
+  ++d.uploads;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo)
+{
+  if (!pInfo) return E_INVALIDARG;
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned s = Hnd2Idx(surface.p);
+  if (s == kNoRes || s >= d.surfaces.size() || !d.surfaces[s].tex)
+  {
+    VkNote("GetSurfaceInfo: вне Vulkan-пути", false, 0);
+    return E_FAIL;
+  }
+  const SurfaceObj& so = d.surfaces[s];
+  pInfo->width  = so.w;
+  pInfo->height = so.h;
+  pInfo->levels = 1u;
+  pInfo->format = so.seamFormat;
+  pInfo->usage  = so.usage;
+  pInfo->pool   = so.pool;
   return S_OK;
 }
 
@@ -2471,9 +2697,9 @@ HRESULT NvrhiBackend::ReadSurface(HSurface srcSurface, const BackendRect* pCropR
 HRESULT NvrhiBackend::GetBackBuffer(HSurface* pOut)
 {
   NvrhiBackendImpl& d = *m_pImpl;
-  if (!pOut || d.imageIndex >= d.surfaces.size())
+  if (!pOut || d.imageIndex >= d.backSurfaceIdx.size())
     return E_FAIL;
-  pOut->p = (void*)(size_t)(d.imageIndex + 1);
+  pOut->p = Idx2Hnd(d.backSurfaceIdx[d.imageIndex]);
   return S_OK;
 }
 

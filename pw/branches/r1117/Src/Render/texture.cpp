@@ -16,7 +16,15 @@ REGISTER_VAR("debug_txtr_create_message", s_msg_enable, STORAGE_NONE);
 DECLARE_NULL_RENDER_FLAG
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-unsigned int Texture::GetMipSubLevelsCount() const { return pDXTexture->GetLevelCount(); }
+unsigned int Texture::GetMipSubLevelsCount() const
+{
+  // Уровни спрашивает бэкенд (шаг 13.2): у другого бэкенда у pDXTexture нет
+  // COM-метода GetLevelCount.
+  IRenderBackend::BackendTextureInfo info;
+  if (FAILED(GetBackend()->GetTextureInfo(MakeBackendHandle<HTexture>(Get(pDXTexture)), &info)))
+    return 0;
+  return info.levels;
+}
 
 inline void Texture::SetTexture(IDirect3DBaseTexture9 *_tex)
 {
@@ -36,8 +44,29 @@ Texture2D::Texture2D(IDirect3DTexture9 *pTex, HandlerPriority deviceLostHandlerP
   ZeroMemory(&desc, sizeof(desc));
 	if (!pTex)
 		return;
-	GetDXTexture()->GetLevelDesc(0, &desc);
-  levels = GetDXTexture()->GetLevelCount();
+  // Описание текстуры даёт бэкенд (шаг 13.2): под другим бэкендом у pTex нет
+  // COM-методов, а D3DSURFACE_DESC клиенту нужен — по нему текстура
+  // пересоздаётся после потери устройства. Для D3D9 значения берутся из того же
+  // GetLevelDesc(0)/GetLevelCount, что читал клиент раньше.
+  IRenderBackend::BackendTextureInfo info;
+  const HRESULT hrInfo = GetBackend()->GetTextureInfo(MakeBackendHandle<HTexture>(pTex), &info);
+  if (FAILED(hrInfo)) {
+    NI_DX_THROW(hrInfo, "Texture2D: GetTextureInfo");
+    return;
+  }
+  desc.Width  = info.width;
+  desc.Height = info.height;
+  if (!BackendFormatToD3D(info.format, &desc.Format))
+    NI_ASSERT(false, NStr::StrFmt("Texture2D: формат %d вне словаря D3D9", (int)info.format));
+  if (!BackendPoolUsageToD3D(info.pool, info.usage, &desc.Pool, &desc.Usage))
+    NI_ASSERT(false, NStr::StrFmt("Texture2D: пул %d вне словаря D3D9", (int)info.pool));
+  // Type = D3DRTYPE_TEXTURE — как у COM-описания. Это не косметика:
+  // OnResourcesReallocate пересоздаёт только desc.Type == D3DRTYPE_SURFACE, т.е.
+  // текстуры, созданные из COM-указателя, пересоздания не требуют (так и было).
+  desc.Type               = D3DRTYPE_TEXTURE;
+  desc.MultiSampleType    = D3DMULTISAMPLE_NONE;
+  desc.MultiSampleQuality = 0;
+  levels = info.levels;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +145,17 @@ LockedRect Texture2D::LockRect(unsigned int level, unsigned int left, unsigned i
 
 LockedRect Texture2D::LockRect(unsigned int level, RECT *pRect, ERenderLockType lockType)
 {
-	D3DLOCKED_RECT lockedRect;
-
-	HRESULT hr = GetDXTexture()->LockRect( level, &lockedRect, pRect, ConvertRenderLockType(lockType) );
+  // Загрузка бит — через seam (шаг 13.1/13.2): у Vulkan нет «приведённой»
+  // памяти, шаг строки обязан сообщать бэкенд.
+  void* data = 0;
+  unsigned pitch = 0;
+  const BackendRect r = MakeBackendRect(pRect->left, pRect->top, pRect->right, pRect->bottom);
+  HRESULT hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, &r,
+                                           lockType, &data, &pitch);
   NI_DX_THROW(hr, __FUNCTION__);
 
   if( SUCCEEDED(hr) )
-    return LockedRect(lockedRect.Pitch, (uchar*)lockedRect.pBits);
+    return LockedRect((int)pitch, (uchar*)data);
   else
     return LockedRect(0, 0);
 }
@@ -130,16 +163,17 @@ LockedRect Texture2D::LockRect(unsigned int level, RECT *pRect, ERenderLockType 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
 {
-  D3DLOCKED_RECT lockedRect;
-
-	HRESULT hr = E_FAIL;
+  HRESULT hr = E_FAIL;
+  void* data = 0;
+  unsigned pitch = 0;
   if( !RENDER_DISABLED && GetDXTexture() ) {
-    hr = GetDXTexture()->LockRect( level, &lockedRect, NULL, ConvertRenderLockType(lockType) );
+    hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, 0,
+                                     lockType, &data, &pitch);
     NI_DX_THROW(hr, __FUNCTION__);
   }
 
   if( SUCCEEDED(hr) )
-    return LockedRect(lockedRect.Pitch, (uchar*)lockedRect.pBits);
+    return LockedRect((int)pitch, (uchar*)data);
   else
 	  return LockedRect(0, 0);
 }
@@ -149,7 +183,7 @@ LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
 void Texture2D::UnlockRect(unsigned int level)
 {
   if(!RENDER_DISABLED) {
-    HRESULT hr = GetDXTexture()->UnlockRect( level );
+    HRESULT hr = GetBackend()->UnlockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level);
     NI_DX_THROW(hr, __FUNCTION__);
   }
 }
@@ -164,80 +198,17 @@ DXSurfaceRef Texture2D::GetSurface(unsigned int level) const
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static void GenerateSubLevels_1(uint _mipLevels, IDirect3DTexture9* _pTex)
-{
-  IDirect3DDevice9* const pDevice = GetDevice();
-  IDirect3DSurface9 *pSurf = 0;
-
-  HRESULT hr = _pTex->GetSurfaceLevel(0, &pSurf);
-  DXSurfaceRef pSrc(pSurf, false);
-  NI_DX_THROW(hr, "GenerateSubLevels_1: failed to lock");
-
-  for(uint n = 1; n < _mipLevels; ++n) {
-    hr = _pTex->GetSurfaceLevel(n, &pSurf);
-    NI_DX_THROW(hr, "GenerateSubLevels_1: failed to lock");
-
-    DXSurfaceRef pDest(pSurf, false);
-    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
-                                     MakeBackendHandle<HSurface>(Get(pDest)), 0, IRenderBackend::bfLinear);
-    NI_DX_THROW(hr, "GenerateSubLevels_1: failed to stretch");
-
-    Swap(pSrc, pDest);
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static void GenerateSubLevels_2(uint _mipLevels, IDirect3DTexture9* _pTex)
-{
-  if(_mipLevels <= 1)
-    return;
-
-  IDirect3DDevice9* const pDevice = GetDevice();
-  IDirect3DSurface9 *pSurf = 0;
-
-  HRESULT hr = _pTex->GetSurfaceLevel(0, &pSurf);
-  DXSurfaceRef pSrc(pSurf, false);
-  NI_DX_THROW(hr, "GenerateSubLevels_2: failed to lock");
-
-  D3DSURFACE_DESC desc;
-  hr = _pTex->GetLevelDesc(1, &desc);
-  HSurface hSurf;
-  hr = GetBackend()->CreateSurface(ssRenderTarget, desc.Width, desc.Height,
-                                   D3DFormatToBackend(desc.Format), BACKEND_POOL_DEFAULT, &hSurf);
-  pSurf = static_cast<IDirect3DSurface9*>(hSurf.p);
-  DXSurfaceRef tmp(pSurf, false);
-  NI_DX_THROW(hr, "GenerateSubLevels_2: failed to create temporary surface");
-
-  BackendRect rect = MakeBackendRect(0, 0, 0, 0);
-  for(uint n = 1; n < _mipLevels; ++n) {
-    hr = _pTex->GetLevelDesc(n, &desc);
-    rect.right = desc.Width;
-    rect.bottom = desc.Height;
-    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(pSrc)), 0,
-                                     MakeBackendHandle<HSurface>(Get(tmp)), &rect, IRenderBackend::bfLinear);
-    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
-
-    hr = _pTex->GetSurfaceLevel(n, &pSurf);
-    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to lock");
-
-    pSrc.Attach(pSurf);
-    hr = GetBackend()->StretchRect(MakeBackendHandle<HSurface>(Get(tmp)), &rect,
-                                     MakeBackendHandle<HSurface>(Get(pSrc)), 0, IRenderBackend::bfLinear);
-    NI_DX_THROW(hr, "GenerateSubLevels_2: failed to stretch");
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Texture2D::GenerateMipSubLevels_()
+// mip-цепочка (GenerateSubLevels_1/2) перенесена в d3d9backend.cpp — шаг 13.2:
+// она построена на COM-поверхностях, а способ её построения обязан выбирать
+// бэкенд, а не клиент.
+void Texture::GenerateMipSubLevels_()
 {
   if(!pDXTexture)
     return;
 
-  if( uint mipLevels = levels ? levels : pDXTexture->GetLevelCount() )
-    if( Compatibility::IsRunnedUnderCrossOverWine() )
-      GenerateSubLevels_1( mipLevels, GetDXTexture() );
-    else
-      GenerateSubLevels_2( mipLevels, GetDXTexture() );
+  const HRESULT hr = GetBackend()->GenerateMipmaps(MakeBackendHandle<HTexture>(Get(pDXTexture)));
+  if (FAILED(hr))
+    DebugTrace("Texture: GenerateMipmaps — НЕ УДАЛОСЬ 0x%08X", (unsigned)hr);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

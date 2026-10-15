@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "renderflagsconverter.h"
+#include "dxutils.h"   // GetD3DPoolAndUsagesParamaters — справочник «пул -> D3DPOOL + usage»
 
 namespace Render
 {
@@ -292,6 +293,68 @@ EBackendUsage D3DUsageToBackend(DWORD usage)
   if (usage & D3DUSAGE_DEPTHSTENCIL)   u = EBackendUsage(u | usageDepthStencil);
   if (usage & D3DUSAGE_AUTOGENMIPMAP)  u = EBackendUsage(u | usageAutoGenMipmap);
   return u;
+}
+
+// Обратные переводы — см. объявление в renderflagsconverter.h. Таблица
+// форматов зеркальна D3DFormatToBackend (строкой выше); D3DFMT_UNKNOWN
+// возвращается для bfUnknown, но вызов в этом случае возвращает false.
+bool BackendFormatToD3D(EBackendFormat fmt, D3DFORMAT* pOut)
+{
+  D3DFORMAT f = D3DFMT_UNKNOWN;
+  switch (fmt)
+  {
+    case bfA8R8G8B8:          f = D3DFMT_A8R8G8B8;       break;
+    case bfX8R8G8B8:          f = D3DFMT_X8R8G8B8;       break;
+    case bfA8:                f = D3DFMT_A8;             break;
+    case bfL8:                f = D3DFMT_L8;             break;
+    case bfL16:               f = D3DFMT_L16;            break;
+    case bfR5G6B5:            f = D3DFMT_R5G6B5;         break;
+    case bfR16F:              f = D3DFMT_R16F;           break;
+    case bfA16B16G16R16F:     f = D3DFMT_A16B16G16R16F;  break;
+    case bfR32F:              f = D3DFMT_R32F;           break;
+    case bfG32R32F:           f = D3DFMT_G32R32F;        break;
+    case bfA32B32G32R32F:     f = D3DFMT_A32B32G32R32F;  break;
+    case bfDXT1:              f = D3DFMT_DXT1;           break;
+    case bfDXT2:              f = D3DFMT_DXT2;           break;
+    case bfDXT3:              f = D3DFMT_DXT3;           break;
+    case bfDXT4:              f = D3DFMT_DXT4;           break;
+    case bfDXT5:              f = D3DFMT_DXT5;           break;
+    case bfD24S8:             f = D3DFMT_D24S8;          break;
+    default:                  if (pOut) *pOut = f;       return false;
+  }
+  if (pOut)
+    *pOut = f;
+  return true;
+}
+
+bool BackendPoolUsageToD3D(EBackendPool pool, EBackendUsage usage,
+                           D3DPOOL* pPool, DWORD* pUsage)
+{
+  // Справочник один: GetD3DPoolAndUsagesParamaters (dxutils.cpp) — тот же, что
+  // использует D3DPoolFromBackend при создании. Паритет PoolType и EBackendPool
+  // зафиксирован static_assert'ами в d3d9backend.cpp (D3DPoolFromBackend).
+  if (pool < BACKEND_POOL_DEFAULT || pool >= BACKEND_POOL_COUNT)
+  {
+    if (pPool)  *pPool  = D3DPOOL_DEFAULT;
+    if (pUsage) *pUsage = 0;
+    return false;
+  }
+  DWORD u = 0;
+  D3DPOOL p = D3DPOOL_DEFAULT;
+  GetD3DPoolAndUsagesParamaters(u, p, static_cast<PoolType>(pool));
+  u |= D3DUsageFromBackendBits(usage);
+  if (pPool)  *pPool  = p;
+  if (pUsage) *pUsage = u;
+  return true;
+}
+
+DWORD D3DUsageFromBackendBits(EBackendUsage usage)
+{
+  DWORD d3dUsage = 0;
+  if (usage & usageRenderTarget)  d3dUsage |= D3DUSAGE_RENDERTARGET;
+  if (usage & usageDepthStencil)  d3dUsage |= D3DUSAGE_DEPTHSTENCIL;
+  if (usage & usageAutoGenMipmap) d3dUsage |= D3DUSAGE_AUTOGENMIPMAP;
+  return d3dUsage;
 }
 
 } // namespace Render

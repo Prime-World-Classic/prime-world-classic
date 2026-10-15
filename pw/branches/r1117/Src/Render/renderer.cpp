@@ -1076,14 +1076,14 @@ bool Renderer::SaveFrameToFile(const char* fileName, bool keepAlpha, const Backe
     src = MakeBackendHandle<HSurface>(::Get(pDeviceColorSurface));   // :: — иначе видится Renderer::Get();
   }
 
-  // Размеры источника берутся из описания поверхности: интерфейс бэкенда их не
-  // отдаёт (у Vulkan их знает текстура, а снимок берётся с RT/бэк-буфера).
+  // Размеры источника даёт бэкенд (шаг 13.2): у Vulkan-поверхности нет COM-
+  // метода GetDesc, а снимок берётся и с бэк-буфера, и с RT.
   unsigned w = 0, h = 0;
-  D3DSURFACE_DESC desc;
-  if(FAILED(static_cast<IDirect3DSurface9*>(src.p)->GetDesc(&desc)))
+  IRenderBackend::BackendTextureInfo info;
+  if(FAILED(pBackend->GetSurfaceInfo(src, &info)))
     return false;
-  w = desc.Width;
-  h = desc.Height;
+  w = info.width;
+  h = info.height;
 
   unsigned cw = w, ch = h;
   BackendRect clamped = MakeBackendRect(0, 0, (long)w, (long)h);
