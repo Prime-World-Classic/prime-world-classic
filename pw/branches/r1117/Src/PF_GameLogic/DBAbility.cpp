@@ -8428,7 +8428,7 @@ void EventProcessorLastHit::Assign( const EventProcessorLastHit& _eventProcessor
 NWorld::PFEventProcessorBase* EventProcessorLastHit::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorLastHit( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorLastHit( *this, world );
@@ -8548,7 +8548,7 @@ void EventProcessorOnDeath::Assign( const EventProcessorOnDeath& _eventProcessor
 NWorld::PFEventProcessorBase* EventProcessorOnDeath::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorOnDeath( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorOnDeath( *this, world );

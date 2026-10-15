@@ -7,6 +7,7 @@
 #include "PFDispatch.h"
 #include "DBTalent.h"
 #include "PFApplUtils.h"
+#include "PFAIWorld.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,13 @@ namespace NWorld
 {
 namespace
 {
+/** Delayed processors require elapsed time, not merely an untyped step event. */
+struct LinuxApplicatorStepEvent : PFBaseUnitEvent
+{
+	float dt;
+	explicit LinuxApplicatorStepEvent(float dt) : PFBaseUnitEvent(NDb::BASEUNITEVENT_APPLICATORSTEP), dt(dt) {}
+};
+
 /** Match the original signed mask promotion, after validating the shift and event enum. */
 bool LinuxTriggerAccepts(int mask, const PFBaseUnitEvent* event)
 {
@@ -52,7 +60,8 @@ bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db,
 			if (!LinuxTriggerTreeValid(child.GetPtr(), path, nodes)) { path.pop_back(); return false; }
 		path.pop_back(); return true;
 	}
-	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db);
+	return dynamic_cast<const NDb::EventProcessorCondition*>(db) || dynamic_cast<const NDb::EventProcessorCancelDispatch*>(db)
+		|| dynamic_cast<const NDb::EventProcessorOnDeath*>(db) || dynamic_cast<const NDb::EventProcessorLastHit*>(db);
 }
 
 bool LinuxTriggerTreeValid(const NDb::EventProcessorBase* db)
@@ -143,7 +152,7 @@ bool PFTriggerApplicator::Step(float dtInSeconds)
 		CObj<PFBaseApplicator> holder(this);
 		CObj<PFEventProcessorBase> processor(eventProcessor);
 		processor->Step(dtInSeconds);
-		const PFBaseUnitEvent step(NDb::BASEUNITEVENT_APPLICATORSTEP);
+		const LinuxApplicatorStepEvent step(dtInSeconds);
 		OnEvent(&step);
 	}
 	return !Base::IsAlive() || (maxActionsCount > 0 && actionsCount >= maxActionsCount);
@@ -285,6 +294,58 @@ bool PFEventProcessorCancelDispatch::ProcessEvent(const PFBaseUnitEvent* event)
 	return true;
 }
 
+/** Original receiver-death policy uses the actual killer and delays successful-action accounting until casting. */
+bool PFEventProcessorOnDeath::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	if (!event || !IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive() || !IsValid(GetReceiver())) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	if (event->GetType() == NDb::BASEUNITEVENT_APPLICATORSTEP && castSpellDelay > 0.f)
+	{
+		const auto* step = dynamic_cast<const LinuxApplicatorStepEvent*>(event);
+		if (!step || !std::isfinite(step->dt) || step->dt < 0.f || !std::isfinite(castSpellDelay)) return false;
+		castSpellDelay -= step->dt;
+		if (castSpellDelay >= EPS_VALUE) return false;
+		// Retire the pending slot before child callbacks, including a positive sub-epsilon remainder.
+		castSpellDelay = 0.f;
+		CPtr<PFBaseUnit> sender(pTempEventSender); pTempEventSender = nullptr;
+		DoSpell(sender); return true;
+	}
+	const auto* death = dynamic_cast<const PFBaseUnitEventUnitDeath*>(event);
+	if (!death || death->GetType() != NDb::BASEUNITEVENT_DEATH) return false;
+	const CPtr<PFBaseUnit>& sender = death->GetKiller();
+	if (GetDB().checkSender & NDb::TRIGGEREVENTCHECKSENDER_MATCHTARGET)
+	{
+		Target target; owner->MakeApplicationTarget(target, GetDB().senderMatchTarget);
+		if (!target.IsUnit() || target.GetUnit() != sender) return false;
+	}
+	if ((GetDB().checkSender & NDb::TRIGGEREVENTCHECKSENDER_OBJECTFILTER) && IsValid(sender)
+		&& !UnitMaskingPredicate(GetReceiver(), GetDB().objectFilter)(*sender)) return false;
+	if (death->GetVictim() != GetReceiver()) return false;
+	const auto& authored = GetDB().castSpellDelay;
+	LinuxBootstrap::NumericFormulaResult delay{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		delay = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *owner);
+	if (!delay.Succeeded()) return false;
+	castSpellDelay = delay.value;
+	if (castSpellDelay < EPS_VALUE)
+	{
+		castSpellDelay = 0.f; pTempEventSender = nullptr;
+		DoSpell(sender); return true;
+	}
+	pTempEventSender = sender;
+	return false;
+}
+
+/** Last-hit is the typed lethal-damage event, not a replacement for the subsequent death notification. */
+bool PFEventProcessorLastHit::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	const auto* hit = dynamic_cast<const PFBaseUnitLastHitEvent*>(event);
+	if (!hit || hit->GetType() != NDb::BASEUNITEVENT_LASTHIT || !IsValid(pOwner)
+		|| !pOwner->PFBaseApplicator::IsAlive()) return false;
+	DoSpell(hit->GetAttacker());
+	return true;
+}
+
 PFAbsorbShieldApplicator::PFAbsorbShieldApplicator(const PFApplCreatePars& cp)
 	: Base(cp), shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
 
@@ -386,6 +447,8 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorBase, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorCondition, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorGroup, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorCancelDispatch, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnDeath, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

@@ -640,7 +640,8 @@ bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const
       return false;
     if (bAllowDead)
       return true;
-    return pUnit->IsDead() ? DoesApplyToDead() : !DoesApplyToDead();
+		// The original XOR uses integer flag value 4, admitting living units as well when set.
+		return !pUnit->IsDead() || DoesApplyToDead();
   }
 
   if (target.IsObject())

@@ -32,8 +32,8 @@ static void AbilityAdmissionB10(Checks& check, PFWorld* world)
 	check(!data->IsTargetValid(Target(receiver.GetPtr())) && data->IsTargetValid(Target(receiver.GetPtr()), true),
 		"allow-dead remains a liveness override within one world");
 	raw->flags = NDb::ABILITYFLAGS_APPLYTODEAD;
-	check(data->IsTargetValid(Target(receiver.GetPtr())) && !data->IsTargetValid(Target(sender.GetPtr())),
-		"authored apply-to-dead policy retains its dead-only semantics");
+	check(data->IsTargetValid(Target(receiver.GetPtr())) && data->IsTargetValid(Target(sender.GetPtr())),
+		"authored apply-to-dead flag additionally admits dead targets without excluding living passive owners");
 	sender->ChangeHealth(-1000);
 	check(!data->ApplyToTarget(Target(receiver.GetPtr())) && sender->GetMana() == 200,
 		"dead caster cannot launch a new paid ability");
