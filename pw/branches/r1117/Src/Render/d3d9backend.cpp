@@ -447,6 +447,38 @@ HRESULT D3D9Backend::UpdateTexture(HTexture srcTexture, HTexture dstTexture) {
                                 static_cast<IDirect3DBaseTexture9*>(dstTexture.p));
 }
 
+HRESULT D3D9Backend::LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+                                   ERenderLockType mode, void** ppData, unsigned* pRowPitch) {
+  if (!texture.p || !ppData)
+    return E_INVALIDARG;
+  // HTexture здесь = то, что вернул CreateTexture2D (IDirect3DTexture9*).
+  // Cube-текстуры через этот метод не блокируются: у seam'а нет отдельного
+  // LockTextureCube, а клиент cube блокирует иными путями (замер — только
+  // ReadDDS/TextureManager, они остаются D3D9-ными до шага 13.2).
+  IDirect3DTexture9* tex = static_cast<IDirect3DTexture9*>(texture.p);
+  D3DLOCKED_RECT lr;
+  lr.pBits = 0;
+  lr.Pitch = 0;
+  RECT r, *pR = 0;
+  if (pRect)
+  {
+    r.left = pRect->left; r.top = pRect->top;
+    r.right = pRect->right; r.bottom = pRect->bottom;
+    pR = &r;
+  }
+  const HRESULT hr = tex->LockRect(level, &lr, pR, ConvertRenderLockType(mode));
+  *ppData = lr.pBits;
+  if (pRowPitch)
+    *pRowPitch = (unsigned)lr.Pitch;
+  return hr;
+}
+
+HRESULT D3D9Backend::UnlockTexture2D(HTexture texture, unsigned level) {
+  if (!texture.p)
+    return E_INVALIDARG;
+  return static_cast<IDirect3DTexture9*>(texture.p)->UnlockRect(level);
+}
+
 HRESULT D3D9Backend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) {
   DWORD usage;
   D3DPOOL d3dPool;

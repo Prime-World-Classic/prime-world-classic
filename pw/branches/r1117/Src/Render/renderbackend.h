@@ -334,6 +334,18 @@ public:
   // UpdateTexture; у NVRHI есть copy-операция.
   virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture) = 0;
 
+  // Загрузка содержимого 2D-текстуры (шаг 13.1). В D3D9 это LockRect/UnlockRect
+  // (до этой правки клиент звал их напрямую у IDirect3DTexture9 — см.
+  // texture.cpp), в Vulkan — CPU-зеркало и copyTexture на Unlock.
+  // pRect = 0 = вся поверхность уровня, иначе координаты пикселей
+  // (left,top,right,bottom) как в D3D9 RECT. pRowPitch — шаг строки в байтах,
+  // который дал бэкенд: у D3D9 он кратен 4 и не обязан равняться width*4,
+  // у Vulkan — как у staging-текстуры, поэтому вызывать seam'у нельзя
+  // предполагать свой шаг.
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+                                ERenderLockType mode, void** ppData, unsigned* pRowPitch) = 0;
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level) = 0;
+
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) = 0;
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut) = 0;
 

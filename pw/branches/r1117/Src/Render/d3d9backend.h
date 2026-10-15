@@ -180,6 +180,9 @@ public:
   virtual HRESULT CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
                                 EBackendFormat format, EBackendPool pool, HSurface* pOut);
   virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture);
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+                                ERenderLockType mode, void** ppData, unsigned* pRowPitch);
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level);
 
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);

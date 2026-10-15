@@ -42,7 +42,8 @@ SamplerState g_smp : register(s0, space%d);
 """ % SPACE_SAMPLERS
 
 SAMPLER_DECL = re.compile(
-    r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?\s*(?::\s*register\s*\([^)]*\))?\s*;")
+    r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?"
+    r"\s*(?::\s*register\s*\(([^)]*)\))?\s*;")
 REG_ANY = re.compile(r"\s*:\s*register\s*\(([^)]*)\)")
 
 # Объявление константы c-банка: [const] ТИП имя[массив] : register( МАКРОС|cN );
@@ -85,14 +86,32 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     def sampler_sub(m):
         kind, name = m.group(1), m.group(2)
         arr = m.group(3) or ""   # sampler NAME[4] : register(...) - массив ресурсов
+        reg = m.group(4) or ""
+        # Номер D3D9-сэмплера обязан стать номером binding в наборе текстур:
+        # клиент привязывает текстуру вызовом SetTexture(samplerIndex, ...) по
+        # номеру слота D3D9 (GlobalMasks.h: WARFOGSAMPLERINDEX s10,
+        # GLOBALENVIROMENTSAMPLERINDEX s12, TERRAIN_DIFFUSESAMPLER0..3 = s0..s3),
+        # a прослойка до этой правки нумеровала Texture2D по порядку
+        # объявлений — соответствие «слот клиента -> binding» терялось
+        # молча, текстура уезжала в чужой слот без ошибки.
+        # sampler_state (чистый сэмплер) остаётся в наборе сэмплеров под своим
+        # номером; в живом корпусе sampler_state не встречается (замер по
+        # Src/Render/Shaders/*.hlsl — 0 объявлений).
+        keep = ""
+        if set_layout:
+            mm = re.match(r"\s*([tsub])\s*(\d+)\s*$", reg)
+            if mm:
+                cls = "s" if kind == "sampler_state" else "t"
+                keep = " : register(%s%s, space%d)" % (
+                    cls, mm.group(2), SPACE_SAMPLERS if cls == "s" else SPACE_TEXTURES)
         if kind == "samplerCUBE":
             notes.append("samplerCUBE %s" % name)
-            return "TextureCube %s%s;" % (name, arr)
+            return "TextureCube %s%s%s;" % (name, arr, keep)
         if kind == "sampler_state":
             notes.append("sampler_state %s" % name)
-            return "SamplerState %s;" % name
-        notes.append("%s %s" % (kind, name))
-        return "Texture2D %s%s;" % (name, arr)
+            return "SamplerState %s%s;" % (name, arr, keep)
+        notes.append("%s %s%s" % (kind, name, keep))
+        return "Texture2D %s%s%s;" % (name, arr, keep)
     src, n_samp = SAMPLER_DECL.subn(sampler_sub, src)
 
     # 2. register(...) во всех объявлениях — снимаем (c-регистры), а для

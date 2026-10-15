@@ -453,8 +453,8 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   // динамический диспетчер Vulkan внутри PW_Game.exe и пригодность HWND seam'а
   // для VkSurfaceKHR. Отсутствие Vulkan не должно ронять клиент: Create()
   // возвращает 0, причина — в логе.
-  // Шаг 12b: PW_VK_DIP=1 подразумевает тот же бэкенд (тест рисуется им), плюс
-  // один DIP через seam на 30-м кадре — см. Present.
+  // Шаг 12b/13.1: PW_VK_DIP подразумевает тот же бэкенд (тесты рисуются им);
+  // значение — битовая маска тестов (1 геометрия, 2 текстура), см. Present.
   delete pVkSpike;
   pVkSpike = 0;
   {
@@ -463,7 +463,7 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
     const bool spikeOn = (GetEnvironmentVariableA("PW_VK_SPIKE", vkSpikeFlag, sizeof(vkSpikeFlag) - 1) > 0 &&
                           vkSpikeFlag[0] == '1');
     const bool dipOn = (GetEnvironmentVariableA("PW_VK_DIP", vkDipFlag, sizeof(vkDipFlag) - 1) > 0 &&
-                        vkDipFlag[0] == '1');
+                        atoi(vkDipFlag) != 0);
     if (spikeOn || dipOn)
     {
       pVkSpike = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight);
@@ -831,21 +831,29 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
       if ((s_vkSpikeFrames % 300) == 0)
         pVkSpike->DumpStats("frame");
 
-      // Шаг 12b: ровно один раз, на 30-м кадре (паки уже открыты, swapchain
+      // Шаг 12b/13.1: ровно один раз, на 30-м кадре (паки уже открыты, swapchain
       // после первого кадра пересоздан под размер окна) — настоящий DIP через
       // seam: .shd v2 -> SPIR-V -> пайплайн -> вывод -> чтение пикселей.
+      // PW_VK_DIP — битовая маска: 1 = геометрия/константы (WaterDummyMaterial),
+      // 2 = текстура и сэмплер (SkyMaterial), 3 = оба теста.
       static int s_vkDipState = -1;   // -1 не решено, 0 не просили, 1 ждёт, 2 выполнено
+      static unsigned s_vkDipMask = 0;
       if (s_vkDipState < 0)
       {
         char dipFlag[8] = { 0 };
-        s_vkDipState = (GetEnvironmentVariableA("PW_VK_DIP", dipFlag, sizeof(dipFlag) - 1) > 0 &&
-                        dipFlag[0] == '1') ? 1 : 0;
+        if (GetEnvironmentVariableA("PW_VK_DIP", dipFlag, sizeof(dipFlag) - 1) > 0)
+          s_vkDipMask = (unsigned)atoi(dipFlag);
+        s_vkDipState = s_vkDipMask ? 1 : 0;
       }
       if (s_vkDipState == 1 && s_vkSpikeFrames >= 30)
       {
         s_vkDipState = 2;
-        systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP "
-                                       << (pVkSpike->RunSeamDipTest() ? "OK" : "FAILED") << endl;
+        if (s_vkDipMask & 1u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP "
+                                         << (pVkSpike->RunSeamDipTest() ? "OK" : "FAILED") << endl;
+        if (s_vkDipMask & 2u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_TEX "
+                                         << (pVkSpike->RunTextureDipTest() ? "OK" : "FAILED") << endl;
       }
     }
     

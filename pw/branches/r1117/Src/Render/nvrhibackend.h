@@ -123,6 +123,10 @@ public:
   virtual HRESULT CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
                                 EBackendFormat format, EBackendPool pool, HSurface* pOut);
   virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture);
+  // Загрузка бит в текстуру (шаг 13.1) — часть seam'а, см. renderbackend.h:345
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+                                ERenderLockType mode, void** ppData, unsigned* pRowPitch);
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level);
   virtual HRESULT CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut);
   virtual HRESULT CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut);
 
@@ -184,6 +188,9 @@ public:
   // Тест шага 12b: один настоящий DIP через seam (материал из .shd v2 в
   // offscreen RT, чтение пикселей обратно). Вызывается по env PW_VK_DIP.
   bool RunSeamDipTest();
+  // Тест шага 13.1: тот же путь, но с текстурой и сэмплером (SkyMaterial).
+  // Загрузка бит идёт через seam (LockTexture2D/UnlockTexture2D).
+  bool RunTextureDipTest();
 
 private:
   NvrhiBackendImpl* m_pImpl;
