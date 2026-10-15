@@ -299,7 +299,15 @@ void PFHeroBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarg
 		pUnit->EnqueueState(new PFBaseUnitAttackState(GetWorld(), pUnit, pTarget, bStrongTarget), true);
 }
 
-bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; return true; }
+/** Hostile hero arrivals request original tower help before ordinary dispatch admission. */
+bool PFBaseHero::OnDispatchApply(const PFDispatch& dispatch)
+{
+	const CObj<PFBaseUnit> sender = dispatch.GetSender();
+	if (IsTargetValid(CPtr<PFBaseUnit>(sender.GetPtr())) && sender->GetFaction() != GetFaction()
+		&& (sender->IsTrueHero() || sender->IsAlphaSummon()))
+		CallForTowerHelp(sender.GetPtr());
+	return PFCreature::OnDispatchApply(dispatch);
+}
 /** Apply the authored attacker mask without dereferencing a missing sender. */
 float PFBaseHero::OnBeforeDamage(const DamageDesc &desc)
 {

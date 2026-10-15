@@ -8,6 +8,7 @@
 #include "PFBaseMovingUnit.h"
 #include "PFBaseUnit.h"
 #include "PFHeroStates.h"
+#include "PFDispatch.h"
 #include "PFBehaviour.h"
 #include "PFSummoned.h"
 #include "PFWorld.h"
@@ -2008,7 +2009,41 @@ void PFBaseUnit::ResetWarFog()
 		if (saved[i].warFogObjectID != WAR_FOG_BAD_ID)
 			OpenWarFog(static_cast<NDb::EFaction>(i), saved[i].timeOut, saved[i].visRadius);
 }
-bool PFBaseUnit::OnDispatchApply(PFDispatch const&) { return canApplyDispatch; }
+/** Preserve authored miss/evasion sampling and cancellable admission before dispatch payload delivery. */
+bool PFBaseUnit::OnDispatchApply(const PFDispatch& dispatch)
+{
+	const CObj<PFBaseUnit> sender = dispatch.GetSender();
+	if (IsValid(sender) && sender->GetFaction() != GetFaction() && dispatch.IsBaseAttack()
+		&& dispatch.GetDBBase() && (dispatch.GetDBBase()->flags & NDb::DISPATCHFLAGS_EVADABLE) != 0)
+	{
+		const float missChance = sender->GetMissChance(), evasion = GetEvasion();
+		if (!GetWorld() || !std::isfinite(missChance) || !std::isfinite(evasion)) return false;
+		// Both original draws occur even on a guaranteed miss; clamp before narrowing malformed magnitudes.
+		const bool missed = GetWorld()->GetRndGen()->Next(100) < int(Clamp(missChance, 0.f, 100.f));
+		const bool evaded = GetWorld()->GetRndGen()->Next(100) < int(Clamp(evasion, 0.f, 100.f));
+		if (missed || evaded)
+		{
+			sender->OnMiss(CPtr<PFBaseUnit>(this));
+			dispatch.OnMissed();
+			EventHappened(PFBaseUnitDispatchEvent(missed ? NDb::BASEUNITEVENT_DISPATCHMISSED
+				: NDb::BASEUNITEVENT_DISPATCHEVADED, &dispatch));
+			return false;
+		}
+	}
+	PFBaseUnitDispatchEvent event(NDb::BASEUNITEVENT_DISPATCHAPPLIED, &dispatch);
+	EventHappened(event);
+	if (event.IsDispatchCancelled())
+	{
+		if (IsValid(sender)) sender->OnMiss(CPtr<PFBaseUnit>(this));
+		dispatch.OnMissed();
+		EventHappened(PFBaseUnitDispatchEvent(NDb::BASEUNITEVENT_DISPATCHMISSED, &dispatch));
+		return false;
+	}
+	if (GetFaction() == NDb::FACTION_NEUTRAL && IsValid(sender) && sender->GetFaction() != NDb::FACTION_NEUTRAL)
+		WakeUp();
+	// CanApplyDispatch/alwaysApply waiting belongs to PFDispatch::_ApplyInternal, not this hook.
+	return true;
+}
 void PFBaseUnit::OnMiss(CPtr<PFBaseUnit> const&) {}
 void PFBaseUnit::CheckAppliedApplicators() {}
 void PFBaseUnit::PlanToRestoreSceneObject(NDb::Ptr<NDb::DBSceneObject>& sObj) { pOriginalSceneObject = sObj; shouldRestoreSceneObject = true; }
