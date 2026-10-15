@@ -191,7 +191,7 @@ private:
   HRESULT LockBuffer(HBuffer h, unsigned offset, unsigned size, void** ppData);
   HRESULT UnlockBuffer(HBuffer h);
   HRESULT DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned startIndexLocation,
-                   unsigned startVertexLocation, unsigned count);
+                   unsigned startVertexLocation, unsigned count, unsigned explicitVtx = 0);
 
 public:
   // Тест шага 12b: один настоящий DIP через seam (материал из .shd v2 в
@@ -200,6 +200,9 @@ public:
   // Тест шага 13.1: тот же путь, но с текстурой и сэмплером (SkyMaterial).
   // Загрузка бит идёт через seam (LockTexture2D/UnlockTexture2D).
   bool RunTextureDipTest();
+  // Тест шага 13.3: UP-вывод (DrawUP/DrawIndexedUP из памяти вызывающего) +
+  // ColorFill + StretchRect + readback. Env PW_VK_DIP бит 4.
+  bool RunSurfaceOpsTest();
 
 private:
   NvrhiBackendImpl* m_pImpl;

@@ -854,6 +854,9 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
         if (s_vkDipMask & 2u)
           systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_TEX "
                                          << (pVkSpike->RunTextureDipTest() ? "OK" : "FAILED") << endl;
+        if (s_vkDipMask & 4u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_SURF "
+                                         << (pVkSpike->RunSurfaceOpsTest() ? "OK" : "FAILED") << endl;
       }
     }
     
