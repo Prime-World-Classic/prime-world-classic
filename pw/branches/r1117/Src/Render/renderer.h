@@ -41,6 +41,9 @@ struct Caps
 // в тех TU, которые реально дергают бэкенд (Render/*.cpp). Иначе любое касание
 // интерфейса пересобирает полмира — renderer.h включается почти везде.
 class IRenderBackend;
+struct BackendRect;   // тот же нейтральный прямоугольник, что и в seam: публичный
+                      // API Renderer больше не берёт Win32 RECT (§2.8). Полный тип
+                      // нужен вызывающему коду (он и подключает renderbackend.h).
 
 class Renderer
 {
@@ -197,7 +200,9 @@ public:
   //     Цель сейчас: вне Render/ не остаётся ни одного вызова
   //     IDirect3DDevice9, чтобы поверхность портирования была измерима.
   void GetViewport(D3DVIEWPORT9 &vp);
-  void SetScissorRect(const RECT *pRect);
+  // Прямоугольник — нейтральный BackendRect (тот же тип, что и в seam);
+  // Win32 RECT остаётся только внутри вызывающего кода.
+  void SetScissorRect(const BackendRect *pRect);
   void ColorFillSurface(IDirect3DSurface9 *pSurface, DWORD color);
   void StretchSurfaceRect(IDirect3DSurface9 *pSrc, const RECT *pSrcRect,
                           IDirect3DSurface9 *pDst, const RECT *pDstRect, D3DTEXTUREFILTERTYPE filter);
@@ -212,7 +217,7 @@ public:
   // Кадр -> файл своим png/bmp/dds (без D3DX). useBackBuffer=false — поверхность
   // сцены (GetColorSurface), true — бэк-буфер. pCropRect — прямоугольник
   // источника (0 — весь кадр), keepAlpha=false — альфа отбрасывается.
-  bool SaveFrameToFile(const char* fileName, bool keepAlpha, const RECT* pCropRect,
+  bool SaveFrameToFile(const char* fileName, bool keepAlpha, const BackendRect* pCropRect,
                        bool useBackBuffer);
 
   RenderStatesManager* GetRenderStatesManager() { return &statesMan; }

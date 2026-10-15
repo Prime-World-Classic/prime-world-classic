@@ -5,7 +5,6 @@
 namespace
 {
   const string noshare = "--noshare";
-  const string version = "--sm20";
   const string clean   = "--clean";
   const string outputDirPrefix   = "--out";
   const string shaderNamePrefix  = "--name";
@@ -14,8 +13,8 @@ namespace
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void CommandLine::Print()
 {
-  printf("Wrong format. Use: <config filename> [%s] [%s] [%s] [%s<out path>] [%s<single build shader name>]\n", 
-    noshare.c_str(), version.c_str(), clean.c_str(), outputDirPrefix.c_str(), shaderNamePrefix.c_str());
+  printf("Wrong format. Use: <config filename> [%s] [%s] [%s<out path>] [%s<single build shader name>]\n", 
+    noshare.c_str(), clean.c_str(), outputDirPrefix.c_str(), shaderNamePrefix.c_str());
 }
 
 
@@ -27,16 +26,6 @@ void CommandLine::Parse(int argc, char *argv[ ])
     if (0 == strcmp(argv[i], noshare.c_str()))
     {
       isNoShare = true;
-      break;
-    }
-  }
-
-  // parse version
-  for (int i = 2; i < argc; ++i)
-  {
-    if (0 == strcmp(argv[i], version.c_str()))
-    {
-      isV20 = true;
       break;
     }
   }
@@ -78,14 +67,6 @@ void CommandLine::Parse(int argc, char *argv[ ])
       break;
     }
   }
-}
-
-int CommandLine::GetVersion() const
-{
-  if (isV20)
-    return 1;
-
-  return 0;
 }
 
 int CommandLine::GetCleanState() const

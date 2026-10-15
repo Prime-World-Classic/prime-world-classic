@@ -76,11 +76,11 @@ struct BackendViewport {
 // (nvrhi::BufferHandle и т.п.), не трогая вызывающий код. Отдельный тип на
 // вид ресурса нужен именно ради этого — перепутать HTexture и HBuffer на
 // этапе 3 должно быть невозможно.
-struct HBuffer      { void* p = 0; };
-struct HTexture     { void* p = 0; };
-struct HSurface     { void* p = 0; };
-struct HShader      { void* p = 0; };   // VS и PS: бэкенд знает, какой слот
-struct HInputLayout { void* p = 0; };
+struct HBuffer      { void* p; HBuffer() : p(0) {} };
+struct HTexture     { void* p; HTexture() : p(0) {} };
+struct HSurface     { void* p; HSurface() : p(0) {} };
+struct HShader      { void* p; HShader() : p(0) {} };   // VS и PS: бэкенд знает, какой слот
+struct HInputLayout { void* p; HInputLayout() : p(0) {} };
 
 // Пул ресурса — нейтральная лексика вместо D3DPOOL (docs/PLAN_NVRHI.md §2.3).
 // Порядок значений совпадает с dxutils.h::PoolType (проверяется static_assert'

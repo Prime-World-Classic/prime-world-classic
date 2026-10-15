@@ -32,9 +32,9 @@ class UberShaderFileInfo
 public:
   UberShaderFileInfo(UberShaderDesc& _shader) : shader(_shader), needWrite(true), similar(0) {}
   void Reset();
-  void Read( int isV20 = 0 );
+  void Read();
   void Build( ShaderBlob *matrix );
-  void Write( int isV20 = 0 );
+  void Write();
   void SetDir(string &dir) {directory = dir;}
   int GetIdx (int code) { return codes[code].idx; }
   int GetCRC (int code) { return codes[code].CRC; }

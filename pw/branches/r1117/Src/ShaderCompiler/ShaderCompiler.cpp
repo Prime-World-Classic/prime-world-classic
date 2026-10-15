@@ -36,9 +36,6 @@ namespace
 {
   const int strsize = 32;
 
-  const char macroV20[strsize] = "FORCE_SM20";
-  const char macroV20_dummy[strsize] = "1";
-
   NFile::CFilePath s_directory;
   NFile::CFilePath s_outDirectory;
 
@@ -152,7 +149,6 @@ public:
   CObj<FileStream> *pStream;
   UberShaderDesc *curShader;
   DWORD Flags;
-  int   isV20;
 
   void DoJob()
   {
@@ -161,25 +157,16 @@ public:
     bool bOK;
 
     // build macros array
-    int macroCnt = totalPinsCnt + isV20 + 1;
+    // SM2.0-фолбэк удалён (в клиенте тоже, см. Render/renderer.cpp): профиль один.
+    int macroCnt = totalPinsCnt + 1;
     D3D_SHADER_MACRO* pDefines;
     pDefines = new D3D_SHADER_MACRO[macroCnt];
 
     pDefines[macroCnt - 1].Definition = 0;
     pDefines[macroCnt - 1].Name = 0;
 
-    if (1 == isV20)
-    {
-      vsProfile = "vs_2_0";
-      psProfile = "ps_2_0";
-      pDefines[macroCnt - 1 - 1].Name = macroV20;
-      pDefines[macroCnt - 1 - 1].Definition = macroV20_dummy;
-    }
-    else
-    {
-      vsProfile = "vs_3_0";
-      psProfile = "ps_3_0";
-    }
+    vsProfile = "vs_3_0";
+    psProfile = "ps_3_0";
 
     // get total codes value
     string *pinValues = 0;
@@ -246,32 +233,22 @@ struct ShaderObjInfo
   unsigned int psOffset;
 };
 
-ShaderBlob* BuildShaderMatrix( CObj<FileStream> pStream, UberShaderDesc &curShader, DWORD &Flags, int isV20, UberShaderFileInfo &info )
+ShaderBlob* BuildShaderMatrix( CObj<FileStream> pStream, UberShaderDesc &curShader, DWORD &Flags, UberShaderFileInfo &info )
 {
   string vsProfile, psProfile;
   int totalPinsCnt = curShader.pins.size();
   bool bOK = true;
 
   // build macros array
-  int macroCnt = totalPinsCnt + isV20 + 1;
+  int macroCnt = totalPinsCnt + 1;
   D3D_SHADER_MACRO* pDefines;
   pDefines = new D3D_SHADER_MACRO[macroCnt];
                                                                                        
   pDefines[macroCnt - 1].Definition = 0;
   pDefines[macroCnt - 1].Name = 0;
 
-  if (1 == isV20)
-  {
-    vsProfile = "vs_2_0";
-    psProfile = "ps_2_0";
-    pDefines[macroCnt - 1 - 1].Name = macroV20;
-    pDefines[macroCnt - 1 - 1].Definition = macroV20_dummy;
-  }
-  else
-  {
-    vsProfile = "vs_3_0";
-    psProfile = "ps_3_0";
-  }
+  vsProfile = "vs_3_0";
+  psProfile = "ps_3_0";
 
   // get total codes value
   int fullCount = curShader.GetTotalCount();
@@ -359,7 +336,7 @@ ShaderBlob* BuildShaderMatrixMultyThread( UberShaderDesc &curShader, MTWorkerLit
   return g_matrix;
 }
 
-int WriteMatrix(ShaderBlob* matrix, UberShaderDesc &curShader, int isV20)
+int WriteMatrix(ShaderBlob* matrix, UberShaderDesc &curShader)
 {
   int offset = 0;
   
@@ -392,12 +369,7 @@ int WriteMatrix(ShaderBlob* matrix, UberShaderDesc &curShader, int isV20)
 
   // output to file
   string outFileName;
-  string ext;
-
-  if (1 == isV20)
-    ext = ".shd2";
-  else
-    ext = ".shd";
+  string ext = ".shd";
 
   outFileName = s_outDirectory + curShader.shaderName + ext;
 
@@ -529,7 +501,7 @@ int main( int argc, char *argv[ ] )
       info.Reset();
     }
     else
-      info.Read(params.GetVersion());
+      info.Read();
 
     shaderName = s_directory + curShader.shaderName + ".hlsl";
     // open file
@@ -552,13 +524,12 @@ int main( int argc, char *argv[ ] )
     {
       contexts[i].curShader = &curShader;                 
       contexts[i].Flags = Flags;
-      contexts[i].isV20 = params.GetVersion();
       contexts[i].pStream = &pStream;
     }                      
 #endif
     // compile one shader matrix
 #ifndef IS_MULTYTHREAD
-    matrix = BuildShaderMatrix(pStream, curShader, Flags, params.GetVersion(), info);
+    matrix = BuildShaderMatrix(pStream, curShader, Flags, info);
 #else
     matrix = BuildShaderMatrixMultyThread(curShader, s_mtWorker);
 #endif
@@ -568,11 +539,11 @@ int main( int argc, char *argv[ ] )
       {
         // write matrix to file
         printf("Writing matrix to file\n");
-        WriteMatrix(matrix, curShader, params.GetVersion());
+        WriteMatrix(matrix, curShader);
 
         // build info
         info.Build(matrix);
-        info.Write(params.GetVersion());
+        info.Write();
       }
       else
       {
@@ -722,7 +693,7 @@ void WriteSharedFileFormat(ShaderBlob const buffers[], UberShaderDesc const& sha
   // Write data to a file
 
   // open file
-  string fileName = s_outDirectory + shader.shaderName + (params.GetVersion() == 1 ? ".shd2" : ".shd");
+  string fileName = s_outDirectory + shader.shaderName + ".shd";
   FILE* fp = NULL;
   if (fopen_s(&fp, fileName.c_str(), "wb") != 0 || !fp)
   {

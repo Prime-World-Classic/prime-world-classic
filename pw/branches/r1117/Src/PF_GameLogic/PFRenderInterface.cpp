@@ -10,6 +10,7 @@
 #include <Terrain\TerrainTextureCache.h>
 
 #include "Render/ImmediateRenderer.h"
+#include "Render/renderbackend.h"   // BackendRect for SetScissorRect (PLAN_NVRHI 2.8)
 #include "Render/renderresourcemanager.h"
 #include "Render/debugrenderer.h"
 #include "Render/WaterManager.h"
@@ -743,7 +744,9 @@ void Interface::RenderMainPassOpaque( const BatchQueue &queue )
   const bool renderingReflection = WaterManager::Get()->IsReflectionRendering();
   if(!renderingReflection)
   {
-    GetRenderer()->SetScissorRect(&renderArea);
+    const BackendRect scissor = MakeBackendRect(renderArea.left, renderArea.top,
+                                                renderArea.right, renderArea.bottom);
+    GetRenderer()->SetScissorRect(&scissor);
     statesManager.SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
     RenderSequenceMarker("SILHOUETTE");
     RenderSilhouette(queue);
@@ -1125,8 +1128,8 @@ void Interface::DoPostFX(const SceneConstants & _sceneConsts)
 
     SwapRTInChain();
 
-    RECT rc = { max(x, renderArea.left), max(y, renderArea.top),
-                min(x + w, renderArea.right), min(y + h, renderArea.bottom) };
+    BackendRect rc = MakeBackendRect(max(x, renderArea.left), max(y, renderArea.top),
+                                     min(x + w, renderArea.right), min(y + h, renderArea.bottom));
     statesManager.SetStateDirect(D3DRS_SCISSORTESTENABLE, TRUE);
     GetRenderer()->SetScissorRect(&rc);
 

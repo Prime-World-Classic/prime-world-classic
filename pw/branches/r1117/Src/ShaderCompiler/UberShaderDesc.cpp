@@ -45,54 +45,13 @@ void UberShaderFileInfo::Reset( )
   }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void UberShaderFileInfo::Read( int isV20 )
+void UberShaderFileInfo::Read()
 {
-  /*unsigned int totalCnt = shader.GetTotalCount();
-  FILE *fpFile;*/
-
+  // Кэша .codes нет: матрица пересобирается целиком. Закомментированный
+  // чтение .codes/.codes2 удалён вместе с SM2.0-фолбэком (--sm20).
   Reset();
 
   printf("Clean old code file. \n");
-  return;
-  
-  /*string filename;
-  if (isV20)
-    filename = directory + shader.shaderName + ".codes2";
-  else
-    filename = directory + shader.shaderName + ".codes";
-
-  fopen_s(&fpFile, filename.c_str(), "rb");
-  if (0 == fpFile)
-  {
-    printf("No .codes file. Clean build. \n");
-    return;
-  }
-
-  unsigned int cnt;
-  unsigned int _similar;
-  fread_s(&cnt,  4, 4, 1, fpFile);
-  fread_s(&_similar, 4, 4, 1, fpFile);
-
-  if (cnt != totalCnt)
-  {
-    fclose(fpFile);
-    printf("Shader count inconsistent. Clean build. \n");
-    return;
-  }
-
-  unsigned int size = fread_s(&codes[0], sizeof(CodeInfo) * totalCnt * 2, sizeof(CodeInfo), totalCnt * 2, fpFile);
-  if (size != totalCnt * 2U)
-  {
-    fclose(fpFile);
-    printf("Error codes-file reading. Clean build. \n");
-    Reset();
-    return;
-  }
-
-  needWrite = false;
-  similar = _similar;
-  printf("Codes-file reading OK. \n");
-  fclose(fpFile);*/
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void UberShaderFileInfo::Build( ShaderBlob *matrix )
@@ -143,7 +102,7 @@ void UberShaderFileInfo::Build( ShaderBlob *matrix )
   printf("Build info-data done %.2f percents uniq codes\n", float(2 * totalCnt - similar) * 100.f / float(2 * totalCnt));
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void UberShaderFileInfo::Write( int isV20 )
+void UberShaderFileInfo::Write()
 {
   if (!needWrite)
     return;
@@ -152,12 +111,7 @@ void UberShaderFileInfo::Write( int isV20 )
   FILE *fpFile;
 
   string filename;
-  string ext;
-
-  if (isV20)
-    ext = ".codes2";
-  else
-    ext = ".codes";
+  string ext = ".codes";
 
   filename = directory + shader.shaderName + ext;
   fopen_s(&fpFile, filename.c_str(), "wb");

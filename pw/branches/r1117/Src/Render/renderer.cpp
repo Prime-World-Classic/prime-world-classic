@@ -562,7 +562,7 @@ DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexForma
   IDirect3DVertexDeclaration9* decl_d3d = 0;
 
   if(!RENDER_DISABLED) {
-    HInputLayout layout = {};
+    HInputLayout layout;
     HRESULT hr = pBackend->CreateInputLayout(descr, &layout);
     NI_DX_THROW( hr, "CreateVertexFormatDeclaration" );
     decl_d3d = static_cast<IDirect3DVertexDeclaration9*>(layout.p);
@@ -576,7 +576,7 @@ DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexForma
 DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 {
 	IDirect3DVertexShader9* d3dshader = 0;
-  HShader shader = {};
+  HShader shader;
 	HRESULT hr = pBackend->CreateVertexShader(data, 0, &shader);
 	NI_DX_THROW(hr, "Creating vertex shader error!");
   d3dshader = static_cast<IDirect3DVertexShader9*>(shader.p);
@@ -588,7 +588,7 @@ DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data)
 {
 	IDirect3DPixelShader9* d3dshader = 0;
-  HShader shader = {};
+  HShader shader;
 	HRESULT hr = pBackend->CreatePixelShader(data, 0, &shader);
 	NI_DX_THROW(hr, "Creating vertex shader error!");
   d3dshader = static_cast<IDirect3DPixelShader9*>(shader.p);
@@ -899,18 +899,11 @@ void Renderer::GetViewport(D3DVIEWPORT9 &vp)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Renderer::SetScissorRect(const RECT *pRect)
+void Renderer::SetScissorRect(const BackendRect *pRect)
 {
-  // Публичный API Renderer пока принимает Win32 RECT (его зовут из PF_GameLogic),
-  // но наружу, в seam, он уже не уходит.
-  BackendRect rect;
-  const BackendRect* pBackendRect = 0;
-  if(pRect)
-  {
-    rect = MakeBackendRect(pRect->left, pRect->top, pRect->right, pRect->bottom);
-    pBackendRect = &rect;
-  }
-  pBackend->SetScissorRect(pBackendRect);
+  // Прямоугольник пришёл уже нейтральным — конверсии нет, RECT живёт только
+  // у вызывающего кода.
+  pBackend->SetScissorRect(pRect);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -984,7 +977,7 @@ int Renderer::GetAvailableVidMem()
 
 bool Renderer::SaveScreenshotToFile(const char *fileName, int x, int y, int width, int height, bool needCrop)
 {
-  RECT rect = { x, y, x + width, y + height };
+  BackendRect rect = MakeBackendRect(x, y, x + width, y + height);
   // Источник — бэк-буфер (как было), альфа отбрасывалась и раньше: D3DX-путь
   // шёл через X8R8G8B8.
   return SaveFrameToFile(fileName, /*keepAlpha=*/false, needCrop ? &rect : 0, /*useBackBuffer=*/true);
@@ -992,7 +985,7 @@ bool Renderer::SaveScreenshotToFile(const char *fileName, int x, int y, int widt
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Renderer::SaveFrameToFile(const char* fileName, bool keepAlpha, const RECT* pCropRect,
+bool Renderer::SaveFrameToFile(const char* fileName, bool keepAlpha, const BackendRect* pCropRect,
                                bool useBackBuffer)
 {
   if(!pBackend || !fileName)
