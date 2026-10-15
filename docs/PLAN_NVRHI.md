@@ -3937,3 +3937,81 @@ SSBO), **12 пробовано, 8 нарисовали геометрию стр
 `(set,binding)`, иначе в один layout попадают два `ConstantBuffer(0)`; operand у
 `OpAccessChain` — id константы, а не номер члена (первый разбор дал «members 10 и
 11», на самом деле 1 и 2).
+
+### Сделано (шаг 12a: Vulkan-бэкенд поднимается внутри PW_Game.exe — 2026-10-15)
+
+Сняты все неизвестные этапа 3, которые нельзя было снять спайком в `tools/`:
+
+- **граф сборки клиента**: `Tools/ClientCMake/gen_cmake.py` получил vendor-блок
+  (`add_subdirectory(Vendor/NVRHI)` с выключенными `NVRHI_WITH_*`, кроме Vulkan),
+  `nvrhi.lib` + `nvrhi_vk.lib` линкуются в `PW_Game.exe`, CRT согласован (`/MT`);
+- **пофайловый `/std:c++17 /EHsc`** только на `Src/Render/nvrhibackend.cpp`
+  (`X64_EXTRA_OPTS`): остальной `Render` компилируется на дефолте cl 14.44
+  (C++14), поэтому у бэкенда pimpl и в заголовке нет ни одного типа NVRHI/Vulkan;
+- **динамический диспетчер Vulkan внутри exe**: `LoadLibraryA("vulkan-1.dll")` +
+  `VULKAN_HPP_DEFAULT_DISPATCHER`; импорт `vulkan-1.dll` в exe запрещён проверкой
+  `check_exe.py` (только x64) — машина без Vulkan-драйвера запускается как раньше;
+- **`NativeWindow` seam'а годится для `VkSurfaceKHR`** (`vkCreateWin32SurfaceKHR`
+  на `NativeWindow.p` = HWND клиента), отдельное SDL3-окно шагу 12 не нужно.
+
+Реализация — `Src/Render/nvrhibackend.{h,cpp}` (`NvrhiBackend : IRenderBackend`).
+Он создаётся в `Renderer::CreateDevice` **дополнительно** к D3D9-бэкенду и только
+при env `PW_VK_SPIKE=1` (в проде не выставлен), его кадр (clear + present)
+кладётся поверх D3D9-вывода в `Renderer::Present`; результат в `hr` не попадает,
+чтобы потеря D3D-устройства определялась именно по D3D-вызову. Незакрытые методы
+seam'а — счётчики `Unsupported(st_*)`, их дамп и есть work-list шага 13, снятый
+по фактическим вызовам клиента, а не по догадке.
+
+Замер (Wine-стенд `PW/wine-client/`, `PW_VK_SPIKE=1`, прогон `2026.10.15-17.00.30`):
+
+```
+NvrhiBackend: устройство 2 шт., выбрано NVIDIA GeForce RTX 3060 (api 1.4.329)
+NvrhiBackend: swapchain 800x600, картинок 3, формат 44, режим present 2
+NvrhiBackend: Vulkan-бэкенд поднят — OK NVIDIA GeForce RTX 3060
+Renderer: PW_VK_SPIKE up
+NvrhiBackend: пересоздание swapchain'а #1
+NvrhiBackend: swapchain 1024x768, картинок 3, формат 44, режим present 2
+VkStatsframe: presents=599 recreates=1 unsupported=0 swap=1024x768 device=NVIDIA GeForce RTX 3060
+```
+
+Клиент доезжает до `mapload: all map objects loaded`, скриншот — всё окно
+1024×768 залито цветом Vulkan-кадра (0.10, 0.35, 0.65), т.е. present идёт каждый
+кадр. Темп ~5 present/с совпадает с темпом D3D9-кадров этого же клиента под Wine
+(CPU/Wine, не бэкенд) + синхронный `waitForIdle()` в спайке.
+
+Два замера, каждый из которых стоил отдельной правки:
+
+1. **Вендор обязан собираться как Release (`/O2 -DNDEBUG`).** Флаги клиента
+   приходят из vcproj, `-DNDEBUG` в vendor-целях не было → живые `assert` внутри
+   Vulkan-Hpp: `VULKAN_HPP_ASSERT(d.getVkHeaderVersion() == VK_HEADER_VERSION)`
+   в каждом wrapper'е (`Vendor/Vulkan-Headers/include/vulkan/vulkan_funcs.hpp:1748`,
+   `VK_HEADER_VERSION = 352`). Под Wine winevulkan сообщает **свою** версию
+   заголовков, и на первом же `vk::Device::createSemaphore` из nvrhi вылезает
+   модальный CRT-диалог «Assertion failed! … Expression: d.getVkHeaderVersion()
+   == VK_HEADER_VERSION» — поток рендера висит на диалоге, клиент стоит
+   (прогоны `16.35.32`, `16.43.46`, `16.46.36`). В `tools/nvrhi_probe` дефект не
+   проявлялся: там `CMAKE_BUILD_TYPE=Release` и у `nvrhi_vk` в
+   `build/build.ninja:1073` стоят `/O2 /DNDEBUG`. Правка в vendor-блоке:
+   `target_compile_options(${_vt} PRIVATE /EHsc /O2 /Ob2)` +
+   `target_compile_definitions(${_vt} PRIVATE NDEBUG)`.
+2. **Окно клиента resize'ится ПОСЛЕ `CreateDevice`** (800×600 → 1024×768 при входе
+   в лобби). Без пересоздания swapchain'а каждый кадр даёт
+   `VK_ERROR_OUT_OF_DATE_KHR` — 1378 строк за прогон, `VkStats presents=1`,
+   картинка остаётся 800×600 посреди окна. Правка: `DestroySwapchain` /
+   `RecreateSwapchain`; в `Present` — сверка `GetClientRect` с текущим размером
+   (размер спрашивается у **окна**: `currentExtent` в уже созданном swapchain'е
+   равен старому размеру) и обработка `OUT_OF_DATE`/`SURFACE_LOST` с пропуском
+   кадра; лог дозируется (`#<=4 || %120`). После правки: `recreates=1`,
+   `OUT_OF_DATE` — 0 строк.
+
+Грабли прогона: `pkill -f 'PW_Game.exe'` матчит собственную команду агента
+(самоубийство оболочки, rc=143) — убивать через `pgrep -x PW_Game.exe`; второй
+клиент при живом первом молча выходит и своего каталога логов не создаёт, а
+`ls -t` логов показывает каталог живого процесса — перед каждым прогоном старый
+процесс обязан быть убит.
+
+Не закрыто: `unsupported=0` лишь потому, что клиент вызывает на спайке только
+`Present` — перевод настоящих проходов (шейдеры из `.shd` v2 в клиентском exe,
+атрибуты, константы, глубина, `GetBackBuffer`) это шаг 13; регрессионный прогон
+на tiny10 (скриншот-дифф против `tools/render_shot/refs/stage2-2026-10-15/`) для
+этих правок `renderer.{h,cpp}` ещё не снимался.
