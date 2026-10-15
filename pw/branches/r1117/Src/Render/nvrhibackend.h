@@ -160,12 +160,32 @@ private:
   // каждом кадре (замер 2026-10-15).
   void DestroySwapchain();
   bool RecreateSwapchain();
+  bool RecreateSurface();
   // Учёт незакрытого метода. Возвращает E_NOTIMPL, чтобы вызывающий код вёл
   // себя как с любой другой ошибкой (а не принял пустой результат за успех).
   // const: seam объявляет IsStreamBufferBound константным, а счётчик обязан
   // расти и оттуда, иначе work-list шага 13 недосчитается вызовов.
   HRESULT Unsupported(int which) const;
 
+  // --- шаг 12b: механизмы реализации seam'а (не часть интерфейса) ---
+  // Командный список один на бэкенд: открывается лениво и закрывается в Present
+  // либо там, где вызывающему нужен результат (ReadSurface, тест 12b).
+  bool EnsureRecording();
+  void FlushRecording();
+  HRESULT CreateShaderImpl(const void* pCode, unsigned codeSize, bool fragment, HShader* pOut);
+  // Блокировка/разблокировка: у seam'а четыре метода, у реализации — два
+  // (разница только в том, индексный буфер или вершинный).
+  HRESULT LockBuffer(HBuffer h, unsigned offset, unsigned size, void** ppData);
+  HRESULT UnlockBuffer(HBuffer h);
+  HRESULT DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned startIndexLocation,
+                   unsigned startVertexLocation, unsigned count);
+
+public:
+  // Тест шага 12b: один настоящий DIP через seam (материал из .shd v2 в
+  // offscreen RT, чтение пикселей обратно). Вызывается по env PW_VK_DIP.
+  bool RunSeamDipTest();
+
+private:
   NvrhiBackendImpl* m_pImpl;
   mutable unsigned m_unsupported;
   // Тени состояния, которые seam обязан уметь читать обратно (см. шаг 7:

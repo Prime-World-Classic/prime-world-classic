@@ -24,6 +24,9 @@
 //
 #include "stdafx.h"
 #include "nvrhibackend.h"
+#include "shadercontainer.h"                              // формат .shd v2
+#include "System/FileSystem/FileStream.h"                 // Stream для чтения контейнера
+#include "System/FileSystem/FileSystem.h"                 // RootFileSystem::OpenFile
 
 // windows.h (через stdafx.h) приносит макросы min/max, которые ломают шаблонные
 // выражения Vulkan-Hpp и NVRHI.
@@ -41,6 +44,13 @@
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/vulkan.h>
 
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <map>
+#include <string>
+#include <vector>
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace Render
@@ -49,17 +59,12 @@ namespace Render
 //////////////////////////////////////////////////////////////////////////
 // Учёт незакрытых методов. Порядок списка = порядок, в котором методы идут в
 // seam'е; имена попадают в DebugTrace, так что дамп читается как план работ.
+// Шаг 12b снял из списка всё, что реализовано (ресурсы, биндинги, вывод,
+// ReadSurface); ниже остались только действительно незакрытые.
 #define NVRHI_STUB_LIST(X) \
-  X(BeginScene) X(EndScene) X(Clear) \
-  X(SetStreamSource) X(SetIndices) X(SetInputLayout) X(SetVertexShader) X(SetPixelShader) \
-  X(SetTexture) X(SetRenderTarget) X(SetDepthStencil) X(GetDepthStencil) X(SetViewport) \
-  X(DrawIndexed) X(Draw) X(DrawIndexedUP) X(DrawUP) \
-  X(SetInstanceCount) X(SetInstanceSource) X(IsStreamBufferBound) \
-  X(CreateVertexShader) X(CreatePixelShader) X(CreateInputLayout) \
-  X(CreateTexture2D) X(CreateTextureCube) X(CreateSurface) X(UpdateTexture) \
-  X(CreateVertexBuffer) X(CreateIndexBuffer) \
-  X(LockVertexBuffer) X(UnlockVertexBuffer) X(LockIndexBuffer) X(UnlockIndexBuffer) \
-  X(GetRenderTargetData) X(ColorFill) X(StretchRect) X(ReadSurface) X(GetRenderTarget)
+  X(SetTexture) X(DrawIndexedUP) X(DrawUP) \
+  X(CreateTexture2D) X(CreateTextureCube) X(UpdateTexture) \
+  X(GetRenderTargetData) X(ColorFill) X(StretchRect) X(GetRenderTarget)
 
 enum EStubId
 {
@@ -76,14 +81,145 @@ static const char* const kStubNames[st_count] = {
 };
 
 //////////////////////////////////////////////////////////////////////////
+// Ручки seam'а = индекс+1 в таблицах Impl (0 = «нет»). 8 потоков вершин —
+// столько клиент реально использует (замер шага 9: MapStream поднимает логический
+// номер при инстансном режиме, физический слот инстанса — отдельный).
+static const unsigned kNoRes = 0xffffffffu;
+static const unsigned kMaxVertexStreams = 8;
+
+static unsigned Hnd2Idx(const void* p) { return p ? (unsigned)(uintptr_t)p - 1u : kNoRes; }
+static void* Idx2Hnd(unsigned i) { return i == kNoRes ? 0 : (void*)(uintptr_t)(i + 1u); }
+
+// Формат вершинного атрибута: клиент описывает его своим enum'ом (FVF-наследие).
+static nvrhi::Format VtxFormat(EVertexElementType t)
+{
+  switch (t)
+  {
+  case VERTEXELEMENTTYPE_FLOAT1:    return nvrhi::Format::R32_FLOAT;
+  case VERTEXELEMENTTYPE_FLOAT2:    return nvrhi::Format::RG32_FLOAT;
+  case VERTEXELEMENTTYPE_FLOAT3:    return nvrhi::Format::RGB32_FLOAT;
+  case VERTEXELEMENTTYPE_FLOAT4:    return nvrhi::Format::RGBA32_FLOAT;
+  case VERTEXELEMENTTYPE_D3DCOLOR:  return nvrhi::Format::BGRA8_UNORM;
+  case VERTEXELEMENTTYPE_UBYTE4N:   return nvrhi::Format::RGBA8_UNORM;
+  case VERTEXELEMENTTYPE_UBYTE4:    return nvrhi::Format::RGBA8_UINT;
+  case VERTEXELEMENTTYPE_SHORT2:    return nvrhi::Format::RG16_SINT;
+  case VERTEXELEMENTTYPE_SHORT4:    return nvrhi::Format::RGBA16_SINT;
+  case VERTEXELEMENTTYPE_SHORT2N:   return nvrhi::Format::RG16_SNORM;
+  case VERTEXELEMENTTYPE_SHORT4N:   return nvrhi::Format::RGBA16_SNORM;
+  case VERTEXELEMENTTYPE_USHORT2N:  return nvrhi::Format::RG16_UNORM;
+  case VERTEXELEMENTTYPE_USHORT4N:  return nvrhi::Format::RGBA16_UNORM;
+  default:                          return nvrhi::Format::UNKNOWN;
+  }
+}
+
+// usage+index -> имя семантики HLSL. DXC оставляет семантику в SPIR-V
+// (OpName "in.var.POSITION"), а NVRHI на Vulkan назначает location по порядку
+// атрибутов, поэтому имя нужно как ключ к тому, что назначил компилятор.
+// В живом корпусе семантики такие (замер по Src/Render/Shaders/*.hlsl):
+// POSITION, TEXCOORDn, COLOR/COLORn, NORMAL, BLENDWEIGHTn, BLENDINDICESn,
+// TANGENT, BINORMAL.
+static void SemanticName(EVertexElementUsage usage, unsigned idx, char* pOut, size_t outSize)
+{
+  const char* base = "?";
+  bool numbered = false;
+  switch (usage)
+  {
+  case VERETEXELEMENTUSAGE_POSITION:     base = "POSITION"; break;
+  case VERETEXELEMENTUSAGE_POSITIONT:    base = "POSITION"; break;
+  case VERETEXELEMENTUSAGE_NORMAL:       base = "NORMAL"; break;
+  case VERETEXELEMENTUSAGE_TANGENT:      base = "TANGENT"; break;
+  case VERETEXELEMENTUSAGE_BINORMAL:     base = "BINORMAL"; break;
+  case VERETEXELEMENTUSAGE_TEXCOORD:     base = "TEXCOORD"; numbered = true; break;
+  case VERETEXELEMENTUSAGE_COLOR:        base = "COLOR"; numbered = true; break;
+  case VERETEXELEMENTUSAGE_BLENDWEIGHT:  base = "BLENDWEIGHT"; numbered = true; break;
+  case VERETEXELEMENTUSAGE_BLENDINDICES: base = "BLENDINDICES"; numbered = true; break;
+  case VERETEXELEMENTUSAGE_PSIZE:        base = "PSIZE"; break;
+  case VERETEXELEMENTUSAGE_FOG:          base = "FOG"; break;
+  case VERETEXELEMENTUSAGE_DEPTH:        base = "DEPTH"; break;
+  case VERETEXELEMENTUSAGE_SAMPLE:       base = "SAMPLE"; break;
+  case VERETEXELEMENTUSAGE_TESSFACTOR:   base = "TESSFACTOR"; break;
+  default: break;
+  }
+  if (numbered) snprintf(pOut, outSize, "%s%u", base, idx);
+  else          snprintf(pOut, outSize, "%s", base);
+}
+
+static unsigned PrimVertexCount(ERenderPrimitiveType type, unsigned primitiveCount)
+{
+  switch (type)
+  {
+  case RENDERPRIMITIVE_POINTLIST:     return primitiveCount;
+  case RENDERPRIMITIVE_LINELIST:      return primitiveCount * 2u;
+  case RENDERPRIMITIVE_LINESTRIP:     return primitiveCount + 1u;
+  case RENDERPRIMITIVE_TRIANGLELIST:  return primitiveCount * 3u;
+  case RENDERPRIMITIVE_TRIANGLESTRIP: return primitiveCount + 2u;
+  default:                            return 0;   // TRIANGLEFAN в Vulkan нет
+  }
+}
+
+static nvrhi::PrimitiveType PrimType(ERenderPrimitiveType type)
+{
+  switch (type)
+  {
+  case RENDERPRIMITIVE_POINTLIST:     return nvrhi::PrimitiveType::PointList;
+  case RENDERPRIMITIVE_LINELIST:      return nvrhi::PrimitiveType::LineList;
+  case RENDERPRIMITIVE_LINESTRIP:     return nvrhi::PrimitiveType::LineStrip;
+  case RENDERPRIMITIVE_TRIANGLELIST:  return nvrhi::PrimitiveType::TriangleList;
+  case RENDERPRIMITIVE_TRIANGLESTRIP: return nvrhi::PrimitiveType::TriangleStrip;
+  default:                            return nvrhi::PrimitiveType::TriangleList;
+  }
+}
+
+static nvrhi::Format SurfaceFormat(EBackendFormat f)
+{
+  switch (f)
+  {
+  case bfA8R8G8B8:      return nvrhi::Format::BGRA8_UNORM;
+  case bfX8R8G8B8:      return nvrhi::Format::BGRX8_UNORM;
+  case bfA8:            return nvrhi::Format::R8_UNORM;
+  case bfL8:            return nvrhi::Format::R8_UNORM;
+  case bfL16:           return nvrhi::Format::R16_UNORM;
+  case bfR5G6B5:        return nvrhi::Format::B5G6R5_UNORM;
+  case bfR16F:          return nvrhi::Format::R16_FLOAT;
+  case bfA16B16G16R16F: return nvrhi::Format::RGBA16_FLOAT;
+  case bfR32F:          return nvrhi::Format::R32_FLOAT;
+  case bfG32R32F:       return nvrhi::Format::RG32_FLOAT;
+  case bfA32B32G32R32F: return nvrhi::Format::RGBA32_FLOAT;
+  case bfDXT1:          return nvrhi::Format::BC1_UNORM;
+  case bfDXT3:          return nvrhi::Format::BC2_UNORM;
+  case bfDXT5:          return nvrhi::Format::BC3_UNORM;
+  case bfD24S8:         return nvrhi::Format::D24S8;
+  default:              return nvrhi::Format::UNKNOWN;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////
 // Поверхности отдаются клиенту ручкой HSurface. В D3D9Backend это указатель на
 // COM-объект; здесь — индекс в таблице (0xffffffff = «нет»), потому что
 // nvrhi::TextureHandle — счётный умный указатель и хранить его в ручке нельзя.
 struct SurfaceObj
 {
   nvrhi::TextureHandle tex;
+  nvrhi::StagingTextureHandle staging;  // для ReadSurface (создаётся лениво)
   bool backBuffer;
   SurfaceObj() : backBuffer(false) {}
+};
+
+// NVRHI пишет сюда ошибки трекера состояний, несовпадений наборов и т.п. Без
+// errorCB они уходят в OutputDebugStringA, который под Wine не виден вовсе
+// (замер 2026-10-15: прогон 12b с пустым wine-логом и 0 нарисованными
+// пикселями не показал ни одной причины). Дозируется: 40 сообщений.
+class VkMsgLog : public nvrhi::IMessageCallback
+{
+public:
+  unsigned total;
+  VkMsgLog() : total(0) {}
+  virtual void message(nvrhi::MessageSeverity severity, const char* messageText)
+  {
+    if (total < 40u)
+      DebugTrace("VkMsg[%d]: %s", (int)severity, messageText ? messageText : "");
+    ++total;
+  }
 };
 
 struct NvrhiBackendImpl
@@ -107,6 +243,7 @@ struct NvrhiBackendImpl
   unsigned imageIndex;
 
   nvrhi::DeviceHandle nvrhiDevice;
+  VkMsgLog msgLog;
   nvrhi::CommandListHandle commandList;
 
   std::vector<nvrhi::TextureHandle> backTextures;   // по одному на картинку swapchain'а
@@ -119,16 +256,82 @@ struct NvrhiBackendImpl
   unsigned stubCalls[st_count];
   unsigned presents;
   unsigned swapRecreates;         // сколько раз пересоздали swapchain
+  unsigned surfaceRecreates;      // из них — с пересозданием VkSurfaceKHR (окно пересоздано)
+
+  //////////////////////////////////////////////////////////////////////
+  // Шаг 12b: ресурсы, состояние вывода, пайплайны.
+  //
+  // Ручки seam'а (HBuffer/HShader/HInputLayout/HSurface) = индекс+1 в этих
+  // таблицах: nvrhi::Handle — умный указатель со счётчиком, в void* его не
+  // кладут.
+  struct BufferObj
+  {
+    nvrhi::BufferHandle buf;
+    std::vector<unsigned char> cpu;   // зеркало для Lock/Unlock
+    bool isIndex;
+    bool index32;
+    bool locked;
+    BufferObj() : isIndex(false), index32(false), locked(false) {}
+  };
+  struct ShaderObj
+  {
+    nvrhi::ShaderHandle sh;
+    std::string entry;                // точка входа из OpEntryPoint
+    // входы VS: имя семантики из SPIR-V (in.var.POSITION) -> location
+    std::vector<std::pair<std::string, unsigned> > inputs;
+  };
+  struct LayoutObj
+  {
+    nvrhi::InputLayoutHandle il;
+    // копия описания клиента — раскладку собираем позже, чем CreateInputLayout:
+    // шаг потока известен только на момент вывода
+    std::vector<VertexElementDescriptor> elems;
+  };
+  struct PipeObj
+  {
+    nvrhi::GraphicsPipelineHandle pipe;
+    nvrhi::FramebufferHandle fb;
+    unsigned vs, ps, layout, rt, ds, prim;
+  };
+  std::vector<BufferObj> buffers;
+  std::vector<ShaderObj> shaderObjs;
+  std::vector<LayoutObj> layoutObjs;
+  std::vector<PipeObj> pipes;
+
+  nvrhi::BufferHandle ubo[2];         // канонический c-банк: VS -> b0, PS -> b1 (set 0)
+  bool uboDirty[2];
+  nvrhi::BindingLayoutHandle set0Layout;
+  nvrhi::BindingSetHandle set0Set;
+
+  // Реестр «имя семантики -> location» по всем созданным VS. NVRHI на Vulkan
+  // назначает location по порядку атрибутов (vulkan-shader.cpp:
+  // createInputLayout игнорирует шейдер), поэтому порядок обязан совпадать с
+  // тем, что назначил DXC, — иначе атрибуты разъедутся молча.
+  std::vector<std::pair<std::string, unsigned> > nameLoc;
+
+  unsigned curVs, curPs, curLayout, curIb, curRt, curDs;
+  unsigned vb[kMaxVertexStreams], vbStride[kMaxVertexStreams], vbOffset[kMaxVertexStreams];
+  unsigned instSrc, instSlot, instStride, instOffset;
+  bool recording;
+  unsigned draws, pipesCreated, pipeHits, uploads;
 
   NvrhiBackendImpl()
     : hVulkan(0), gipa(0), instance(0), physical(0), device(0), queue(0), queueFamily(0),
       surface(0), window(0), swapchain(0), swapFormat(VK_FORMAT_UNDEFINED),
       swapSpace(VkColorSpaceKHR(0)), presentMode(VK_PRESENT_MODE_FIFO_KHR),
       width(0), height(0), acquired(0), imageIndex(0), currentSurface(0), presents(0),
-      swapRecreates(0)
+      swapRecreates(0), surfaceRecreates(0),
+      uboDirty{ false, false }, curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
+      curIb(kNoRes), curRt(kNoRes), curDs(kNoRes),
+      instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
+      recording(false), draws(0), pipesCreated(0), pipeHits(0), uploads(0)
   {
     deviceName[0] = 0;
     memset(stubCalls, 0, sizeof(stubCalls));
+    for (int i = 0; i < kMaxVertexStreams; ++i)
+    {
+      vb[i] = kNoRes; vbStride[i] = 0; vbOffset[i] = 0;
+    }
   }
 };
 
@@ -142,7 +345,8 @@ static void VkNote(const char* what, bool ok, const char* detail)
   else
   {
     DebugTrace("NvrhiBackend: %s — НЕ УДАЛОСЬ%s%s", what, detail ? " " : "", detail ? detail : "");
-    systemLog(NLogg::LEVEL_WARNING) << "NvrhiBackend: " << what << (detail ? detail : "") << endl;
+    systemLog(NLogg::LEVEL_WARNING) << "NvrhiBackend: " << what << " — "
+                                    << (detail ? detail : "") << endl;
   }
 }
 
@@ -363,6 +567,7 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceQueue(d.device, d.queueFamily, 0, &d.queue);
 
   nvrhi::vulkan::DeviceDesc dd;
+  dd.errorCB = &d.msgLog;
   dd.instance = d.instance;
   dd.physicalDevice = d.physical;
   dd.device = d.device;
@@ -379,6 +584,47 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
     return false;
 
   d.commandList = d.nvrhiDevice->createCommandList();
+
+  // Канонический c-банк (§3.z п.2, шаг 12b): uniform-буферы равны тени
+  // констант стадии — 256 регистров × 16 Б, смещение члена = 16*номер
+  // регистра. Писатель tools/shader_build/cbank.py раскладывает
+  // `cbuffer pwCVS`/`pwCPS` ровно так же через packoffset, поэтому таблица
+  // «const-регистр -> байт» не нужна вовсе: загрузка = срез тени.
+  // VS -> binding 0, PS -> binding 1 в одном наборе (set 0): у D3D9 у стадий
+  // раздельные банки c, а слоты выбраны так, чтобы стадии не спорили за binding
+  // (замер DXC: два блока с одним binding в одном прогоне = битый SPIR-V).
+  for (int s = 0; s < csConstStageCount; ++s)
+  {
+    d.ubo[s] = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                             .setByteSize((size_t)SHADER_CONST_REGISTERS * 16u)
+                                             .setIsConstantBuffer(true)
+                                             .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
+                                             .setKeepInitialState(true)
+                                             .setDebugName(s == csPixel ? "seam cbank ps" : "seam cbank vs"));
+    if (!d.ubo[s]) { VkNote("Init: createBuffer(cbank)", false, 0); return false; }
+  }
+  {
+    nvrhi::BindingLayoutDesc ld;
+    ld.visibility = nvrhi::ShaderType::AllGraphics;
+    ld.setRegisterSpaceAndDescriptorSet(0);
+    ld.bindingOffsets = nvrhi::VulkanBindingOffsets()
+      .setShaderResourceOffset(0).setSamplerOffset(0)
+      .setConstantBufferOffset(0).setUnorderedAccessViewOffset(0);
+    ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(0));
+    ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(1));
+    d.set0Layout = d.nvrhiDevice->createBindingLayout(ld);
+
+    nvrhi::BindingSetDesc bsd;
+    bsd.bindings.push_back(nvrhi::BindingSetItem::ConstantBuffer(0, d.ubo[0]));
+    bsd.bindings.push_back(nvrhi::BindingSetItem::ConstantBuffer(1, d.ubo[1]));
+    d.set0Set = d.set0Layout ? d.nvrhiDevice->createBindingSet(bsd, d.set0Layout)
+                             : nvrhi::BindingSetHandle();
+    if (!d.set0Layout || !d.set0Set)
+    {
+      VkNote("Init: binding layout/set (набор 0)", false, 0);
+      return false;
+    }
+  }
 
   VkNote("Vulkan-бэкенд поднят", true, d.deviceName);
   return true;
@@ -552,6 +798,42 @@ void NvrhiBackend::DestroySwapchain()
   if (d.swapchain) { VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySwapchainKHR(d.device, d.swapchain, 0); d.swapchain = 0; }
 }
 
+bool NvrhiBackend::RecreateSurface()
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (d.surface)
+  {
+    VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroySurfaceKHR(d.instance, d.surface, 0);
+    d.surface = 0;
+  }
+  if (!d.window)
+  {
+    VkNote("surface: нет окна", false, 0);
+    return false;
+  }
+  VkWin32SurfaceCreateInfoKHR sci;
+  memset(&sci, 0, sizeof(sci));
+  sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  sci.hinstance = GetModuleHandleA(0);
+  sci.hwnd = d.window;
+  VkResult r = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateWin32SurfaceKHR(d.instance, &sci, 0, &d.surface);
+  if (r != VK_SUCCESS)
+  {
+    VkNote("vkCreateWin32SurfaceKHR (пересоздание)", false, VkResultName(r));
+    return false;
+  }
+  VkBool32 supported = VK_FALSE;
+  VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceSupportKHR(d.physical, d.queueFamily,
+                                                                    d.surface, &supported);
+  if (!supported)
+  {
+    VkNote("present после пересоздания surface", false, 0);
+    return false;
+  }
+  DebugTrace("NvrhiBackend: surface пересоздан на окне %p", (void*)d.window);
+  return true;
+}
+
 bool NvrhiBackend::RecreateSwapchain()
 {
   NvrhiBackendImpl& d = *m_pImpl;
@@ -564,8 +846,17 @@ bool NvrhiBackend::RecreateSwapchain()
   // CreateSwapchain сам возьмёт актуальные размеры.
   if (!CreateSwapchain(0, 0))
   {
-    VkNote("пересоздание swapchain'а", false, 0);
-    return false;
+    // Surface привязан к HWND. Клиент при смене разрешения пересоздаёт окно:
+    // замер 2026-10-15 (стенд Wine+DXVK) — после входа в бой
+    // vkGetPhysicalDeviceSurfaceCapabilitiesKHR отдаёт VK_ERROR_SURFACE_LOST_KHR
+    // и у нас, и у DXVK, т.е. окно другое, а не только размер. Тогда заводим
+    // surface заново на актуальном окне.
+    if (!RecreateSurface() || !CreateSwapchain(0, 0))
+    {
+      VkNote("пересоздание swapchain'а", false, 0);
+      return false;
+    }
+    ++d.surfaceRecreates;
   }
   return true;
 }
@@ -599,8 +890,13 @@ void NvrhiBackend::Shutdown()
 void NvrhiBackend::DumpStats(const char* pTag) const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkStats%s: presents=%u recreates=%u unsupported=%u swap=%ux%u device=%s",
-             pTag ? pTag : "", d.presents, d.swapRecreates, m_unsupported, d.width, d.height, d.deviceName);
+  DebugTrace("VkStats%s: presents=%u recreates=%u (surface %u) unsupported=%u swap=%ux%u device=%s",
+             pTag ? pTag : "", d.presents, d.swapRecreates, d.surfaceRecreates, m_unsupported,
+             d.width, d.height, d.deviceName);
+  DebugTrace("VkRes%s: буферы=%u шейдеры=%u раскладки=%u пайплайны=%u/%u (попаданий %u) вывод=%u загруз=%u",
+             pTag ? pTag : "", (unsigned)d.buffers.size(), (unsigned)d.shaderObjs.size(),
+             (unsigned)d.layoutObjs.size(), d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
+             d.draws, d.uploads);
   for (int i = 0; i < st_count; ++i)
     if (d.stubCalls[i])
       DebugTrace("VkStub: %s вызван %u раз", kStubNames[i], d.stubCalls[i]);
@@ -660,8 +956,11 @@ HRESULT NvrhiBackend::GetSystemInfo(BackendSystemInfo& out)
 //////////////////////////////////////////////////////////////////////////
 // Кадр
 
-HRESULT NvrhiBackend::BeginScene() { return Unsupported(st_BeginScene); }
-HRESULT NvrhiBackend::EndScene() { return Unsupported(st_EndScene); }
+// Шаг 12b: BeginScene/EndScene у Vulkan-бэкенда — no-op: командный список
+// открывается лениво (EnsureRecording), а «конец сцены» в D3D9 ничего не
+// гарантирует сам по себе.
+HRESULT NvrhiBackend::BeginScene() { return S_OK; }
+HRESULT NvrhiBackend::EndScene() { return S_OK; }
 
 HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, const BackendRect* pDstRect)
 {
@@ -706,6 +1005,12 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
     return E_FAIL;
   SurfaceObj& so = d.surfaces[d.imageIndex];
 
+  // 12b: если этим кадром уже записаны вызовы (Clear/Draw/writeBuffer), они
+  // уходят ОТДЕЛЬНЫМ списком до очистки бэк-буфера: в 12a заливка и была всем
+  // кадром, с реальными проходами порядок «сначала сцена, потом бэк-буфер» не
+  // меняется, но чистить бэк-буфер поверх нарисованного нельзя.
+  FlushRecording();
+
   d.commandList->open();
   // Цвет намеренно не тот, что у D3D9-кадра: по нему в скриншоте видно, какой
   // именно вывод лёг последним.
@@ -744,7 +1049,7 @@ void NvrhiBackend::GetViewport(BackendViewport& vp) { vp = m_viewport; }
 HRESULT NvrhiBackend::SetViewport(const BackendViewport& vp)
 {
   m_viewport = vp;
-  return Unsupported(st_SetViewport);
+  return S_OK;
 }
 
 void NvrhiBackend::SetScissorRect(const BackendRect* pRect)
@@ -768,8 +1073,25 @@ void NvrhiBackend::SetClipPlane(bool enable, const float* pPlaneEquation)
 
 HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil)
 {
-  (void)clearFlags; (void)colorRGBA; (void)z; (void)stencil;
-  return Unsupported(st_Clear);
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (d.curRt == kNoRes || d.curRt >= d.surfaces.size()) return D3DERR_INVALIDCALL;
+  if (!EnsureRecording()) return E_FAIL;
+  if (clearFlags & bcTarget)
+  {
+    const unsigned a = (colorRGBA >> 24) & 0xffu, r = (colorRGBA >> 16) & 0xffu,
+                   g = (colorRGBA >> 8) & 0xffu, b = colorRGBA & 0xffu;
+    // цвет логический (r,g,b,a): VK_FORMAT_B8G8R8A8_UNORM сам раскладывает
+    // каналы, байты в памяти получаются B,G,R,A — как у D3DFMT_A8R8G8B8
+    d.commandList->clearTextureFloat(d.surfaces[d.curRt].tex, nvrhi::TextureSubresourceSet(),
+                                     nvrhi::Color(r / 255.f, g / 255.f, b / 255.f, a / 255.f));
+  }
+  if ((clearFlags & (bcZBuffer | bcStencil)) && d.curDs != kNoRes && d.curDs < d.surfaces.size())
+  {
+    d.commandList->clearDepthStencilTexture(d.surfaces[d.curDs].tex, nvrhi::TextureSubresourceSet(),
+                                            (clearFlags & bcZBuffer) != 0, z,
+                                            (clearFlags & bcStencil) != 0, stencil);
+  }
+  return S_OK;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -784,6 +1106,7 @@ HRESULT NvrhiBackend::SetVertexShaderConstants(unsigned startRegister, unsigned 
   if (!pData || !registerCount || startRegister + registerCount > (unsigned)SHADER_CONST_REGISTERS)
     return D3DERR_INVALIDCALL;
   memcpy(m_constShadow[csVertex] + startRegister * 4, pData, (size_t)registerCount * 16);
+  m_pImpl->uboDirty[csVertex] = true;   // банк = образ тени, байт = 16*регистр
   return S_OK;
 }
 
@@ -806,28 +1129,381 @@ HRESULT NvrhiBackend::GetShaderConstants(EShaderConstStage stage, unsigned start
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Биндинги и вывод — ещё не реализованы (шаг 13).
+// Биндинги и вывод (шаг 12b).
+//
+// Командный список один на бэкенд: EnsureRecording открывает его лениво,
+// FlushRecording закрывает и исполняет. D3D9-модель «каждый вызов сразу в
+// контекст» не воспроизводится — очередь решает бэкенд, а точку ставит Present
+// или там, где вызывающему нужен результат (ReadSurface, тест 12b).
+
+bool NvrhiBackend::EnsureRecording()
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.commandList) return false;
+  if (!d.recording) { d.commandList->open(); d.recording = true; }
+  return true;
+}
+
+void NvrhiBackend::FlushRecording()
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.recording || !d.nvrhiDevice) return;
+  d.commandList->close();
+  d.nvrhiDevice->executeCommandList(d.commandList);
+  d.recording = false;
+}
 
 HRESULT NvrhiBackend::SetStreamSource(unsigned slot, HBuffer vertexBuffer, unsigned byteOffset, unsigned stride)
-{ (void)slot; (void)vertexBuffer; (void)byteOffset; (void)stride; return Unsupported(st_SetStreamSource); }
-HRESULT NvrhiBackend::SetIndices(HBuffer indexBuffer) { (void)indexBuffer; return Unsupported(st_SetIndices); }
-HRESULT NvrhiBackend::SetInputLayout(HInputLayout layout) { (void)layout; return Unsupported(st_SetInputLayout); }
-HRESULT NvrhiBackend::SetVertexShader(HShader shader) { (void)shader; return Unsupported(st_SetVertexShader); }
-HRESULT NvrhiBackend::SetPixelShader(HShader shader) { (void)shader; return Unsupported(st_SetPixelShader); }
-HRESULT NvrhiBackend::SetTexture(unsigned samplerIndex, HTexture texture)
-{ (void)samplerIndex; (void)texture; return Unsupported(st_SetTexture); }
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (slot >= kMaxVertexStreams) return D3DERR_INVALIDCALL;
+  const unsigned idx = Hnd2Idx(vertexBuffer.p);
+  if (idx != kNoRes && idx >= d.buffers.size()) return D3DERR_INVALIDCALL;
+  d.vb[slot] = idx;
+  d.vbOffset[slot] = byteOffset;
+  d.vbStride[slot] = (idx == kNoRes) ? 0 : stride;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetIndices(HBuffer indexBuffer)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned idx = Hnd2Idx(indexBuffer.p);
+  if (idx != kNoRes && idx >= d.buffers.size()) return D3DERR_INVALIDCALL;
+  d.curIb = idx;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetInputLayout(HInputLayout layout)
+{
+  const unsigned idx = Hnd2Idx(layout.p);
+  if (idx != kNoRes && idx >= m_pImpl->layoutObjs.size()) return D3DERR_INVALIDCALL;
+  m_pImpl->curLayout = idx;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetVertexShader(HShader shader)
+{
+  const unsigned idx = Hnd2Idx(shader.p);
+  if (idx != kNoRes && idx >= m_pImpl->shaderObjs.size()) return D3DERR_INVALIDCALL;
+  m_pImpl->curVs = idx;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetPixelShader(HShader shader)
+{
+  const unsigned idx = Hnd2Idx(shader.p);
+  if (idx != kNoRes && idx >= m_pImpl->shaderObjs.size()) return D3DERR_INVALIDCALL;
+  m_pImpl->curPs = idx;
+  return S_OK;
+}
+
 HRESULT NvrhiBackend::SetRenderTarget(unsigned index, HSurface surface)
-{ (void)index; (void)surface; return Unsupported(st_SetRenderTarget); }
-HRESULT NvrhiBackend::SetDepthStencil(HSurface surface) { (void)surface; return Unsupported(st_SetDepthStencil); }
-HRESULT NvrhiBackend::GetDepthStencil(HSurface* pOut) { (void)pOut; return Unsupported(st_GetDepthStencil); }
+{
+  (void)index;
+  const unsigned idx = Hnd2Idx(surface.p);
+  if (idx != kNoRes && idx >= m_pImpl->surfaces.size()) return D3DERR_INVALIDCALL;
+  m_pImpl->curRt = idx;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetDepthStencil(HSurface surface)
+{
+  const unsigned idx = Hnd2Idx(surface.p);
+  if (idx != kNoRes && idx >= m_pImpl->surfaces.size()) return D3DERR_INVALIDCALL;
+  m_pImpl->curDs = idx;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::GetDepthStencil(HSurface* pOut)
+{
+  if (!pOut) return D3DERR_INVALIDCALL;
+  pOut->p = Idx2Hnd(m_pImpl->curDs);
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::SetInstanceSource(HBuffer perInstanceData, unsigned stride, unsigned offset)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned idx = Hnd2Idx(perInstanceData.p);
+  if (idx == kNoRes) { d.instSrc = kNoRes; d.instStride = 0; d.instOffset = 0; return S_OK; }
+  if (idx >= d.buffers.size()) return D3DERR_INVALIDCALL;
+  d.instSrc = idx;
+  d.instStride = stride;
+  d.instOffset = offset;
+  return S_OK;
+}
+
+bool NvrhiBackend::IsStreamBufferBound(const void* pVertexBuffer) const
+{
+  const NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned idx = Hnd2Idx(pVertexBuffer);
+  if (idx == kNoRes) return false;
+  for (unsigned i = 0; i < kMaxVertexStreams; ++i)
+    if (d.vb[i] == idx) return true;
+  return d.instSrc == idx;
+}
+
+void NvrhiBackend::InvalidateBoundState()
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  m_instanceCount = 0;
+  d.curVs = d.curPs = d.curLayout = d.curIb = kNoRes;
+  for (unsigned i = 0; i < kMaxVertexStreams; ++i)
+  {
+    d.vb[i] = kNoRes; d.vbStride[i] = 0; d.vbOffset[i] = 0;
+  }
+  d.instSrc = kNoRes; d.instStride = 0; d.instOffset = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Пайплайн. Ключ — (vs, ps, layout, rt, ds, примитив): состояние растеризации
+// сейчас фиксировано (cull none, front CCW — намотка NVRHI с отрицательной
+// высотой вьюпорта), поэтому ключ шага 8 (хэш состояний/сэмплов/трафарета) в
+// него ещё не входит — это шаг 13, там же появятся текстуры/сэмплеры/SSBO.
+
+// Физический слот потока: kInstanceStream — отдельный слот за обычными
+// (так же, как kInstanceSlot = 1 у D3D9Backend, только здесь слоты 0..7 заняты
+// клиентскими потоками).
+static unsigned SlotOfStream(NvrhiBackendImpl& d, unsigned logical)
+{
+  return (logical == kInstanceStream) ? d.instSlot : logical;
+}
+
+// Невиртуальные помощники — свободные функции (в nvrhibackend.h типы nvrhi
+// просачиваться не должны: пофайловый /std:c++17 только у nvrhibackend.cpp).
+bool BuildInputLayout(NvrhiBackendImpl& d, unsigned layoutIdx)
+{
+  if (layoutIdx == kNoRes || layoutIdx >= d.layoutObjs.size()) return false;
+  NvrhiBackendImpl::LayoutObj& lo = d.layoutObjs[layoutIdx];
+  if (lo.il) return true;
+  if (lo.elems.empty()) return false;
+
+  struct Attr
+  {
+    unsigned loc;
+    nvrhi::VertexAttributeDesc vd;
+  };
+  std::vector<Attr> attrs;
+  unsigned nextFree = 0;
+  for (size_t i = 0; i < lo.elems.size(); ++i)
+  {
+    const VertexElementDescriptor& e = lo.elems[i];
+    char name[32];
+    SemanticName((EVertexElementUsage)e.usage, e.usageIndex, name, sizeof(name));
+    const nvrhi::Format fmt = VtxFormat((EVertexElementType)e.type);
+    if (fmt == nvrhi::Format::UNKNOWN)
+    {
+      char det[96];
+      snprintf(det, sizeof(det), "%s (тип %d)", name, (int)e.type);
+      VkNote("CreateInputLayout: формат атрибута не отображается", false, det);
+      return false;
+    }
+    // location берём из SPIR-V (что назначил DXC), а не из порядка объявления:
+    // NVRHI назначает location по порядку массива, и при расхождении атрибуты
+    // разъезжаются молча (замер vulkan-shader.cpp: createInputLayout игнорирует
+    // переданный шейдер).
+    unsigned loc = kNoRes;
+    for (size_t k = 0; k < d.nameLoc.size(); ++k)
+      if (d.nameLoc[k].first == name) { loc = d.nameLoc[k].second; break; }
+    if (loc == kNoRes) { loc = nextFree; }
+    if (loc + 1 > nextFree) nextFree = loc + 1;
+
+    const unsigned logical = e.stream;
+    const unsigned slot = SlotOfStream(d, logical);
+    const unsigned stride = (logical == kInstanceStream) ? d.instStride : d.vbStride[slot];
+    if (!stride)
+    {
+      char det[128];
+      snprintf(det, sizeof(det), "%s: поток %u без шага (SetStreamSource раньше CreateInputLayout?)",
+               name, logical);
+      VkNote("CreateInputLayout", false, det);
+      return false;
+    }
+    Attr a;
+    a.loc = loc;
+    a.vd.setName(name).setFormat(fmt).setOffset(e.offset).setElementStride(stride)
+       .setBufferIndex(slot).setIsInstanced(logical == kInstanceStream);
+    attrs.push_back(a);
+  }
+  std::sort(attrs.begin(), attrs.end(), [](const Attr& a, const Attr& b) { return a.loc < b.loc; });
+
+  std::vector<nvrhi::VertexAttributeDesc> vads;
+  for (size_t i = 0; i < attrs.size(); ++i) vads.push_back(attrs[i].vd);
+  lo.il = d.nvrhiDevice->createInputLayout(vads.data(), (uint32_t)vads.size(),
+                                           d.curVs != kNoRes ? d.shaderObjs[d.curVs].sh : nullptr);
+  if (!lo.il)
+  {
+    VkNote("CreateInputLayout: createInputLayout", false, 0);
+    return false;
+  }
+  return true;
+}
+
+nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderPrimitiveType type,
+                                                   nvrhi::IFramebuffer** ppFb)
+{
+  for (size_t i = 0; i < d.pipes.size(); ++i)
+  {
+    const NvrhiBackendImpl::PipeObj& p = d.pipes[i];
+    if (p.vs == d.curVs && p.ps == d.curPs && p.layout == d.curLayout &&
+        p.rt == d.curRt && p.ds == d.curDs && p.prim == (unsigned)type)
+    {
+      ++d.pipeHits;
+      if (ppFb) *ppFb = p.fb;   // RefCountPtr::operator& возвращает T**, поэтому
+                                // наружу отдаётся сырой указатель (владеет PipeObj)
+      return p.pipe;
+    }
+  }
+  if (d.curVs == kNoRes || d.curPs == kNoRes || d.curLayout == kNoRes || d.curRt == kNoRes)
+    return nvrhi::GraphicsPipelineHandle();
+
+  nvrhi::InputLayoutHandle il;
+  if (!BuildInputLayout(d, d.curLayout)) return nvrhi::GraphicsPipelineHandle();
+  // раскладка живёт в LayoutObj (её кэшируем), в пайплайн её обязан получить
+  // именно оттуда: у Vulkan-бэкенда `if (inputLayout)` (vulkan-graphics.cpp:300)
+  // и при нулевом указателе пайплайн создаётся БЕСШТРИХОВЫМ — вершинные
+  // атрибуты читаются нулями, геометрия вырождается молча (замер 2026-10-15:
+  // 0 пикселей при пайплайне 1/1 и выводе 1)
+  il = d.layoutObjs[d.curLayout].il;
+  if (!il) return nvrhi::GraphicsPipelineHandle();
+
+  if (d.curRt >= d.surfaces.size()) return nvrhi::GraphicsPipelineHandle();
+  nvrhi::FramebufferDesc fbd;
+  fbd.addColorAttachment(d.surfaces[d.curRt].tex);
+  if (d.curDs != kNoRes && d.curDs < d.surfaces.size())
+    fbd.setDepthAttachment(d.surfaces[d.curDs].tex);
+  nvrhi::FramebufferHandle fb = d.nvrhiDevice->createFramebuffer(fbd);
+  if (!fb) { VkNote("Пайплайн: createFramebuffer", false, 0); return nvrhi::GraphicsPipelineHandle(); }
+
+  nvrhi::GraphicsPipelineDesc pd;
+  pd.setPrimType(PrimType(type)).setInputLayout(il)
+    .setVertexShader(d.shaderObjs[d.curVs].sh).setPixelShader(d.shaderObjs[d.curPs].sh);
+  // Намотка: у NVRHI вьюпорт с отрицательной высотой, без этого флага геометрия
+  // вырезается (замер спайка b0cull: 0 против 3072 пикселей).
+  pd.renderState.rasterState.setCullNone().setFrontCounterClockwise(true);
+  if (d.set0Layout) pd.addBindingLayout(d.set0Layout);
+
+  nvrhi::GraphicsPipelineHandle pipe = d.nvrhiDevice->createGraphicsPipeline(pd, fb->getFramebufferInfo());
+  if (!pipe)
+  {
+    char det[160];
+    snprintf(det, sizeof(det), "vs=%s ps=%s", d.shaderObjs[d.curVs].entry.c_str(),
+             d.shaderObjs[d.curPs].entry.c_str());
+    VkNote("Пайплайн: createGraphicsPipeline", false, det);
+    return nvrhi::GraphicsPipelineHandle();
+  }
+  NvrhiBackendImpl::PipeObj po;
+  po.pipe = pipe; po.fb = fb;
+  po.vs = d.curVs; po.ps = d.curPs; po.layout = d.curLayout;
+  po.rt = d.curRt; po.ds = d.curDs; po.prim = (unsigned)type;
+  d.pipes.push_back(po);
+  ++d.pipesCreated;
+  if (ppFb) *ppFb = fb;
+  return pipe;
+}
+
+HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned startIndexLocation,
+                               unsigned startVertexLocation, unsigned primitiveCount)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned vtx = PrimVertexCount(type, primitiveCount);
+  if (!vtx)
+  {
+    VkNote("Вывод: примитив вне Vulkan (TRIANGLEFAN)", false, 0);
+    return E_FAIL;
+  }
+  if (d.curVs == kNoRes || d.curPs == kNoRes || d.curRt == kNoRes)
+    return E_FAIL;
+  if (!EnsureRecording()) return E_FAIL;
+
+  // Канонический c-банк (§3.z, шаг 13.0): тень констант — это и есть образ
+  // UBO, байт = 16*регистр. Пока грузится весь банк (4 КБ на стадию);
+  // диапазон из ConstBlock::TakeDirty() — шаг 13.
+  for (int s = 0; s < csConstStageCount; ++s)
+  {
+    if (d.uboDirty[s] && d.ubo[s])
+    {
+      d.commandList->writeBuffer(d.ubo[s], m_constShadow[s],
+                                 (size_t)SHADER_CONST_REGISTERS * 16u);
+      d.uboDirty[s] = false;
+      ++d.uploads;
+    }
+  }
+
+  nvrhi::IFramebuffer* fbRaw = 0;
+  nvrhi::GraphicsPipelineHandle pipe = FindOrCreatePipeline(d, type, &fbRaw);
+  if (!pipe) return E_FAIL;
+
+  nvrhi::GraphicsState gs;
+  gs.setPipeline(pipe).setFramebuffer(fbRaw);
+  for (unsigned i = 0; i < kMaxVertexStreams; ++i)
+  {
+    if (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size())
+      gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.buffers[d.vb[i]].buf)
+                         .setSlot(i).setOffset(d.vbOffset[i]));
+  }
+  if (d.instSrc != kNoRes && d.instSrc < d.buffers.size())
+    gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.buffers[d.instSrc].buf)
+                       .setSlot(d.instSlot).setOffset(d.instOffset));
+  if (d.curIb != kNoRes && d.curIb < d.buffers.size())
+    gs.setIndexBuffer(nvrhi::IndexBufferBinding().setBuffer(d.buffers[d.curIb].buf)
+                      .setFormat(d.buffers[d.curIb].index32 ? nvrhi::Format::R32_UINT
+                                                            : nvrhi::Format::R16_UINT));
+  if (d.set0Set) gs.addBindingSet(d.set0Set);
+
+  nvrhi::ViewportState vps;
+  nvrhi::Viewport vport((float)m_viewport.x, (float)(m_viewport.x + m_viewport.width),
+                        (float)m_viewport.y, (float)(m_viewport.y + m_viewport.height),
+                        m_viewport.minZ, m_viewport.maxZ);
+  if (m_scissorValid)
+    vps.addViewport(vport).addScissorRect(nvrhi::Rect((int)m_scissor.left, (int)m_scissor.right,
+                                                      (int)m_scissor.top, (int)m_scissor.bottom));
+  else
+    vps.addViewportAndScissorRect(vport);
+  gs.setViewport(vps);
+  d.commandList->setGraphicsState(gs);
+
+  const unsigned inst = m_instanceCount ? m_instanceCount : 1u;
+  if (indexed)
+  {
+    // у NVRHI в drawIndexed поле vertexCount — это ЧИСЛО ИНДЕКСОВ (замер
+    // vulkan-graphics.cpp:695 — cmdBuf.drawIndexed(args.vertexCount, ...))
+    d.commandList->drawIndexed(nvrhi::DrawArguments()
+                               .setVertexCount(vtx).setStartIndexLocation(startIndexLocation)
+                               .setStartVertexLocation(startVertexLocation).setInstanceCount(inst));
+  }
+  else
+  {
+    d.commandList->draw(nvrhi::DrawArguments().setVertexCount(vtx)
+                        .setStartVertexLocation(startVertexLocation).setInstanceCount(inst));
+  }
+  ++d.draws;
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::DrawIndexed(ERenderPrimitiveType type, unsigned baseVertexIndex, unsigned minIndex,
                                   unsigned indexedVertexCount, unsigned startIndex, unsigned primitiveCount)
-{ (void)type; (void)baseVertexIndex; (void)minIndex; (void)indexedVertexCount; (void)startIndex;
-  (void)primitiveCount; return Unsupported(st_DrawIndexed); }
+{
+  (void)minIndex; (void)indexedVertexCount;
+  return DrawImpl(type, true, startIndex, baseVertexIndex, primitiveCount);
+}
 
 HRESULT NvrhiBackend::Draw(ERenderPrimitiveType type, unsigned startVertex, unsigned primitiveCount)
-{ (void)type; (void)startVertex; (void)primitiveCount; return Unsupported(st_Draw); }
+{
+  return DrawImpl(type, false, 0, startVertex, primitiveCount);
+}
+
+HRESULT NvrhiBackend::SetInstanceCount(unsigned count)
+{
+  m_instanceCount = count;
+  return S_OK;
+}
+
+// Ещё не закрыто (шаг 13): текстуры в наборе 2/3 и вывод из пользовательских
+// буферов (UP-пути в Vulkan требуют staging-копии на каждый вызов).
+HRESULT NvrhiBackend::SetTexture(unsigned samplerIndex, HTexture texture)
+{ (void)samplerIndex; (void)texture; return Unsupported(st_SetTexture); }
 
 HRESULT NvrhiBackend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexValue, unsigned indexCount,
                                     unsigned vertexCount, const void* pIndexData, bool index16,
@@ -839,31 +1515,151 @@ HRESULT NvrhiBackend::DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
                              const void* pVertexData, unsigned vertexStride)
 { (void)type; (void)primitiveCount; (void)pVertexData; (void)vertexStride; return Unsupported(st_DrawUP); }
 
-HRESULT NvrhiBackend::SetInstanceCount(unsigned count)
-{ m_instanceCount = count; return Unsupported(st_SetInstanceCount); }
+//////////////////////////////////////////////////////////////////////////
+// Создание ресурсов (шаг 12b).
+//
+// Точку входа и имена/номера входов VS берём из самого SPIR-V: seam их не
+// передаёт, а DXC пишет имя HLSL-функции (не "main") и назначает location сам
+// (замер спайка: WaterDummy — 1 вход location 0, BasicMaterial — 9 входов).
+// Кодировка SPIR-V здесь читается напрямую (вендорский NVRHI рефлексии SPIR-V
+// не имеет) — тот же мини-сканер, что в tools/nvrhi_probe.
 
-HRESULT NvrhiBackend::SetInstanceSource(HBuffer perInstanceData, unsigned stride, unsigned offset)
-{ (void)perInstanceData; (void)stride; (void)offset; return Unsupported(st_SetInstanceSource); }
-
-bool NvrhiBackend::IsStreamBufferBound(const void* pVertexBuffer) const
-{ (void)pVertexBuffer; Unsupported(st_IsStreamBufferBound); return false; }
-
-void NvrhiBackend::InvalidateBoundState()
+// OpEntryPoint = 15, OpName = 5, OpDecorate = 71, OpVariable = 59;
+// модель исполнения Vertex = 0, Fragment = 4; декорация Location = 30;
+// класс хранения Input = 1.
+static bool SpvScan(const void* pCode, unsigned codeSize, bool fragment,
+                    std::string* pEntry,
+                    std::vector<std::pair<std::string, unsigned> >* pInputs)
 {
-  // Таблицы биндингов ещё нет, поэтому сбрасывать нечего; счётчик инстансинга
-  // сбрасывается, чтобы не переживать за него при пересоздании устройства.
-  m_instanceCount = 0;
+  const unsigned* w = static_cast<const unsigned*>(pCode);
+  const unsigned n = codeSize / 4u;
+  if (n < 5u || w[0] != 0x07230203u) return false;
+
+  std::vector<unsigned> inputIds;
+  std::map<unsigned, std::string> names;
+  std::map<unsigned, unsigned> locs;
+  // заголовок SPIR-V — 5 слов (magic, version, generator, bound, schema);
+  // с 4-го слова начинается schema (обычно 0) и разбор обрывался на wc==0
+  for (unsigned i = 5u; i < n; )
+  {
+    const unsigned op = w[i], wc = op >> 16;
+    if (wc == 0u || i + wc > n) return false;
+    const unsigned code = op & 0xffffu;
+    if (code == 15u && wc >= 4u)                 // OpEntryPoint
+    {
+      const unsigned model = w[i + 1];
+      if (model == (fragment ? 4u : 0u))
+      {
+        const char* s = reinterpret_cast<const char*>(w + i + 3);
+        const unsigned avail = (n - (i + 3u)) * 4u;
+        unsigned len = 0;
+        while (len < avail && s[len]) ++len;
+        pEntry->assign(s, len);
+      }
+    }
+    else if (code == 59u && wc >= 4u)            // OpVariable: тип, id, класс
+    {
+      if (w[i + 3] == 1u) inputIds.push_back(w[i + 2]);
+    }
+    else if (code == 5u && wc >= 3u)             // OpName
+    {
+      const char* s = reinterpret_cast<const char*>(w + i + 2);
+      const unsigned avail = (n - (i + 2u)) * 4u;
+      unsigned len = 0;
+      while (len < avail && s[len]) ++len;
+      names[w[i + 1]] = std::string(s, len);
+    }
+    else if (code == 71u && wc >= 3u)            // OpDecorate
+    {
+      if (w[i + 2] == 30u && wc >= 4u) locs[w[i + 1]] = w[i + 3];
+    }
+    i += wc;
+  }
+  for (size_t k = 0; k < inputIds.size(); ++k)
+  {
+    std::map<unsigned, std::string>::const_iterator itN = names.find(inputIds[k]);
+    std::map<unsigned, unsigned>::const_iterator itL = locs.find(inputIds[k]);
+    if (itN == names.end() || itL == locs.end()) continue;
+    std::string nm = itN->second;
+    const std::string pfx = "in.var.";
+    if (nm.compare(0, pfx.size(), pfx) == 0) nm.erase(0, pfx.size());
+    else continue;
+    pInputs->push_back(std::make_pair(nm, itL->second));
+  }
+  return !pEntry->empty();
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Создание ресурсов — шаг 13.
+HRESULT NvrhiBackend::CreateShaderImpl(const void* pCode, unsigned codeSize, bool fragment, HShader* pOut)
+{
+  if (!pCode || !codeSize || !pOut) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.nvrhiDevice) return E_FAIL;
+
+  std::string entry;
+  std::vector<std::pair<std::string, unsigned> > inputs;
+  if (!SpvScan(pCode, codeSize, fragment, &entry, &inputs))
+  {
+    VkNote("CreateShader: SPIR-V не разобран (нет точки входа)", false, 0);
+    return E_FAIL;
+  }
+  nvrhi::ShaderHandle sh = d.nvrhiDevice->createShader(
+      nvrhi::ShaderDesc().setShaderType(fragment ? nvrhi::ShaderType::Pixel : nvrhi::ShaderType::Vertex)
+                         .setEntryName(entry),
+      pCode, codeSize);
+  if (!sh)
+  {
+    char det[160];
+    snprintf(det, sizeof(det), "точка входа %s, %u Б", entry.c_str(), codeSize);
+    VkNote("CreateShader: createShader", false, det);
+    return E_FAIL;
+  }
+  NvrhiBackendImpl::ShaderObj so;
+  so.sh = sh;
+  so.entry = entry;
+  so.inputs = inputs;
+  d.shaderObjs.push_back(so);
+  pOut->p = Idx2Hnd((unsigned)d.shaderObjs.size() - 1u);
+
+  // имена входов — в общий реестр «семантика -> location»: по ним потом
+  // сопоставляется раскладка атрибутов
+  for (size_t k = 0; k < inputs.size(); ++k)
+  {
+    bool found = false;
+    for (size_t e = 0; e < d.nameLoc.size() && !found; ++e)
+      if (d.nameLoc[e].first == inputs[k].first) found = true;
+    if (!found) d.nameLoc.push_back(inputs[k]);
+  }
+  if (d.shaderObjs.size() <= 4u || (d.shaderObjs.size() % 50u) == 0u)
+  {
+    char det[160];
+    snprintf(det, sizeof(det), "входов %u, всего %u",
+             (unsigned)inputs.size(), (unsigned)d.shaderObjs.size());
+    VkNote((std::string("CreateShader: ") + entry).c_str(), true, det);
+  }
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut)
-{ (void)pShaderCode; (void)codeSize; (void)pOut; return Unsupported(st_CreateVertexShader); }
+{
+  return CreateShaderImpl(pShaderCode, codeSize, false, pOut);
+}
+
 HRESULT NvrhiBackend::CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut)
-{ (void)pShaderCode; (void)codeSize; (void)pOut; return Unsupported(st_CreatePixelShader); }
+{
+  return CreateShaderImpl(pShaderCode, codeSize, true, pOut);
+}
+
 HRESULT NvrhiBackend::CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut)
-{ (void)descr; (void)pOut; return Unsupported(st_CreateInputLayout); }
+{
+  if (!pOut) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  NvrhiBackendImpl::LayoutObj lo;
+  const unsigned n = descr.GetVertexElementsCount();
+  for (unsigned i = 0; i < n; ++i) lo.elems.push_back(descr.GetVertexElement(i));
+  d.layoutObjs.push_back(lo);
+  pOut->p = Idx2Hnd((unsigned)d.layoutObjs.size() - 1u);
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
                                       EBackendUsage usage, EBackendFormat format, EBackendPool pool,
@@ -879,25 +1675,146 @@ HRESULT NvrhiBackend::CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
 
 HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
                                     EBackendFormat format, EBackendPool pool, HSurface* pOut)
-{ (void)kind; (void)width; (void)height; (void)format; (void)pool; (void)pOut;
-  return Unsupported(st_CreateSurface); }
+{
+  if (!width || !height || !pOut) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.nvrhiDevice) return E_FAIL;
+  (void)pool;
+
+  nvrhi::TextureDesc td;
+  td.setDimension(nvrhi::TextureDimension::Texture2D).setWidth(width).setHeight(height);
+  bool depth = false;
+  switch (format)
+  {
+    case bfD24S8:  td.setFormat(nvrhi::Format::D24S8); depth = true; break;
+    // у NVRHI нет формата B8G8R8A8 — BGRA8_UNORM даёт в памяти те же байты
+    // B,G,R,A, что D3D9 A8R8G8B8/X8R8G8B8 (замер спайка: RT BGRA8_UNORM +
+    // readback пиксель-в-пиксель); X8 у нас читается как A, потерь в коде нет
+    case bfA8R8G8B8:
+    case bfX8R8G8B8: td.setFormat(nvrhi::Format::BGRA8_UNORM); break;
+    default:
+    {
+      char det[96];
+      snprintf(det, sizeof(det), "формат %d не переведён", (int)format);
+      VkNote("CreateSurface", false, det);
+      return E_FAIL;
+    }
+  }
+  // глубина у NVRHI определяется форматом (setIsDepthStencil в этой версии
+  // нет); без initialState+keepInitialState трекер состояний рвёт командный
+  // список: «Unknown prior state of texture draw ds» (замер спайка)
+  if (depth)
+    td.setIsRenderTarget(true).setInitialState(nvrhi::ResourceStates::DepthWrite)
+      .setKeepInitialState(true);
+  else
+    td.setIsRenderTarget(true).setInitialState(nvrhi::ResourceStates::RenderTarget)
+      .setKeepInitialState(true);
+
+  nvrhi::TextureHandle tex = d.nvrhiDevice->createTexture(td);
+  if (!tex)
+  {
+    char det[96];
+    snprintf(det, sizeof(det), "%ux%u kind=%d", width, height, (int)kind);
+    VkNote("CreateSurface: createTexture", false, det);
+    return E_FAIL;
+  }
+  SurfaceObj so;
+  so.tex = tex;
+  so.backBuffer = false;
+  d.surfaces.push_back(so);
+  pOut->p = Idx2Hnd((unsigned)d.surfaces.size() - 1u);
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::UpdateTexture(HTexture srcTexture, HTexture dstTexture)
 { (void)srcTexture; (void)dstTexture; return Unsupported(st_UpdateTexture); }
 
 HRESULT NvrhiBackend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut)
-{ (void)size; (void)pool; (void)pOut; return Unsupported(st_CreateVertexBuffer); }
+{
+  if (!size || !pOut) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.nvrhiDevice) return E_FAIL;
+  (void)pool;
+  NvrhiBackendImpl::BufferObj bo;
+  bo.cpu.resize(size);
+  bo.buf = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                         .setByteSize(size)
+                                         .setIsVertexBuffer(true)
+                                         .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                                         .setKeepInitialState(true)
+                                         .setDebugName("seam vb"));
+  if (!bo.buf) { VkNote("CreateVertexBuffer", false, 0); return E_FAIL; }
+  d.buffers.push_back(bo);
+  pOut->p = Idx2Hnd((unsigned)d.buffers.size() - 1u);
+  return S_OK;
+}
+
 HRESULT NvrhiBackend::CreateIndexBuffer(unsigned size, bool index32, EBackendPool pool, HBuffer* pOut)
-{ (void)size; (void)index32; (void)pool; (void)pOut; return Unsupported(st_CreateIndexBuffer); }
+{
+  if (!size || !pOut) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.nvrhiDevice) return E_FAIL;
+  (void)pool;
+  NvrhiBackendImpl::BufferObj bo;
+  bo.cpu.resize(size);
+  bo.index32 = index32;
+  bo.buf = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                         .setByteSize(size)
+                                         .setIsVertexBuffer(true)
+                                         .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                                         .setKeepInitialState(true)
+                                         .setDebugName("seam ib"));
+  if (!bo.buf) { VkNote("CreateIndexBuffer", false, 0); return E_FAIL; }
+  d.buffers.push_back(bo);
+  pOut->p = Idx2Hnd((unsigned)d.buffers.size() - 1u);
+  return S_OK;
+}
+
+// Блокировка отдаёт CPU-зеркало буфера; в Vulkan загрузка — на Unlock
+// (целиком: для DIP-проходов это один буфер на материал, кольцевой upload
+// появится вместе с боевыми проходами).
+HRESULT NvrhiBackend::LockBuffer(HBuffer h, unsigned offset, unsigned size, void** ppData)
+{
+  if (!ppData) return D3DERR_INVALIDCALL;
+  const unsigned idx = Hnd2Idx(h.p);
+  if (idx == kNoRes || idx >= m_pImpl->buffers.size()) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl::BufferObj& bo = m_pImpl->buffers[idx];
+  if (offset + size > bo.cpu.size()) return D3DERR_INVALIDCALL;
+  *ppData = &bo.cpu[offset];
+  bo.locked = true;
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::LockVertexBuffer(HBuffer vb, unsigned offset, unsigned size,
                                        ERenderLockType mode, void** ppData)
-{ (void)vb; (void)offset; (void)size; (void)mode; (void)ppData; return Unsupported(st_LockVertexBuffer); }
-HRESULT NvrhiBackend::UnlockVertexBuffer(HBuffer vb) { (void)vb; return Unsupported(st_UnlockVertexBuffer); }
+{
+  (void)mode;
+  return LockBuffer(vb, offset, size, ppData);
+}
+
 HRESULT NvrhiBackend::LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
                                       ERenderLockType mode, void** ppData)
-{ (void)ib; (void)offset; (void)size; (void)mode; (void)ppData; return Unsupported(st_LockIndexBuffer); }
-HRESULT NvrhiBackend::UnlockIndexBuffer(HBuffer ib) { (void)ib; return Unsupported(st_UnlockIndexBuffer); }
+{
+  (void)mode;
+  return LockBuffer(ib, offset, size, ppData);
+}
+
+HRESULT NvrhiBackend::UnlockBuffer(HBuffer h)
+{
+  const unsigned idx = Hnd2Idx(h.p);
+  if (idx == kNoRes || idx >= m_pImpl->buffers.size()) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl::BufferObj& bo = m_pImpl->buffers[idx];
+  if (!bo.locked) return S_OK;
+  bo.locked = false;
+  if (!bo.buf || !m_pImpl->nvrhiDevice) return E_FAIL;
+  if (!EnsureRecording()) return E_FAIL;
+  m_pImpl->commandList->writeBuffer(bo.buf, bo.cpu.data(), bo.cpu.size());
+  ++m_pImpl->uploads;
+  return S_OK;
+}
+
+HRESULT NvrhiBackend::UnlockVertexBuffer(HBuffer vb) { return UnlockBuffer(vb); }
+HRESULT NvrhiBackend::UnlockIndexBuffer(HBuffer ib) { return UnlockBuffer(ib); }
 
 //////////////////////////////////////////////////////////////////////////
 // Поверхности
@@ -911,8 +1828,59 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
 { (void)src; (void)pSrcRect; (void)dst; (void)pDstRect; (void)filter; return Unsupported(st_StretchRect); }
 HRESULT NvrhiBackend::ReadSurface(HSurface srcSurface, const BackendRect* pCropRect, void* pDstBuffer,
                                   unsigned dstRowPitch, EBackendPixelLayout* pOutLayout)
-{ (void)srcSurface; (void)pCropRect; (void)pDstBuffer; (void)dstRowPitch; (void)pOutLayout;
-  return Unsupported(st_ReadSurface); }
+{
+  if (!pDstBuffer) return D3DERR_INVALIDCALL;
+  NvrhiBackendImpl& d = *m_pImpl;
+  const unsigned idx = Hnd2Idx(srcSurface.p);
+  if (idx == kNoRes || idx >= d.surfaces.size() || !d.surfaces[idx].tex) return D3DERR_INVALIDCALL;
+  if (!d.nvrhiDevice) return E_FAIL;
+  SurfaceObj& so = d.surfaces[idx];
+  const nvrhi::TextureDesc td = so.tex->getDesc();
+
+  if (!so.staging)
+  {
+    so.staging = d.nvrhiDevice->createStagingTexture(
+        nvrhi::TextureDesc().setDimension(nvrhi::TextureDimension::Texture2D)
+                            .setWidth(td.width).setHeight(td.height).setFormat(td.format)
+                            .setInitialState(nvrhi::ResourceStates::CopyDest)
+                            .setKeepInitialState(true)
+                            .setDebugName("seam readback"),
+        nvrhi::CpuAccessMode::Read);
+    if (!so.staging) { VkNote("ReadSurface: createStagingTexture", false, 0); return E_FAIL; }
+  }
+
+  long x0 = 0, y0 = 0, x1 = (long)td.width, y1 = (long)td.height;
+  if (pCropRect)
+  {
+    x0 = pCropRect->left; y0 = pCropRect->top;
+    x1 = pCropRect->right; y1 = pCropRect->bottom;
+    if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+    if (x1 > (long)td.width) x1 = (long)td.width;
+    if (y1 > (long)td.height) y1 = (long)td.height;
+    if (x1 <= x0 || y1 <= y0) return D3DERR_INVALIDCALL;
+  }
+
+  if (!EnsureRecording()) return E_FAIL;
+  d.commandList->copyTexture(so.staging, nvrhi::TextureSlice(), so.tex, nvrhi::TextureSlice());
+  FlushRecording();
+  d.nvrhiDevice->waitForIdle();
+
+  size_t srcPitch = 0;
+  void* px = d.nvrhiDevice->mapStagingTexture(so.staging, nvrhi::TextureSlice(),
+                                              nvrhi::CpuAccessMode::Read, &srcPitch);
+  if (!px) { VkNote("ReadSurface: mapStagingTexture", false, 0); return E_FAIL; }
+  const size_t rowBytes = (size_t)(x1 - x0) * 4u;
+  unsigned row = 0;
+  for (long y = y0; y < y1; ++y, ++row)
+    memcpy(static_cast<unsigned char*>(pDstBuffer) + (size_t)row * dstRowPitch,
+           static_cast<unsigned char*>(px) + (size_t)y * srcPitch + (size_t)x0 * 4u, rowBytes);
+  d.nvrhiDevice->unmapStagingTexture(so.staging);
+
+  // формат поверхности — BGRA (см. CreateSurface/swapchain), т.е. байты
+  // B,G,R,A — как у D3D9 A8R8G8B8; коды перестановку не делают (п. 12 §2.15)
+  if (pOutLayout) *pOutLayout = plBGRA;
+  return S_OK;
+}
 
 HRESULT NvrhiBackend::GetBackBuffer(HSurface* pOut)
 {
@@ -929,6 +1897,158 @@ HRESULT NvrhiBackend::GetRenderTarget(unsigned index, HSurface* pOut)
 void NvrhiBackend::EvictManagedResources()
 {
   // Своих managed-ресурсов пока нет; вызов допустим в любой момент.
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Тест шага 12b (env PW_VK_DIP): один настоящий DIP через seam.
+//
+// Берётся РЕАЛЬНЫЙ контейнер .shd v2 из пака клиента (тот же путь и тот же
+// читатель, что у Materials::MultiShader::OpenFile), из него достаётся
+// SPIR-V-цель, создаются шейдеры, раскладка, offscreen RT+DS, рисуется
+// треугольник и пиксели читаются обратно. Проверяется весь механизм, а не
+// отдельный спайк: pile -> SPIR-V -> createShader -> input layout (location
+// берётся из SPIR-V) -> пайплайн -> draw -> readback.
+//
+// WaterDummyMaterial выбран потому, что его PS пишет в R интерполированную
+// глубину: градиент виден без настоящих текстур. Банк здесь — тень констант
+// клиента (не авто-патч спайка), поэтому матрицы выставляем сами: WORLD (c0)
+// и VIEWPROJECTION (c8) по GlobalMasks.h = единичные, т.е. вершины идут в
+// клипово пространство как есть.
+bool NvrhiBackend::RunSeamDipTest()
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!d.nvrhiDevice || !d.commandList) return false;
+
+  const unsigned W = 256, H = 256;
+  char path[256];
+  snprintf(path, sizeof(path), "%s.shd", "Shaders/UberShaders/WaterDummyMaterial");
+  CObj<Stream> f = RootFileSystem::OpenFile(path, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING);
+  if (!f || !f->IsOk()) { VkNote("DIP: контейнер не открыт", false, path); return false; }
+  const unsigned char* base = (const unsigned char*)f->GetBuffer();
+  const unsigned size = (unsigned)f->GetSize();
+
+  unsigned hdrOffset = 0, version = 0, v1Size = 0;
+  nstl::vector<Materials::Shd2Section> secs;
+  if (!Materials::Shd2FindTrailer(base, size, hdrOffset, version) ||
+      !Materials::Shd2ParseHeader(base, size, hdrOffset, v1Size, secs))
+  {
+    VkNote("DIP: заголовок v2 не разобран", false, path);
+    return false;
+  }
+  const Materials::Shd2Section* spv = Materials::Shd2FindSection(secs, (unsigned)Materials::stSpirv);
+  if (!spv) { VkNote("DIP: секция SPIR-V не найдена", false, path); return false; }
+
+  const unsigned index = Materials::Shd2U32(base + spv->offset + 8);  // первая запись
+  unsigned vsOff = 0, vsSize = 0, psOff = 0, psSize = 0;
+  if (!Materials::Shd2Lookup(base, size, *spv, index, vsOff, vsSize, psOff, psSize) ||
+      !vsSize || !psSize)
+  {
+    VkNote("DIP: первая запись SPIR-V-секции не читается", false, path);
+    return false;
+  }
+
+  static const float kIdentity[16] = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+  SetVertexShaderConstants(0, 4, kIdentity);      // WORLD  (GlobalMasks.h c0)
+  SetVertexShaderConstants(8, 4, kIdentity);      // VIEWPROJECTION (c8)
+
+  HShader vs, ps;
+  if (FAILED(CreateVertexShader(base + vsOff, vsSize, &vs))) { VkNote("DIP: VS не создан", false, path); return false; }
+  if (FAILED(CreatePixelShader(base + psOff, psSize, &ps))) { VkNote("DIP: PS не создан", false, path); return false; }
+  SetVertexShader(vs);
+  SetPixelShader(ps);
+
+  HSurface rt, dsf;
+  if (FAILED(CreateSurface(ssRenderTarget, W, H, bfA8R8G8B8, BACKEND_POOL_DEFAULT, &rt)))
+  { VkNote("DIP: RT не создан", false, 0); return false; }
+  if (FAILED(CreateSurface(ssDepthStencil, W, H, bfD24S8, BACKEND_POOL_DEFAULT, &dsf)))
+  { VkNote("DIP: DS не создан", false, 0); return false; }
+  if (FAILED(SetRenderTarget(0, rt))) { VkNote("DIP: SetRenderTarget", false, 0); return false; }
+  if (FAILED(SetDepthStencil(dsf))) { VkNote("DIP: SetDepthStencil", false, 0); return false; }
+
+  BackendViewport vp;
+  vp.x = 0; vp.y = 0; vp.width = W; vp.height = H; vp.minZ = 0.f; vp.maxZ = 1.f;
+  SetViewport(vp);
+  Clear(bcTarget | bcZBuffer, 0xFF000000u, 1.f, 0);
+
+  // треугольник занимает левую половину кадра; Z по вершинам 0.5 — её и пишет
+  // PS в красный канал (R=127). Глубина 0.5 заведомо проходит depthFunc=Less
+  // после очистки в 1.0; с z=1.0 у дальней вершины часть кадра отсекалась бы,
+  // и тест терял бы часть площади молча
+  static const float kTri[] = {
+    -1.f, -1.f, 0.5f,
+      0.f, -1.f, 0.5f,
+     -1.f,  1.f, 0.5f,
+  };
+  HBuffer vb;
+  if (FAILED(CreateVertexBuffer((unsigned)sizeof(kTri), BACKEND_POOL_DYNAMIC, &vb)))
+  { VkNote("DIP: VB не создан", false, 0); return false; }
+  void* pV = 0;
+  if (FAILED(LockVertexBuffer(vb, 0, (unsigned)sizeof(kTri), LOCK_DISCARD, &pV)) || !pV)
+  { VkNote("DIP: LockVertexBuffer", false, 0); return false; }
+  memcpy(pV, kTri, sizeof(kTri));
+  UnlockVertexBuffer(vb);
+
+  VertexFormatDescriptor fd;
+  fd.AddVertexElement(VertexElementDescriptor(0, 0, VERTEXELEMENTTYPE_FLOAT3,
+                                              VERETEXELEMENTUSAGE_POSITION, 0));
+  HInputLayout il;
+  if (FAILED(CreateInputLayout(fd, &il))) { VkNote("DIP: раскладка не создана", false, 0); return false; }
+  if (FAILED(SetInputLayout(il))) { VkNote("DIP: SetInputLayout", false, 0); return false; }
+  if (FAILED(SetStreamSource(0, vb, 0, (unsigned)sizeof(float) * 3)))
+  { VkNote("DIP: SetStreamSource", false, 0); return false; }
+  SetInstanceCount(0);
+
+  const HRESULT hrDraw = Draw(RENDERPRIMITIVE_TRIANGLELIST, 0, 1);
+  if (FAILED(hrDraw))
+  {
+    char det[64];
+    snprintf(det, sizeof(det), "hr=0x%08X", (unsigned)hrDraw);
+    VkNote("DIP: Draw", false, det);
+    return false;
+  }
+
+  FlushRecording();
+  d.nvrhiDevice->waitForIdle();
+
+  nstl::vector<unsigned char> px((size_t)H * W * 4, 0);
+  EBackendPixelLayout lay = plBGRA;
+  const HRESULT hrRead = ReadSurface(rt, 0, &px[0], W * 4, &lay);
+  if (FAILED(hrRead))
+  {
+    char det[64];
+    snprintf(det, sizeof(det), "hr=0x%08X", (unsigned)hrRead);
+    VkNote("DIP: ReadSurface", false, det);
+    return false;
+  }
+
+  // порядок байтов — B,G,R,A (см. ReadSurface): PS пишет (Z,0,0,1), значит в
+  // нарисованных пикселях R>0, а B и G нулевые
+  unsigned painted = 0, clean = 0, maxR = 0, paintedRight = 0;
+  for (unsigned y = 0; y < H; ++y)
+    for (unsigned x = 0; x < W; ++x)
+    {
+      const unsigned char* p = &px[(size_t)y * W * 4 + (size_t)x * 4];
+      if (p[2])
+      {
+        ++painted;
+        if (x >= W / 2u) ++paintedRight;   // правая половина заведомо пуста
+        if (p[2] > maxR) maxR = p[2];
+        if (!p[0] && !p[1]) ++clean;
+      }
+    }
+  const unsigned char* s = &px[((size_t)(H / 2)) * W * 4 + (size_t)(W / 4) * 4];
+  char det[224];
+  snprintf(det, sizeof(det), "комбинация #%u, блобы VS %u Б / PS %u Б; нарисовано %u/%u пикселей, "
+                           "каналы чистые %u, справа %u, макс R=%u, выборка BGRA=%u,%u,%u,%u",
+           index, vsSize, psSize, painted, W * H, clean, paintedRight, maxR, s[0], s[1], s[2], s[3]);
+  // площадь треугольника (-1,-1)-(0,-1)-(-1,1) = ровно 1/4 кадра; допуск 2*W
+  // пикселей на правила растеризации краёв. Прежний порог `painted > W*H/4`
+  // отсекал точное попадание (замер 2026-10-15: 16384 при пороге >16384)
+  const unsigned expect = W * H / 4u, tol = 2u * W;
+  const bool ok = (painted + tol > expect) && (painted < expect + tol) &&
+                  paintedRight == 0 && clean == painted && maxR > 0;
+  VkNote(ok ? "DIP: пиксели на месте" : "DIP: пикселей нет", ok, det);
+  return ok;
 }
 
 } // namespace Render
