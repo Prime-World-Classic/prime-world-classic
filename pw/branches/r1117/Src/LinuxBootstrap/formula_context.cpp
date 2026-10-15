@@ -171,6 +171,33 @@ bool DamageArguments(const std::string& source, std::size_t& pos, std::vector<st
 	return false;
 }
 
+/** Lower only exact read-only miscellaneous scale calls, with bounded explicit parent traversal. */
+bool BindMiscScale(const std::string& source, const std::string& root, std::size_t& pos, std::string& result)
+{
+	std::size_t end = pos;
+	unsigned depth = root == "mObjectParent" ? 1 : 0;
+	std::string separator = root == "appl" ? "." : "->";
+	for (;;)
+	{
+		const std::string parent = separator + "GetObjectParent()";
+		if (source.compare(end, parent.size(), parent) != 0) break;
+		if (++depth > 16) return false;
+		end += parent.size(); separator = "->";
+	}
+	const std::string scale = separator + "GetScale()";
+	const std::string parentScale = separator + "GetParentScale()";
+	if (source.compare(end, scale.size(), scale) == 0)
+	{
+		result += depth ? " __misc_parent_scale_" + std::to_string(depth) + " " : " mScale ";
+		pos = end + scale.size(); return true;
+	}
+	if (depth == 0 && source.compare(end, parentScale.size(), parentScale) == 0)
+	{
+		result += " mParentScale "; pos = end + parentScale.size(); return true;
+	}
+	return false;
+}
+
 /** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
@@ -188,7 +215,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		const std::string name = source.substr(start, pos - start);
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
 			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
-			name.compare(0, 9, "__talent_") == 0) return false;
+			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0) return false;
 		if (name == "tal")
 		{
 			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
@@ -214,8 +241,13 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 			}
 			result += " " + existing->first + " ";
 		}
+		else if (name == "mObjectParent")
+		{
+			if (!BindMiscScale(source, name, pos, result)) return false;
+		}
 		else if (name == "pMisc")
 		{
+			if (BindMiscScale(source, name, pos, result)) continue;
 			bool found = false;
 			for (const char* variable : {"damageDealed", "isAutoAttack"})
 			{
@@ -227,6 +259,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		}
 		else if (name == "appl")
 		{
+			if (BindMiscScale(source, name, pos, result)) continue;
 			const std::string suffix = ".GetNatureTypeInPos(rPos2D)";
 			if (!positionContext || source.compare(pos, suffix.size(), suffix) != 0) return false;
 			result += " __position_nature "; pos += suffix.size();
@@ -418,8 +451,41 @@ struct Context
 		return std::isfinite(value);
 	}
 
+	/** Hold and validate real ancestors before calling potentially recursive virtual scale getters. */
+	bool MiscScale(unsigned depth, bool parentScale, double& value)
+	{
+		const IMiscFormulaPars* current = applicator ? static_cast<const IMiscFormulaPars*>(applicator)
+			: static_cast<const IMiscFormulaPars*>(ability);
+		if (!current) return false;
+		std::vector<CObj<NWorld::PFBaseApplicator>> owners;
+		for (const auto* ancestor = applicator; ancestor;)
+		{
+			if (owners.size() >= 128 || std::find_if(owners.begin(), owners.end(), [&](const auto& held) {
+				return held.GetPtr() == ancestor;
+			}) != owners.end()) return false;
+			// Reference ownership only; the formula never mutates an applicator.
+			owners.emplace_back(const_cast<NWorld::PFBaseApplicator*>(ancestor));
+			const auto& parent = ancestor->GetParentAppl();
+			ancestor = IsValid(parent) ? parent.GetPtr() : nullptr;
+		}
+		for (unsigned i = 0; i < depth; ++i)
+		{
+			current = current->GetObjectParent();
+			if (!current) return false;
+		}
+		value = parentScale ? current->GetParentScale() : current->GetScale();
+		return std::isfinite(value);
+	}
+
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name == "mScale" || name == "mParentScale") return MiscScale(0, name == "mParentScale", value);
+		if (name.compare(0, 20, "__misc_parent_scale_") == 0)
+		{
+			for (unsigned depth = 1; depth <= 16; ++depth)
+				if (name == "__misc_parent_scale_" + std::to_string(depth)) return MiscScale(depth, false, value);
+			return false;
+		}
 		if (name == "__position_nature")
 		{
 			if (!position || !ability || !IsValid(ability->GetOwner())) return false;

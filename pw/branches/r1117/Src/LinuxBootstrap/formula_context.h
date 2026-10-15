@@ -23,6 +23,12 @@ namespace LinuxBootstrap
  * zero-argument aliases for the existing numeric-property whitelist. Receiver
  * getters retain candidate context and lazy missing-unit validation; no arbitrary
  * methods, inferred properties or object paths are enabled.
+ * mScale/mParentScale and exact pMisc->/appl. getter spellings read original
+ * miscellaneous scale values. mObjectParent->...->GetScale() and equivalent
+ * GetObjectParent() calls allow at most 16 explicit parent hops. Original root
+ * self-parent behavior is distinct from GetParentScale's default one. Applicator
+ * ancestry is held and checked for cycles/depth > 128 before recursive getters;
+ * nonfinite values and selected missing contexts fail, with transactional RNG.
  * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited
