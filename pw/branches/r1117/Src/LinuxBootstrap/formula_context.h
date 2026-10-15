@@ -19,6 +19,10 @@ namespace LinuxBootstrap
  * sender.vName and receiver.vName bind live GetVariable values; Name follows
  * FormulaBuilder's [A-Z][A-Za-z_0-9]* rule. Missing variables retain the engine's
  * zero default without creating a variable. No general member/string API is exposed.
+ * sender/receiver.Get<Property>() and pFirst/pSecond->Get<Property>() are exact
+ * zero-argument aliases for the existing numeric-property whitelist. Receiver
+ * getters retain candidate context and lazy missing-unit validation; no arbitrary
+ * methods, inferred properties or object paths are enabled.
  * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited

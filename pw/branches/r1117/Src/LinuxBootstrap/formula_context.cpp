@@ -266,6 +266,24 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 				pos = open; history = true; break;
 			}
 			if (history) continue;
+			// Exact zero-argument getters are alternate spellings of the existing numeric whitelist.
+			bool property = false;
+			for (const auto& binding : unitNumericProperties)
+			{
+				const std::string suffix = std::string(pointer ? "->Get" : ".Get") + binding.name;
+				if (source.compare(pos, suffix.size(), suffix) != 0) continue;
+				std::size_t end = pos + suffix.size();
+				const auto space = [&]() {
+					while (end < source.size() && (source[end] == ' ' || source[end] == '\t' || source[end] == '\r' || source[end] == '\n')) ++end;
+				};
+				space();
+				if (end == source.size() || source[end] != '(') continue;
+				++end; space();
+				if (end == source.size() || source[end] != ')') return false;
+				result += std::string(name == "sender" || name == "pFirst" ? " s" : " r") + binding.name + " ";
+				pos = end + 1; property = true; break;
+			}
+			if (property) continue;
 			if (pointer) return false;
 			if (source.compare(pos, 2, ".v") != 0 || pos + 2 >= source.size() ||
 				source[pos + 2] < 'A' || source[pos + 2] > 'Z') return false;

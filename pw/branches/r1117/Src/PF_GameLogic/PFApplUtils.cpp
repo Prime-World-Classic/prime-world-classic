@@ -25,8 +25,23 @@ int SendSpellToSingleTarget(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(PW_LINUX_NULL_RENDER)
 int SendSpell2Targets(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell, PFTargetSelector* pSelector, bool justCount)
 {
+	return SendSpell2Targets(pAppl, pSpell, pSelector, justCount, false);
+}
+
+int SendSpell2Targets(PFBaseApplicator* pAppl, NDb::Ptr<NDb::Spell> pSpell,
+	PFTargetSelector* pSelector, bool justCount, bool requireActiveParent)
+#else
+int SendSpell2Targets(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell, PFTargetSelector* pSelector, bool justCount)
+#endif
+{
+#if defined(PW_LINUX_NULL_RENDER)
+	// Selection and child admission may synchronously retire the parent or release its ring owners.
+	if (!pAppl || (requireActiveParent && (!pAppl->IsAlive() || !pAppl->IsEnabled()))) return 0;
+	CObj<PFBaseApplicator> holder(pAppl);
+#endif
 	if (!pSpell && !justCount) // No spell to send
 		return 0;
 
@@ -45,6 +60,9 @@ int SendSpell2Targets(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell, PFTa
 			int                    spellsSentCount;
 			bool                   justCount;
       bool                   checkVulnerability;
+#if defined(PW_LINUX_NULL_RENDER)
+			bool requireActiveParent = false;
+#endif
 
 			Func(CPtr<PFBaseApplicator> pAppl_, NDb::Ptr<NDb::Spell> pSpell_, Target const &source_, bool justCount_, bool checkVulnerability_) 
 				: pAppl(pAppl_), pSpell(pSpell_), source(source_), spellsSentCount(0), justCount(justCount_), checkVulnerability(checkVulnerability_)
@@ -52,6 +70,9 @@ int SendSpell2Targets(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell, PFTa
 
 			virtual void operator()(const Target &target)
 			{
+#if defined(PW_LINUX_NULL_RENDER)
+				if (requireActiveParent && (!IsValid(pAppl) || !pAppl->IsAlive() || !pAppl->IsEnabled())) return;
+#endif
         if ( !target.IsValid(true) )
           return;
 
@@ -70,6 +91,9 @@ int SendSpell2Targets(PFBaseApplicator *pAppl, NDb::Ptr<NDb::Spell> pSpell, PFTa
 				++spellsSentCount;
 			}
     } f(CPtr<PFBaseApplicator>(pAppl), pSpell, targ, justCount, !pAppl->GetAbility()->GetData()->IsInteractionAbility() );
+#if defined(PW_LINUX_NULL_RENDER)
+		f.requireActiveParent = requireActiveParent;
+#endif
 
 		PFTargetSelector::RequestParams pars(*pAppl, targ);
 		pSelector->EnumerateTargets(f, pars);

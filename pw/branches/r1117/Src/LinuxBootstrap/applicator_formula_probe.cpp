@@ -3,6 +3,7 @@
 #include "applicator_formula_probe.h"
 #include "formula_context.h"
 #include "../PF_GameLogic/PFApplInstant.h"
+#include "../PF_GameLogic/PFApplUtils.h"
 #include "../PF_GameLogic/PFAbilityData.h"
 #include "../PF_GameLogic/PFAbilityInstance.h"
 #include "../PF_GameLogic/TargetSelectorFormulaPars.h"
@@ -1400,6 +1401,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "target_trigger_b13_tests.inc"
 #include "consumable_trigger_b13_tests.inc"
 #include "consumable_grant_b13_tests.inc"
+#include "periodic_effect_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1591,6 +1593,11 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	ConsumableProbabilityB13(check, world);
 	ConsumableGrantB13(check, world);
 	ConsumableSwitchB13(check, world);
+	PeriodicGettersB13(check, world);
+	PeriodicTimingB13(check, world);
+	PeriodicLifetimeB13(check, world);
+	PeriodicAdmissionB13(check, world);
+	if (dataRoot && *dataRoot) PeriodicPotionB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

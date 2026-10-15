@@ -16,7 +16,7 @@ namespace NWorld
 
 void PFApplSpellPeriodically::DoStrike()
 {
-  SendSpell2Targets(this, GetDB().spell, pTargetSelector);
+	SendSpell2Targets(this, GetDB().spell, pTargetSelector, false, true);
 }
 
 void PFApplSpellPeriodically::Strike()
@@ -25,52 +25,63 @@ void PFApplSpellPeriodically::Strike()
   ++strikeCount;
 }
 
+/** Resolve authored timers once after original buff admission, without substituting failed expressions. */
 bool PFApplSpellPeriodically::Start()
 {
-  if (PFApplBuff::Start())
-    return true;
-
-  period = RetrieveParam(GetDB().period, 0.0f);
-  startOffset = RetrieveParam(GetDB().startOffset, 0.0f);
-  curPeriod = startOffset > 0.0f ? startOffset : period;
-  timer = 0.0f;
-  strikeCount = 0;
-
-  if (GetDB().targetSelector)
-    pTargetSelector = GetDB().targetSelector->Create(GetWorld());
-
-  if (startOffset < EPS_VALUE && IsEnabled())
-    Strike();
-
-  return false;
+	CObj<PFApplSpellPeriodically> holder(this);
+	if (PFApplBuff::Start()) return true;
+	if (GetDB().targetSelector)
+	{
+		pTargetSelector = GetDB().targetSelector->Create(GetWorld());
+		if (!pTargetSelector) return true;
+	}
+	// Timers form one setup transaction: a bad offset must not spend a valid period's random draw.
+	auto* random = GetWorld() ? GetWorld()->GetRndGen() : nullptr;
+	const NRandom::RandomGenerator before(random ? *random : NRandom::RandomGenerator(0));
+	const auto evaluate = [&](const ExecutableFloatString& authored) {
+		return authored.sString.empty() && authored.compiledString.empty()
+			? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 0.f}
+			: LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	};
+	const auto interval = evaluate(GetDB().period);
+	const auto offset = interval.Succeeded() && interval.value >= 0 ? evaluate(GetDB().startOffset)
+		: LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::UnsupportedSyntax};
+	if (!offset.Succeeded())
+	{
+		if (random) *random = before;
+		return true;
+	}
+	period = interval.value; startOffset = offset.value;
+	curPeriod = startOffset > 0 ? startOffset : period;
+	timer = 0; strikeCount = 0;
+	if (startOffset < EPS_VALUE && IsEnabled()) Strike();
+	return !IsAlive();
 }
 
+/** Preserve original strict boundaries and callback-visible pre-modulo time; reject corrupt elapsed time. */
 bool PFApplSpellPeriodically::Step(float dtInSeconds)
 {
-  if (PFApplBuff::Step(dtInSeconds))
-    return true;
-
-  if (!IsEnabled())
-  {
-    strikeCount = 0;
-    return false;
-  }
-
-  if (period <= EPS_VALUE)
-  {
-    Strike();
-    return false;
-  }
-
-  timer += dtInSeconds;
-  if (timer > curPeriod)
-  {
-    timer = fmodf(timer, curPeriod);
-    curPeriod = period;
-    Strike();
-  }
-
-  return false;
+	CObj<PFApplSpellPeriodically> holder(this);
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0) return !IsAlive();
+	if (PFApplBuff::Step(dtInSeconds)) return true;
+	if (!IsEnabled()) { strikeCount = 0; return false; }
+	if (strikeCount < 0 || strikeCount == std::numeric_limits<int>::max()) return true;
+	if (period == 0)
+	{
+		Strike();
+		return !IsAlive();
+	}
+	const float next = timer + dtInSeconds;
+	if (!std::isfinite(next) || !std::isfinite(curPeriod) || curPeriod <= 0) return true;
+	timer = next;
+	if (timer > curPeriod)
+	{
+		Strike();
+		if (!IsAlive()) return true;
+		timer = fmodf(timer, curPeriod);
+		curPeriod = period;
+	}
+	return false;
 }
 
 float PFApplSpellPeriodically::GetScale() const
