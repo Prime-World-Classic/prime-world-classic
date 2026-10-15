@@ -49,6 +49,22 @@
 | вне рендер-пути (этап 1 — зачистка мёртвого, ликвидация утечек) | обычный: x86 VS2008 + x64 Wine + x64 native + E2E tiny10 + **золотые `unitstats` байт-в-байт** |
 | рендер-этапы (2, 3, 4) | сборка x64 (Wine + native) + **E2E на tiny10: вход → лобби → бой** + скриншот-дифф (новый эталон фиксируется в ветке) + `unitstats` как smoke (бой/физика живы, значения не эталон) |
 
+**Поправка к первой строке (2026-10-15, ветка `client-modern`):** x86-контур
+(`./build_client_wine.sh` = VS2008, `ShippingSingleExe|Win32`) в этой ветке
+**не собирается** и как гейт не используется: seam-заголовки с NSDMI давали
+34 × `error C2864` (чинится конструктором — сделано), но дальше идут
+`error C2039: 'data' : is not a member of 'std::vector<_Ty>'`
+(`Render/screenshot.cpp:52`), `error C2552: non-aggregates cannot be
+initialized with initializer list`, `error C2275: 'Render::HTexture' : illegal
+use of this type as an expression` и `error C4018` (в x86-rsp стоит `/WX`,
+предупреждения становятся ошибками). Плюс `Render.vcproj` ссылается на удалённый
+на этапе 1 `OcclusionQueries.cpp`. Для этой ветки гейт — x64 Wine + x64 native +
+E2E tiny10; x86 остаётся только там, где он жив: он единственный собирает
+`Src/ShaderCompiler` (`cl ShaderCompiler: 12 objs` в x86-прогоне), т.е. правки
+тула ими проверяются. Seam-заголовки при этом держим C++03-совместимыми
+(конструкторы вместо NSDMI, `= {}` только у агрегатов) — иначе x86-прогон
+перестаёт доходить до ShaderCompiler.
+
 Из «удаление D3D9» следует смена стратегии: не «шов + два бэкенда», а
 **перезапись `Src/Render` поверх NVRHI с сохранением верхнего контракта**
 (`Render::Interface`, `SmartRenderer`, `ImmRenderer`, `Material`, `Batch`,
@@ -640,6 +656,12 @@ dev-бэкенда `finish <token> no db session` (норма для mode 99).
 тип `IVertexBuffer`, который в дереве не объявлен. При аудитах обращений к
 устройству их надо исключать, иначе счётчик и правки уходят в мёртвый код
 (в частности, прежний счётчик «40 обращений» включал `mesh.cpp`).
+
+**Удалены (зачистка, 2026-10-15):** `Src/Render/mesh.{cpp,h}` и
+`Src/Scene/ModelLoader.{cpp,h}` — четырёх доказательств мёртвости достаточно
+(`model.json`, `Src/CMakeLists.txt:167` с `list_remove_regexp( ALL_SRCS
+".+ModelLoader\\.cpp$" )`, отсутствие включателей, а `mesh.h:3` включает
+несуществующий `submesh.h`, т.е. mesh.cpp уже не компилировался).
 
 Чего в этом шаге **нет**: самого staging-кольца. `D3D9Backend` по-прежнему
 прокидывает `Lock`/`Unlock` устройству — кольцо появится как реализация этих
@@ -1317,8 +1339,10 @@ D3DCAPS9, …)` — 42 поля caps + 14 полей адаптера без н�
   Проект есть в `Src/PF.sln`, но **не входит в CMake-граф клиента**
   (25 проектов) — собирается отдельно, под Win32/D3DX9.
   Что в нём надо менять: `D3DXCompileShader` → `D3DCompile`, профили
-  `vs_3_0/ps_3_0` → `vs_5_0/ps_5_0` (+ DXC→SPIR-V), убрать `--sm20`/`.shd2`,
-  и переносить на x64/вне Wine-D3DX.
+  `vs_3_0/ps_3_0` → `vs_5_0/ps_5_0` (+ DXC→SPIR-V), убрать `--sm20`/`.shd2`
+  (**сделано 2026-10-15**: `--sm20`, `isV20`, `macroV20`, `.shd2` и мёртвый
+  блок чтения `.codes` из тула удалены — клиентский SM2.0-фолбэк удалён раньше,
+  см. `Render/renderer.cpp:543`), и переносить на x64/вне Wine-D3DX.
   Инкрементальный кэш `.codes` **фактически выключён**: в
   `UberShaderFileInfo::Read()` ранний `return` после `Reset()`, т.е. всегда
   полная компиляция всех пинов (вот откуда 49 966 пар в `BasicMaterial.shd`).
@@ -2066,10 +2090,16 @@ DirectX-Headers → NVRHI (`NVRHI_WITH_VULKAN=ON`, `DX12=ON`, `DX11=OFF`,
 - [x] **`RECT` из seam'а убран** (закрыто 2026-10-14): `BackendRect` в
       `Present`/`SetScissorRect`/`StretchRect`/`ReadSurface`, конвертация только в
       `d3d9backend.cpp`. Подробности и гравля с null — §2.8 «Пятый шаг».
-- [ ] **Публичный API `Renderer` вне Win32/D3D9-типов**: `SetScissorRect(RECT*)`,
-      `StretchSurfaceRect(RECT*, D3DTEXTUREFILTERTYPE)`, `SaveFrameToFile(RECT*)`
-      — зовут из `PF_GameLogic` и `Render/*`; плюс scissor-кэш в `SmartRenderer`
-      и `GetDevice()->GetViewport` (2 места) остаются D3D9-типизированы.
+- [ ] **Публичный API `Renderer` вне Win32/D3D9-типов** (частично закрыто
+      2026-10-15): `SetScissorRect(const BackendRect*)` и
+      `SaveFrameToFile(const char*, bool, const BackendRect*, bool)` — сделано
+      (вызовы из `PF_GameLogic/PFRenderInterface.cpp` переведены на
+      `MakeBackendRect`; полный тип в `renderer.h` не включается, вперёд
+      `class IRenderBackend;` добавлено `struct BackendRect;`). Осталось:
+      `StretchSurfaceRect(IDirect3DSurface9*, const RECT*, …)` — требует
+      нейтральной ручки поверхности в слое ресурсов (вместе с удалением
+      `GetDevice()`), `GetViewport(D3DVIEWPORT9&)`, scissor-кэш в `SmartRenderer`
+      и `GetDevice()->GetViewport` (2 места).
 - [ ] Linux-контур — **вне рамок этой ветки** (клиент пока Windows-only).
       Но `IRenderBackend` обязана не содержать `HWND`: сейчас
       `Renderer(HWND)` — окно вынести в platform-слой заранее, на этапе 2.
@@ -2874,6 +2904,29 @@ bb_3000 против эталона шага 4: 2,33% отличий, **0,15% г
 машина для этапа 3 (tiny10 = только WARP, путь теней не покрывается);
 порядок «сначала переделка констант/инстансинга на D3D9 vs сразу бэкенд»;
 судьба 44 PostFX-шейдеров без исходников (переписывать или держать D3D9).
+
+### Сделано (зачистка: мёртвое, `--sm20`, RECT-слой публичного API — 2026-10-15)
+
+| Файл | Правка |
+|---|---|
+| `Src/Render/mesh.{cpp,h}`, `Src/Scene/ModelLoader.{cpp,h}` | удалены (в дереве не собирались; `mesh.h` включал отсутствующий `submesh.h`) |
+| `Src/ShaderCompiler/parse.{h,cpp}` | удалены `isV20`, `GetVersion()`, константа `--sm20`, формат в `Print()` |
+| `Src/ShaderCompiler/ShaderCompiler.cpp` | `macroV20`/`macroV20_dummy`, член `isV20`, ветки `vs_2_0/ps_2_0` (теперь всегда `vs_3_0/ps_3_0`), параметр `isV20` у `BuildShaderMatrix`/`WriteMatrix`, `ext = ".shd2"` |
+| `Src/ShaderCompiler/UberShaderDesc.{h,cpp}` | `Read()/Write()` без `isV20`, `ext = ".codes"`, вырезан 40-строчный мёртвый блок чтения `.codes/.codes2` |
+| `Src/Render/renderer.{h,cpp}` | `SetScissorRect(const BackendRect*)`, `SaveFrameToFile(…, const BackendRect*, …)`, объявление `struct BackendRect;` вместо include `renderbackend.h` |
+| `Src/PF_GameLogic/PFRenderInterface.cpp` | два места scissor-вызова на `MakeBackendRect(...)` (файл cp1251 — правки только байтовые) |
+| `Src/Render/renderwindow.h`, `Src/Render/renderbackend.h` | NSDMI → конструкторы (`NativeWindow`, `HBuffer`/`HTexture`/`HSurface`/`HShader`/`HInputLayout`) — C++03-совместимость seam |
+| `Src/Render/renderer.cpp:565,579,591`, `smartrenderer.cpp:215` | `HInputLayout x = {};` / `HShader x = {};` → обычная инициализация (после конструкторов типы перестали быть агрегатами; MSVC x64 принимал `= {}` как расширение, VS2008 — `error C2552`) |
+
+Гейты: x64 Wine — `ИТОГ: OK`, `build/PW_Game.exe` 15 201 280 Б (размер не
+менялся — удалённые файлы не входили в граф), `check_exe.py` OK; E2E tiny10
+(лог `2026.10.15-04.36.54`) — `Got login reply. code=Success(5), uid=131` →
+лобби → `gamesvc_00` → `Switch to EGameState::Finished by 3`, asserts 0,
+`ConfigPins` дословно как эталон (`caps=0x0 pins=0`), `unitstats` 75 строк;
+скриншот-дифф `bb_3000` против эталона инстансинга — 3,97% отличий /
+**0,26% грубых** (полоса шума 0,13–0,35%), против прогона шага 7 —
+2,93%/0,27%; внутри прогона 6,73%/1,85% (анимация сцены). `Src/ShaderCompiler`
+после удаления `--sm20` собирается x86-контуром (`cl ShaderCompiler: 12 objs`).
 
 ### Сознательные отклонения от «картинка не меняется»
 
