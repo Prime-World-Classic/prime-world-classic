@@ -326,6 +326,10 @@ def main():
     ap.add_argument("--ref", help="каталог эталонов v1 для --verify "
                                   "(побайтовая сверка SM3-слоя)")
     ap.add_argument("--keep-tree", action="store_true")
+    ap.add_argument("--flat-sets", action="store_true",
+                    help="НЕ раскладывать ресурсы по descriptor set (макет §3.z "
+                         "п.1 по умолчанию: $Globals set0, SSBO set1, текстуры "
+                         "set2, сэмплеры set3); нужно только для сравнения")
     args = ap.parse_args()
 
     def log(*a):
@@ -354,7 +358,8 @@ def main():
 
     want = set(m.strip() for m in args.materials.split(",")) if args.materials \
         else None
-    tree = None if TAG_SPIRV not in targets else dxcdrv.ShimTree()
+    tree = None if TAG_SPIRV not in targets else dxcdrv.ShimTree(
+        set_layout=not args.flat_sets)
     total_missing = 0
     done = 0
     for name in sorted(live):

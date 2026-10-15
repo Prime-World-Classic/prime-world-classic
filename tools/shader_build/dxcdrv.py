@@ -92,8 +92,9 @@ class ShimTree:
     `pw/branches/r1117/Src/Render/zzz_probe_shaders_*/`).
     """
 
-    def __init__(self, prefix="zzz_build_shaders_"):
+    def __init__(self, prefix="zzz_build_shaders_", set_layout=False):
         self.prefix = prefix
+        self.set_layout = set_layout
         self.dir = None
 
     def _struct_names(self):
@@ -120,7 +121,7 @@ class ShimTree:
             if fn.endswith(".hlsl"):
                 out, _st, _n = shim.rewrite(
                     open(src, encoding="utf-8", errors="replace").read(), stage,
-                    names_ps, names_vs)
+                    names_ps, names_vs, set_layout=self.set_layout)
                 open(os.path.join(self.dir, fn), "w", encoding="utf-8").write(out)
             elif fn.endswith(".h"):
                 open(os.path.join(self.dir, fn), "wb").write(open(src, "rb").read())

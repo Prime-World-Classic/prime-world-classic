@@ -2406,6 +2406,27 @@ register(b0, space1)` даёт `sets [0,1,2,3]` и `bindings [(0,0),(1,0),(2,0),
 Рефлексии SPIR-V в вендоренном NVRHI нет (`reflectPipelineStates` отсутствует)
 — карту binding'ов берём из замера (`tools/shader_budget`, `ProbeShd2`).
 
+**Макет реализован в прослойке (2026-10-15).** `tools/spirv_probe/shim.py`
+получил режим `set_layout`: `SPACE_TEXTURES = 2`, `SPACE_SAMPLERS = 3`,
+`SPACE_BUFFER = 1`; явные `register(tN)/sN/bN/uN` получают `, spaceN`, `c`-регистры
+как и раньше снимаются (они уходят в авто-`$Globals`, set 0), а ресурсам без
+`register` (наши `StructuredBuffer<T> имя;` из шага 10 и `Texture2D`, выросшие из
+`sampler2D`) номер и set назначает прослойка — текстуры `tN space2`,
+`SamplerState` `sN space3` (`s0` занят общим `g_smp`), буферы `tN space1`
+(DXC для `StructuredBuffer` требует класс `t`). Грабли: шаблон в типе
+(`StructuredBuffer<InstanceData>`) regex обязан проглатывать, иначе объявление
+проходит мимо и SSBO уезжает в set 0; класс ресурса определяется по базовому
+типу, а не по строке с шаблоном.
+Замер после включения: `shader_budget --pins 1 --define PW_MODERN_ARRAYS=1
+--set-layout` — 70/70 единиц, наборы ровно `0 ($Globals UBO) / 1 (SSBO) /
+2 (текстуры, binding до 6) / 3 (сэмплер 0)`; `mkshd2` по умолчанию пишет корпус с
+макетом (флаг `--flat-sets` — для сравнения), и `ProbeShd2` на новом корпусе
+(58 пар): **наборов 4, 116/116 шейдеров, 58/58 пайплайнов с четырьмя
+`BindingLayout`** (по одному на набор, `setRegisterSpaceAndDescriptorSet(N)`),
+максимум binding в сете 2 = 7 (`RoadMaterial` ps — 7 текстур). Размер корпуса
+3 027 332 → 3 006 856 Б (−20 476 Б — кодогенерация DXC с явными регистрами
+чуть компактнее).
+
 **2. Разделение констант: UBO + SSBO.** Динамическая (неконстантная) индексация
 члена uniform-буфера в Vulkan допустима только при uniform-индексе, а в D3D12
 запрещена прямо — поэтому массивы, которые шейдер индексирует динамически,

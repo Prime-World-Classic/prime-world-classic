@@ -25,13 +25,34 @@ SamplerState g_smp;
 #endif
 """
 
+# Макет дескриптор-сетов §3.z п.1. DXC трактует HLSL `space` как descriptor set
+# (замер 2026-10-15: register(t0, space2)/... даёт sets [0,1,2,3]), поэтому
+# раскладка делается здесь, а не флагами -fvk-*-shift (на явно зарегистрированные
+# ресурсы они не действуют). set 0 остаётся авто-$Globals.
+SPACE_TEXTURES = 2
+SPACE_SAMPLERS = 3
+SPACE_BUFFER   = 1     # SSBO динамических массивов (материал)
+
+HEADER_SET = """
+// ---- pw spirv_probe shim (set layout) ----
+#ifndef PW_G_SMP
+#define PW_G_SMP
+SamplerState g_smp : register(s0, space%d);
+#endif
+""" % SPACE_SAMPLERS
+
 SAMPLER_DECL = re.compile(
     r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?\s*(?::\s*register\s*\([^)]*\))?\s*;")
-REG_ANY = re.compile(r"\s*:\s*register\s*\([^)]*\)")
+REG_ANY = re.compile(r"\s*:\s*register\s*\(([^)]*)\)")
+# ресурсы, у которых в исходниках register нет (наши StructuredBuffer из шага 10
+# и Texture2D, выросшие из sampler2D) — им номер назначаем здесь
+AUTO_RES = re.compile(r"\b(Texture2D|Texture2DArray|TextureCube|StructuredBuffer|"
+                      r"RWStructuredBuffer|ByteAddressBuffer|SamplerState)"
+                      r"(\s*<[^<>]*>)?\s+(\w+)\s*(\[[^\]]*\])?\s*;")
 
 _TEXCOORD_CTR = [200]
 
-def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
+def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=False):
     notes = []
     _TEXCOORD_CTR[0] = 100   # счётчик — на файл, иначе семантика уезжает за лимит
     # 1. combined-сэмплеры -> ресурс; сам SamplerState один общий
@@ -48,8 +69,41 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
         return "Texture2D %s%s;" % (name, arr)
     src, n_samp = SAMPLER_DECL.subn(sampler_sub, src)
 
-    # 2. register(...) во всех объявлениях — снимаем совсем
-    src, n_reg = REG_ANY.subn("", src)
+    # 2. register(...) во всех объявлениях — снимаем (c-регистры), а для
+    #    t/s/b/u в режиме макета оставляем номер и добавляем space
+    if set_layout:
+        SPACE_OF = {"t": SPACE_TEXTURES, "s": SPACE_SAMPLERS,
+                    "b": SPACE_BUFFER, "u": SPACE_BUFFER}
+        def reg_keep(m):
+            mm = re.match(r"\s*([tsub])\s*(\d+)", m.group(1))
+            if not mm:
+                return ""            # c-регистры -> авто-$Globals
+            cls = mm.group(1)
+            return " : register(%s%s, space%d)" % (cls, mm.group(2), SPACE_OF[cls])
+        src, n_reg = REG_ANY.subn(reg_keep, src)
+
+        ctr = {"t": 0, "s": 1, "b": 0}   # s0 уже занят общим g_smp
+        def auto_res(m):
+            base = m.group(1)
+            typ, name, arr = base + (m.group(2) or ""), m.group(3), (m.group(4) or "")
+            if base == "SamplerState":
+                cls = "s"
+            elif base in ("StructuredBuffer", "RWStructuredBuffer", "ByteAddressBuffer"):
+                cls = "b"
+            else:
+                cls = "t"
+            n = ctr[cls]; ctr[cls] += 1
+            # DXC для StructuredBuffer требует класс 't' (замер: register(u0) ->
+            # «invalid register specification, expected 't' binding»)
+            regcls = "t" if cls == "b" else cls
+            notes.append("set-layout: %s %s -> %s%d space%d"
+                         % (typ, name, regcls, n, SPACE_OF[cls]))
+            return "%s %s%s : register(%s%d, space%d);" % (typ, name, arr, regcls, n,
+                                                           SPACE_OF[cls])
+        src, n_auto = AUTO_RES.subn(auto_res, src)
+    else:
+        src, n_reg = REG_ANY.subn("", src)
+        n_auto = 0
 
     # 3. выборки
     # operand may be an array element: tex2D( diffuseMapSampler[1], uv )
@@ -173,8 +227,9 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=()):
 
     stats = dict(samplers=n_samp, regs=n_reg, tex2D=n_t2, texCUBE=n_cube,
                  tex2Dlod=n_lod + n_lod_var + n_lod3, tex2Dproj=n_proj, position=n_pos,
-                 color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface)
-    return HEADER + src, stats, notes
+                 color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface,
+                 regs_auto=n_auto)
+    return (HEADER_SET if set_layout else HEADER) + src, stats, notes
 
 if __name__ == "__main__":
     import sys

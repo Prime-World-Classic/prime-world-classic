@@ -318,7 +318,10 @@ PINVAL = int(sys.argv[sys.argv.index("--pins") + 1]) if "--pins" in sys.argv els
 # -DPW_SSBO_ARRAYS=1 для замера SSBO-формы динамических массивов (шаг 10)
 EXTRA_DEFINES = [sys.argv[i + 1] for i, a in enumerate(sys.argv)
                  if a == "--define" and i + 1 < len(sys.argv)]
-TREE = dxcdrv.ShimTree(prefix="zzz_budget_shaders_")
+# --set-layout: прослойка раскладывает ресурсы по descriptor set (макет §3.z
+# п.1: текстуры space2, сэмплеры space3, SSBO space1, $Globals остаётся в 0).
+SET_LAYOUT = "--set-layout" in sys.argv
+TREE = dxcdrv.ShimTree(prefix="zzz_budget_shaders_", set_layout=SET_LAYOUT)
 
 
 def _cleanup_trees():
@@ -411,7 +414,22 @@ def main():
                                                      sum(agg("ubo_bytes")) / len(rows)))
     print("  SSBO байт  макс %6d" % max(agg("ssbo_bytes")))
     maxset = max((max(b["sets"]) if b["sets"] else 0) for _n, _s, b in rows)
-    print("  максимальный номер set у DXC по умолчанию: %d" % maxset)
+    print("  максимальный номер set: %d%s"
+          % (maxset, " (режим --set-layout)" if SET_LAYOUT else " (DXC по умолчанию)"))
+    per = {}
+    for _n, _s, b in rows:
+        for _sc, kind, _vn, _sz, setn, bind in b["names"]:
+            if setn is None:
+                continue
+            e = per.setdefault(setn, [{}, {}, {}])
+            e[{"smp": 0, "tex": 1, "ubo": 2, "ssbo": 2}.get(kind, 2)][kind] = \
+                max(e[{"smp": 0, "tex": 1, "ubo": 2, "ssbo": 2}.get(kind, 2)].get(kind, -1), bind)
+    for setn in sorted(per):
+        smp, tex, buf = per[setn]
+        print("    set %d: сэмплеры до %s, текстуры до %s, буферы до %s"
+              % (setn,
+                 smp.get("smp", "-"), tex.get("tex", "-"),
+                 "/".join("%s %d" % (k, v) for k, v in sorted(buf.items())) or "-"))
 
     print("\nверхние потребители (текстуры+сэмплеры):")
     for name, stage, b in sorted(rows, key=lambda r: -(r[2]["textures"] + r[2]["samplers"]))[:12]:
