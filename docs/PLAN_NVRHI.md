@@ -52,7 +52,7 @@
 | 9 | ✅ инстансинг, шаг 2 — закрыто 2026-10-15 (§2.10): лексика шва `kInstanceStream` (маркер потока данных экземпляра) + `SetInstanceSource(HBuffer, stride, offset)` + `SetInstanceCount`; сдвиг геометрийных потоков, VB-счётчик `0..N-1`, частоты потоков и инстансный вариант декларации — внутри `D3D9Backend`; в клиенте остались только `BindInstanceCounter`/`BindInstanceSource` | сделано до бэкенда (§3.z п.5): Vulkan-цели не нужны ни VB-счётчик, ни атрибут экземпляра в раскладке (`SV_InstanceID`); замер: раскладок на бой **15** (было бы ~30 с подменой деклараций), инстансных рисований 39/кадр |
 | 10 | ✅ динамические массивы из `c`-регистров → SSBO-форма — закрыто 2026-10-15 (§3.z п.2): макрос `PW_MODERN_ARRAYS` в 11 `.hlsl` (`StructuredBuffer<T>` вместо `T name[count] : register(...)`), развёртка циклов с постоянным пределом — только под макрос; SM3-путь побайтово не изменился (32/32 единицы, `tools/hlsl_sm3_check`) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); замер: единиц с неконстантной индексацией членов UBO **13 → 0**, байт UBO макс **7040 → 796**, среднее **811,0 → 358,0**, различных `(set,binding)` 9 → 10 (max binding 8 → 9) |
 | 11 | ✅ мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V) + драйвер компиляции DXC — закрыто 2026-10-15 (§3.z п.3): писатель `tools/shader_build/mkshd2.py` (SM3-слой копируется, SPIR-V только для живых индексов), читатель v2 `Src/Render/shadercontainer.h` + `multishader.cpp` (dev-var `shader_target`), корпус 15 контейнеров / 58 индексов / 0 пропусков | compile-only: рантайм D3D9-путь не тронут (читатель под dev-var'ом, по умолчанию SM3); `OnlineShaders/` — шаг 14 |
-| 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
+| 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут. **Предварительный спайк сделан 2026-10-15 (`ff7d237c0`)**: блобы v2 грузятся в Vulkan (116/116 шейдеров, 58/58 пайплайнов с раскладкой), SDL3-окно + surface + swapchain + приём бэк-буфера NVRHI — PASS, фактическая карта дескрипторов снята (§3.z п.1); в клиенте собственного бэкенда ещё нет | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
 | 13 | перевод проходов на NVRHI по work-list'у ключей (206 на бой, 85 активных) + кэш пайплайнов (открытая таблица без LRU, компиляция синхронная) | объём и порядок работ зафиксированы замером §1.4; метрика прогресса — доля DIP'ов, идущих через новый путь |
 | 14 | портирование 34 блобов `OnlineShaders/` через дизассемблирование SM3; 10 мёртвых удалить сразу (§2.15 п.12) | без них этап 4 (удаление D3D9) недостижим; порядок: `default_shader`/`VertexShader` → `ShadowPass*`/`SA*` → остальное |
 
@@ -2379,6 +2379,33 @@ D3D12, а не NVIDIA; 32 не повод разбрасывать сеты.
 `register(bN)` → 256+N в сете 0/1. Это продолжение `GlobalMasks.h`: тот же
 табличный источник, что и для `c`-регистров (§2.7).
 
+Замер 2026-10-15 (спайк `ProbeShd2` в `tools/nvrhi_probe`, 15 контейнеров v2 /
+58 живых пар, RTX 3060 через Wine): **шейдеров создано 116/116, пайплайнов с
+раскладкой 58/58** — блобы писателя `mkshd2.py` Vulkan принимает целиком, ни
+одного отказа. Фактически DXC раскладывает всё в **один** набор (set 0),
+максимум `binding` = 9 (`RoadMaterial` ps: 7 текстур); счётчики по корпусу
+`smp=52 tex=97 ubo=109 ssbo=13`. Значит бюджет дескрипторов ограничением НЕ
+является (лимит наборов: 8 у lavapipe, 32 у NVIDIA) — настоящая работа в том,
+чтобы разложить ресурсы по сетам.
+
+Механизм раскладки — HLSL `space`, а не флаги сдвигов. Проба
+`register(t0, space2) / register(t1, space2) / register(s0, space3) /
+register(b0, space1)` даёт `sets [0,1,2,3]` и `bindings [(0,0),(1,0),(2,0),
+(2,1),(3,0)]`, т.е. **`space` = descriptor set**. `-fvk-b-shift / -fvk-t-shift /
+-fvk-s-shift / -fvk-u-shift <shift> <space>` на явно зарегистрированные ресурсы
+НЕ действуют (замер: `bindings` не изменились); они работают только вместе с
+`-fvk-auto-shift-bindings` и только для ресурсов без `register`. Отсюда
+решение: фиксированный макет выше достигается **впрыском `, spaceN` в
+прослойку `tools/spirv_probe/shim.py`** по классу ресурса. Из прочих полезных
+флагов DXC: `-fvk-bind-globals <binding> <set>`, `-fvk-bind-register
+<type-number> <space> <binding> <set>`, `-fspv-preserve-bindings`,
+`-fvk-invert-y`. На стороне NVRHI один набор = один `BindingLayout` с
+`setRegisterSpaceAndDescriptorSet(N)` (`Vendor/NVRHI/include/nvrhi/nvrhi.h:2111`,
+реализация `Vendor/NVRHI/src/vulkan/vulkan-resource-bindings.cpp:1031-1090`,
+комментарий «Can't have multiple binding sets with the same registerSpace»).
+Рефлексии SPIR-V в вендоренном NVRHI нет (`reflectPipelineStates` отсутствует)
+— карту binding'ов берём из замера (`tools/shader_budget`, `ProbeShd2`).
+
 **2. Разделение констант: UBO + SSBO.** Динамическая (неконстантная) индексация
 члена uniform-буфера в Vulkan допустима только при uniform-индексе, а в D3D12
 запрещена прямо — поэтому массивы, которые шейдер индексирует динамически,
@@ -2580,6 +2607,19 @@ for (int i = totalPinsCnt - 1; i > -1; --i) {
   индексов у `BasicMaterial` (147 КБ) против 58 записей на весь корпус.
   Пропуск = отсутствие записи → в клиенте это ветка «нужен рантайм-компилятор».
 
+Дополнение к формату (шаг 11.1, `dadadc6d3`): запись цели стала `{index,
+vsOffset, vsSize, psOffset, psSize}` — **20 Б вместо 12**. Причина:
+`IDevice::createShader(desc, binary, binarySize)` требует длину, а вывести её
+из соседних смещений нельзя, потому что блобы дедуплицированы и их порядок не
+связан с порядком записей. D3D9-читателю длина не нужна (`CreateVertexShader`
+сама идёт по блобу), поэтому v1-префикс не тронут. Корпус: 3 026 868 →
+**3 027 332 Б** (+464 Б = 58 записей × 8 Б). Гейты 11.1: Wine x64 `ИТОГ: OK`
+(15 206 400 Б), native tiny10 `RC=0` (15 196 160 Б, `check_exe.py` OK), E2E
+`2026.10.15-12.20.01` — 15 `ShaderContainer` + 58 `ShaderTarget` +
+0 «нужен рантайм-компилятор», `ConfigPins` как эталон; `shot_diff` против
+`refs/stage3-shd2-2026-10-15` — 0,97 % грубых при внутрисменном шуме прогона
+1,32 % (SM3-слой побайтово не менялся — `--ref`).
+
 Инструменты: `tools/shader_build/dxcdrv.py` — общий драйвер компиляции
 (`spec_materials`, `total_pairs`, `decode_index` — тот же разбор, что
 `ShaderCompiler.cpp:186-201`, `ShimTree`, `compile_dxc` с `-Zpr` по умолчанию);
@@ -2706,6 +2746,21 @@ version`) — настоящего SM5 DXBC этим компилятором н
 
 **8. Окно и swapchain** — SDL3 3.2.30 (решение §3.x), ввод остаётся на
 subclass `WndProc`, `SDL_main` не используется.
+
+Замер 2026-10-15 (спайк `ProbeSdl3Window` в `tools/nvrhi_probe`, Wine +
+RTX 3060): `SDL_Init(SDL_INIT_VIDEO)` → `SDL_CreateWindow 160x120` →
+`SDL_PROP_WINDOW_WIN32_HWND_POINTER` → `vkCreateWin32SurfaceKHR` →
+`VkSwapchainKHR 160x120, картинок 3` → `createHandleForNativeTexture` —
+**всё PASS**. Значит окно можно отдавать SDL, не трогая WndProc-ввод. Грабли
+статической линковки SDL3 нашим тулчейном (все три — следы
+`Vendor/SDL3/cmake/PreseedMSVCCache.cmake`; перекрываются обычной, НЕ кэшевой
+переменной ДО `add_subdirectory`): `HAVE_ROAPI_H=1` при отсутствующем `roapi.h`
+(`fatal error C1083`, строка 176), `LIBC_HAS_ITOA=1` при сборке на `/MT`
+(`unresolved external symbol itoa`, строка 63; `legacy_stdio_definitions.lib`
+в этом тулчейне нет) и `/MD`-дефолт SDL (`LNK2005/LNK4098/LNK2019` из-за смеси
+CRT — нужен `MSVC_RUNTIME_LIBRARY "MultiThreaded"` на цели `SDL3-static`, не на
+ALIAS `SDL3::SDL3-static`). Прирост артефакта спайка: 811 008 → 2 266 624 Б
+(SDL3-статика +1,45 МБ) — ориентир для `PW_Game.exe`.
 
 Открытые вопросы этапа 3 (решаются до/в начале этапа, не в ходе кода):
 
@@ -3699,3 +3754,45 @@ python3 tools/shader_pile/mkpile.py build --root /tmp/packdir \
 хостовым `mkpile.py`); `schtasks /run` по уже идущей задаче даёт «is currently
 running» и прогон не стартует — перед запуском нужен `taskkill /f /im
 PW_Game.exe` и проверка `schtasks /query … /fo LIST | findstr Status`.
+
+### Сделано (шаг 11.1 + предварительный спайк шага 12: .shd v2 грузится в Vulkan, SDL3-окно под Wine — 2026-10-15)
+
+Два коммита: `dadadc6d3` (формат: размеры блобов в записях цели) и `ff7d237c0`
+(спайк в `tools/nvrhi_probe`). Смысл: до написания `NvrhiBackend` сняты три
+неизвестных — грузятся ли блобы нашего писателя, сколько дескрипторов они
+требуют и поднимает ли vendored SDL3 окно под Wine.
+
+| место | что добавлено |
+|---|---|
+| `tools/nvrhi_probe/probe.cpp` | `Shd2Spike` (читатель v2: трэйлер → заголовок → секции), `ScanSpv` (мини-парсер SPIR-V: `Binding=33`, `DescriptorSet=34`, `Block=2`, `BufferBlock=3`, `OpTypeImage=25`/`Sampler=26`/`SampledImage=27`/`Array=28`/`RuntimeArray=29`/`Struct=30`/`Pointer=32`, `OpVariable=59`, `OpDecorate=71`), `ProbeShd2` — создаёт `IShader` и пайплайн с `BindingLayout` по фактической карте; env `PW_SHD2=<.shd>`, `PW_SHD2_MAX`, `PW_SHD2_VERBOSE`; `ProbeSdl3Window` — SDL3-окно → HWND → surface → swapchain → `createHandleForNativeTexture` |
+| `tools/nvrhi_probe/CMakeLists.txt` | vendored SDL3 в спайке: путь `../../pw/branches/r1117/Vendor/SDL3`, описанные выше оверрайды (`HAVE_ROAPI_H`, `LIBC_HAS_ITOA`), `MSVC_RUNTIME_LIBRARY "MultiThreaded"` на `SDL3-static` |
+| `Src/Render/shadercontainer.h`, `multishader.{h,cpp}`, `tools/shader_build/mkshd2.py` | запись цели v2 = 20 Б с размерами блобов (`kShd2EntrySize`), `Shd2Lookup`/`GetShaderTargetOffsets` отдают `vsSize`/`psSize`, `DebugTrace` печатает «блоб цели <off>+<size> / <off>+<size> Б» |
+
+Замеры (RTX 3060 через Wine, `DISPLAY=:97`):
+
+* **15 контейнеров, 58 пар: 116/116 шейдеров создано, 58/58 пайплайнов с
+  раскладкой создано** — ни одного отказа у Vulkan на блобах `mkshd2.py`;
+* все ресурсы в одном наборе (set 0), `binding` максимум 9 (`RoadMaterial` ps —
+  7 текстур); по корпусу `smp=52 tex=97 ubo=109 ssbo=13` (SSBO: BasicMaterial 7,
+  ParticleFX 2, Drop 2, NatureMap 1, BasicFX 1) — вывод в §3.z п.1;
+* SDL3: `SDL_CreateWindow 160x120` → `SDL_PROP_WINDOW_WIN32_HWND_POINTER` →
+  `VkSurfaceKHR` → `VkSwapchainKHR 160x120, картинок 3` → NVRHI принял
+  бэк-буфер — всё PASS; win32-спайк рядом тоже PASS (формат 44 =
+  `VK_FORMAT_B8G8R8A8_UNORM`).
+
+Гейты шага 11.1: Wine x64 `ИТОГ: OK` (15 206 400 Б), native tiny10 `RC=0`
+(15 196 160 Б) + `check_exe.py` OK, E2E `2026.10.15-12.20.01` (15
+`ShaderContainer`, 58 `ShaderTarget`, 0 пропусков цели, `ConfigPins` = эталон,
+`Switch to EGameState::Finished by 3`), `shot_diff` 0,97 % грубых при шуме
+прогона 1,32 % — SM3-слой побайтово не менялся.
+
+Грабли спайка: у `OpVariable` первое слово — Result Type, а не id переменной
+(первая версия сканера давала пустой список ресурсов); `opOfId` обязан
+заполняться только объявлениями типов, иначе у инструкций-значений туда
+попадает Result Type; `OpDecorate` без операнда (`Block`, `BufferBlock`) имеет
+word count 3 — условие `wc >= 4` молча их пропускало, и SSBO оставались
+невидимы даже после перехода на декорации; `std::max` ломается из-за макросов
+`max/min` в `windows.h` (`error C2589`); у `nvrhi::Format` нет `B8G8R8A8_*`
+(есть `BGRA8_UNORM`), у `TextureDesc` нет `setIsDepthStencil` (глубина из
+формата), у `FramebufferDesc` — `setDepthAttachment`; `build_probe_wine.sh`
+возвращает RC=1, когда не передан `--run` (ориентироваться на `error C` в логе).
