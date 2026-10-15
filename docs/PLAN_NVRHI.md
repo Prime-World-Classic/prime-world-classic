@@ -50,7 +50,7 @@
 | # | шаг | почему здесь |
 |---|---|---|
 | 9 | ✅ инстансинг, шаг 2 — закрыто 2026-10-15 (§2.10): лексика шва `kInstanceStream` (маркер потока данных экземпляра) + `SetInstanceSource(HBuffer, stride, offset)` + `SetInstanceCount`; сдвиг геометрийных потоков, VB-счётчик `0..N-1`, частоты потоков и инстансный вариант декларации — внутри `D3D9Backend`; в клиенте остались только `BindInstanceCounter`/`BindInstanceSource` | сделано до бэкенда (§3.z п.5): Vulkan-цели не нужны ни VB-счётчик, ни атрибут экземпляра в раскладке (`SV_InstanceID`); замер: раскладок на бой **15** (было бы ~30 с подменой деклараций), инстансных рисований 39/кадр |
-| 10 | динамические массивы из `c`-регистров → SSBO-форма + явные размеры неизвестных массивов: `BonesMatrices` 70×48, `instanceData` 19×160 (Decal/DecalTerrain 19×64), PFX `data` 47×80, `hexParams` 40×16, `position` 9×16, `Params` 18×16 — 13 единиц из 69; плюс динамическая индексация компоненты `float4` (`g_sharpCoef[i]` и др.) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); UBO падает до ~1 КБ, цена констант на рисование — с 1,72 МБ/кадр до ~1 КБ |
+| 10 | ✅ динамические массивы из `c`-регистров → SSBO-форма — закрыто 2026-10-15 (§3.z п.2): макрос `PW_MODERN_ARRAYS` в 11 `.hlsl` (`StructuredBuffer<T>` вместо `T name[count] : register(...)`), развёртка циклов с постоянным пределом — только под макрос; SM3-путь побайтово не изменился (32/32 единицы, `tools/hlsl_sm3_check`) | без этого layout §3.z п.1/п.2 нереализуем (неконстантная индексация члена UBO запрещена в Vulkan и в D3D12); замер: единиц с неконстантной индексацией членов UBO **13 → 0**, байт UBO макс **7040 → 796**, среднее **811,0 → 358,0**, различных `(set,binding)` 9 → 10 (max binding 8 → 9) |
 | 11 | мультиблоб `.shd` (SM3 DXBC / DXBC SM5 / SPIR-V + общий `sortId`/ключ) + драйвер компиляции DXC (`-spirv`, `-T vs_5_0`, `-Zpr`, `setEntryName`, shim SM3→SM6 из `tools/spirv_probe/shim.py`) | compile-only: рантайм не трогается, но без этого нечем кормить Vulkan; параллельно второй контейнер для `OnlineShaders/` (§3.z п.3, п.4) |
 | 12 | спайк `NvrhiBackend`: SDL3-окно + swapchain + clear/present + **один** DIP, за dev-var/env; D3D9-путь не тронут | дёшево снимает главные неизвестные (winding/`frontCounterClockwise`, Y-flip, 4 дескриптор-сета, форматы RT/DS, DSM); стенд — Wine на хосте с RTX 3060 (§6 «Проба: клиент под Wine») |
 | 13 | перевод проходов на NVRHI по work-list'у ключей (206 на бой, 85 активных) + кэш пайплайнов (открытая таблица без LRU, компиляция синхронная) | объём и порядок работ зафиксированы замером §1.4; метрика прогресса — доля DIP'ов, идущих через новый путь |
@@ -887,6 +887,19 @@ Vec3TransformCoordArray`, `Vec2TransformNormalArray`), ~55 мест вызова
     атрибуты и биндит их обычным `BindVertexBuffer(1, …)` — отдельный вызов
     пришлось бы вставлять в каждый такой путь, маркер же приезжает вместе с
     раскладкой и не создаёт второй источник истины. Числа и реализация — §2.10.
+
+15. **SM3-ветка шейдеров остаётся побайтовой; современная форма массивов и
+    развёртка циклов — только под `PW_MODERN_ARRAYS`** (2026-10-15, шаг 10):
+    в `FullScreenMaterial/vs` и `TerrainElementDebugMaterial/ps` оставлены
+    дублирующие друг друга ветки (цикл для SM3, ручная развёртка для
+    современной цели). Основание: fxc циклы с постоянным пределом НЕ
+    разворачивает (замер `hlsl_compile_test --disasm`: `defi i0, 3, 0, 1, 0` +
+    `loop aL … endloop` с `c[aL]`), поэтому «безобидная» развёртка меняла
+    DXBC поставляемых шейдеров (876 → 776 Б и 992 → 816 Б) и требовала
+    перегенерации `.shd` + нового визуального эталона при том, что картинка
+    обязана остаться. Дублирование кода сознательное: оно исчезнет вместе с
+    D3D9-путём на этапе 4. Проверка эквивалентности правок корпуса —
+    `tools/hlsl_sm3_check` (32/32 одинаковых DXBC).
 
 ### 2.13 Скриншот: последние два D3DX-импорта в клиенте (2026-10-13)
 
@@ -2353,6 +2366,72 @@ D3D12, а не NVIDIA; 32 не повод разбрасывать сеты.
 (против 3744 Б), и цена загрузки констант на рисование (§1.4 п.4: 1,72 МБ/кадр)
 падает в разы; SSBO при этом обновляется раз в батч, а не раз в рисование.
 
+**Шаг 10 закрыт (2026-10-15, `7716944fd`).** Форма массива выбирается
+макросом `PW_MODERN_ARRAYS` (по умолчанию не определён — сборка клиента его
+не задаёт, SM3-путь не затронут):
+
+```hlsl
+#if PW_MODERN_ARRAYS
+StructuredBuffer<InstanceData> instanceData;
+#else
+InstanceData instanceData[MAX_INSTANCES_COUNT] : register ( INSTANCE_DATA );
+#endif
+```
+
+Затронуты 11 файлов: `AOEMaterial`, `BasicMaterial`, `DebugMaterial`,
+`DecalMaterial`, `DecalTerrainMaterial`, `FullScreenMaterial`,
+`NatureMapMaterial`, `ParticleFXMaterial`, `ShadowMaterial`,
+`TerrainElementDebugMaterial`, `_commonSkinning`. Записи в эти массивы в
+исходниках нет (проверено по корпусу), поэтому достаточно
+`BufferDeviceParameter` (п.1) — `RWStructuredBuffer` не понадобился.
+
+Замер `tools/shader_budget --pins 1 --define PW_MODERN_ARRAYS=1` (70 единиц,
+FAIL 0 — после починки прослойки, см. ниже): единиц с неконстантной
+индексацией членов UBO **0 из 70** (было 13), раскладка SSBO — **11
+буферов**, байт UBO макс **796** (было 7040), среднее **358,0** (было 811,0),
+различных `(set,binding)` 10 / max binding 9 (было 9 / 8). При `--pins 0`:
+UBO макс 3744 → **768**, SSBO 2 (`hexParams`, `BonesMatrices` у
+`PaintMaterial`). Таблица раскладки (ArrayStride по SPIR-V — это контракт для
+C++-части на шаге 12): `BonesMatrices` 48 Б/элемент (70 → 3360 Б),
+`instanceData` 160 Б (`BasicMaterial`, 19 → 3040 Б) и 64 Б
+(`Decal`/`DecalTerrain`), `data` 80 Б (PFX, 47 → 3760 Б), `hexParams` 16 Б
+(40), `position` 16 Б (9). Число элементов в SPIR-V — `runtime`
+(`StructuredBuffer` — несокращаемый массив), размер задаёт бэкенд.
+
+Важная деталь макета: `float4x3` в SSBO занимает **64 Б**, а в блоке
+`c`-регистров — **48 Б** (проверено декорацией `ArrayStride`). Чтобы хост,
+пишущий один блок констант (§2.9 `ConstBlock`), мог отдать те же байты,
+элементы объявлены wrapper-структами (`InstanceData`, `INSTANCE_DATA`) либо
+массивом матриц внутри структуры (`_commonSkinning`) — замер подтвердил
+совпадение с числами таблицы выше.
+
+Развёртка циклов. Два места индексируют массивы **постоянными** индексами в
+цикле с постоянным пределом — формально это не запрещено, но DXC цикл не
+разворачивает и оставляет `c[aL]`. Оказалось, что и **fxc их не
+разворачивает**: дизассемблирование (`hlsl_compile_test --disasm`) показывает
+`defi i0, 3, 0, 1, 0` + `loop aL … endloop` с `c[aL]`, а ручная развёртка
+меняла DXBC (`FullScreenMaterial/vs` 876 → 776 Б, `TerrainElementDebugMaterial/ps`
+992 → 816 Б). Поэтому развёртка оформлена второй веткой того же макроса, а
+SM3-ветка оставлена циклом дословно (§2.15 п.15).
+
+Сверка SM3-пути (новый `tools/hlsl_sm3_check`, профиль `affected`: 16
+комбинаций пинов × 2 стадии = 32 единицы, компиляция настоящим `D3DCompile`
+на tiny10): **одинаковых DXBC 32, изменившихся 0** — `.shd` и бинарник клиента
+не меняются, поэтому сборочные/E2E-гейты к правке не применялись (менять
+нечего). Под Wine этот путь непроверяем: встроенный в Wine `d3dcompiler`
+работает через vkd3d и даёт `E5017: Aborting due to not yet implemented
+feature: SM1 cast from bool to integer` на `AOEMaterial` (замер 2026-10-15).
+
+Починка прослойки `tools/spirv_probe/shim.py`: out-параметры PS с `COLORn`
+становятся `SV_TARGETn` с сохранением индекса (в SM6 произвольная
+пользовательская семантика на выходе запрещена — `invalid usage of semantic
+'TEXCOORD101' in shader profile ps` на `WaterDummyMaterial/ps`); корпус
+разбирается **70/70** и до правки массивов, и после.
+
+Что остаётся на шаге 12: таблица «диапазон `c`-регистров → SSBO» (по
+`GlobalMasks.h` + таблице выше) и копирование этих диапазонов из
+`ConstBlock` в буферы бэкендом; хост при этом не меняется.
+
 **3. Контейнеры шейдеров.** Один `.shd` = несколько блобов: SM3 DXBC (D3D9 до
 этапа 4), DXBC SM5 (DX12), SPIR-V (Vulkan) + один и тот же `sortId`/ключ.
 Заголовок контейнера должен нести число блобов и их цель, иначе генератор
@@ -2365,10 +2444,19 @@ D3D12, а не NVIDIA; 32 не повод разбрасывать сеты.
 `mul(v,M)` теряет перевод), `setEntryName` (DXC сохраняет имя функции HLSL),
 прослойка SM3→SM6 как шаг драйвера (`shim.py` → `Src/ShaderCompiler`),
 `-enable-16bit-types` не нужен. Отдельный класс правок, найденный замером:
-**неизвестные по размеру массивы в `register(cN)`** у PostFX-шейдеров — DXC
-выпускает для них `OpTypeRuntimeArray` внутри uniform-буфера, что для Vulkan
-невалидно (runtime array разрешён только в SSBO); при генерации такие массивы
-обязаны получить явный размер или уехать в SSBO (п.2).
+**неизвестные по размеру массивы в `register(cN)`** — DXC выпускает для них
+`OpTypeRuntimeArray` внутри uniform-буфера, что для Vulkan невалидно (runtime
+array разрешён только в SSBO); при генерации такие массивы обязаны получить
+явный размер или уехать в SSBO (п.2).
+
+Поправка к формулировке (2026-10-15, замер корпуса `tools/shader_budget`):
+**массивов без размера в `Src/Render/Shaders/*.hlsl` нет** — утверждение про
+«44 PostFX-шейдера с массивами без размера» было основано на выводе `shader_budget`
+(в SPIR-V встречаются `OpTypeRuntimeArray`), а не на исходниках: файлов
+`PostFX.hlsl`/`Bloom.hlsl` в дереве нет (Bloom/Blur — C++-модули, их шейдеры —
+блобы `OnlineShaders/`, п.3), а runtime-массивы в отчёте — это либо
+`StructuredBuffer` (легально), либо следствие динамической индексации
+компоненты `float4`. Реальная правка — п.2 (SSBO-форма), она сделана шагом 10.
 
 **5. Инстансинг, шаг 2** (§2.10) — **закрыт 2026-10-15 (шаг 9 очереди)**:
 лексика шва — маркер `kInstanceStream` в описании раскладки и в
@@ -2377,8 +2465,8 @@ D3D12, а не NVIDIA; 32 не повод разбрасывать сеты.
 `SetInstanceCount`. Клиент больше не сдвигает потоки сам и не подменяет
 декларацию: `D3D9Backend` держит слот экземпляра (`kInstanceSlot = 1`), VB-
 счётчик и кэш инстансных вариантов декларации; `NvrhiBackend` от этого пути не
-нужно ничего, кроме `instanceCount` в `drawIndexedInstanced`. Осталось на шаге 10:
-`instanceData` из `c`-регистров → SSBO (п.2).
+нужно ничего, кроме `instanceCount` в `drawIndexedInstanced`. Остаток —
+`instanceData` из `c`-регистров → SSBO (п.2) — **закрыт шагом 10 (2026-10-15)**.
 
 Замер семантики для драйвера компиляции — `tools/sem_probe` (DXC, 10 режимов
 объявления индекса экземпляра, обе цели): `SV_InstanceID` **обязан быть `uint`**
@@ -3231,3 +3319,49 @@ VB-счётчик `0..N-1`, инстансный вариант декларац
 процесс `PW_Game.exe` **продолжает жить**, поэтому `C:\tools\pw_exit.txt`
 протухает, а `move /y` поверх `PW_Game.exe` даёт «Access is denied» — перед
 деплоем нового бинарника нужен `taskkill /f /im PW_Game.exe`.
+
+### Сделано (шаг 10 очереди: динамические массивы уходят из `c`-регистров в SSBO — закрыто 2026-10-15, `7716944fd`)
+
+Мотивация и дизайн — §3.z п.2 (там же закрытие с числами), решение о
+побайтовой SM3-ветке — §2.15 п.15.
+
+| файл | что изменилось |
+|---|---|
+| `Src/Render/Shaders/_commonSkinning.hlsl` | `BonesMatrices`: `StructuredBuffer<float4x3>` под `PW_MODERN_ARRAYS` (70 × 48 Б) |
+| `Src/Render/Shaders/BasicMaterial.hlsl` | обе формы `instanceData` (wrapper-структура 19 × 160 Б и `float4x3` 19 × 64 Б) |
+| `Src/Render/Shaders/ShadowMaterial.hlsl`, `DecalMaterial.hlsl`, `DecalTerrainMaterial.hlsl` | `instanceData` (19 × 48 Б / 19 × 64 Б) |
+| `Src/Render/Shaders/DebugMaterial.hlsl` | дубль объявления `BonesMatrices` |
+| `Src/Render/Shaders/ParticleFXMaterial.hlsl` | `data`: `StructuredBuffer<INSTANCE_DATA>` (47 × 80 Б) |
+| `Src/Render/Shaders/NatureMapMaterial.hlsl` | `hexParams` (40 × 16 Б) |
+| `Src/Render/Shaders/AOEMaterial.hlsl` | `position` (9 × 16 Б) |
+| `Src/Render/Shaders/FullScreenMaterial.hlsl` | два цикла постоянной длины развёрнуты под макросом (`SharpPinValue`, `Params`/`ColorCastCoef`), SM3-ветка — цикл |
+| `Src/Render/Shaders/TerrainElementDebugMaterial.hlsl` | 4 слоя текстур развёрнуты под макросом, SM3-ветка — цикл |
+| `tools/hlsl_sm3_check/` (новый) | снимок и сверка md5 DXBC по корпусу; профили `all`/`affected`/`fast`, `--save`/`--compare`, `--remote` (компилятор на tiny10) |
+| `tools/hlsl_compile_test/` | `--disasm`/`--blob` (`D3DDisassemble`), `/Fo:build\` (`.obj` убран из репозитория) |
+| `tools/shader_budget/shader_budget.py` | `--define NAME=ЗНАЧЕНИЕ`, таблица раскладки SSBO, класс UBO/SSBO по декорации `Block`/`BufferBlock` |
+| `tools/spirv_probe/shim.py` | out-параметры PS: `COLORn` → `SV_TARGETn` с сохранением индекса |
+
+Гейт. Правка живёт в препроцессоре с выключенным макросом, поэтому проверялась
+не сборкой, а эквивалентностью компиляции: `tools/hlsl_sm3_check --profile
+affected --remote pw-tiny10` — 16 комбинаций пинов × 2 стадии = 32 единицы,
+**одинаковых DXBC 32, изменившихся 0, пропало единиц 0, новых 0**. Клиентский
+бинарник и `.shd` не меняются (генерация `.shd` — отдельный шаг 11), сборка
+и E2E к этой правке не применялись.
+
+Замеры до/после (`--pins 1`, 70 единиц): неконстантная индексация членов UBO
+**13 → 0**; байт UBO макс **7040 → 796**, среднее **811,0 → 358,0**; SSBO —
+**11 буферов**; различных `(set,binding)` 9 → 10, max binding 8 → 9. При
+`pins=0`: UBO макс 3744 → 768, SSBO 2.
+
+Грабли (записаны в скил `pw-client`):
+* под Wine `d3dcompiler` встроен через **vkd3d**: `E5017: Aborting due to not
+  yet implemented feature: SM1 cast from bool to integer` на `AOEMaterial`,
+  `Failed to compile shader, vkd3d result -5` — SM3-сверку можно делать только
+  на Windows-хосте (`C:\tools\hlsl\hlsl_compile_test.exe`);
+* класс дескриптора в SPIR-V надо определять по декорации (`Block` против
+  `BufferBlock`), а не по storage class: DXC кладёт `StructuredBuffer` тоже в
+  storage class `Uniform` (2);
+* `float4x3` в SSBO — 64 Б, в `c`-регистрах — 48 Б: без wrapper-структ байты
+  блока констант не совпали бы с макетом буфера;
+* `ShaderCompiler.exe` под Wine прогонять нельзя (тот же vkd3d), и полный
+  прогон корпуса на 600 с не укладывается — это работа шага 11.
