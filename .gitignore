@@ -180,6 +180,18 @@ pw/branches/r1117/Src/Game/PF/UniServer/build_linux*/
 **/CMakeFiles/
 **/cmake_install.cmake
 **/*.cmake
+# Правило выше глушит и привезённые исходники: вендоринг NVRHI/SDL3
+# (шаг 1, docs/PLAN_NVRHI.md) приносит .cmake-модули как часть дерева —
+# без них CMake не конфигурируется (SDL3/cmake/sdltargets.cmake и др.,
+# SDL3/include/build_config/SDL_build_config.h.cmake). Вскрылось только на
+# нативной сборке (на хосте файлы лежали untracked). Снимается точечно,
+# а не общим `!**/*.cmake`: сгенерированные в build-деревьях модули
+# должны остаться игнорируемыми.
+!pw/branches/r1117/Vendor/SDL3/cmake/**/*.cmake
+!pw/branches/r1117/Vendor/SDL3/build-scripts/**/*.cmake
+!pw/branches/r1117/Vendor/SDL3/include/build_config/*.cmake
+!pw/branches/r1117/Vendor/NVRHI/cmake/**/*.cmake
+!pw/branches/r1117/Vendor/DirectX-Headers/cmake/**/*.cmake
 
 # Build output files
 *.a
