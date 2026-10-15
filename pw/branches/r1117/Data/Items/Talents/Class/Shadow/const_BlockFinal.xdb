@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Class/Shadow/Ability_A0.TALENT" Count="1" />
 	<name>BlockFinal</name>
 	<var>
-		<compiledString>FTIAAAADAAAAQQAAAFsAAABwAAAAQmxvY2tNaW4AAAAAQmxvY2tQZXJQcm9jAAAAAEEwU2hhZG93X0Jsb2NrQ291bnRlcgBVi+yD7BSLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0otFDFCLTQhRaAwAAACLVRCLAotNEItQUN1d+P/SaBwAAACLRQiLEItNCIuCiAEAAN1d8P/Q3E3w3EX42V3s2UXsi+Vdww==</compiledString>
+		<compiledString>FTIAAAAEAAAAOwAAAEsAAABlAAAAegAAAEJsb2NrTWluAAAAAEJsb2NrUGVyUHJvYwAAAABBMFNoYWRvd19CbG9ja0NvdW50ZXIAVYvsg+wUUdkFrQAAANkcJItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoDAAAAItVEIsCi00Qi1BQ3V34/9JoHAAAAItFCIsQi00Ii4KIAQAA3V3w/9DcTfDcRfjZXezZRexR2Rwk6AsAAACDxAiL5V3DAABIQlWL7FHZRQjZRQze2d/g9sRBdQjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>cBlockMin + cBlockPerProc * sender.vA0Shadow_BlockCounter</sString>
+		<sString>min(cBlockMin + cBlockPerProc * sender.vA0Shadow_BlockCounter, 50)</sString>
 	</var>
 </UnitConstant>

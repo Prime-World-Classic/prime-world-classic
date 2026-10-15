@@ -4,8 +4,8 @@
 	<BackLink DBID="/Heroes/Faceless/_.HROB" Count="1" />
 	<name>A4_2_AttackBuff</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAwQQAAokI=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAwQQAAtEI=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale(sStrength, 11, 81)</sString>
+		<sString>damageScale(sStrength, 11, 90)</sString>
 	</var>
 </UnitConstant>

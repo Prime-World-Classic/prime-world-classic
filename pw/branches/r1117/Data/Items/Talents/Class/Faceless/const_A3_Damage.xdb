@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability3.TALENT" Count="1" />
 	<name>A3Damage</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAC4QQAAL0M=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAC4QQAASEM=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale( sIntellect, 23, 175)</sString>
+		<sString>damageScale( sIntellect, 23, 200)</sString>
 	</var>
 </UnitConstant>

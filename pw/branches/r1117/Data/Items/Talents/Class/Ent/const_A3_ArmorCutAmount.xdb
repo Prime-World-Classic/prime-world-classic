@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Class/Ent/Ability_A5.TALENT" Count="1" />
 	<name>A3u_AddHealth</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAADkQgAAVkQ=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAADkQgAAPkQ=</compiledString>
 		<returnType>float</returnType>
-		<sString>abilityScale(sIntellect, 114, 856)</sString>
+		<sString>abilityScale(sIntellect, 114, 760)</sString>
 	</var>
 </UnitConstant>

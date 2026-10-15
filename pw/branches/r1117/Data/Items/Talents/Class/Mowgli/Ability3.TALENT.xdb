@@ -630,9 +630,9 @@
 					<UnitConstant>
 						<name>A3initialdamage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADeQgCAUEQ=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADeQgAAPkQ=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 111, 834)</sString>
+							<sString>damageScale(sIntellect, 111, 760)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

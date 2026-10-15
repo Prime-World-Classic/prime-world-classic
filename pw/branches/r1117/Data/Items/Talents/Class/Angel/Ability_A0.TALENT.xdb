@@ -51,9 +51,9 @@
 					<UnitConstant>
 						<name>A0_AddRegen</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCvAAAAP/QUdkcJItNCIsRi00Ii4K4AAAA/9BR2Rwk6B8AAACDxATZHCRqAItNEIsRi00Qi0Jg/9BdwzMzMz8AAKBAVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCvAAAAP/QUdkcJItNCIsRi00Ii4K4AAAA/9BR2Rwk6B8AAACDxATZHCRqAItNEIsRi00Qi0Jg/9BdwzMzMz/NzIxAVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale(max(sBaseStrength, sBaseIntellect), 0.7, 5.0, false)</sString>
+							<sString>abilityScale(max(sBaseStrength, sBaseIntellect), 0.7, 4.4, false)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

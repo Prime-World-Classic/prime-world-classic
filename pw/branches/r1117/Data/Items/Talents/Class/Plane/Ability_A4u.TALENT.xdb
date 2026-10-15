@@ -59,9 +59,9 @@
 					<UnitConstant>
 						<name>TT_IncRadius</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
 							<returnType>float</returnType>
-							<sString>75</sString>
+							<sString>50</sString>
 						</var>
 					</UnitConstant>
 				</Item>

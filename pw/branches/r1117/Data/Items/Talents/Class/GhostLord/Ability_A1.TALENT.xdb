@@ -242,9 +242,9 @@
 					<UnitConstant>
 						<name>A1_EnergyLoss</name>
 						<var>
-							<compiledString>FRYAAAACAAAAIwAAADYAAABBMXVfSW5jSGVhbGluZ1BlclRpY2sAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3DVEAAAA2V382UX8i+VdwwAAAAAAAAhA</compiledString>
+							<compiledString>FREAAAACAAAAHgAAADEAAABBMV9EYW1hZ2VQZXJUaWNrAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0tw1PwAAANld/NlF/IvlXcMAAAAAAAAIQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>cA1u_IncHealingPerTick/3.0f</sString>
+							<sString>cA1_DamagePerTick/3.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>

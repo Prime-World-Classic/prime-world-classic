@@ -678,9 +678,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FSYAAAACAAAALQAAAEYAAABIaWdobGFuZGVyX0ExX1NVUAAAAEhpZ2hsYW5kZXJfQTFfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4QODwQyJTfTbRfSL5V3D</compiledString>
+		<compiledString>FSYAAAACAAAALQAAAEYAAABIaWdobGFuZGVyX0ExX1NVUAAAAEhpZ2hsYW5kZXJfQTFfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4QODwQuJTfTbRfSL5V3D</compiledString>
 		<returnType>float</returnType>
-		<sString>(tal("Highlander_A1_SUP") ? 15:12)</sString>
+		<sString>(tal("Highlander_A1_SUP") ? 14:11)</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

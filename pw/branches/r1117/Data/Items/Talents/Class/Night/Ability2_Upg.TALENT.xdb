@@ -82,9 +82,9 @@
 					<UnitConstant>
 						<name>A2u_Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABUQgCA1EM=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABUQgCAwEM=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 53, 425)</sString>
+							<sString>damageScale(sIntellect, 53, 385)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
