@@ -207,6 +207,7 @@ def validate(stdout, client_log, mode):
 		require('Ruffle' not in stdout, 'default stdout contains Ruffle activity')
 	for name, text in (('stdout', stdout), ('client log', client_log)):
 		require(text.endswith('\n') and '\0' not in text, f'{name}: truncated or invalid text')
+		require('Local scheduler drain timed out:' not in text, f'{name}: timed scheduler drain failed')
 	session_effects(stdout)
 	finish = 'Prime World Linux client shell finished.'
 	require(record(stdout, finish, '') == '', 'malformed completion record')

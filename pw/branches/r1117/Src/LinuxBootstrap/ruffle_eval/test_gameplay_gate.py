@@ -63,6 +63,16 @@ def fixture(mode='targeting'):
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
 
+	def test_failed_drain_cannot_be_hidden_by_completion(self):
+		'''The client emits its ordinary completion record even when timed draining exits nonzero.'''
+		for mode in ('targeting', 'default'):
+			stdout, client = fixture(mode)
+			failure = 'Local scheduler drain timed out: world=425 barrier=426\n'
+			for position in ('before', 'after', 'client'):
+				with self.subTest(mode=mode, position=position), self.assertRaises(gate.EvidenceError):
+					gate.validate(failure + stdout if position == 'before' else stdout + failure if position == 'after' else stdout,
+						client + failure if position == 'client' else client, mode)
+
 	def test_running_match_cannot_report_terminal_ui(self):
 		'''New counters are required, but a forced finish cannot pass ordinary gameplay acceptance.'''
 		for mode in ('targeting', 'default'):

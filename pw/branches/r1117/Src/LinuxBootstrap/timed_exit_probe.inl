@@ -31,9 +31,9 @@ bool RunLinuxTimedExitProbe()
 		}
 		runtime.localScheduler->SendMessage(command, true);
 		runtime.localScheduler->QueueLinuxClientStatus(1);
-		double started = -1;
+		LinuxTimedDrain started;
 		check(PollLinuxTimedExit(settings, runtime, 2.9, started) == LinuxTimedExit::Continue &&
-			started < 0 && runtime.localScheduler->GetLinuxInputFinishStep() < 0, "no early input closure");
+			started.started < 0 && runtime.localScheduler->GetLinuxInputFinishStep() < 0, "no early input closure");
 		check(PollLinuxTimedExit(settings, runtime, 3, started) == LinuxTimedExit::Draining,
 			"both interactive and diagnostic timeouts drain accepted input");
 		const int boundary = runtime.localScheduler->GetLinuxInputFinishStep();
@@ -65,10 +65,10 @@ bool RunLinuxTimedExitProbe()
 		runtime.transceiver = new NCore::Transceiver(runtime.localScheduler, DEFAULT_GAME_STEP_LENGTH, false);
 		runtime.transceiverWorldAttached = true;
 		runtime.transceiverWorldStep = 0;
-		double started = -1;
-		check(PollLinuxTimedExit(settings, runtime, 8, started) == LinuxTimedExit::Draining && started == 8,
+		LinuxTimedDrain started;
+		check(PollLinuxTimedExit(settings, runtime, 8, started) == LinuxTimedExit::Draining && started.started == 8,
 			"a delayed frame receives its drain grace period from sealing, not run expiry");
-		check(PollLinuxTimedExit(settings, runtime, 8.99, started) == LinuxTimedExit::Draining && started == 8,
+		check(PollLinuxTimedExit(settings, runtime, 8.99, started) == LinuxTimedExit::Draining && started.started == 8,
 			"repeated polling cannot extend the shutdown deadline");
 		check(PollLinuxTimedExit(settings, runtime, 9, started) == LinuxTimedExit::TimedOut,
 			"a stalled consumer fails at the bounded drain deadline");
@@ -105,10 +105,10 @@ bool RunLinuxTimedExitProbe()
 		}
 		runtime.localScheduler->SendMessage(command, true);
 		runtime.localScheduler->QueueLinuxClientStatus(1);
-		double started = -1;
+		LinuxTimedDrain started;
 		const auto beforeService = runtime.transceiverStepCalls;
 		check(ServiceLinuxTimedExit(settings, map, runtime, 2.9, started) == LinuxTimedExit::Continue
-			&& runtime.transceiverStepCalls == beforeService && started < 0,
+			&& runtime.transceiverStepCalls == beforeService && started.started < 0,
 			"ordinary frames retain their original driver and presentation path before run expiry");
 		check(PollLinuxTimedExit(settings, runtime, 3, started) == LinuxTimedExit::Draining,
 			"production driver seals accepted pending input before shutdown");
@@ -145,6 +145,81 @@ bool RunLinuxTimedExitProbe()
 			&& runtime.transceiverStepCalls == calls,
 			"completed service never advances beyond the sealed simulation boundary");
 	}
+	// Simulated wall time includes slow world work, while the real scheduler owns every tick.
+	for (bool interactive : {false, true})
+	{
+		LinuxClientLaunchSettings settings; settings.runSeconds = 3;
+		settings.bootstrapInteractiveWorld = interactive;
+		LinuxSelectedMapPreview map;
+		LinuxBootstrapScreenRuntime runtime;
+		runtime.localScheduler = new Game::LocalCmdScheduler(1984); runtime.localScheduler->StartGame();
+		runtime.transceiver = new NCore::Transceiver(runtime.localScheduler, DEFAULT_GAME_STEP_LENGTH, false);
+		CObj<LinuxBootstrapReplayProbeWorld> world = new LinuxBootstrapReplayProbeWorld;
+		runtime.transceiverWorld = world; runtime.transceiver->SetWorld(world);
+		runtime.transceiverWorldAttached = true; runtime.mapLoadingJobCompleted = true;
+		runtime.transceiverWorldStep = runtime.transceiver->GetWorldStep();
+		CObj<NCore::PackedWorldCommand> command = new NCore::PackedWorldCommand;
+		for (int i = 0; i < 32; ++i)
+		{
+			runtime.localScheduler->SendMessage(command, true);
+			DriveLinuxBootstrapGameScheduler(settings, map, &runtime, i * .1);
+		}
+		runtime.localScheduler->SendMessage(command, true); runtime.localScheduler->QueueLinuxClientStatus(1);
+		LinuxTimedDrain started;
+		check(PollLinuxTimedExit(settings, runtime, 3, started) == LinuxTimedExit::Draining,
+			"slow-world fixture seals real accepted input before consuming its tail");
+		const int boundary = runtime.localScheduler->GetLinuxInputFinishStep();
+		for (int i = 0; i < 4 && runtime.transceiverWorldStep < boundary; ++i)
+		{
+			const auto calls = runtime.transceiverStepCalls;
+			const auto state = ServiceLinuxTimedExit(settings, map, runtime, 3.01 + i * 1.1, started, 3.2 + i * 1.1);
+			check(state != LinuxTimedExit::TimedOut && runtime.transceiverStepCalls - calls <= 3,
+				"forward progress survives a slow drain call without removing the per-call tick bound");
+		}
+		check(runtime.transceiverWorldStep == boundary && world->GetStepNumber() == boundary
+			&& world->GetCommands() == 33 && world->GetStatusUpdates() == 1,
+			"slow consumer drains the exact sealed commands and status without synthetic world ticks");
+	}
+	// Policy-only snapshots prove that progress cannot remove either timeout bound.
+	for (bool hardLimit : {false, true})
+	{
+		LinuxClientLaunchSettings settings; settings.runSeconds = 3;
+		LinuxBootstrapScreenRuntime runtime;
+		runtime.localScheduler = new Game::LocalCmdScheduler(1984); runtime.localScheduler->StartGame();
+		for (int i = 0; i < 20; ++i) runtime.localScheduler->Step(.1f);
+		runtime.transceiver = new NCore::Transceiver(runtime.localScheduler, DEFAULT_GAME_STEP_LENGTH, false);
+		runtime.transceiverWorldAttached = true; runtime.transceiverWorldStep = 0;
+		LinuxTimedDrain drain;
+		check(PollLinuxTimedExit(settings, runtime, 3, drain) == LinuxTimedExit::Draining,
+			"drain policy initializes absolute and idle budgets at the actual seal time");
+		if (hardLimit)
+		{
+			for (int i = 1; i <= 9; ++i)
+			{
+				runtime.transceiverWorldStep = i;
+				check(PollLinuxTimedExit(settings, runtime, 3 + i * .5, drain) == LinuxTimedExit::Draining
+					&& drain.started == 3, "actual forward progress renews only the idle budget");
+			}
+			runtime.transceiverWorldStep = 10;
+			check(PollLinuxTimedExit(settings, runtime, 8, drain) == LinuxTimedExit::TimedOut,
+				"even continuing progress cannot extend the five-second absolute drain bound");
+		}
+		else
+		{
+			runtime.transceiverWorldStep = 1;
+			check(PollLinuxTimedExit(settings, runtime, 3.8, drain) == LinuxTimedExit::Draining,
+				"a successful step starts a bounded fresh idle interval");
+			runtime.transceiverWorldStep = 0;
+			check(PollLinuxTimedExit(settings, runtime, 4.5, drain) == LinuxTimedExit::Draining
+				&& drain.lastProgress == 3.8 && drain.worldStep == 1,
+				"a regressing world snapshot cannot count as progress or reset the high-water mark");
+			check(PollLinuxTimedExit(settings, runtime, 4.9, drain) == LinuxTimedExit::TimedOut,
+				"a consumer that stalls after initial progress still fails after one idle second");
+			runtime.transceiverWorldStep = 2;
+			check(PollLinuxTimedExit(settings, runtime, 4.91, drain) == LinuxTimedExit::TimedOut,
+				"late incomplete progress cannot restart a drain that already timed out");
+		}
+	}
 	for (int mode = 0; mode < 5; ++mode)
 	{
 		LinuxClientLaunchSettings settings;
@@ -157,11 +232,11 @@ bool RunLinuxTimedExitProbe()
 		runtime.replayFileInputActive = mode == 2;
 		if (mode == 3) runtime.transceiver = 0;
 		if (mode == 4) runtime.localScheduler = 0;
-		double started = -1;
+		LinuxTimedDrain started;
 		check(PollLinuxTimedExit(settings, runtime, 8, started) ==
 			(mode == 0 ? LinuxTimedExit::Continue : LinuxTimedExit::Complete),
 			"unbounded sessions continue; replay and unavailable local worlds need no drain");
-		check(started < 0 && (!runtime.localScheduler || runtime.localScheduler->GetLinuxInputFinishStep() < 0),
+		check(started.started < 0 && (!runtime.localScheduler || runtime.localScheduler->GetLinuxInputFinishStep() < 0),
 			"nonlocal exits do not seal an unused scheduler");
 	}
 	std::printf("Timed exit: %u checks, %u failures\n", checks, failures);

@@ -45810,11 +45810,21 @@ bool HandleLinuxReplayInputControls(
 
 enum class LinuxTimedExit { Continue, Draining, Complete, TimedOut };
 
+/** Bounded wall-time ownership for the sealed tail, independent of render/simulation clocks. */
+struct LinuxTimedDrain
+{
+	double started = -1.0;
+	double lastProgress = -1.0;
+	int worldStep = -1;
+	bool timedOut = false;
+};
+
 /** Seal timed local input once and wait for its existing scheduler/replay barrier.
- * Start the bounded grace period at sealing, including when a frame missed run expiry.
+ * A slow successful step may exceed one second under instrumentation. Allow progress
+ * for at most five seconds from sealing, but keep the one-second stalled-consumer limit.
  */
 LinuxTimedExit PollLinuxTimedExit(const LinuxClientLaunchSettings& settings,
-	LinuxBootstrapScreenRuntime& runtime, double elapsedSeconds, double& drainStarted)
+	LinuxBootstrapScreenRuntime& runtime, double elapsedSeconds, LinuxTimedDrain& drain)
 {
 	if (settings.runSeconds <= 0.0 || elapsedSeconds < settings.runSeconds)
 		return LinuxTimedExit::Continue;
@@ -45824,23 +45834,37 @@ LinuxTimedExit PollLinuxTimedExit(const LinuxClientLaunchSettings& settings,
 	const int finishStep = runtime.localScheduler->CloseLinuxInput();
 	if (runtime.transceiverWorldStep >= finishStep)
 		return LinuxTimedExit::Complete;
-	if (drainStarted < 0.0) drainStarted = elapsedSeconds;
-	return elapsedSeconds - drainStarted >= 1.0 ? LinuxTimedExit::TimedOut : LinuxTimedExit::Draining;
+	if (drain.started < 0.0)
+	{
+		drain.started = drain.lastProgress = elapsedSeconds;
+		drain.worldStep = runtime.transceiverWorldStep;
+	}
+	if (drain.timedOut) return LinuxTimedExit::TimedOut;
+	if (runtime.transceiverWorldStep > drain.worldStep)
+	{
+		drain.worldStep = runtime.transceiverWorldStep;
+		drain.lastProgress = elapsedSeconds;
+	}
+	drain.timedOut = elapsedSeconds - drain.started >= 5.0 || elapsedSeconds - drain.lastProgress >= 1.0;
+	return drain.timedOut ? LinuxTimedExit::TimedOut : LinuxTimedExit::Draining;
 }
 
 /** Service only accepted input during timed shutdown, outside expensive presentation work.
  * Each call keeps the original driver's bounded tick budget and real world/replay counters.
- * The caller polls wall time between calls; no new input or deadline extension is admitted.
+ * The caller polls fresh wall time between calls; neither new input nor an absolute
+ * deadline extension is admitted. Observe progress at that next poll, not at the stale
+ * pre-step timestamp: world work itself can consume a significant part of the budget.
  */
 LinuxTimedExit ServiceLinuxTimedExit(const LinuxClientLaunchSettings& settings,
 	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime& runtime,
-	double elapsedSeconds, double& drainStarted,
+	double elapsedSeconds, LinuxTimedDrain& drain,
 	double schedulerNow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count())
 {
-	const auto state = PollLinuxTimedExit(settings, runtime, elapsedSeconds, drainStarted);
+	const auto state = PollLinuxTimedExit(settings, runtime, elapsedSeconds, drain);
 	if (state != LinuxTimedExit::Draining) return state;
 	DriveLinuxBootstrapGameScheduler(settings, map, &runtime, schedulerNow);
-	return PollLinuxTimedExit(settings, runtime, elapsedSeconds, drainStarted);
+	return runtime.transceiverWorldStep >= runtime.localScheduler->GetLinuxInputFinishStep()
+		? LinuxTimedExit::Complete : LinuxTimedExit::Draining;
 }
 
 #include "LinuxBootstrap/timed_exit_probe.inl"
@@ -73108,7 +73132,7 @@ int main(int argc, char** argv)
   size_t bootstrapClickNextIndex = 0;
   double bootstrapClickNextTime = settings.bootstrapClickAfterSeconds;
 	bool timedDrainFailed = false;
-	double timedDrainStarted = -1.0;
+	LinuxTimedDrain timedDrain;
 	const int matchFinishProofFaction = CmdLineLite::Instance().GetIntKey("--bootstrap-match-finish-proof", 0);
 	bool matchFinishProofSent = false;
 
@@ -73121,7 +73145,7 @@ int main(int argc, char** argv)
 		NHPTimer::GetTime(now);
 		const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
 		const auto timedExit = ServiceLinuxTimedExit(settings, selectedMapPreview, screenRuntime,
-			elapsedSeconds, timedDrainStarted);
+			elapsedSeconds, timedDrain);
 		if (timedExit == LinuxTimedExit::Complete) break;
 		if (timedExit == LinuxTimedExit::TimedOut)
 		{
