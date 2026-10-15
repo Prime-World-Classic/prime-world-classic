@@ -25,6 +25,7 @@
 #include "PFApplFx.h"
 #include "PFApplMod.h"
 #include "PFApplMove.h"
+#include "PFTriggerApplicator.h"
 #include "PFAITargetSelectors.h"
 #include "PFHighlander.h"
 #include "PFMicroAI.h"
@@ -4201,7 +4202,7 @@ void AbsorbShieldApplicator::Assign( const AbsorbShieldApplicator& _absorbShield
 NWorld::PFBaseApplicator* AbsorbShieldApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFAbsorbShieldApplicator>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFAbsorbShieldApplicator>( *this, cp );

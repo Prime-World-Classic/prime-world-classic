@@ -547,6 +547,7 @@ add_executable(
   ../PF_GameLogic/PFCastLimitations.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatch.cpp
+	../PF_GameLogic/PFTriggerApplicator.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
 	../PF_GameLogic/PFDispatchCursor.cpp
@@ -1110,6 +1111,7 @@ add_library(
   ../PF_GameLogic/PFCreep.cpp
   ../PF_GameLogic/PFDeadBody.cpp
   ../PF_GameLogic/PFDispatch.cpp
+	../PF_GameLogic/PFTriggerApplicator.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
@@ -1284,6 +1286,7 @@ add_library(
   ../PF_GameLogic/PFCastLimitations.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatch.cpp
+	../PF_GameLogic/PFTriggerApplicator.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
 	../PF_GameLogic/PFDispatchCursor.cpp
@@ -1929,6 +1932,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFCreep.cpp
   ../PF_GameLogic/PFDeadBody.cpp
   ../PF_GameLogic/PFDispatch.cpp
+	../PF_GameLogic/PFTriggerApplicator.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
 	../PF_GameLogic/PFDispatchCursor.cpp
@@ -2057,6 +2061,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
   ../PF_GameLogic/PFCastLimitations.cpp
   ../PF_GameLogic/PFDispatch.cpp
+	../PF_GameLogic/PFTriggerApplicator.cpp
   ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchFactory.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp

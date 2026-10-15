@@ -1390,6 +1390,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "movement_orders_b13_tests.inc"
 #include "hero_idle_b13_tests.inc"
 #include "dispatch_admission_b13_tests.inc"
+#include "absorb_shield_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1565,6 +1566,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	MovementOrdersB13(check);
 	HeroIdleB13(check);
 	DispatchAdmissionB13(check);
+	AbsorbShieldB13(check, world);
+	if (dataRoot && *dataRoot) AbsorbShieldAuthoredB13(check, world, dataRoot);
 	TalentFormulaB13(check,world);
 	SpecialMovementB13(check);
 	TileMaskOwnershipB13(check);

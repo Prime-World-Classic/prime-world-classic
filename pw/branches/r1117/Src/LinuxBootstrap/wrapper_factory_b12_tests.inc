@@ -175,7 +175,7 @@ static void WrapperFactoryB12(Checks& check, PFWorld* world)
 		if (mode == 1) aRaw->applicator = b;
 		if (mode == 2) aRaw->applicator = a;
 		if (mode == 3) { aRaw->applicator = b; bRaw->applicator = a; }
-		if (mode == 4) aRaw->applicator = new NDb::AbsorbShieldApplicator;
+		if (mode == 4) aRaw->applicator = new NDb::TriggerApplicator;
 		check(!f.Create(a) && f.Delta() == 0 && f.instance->GetActiveApplicatorsCount() == 0,
 			"missing nested missing cyclic and unsupported terminal descriptors fail before effect activation");
 		const Target target(f.receiver.GetPtr());

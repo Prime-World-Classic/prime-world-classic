@@ -1,4 +1,109 @@
 #include "stdafx.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "PFTriggerApplicator.h"
+#include "PFBaseUnit.h"
+#include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
+
+namespace NWorld
+{
+PFAbsorbShieldApplicator::PFAbsorbShieldApplicator(const PFApplCreatePars& cp)
+	: Base(cp), shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
+
+PFAbsorbShieldApplicator::PFAbsorbShieldApplicator()
+	: shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
+
+/** Evaluate authored capacity before activation; retain balanced start/stop notifications on rejection. */
+bool PFAbsorbShieldApplicator::Start()
+{
+	const auto& authored = GetDB().damageToAbsorb;
+	LinuxBootstrap::NumericFormulaResult value{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		value = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	if (!value.Succeeded())
+	{
+		PFBaseApplicator::Start();
+		SetEnabled(false);
+		return true;
+	}
+	damageToAbsorb = Max(0.f, value.value);
+	// Only Enable owns aggregate contribution, including when a parent stops us during Start.
+	shield = damage = 0.f;
+	return Base::Start();
+}
+
+/** Reattach only unconsumed capacity; the original buff lifecycle owns enable transitions. */
+void PFAbsorbShieldApplicator::Enable()
+{
+	if (!Base::IsAlive() || !IsValid(pReceiver)) return;
+	const float aggregate = pReceiver->GetShield() + damageToAbsorb;
+	if (!std::isfinite(aggregate))
+	{
+		SetEnabled(false);
+		return;
+	}
+	Base::Enable();
+	if (!Base::IsAlive() || !IsEnabled()) return;
+	shield = damageToAbsorb;
+	damage = 0.f;
+	pReceiver->AddEventListener(this);
+	ModifyReceiverShield(shield);
+}
+
+void PFAbsorbShieldApplicator::Disable()
+{
+	Base::Disable();
+	if (IsValid(pReceiver)) pReceiver->RemoveEventListener(this);
+	ModifyReceiverShield(-shield);
+	shield = damage = 0.f;
+}
+
+/** Preserve deferred aggregate updates without charging disabled shields against their peers. */
+bool PFAbsorbShieldApplicator::Step(float dtInSeconds)
+{
+	if (!Base::IsAlive()) return true;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0.f) return false;
+	if (Base::Step(dtInSeconds)) return true;
+	if (damage > 0.f)
+	{
+		const float consumed = Min(shield, damage);
+		if (IsEnabled()) ModifyReceiverShield(-consumed);
+		shield -= consumed;
+		damage = 0.f;
+	}
+	return !(damageToAbsorb > 0.f);
+}
+
+/** Consume the original damage event before health commitment, respecting defence bypass. */
+unsigned int PFAbsorbShieldApplicator::OnEvent(const PFBaseUnitEvent* event)
+{
+	if (!Base::IsAlive() || !IsEnabled() || !(damageToAbsorb > 0.f)) return 0;
+	const auto* hit = dynamic_cast<const PFBaseUnitDamageEvent*>(event);
+	if (!hit || !hit->pDesc || hit->pDesc->ignoreDefences
+		|| !std::isfinite(hit->damage2Deal) || hit->damage2Deal <= 0.f) return 0;
+	const float absorbed = Min(damageToAbsorb, hit->damage2Deal);
+	damageToAbsorb -= absorbed;
+	hit->damage2Deal -= absorbed;
+	// Accumulate only actual absorption; overkill must not overflow the deferred counter.
+	damage = Max(0.f, shield - damageToAbsorb);
+	return 0;
+}
+
+float PFAbsorbShieldApplicator::GetVariable(const char* name) const
+{
+	if (name && strcmp(name, "damageToAbsorb") == 0) return damageToAbsorb;
+	return name ? PFBaseApplicator::GetVariable(name) : 0.f;
+}
+
+void PFAbsorbShieldApplicator::ModifyReceiverShield(float delta) const
+{
+	if (!IsValid(pReceiver)) return;
+	const float aggregate = pReceiver->GetShield() + delta;
+	if (std::isfinite(aggregate)) pReceiver->SetShield(aggregate);
+}
+}
+REGISTER_WORLD_OBJECT_NM(PFAbsorbShieldApplicator, NWorld);
+#else
 
 #include "PFTriggerApplicator.h"
 #include "PFBaseUnit.h"
@@ -1040,3 +1145,4 @@ REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnUseAbilityForceStrike, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorLastHit, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOnConsumableObtained, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFEventProcessorOutgoingDamage, NWorld);
+#endif
