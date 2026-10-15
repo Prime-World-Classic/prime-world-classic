@@ -29,6 +29,7 @@
 #if defined(PW_LINUX_NULL_RENDER)
 #include "../LinuxBootstrap/formula_context.h"
 #include <cmath>
+#include <limits>
 #endif
 
 #ifndef VISUAL_CUTTED
@@ -386,10 +387,29 @@ void PFApplWatch::Stop()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFApplSpellSwitch::Start()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	CObj<PFBaseApplicator> holder(this);
+#endif
   if (PFBaseApplicator::Start())
     return true;
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Keep original truncation and list bounds, without a malformed formula selecting spell zero.
+	const auto& authored = GetDB().activeSpellIndex;
+	NRandom::RandomGenerator before; if (GetWorld()) before = *GetWorld()->GetRndGen();
+	LinuxBootstrap::NumericFormulaResult index{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		index = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	if (!index.Succeeded() || double(index.value) < std::numeric_limits<int>::min()
+		|| double(index.value) > std::numeric_limits<int>::max())
+	{
+		if (GetWorld()) *GetWorld()->GetRndGen() = before;
+		return true;
+	}
+	const int nIndex = static_cast<int>(index.value);
+#else
   int nIndex = RetrieveParam(GetDB().activeSpellIndex);
+#endif
 
   if( nIndex >= 0 && GetDB().spells.size() > nIndex && GetDB().spells[nIndex] != NULL)
   {
@@ -401,6 +421,9 @@ bool PFApplSpellSwitch::Start()
       PFApplCreatePars cp(pAbility, targ, this);
       for ( int i = 0, applsNumber = GetDB().spells[nIndex]->applicators.size(); i < applsNumber; ++i )
       {
+#if defined(PW_LINUX_NULL_RENDER)
+				if (!IsAlive() || !IsEnabled()) break;
+#endif
         cp.pDBAppl = GetDB().spells[nIndex]->applicators[i];
 	      CObj<PFBaseApplicator> pAppl = CreateApplicator(cp);
 

@@ -709,15 +709,25 @@ bool PFApplChangeState::Start()
   return true;
 }
 
+/** Admit authored conditions and bounded quantities before the original inventory transaction. */
 bool PFApplGiveConsumable::Start()
 {
-  PFBaseApplicator::Start();
-  PFBaseHero* pHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
-  if (!pHero)
-    return true;
-
-  pHero->TakeConsumable(GetDB().consumable, RetrieveParam(GetDB().amount, 1), NDb::CONSUMABLEORIGIN_APPLICATOR);
-  return true;
+	if (PFBaseApplicator::Start()) return true;
+	CObj<PFBaseHero> hero(dynamic_cast<PFBaseHero*>(pReceiver.GetPtr()));
+	if (!hero) return true;
+	const auto& authored = GetDB().amount;
+	NRandom::RandomGenerator before; if (GetWorld()) before = *GetWorld()->GetRndGen();
+	LinuxBootstrap::NumericFormulaResult quantity{LinuxBootstrap::NumericFormulaError::None, 1.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		quantity = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	if (!quantity.Succeeded() || double(quantity.value) < std::numeric_limits<int>::min()
+		|| double(quantity.value) > std::numeric_limits<int>::max())
+	{
+		if (GetWorld()) *GetWorld()->GetRndGen() = before;
+		return true;
+	}
+	hero->TakeConsumable(GetDB().consumable, static_cast<int>(quantity.value), NDb::CONSUMABLEORIGIN_APPLICATOR);
+	return true;
 }
 
 }
