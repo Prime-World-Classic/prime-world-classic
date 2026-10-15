@@ -40,8 +40,10 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
 
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
@@ -1084,6 +1086,538 @@ static bool SmokeShaderPipeline(nvrhi::IDevice* dev, VkInstance instance, VkDevi
   return identityOk && xfmOk && cullOk;
 }
 
+// ------------------------------------ .shd v2: наш SPIR-V внутри Vulkan (шаг 12)
+//
+// Спайк отвечает на два вопроса, которые нельзя снять из Python-инструмента
+// (tools/shader_budget считает бюджет по SPIR-V, но не говорит, принимает ли его
+// драйвер):
+//   1. создаются ли из блобов нашего писателя (tools/shader_build/mkshd2.py:
+//      DXC + прослойка SM3->SM6 + PW_MODERN_ARRAYS=1) шейдеры и пайплайны
+//      NVRHI/Vulkan и что именно сообщает NVRHI при отказе (messageCallback
+//      подключён в ProbeVulkan);
+//   2. в какие наборы (descriptor set) и binding'ы реально кладёт ресурсы DXC —
+//      макет §3.z п.1 обязан совпадать с фактом, иначе пайплайн не слинкуется
+//      (на спайке B0 с дефолтными VulkanBindingOffsets кадр был чёрный).
+// Рендерить эти пайплайны пока нечем (нет ни блока констант, ни текстур),
+// поэтому проверка заканчивается созданием пайплайна.
+// Запуск: PW_SHD2=<путь к .shd> [PW_SHD2_MAX=N, 0 = все записи].
+
+static unsigned Ld32(const unsigned char* p)
+{
+  return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) | ((unsigned)p[3] << 24);
+}
+
+struct Shd2Sec { unsigned tag, off, cnt, end; };
+
+struct Shd2Spike
+{
+  std::vector<unsigned char> data;
+  unsigned v1Size = 0, v2hdr = 0;
+  std::vector<Shd2Sec> secs;
+
+  bool open(const char* path)
+  {
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    fseek(f, 0, SEEK_END);
+    long n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    bool ok = n > 32 && (long)data.size() + n >= 0;
+    data.resize((size_t)n);
+    ok = ok && fread(data.data(), 1, (size_t)n, f) == (size_t)n;
+    fclose(f);
+    if (!ok) return false;
+    const unsigned char* t = data.data() + (size_t)n - 16;
+    if (memcmp(t, "SHD2", 4) || memcmp(t + 12, "SHD2", 4)) return false;   // чистый v1
+    v2hdr = Ld32(t + 4);
+    const unsigned char* h = data.data() + v2hdr;
+    if (v2hdr + 16 > (unsigned)n || memcmp(h, "V2H\0", 4) || Ld32(h + 4) != 1) return false;
+    v1Size = Ld32(h + 8);
+    const unsigned tc = Ld32(h + 12);
+    for (unsigned i = 0; i < tc; ++i)
+    {
+      Shd2Sec s;
+      s.tag = Ld32(h + 16 + 12 * i);
+      s.off = Ld32(h + 20 + 12 * i);
+      s.cnt = Ld32(h + 24 + 12 * i);
+      s.end = (i + 1 < tc) ? Ld32(h + 20 + 12 * (i + 1)) : v2hdr;
+      if (s.off + 8 + 20 * s.cnt > s.end) return false;
+      secs.push_back(s);
+    }
+    return !secs.empty();
+  }
+
+  const Shd2Sec* find(unsigned tag) const
+  {
+    for (size_t i = 0; i < secs.size(); ++i)
+      if (secs[i].tag == tag) return &secs[i];
+    return nullptr;
+  }
+};
+
+// Разбор SPIR-V: какие ресурсы у модуля и в каких сетах/binding'ах они лежат.
+// Декорации: OpDecorate = 71, Binding = 33, DescriptorSet = 34.
+// Класс ресурса берётся из типа переменной: OpVariable = 59 (слово 1 = тип,
+// слово 2 = storage class), OpTypePointer = 32 (слово 3 = базовый тип),
+// OpTypeImage = 26, OpTypeSampler = 27, OpTypeSampledImage = 28, OpTypeStruct = 31.
+struct SpvRes
+{
+  enum Kind { kSampler, kTexture, kCbuf, kSsbo, kOther };
+  struct Item { unsigned set, binding; Kind kind; unsigned storage, baseOp; };
+  std::vector<Item> items;
+  unsigned maxSet = 0, maxBinding = 0;
+  bool ok = false;
+};
+
+static SpvRes ScanSpv(const unsigned char* p, size_t bytes)
+{
+  SpvRes r;
+  if (bytes < 20 || Ld32(p) != 0x07230203u) return r;
+  const size_t words = bytes / 4;
+
+  std::vector<unsigned> ptrBase;    // id типа указателя -> id базового типа
+  std::vector<unsigned char> ptrStore;  // id типа указателя -> storage class
+  std::vector<unsigned> varType;    // id переменной -> id типа указателя
+  std::vector<unsigned> decBind;    // id -> Binding (0xffffffff = нет)
+  std::vector<unsigned> decSet;     // id -> DescriptorSet
+  std::vector<unsigned> opOfId;     // id результата -> opcode, объявивший этот id
+  std::vector<unsigned> elemOfId;   // id массива -> id элемента (OpTypeArray/RuntimeArray)
+  // Декорации структур: Block(2) = uniform-буфер, BufferBlock(3) = SSBO. ИМЕННО
+  // они, а не storage class, различают cbuffer и StructuredBuffer: DXC кладёт
+  // StructuredBuffer в storage class Uniform(2), поэтому проверка «st==12»
+  // относила все SSBO к константным буферам (первый прогон давал ssbo=0).
+  std::vector<unsigned char> structBlock;       // id структуры -> Block
+  std::vector<unsigned char> structBufferBlock; // id структуры -> BufferBlock
+
+  auto growU = [](std::vector<unsigned>& v, unsigned id, unsigned init)
+  { if (id + 1 > v.size()) v.resize(id + 1, init); };
+  auto growB = [](std::vector<unsigned char>& v, unsigned id, unsigned char init)
+  { if (id + 1 > v.size()) v.resize(id + 1, init); };
+
+  for (size_t i = 5; i < words; )
+  {
+    const unsigned w = Ld32(p + i * 4);
+    const unsigned opcode = w & 0xffffu, wc = w >> 16;
+    if (!wc || i + wc > words) break;
+    // номера opcode по SPIR-V: OpTypeImage=25, OpTypeSampler=26,
+    // OpTypeSampledImage=27, OpTypeArray=28, OpTypeRuntimeArray=29,
+    // OpTypeStruct=30, OpTypePointer=32; OpVariable=59, OpDecorate=71.
+    // opOfId заполняется ТОЛЬКО объявлениями типов: у инструкций-значений
+    // (OpUndef, OpAccessChain, OpVariable) первое слово — Result Type, и
+    // первая версия сканера записывала в opOfId мусор именно оттуда.
+    const bool isTypeDecl = (opcode >= 19 && opcode <= 33) || opcode == 44;
+    if (isTypeDecl && wc >= 2)
+    {
+      const unsigned res = Ld32(p + i * 4 + 4);
+      growU(opOfId, res, 0);
+      if (!opOfId[res]) opOfId[res] = opcode;
+      if ((opcode == 28 || opcode == 29) && wc >= 3)
+      {
+        growU(elemOfId, res, 0xffffffffu);
+        elemOfId[res] = Ld32(p + i * 4 + 8);
+      }
+    }
+    if (opcode == 32 && wc >= 4)          // OpTypePointer: result, storage, base
+    {
+      const unsigned res = Ld32(p + i * 4 + 4);
+      growU(ptrBase, res, 0xffffffffu);
+      ptrBase[res] = Ld32(p + i * 4 + 12);
+      growB(ptrStore, res, 255);
+      ptrStore[res] = (unsigned char)Ld32(p + i * 4 + 8);
+    }
+    else if (opcode == 59 && wc >= 4)     // OpVariable: Result Type (указатель), Result <id>, Storage
+    {
+      // порядок слов именно такой: у OpVariable (в отличие от OpTypePointer)
+      // первым идёт Result Type, и это НЕ id переменной — на этом первый
+      // прогон сканера и дал пустой список ресурсов
+      const unsigned ptrType = Ld32(p + i * 4 + 4);
+      const unsigned res = Ld32(p + i * 4 + 8);
+      growU(varType, res, 0xffffffffu);
+      varType[res] = ptrType;
+    }
+    else if (opcode == 71 && wc >= 3)     // OpDecorate: target, decoration[, operand]
+    {
+      // ВАЖНО: у декораций без операнда (Block=2, BufferBlock=3, Restrict, ...)
+      // word count = 3, поэтому условие «wc >= 4» их молча пропускало — и первый
+      // исправленный сканер всё равно давал ssbo=0.
+      const unsigned target = Ld32(p + i * 4 + 4), dec = Ld32(p + i * 4 + 8);
+      const unsigned val = (wc >= 4) ? Ld32(p + i * 4 + 12) : 0;
+      if (dec == 33) { growU(decBind, target, 0xffffffffu); decBind[target] = val; }
+      else if (dec == 34) { growU(decSet, target, 0xffffffffu); decSet[target] = val; }
+      else if (dec == 2) { growB(structBlock, target, 0); structBlock[target] = 1; }
+      else if (dec == 3) { growB(structBufferBlock, target, 0); structBufferBlock[target] = 1; }
+    }
+    i += wc;
+  }
+
+  for (size_t id = 0; id < varType.size(); ++id)
+  {
+    if (id >= decBind.size() || id >= decSet.size()) continue;
+    if (decBind[id] == 0xffffffffu || decSet[id] == 0xffffffffu) continue;
+    const unsigned pt = varType[id];
+    if (pt == 0xffffffffu || pt >= ptrStore.size() || pt >= ptrBase.size()) continue;
+    const unsigned st = ptrStore[pt];
+    // только дескрипторные классы: UniformConstant(0), Uniform(2), StorageBuffer(12)
+    if (st != 0 && st != 2 && st != 12) continue;
+    unsigned base = ptrBase[pt];
+    unsigned baseOp = (base < opOfId.size()) ? opOfId[base] : 0;
+    if ((baseOp == 28 || baseOp == 29) && base < elemOfId.size() && elemOfId[base] != 0xffffffffu)
+    {
+      const unsigned el = elemOfId[base];
+      baseOp = (el < opOfId.size()) ? opOfId[el] : 0;   // массив изображений = массив текстур
+    }
+    SpvRes::Kind k = SpvRes::kOther;
+    if (baseOp == 26) k = SpvRes::kSampler;             // OpTypeSampler
+    else if (baseOp == 25 || baseOp == 27) k = SpvRes::kTexture;  // Image / SampledImage
+    else if (baseOp == 30)                             // OpTypeStruct: cbuffer или SSBO
+    {
+      const bool bb = (base < structBufferBlock.size()) && structBufferBlock[base];
+      const bool bl = (base < structBlock.size()) && structBlock[base];
+      if (bb) k = SpvRes::kSsbo;
+      else if (bl) k = SpvRes::kCbuf;
+      else k = (st == 12) ? SpvRes::kSsbo : SpvRes::kCbuf;
+    }
+    else if (st == 12) k = SpvRes::kSsbo;
+    else if (st == 2) k = SpvRes::kCbuf;
+    SpvRes::Item it;
+    it.set = decSet[id];
+    it.binding = decBind[id];
+    it.kind = k;
+    it.storage = st;
+    it.baseOp = baseOp;
+    r.items.push_back(it);
+    if (it.set > r.maxSet) r.maxSet = it.set;
+    if (it.binding > r.maxBinding) r.maxBinding = it.binding;
+  }
+  r.ok = true;
+  return r;
+}
+
+static const char* SpvKindName(SpvRes::Kind k)
+{
+  switch (k)
+  {
+  case SpvRes::kSampler: return "smp";
+  case SpvRes::kTexture: return "tex";
+  case SpvRes::kCbuf:    return "ubo";
+  case SpvRes::kSsbo:    return "ssbo";
+  default:               return "?";
+  }
+}
+
+static void ProbeShd2(nvrhi::IDevice* dev)
+{
+  const char* path = getenv("PW_SHD2");
+  if (!path) return;
+  const int maxEntries = getenv("PW_SHD2_MAX") ? atoi(getenv("PW_SHD2_MAX")) : 0;
+  const int verbose = getenv("PW_SHD2_VERBOSE") ? atoi(getenv("PW_SHD2_VERBOSE")) : 0;
+
+  Shd2Spike f;
+  if (!f.open(path))
+  {
+    Print("shd2: файл не разбирается как v2", false, path);
+    return;
+  }
+  const Shd2Sec* sec = f.find(2 /*stSpirv*/);
+  if (!sec)
+  {
+    Print("shd2: секции SPIR-V нет", false, path);
+    return;
+  }
+  printf("shd2: %s\n       v1 %u Б, целей %d, SPIR-V: записей %u, блоки [%u,%u)\n",
+         path, f.v1Size, (int)f.secs.size(), sec->cnt, sec->off + 8 + 20 * sec->cnt, sec->end);
+
+  nvrhi::TextureHandle rt = dev->createTexture(nvrhi::TextureDesc()
+                                                 .setDimension(nvrhi::TextureDimension::Texture2D)
+                                                 .setWidth(1024).setHeight(768)
+                                                 .setFormat(nvrhi::Format::BGRA8_UNORM)   // = VK_FORMAT_B8G8R8A8_UNORM, тот же, что у swapchain
+                                                 .setIsRenderTarget(true)
+                                                 .setDebugName("shd2 rt"));
+  nvrhi::TextureHandle ds = dev->createTexture(nvrhi::TextureDesc()
+                                                 .setDimension(nvrhi::TextureDimension::Texture2D)
+                                                 .setWidth(1024).setHeight(768)
+                                                 .setFormat(nvrhi::Format::D24S8)
+                                                 .setIsRenderTarget(true)   // глубина у NVRHI определяется форматом
+                                                 .setDebugName("shd2 ds"));
+  nvrhi::FramebufferHandle fb = dev->createFramebuffer(
+      nvrhi::FramebufferDesc().addColorAttachment(rt).setDepthAttachment(ds));
+  if (!rt || !ds || !fb)
+  {
+    Print("shd2: RT/depth/framebuffer", false);
+    return;
+  }
+  Print("shd2: RT BGRA8_UNORM + depth D24S8 + framebuffer", true);
+
+  unsigned createdShaders = 0, createdPipes = 0, tried = 0, withLayout = 0, withLayoutOk = 0;
+  unsigned globalMaxSet = 0, globalMaxBinding = 0, kindCount[5] = { 0, 0, 0, 0, 0 };
+
+  for (unsigned j = 0; j < sec->cnt; ++j)
+  {
+    if (maxEntries && (int)j >= maxEntries) break;
+    const unsigned char* e = f.data.data() + sec->off + 8 + 20 * j;
+    const unsigned index = Ld32(e), vsOff = Ld32(e + 4), vsSize = Ld32(e + 8);
+    const unsigned psOff = Ld32(e + 12), psSize = Ld32(e + 16);
+    if (!vsSize || !psSize || vsOff + vsSize > sec->end || psOff + psSize > sec->end)
+    {
+      Print("shd2: запись вне блоб-области", false, path);
+      continue;
+    }
+    const SpvRes vs = ScanSpv(f.data.data() + vsOff, vsSize);
+    const SpvRes ps = ScanSpv(f.data.data() + psOff, psSize);
+    for (const SpvRes::Item& it : vs.items) { kindCount[it.kind]++; }
+    if (verbose)
+    {
+      printf("       #%u vs[%u Б]:", index, vsSize);
+      for (const SpvRes::Item& it : vs.items)
+        printf(" %u:%u=%s", it.set, it.binding, SpvKindName(it.kind)),
+              (it.kind == SpvRes::kOther ? printf("(st=%u,op=%u)", it.storage, it.baseOp) : 0);
+      printf(" ps[%u Б]:", psSize);
+      for (const SpvRes::Item& it : ps.items)
+        printf(" %u:%u=%s", it.set, it.binding, SpvKindName(it.kind)),
+              (it.kind == SpvRes::kOther ? printf("(st=%u,op=%u)", it.storage, it.baseOp) : 0);
+      printf("\n");
+    }
+    for (const SpvRes::Item& it : ps.items) { kindCount[it.kind]++; }
+    if (vs.maxSet > globalMaxSet) globalMaxSet = vs.maxSet;
+    if (ps.maxSet > globalMaxSet) globalMaxSet = ps.maxSet;
+    if (vs.maxBinding > globalMaxBinding) globalMaxBinding = vs.maxBinding;
+    if (ps.maxBinding > globalMaxBinding) globalMaxBinding = ps.maxBinding;
+
+    nvrhi::ShaderHandle shaderVs = dev->createShader(
+        nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Vertex)
+                           .setEntryName("MainPass_VSMain")
+                           .setDebugName("shd2 vs"),
+        f.data.data() + vsOff, vsSize);
+    nvrhi::ShaderHandle shaderPs = dev->createShader(
+        nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Pixel)
+                           .setEntryName("MainPass_PSMain")
+                           .setDebugName("shd2 ps"),
+        f.data.data() + psOff, psSize);
+    ++tried;
+    if (shaderVs) ++createdShaders;
+    if (shaderPs) ++createdShaders;
+    if (!shaderVs || !shaderPs)
+    {
+      printf("       #%u vs %u Б / ps %u Б -> vs=%d ps=%d\n", index, vsSize, psSize,
+             int(bool(shaderVs)), int(bool(shaderPs)));
+      continue;
+    }
+
+    nvrhi::GraphicsPipelineDesc pd;
+    pd.setPrimType(nvrhi::PrimitiveType::TriangleList)
+      .setVertexShader(shaderVs).setPixelShader(shaderPs);
+    pd.renderState.rasterState.setCullNone().setFrontCounterClockwise(true);
+    nvrhi::GraphicsPipelineHandle pipe = dev->createGraphicsPipeline(pd, fb->getFramebufferInfo());
+    if (pipe) ++createdPipes;
+    else
+    {
+      printf("       #%u: пайплайн без раскладок НЕ собрался\n", index);
+      continue;
+    }
+
+    // Вторая ступень: раскладка, собранная по фактическим сетами/binding'ам
+    // модуля (по одному BindingLayout на набор — NVRHI умеет
+    // setRegisterSpaceAndDescriptorSet, см. vulkan-resource-bindings.cpp:1031).
+    std::vector<nvrhi::BindingLayoutHandle> layouts;
+    bool layoutBuilt = true;
+    const unsigned setCount = (vs.maxSet > ps.maxSet ? vs.maxSet : ps.maxSet) + 1;
+    for (unsigned s = 0; s < setCount; ++s)
+    {
+      nvrhi::BindingLayoutDesc ld;
+      ld.visibility = nvrhi::ShaderType::AllGraphics;
+      ld.setRegisterSpaceAndDescriptorSet(s);
+      ld.bindingOffsets = nvrhi::VulkanBindingOffsets()
+        .setShaderResourceOffset(0).setSamplerOffset(0)
+        .setConstantBufferOffset(0).setUnorderedAccessViewOffset(0);
+      auto addFor = [&](const SpvRes& r)
+      {
+        for (const SpvRes::Item& it : r.items)
+        {
+          if (it.set != s) continue;
+          switch (it.kind)
+          {
+          case SpvRes::kSampler: ld.bindings.push_back(nvrhi::BindingLayoutItem::Sampler(it.binding)); break;
+          case SpvRes::kTexture: ld.bindings.push_back(nvrhi::BindingLayoutItem::Texture_SRV(it.binding)); break;
+          case SpvRes::kCbuf:    ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(it.binding)); break;
+          case SpvRes::kSsbo:    ld.bindings.push_back(nvrhi::BindingLayoutItem::StructuredBuffer_SRV(it.binding)); break;
+          default: layoutBuilt = false; break;
+          }
+        }
+      };
+      addFor(vs); addFor(ps);
+      if (!layoutBuilt || ld.bindings.empty()) continue;
+      nvrhi::BindingLayoutHandle h = dev->createBindingLayout(ld);
+      if (!h) { layoutBuilt = false; break; }
+      layouts.push_back(h);
+    }
+    if (layoutBuilt && !layouts.empty())
+    {
+      ++withLayout;
+      nvrhi::GraphicsPipelineDesc pd2 = pd;
+      for (const nvrhi::BindingLayoutHandle& h : layouts) pd2.addBindingLayout(h);
+      if (dev->createGraphicsPipeline(pd2, fb->getFramebufferInfo())) ++withLayoutOk;
+      else printf("       #%u: с раскладкой по фактическим сетам НЕ слинковался\n", index);
+    }
+  }
+
+  printf("       итог: пар %u, шейдеров создано %u/%u, пайплайнов без раскладок %u, "
+         "с раскладкой %u/%u\n", tried, createdShaders, tried * 2, createdPipes,
+         withLayoutOk, withLayout);
+  printf("       ресурсы SPIR-V: наборов %u, binding макс %u; "
+         "smp=%d tex=%d ubo=%d ssbo=%d прочее=%d\n",
+         globalMaxSet + 1, globalMaxBinding, kindCount[SpvRes::kSampler],
+         kindCount[SpvRes::kTexture], kindCount[SpvRes::kCbuf], kindCount[SpvRes::kSsbo],
+         kindCount[SpvRes::kOther]);
+}
+
+#ifdef PW_WITH_SDL3
+#include <SDL3/SDL.h>
+
+// SDL3 как поставщик окна (шаг 12 очереди, план §3.z п.6). Проверяется ровно
+// то, чего не может дать WndProc-путь: поднимает ли vendored SDL3 видео под
+// Wine, и годится ли его HWND для VkSurfaceKHR (дальше NvrhiBackend строит
+// swapchain по тому же коду, что у win32-спайка). Ввод здесь НЕ проверяется —
+// он остаётся на подклассе WndProc клиента.
+static bool ProbeSdl3Window(nvrhi::IDevice* dev, VkInstance instance, VkPhysicalDevice phys,
+                            VkDevice device, VkQueue queue, uint32_t queueFamily)
+{
+  if (!SDL_Init(SDL_INIT_VIDEO))
+  {
+    Print("sdl3: SDL_Init(SDL_INIT_VIDEO)", false, SDL_GetError());
+    return false;
+  }
+  Print("sdl3: SDL_Init", true, SDL_GetCurrentVideoDriver());
+
+  SDL_Window* win = SDL_CreateWindow("nvrhi_probe sdl3", 160, 120, 0);
+  if (!win)
+  {
+    Print("sdl3: SDL_CreateWindow", false, SDL_GetError());
+    SDL_Quit();
+    return false;
+  }
+  int bw = 0, bh = 0;
+  SDL_GetWindowSize(win, &bw, &bh);
+  char info[128];
+  snprintf(info, sizeof(info), "%dx%d", bw, bh);
+  Print("sdl3: SDL_CreateWindow", true, info);
+
+  HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(win),
+                                           SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+  if (!hwnd)
+  {
+    Print("sdl3: HWND из окна SDL", false, SDL_GetError());
+    SDL_DestroyWindow(win);
+    SDL_Quit();
+    return false;
+  }
+  Print("sdl3: SDL_PROP_WINDOW_WIN32_HWND_POINTER", true);
+
+  bool ok = false;
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+  do
+  {
+    VkWin32SurfaceCreateInfoKHR sci = {};
+    sci.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    sci.hinstance = GetModuleHandleA(nullptr);
+    sci.hwnd = hwnd;
+    if (vkp::CreateWin32SurfaceKHR(instance, &sci, nullptr, &surface) != VK_SUCCESS)
+    {
+      Print("sdl3: vkCreateWin32SurfaceKHR(HWND SDL)", false);
+      break;
+    }
+    Print("sdl3: VkSurfaceKHR из HWND SDL", true);
+
+    VkBool32 supported = VK_FALSE;
+    vkp::GetPhysicalDeviceSurfaceSupportKHR(phys, queueFamily, surface, &supported);
+    if (!supported)
+    {
+      Print("sdl3: surface supported", false);
+      break;
+    }
+    Print("sdl3: vkGetPhysicalDeviceSurfaceSupportKHR", true);
+
+    VkSurfaceCapabilitiesKHR caps = {};
+    vkp::GetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &caps);
+    uint32_t fmtCount = 0;
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, nullptr);
+    VkSurfaceFormatKHR fmts[16] = {};
+    if (fmtCount > 16) fmtCount = 16;
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, fmts);
+    if (!fmtCount)
+    {
+      Print("sdl3: surface formats", false);
+      break;
+    }
+    VkSurfaceFormatKHR chosen = fmts[0];
+    for (uint32_t i = 0; i < fmtCount; ++i)
+      if (fmts[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
+          fmts[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+      {
+        chosen = fmts[i];
+        break;
+      }
+
+    uint32_t width = caps.currentExtent.width != 0xFFFFFFFFu ? caps.currentExtent.width : (uint32_t)bw;
+    uint32_t height = caps.currentExtent.height != 0xFFFFFFFFu ? caps.currentExtent.height : (uint32_t)bh;
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (caps.maxImageCount && imageCount > caps.maxImageCount) imageCount = caps.maxImageCount;
+
+    VkSwapchainCreateInfoKHR swci = {};
+    swci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swci.surface = surface;
+    swci.minImageCount = imageCount;
+    swci.imageFormat = chosen.format;
+    swci.imageColorSpace = chosen.colorSpace;
+    swci.imageExtent = { width, height };
+    swci.imageArrayLayers = 1;
+    swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                      VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swci.preTransform = caps.currentTransform;
+    swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swci.clipped = VK_TRUE;
+
+    if (vkp::CreateSwapchainKHR(device, &swci, nullptr, &swapchain) != VK_SUCCESS)
+    {
+      Print("sdl3: vkCreateSwapchainKHR", false);
+      break;
+    }
+    uint32_t imgCount = 0;
+    vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, nullptr);
+    snprintf(info, sizeof(info), "%ux%u, картинок %u", width, height, imgCount);
+    Print("sdl3: VkSwapchainKHR", true, info);
+
+    std::vector<VkImage> images(imgCount);
+    vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, images.data());
+    nvrhi::TextureHandle back = dev->createHandleForNativeTexture(
+        nvrhi::ObjectTypes::VK_Image, nvrhi::Object(images[0]),
+        nvrhi::TextureDesc()
+            .setDimension(nvrhi::TextureDimension::Texture2D)
+            .setFormat(nvrhi::Format::SBGRA8_UNORM)
+            .setWidth(width).setHeight(height)
+            .setIsRenderTarget(true)
+            .setInitialState(nvrhi::ResourceStates::RenderTarget)
+            .setKeepInitialState(true)
+            .setDebugName("sdl3 back"));
+    if (!back)
+    {
+      Print("sdl3: createHandleForNativeTexture(бэк-буфер SDL)", false);
+      break;
+    }
+    Print("sdl3: NVRHI принял бэк-буфер swapchain'а", true);
+    ok = true;
+  } while (false);
+
+  if (swapchain != VK_NULL_HANDLE) vkp::DestroySwapchainKHR(device, swapchain, nullptr);
+  if (surface != VK_NULL_HANDLE) vkp::DestroySurfaceKHR(instance, surface, nullptr);
+  SDL_DestroyWindow(win);
+  SDL_PumpEvents();
+  SDL_Quit();
+  return ok;
+}
+#endif
+
 // ---------------------------------------------------------------- Vulkan probe
 
 #ifdef _WIN32
@@ -1333,8 +1867,12 @@ static bool ProbeVulkan()
 
     SmokeRender(nvrhiDevice);
     SmokeShaderPipeline(nvrhiDevice, instance, device);
+    ProbeShd2(nvrhiDevice);
 #ifdef _WIN32
     ProbeWin32Swapchain(nvrhiDevice, instance, phys, device, queue, graphicsFamily);
+#ifdef PW_WITH_SDL3
+    ProbeSdl3Window(nvrhiDevice, instance, phys, device, queue, graphicsFamily);
+#endif
 #endif
   }
 
