@@ -4342,8 +4342,9 @@ SM3-слоя (правка касается только SPIR-V).
 `++d.texMissing` стоял вне `else` — счётчик показывал «промах» даже при успешной
 привязке (первый прогон дал «промахов текстур 1» при корректной текстуре).
 
-Не закрыто (очередь шага 13, по актуальному списку заглушек — 6: `DrawIndexedUP`,
-`DrawUP`, `GetRenderTargetData`, `ColorFill`, `StretchRect`, `GetRenderTarget`):
+Не закрыто (очередь шага 13; список заглушек `NVRHI_STUB_LIST` пуст с шага 13.3,
+прежние 6: `DrawIndexedUP`, `DrawUP`, `GetRenderTargetData`, `ColorFill`,
+`StretchRect`, `GetRenderTarget` — закрыты 13.3):
 (1) **перевести вызовы клиента** с COM на `LockTexture2D/UnlockTexture2D` —
 **закрыто шагом 13.2** (остатки COM перечислены в секции 13.2: учёт ресурсов
 `DxResourcesControl`, заполнение mip'ов в `TextureManager` при загрузке DDS,
@@ -4352,10 +4353,12 @@ SM3-слоя (правка касается только SPIR-V).
 (3) состояние сэмплера в seam (`GetSamplerShadowHash` из шага 8) — сейчас везде
 линейный/wrap; (4) SSBO в наборе 1 (per-instance данные: seam несёт их как вершинный
 буфер, SPIR-V ждёт `StructuredBuffer`); (5) `DrawUP/DrawIndexedUP` (PostFX) и
-группа surface-операций; (6) ключ пайплайна из шага 8 вместо
-`(vs,ps,layout,rt,ds,prim)`; (7) диапазон загрузки UBO из `ConstBlock::TakeDirty()`
-вместо 4 КБ на стадию; (8) шаг потока в кэше раскладки (Vulkan зашивает stride в
-раскладку → второй VB с другим шагом получит чужую молча).
+группа surface-операций — **закрыто 13.3**; (6) ключ пайплайна из шага 8 вместо
+`(vs,ps,layout,rt,ds,prim)` — частично 13.3 (в ключ вошла подпись шагов потоков,
+само состояние из `NotePipeline` ещё не участвует); (7) диапазон загрузки UBO из
+`ConstBlock::TakeDirty()` вместо 4 КБ на стадию; (8) шаг потока в кэше раскладки
+(Vulkan зашивает stride в раскладку → второй VB с другим шагом получит чужую
+молча) — **закрыто 13.3** (`ilCache` по (раскладка, подпись шагов)).
 
 ### Сделано (шаг 13.2: текстурный контур клиента убран из COM — 2026-10-15, `9a717014f`; код и доки легли одним коммитом)
 
@@ -4412,3 +4415,75 @@ tiny10 (`2026.10.15-19.17.38`, откат `PW_Game.exe.bak-2026-10-15-132`): log
 `renderresourcemanager.cpp:316,329`, `StaticMesh.cpp:390,496`,
 `TextureManager.cpp:188,194` (заполнение mip-уровней при загрузке DDS),
 `Texture2D::GetSurface(level)`.
+
+### Сделано (шаг 13.3: последние шесть заглушек Vulkan-бэкенда закрыты — 2026-10-15, `bb8224a72`)
+
+`NVRHI_STUB_LIST` пуст: `DrawUP`, `DrawIndexedUP`, `GetRenderTarget`,
+`GetRenderTargetData`, `ColorFill`, `StretchRect` реализованы; при всех тестах
+`unsupported=0` (счётчик незакрытых вызовов больше не растёт).
+
+**Вывод из приведённой памяти.** D3D9 умеет рисовать прямо из памяти вызывающего
+(`DrawPrimitiveUP`), Vulkan — нет, поэтому кольцо: VB 4 МБ и IB 1 МБ
+(`RegisterUpRing`, регистрируются как обычные `BufferObj`, чтобы общий путь
+`DrawImpl` не ветвился), `writeBuffer` со смещением, `ReserveUp` выравнивает по 16
+и при нехватке хвоста возвращает «сброс с нуля» — перед сбросом обязателен
+`FlushRecording()` + `waitForIdle()`, иначе запись затрёт данные, которые ещё
+исполняющийся командный список. Индексы обходятся за `maxIdx`: размер приведённого
+VB D3D9 тоже не знает (в seam-слоте `indexCount` лежит число индексов,
+`smartrenderer.cpp:638`), а в Vulkan выход за конец буфера — UB, а не «терпимо».
+`DrawImpl` получил 6-й параметр `explicitVtx` (для UP-батов число вершин ≠
+число примитивов).
+
+**Поверхности.** `GetRenderTarget` — реестр `rtSlot[]` (раньше `SetRenderTarget`
+делал `(void)index`), для слота 0 без записи возвращается бэк-буфер. БЛОКЕР шага
+13.4: контракт seam'а — владеющая ручка, а клиент хранит их в COM-умных указателях
+(`renderer.cpp:301 pDeviceColorSurface.Attach(...)`), т.е. позже вызовет `Release()`
+не на COM. `GetRenderTargetData` — staging → CPU-зеркало поверхности назначения
+(дальше клиент читает её через `LockSurface`, это путь снимка экрана). `ColorFill` —
+`clearTextureFloat`. `StretchRect` — только без скейла (`copyTexture` с
+`TextureSlice`); со скейлом нужен блит-пайплайн с фильтром, в живом клиенте таких
+вызовов нет (`renderer.cpp:955`, `rendersurface.cpp:129` — пустые прямоугольники,
+цепочка mip ушла в `D3D9Backend::GenerateMipmaps`), поэтому оставлен явный отказ
+с `VkNote`, а не тихая деградация.
+
+**Шаг потока в кэше раскладки (пункт 8 очереди).** В Vulkan шаг потока зашит в
+раскладку (`Vendor/NVRHI/src/vulkan/vulkan-shader.cpp`: `bindingMap[bufferIndex] =
+{binding=bufferIndex, stride=elementStride, …}`), поэтому два VB с разными шагами
+при одной раскладке получали чужую молча. Реализовано: `StrideSignature` (FNV-64 по
+`vbStride[0..7]`, `instStride`, `instSlot`; смещения не входят — они относятся к
+привязке), `ilCache` по (раскладка, подпись) со сбросом при >512, подпись входит в
+ключ пайплайна (`PipeObj::lsig`). Замер: `раскладок построено=3 (кэш 3)` при трёх
+тестах — дедуп работает.
+
+**Тест `RunSurfaceOpsTest`** (`PW_VK_DIP` стал маской: 1 геометрия, 2 текстура,
+4 поверхности/UP; хук `renderer.cpp`, лог `Renderer: PW_VK_DIP_SURF`):
+`GetRenderTarget(0).p == rt.p`, `ColorFill(0xFF00FF00)` → 16384/16384 зелёных,
+`DrawUP(TRIANGLELIST, 1, …, stride 12)` → 4096/16384 (ровно четверть кадра 128×128,
+правая половина пуста), `StretchRect(rt→rt2)` → 16384/16384 совпало побайтово,
+`GetRenderTargetData(rt→plain)` + `LockSurface(plain)` → те же 4096.
+
+Дефект, вскрытый первым прогоном теста: `hr=0x00000000`, 0 нарисованных пикселей
+при исправных `ColorFill`/`StretchRect`. Причина: у только что созданной
+поверхности глубины содержимое не определено, а `depthFunc=Less` при случайном
+значении < 0.5 отсекает геометрию молча — тест (и любой будущий проход) обязан
+явно чистить глубину, а не только цвет.
+
+Гейты. Wine (`2026.10.15-22.18.24`, exe 15 705 600 Б, RTX 3060, `PW_VK_DIP=7`):
+`DIP: пиксели на месте — OK`, `TexDIP: текстура доехала — OK`,
+`SurfOps: поверхности и UP-вывод на месте — OK`, `VkUp: UP-вывод=1
+колец-сбросов=0 раскладок построено=3 (кэш 3)`, `VkRes: буферы=3 шейдеры=6
+раскладки=3 пайплайны=3/3 вывод=3 загруз=10`, `unsupported=0`, `VkMsg` 0,
+`mapload: all map objects loaded` 1. Регресс D3D9 на tiny10 (`2026.10.15-20.20.41`,
+откат `PW_Game.exe.bak-2026-10-15-133`): login 1, `all map objects loaded` 1,
+`ShaderContainer` 15 / `ShaderTarget` 58, «нужен рантайм-компилятор» 0,
+`CRC32 mismatch` 0, `round-trip` 0; кадр против `refs/stage3-shd2-2026-10-15/` —
+**diff 4,70%, грубых 0,60%** при шуме анимации того же прогона 2,09% (сетка —
+кластеры у юнита/портала, полос нет).
+
+Остаток шага 13: (3) состояния сэмплеров в seam, (4) SSBO в наборе 1 из
+`SetInstanceSource`, (6) ключ пайплайна из шага 8 (`NotePipeline`/
+`GetRenderStateShadowHash`), (7) загрузка UBO диапазоном `ConstBlock::TakeDirty()`;
+плюс перевод владения COM-ручками (197 упоминаний `IDirect3D*` вне бэкендов —
+`smartrenderer.cpp` 21, `dxutils.h` 18, `TextureManager.cpp` 18,
+`DxResourcesControl.cpp` 18, `renderer.cpp` 16) — без этого «переворот» бэкенда
+(шаг 13.4) рвётся на `Release()` и на `GetDesc` в учёте ресурсов.
