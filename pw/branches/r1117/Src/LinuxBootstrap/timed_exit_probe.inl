@@ -72,9 +72,78 @@ bool RunLinuxTimedExitProbe()
 			"repeated polling cannot extend the shutdown deadline");
 		check(PollLinuxTimedExit(settings, runtime, 9, started) == LinuxTimedExit::TimedOut,
 			"a stalled consumer fails at the bounded drain deadline");
+		LinuxSelectedMapPreview map;
+		check(ServiceLinuxTimedExit(settings, map, runtime, 9, started) == LinuxTimedExit::TimedOut
+			&& runtime.transceiverStepCalls == 0,
+			"drain service does not drive a stalled consumer after its unchanged deadline");
 		runtime.transceiverWorldStep = runtime.localScheduler->GetLinuxInputFinishStep();
 		check(PollLinuxTimedExit(settings, runtime, 9, started) == LinuxTimedExit::Complete,
 			"completion at the deadline wins over timeout");
+	}
+	// Use the production driver, not a separately hand-stepped scheduler/transceiver pair.
+	for (bool interactive : {false, true}) for (int prefix : {0, 4, 9, 32})
+	{
+		LinuxClientLaunchSettings settings;
+		settings.runSeconds = 3;
+		settings.bootstrapInteractiveWorld = interactive;
+		LinuxSelectedMapPreview map;
+		LinuxBootstrapScreenRuntime runtime;
+		runtime.localScheduler = new Game::LocalCmdScheduler(1984);
+		runtime.localScheduler->StartGame();
+		runtime.transceiver = new NCore::Transceiver(runtime.localScheduler, DEFAULT_GAME_STEP_LENGTH, false);
+		CObj<LinuxBootstrapReplayProbeWorld> world = new LinuxBootstrapReplayProbeWorld;
+		runtime.transceiverWorld = world;
+		runtime.transceiver->SetWorld(world);
+		runtime.transceiverWorldAttached = true;
+		runtime.transceiverWorldStep = runtime.transceiver->GetWorldStep();
+		runtime.mapLoadingJobCompleted = true;
+		CObj<NCore::PackedWorldCommand> command = new NCore::PackedWorldCommand;
+		for (int i = 0; i < prefix; ++i)
+		{
+			runtime.localScheduler->SendMessage(command, true);
+			DriveLinuxBootstrapGameScheduler(settings, map, &runtime, i * .1);
+		}
+		runtime.localScheduler->SendMessage(command, true);
+		runtime.localScheduler->QueueLinuxClientStatus(1);
+		double started = -1;
+		const auto beforeService = runtime.transceiverStepCalls;
+		check(ServiceLinuxTimedExit(settings, map, runtime, 2.9, started) == LinuxTimedExit::Continue
+			&& runtime.transceiverStepCalls == beforeService && started < 0,
+			"ordinary frames retain their original driver and presentation path before run expiry");
+		check(PollLinuxTimedExit(settings, runtime, 3, started) == LinuxTimedExit::Draining,
+			"production driver seals accepted pending input before shutdown");
+		const int boundary = runtime.localScheduler->GetLinuxInputFinishStep();
+		for (int i = 0; i < 50 && runtime.transceiverWorldStep < boundary; ++i)
+		{
+			runtime.localScheduler->SendMessage(command, true);
+			runtime.localScheduler->QueueLinuxClientStatus(2);
+			const auto calls = runtime.transceiverStepCalls;
+			const auto state = ServiceLinuxTimedExit(settings, map, runtime, 3.01 + i * .016, started,
+				prefix * .1 + .01 + i * .016);
+			check((state == LinuxTimedExit::Draining || state == LinuxTimedExit::Complete)
+				&& runtime.transceiverStepCalls - calls <= 3,
+				"sealed draining keeps wall pacing and a three-tick call bound without another render");
+			if (interactive && i == 0)
+			{
+				const auto after = runtime.transceiverStepCalls;
+				ServiceLinuxTimedExit(settings, map, runtime, 3.01, started, prefix * .1 + .01);
+				check(runtime.transceiverStepCalls == after, "repeated shutdown service at one clock instant cannot invent simulation ticks");
+			}
+		}
+		check(runtime.transceiverWorldStep == boundary && world->GetStepNumber() == boundary,
+			"production driver drains the accepted tail within its unchanged grace period");
+		check(world->GetCommands() == static_cast<size_t>(prefix + 1) && world->GetStatusUpdates() == 1,
+			"production driver executes every sealed command and status exactly once");
+		check(!interactive || (runtime.transceiverWorldStep >= 0
+			&& runtime.interactiveClock.ticks >= static_cast<size_t>(runtime.transceiverWorldStep)
+			&& runtime.interactiveClock.ticks - runtime.transceiverWorldStep <= 3),
+			"interactive tail remains bounded by real clock ticks without counter rewriting");
+		check(PollLinuxTimedExit(settings, runtime, 3.5, started) == LinuxTimedExit::Complete,
+			"production driver reaches the existing timed exit barrier");
+		const auto calls = runtime.transceiverStepCalls;
+		check(ServiceLinuxTimedExit(settings, map, runtime, 9, started) == LinuxTimedExit::Complete
+			&& runtime.transceiverStepCalls == calls,
+			"completed service never advances beyond the sealed simulation boundary");
 	}
 	for (int mode = 0; mode < 5; ++mode)
 	{

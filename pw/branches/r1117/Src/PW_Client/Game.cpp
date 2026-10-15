@@ -42163,10 +42163,12 @@ bool HandleLinuxReplayInputControls(
   LinuxBootstrapScreenRuntime* runtime
 );
 
+/** Drive original scheduler/transceiver pacing; explicit monotonic time permits deterministic probes. */
 void DriveLinuxBootstrapGameScheduler(
   const LinuxClientLaunchSettings& settings,
   const LinuxSelectedMapPreview& selectedMapPreview,
-  LinuxBootstrapScreenRuntime* runtime
+  LinuxBootstrapScreenRuntime* runtime,
+	double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count()
 )
 {
   if (!runtime || !runtime->localScheduler)
@@ -42184,7 +42186,6 @@ void DriveLinuxBootstrapGameScheduler(
     if (maxBootstrapTransceiverSteps < 160)
       maxBootstrapTransceiverSteps = 160;
   }
-	const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 	const size_t maxBootstrapTransceiverStepsPerDrive = interactive ?
 		runtime->interactiveClock.Advance(now, runtime->mapLoadingJobCompleted) : (finiteBootstrapRun ? 3 : 1);
 	// Interactive scheduling occurs only with a matching consumer tick, including zero-tick frames.
@@ -45810,7 +45811,6 @@ bool HandleLinuxReplayInputControls(
 enum class LinuxTimedExit { Continue, Draining, Complete, TimedOut };
 
 /** Seal timed local input once and wait for its existing scheduler/replay barrier.
- * Returning Draining leaves stepping, rendering and input rejection in the normal loop.
  * Start the bounded grace period at sealing, including when a frame missed run expiry.
  */
 LinuxTimedExit PollLinuxTimedExit(const LinuxClientLaunchSettings& settings,
@@ -45826,6 +45826,21 @@ LinuxTimedExit PollLinuxTimedExit(const LinuxClientLaunchSettings& settings,
 		return LinuxTimedExit::Complete;
 	if (drainStarted < 0.0) drainStarted = elapsedSeconds;
 	return elapsedSeconds - drainStarted >= 1.0 ? LinuxTimedExit::TimedOut : LinuxTimedExit::Draining;
+}
+
+/** Service only accepted input during timed shutdown, outside expensive presentation work.
+ * Each call keeps the original driver's bounded tick budget and real world/replay counters.
+ * The caller polls wall time between calls; no new input or deadline extension is admitted.
+ */
+LinuxTimedExit ServiceLinuxTimedExit(const LinuxClientLaunchSettings& settings,
+	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime& runtime,
+	double elapsedSeconds, double& drainStarted,
+	double schedulerNow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count())
+{
+	const auto state = PollLinuxTimedExit(settings, runtime, elapsedSeconds, drainStarted);
+	if (state != LinuxTimedExit::Draining) return state;
+	DriveLinuxBootstrapGameScheduler(settings, map, &runtime, schedulerNow);
+	return PollLinuxTimedExit(settings, runtime, elapsedSeconds, drainStarted);
 }
 
 #include "LinuxBootstrap/timed_exit_probe.inl"
@@ -73102,6 +73117,24 @@ int main(int argc, char** argv)
 		using ProfileClock = std::chrono::steady_clock;
 		const auto inputStart = ProfileClock::now();
     NMainFrame::PumpMessages();
+		NHPTimer::STime now = 0;
+		NHPTimer::GetTime(now);
+		const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
+		const auto timedExit = ServiceLinuxTimedExit(settings, selectedMapPreview, screenRuntime,
+			elapsedSeconds, timedDrainStarted);
+		if (timedExit == LinuxTimedExit::Complete) break;
+		if (timedExit == LinuxTimedExit::TimedOut)
+		{
+			fprintf(stderr, "Local scheduler drain timed out: world=%d barrier=%d\n",
+				screenRuntime.transceiverWorldStep, screenRuntime.localScheduler->GetLinuxInputFinishStep());
+			timedDrainFailed = true;
+			break;
+		}
+		if (timedExit == LinuxTimedExit::Draining)
+		{
+			usleep(16 * 1000);
+			continue;
+		}
 		// Input layouts and world picking must use the same live viewport as drawing.
 		XWindowAttributes viewport = {};
 		if (overlay.ready && XGetWindowAttributes(overlay.display, overlay.window, &viewport) &&
@@ -73111,9 +73144,6 @@ int main(int argc, char** argv)
 			settings.height = viewport.height;
 		}
     UpdateInputState(&inputState);
-    NHPTimer::STime now = 0;
-    NHPTimer::GetTime(now);
-    const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
     const size_t firstSyntheticMessage = inputState.rawMessages.size();
     while (bootstrapClickNextIndex < settings.bootstrapClickScript.size() &&
            elapsedSeconds >= bootstrapClickNextTime)
@@ -73418,19 +73448,6 @@ int main(int argc, char** argv)
 		screenRuntime.profileUpdateMs += duration(updateStart, assetsStart);
 		screenRuntime.profileAssetsMs += duration(assetsStart, drawStart);
 		screenRuntime.profileDrawMs += duration(drawStart, ProfileClock::now());
-		// Asset work and drawing may outlast the frame's initial timestamp.
-		NHPTimer::GetTime(now);
-		const auto timedExit = PollLinuxTimedExit(settings, screenRuntime,
-			NHPTimer::Time2Seconds(now - start), timedDrainStarted);
-		if (timedExit == LinuxTimedExit::Complete) break;
-		if (timedExit == LinuxTimedExit::TimedOut)
-		{
-			fprintf(stderr, "Local scheduler drain timed out: world=%d barrier=%d\n",
-				screenRuntime.transceiverWorldStep, screenRuntime.localScheduler->GetLinuxInputFinishStep());
-			timedDrainFailed = true;
-			break;
-		}
-
     usleep(16 * 1000);
   }
 
