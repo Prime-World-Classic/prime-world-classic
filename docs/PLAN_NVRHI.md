@@ -2755,6 +2755,14 @@ md5 `77c15e7c…`), прогон <45 с. Значит **среда шага 11 �
 `-T vs_5_0` DXC поднимает до SM6 (`Promoting older shader model profile to 6.0
 version`) — настоящего SM5 DXBC этим компилятором нет, для SM5 нужен `fxc`.
 
+Остаток (не закрыт): в живом SPIR-V **ни один** из 58 блобов VS не использует
+`BuiltIn InstanceIndex` (замер `ProbeShd2`, 2026-10-15) — индекс экземпляса
+остаётся пользовательским атрибутом потока (`BLENDINDICES0`), потому что
+лексический переход на `SV_InstanceID` (макрос `INSTANCE_INDEX_DECL`) отложен
+в драйвер компиляции (п.4). Без него на Vulkan инстансные вызовы будут читать
+атрибут из потока данных экземпляра — это тот же механизм, что и в D3D9, но
+`SV_InstanceID` нужен для путей, где поток экземпляра не подаётся вовсе.
+
 **6. Ориентация и Y.** NVRHI отдаёт viewport с отрицательной высотой →
 `frontCounterClockwise = true` во **всех** пайплайнах (замер B0: `b0cull`
 3072 пикселя против 0 без этого флага). Это единственное глобальное правило
@@ -2934,6 +2942,24 @@ float4** (Vulkan требует, `VUID-FragCoord-FragCoord-04212`).
    центр вместо правого верхнего квадранта). DXC-флаг `-Zpr` оставляет память
    строчной — и `mul(v, M)` совпадает с D3D9 пиксель в пиксель. `-Zpr` зашит в
    генератор (`gen_b0_shader.py`).
+
+6. **Клиповая позиция через out-параметр (ловушка корпуса, снята 2026-10-15).**
+   28 материалов из 49 отдают позицию так:
+   `VS_OUT MainPass_VSMain( VS_IN In, out float4 ClipSpacePosition: POSITION )`
+   (`BasicMaterial.hlsl:147`, `AOEMaterial.hlsl:24`, `ParticleFXMaterial.hlsl:77`,
+   `WaterDummyMaterial.hlsl`, `SkyMaterial.hlsl:29`, `RoadMaterial.hlsl:27`, …).
+   В SM3 это валидная семантика, в SM6 системная семантика — `SV_POSITION`, а
+   `POSITION` DXC трактует как пользовательскую: **gl_Position не пишется
+   вообще** (замер SPIR-V: ни одной `BuiltIn`-декорации, `OpEntryPoint
+   interface = (2,3,4)` — только пользовательские переменные). Пайплайн при
+   этом создаётся без ошибки, вершина уходит в неопределённую позицию — то
+   есть дефект немой. Прослойка `tools/spirv_probe/shim.py` в режиме `vs`
+   переписывает `out <тип> <имя> : POSITION` → `: SV_POSITION`.
+   Замер по живому корпусу (`ProbeShd2`, счётчик `BuiltIn`): до починки
+   **41 пара из 58** без записи `Position`, после — **0**. Материалы, которые
+   возвращают структуру с `: POSITION` (`UIBaseMaterial`, `UIFlashMaterial`,
+   `UIFontMaterial`), попадали под прежнее правило `vs_ret_structs` и были
+   корректны.
 
 Что B0 **не** проверял (дальше по этапу 3): sampler-state на слот (в пробе один
 сэмплер на всё), mipmap-фильтрацию и offset-формы `tex2D`, MRT
@@ -3775,6 +3801,48 @@ python3 tools/shader_pile/mkpile.py build --root /tmp/packdir \
 хостовым `mkpile.py`); `schtasks /run` по уже идущей задаче даёт «is currently
 running» и прогон не стартует — перед запуском нужен `taskkill /f /im
 PW_Game.exe` и проверка `schtasks /query … /fo LIST | findstr Status`.
+
+### Сделано (макет descriptor set в прослойке + починка клиповой позиции — 2026-10-15)
+
+Два закрывающих шага перед спайком `NvrhiBackend`.
+
+**Макет сетов (п.1).** `tools/spirv_probe/shim.py` — режим `set_layout`:
+`SPACE_TEXTURES = 2`, `SPACE_SAMPLERS = 3`, `SPACE_BUFFER = 1`; явные
+`register(tN/sN/bN/uN)` получают `, spaceN` (HLSL `space` == descriptor set),
+`c`-регистры снимаются в авто-`$Globals` (set 0), ресурсам без `register`
+номер и set назначает прослойка: текстуры `t space2`, `SamplerState`
+`s space3` (`s0` — общий `g_smp`), `StructuredBuffer`/`ByteAddressBuffer` →
+`t space1` (DXC требует класс `t` для `StructuredBuffer`).
+`dxcdrv.ShimTree(set_layout=...)`, `mkshd2` пишет корпус с макетом по умолчанию
+(`--flat-sets` — для сравнения), `shader_budget --set-layout` + печать раскладки.
+
+Замер корпуса (`--pins 1 --define PW_MODERN_ARRAYS=1 --set-layout`, 70/70
+единицы): наборы ровно `0 ($Globals UBO) / 1 (SSBO) / 2 (текстуры, binding
+до 6) / 3 (сэмплер 0)`; SSBO 11 буферов; единиц с неконстантной индексацией
+членов UBO — 0. `ProbeShd2` на новом корпусе (58 живых пар, RTX 3060 через
+Wine): **наборов 4, 116/116 шейдеров, 58/58 пайплайнов с четырьмя
+`BindingLayout`** (`setRegisterSpaceAndDescriptorSet(N)`), максимум binding
+в сете 2 = 7 (`RoadMaterial` ps — 7 текстур). Типичная строка:
+`#13 vs[5060 Б]: 0:0=ubo 1:0=ssbo  ps[3088 Б]: 3:0=smp 0:0=ubo 2:0=tex`.
+Размер корпуса 3 027 332 → 3 006 856 → **3 006 044 Б** (макет, затем починка
+позиции).
+
+**Починка клиповой позиции (п.6 спайка B0).** 28 материалов из 49 отдают
+позицию `out float4 … : POSITION`; в SM6 это пользовательская семантика, и
+DXC **не пишет gl_Position** (в SPIR-V нет ни одной `BuiltIn`-декорации) —
+пайплайн создаётся, вершина уходит в неопределённость. Прослойка в режиме
+`vs` переписывает такие out-параметры на `SV_POSITION`. Счётчик `BuiltIn` в
+`ProbeShd2`: до починки **41 пара из 58** без `Position`, после — **0**.
+
+**Остаток по инстансингу:** `VS с InstanceIndex = 0` во всём живом корпусе —
+переход на `SV_InstanceID` (лексика `INSTANCE_INDEX_DECL`) по-прежнему
+отложен в драйвер компиляции (п.4).
+
+Файлы: `tools/spirv_probe/shim.py`, `tools/shader_build/{dxcdrv.py,mkshd2.py}`,
+`tools/shader_budget/shader_budget.py`, `tools/nvrhi_probe/probe.cpp`
+(`SpvRes::builtIns/biPosition/biFragCoord/biInstanceIndex`, печать
+`BuiltIn: VS без Position N, …`). Коммиты `8a641c8ac` (макет) и следующий
+(починка позиции + счётчики).
 
 ### Сделано (шаг 11.1 + предварительный спайк шага 12: .shd v2 грузится в Vulkan, SDL3-окно под Wine — 2026-10-15)
 

@@ -163,6 +163,14 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     elif stage == "vs":
         src = re.sub(r"(\w+_VSMain\s*\([^)]*\))\s*:\s*COLOR\d*\b",
                      lambda m: m.group(1) + " : TEXCOORD190", src)
+        # 28 материалов из 49 отдают клиповую позицию out-параметром
+        # `out float4 PositionCS : POSITION`. В SM6 системная семантика —
+        # SV_POSITION; без подмены DXC считает POSITION пользовательской и
+        # gl_Position в SPIR-V не пишется вообще (замер: у OpEntryPoint в
+        # interface только пользовательские переменные, BuiltIn-декораций
+        # нет) — вершина уходит в неопределённую позицию.
+        src, n_outpos = re.subn(r"(out\s+\w+\s+\w+\s*:\s*)POSITION\b",
+                                lambda m: m.group(1) + "SV_POSITION", src)
     # Структура, которой возвращает себя PS-точка входа, — это выходы-мишени:
     # её COLORn обязаны стать SV_TARGETn (в SM6 иначе «invalid usage of
     # semantic in shader profile ps»). Остальные COLOR — обычные пользовательские
@@ -228,7 +236,7 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     stats = dict(samplers=n_samp, regs=n_reg, tex2D=n_t2, texCUBE=n_cube,
                  tex2Dlod=n_lod + n_lod_var + n_lod3, tex2Dproj=n_proj, position=n_pos,
                  color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface,
-                 regs_auto=n_auto)
+                 regs_auto=n_auto, out_position=n_outpos if stage == "vs" else 0)
     return (HEADER_SET if set_layout else HEADER) + src, stats, notes
 
 if __name__ == "__main__":

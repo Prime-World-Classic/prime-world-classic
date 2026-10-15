@@ -1166,6 +1166,11 @@ struct SpvRes
   struct Item { unsigned set, binding; Kind kind; unsigned storage, baseOp; };
   std::vector<Item> items;
   unsigned maxSet = 0, maxBinding = 0;
+  // BuiltIn-декорации (OpDecorate, decoration=11). Для VS важно наличие
+  // Position (BuiltIn 0): 28 материалов из 49 отдают клиповую позицию
+  // out-параметром с семантикой POSITION, и без подмены прослойки DXC
+  // пишет gl_Position в неопределённость (см. tools/spirv_probe/shim.py).
+  unsigned builtIns = 0, biPosition = 0, biFragCoord = 0, biInstanceIndex = 0;
   bool ok = false;
 };
 
@@ -1246,6 +1251,13 @@ static SpvRes ScanSpv(const unsigned char* p, size_t bytes)
       else if (dec == 34) { growU(decSet, target, 0xffffffffu); decSet[target] = val; }
       else if (dec == 2) { growB(structBlock, target, 0); structBlock[target] = 1; }
       else if (dec == 3) { growB(structBufferBlock, target, 0); structBufferBlock[target] = 1; }
+      else if (dec == 11 && wc >= 4)     // BuiltIn
+      {
+        ++r.builtIns;
+        if (val == 0) ++r.biPosition;             // Position (gl_Position)
+        else if (val == 15) ++r.biFragCoord;      // FragCoord (SV_Position в PS)
+        else if (val == 42 || val == 43) ++r.biInstanceIndex;  // InstanceIndex
+      }
     }
     i += wc;
   }
@@ -1350,6 +1362,7 @@ static void ProbeShd2(nvrhi::IDevice* dev)
 
   unsigned createdShaders = 0, createdPipes = 0, tried = 0, withLayout = 0, withLayoutOk = 0;
   unsigned globalMaxSet = 0, globalMaxBinding = 0, kindCount[5] = { 0, 0, 0, 0, 0 };
+  unsigned vsNoPosition = 0, psNoFragCoord = 0, vsWithInstanceIndex = 0;
 
   for (unsigned j = 0; j < sec->cnt; ++j)
   {
@@ -1375,9 +1388,13 @@ static void ProbeShd2(nvrhi::IDevice* dev)
       for (const SpvRes::Item& it : ps.items)
         printf(" %u:%u=%s", it.set, it.binding, SpvKindName(it.kind)),
               (it.kind == SpvRes::kOther ? printf("(st=%u,op=%u)", it.storage, it.baseOp) : 0);
-      printf("\n");
+      printf("  | bi: vs pos=%u inst=%u, ps frag=%u\n",
+             vs.biPosition, vs.biInstanceIndex, ps.biFragCoord);
     }
     for (const SpvRes::Item& it : ps.items) { kindCount[it.kind]++; }
+    if (!vs.biPosition) ++vsNoPosition;
+    if (!ps.biFragCoord) ++psNoFragCoord;
+    if (vs.biInstanceIndex) ++vsWithInstanceIndex;
     if (vs.maxSet > globalMaxSet) globalMaxSet = vs.maxSet;
     if (ps.maxSet > globalMaxSet) globalMaxSet = ps.maxSet;
     if (vs.maxBinding > globalMaxBinding) globalMaxBinding = vs.maxBinding;
@@ -1468,6 +1485,10 @@ static void ProbeShd2(nvrhi::IDevice* dev)
          globalMaxSet + 1, globalMaxBinding, kindCount[SpvRes::kSampler],
          kindCount[SpvRes::kTexture], kindCount[SpvRes::kCbuf], kindCount[SpvRes::kSsbo],
          kindCount[SpvRes::kOther]);
+  // Без записи gl_Position вершина уходит в неопределённую позицию — это не
+  // ошибка создания пайплайна, поэтому считается отдельно (ловушка шага 13).
+  printf("       BuiltIn: VS без Position %u, PS без FragCoord %u, VS с InstanceIndex %u\n",
+         vsNoPosition, psNoFragCoord, vsWithInstanceIndex);
 }
 
 #ifdef PW_WITH_SDL3
