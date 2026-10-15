@@ -2302,15 +2302,23 @@ subclass `WndProc`, `SDL_main` не используется.
   depth-текстуры не создаются (`tools/dsm_probe`, §2.15 п.9) — путь теней и
   половина caps стендом не покрываются. Железо есть на хосте (RTX 3060, Linux,
   Vulkan 1.4), но клиент Windows-ный: нужен либо Windows-контур с NVIDIA,
-  либо запуск клиента под Wine на хосте. **Второй путь 2026-10-15 стал
-  заметно дешевле:** Vulkan-смоук под Wine на RTX 3060 проходит целиком
-  (риск 5), осталось проверить, что сам клиент под Wine запускается — проба
-  дешёвая (раскладка каталогов + wined3d), но её никто не делал. Это решение
-  пользователя.
+  либо запуск клиента под Wine на хосте. **Решение пользователя принято
+  2026-10-15: вариант «клиент под Wine на хосте»; проба сделана в тот же
+  день** — клиент под Wine доезжает до боя, но 3D-сцена под wined3d рисуется
+  чёрной (wined3d идёт через OpenGL). Для Vulkan-пути это не мешает:
+  `NvrhiBackend` говорит с Vulkan напрямую, а Vulkan-смоук под Wine на
+  RTX 3060 проходит целиком (риск 5). Процедура и цифры — §6 «Проба: клиент
+  под Wine на хосте»; дефект чёрной сцены — открытый вопрос.
 - **Порядок**: сначала `NvrhiBackend` + Vulkan и переключение по env, или
   сначала переделка констант/инстансинга (п.2, п.5) на D3D9? Замеры говорят в
   пользу второго: обе правки проверяемы на текущем стенде и без них бэкенд
-  придётся переписывать.
+  придётся переписывать. **Предложение агента (2026-10-15, решение за
+  пользователем):** вторым — но по частям: сначала узкий кусок, который меняет
+  лексику шва и корпус шейдеров (инстансинг шаг 2 + вынос динамических массивов
+  из `c`-регистров в SSBO-форму + мультиблоб `.shd` и DXC-драйвер, всё
+  проверяемо на tiny10), затем `NvrhiBackend` уже под готовый корпус; иначе
+  каждая правка корпуса требует повторной валидации бэкенда, а layout из п.1
+  предполагает уже сделанное разделение UBO/SSBO.
 - **44 PostFX-шейдера**: переписать на HLSL (оценка: 1 смена) или оставить
   D3D9-путь для PostFX до этапа 4 (тогда D3D9 не удаляется целиком).
 
@@ -2977,6 +2985,57 @@ diff/gross по поканальной дельте, полосы UI, сетка
 `tools/render_shot/refs/stage2-2026-10-15/{pw_auto_bb_3000.png,
 pw_auto_crop_3000.png}` — эталон конца этапа 2 (прогон `2026.10.15-04.36.54`).
 Полоса шума прогонов зафиксирована в `tools/render_shot/README.md`.
+
+### Сделано (проба: клиент под Wine на хосте — 2026-10-15, решение §3.z «GPU для тестов»)
+
+Цель пробы: дешёвый вариант тестовой GPU-среды этапа 3 (RTX 3060 на хосте,
+клиент Windows-ный). **Итог: клиент под Wine (`wine-10.0`, prefix `~/.wine-pw`)
+запускается и доезжает до боя**, но 3D-сцена рисуется чёрной.
+
+Процедура (повторяемая, каталог `PW/wine-client/`):
+
+- `Game/Bin` = наш `build/PW_Game.exe` + x64-DLL со стенда tiny10: `ACE.dll`,
+  `CensorDll.dll`, `d3dx9_43.dll` (x64, 2 401 112 Б), `fmodex64.dll`,
+  `fmod_event64.dll`, `IOTerabit.dll`, `steam_api64.dll`, `TProactor.dll`,
+  `zlib1.dll`.
+- `Game/Packs` = `data01..06.pile` (1,4 ГБ — есть **только** на tiny10, это
+  базовый дистрибутив, в `pwc-gitupdates*` их нет) + `epatch*.pile` /
+  `zpatch_fev.pile` из `UpdateRepos/pwc-gitupdates-test` + `zzzresult.pile`
+  (tiny10). `Game/Data` — из `pwc-gitupdates-test` (Audio, Localization).
+- `Game/Profiles` — **все 16 cfg с tiny10**: без `game.cfg` клиент доходит только
+  до `social.cfg` и завершается (молча, rc=0). В `default.cfg` обязательно
+  `gfx_fullscreen = 0` (иначе обрыв на том же месте) и явный `gfx_resolution`;
+  `setvar`-переопределения — в `Profiles/autoexec.cfg`.
+- запуск: cwd = `Game/Bin`, `DISPLAY=:97 WINEPREFIX=~/.wine-pw wine ./PW_Game.exe
+  protocol <url> -dumpUnitStats -dumpConfigPins`; в URL ip = **7f000001**
+  (стенд на той же машине), сессию создавать заново на каждый прогон
+  (`cli/session.js --ips 7f000001`). Логи — `~/Документы/My Games/Prime World
+  Classic/Session/Logs/<UTC>` (в prefix симлинк на `$HOME`); снимок —
+  `DISPLAY=:97 import -window root`.
+
+Что работает: `Got login reply. code=Success(5), uid=131` → `Entered lobby` →
+`Got lobby instance` → `Connected to game service` → `mapload: all map objects
+loaded` → `unitstats` (75 строк) → бой идёт. Импорт DLL полный: `d3d9.dll`
+builtin (wined3d), `d3dx9_43.dll` native, `GLU32.dll` builtin, `steam_api64.dll`
+native; при `WINEDEBUG=err+all` — **0 строк `err:`**.
+
+Что не работает: **3D-сцена чёрная** при полностью исправном 2D (UI, миникарта,
+имена, таймер). Замер причины: wined3d идёт через **OpenGL**, а не Vulkan —
+`fixme:d3d:wined3d_guess_card No card selector available for card vendor 0000
+(using GL_REN…)`; `ConfigPins: adapter="NVIDIA GeForce GTX 470"
+vendor=0x10de device=0x06cd driver=589845.861103 MaxVertexShaderConst=256
+IsNullRef=0 caps=0x7 pins=0` (матчер видит NVIDIA-подобное устройство и
+ненулевые `caps` — в отличие от tiny10 `caps=0x0`), `DepthFormat: D24S8`.
+Бисет `shadows / shadow_terrain / shadowPCF4_enable / bloomEnable / pfx_enable /
+waterrefl = 0` картинку не меняет → дело не в PostFX. Диагноз **не закрыт**;
+кандидаты: DXVK вместо wined3d (только как тестовая обвязка D3D9-эталона, в
+продукт DXVK не идёт — §2.15) или разбор wined3d/GLSL.
+
+Значение для этапа 3: дефект не блокирует Vulkan-путь — `NvrhiBackend` говорит с
+Vulkan напрямую, и смоук (`tools/nvrhi_probe`) под Wine на RTX 3060 проходит
+целиком. То есть «клиент под Wine на хосте» годится как стенд этапа 3 (реальный
+GPU, HW-тени, замеры), а D3D9-эталон на нём требует отдельной починки; пока
+D3D9-регресс остаётся на tiny10.
 
 ### Сознательные отклонения от «картинка не меняется»
 
