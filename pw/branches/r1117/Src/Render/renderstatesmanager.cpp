@@ -397,6 +397,43 @@ void RenderStatesManager::UpdateStats()
 }
 
 namespace {
+// FNV-1a: дешёвый и стабильный. Для замера числа уникальных ключей (~10^4 за
+// бой) вероятность ложного слияния пренебрежима — тот же аргумент, что и для
+// ключа пары шейдеров в smartrenderer.cpp.
+inline UINT64 StateHashMix(UINT64 h, UINT64 v) { h ^= v; return h * 0x100000001B3ull; }
+const UINT64 kStateHashSeed = 0xcbf29ce484222325ull;
+} // namespace
+
+// Хэши для замера ключа пайплайна (docs/PLAN_NVRHI.md, шаг 8).
+UINT64 RenderStatesManager::GetRenderStateShadowHash() const
+{
+  // Только известные записи: «неизвестно» в тени — не ноль, подставлять под
+  // него ноль значит занижать ключ.
+  UINT64 h = kStateHashSeed;
+  for (int i = 0; i < kRenderStateShadowSize; ++i)
+    if (stateShadowKnown[i])
+      h = StateHashMix(StateHashMix(h, (UINT64)i), stateShadow[i]);
+  return h;
+}
+
+UINT64 RenderStatesManager::GetSamplerShadowHash() const
+{
+  UINT64 h = kStateHashSeed;
+  for (unsigned i = 0; i < ARRAY_SIZE(lastSamplerState); ++i)
+    h = StateHashMix(StateHashMix(h, i), lastSamplerState[i].GetBitmask());
+  return h;
+}
+
+UINT64 RenderStatesManager::GetStencilShadowKey() const
+{
+  UINT64 h = kStateHashSeed;
+  h = StateHashMix(h, (UINT64)lastStencilState);
+  h = StateHashMix(h, lastStencilBits);
+  h = StateHashMix(h, lastStencilMask);
+  return h;
+}
+
+namespace {
 // Таблица только для консольной команды dump_states. Держим в ней ровно те
 // состояния, которые реально выставляет клиент (см. SetState /
 // SetStateDirect-вызовы); легаси-фикс-фунction (fog, material sources,

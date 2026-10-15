@@ -69,6 +69,15 @@ namespace
   // рендер-состояния). Вместе с парой (VS,PS) — полный ключ пайплайна.
   struct IdHash { size_t operator()(unsigned int _k) const { return size_t(_k); } };
   hash_set<unsigned int, IdHash> sortMap, sortMapTotal;
+
+  // Ключ пайплайна (шаг 8 очереди). Хэш, а не кортеж: для замера размера кэша
+  // важна только мощность множества, а при ~10^4 ключей ложные слияния 64-бит
+  // хэша пренебрежимы (~5e-12).
+  hash_set<UINT64, PairHash> pipeSemMap, pipeSemMapTotal, pipeRawMap, pipeRawMapTotal;
+  // Рисований за кадр: нужно для расчёта кольца uniform-буферов (шаг 7, §2.9 —
+  // цена перекачки констант на рисование) и для того, чтобы число ключей
+  // читалось как «переключений на кадр», а не абстракция.
+  unsigned pipeDrawsFrame = 0, pipeDrawsTotal = 0;
 }
 
 // Вызывается из Batch::Prepare() (см. Render/renderstats.h)
@@ -156,6 +165,15 @@ namespace
 
 static const unsigned int MAX_COLOR_RT = 8;
 static StaticArray<IDirect3DSurface9*,MAX_COLOR_RT> curColorSurface;
+
+// Форматы целей рисования. Нужны для ключа пайплайна (шаг 8 очереди,
+// docs/PLAN_NVRHI.md): на Vulkan формат RT/DS входит в объект пайплайна, и
+// без него число вариаций недооценено. Снимаются при назначении цели — это
+// редкая операция в отличие от рисования. Замечание: формат бэкбуфера сюда не
+// попадает (он ставится не через BindRenderTargetColor), но он постоянен,
+// поэтому на число уникальных ключей не влияет.
+static D3DFORMAT curColorSurfaceFormat[MAX_COLOR_RT] = { D3DFMT_UNKNOWN };
+static D3DFORMAT curDepthSurfaceFormat = D3DFMT_UNKNOWN;
 static DWORD curColorSurfaceWidth = 1, curColorSurfaceHeight = 1;
 static DWORD curDepthSurfaceWidth = 1, curDepthSurfaceHeight = 1;
 static IDirect3DSurface9* curDepthSurface( 0 );
@@ -349,6 +367,14 @@ void OnFrameStart()
       (int)pairMapTotal.size(), (int)pairMap.size(), (int)vsMapTotal.size(),
       (int)vsMap.size(), (int)psMapTotal.size(), (int)psMap.size(),
       (int)sortMapTotal.size(), (int)sortMap.size() );
+    // Ключ пайплайна (шаг 8): sem — по семантике состояний, raw — по всем
+    // теневым D3DRS_*. «Frame» — число уникальных ключей в одном кадре:
+    // именно столько переключений пайплайна приходится на кадр, если кэш
+    // устроен по этому ключу.
+    DebugTrace( "PipeStats: semTotal=%d semFrame=%d rawTotal=%d rawFrame=%d drawsFrame=%d drawsTotal=%d",
+      (int)pipeSemMapTotal.size(), (int)pipeSemMap.size(),
+      (int)pipeRawMapTotal.size(), (int)pipeRawMap.size(),
+      (int)pipeDrawsFrame, (int)pipeDrawsTotal );
     // Раскладка констант (docs/PLAN_NVRHI.md §2.7): какие c0..c255 реально
     // пишутся — по этому выбирается размер/число uniform-буферов на этапе 3.
     DebugTrace( "%s", GetConstStore().StatsLine() );
@@ -384,6 +410,9 @@ void OnFrameStart()
   psMap.clear(); vsMap.clear();
   pairMap.clear();
   sortMap.clear();
+  pipeSemMap.clear();
+  pipeRawMap.clear();
+  pipeDrawsFrame = 0;
 #endif // USE_RENDER_SHADER_STATS
 
   // Снимок кадра самим клиентом (docs/PLAN_NVRHI.md §2.13): см. s_autoScreenshotAt.
@@ -548,6 +577,45 @@ void SetVertexFormatXYZ()
   //#define _DEBUG_VIEWPORT
 #endif // _DEBUG
 
+#ifdef USE_RENDER_SHADER_STATS
+namespace
+{
+  // Полный ключ пайплайна — то, из чего на этапе 3 строится объект пайплайна.
+  // Меряем две версии, чтобы увидеть цену «сырых» состояний:
+  //  sem — пара (VS,PS) + раскладка + RenderState (семантика материалов) +
+  //      сэмплеры + трафарет + форматы RT/DS + топология + признак инстансинга;
+  //  raw — то же + хэш теневых D3DRS_* значений, т.е. всего, что пишут
+  //      SetStateDirect (ShadowManager, PostFX, скачок, альфа-тест…).
+  // Если raw заметно больше sem, состояния меняются чаще, чем материал, и
+  // перед Vulkan-бэкендом их придётся нормализовать (иначе кэш пайплайнов
+  // разрастается из-за чисел, которых на Vulkan нет).
+  inline UINT64 PipeMix(UINT64 h, UINT64 v) { h ^= v; return h * 0x100000001B3ull; }
+
+  inline void NotePipeline(ERenderPrimitiveType type)
+  {
+    RenderStatesManager* const sm = Render::GetStatesManager();
+    UINT64 h = 0xcbf29ce484222325ull;
+    h = PipeMix(h, (UINT64)(size_t)pLastVertexShader);
+    h = PipeMix(h, (UINT64)(size_t)pLastPixelShader);
+    h = PipeMix(h, (UINT64)(size_t)pLastVertexDeclaration);
+    h = PipeMix(h, sm->GetCurrentState().GetBitMask());
+    h = PipeMix(h, sm->GetSamplerShadowHash());
+    h = PipeMix(h, sm->GetStencilShadowKey());
+    h = PipeMix(h, (UINT64)type);
+    h = PipeMix(h, instancingEnabled ? 1u : 0u);
+    h = PipeMix(h, (UINT64)curColorSurfaceFormat[0]);
+    h = PipeMix(h, (UINT64)curDepthSurfaceFormat);
+    pipeSemMap.insert(h);
+    pipeSemMapTotal.insert(h);
+    ++pipeDrawsFrame;
+    ++pipeDrawsTotal;
+    const UINT64 hraw = PipeMix(h, sm->GetRenderStateShadowHash());
+    pipeRawMap.insert(hraw);
+    pipeRawMapTotal.insert(hraw);
+  }
+}
+#endif
+
 void DrawIndexedPrimitive(const DipDescriptor& _descr)
 {
   if(nullrender)
@@ -560,6 +628,9 @@ void DrawIndexedPrimitive(const DipDescriptor& _descr)
 
   NI_VERIFY(_descr.numVertices, "null dip", return; );
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
+#ifdef USE_RENDER_SHADER_STATS
+  NotePipeline(_descr.primitiveType);
+#endif
   HRESULT hr = GetBackend()->DrawIndexed( _descr.primitiveType,
     _descr.baseVertexIndex, _descr.minIndex, _descr.numVertices, _descr.startIndex, _descr.primitiveCount );
 
@@ -599,6 +670,9 @@ void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData,
 
   NI_VERIFY(_descr.numVertices, "null dip", return; );
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
+#ifdef USE_RENDER_SHADER_STATS
+  NotePipeline(_descr.primitiveType);
+#endif
   HRESULT hr = GetBackend()->DrawIndexedUP( _descr.primitiveType,
                   _descr.minIndex, _descr.numVertices, _descr.primitiveCount,
                   pIndexData, true /* D3DFMT_INDEX16 */, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -624,6 +698,9 @@ void DrawPrimitive(const DipDescriptor& _descr)
 #endif // _DEBUG_VIEWPORT
 
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
+#ifdef USE_RENDER_SHADER_STATS
+  NotePipeline(_descr.primitiveType);
+#endif
   HRESULT hr = GetBackend()->Draw( _descr.primitiveType,
     _descr.startIndex, _descr.primitiveCount );
 
@@ -643,6 +720,9 @@ void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroD
     return;
 
   NI_VERIFY(_descr.primitiveCount, "null dip", return;);
+#ifdef USE_RENDER_SHADER_STATS
+  NotePipeline(_descr.primitiveType);
+#endif
   HRESULT hr = GetBackend()->DrawUP(_descr.primitiveType,
                                             _descr.primitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
   if(s_DXWarnLevel)
@@ -806,6 +886,15 @@ void BindRenderTargetColor( unsigned int renderTargetIndex, IDirect3DSurface9* p
       curColorSurfaceWidth = rtDesc.Width;
       curColorSurfaceHeight = rtDesc.Height;
     }
+    {
+      // Цель может быть и NULL (снятие MRT) — формат тогда «неизвестен».
+      // Поймано на E2E-стенде: BindRenderTargetColor(..., 0) ронял клиент на
+      // GetDesc() (чтение по нулевому указателю, exception.dmp в сессии
+      // 2026.10.15-02.28.44).
+      D3DSURFACE_DESC fmtDesc;
+      HRESULT hrFmt = pColorSurface ? pColorSurface->GetDesc(&fmtDesc) : D3DERR_INVALIDCALL;
+      curColorSurfaceFormat[renderTargetIndex] = SUCCEEDED(hrFmt) ? fmtDesc.Format : D3DFMT_UNKNOWN;
+    }
 	}
 }
 
@@ -823,7 +912,10 @@ void BindRenderTargetDepth( IDirect3DSurface9* pDepthStencilSurface )
       curDepthSurface->GetDesc(&desc);
       curDepthSurfaceWidth = desc.Width;
       curDepthSurfaceHeight = desc.Height;
+      curDepthSurfaceFormat = desc.Format;
     }
+    else
+      curDepthSurfaceFormat = D3DFMT_UNKNOWN;
 	}
 }
 

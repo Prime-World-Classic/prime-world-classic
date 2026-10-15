@@ -68,6 +68,19 @@ public:
 
 	void UpdateStats();
 
+  // Хэши состояний для замера полного ключа пайплайна (docs/PLAN_NVRHI.md,
+  // шаг 8) и для будущих save/restore-паттернов на Vulkan-бэкенде. Считаются
+  // на месте, без копирования тени. GetRenderStateShadowHash() — «сырые»
+  // D3DRS_* значения (верхняя граница: на Vulkan таких номеров нет),
+  // GetSamplerShadowHash()/GetStencilShadowKey() — сэмплеры и трафарет.
+  // Семантика, из которой состояние порождено, доступна отдельно:
+  // GetCurrentState().GetBitMask(). Разница между «семантическим» и «сырым»
+  // ключом и есть цена прямых записей SetStateDirect: если полный ключ сильно
+  // больше семантического, состояния меняются чаще, чем материал.
+  UINT64 GetRenderStateShadowHash() const;
+  UINT64 GetSamplerShadowHash() const;
+  UINT64 GetStencilShadowKey() const;
+
   // debugging functionality
   static void DumpStates();
 
