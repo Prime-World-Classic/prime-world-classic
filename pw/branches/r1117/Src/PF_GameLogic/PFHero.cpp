@@ -571,8 +571,24 @@ void PFBaseHero::Emote(NDb::EEmotion emotion) { (void)emotion; }
 const wstring& PFBaseHero::GetTeamName() const { return g_linuxHeroEmptyText; }
 void PFBaseHero::DismountSpecial() { pMount = 0; canControlMount = false; }
 void PFBaseHero::OnMountSpecial( CPtr<NWorld::PFBaseMovingUnit> const& pMountUnit, bool _canControlMount ) { pMount = pMountUnit; canControlMount = _canControlMount; }
-bool PFBaseHero::IsRecommended( int stat ) const { (void)stat; return false; }
-void PFBaseHero::SetRecommendedStats(int* _profileStats) { (void)_profileStats; profileStats.clear(); }
+/** Compare original recommended enum values without converting an arbitrary query to an enum. */
+bool PFBaseHero::IsRecommended(int stat) const
+{
+	for (const auto recommended : profileStats)
+		if (static_cast<int>(recommended) == stat) return true;
+	return false;
+}
+/** Import the original nine nonzero profile flags; absent data leaves the current profile intact. */
+void PFBaseHero::SetRecommendedStats(int* flags)
+{
+	if (!flags) return;
+	static const NDb::EStat mapping[] = {NDb::STAT_LIFE, NDb::STAT_ENERGY, NDb::STAT_MOVESPEED,
+		NDb::STAT_STRENGTH, NDb::STAT_INTELLECT, NDb::STAT_ATTACKSPEED, NDb::STAT_DEXTERITY,
+		NDb::STAT_STAMINA, NDb::STAT_WILL};
+	profileStats.clear();
+	for (int i = 0; i < 9; ++i)
+		if (flags[i]) profileStats.push_back(mapping[i]);
+}
 void PFBaseHero::OnUnmountSpecial() { DismountSpecial(); }
 NDb::ERoute PFBaseHero::GetNearestRoute(float* pDistance) const { if (pDistance) *pDistance = 0.0f; return NDb::ROUTE_UNASSIGNED; }
 bool PFBaseHero::IsSlotValid( int slot ) const { return slot >= 0 && slot < consumables.size(); }

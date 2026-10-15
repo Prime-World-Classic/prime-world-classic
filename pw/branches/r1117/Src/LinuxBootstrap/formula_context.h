@@ -26,6 +26,11 @@ namespace LinuxBootstrap
  * zero-argument aliases for the existing numeric-property whitelist. Receiver
  * getters retain candidate context and lazy missing-unit validation; no arbitrary
  * methods, inferred properties or object paths are enabled.
+ * sender/receiver.IsRecommended(stat) and pFirst/pSecond->IsRecommended(stat)
+ * call the original live recommendation getter with one checked integer argument.
+ * Finite in-range fractional arguments truncate as in C++; missing selected units
+ * and unsafe conversions fail. Receiver queries keep actual candidate context,
+ * and the reserved transport names cannot be injected by authored expressions.
  * mScale/mParentScale and exact pMisc->/appl. getter spellings read original
  * miscellaneous scale values. mObjectParent->...->GetScale() and equivalent
  * GetObjectParent() calls allow at most 16 explicit parent hops. Original root

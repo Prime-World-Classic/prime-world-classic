@@ -159,11 +159,12 @@ double ResolveFunction(FunctionBinding& binding, const double* args, std::size_t
 	if (!found) throw Error::UnknownSymbol;
 	return Finite(value);
 }
-/** Four reserved endpoint bindings are emitted only by the engine-context source whitelist. */
-bool IsHistoryFunction(const std::string& name)
+/** Reserved one-argument unit queries are emitted only by the engine-context source whitelist. */
+bool IsOneArgumentUnitQuery(const std::string& name)
 {
 	return name == "__history_s_taken" || name == "__history_s_dealt" ||
-		name == "__history_r_taken" || name == "__history_r_dealt";
+		name == "__history_r_taken" || name == "__history_r_dealt" ||
+		name == "__recommend_s" || name == "__recommend_r";
 }
 
 /** Reserved context transport; authored member syntax is checked by formula_context. */
@@ -325,7 +326,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					translated += "(" + symbol("sTerrainType") + "==" + symbol("sFctn") + "?";
 					pendingNativeTerrain = true;
 				}
-				else if (name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsHistoryFunction(name) || IsExtendedHistoryFunction(name))
+				else if (name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsOneArgumentUnitQuery(name) || IsExtendedHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -388,7 +389,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			}
 			if (frame.context)
 			{
-				if (IsHistoryFunction(frame.context->name))
+				if (IsOneArgumentUnitQuery(frame.context->name))
 				{
 					if (frame.arguments != 1) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveOne, frame.context, false);

@@ -402,6 +402,24 @@ void ContextFunctions()
 		Check(EvaluateNumericFormula("0 ? " + prefix + "(1/0,missing) : 4").value == 4,
 			"unselected receiver predicate needs no context");
 	}
+	for (const char* name : {"__recommend_s", "__recommend_r"})
+	{
+		int calls = 0;
+		const NumericFunctionResolver query = [&](const std::string& method, const double* args, std::size_t count, double& value) {
+			++calls; value = args[0]; return method == name && count == 1;
+		};
+		const std::string prefix = name;
+		Check(EvaluateNumericFormula(prefix + "(15)", {}, query).value == 15 && calls == 1, "recommendation transport passes one evaluated argument");
+		for (const char* suffix : {"()", "(1,2)", "(,1)", "(1,)"})
+			Check(!EvaluateNumericFormula("true ? 7 : " + prefix + suffix, {}, query).Succeeded() && calls == 1,
+				"recommendation arity remains invalid in unused branches");
+		Check(EvaluateNumericFormula(prefix + "(1/0)", {}, query).error == Error::NonFiniteValue && calls == 1,
+			"nonfinite recommendation argument cannot reach the callback");
+		Check(EvaluateNumericFormula(prefix + "(15)").error == Error::MissingResolver, "selected recommendation requires explicit context");
+		Check(EvaluateNumericFormula("false && " + prefix + "(1/0)").value == 0, "unselected recommendation evaluates no argument or context");
+		Check(EvaluateNumericFormula(prefix + "(15)+" + prefix + "(16)", {}, query).value == 31 && calls == 3,
+			"recommendation calls do not share an evaluation cache");
+	}
 	int randomCalls = 0;
 	const NumericFunctionResolver random = [&](const std::string& name, const double* args, std::size_t count, double& value) {
 		++randomCalls; value = args[1]; return name == "random" && count == 2;

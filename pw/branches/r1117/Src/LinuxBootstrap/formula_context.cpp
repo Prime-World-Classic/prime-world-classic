@@ -218,7 +218,8 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		const std::string name = source.substr(start, pos - start);
 		if (name.compare(0, 8, "__combat") == 0 || name.compare(0, 9, "__unitvar") == 0 ||
 			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
-			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0) return false;
+			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0 ||
+			name.compare(0, 11, "__recommend") == 0) return false;
 		if (name == "tal")
 		{
 			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
@@ -270,6 +271,15 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		else if (name == "sender" || name == "receiver" || name == "pFirst" || name == "pSecond")
 		{
 			const bool pointer = name == "pFirst" || name == "pSecond";
+			const std::string recommendation = std::string(pointer ? "->" : ".") + "IsRecommended";
+			if (source.compare(pos, recommendation.size(), recommendation) == 0)
+			{
+				std::size_t open = pos + recommendation.size();
+				while (open < source.size() && (source[open] == ' ' || source[open] == '\t' || source[open] == '\r' || source[open] == '\n')) ++open;
+				if (open == source.size() || source[open] != '(') return false;
+				result += name == "sender" || name == "pFirst" ? " __recommend_s" : " __recommend_r";
+				pos = open; continue;
+			}
 			bool history = false;
 			for (const char* method : {"GetDamageTakenEx", "GetDamageDealtEx", "GetDamageTaken", "GetDamageDealt"})
 			{
@@ -373,6 +383,14 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "__recommend_s" || name == "__recommend_r")
+		{
+			const auto* unit = name == "__recommend_s" ? sender : target;
+			if (!unit || count != 1 || !std::isfinite(args[0]) || args[0] < std::numeric_limits<int>::min()
+				|| args[0] > std::numeric_limits<int>::max()) return false;
+			value = unit->IsRecommended(static_cast<int>(args[0])) ? 1 : 0;
+			return true;
+		}
 		if (name == "refineScale")
 		{
 			if (!ability || count != 2 || ability->GetRefineRate() == std::numeric_limits<int>::min()) return false;
