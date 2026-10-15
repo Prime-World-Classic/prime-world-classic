@@ -2,11 +2,175 @@
 #if defined(PW_LINUX_NULL_RENDER)
 #include "PFTriggerApplicator.h"
 #include "PFBaseUnit.h"
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFApplUtils.h"
 #include "../LinuxBootstrap/formula_context.h"
 #include <cmath>
+#include <limits>
+#include <vector>
 
 namespace NWorld
 {
+namespace
+{
+/** Match the original signed mask promotion, after validating the shift and event enum. */
+bool LinuxTriggerAccepts(int mask, const PFBaseUnitEvent* event)
+{
+	if (!event) return false;
+	const int type = event->GetType();
+	return type >= 0 && type < NDb::KnownEnum<NDb::EBaseUnitEvent>::SizeOf()
+		&& ((int64(1) << type) & int64(mask)) != 0;
+}
+
+/** Synchronous spell callbacks cannot recursively spend the same in-flight trigger action. */
+struct LinuxTriggerEventScope
+{
+	static thread_local std::vector<const PFTriggerApplicator*> active;
+	bool entered;
+	explicit LinuxTriggerEventScope(const PFTriggerApplicator* app)
+		: entered(active.size() < 128 && std::find(active.begin(), active.end(), app) == active.end())
+	{
+		if (entered) active.push_back(app);
+	}
+	~LinuxTriggerEventScope() { if (entered) active.pop_back(); }
+};
+thread_local std::vector<const PFTriggerApplicator*> LinuxTriggerEventScope::active;
+}
+
+PFTriggerApplicator::PFTriggerApplicator(const PFApplCreatePars& cp)
+	: Base(cp), actionsCount(0), maxActionsCount(0), scale(0.f) {}
+
+/** Unsupported processors and invalid limits complete through balanced original start/stop ownership. */
+bool PFTriggerApplicator::Start()
+{
+	if (!Base::IsAlive()) return true;
+	const auto& authored = GetDB().actionsCount;
+	LinuxBootstrap::NumericFormulaResult count{LinuxBootstrap::NumericFormulaError::None, 0.f};
+	if (!authored.sString.empty() || !authored.compiledString.empty())
+		count = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+	if (count.Succeeded() && double(count.value) >= std::numeric_limits<int>::min()
+		&& double(count.value) <= std::numeric_limits<int>::max() && GetDB().processor)
+	{
+		maxActionsCount = static_cast<int>(count.value);
+		eventProcessor = GetDB().processor->Create(GetWorld());
+	}
+	if (!eventProcessor)
+	{
+		PFBaseApplicator::Start(); SetEnabled(false); return true;
+	}
+	eventProcessor->Initialize(this);
+	return Base::Start();
+}
+
+void PFTriggerApplicator::Enable()
+{
+	Base::Enable();
+	if (Base::IsAlive() && IsEnabled() && eventProcessor && IsValid(pReceiver)
+		&& eventProcessor->GetAccessibleEventsMask() != (1 << NDb::BASEUNITEVENT_APPLICATORSTEP))
+		pReceiver->AddEventListener(this);
+}
+
+void PFTriggerApplicator::Disable()
+{
+	Base::Disable();
+	if (IsValid(pReceiver)) pReceiver->RemoveEventListener(this);
+}
+
+/** Tick processors in the original buff position; exhaustion retires through the owning ring. */
+bool PFTriggerApplicator::Step(float dtInSeconds)
+{
+	if (!Base::IsAlive()) return true;
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0.f) return false;
+	if (Base::Step(dtInSeconds)) return true;
+	if (maxActionsCount > 0 && actionsCount >= maxActionsCount) return true;
+	if (IsEnabled() && eventProcessor)
+	{
+		CObj<PFBaseApplicator> holder(this);
+		CObj<PFEventProcessorBase> processor(eventProcessor);
+		processor->Step(dtInSeconds);
+		const PFBaseUnitEvent step(NDb::BASEUNITEVENT_APPLICATORSTEP);
+		OnEvent(&step);
+	}
+	return !Base::IsAlive() || (maxActionsCount > 0 && actionsCount >= maxActionsCount);
+}
+
+/** Preserve original successful-action accounting and independent cooldown/mana policies. */
+unsigned int PFTriggerApplicator::OnEvent(const PFBaseUnitEvent* event)
+{
+	if (!Base::IsAlive() || !IsEnabled() || !eventProcessor
+		|| (maxActionsCount > 0 && actionsCount >= maxActionsCount)
+		|| !LinuxTriggerAccepts(eventProcessor->GetAccessibleEventsMask(), event)) return 0;
+	LinuxTriggerEventScope scope(this); if (!scope.entered) return 0;
+	CObj<PFBaseApplicator> holder(this);
+	CObj<PFEventProcessorBase> processor(eventProcessor);
+	CObj<PFBaseUnit> owner(pOwner.GetPtr());
+	CObj<PFAbilityData> ability(pAbility ? pAbility->GetData() : nullptr);
+	if (ability && owner)
+	{
+		if (GetDB().useAbilityCooldown && (!ability->IsReady() || !owner->CanUseAbility(CPtr<PFAbilityData>(ability.GetPtr())))) return 0;
+		if (GetDB().useAbilityOwnerMana && !ability->IsEnoughMana()) return 0;
+	}
+	if (!processor->ProcessEvent(event)) return 0;
+	if (actionsCount < std::numeric_limits<int>::max()) ++actionsCount;
+	if (ability && IsValid(pOwner))
+	{
+		if (GetDB().useAbilityCooldown) ability->RecalculateAndRestartCooldown();
+		if (GetDB().useAbilityOwnerMana) ability->SpendMana();
+		if (GetDB().playAck) ability->PlayAck(0);
+	}
+	return 0;
+}
+
+float PFTriggerApplicator::GetVariable(const char* name) const
+{
+	return eventProcessor ? eventProcessor->GetVariable(name) : Base::GetVariable(name);
+}
+
+void PFEventProcessorBase::Initialize(const CPtr<PFTriggerApplicator>& owner) { pOwner = owner; }
+NDb::EApplicatorApplyTarget PFEventProcessorBase::GetApplicationTarget() const
+{
+	return dbData ? dbData->applyTarget : NDb::APPLICATORAPPLYTARGET_APPLICATORTARGET;
+}
+
+const CPtr<PFBaseUnit>& PFEventProcessorBase::GetReceiver() const
+{
+	static const CPtr<PFBaseUnit> empty;
+	return IsValid(pOwner) ? pOwner->GetReceiver() : empty;
+}
+
+/** Dispatch the original authored spell with the trigger as parent; do not invent missing ability context. */
+void PFEventProcessorBase::DoSpell(const CPtr<PFBaseUnit>& eventSender) const
+{
+	if (!dbData || !dbData->spell || !IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive()) return;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	CObj<PFAbilityInstance> ability(owner->GetAbility());
+	if (!ability || !ability->GetData() || !ability->GetData()->GetDBDesc() || !IsValid(owner->GetAbilityOwner())) return;
+	Target target;
+	if (GetApplicationTarget() == NDb::APPLICATORAPPLYTARGET_APPLICATORSELECTEDTARGET && IsValid(eventSender)) target.SetUnit(eventSender);
+	else owner->MakeApplicationTarget(target, GetApplicationTarget());
+	SendSpellToSingleTarget(owner.GetPtr(), dbData->spell, target, false);
+}
+
+/** Conditions keep the trigger's formula context and optional event-ability DB identity filter. */
+bool PFEventProcessorCondition::ProcessEvent(const PFBaseUnitEvent* event)
+{
+	if (!IsValid(pOwner) || !pOwner->PFBaseApplicator::IsAlive()) return false;
+	CObj<PFTriggerApplicator> owner(pOwner.GetPtr());
+	const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(GetDB().condition.sString.c_str(), *owner);
+	if (!result.Succeeded() || result.value == 0.f) return false;
+	if (GetDB().onlyParent)
+	{
+		const PFAbilityData* source = owner->GetAbilityData();
+		const PFAbilityInstance* eventAbility = event ? event->GetAbility() : nullptr;
+		const PFAbilityData* data = eventAbility ? eventAbility->GetData() : nullptr;
+		if (!source || !source->GetDBDesc() || !data || !data->GetDBDesc()
+			|| source->GetDBDesc()->GetDBID() != data->GetDBDesc()->GetDBID()) return false;
+	}
+	DoSpell();
+	return true;
+}
+
 PFAbsorbShieldApplicator::PFAbsorbShieldApplicator(const PFApplCreatePars& cp)
 	: Base(cp), shield(0.f), damage(0.f), damageToAbsorb(0.f) {}
 
@@ -103,6 +267,9 @@ void PFAbsorbShieldApplicator::ModifyReceiverShield(float delta) const
 }
 }
 REGISTER_WORLD_OBJECT_NM(PFAbsorbShieldApplicator, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFTriggerApplicator, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorBase, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFEventProcessorCondition, NWorld);
 #else
 
 #include "PFTriggerApplicator.h"

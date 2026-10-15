@@ -8180,7 +8180,7 @@ void EventProcessorCondition::Assign( const EventProcessorCondition& _eventProce
 NWorld::PFEventProcessorBase* EventProcessorCondition::Create( NWorld::PFWorld* world ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFEventProcessorCondition( *this, world );
 #else
 
 	return new NWorld::PFEventProcessorCondition( *this, world );
@@ -13616,7 +13616,7 @@ void TriggerApplicator::Assign( const TriggerApplicator& _triggerApplicator )
 NWorld::PFBaseApplicator* TriggerApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFTriggerApplicator>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFTriggerApplicator>( *this, cp );
