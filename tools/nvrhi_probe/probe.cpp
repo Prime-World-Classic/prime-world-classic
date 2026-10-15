@@ -1171,6 +1171,14 @@ struct SpvRes
   // out-параметром с семантикой POSITION, и без подмены прослойки DXC
   // пишет gl_Position в неопределённость (см. tools/spirv_probe/shim.py).
   unsigned builtIns = 0, biPosition = 0, biFragCoord = 0, biInstanceIndex = 0;
+  // Что реально читает шейдер из uniform-буфера: (binding, смещение члена в
+  // байтах, является ли член матрицей). Снято с OpAccessChain с постоянным
+  // индексом + OpMemberDecorate Offset(35)/MatrixStride(7). Нужно затем, что
+  // имена членов DXC из SPIR-V выбрасывает (OpMemberName нет), а у $Globals
+  // смещения задаёт register() в _common.hlsl — угадать их по номеру члена
+  // нельзя (замер WaterDummy: читаются члены 10 и 11, а не 0 и 1).
+  struct Acc { unsigned binding, offset; bool matrix; };
+  std::vector<Acc> accesses;
   bool ok = false;
 };
 
@@ -1193,6 +1201,10 @@ static SpvRes ScanSpv(const unsigned char* p, size_t bytes)
   // относила все SSBO к константным буферам (первый прогон давал ssbo=0).
   std::vector<unsigned char> structBlock;       // id структуры -> Block
   std::vector<unsigned char> structBufferBlock; // id структуры -> BufferBlock
+  std::vector<unsigned> constVal;               // id -> значение OpConstant (int)
+  std::vector<unsigned> memOffset;              // id*64+член -> Offset в байтах
+  std::vector<unsigned char> memMatrix;         // id*64+член -> есть MatrixStride
+  auto memKey = [](unsigned structId, unsigned member) { return structId * 64u + member; };
 
   auto growU = [](std::vector<unsigned>& v, unsigned id, unsigned init)
   { if (id + 1 > v.size()) v.resize(id + 1, init); };
@@ -1259,6 +1271,42 @@ static SpvRes ScanSpv(const unsigned char* p, size_t bytes)
         else if (val == 42 || val == 43) ++r.biInstanceIndex;  // InstanceIndex
       }
     }
+    else if (opcode == 43 && wc >= 4)    // OpConstant: Result Type, Result <id>, значение
+                                         // (номер именно 43; 50 — другая инструкция,
+                                         // на ней первый вариант сканера и не нашёл
+                                         // ни одного доступа к членам $Globals)
+    {
+      const unsigned res = Ld32(p + i * 4 + 8);
+      growU(constVal, res, 0xffffffffu);
+      constVal[res] = Ld32(p + i * 4 + 12);
+    }
+    else if (opcode == 72 && wc >= 4)    // OpMemberDecorate: struct, member, decoration[, operand]
+    {
+      const unsigned st = Ld32(p + i * 4 + 4), mem = Ld32(p + i * 4 + 8);
+      const unsigned dec = Ld32(p + i * 4 + 12);
+      const unsigned val = (wc >= 5) ? Ld32(p + i * 4 + 16) : 0;
+      if (dec == 35) { growU(memOffset, memKey(st, mem), 0xffffffffu); memOffset[memKey(st, mem)] = val; }
+      else if (dec == 7) { growB(memMatrix, memKey(st, mem), 0); memMatrix[memKey(st, mem)] = 1; }
+    }
+    else if ((opcode == 65 || opcode == 66) && wc >= 5)  // OpAccessChain / OpInBoundsAccessChain
+    {
+      // слова: Result Type, Result <id>, Base <id>, Index <id>...
+      const unsigned base = Ld32(p + i * 4 + 12);
+      if (base >= varType.size() || varType[base] == 0xffffffffu) { i += wc; continue; }
+      const unsigned pt = varType[base];
+      if (pt >= ptrBase.size() || ptrBase[pt] == 0xffffffffu) { i += wc; continue; }
+      const unsigned structId = ptrBase[pt];
+      if (structId >= structBlock.size() || !structBlock[structId]) { i += wc; continue; }
+      const unsigned idxId = Ld32(p + i * 4 + 16);
+      if (idxId >= constVal.size() || constVal[idxId] == 0xffffffffu) { i += wc; continue; }
+      const unsigned member = constVal[idxId];
+      const unsigned key = memKey(structId, member);
+      SpvRes::Acc a;
+      a.binding = (base < decBind.size()) ? decBind[base] : 0xffffffffu;
+      a.offset = (key < memOffset.size()) ? memOffset[key] : 0xffffffffu;
+      a.matrix = (key < memMatrix.size() && memMatrix[key]) ? true : false;
+      if (a.offset != 0xffffffffu) r.accesses.push_back(a);
+    }
     i += wc;
   }
 
@@ -1315,6 +1363,301 @@ static const char* SpvKindName(SpvRes::Kind k)
   case SpvRes::kSsbo:    return "ssbo";
   default:               return "?";
   }
+}
+
+// Одиночный DIP реальным материалом из контейнера v2 (шаг 12). Берётся
+// первая запись, у которой VS и PS не требуют ничего, кроме uniform-буферов
+// (в живом корпусе под это подходит WaterDummyMaterial: VS читает только
+// $Globals, PS возвращает w). Создание пайплайна этого НЕ проверяет:
+// раскладку матриц в $Globals (-Zpr = строчная память), семантику входа,
+// макет сетов и намотку. Квадрат — левая половина клипа: ждём красной ровно
+// левую половину кадра.
+static void ProbeShd2Draw(nvrhi::IDevice* dev, const Shd2Spike& f, const Shd2Sec& sec)
+{
+  const unsigned W = 256, H = 256;
+  const unsigned uboSize = getenv("PW_SHD2_UBO") ? unsigned(atoi(getenv("PW_SHD2_UBO"))) : 4096u;
+  const int mat0 = getenv("PW_SHD2_MAT0") ? atoi(getenv("PW_SHD2_MAT0")) : 0;
+  const int mat1 = getenv("PW_SHD2_MAT1") ? atoi(getenv("PW_SHD2_MAT1")) : 64;
+
+  nvrhi::TextureHandle rt = dev->createTexture(nvrhi::TextureDesc()
+                                                 .setDimension(nvrhi::TextureDimension::Texture2D)
+                                                 .setWidth(W).setHeight(H)
+                                                 .setFormat(nvrhi::Format::BGRA8_UNORM)
+                                                 .setIsRenderTarget(true)
+                                                 .setInitialState(nvrhi::ResourceStates::RenderTarget)
+                                                 .setKeepInitialState(true)
+                                                 .setDebugName("draw rt"));
+  nvrhi::TextureHandle ds = dev->createTexture(nvrhi::TextureDesc()
+                                                 .setDimension(nvrhi::TextureDimension::Texture2D)
+                                                 .setWidth(W).setHeight(H)
+                                                 .setFormat(nvrhi::Format::D24S8)
+                                                 .setIsRenderTarget(true)
+                                                 // без initialState+keepInitialState NVRHI не знает
+                                                 // предыдущего состояния и рвёт командный список:
+                                                 // "Unknown prior state of texture draw ds"
+                                                 .setInitialState(nvrhi::ResourceStates::DepthWrite)
+                                                 .setKeepInitialState(true)
+                                                 .setDebugName("draw ds"));
+  nvrhi::FramebufferHandle fb = dev->createFramebuffer(
+      nvrhi::FramebufferDesc().addColorAttachment(rt).setDepthAttachment(ds));
+  if (!rt || !ds || !fb) { Print("draw: RT/depth/framebuffer", false); return; }
+
+  unsigned usedEntry = 0xFFFFFFFFu, vsOff = 0, vsSize = 0, psOff = 0, psSize = 0;
+  SpvRes vs, ps;
+  for (unsigned j = 0; j < sec.cnt; ++j)
+  {
+    const unsigned char* e = f.data.data() + sec.off + 8 + 20 * j;
+    const unsigned o0 = Ld32(e + 4), s0 = Ld32(e + 8), o1 = Ld32(e + 12), s1 = Ld32(e + 16);
+    if (!s0 || !s1 || o0 + s0 > sec.end || o1 + s1 > sec.end) continue;
+    SpvRes a = ScanSpv(f.data.data() + o0, s0);
+    SpvRes b = ScanSpv(f.data.data() + o1, s1);
+    // SSBO намеренно исключены: их содержимое (матрицы экземпляров, кости)
+    // нулями не подменить — геометрия схлопнется, и проба перестанет что-либо
+    // утверждать. UBO патчится по SPIR-V, текстуры/сэмплеры — пустышки.
+    bool okRes = a.biPosition != 0;
+    for (const SpvRes::Item& it : a.items)
+      if (it.kind == SpvRes::kSsbo || it.kind == SpvRes::kOther) okRes = false;
+    for (const SpvRes::Item& it : b.items)
+      if (it.kind == SpvRes::kSsbo || it.kind == SpvRes::kOther) okRes = false;
+    if (!okRes) continue;
+    usedEntry = Ld32(e); vsOff = o0; vsSize = s0; psOff = o1; psSize = s1;
+    vs = a; ps = b;
+    break;
+  }
+  if (usedEntry == 0xFFFFFFFFu)
+  {
+    Print("draw: нет записи без SSBO/прочих ресурсов", false);
+    return;
+  }
+  printf("draw: запись #%u, vs %u Б, ps %u Б, наборы: vs", usedEntry, vsSize, psSize);
+  for (const SpvRes::Item& it : vs.items) printf(" %u:%u=%s", it.set, it.binding, SpvKindName(it.kind));
+  printf(", ps");
+  for (const SpvRes::Item& it : ps.items) printf(" %u:%u=%s", it.set, it.binding, SpvKindName(it.kind));
+  printf("\n");
+
+  nvrhi::ShaderHandle shaderVs = dev->createShader(
+      nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Vertex)
+                         .setEntryName("MainPass_VSMain").setDebugName("draw vs"),
+      f.data.data() + vsOff, vsSize);
+  nvrhi::ShaderHandle shaderPs = dev->createShader(
+      nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Pixel)
+                         .setEntryName("MainPass_PSMain").setDebugName("draw ps"),
+      f.data.data() + psOff, psSize);
+  if (!shaderVs || !shaderPs) { Print("draw: createShader", false); return; }
+
+  // WaterDummyMaterial: struct VS_INPUT { float3 Position : POSITION; }.
+  // NVRHI на Vulkan сопоставляет атрибуты с SPIR-V по именам (in.var.POSITION).
+  const nvrhi::VertexAttributeDesc attr =
+      nvrhi::VertexAttributeDesc().setName("POSITION")
+        .setFormat(nvrhi::Format::RGB32_FLOAT).setOffset(0).setElementStride(12);
+  nvrhi::InputLayoutHandle il = dev->createInputLayout(&attr, 1, shaderVs);
+  if (!il) { Print("draw: createInputLayout (POSITION)", false); return; }
+
+  // левая половина клип-пространства, два треугольника
+  const float verts[18] = {
+    -1.f, -1.f, 0.f,   0.f, -1.f, 0.f,  -1.f, 1.f, 0.f,
+     0.f, -1.f, 0.f,   0.f,  1.f, 0.f,  -1.f, 1.f, 0.f,
+  };
+  // $Globals: что именно писать, берём из SPIR-V (см. SpvRes::accesses) —
+  // смещения членов задаёт register() в _common.hlsl, имён в SPIR-V нет.
+  // Матрице — единичная (строчная память, -Zpr), скаляру/вектору — 1.0.
+  // PW_SHD2_MAT0/PW_SHD2_MAT1 задают ручную раскладку (диагностика).
+  std::vector<unsigned char> consts(uboSize, 0);
+  std::vector<SpvRes::Acc> acc;
+  for (const SpvRes::Acc& a : vs.accesses) acc.push_back(a);
+  for (const SpvRes::Acc& a : ps.accesses) acc.push_back(a);
+  std::vector<unsigned> patched;
+  for (const SpvRes::Acc& a : acc)
+  {
+    if (a.offset + (a.matrix ? 64u : 16u) > uboSize) continue;
+    bool seen = false;
+    for (unsigned o : patched) if (o == a.offset) seen = true;
+    if (seen) continue;
+    patched.push_back(a.offset);
+    float* dst = reinterpret_cast<float*>(&consts[size_t(a.offset)]);
+    if (a.matrix)
+      for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) dst[r * 4 + c] = (r == c) ? 1.f : 0.f;
+    else
+      for (int c = 0; c < 4; ++c) dst[c] = 1.f;
+  }
+  if (getenv("PW_SHD2_MAT0") || getenv("PW_SHD2_MAT1"))
+  {
+    patched.clear();
+    const int mofs[2] = { mat0, mat1 };
+    for (int m = 0; m < 2; ++m)
+    {
+      if (size_t(mofs[m]) + 64 > uboSize) continue;
+      patched.push_back(unsigned(mofs[m]));
+      float* dst = reinterpret_cast<float*>(&consts[size_t(mofs[m])]);
+      for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c)
+        dst[r * 4 + c] = (r == c) ? 1.f : 0.f;
+    }
+  }
+  printf("       draw: $Globals %u Б, патч по %u членам:", uboSize, (unsigned)patched.size());
+  for (unsigned o : patched) printf(" %u%s", o, "");
+  printf("\n");
+  if (patched.empty()) { Print("draw: в шейдере нет доступов к членам $Globals", false); return; }
+
+  nvrhi::BufferHandle vbuf = dev->createBuffer(nvrhi::BufferDesc()
+                                                 .setByteSize(sizeof(verts))
+                                                 .setIsVertexBuffer(true)
+                                                 .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                                                 .setKeepInitialState(true));
+  if (!vbuf) { Print("draw: createBuffer(VB)", false); return; }
+
+  // по одному BindingLayout/BindingSet на набор (механизм §3.z п.1)
+  const unsigned setCount = (vs.maxSet > ps.maxSet ? vs.maxSet : ps.maxSet) + 1;
+  std::vector<nvrhi::BufferHandle> cbufs;
+  std::vector<nvrhi::TextureHandle> dummyTex;
+  std::vector<nvrhi::SamplerHandle> dummySmp;
+  std::vector<nvrhi::BindingLayoutHandle> layouts;
+  std::vector<nvrhi::BindingSetHandle> bsets;
+  struct Bound { unsigned set, binding; };
+  std::vector<Bound> bound;
+  for (unsigned s = 0; s < setCount; ++s)
+  {
+    nvrhi::BindingLayoutDesc ld;
+    ld.visibility = nvrhi::ShaderType::AllGraphics;
+    ld.setRegisterSpaceAndDescriptorSet(s);
+    ld.bindingOffsets = nvrhi::VulkanBindingOffsets()
+      .setShaderResourceOffset(0).setSamplerOffset(0)
+      .setConstantBufferOffset(0).setUnorderedAccessViewOffset(0);
+    nvrhi::BindingSetDesc bsd;
+    bool unsupported = false;
+    for (unsigned side = 0; side < 2; ++side)
+    {
+      const SpvRes& st = side ? ps : vs;
+      for (const SpvRes::Item& it : st.items)
+      {
+        if (it.set != s) continue;
+        bool already = false;
+        for (const Bound& bnd : bound) if (bnd.set == it.set && bnd.binding == it.binding) already = true;
+        if (already) continue;   // VS и PS делят $Globals — один слот, один ресурс
+        bound.push_back({ it.set, it.binding });
+        if (it.kind == SpvRes::kCbuf)
+        {
+          nvrhi::BufferHandle cb = dev->createBuffer(nvrhi::BufferDesc()
+                                                       .setByteSize(uboSize)
+                                                       .setIsConstantBuffer(true)
+                                                       .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
+                                                       .setKeepInitialState(true));
+          if (!cb) { Print("draw: createBuffer(CB)", false); return; }
+          cbufs.push_back(cb);
+          ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(it.binding));
+          bsd.bindings.push_back(nvrhi::BindingSetItem::ConstantBuffer(it.binding, cb));
+        }
+        else if (it.kind == SpvRes::kTexture)
+        {
+          // пустышка 4x4: содержимое не инициализируется — проба проверяет
+          // геометрию, а не выборку
+          nvrhi::TextureHandle tx = dev->createTexture(nvrhi::TextureDesc()
+                                                         .setDimension(nvrhi::TextureDimension::Texture2D)
+                                                         .setWidth(4).setHeight(4)
+                                                         .setFormat(nvrhi::Format::RGBA8_UNORM)
+                                                         .setInitialState(nvrhi::ResourceStates::ShaderResource)
+                                                         .setKeepInitialState(true)
+                                                         .setDebugName("draw dummy tex"));
+          if (!tx) { Print("draw: createTexture(dummy)", false); return; }
+          dummyTex.push_back(tx);
+          ld.bindings.push_back(nvrhi::BindingLayoutItem::Texture_SRV(it.binding));
+          bsd.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(it.binding, tx));
+        }
+        else if (it.kind == SpvRes::kSampler)
+        {
+          nvrhi::SamplerHandle sp = dev->createSampler(nvrhi::SamplerDesc().setAllFilters(false)
+                                                        .setAllAddressModes(nvrhi::SamplerAddressMode::Clamp));
+          if (!sp) { Print("draw: createSampler(dummy)", false); return; }
+          dummySmp.push_back(sp);
+          ld.bindings.push_back(nvrhi::BindingLayoutItem::Sampler(it.binding));
+          bsd.bindings.push_back(nvrhi::BindingSetItem::Sampler(it.binding, sp));
+        }
+        else unsupported = true;
+      }
+    }
+    if (unsupported) { Print("draw: набор с SSBO/прочими ресурсами — пропуск пробы", false); return; }
+    if (ld.bindings.empty()) continue;
+    nvrhi::BindingLayoutHandle lh = dev->createBindingLayout(ld);
+    nvrhi::BindingSetHandle bs = lh ? dev->createBindingSet(bsd, lh) : nvrhi::BindingSetHandle();
+    if (!lh || !bs) { Print("draw: createBindingLayout/createBindingSet", false); return; }
+    layouts.push_back(lh);
+    bsets.push_back(bs);
+  }
+
+  nvrhi::GraphicsPipelineDesc pd;
+  pd.setPrimType(nvrhi::PrimitiveType::TriangleList)
+    .setInputLayout(il).setVertexShader(shaderVs).setPixelShader(shaderPs);
+  // намотка: у NVRHI viewport с отрицательной высотой, без этого флага
+  // геометрия вырезается (замер b0cull: 0 против 3072 пикселей)
+  pd.renderState.rasterState.setCullNone().setFrontCounterClockwise(true);
+  for (const nvrhi::BindingLayoutHandle& lh : layouts) pd.addBindingLayout(lh);
+  nvrhi::GraphicsPipelineHandle pipe = dev->createGraphicsPipeline(pd, fb->getFramebufferInfo());
+  if (!pipe) { Print("draw: createGraphicsPipeline", false); return; }
+
+  nvrhi::StagingTextureHandle staging = dev->createStagingTexture(
+    nvrhi::TextureDesc().setDimension(nvrhi::TextureDimension::Texture2D)
+      .setWidth(W).setHeight(H).setFormat(nvrhi::Format::BGRA8_UNORM)
+      .setInitialState(nvrhi::ResourceStates::CopyDest).setKeepInitialState(true),
+    nvrhi::CpuAccessMode::Read);
+  if (!staging) { Print("draw: createStagingTexture", false); return; }
+
+  nvrhi::CommandListHandle up = dev->createCommandList();
+  up->open();
+  up->writeBuffer(vbuf, verts, sizeof(verts));
+  for (const nvrhi::BufferHandle& cb : cbufs) up->writeBuffer(cb, consts.data(), consts.size());
+  up->close();
+  dev->executeCommandList(up);
+
+  nvrhi::CommandListHandle cl = dev->createCommandList();
+  cl->open();
+  cl->clearTextureFloat(rt, nvrhi::TextureSubresourceSet(), nvrhi::Color(0.f, 1.f, 0.f, 1.f));
+  // глубина обязана быть очищена: у WaterDummy PS возвращает w, у единичной
+  // ViewProjection это 1.0, а дефолтный depthFunc = Less и нечищеный буфер
+  // (0) вырезает весь кадр молча
+  cl->clearDepthStencilTexture(ds, nvrhi::TextureSubresourceSet(), true, 1.f, true, 0);
+  nvrhi::GraphicsState gs;
+  gs.setPipeline(pipe).setFramebuffer(fb)
+    .addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(vbuf).setSlot(0).setOffset(0));
+  for (const nvrhi::BindingSetHandle& bs : bsets) gs.addBindingSet(bs);
+  gs.setViewport(nvrhi::ViewportState().addViewportAndScissorRect(nvrhi::Viewport(float(W), float(H))));
+  cl->setGraphicsState(gs);
+  cl->draw(nvrhi::DrawArguments().setVertexCount(6));
+  cl->copyTexture(staging, nvrhi::TextureSlice(), rt, nvrhi::TextureSlice());
+  cl->close();
+  dev->executeCommandList(cl);
+  dev->waitForIdle();
+
+  size_t pitch = 0;
+  void* px = dev->mapStagingTexture(staging, nvrhi::TextureSlice(), nvrhi::CpuAccessMode::Read, &pitch);
+  if (!px) { Print("draw: mapStagingTexture", false); return; }
+  unsigned redLeft = 0, redRight = 0, green = 0, other = 0, chLeft = 0, chRight = 0;
+  for (unsigned y = 0; y < H; ++y)
+  {
+    const unsigned char* row = static_cast<const unsigned char*>(px) + size_t(y) * pitch;
+    for (unsigned x = 0; x < W; ++x)
+    {
+      const unsigned char b = row[x * 4 + 0], g = row[x * 4 + 1], r = row[x * 4 + 2];
+      if (r > 200 && g < 60 && b < 60) { if (x < W / 2) ++redLeft; else ++redRight; }
+      else if (g > 200 && r < 60) ++green;
+      else ++other;
+      // фон — зелёный clear; всё остальное — результат рисования (цвет PS
+      // зависит от констант, поэтому для «не WaterDummy» проверяется только
+      // геометрия: пиксели есть слева и их нет справа)
+      if (!(g > 200 && r < 60 && b < 60)) { if (x < W / 2) ++chLeft; else ++chRight; }
+    }
+  }
+  dev->unmapStagingTexture(staging);
+  const unsigned half = (W / 2) * H;
+  const bool exact = redLeft == half && redRight == 0 && other == 0;
+  const bool geom = chLeft > 0 && chRight == 0;
+  printf("       draw: красных слева %u/%u, справа %u, зелёных %u, прочих %u | нефон слева %u, справа %u\n",
+         redLeft, half, redRight, green, other, chLeft, chRight);
+  char detail[160];
+  snprintf(detail, sizeof(detail),
+           "%s; патч %u членов $Globals по SPIR-V, наборов %u, пустышек: tex %u smp %u",
+           exact ? "квадрат ровно в левой половине" : "геометрия только в левой половине",
+           (unsigned)patched.size(), (unsigned)layouts.size(),
+           (unsigned)dummyTex.size(), (unsigned)dummySmp.size());
+  Print("draw: DIP материалом из .shd v2", exact || geom, detail);
 }
 
 static void ProbeShd2(nvrhi::IDevice* dev)
@@ -1489,6 +1832,8 @@ static void ProbeShd2(nvrhi::IDevice* dev)
   // ошибка создания пайплайна, поэтому считается отдельно (ловушка шага 13).
   printf("       BuiltIn: VS без Position %u, PS без FragCoord %u, VS с InstanceIndex %u\n",
          vsNoPosition, psNoFragCoord, vsWithInstanceIndex);
+
+  if (getenv("PW_SHD2_DRAW")) ProbeShd2Draw(dev, f, *sec);
 }
 
 #ifdef PW_WITH_SDL3
