@@ -174,8 +174,8 @@ bool DamageArguments(const std::string& source, std::size_t& pos, std::vector<st
 	return false;
 }
 
-/** Lower only exact read-only miscellaneous scale calls, with bounded explicit parent traversal. */
-bool BindMiscScale(const std::string& source, const std::string& root, std::size_t& pos, std::string& result)
+/** Lower exact scale/cooldown calls; only scale permits bounded explicit parent traversal. */
+bool BindMiscScalar(const std::string& source, const std::string& root, std::size_t& pos, std::string& result)
 {
 	std::size_t end = pos;
 	unsigned depth = root == "mObjectParent" ? 1 : 0;
@@ -197,6 +197,12 @@ bool BindMiscScale(const std::string& source, const std::string& root, std::size
 	if (depth == 0 && source.compare(end, parentScale.size(), parentScale) == 0)
 	{
 		result += " mParentScale "; pos = end + parentScale.size(); return true;
+	}
+	if (depth == 0) for (const char* property : {"Preparedness", "Cooldown"})
+	{
+		const std::string getter = separator + "Get" + property + "()";
+		if (source.compare(end, getter.size(), getter) != 0) continue;
+		result += std::string(" m") + property + " "; pos = end + getter.size(); return true;
 	}
 	return false;
 }
@@ -247,11 +253,11 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		}
 		else if (name == "mObjectParent")
 		{
-			if (!BindMiscScale(source, name, pos, result)) return false;
+			if (!BindMiscScalar(source, name, pos, result)) return false;
 		}
 		else if (name == "pMisc")
 		{
-			if (BindMiscScale(source, name, pos, result)) continue;
+			if (BindMiscScalar(source, name, pos, result)) continue;
 			bool found = false;
 			for (const char* variable : {"damageDealed", "isAutoAttack"})
 			{
@@ -263,7 +269,7 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 		}
 		else if (name == "appl")
 		{
-			if (BindMiscScale(source, name, pos, result)) continue;
+			if (BindMiscScalar(source, name, pos, result)) continue;
 			const std::string suffix = ".GetNatureTypeInPos(rPos2D)";
 			if (!positionContext || source.compare(pos, suffix.size(), suffix) != 0) return false;
 			result += " __position_nature "; pos += suffix.size();
@@ -509,6 +515,14 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name == "mPreparedness" || name == "mCooldown")
+		{
+			if (!ability || (ability->GetState() != EAbilityState::First && ability->GetState() != EAbilityState::Second)) return false;
+			// The original readiness getter's comparisons can conceal NaN as fully ready.
+			if (!std::isfinite(ability->GetCooldown()) || !std::isfinite(ability->GetCurrentCooldown())) return false;
+			value = name == "mCooldown" ? ability->GetCooldown() : ability->GetPreparedness();
+			return std::isfinite(value);
+		}
 		if (name == "mRefineRate")
 		{
 			if (!ability) return false;

@@ -41,6 +41,12 @@ namespace LinuxBootstrap
  * refinement getters. Keep signed and zero rates; reject INT_MIN before the
  * original rate-minus-one subtraction, unsafe float arguments and nonfinite
  * results. Calls remain lazy and participate in the existing RNG transaction.
+ * mPreparedness/mCooldown and exact pMisc->/appl. zero-argument getter aliases
+ * use the actual ability/upgrader's current state. Cooldown is the total duration,
+ * not remaining time; preparedness retains original elapsed/total and zero-duration
+ * behavior. Invalid state indices and nonfinite running/total timers fail before
+ * the original getter can conceal corruption as readiness. No parent traversal
+ * or generic cooldown mutation API is exposed; lazy reads and staged RNG remain.
  * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited
