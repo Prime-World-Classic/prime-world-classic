@@ -578,8 +578,6 @@ bool PFWorld::Step(float dtInSeconds, float)
   timeElapsed += dtInSeconds;
   if (protection)
     protection->Update();
-  if (dayNightController)
-    dayNightController->Update(dtInSeconds);
   if (pNatureMap)
     pNatureMap->OnStep(dtInSeconds);
   if (pAIWorld)
@@ -654,6 +652,9 @@ bool PFWorld::Step(float dtInSeconds, float)
   KillDeadUnits(false);
 	// Visibility-only phase includes stationary units without stepping their gameplay.
 	PFBaseUnit::StepLinuxWarFog(this, dtInSeconds);
+	// Match Windows: gameplay objects finish against the preceding phase before the controller advances.
+	if (dayNightController)
+		dayNightController->Update(dtInSeconds);
   StepLinuxPFStatistics(pStatistics, dtInSeconds);
   if (triggerMarkerHandler)
     triggerMarkerHandler->Step(dtInSeconds);

@@ -66,7 +66,8 @@ namespace NWorld
 
     _nightFraction = CalculateNightFraction();
 #if defined(PW_LINUX_NULL_RENDER)
-    _cycle = false;
+	// Simulation phases use the original lighting-availability policy without requiring a native scene.
+	_cycle = _canSwitchLighting;
     return;
 #else
     _cycle = _canSwitchLighting;

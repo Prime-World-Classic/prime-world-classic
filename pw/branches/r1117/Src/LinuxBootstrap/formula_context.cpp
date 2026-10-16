@@ -204,6 +204,11 @@ bool BindMiscScalar(const std::string& source, const std::string& root, std::siz
 	{
 		result += " mParentScale "; pos = end + parentScale.size(); return true;
 	}
+	const std::string night = separator + "IsNight()";
+	if (depth == 0 && source.compare(end, night.size(), night) == 0)
+	{
+		result += " mIsNight "; pos = end + night.size(); return true;
+	}
 	if (depth == 0) for (const char* property : {"Preparedness", "Cooldown"})
 	{
 		const std::string getter = separator + "Get" + property + "()";
@@ -725,6 +730,13 @@ struct Context
 		{
 			if (!ability) return false;
 			value = ability->GetRefineRate(); return true;
+		}
+		if (name == "mIsNight")
+		{
+			// Logical night is the original miscellaneous context's state, not its lighting blend or receiver's world.
+			const IMiscFormulaPars* misc = applicator ? static_cast<const IMiscFormulaPars*>(applicator) : ability;
+			if (!misc) return false;
+			value = misc->IsNight() ? 1 : 0; return true;
 		}
 		if (name == "mScale" || name == "mParentScale") return MiscScale(0, name == "mParentScale", value);
 		if (name.compare(0, 22, "__misc_target_faction_") == 0)

@@ -71477,6 +71477,8 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxSchedulerDrainProbe() && RunLinuxTimedExitProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-applicator-formula-probe"))
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0)) ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-map-clock-probe"))
+		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))

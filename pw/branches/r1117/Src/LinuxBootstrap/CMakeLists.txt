@@ -1006,6 +1006,10 @@ add_test(NAME LinuxApplicatorFormula COMMAND PrimeWorldLinuxClient --bootstrap-a
 	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 # This full-engine suite includes authored item lifetimes and exceeds 30 seconds in serial runs.
 set_tests_properties(LinuxApplicatorFormula PROPERTIES TIMEOUT 120)
+add_test(NAME LinuxMapClocks COMMAND PrimeWorldLinuxClient --bootstrap-map-clock-probe
+	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+# Original counter and rune graphs run through multiple complete map phases in their own bounded suite.
+set_tests_properties(LinuxMapClocks PROPERTIES TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")

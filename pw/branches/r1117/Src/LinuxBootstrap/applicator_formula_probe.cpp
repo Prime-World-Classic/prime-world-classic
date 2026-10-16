@@ -25,6 +25,8 @@
 #include "../PF_GameLogic/PFPredefinedUnitVariables.h"
 #include "../PF_GameLogic/DBHeroesList.h"
 #include "../PF_GameLogic/PFWorld.h"
+#include "../PF_GameLogic/DayNightController.h"
+#include "../Render/DBRender.h"
 #include "../PF_GameLogic/PFAIWorld.h"
 #include "../PF_GameLogic/PFResourcesCollectionClient.h"
 #include "../PF_GameLogic/DBAdvMap.h"
@@ -1419,6 +1421,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "resurrection_b13_tests.inc"
 #include "resurrect_effect_b13_tests.inc"
 #include "parent_target_b13_tests.inc"
+#include "map_clock_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1432,7 +1435,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "fixture_lifetime_b13_tests.inc"
 #include "ai_defaults_b13_tests.inc"
 
-bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly)
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
 	NDb::AILogicParameters* ai = new NDb::AILogicParameters;
@@ -1442,6 +1445,16 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	NDb::SessionRoot* root = new NDb::SessionRoot; root->logicRoot = logic;
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
+	if (mapClocksOnly)
+	{
+		MapClockNightQueriesB13(check);
+		MapClockCycleB13(check);
+		check(dataRoot && *dataRoot, "B13 map clock probe requires original asset data");
+		if (dataRoot && *dataRoot) MapClockAuthoredB13(check, dataRoot);
+		NDb::SessionRoot::InitRoot(saved);
+		std::printf("Map clocks: %d checks, %d failures\n", check.count, check.failed);
+		return check.failed == 0;
+	}
 	FixtureLifetimeB13(check);
 	AiDefaultsB13(check);
 	{

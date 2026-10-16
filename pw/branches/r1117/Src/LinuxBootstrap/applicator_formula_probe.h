@@ -1,4 +1,4 @@
 #pragma once
 
-/** Exercise real applicators and mock DB units; dataRoot also validates the shipped nature grid. */
-bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot = nullptr);
+/** Exercise actual engine effects; mapClocksOnly isolates long authored map-cycle tests with a required dataRoot. */
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot = nullptr, bool mapClocksOnly = false);
