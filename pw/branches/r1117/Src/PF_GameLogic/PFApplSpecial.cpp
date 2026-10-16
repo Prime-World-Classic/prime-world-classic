@@ -13,6 +13,7 @@
 #include "PFTree.h"
 #include "PFUIEvent.h"
 #include "PFWorld.h"
+#include "PeriodAt10Hz.h"
 #include "WarFog.h"
 #include "PFWorldNatureMap.h"
 #include "TileMap.h"
@@ -520,6 +521,9 @@ bool PFApplProgram::ExecuteNext()
         {
           isDelayTimerEnabled = true;
           currentDelayTimer = delayTimer;
+          // a world step shorter than 0.1 s: fire at the moment of the 10 Hz step (see PeriodAt10Hz.h)
+          if ( IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+            currentDelayTimer = DelayCountdownAt10Hz( delayTimer );
         }
       }
       else

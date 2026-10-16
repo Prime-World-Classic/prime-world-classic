@@ -16,6 +16,7 @@
 #include "PFNeutralCreep.h"
 #include "AdventureScreen.h"
 #include "PFTalent.h"
+#include "PeriodAt10Hz.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
@@ -1652,6 +1653,9 @@ void PFApplInvisibility::Enable()
   time = RetrieveParam( dbDesc.fadeIn );
   if ( time > 0.0f )
   {
+    // a world step shorter than 0.1 s: become invisible at the moment of the 10 Hz step (see PeriodAt10Hz.h)
+    if ( IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+      time = DelayCountdownAt10Hz( time );
     state = FADEIN;
   }
   else

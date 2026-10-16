@@ -74,6 +74,35 @@ inline void PeriodAt10Hz( float first, float period, float & firstOut, float & p
     periodOut = ( steps - firstSteps ) * PERIOD_10HZ_STEP / ( strikes - 1 );
 }
 
+// One-shot delays counted down with a strict check "timer -= dt; if ( timer < 0 )" (ProgramApplicator delay,
+// InvisibilityApplicator fadeIn) fire one step after an exact value: at 10 Hz a delay of 0.4 fired after 0.5 s,
+// 0 after 0.1 s, and visuals were tuned to that. Replays the 10 Hz countdown and returns the time it fired at;
+// delays shorter than 0.1 s did not exist at 10 Hz (they fired on the next step) and are kept as set, down to
+// PERIOD_MIN. Negative delays (disabled) are returned as is.
+inline float DelayAt10Hz( float delay )
+{
+  if ( delay < 0.0f || delay > 100.0f )
+    return delay;
+  if ( IsSubStepPeriod( delay ) )
+    return Max( delay, PERIOD_MIN );
+
+  float timer = delay;
+  int steps = 0;
+  do
+  {
+    timer -= PERIOD_10HZ_STEP;
+    ++steps;
+  } while ( !( timer < 0.0f ) && steps < 2000 );
+  return steps * PERIOD_10HZ_STEP;
+}
+
+// Start value for such a countdown on a short world step: the strict check "< 0" fires on the first step
+// where the elapsed time reaches the 10 Hz moment.
+inline float DelayCountdownAt10Hz( float delay )
+{
+  return delay < 0.0f ? delay : DelayAt10Hz( delay ) - PERIOD_EPS;
+}
+
 // Strike check for a translated period on a short world step: the interval is set exactly,
 // so it is compared without the float luck of "timer > period".
 inline bool IsPeriodPassed( float timer, float period )
