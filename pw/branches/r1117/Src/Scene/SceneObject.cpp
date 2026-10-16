@@ -10,6 +10,8 @@
 
 #include "../System/InlineProfiler.h"
 
+#include <typeinfo>
+
 // Variables for debugging
 static int g_invisibleMode = 0;
 REGISTER_DEV_VAR( "scene_invis_mode", g_invisibleMode, STORAGE_NONE );
@@ -77,8 +79,42 @@ SceneObject::SceneObject(IScene *pScene_, const NDb::DBSceneObject* db)
 , hasCollisionGeometry(false)
 , forbidPick(false)
 , rotationLockCounter(0U)
+, isSleeping(false)
+, sleepPriority(0)
+, sleepStartClock(0.0)
 {
   worldAABB.Init2Empty();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void SceneObject::FallAsleep( int priority, double sceneSleepClock )
+{
+  sleepRequested = false;
+  isSleeping = true;
+  sleepPriority = priority;
+  sleepStartClock = sceneSleepClock;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void SceneObject::WakeUp()
+{
+  if ( !isSleeping )
+    return;
+
+  isSleeping = false;
+  if ( !pScene )
+    return;
+
+  Scene *pScn = static_cast<Scene*>(pScene.GetPtr());
+
+  // The same accumulation Update() does for an invisible object every frame
+  if ( freezeCount == 0 )
+  {
+    timeBeingInvisible += (float)( pScn->GetSleepClock() - sleepStartClock );
+    timeBeingInvisible = Min(timeBeingInvisible, c_maxTimeBeingInvisibleAllowed);
+  }
+
+  pScn->WakeObject( this, sleepPriority );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +145,7 @@ void SceneObject::MarkRendered()
   NI_ASSERT(pScene != NULL, NStr::StrFmt( "Attempt to render object outside from scene %s", FormatDescription() ) );
   if(pScene)
   {
+    WakeUp();
 	  whenWasRendered = pScene->GetUpdateCount();
 	  //flags |= FLAGS_VISIBLE;
   }
@@ -137,6 +174,7 @@ void SceneObject::SetPlacement( const Matrix43& pos )
     placement.rot = rotation;
 
 	flags |= FLAGS_MOVED;
+	WakeUp();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +191,7 @@ void SceneObject::SetPlacement( const Placement& pos )
     placement.rot = rotation;
 
 	flags |= FLAGS_MOVED;
+	WakeUp();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::SetPosition( const CVec3& pos )
@@ -162,6 +201,7 @@ void SceneObject::SetPosition( const CVec3& pos )
 	placement.pos = pos;
 
 	flags |= FLAGS_MOVED;
+	WakeUp();
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::SetPositionAndRotation( const Placement& pos )
@@ -175,6 +215,7 @@ void SceneObject::SetPositionAndRotation( const Placement& pos )
     placement.rot = pos.rot;
 
 	flags |= FLAGS_MOVED;
+	WakeUp();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +244,10 @@ void SceneObject::SetupForLighting()
   }
 
   if ( pSHConsts )
+  {
     flags |= FLAGS_MOVED;
+    WakeUp();
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -219,6 +263,9 @@ void SceneObject::ProcessMovement()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::SetFreeze( bool freeze /* = true */ )
 {
+	// Sleep time is accounted for the freeze state it was spent in
+	WakeUp();
+
 	if (freeze)
 		++freezeCount;
 	else
@@ -233,9 +280,11 @@ void SceneObject::SynchronizeToVisibleState()
 {
   NI_PROFILE_FUNCTION
 
+	WakeUp();
+
 	if (!pUpdateHook)
 		return;
-	
+
 	if (pUpdateHook->OnSceneObjectBecomeVisible(*this, timeBeingInvisible))
 		timeBeingInvisible = 0.0f;
 }
@@ -244,6 +293,8 @@ void SceneObject::SynchronizeToVisibleState()
 void SceneObject::UpdateForced( float timeDiff, bool isUnfreeze, bool isClientVisible /* = true */ )
 {
   NI_PROFILE_FUNCTION
+
+  WakeUp();
 
   timeDiff += timeBeingInvisible;
 	timeBeingInvisible = 0.0f;
@@ -314,7 +365,9 @@ void SceneObject::Update( float timeDiff, bool isForcedUpdate )
   //  5000 
   //NI_PROFILE_HEAVY_FUNCTION
 
-  if (!pScene) 
+  sleepRequested = false;
+
+  if (!pScene)
     return;
 
 	Scene *pScn = static_cast<Scene*>(pScene.GetPtr());
@@ -360,6 +413,12 @@ void SceneObject::Update( float timeDiff, bool isForcedUpdate )
 			move();
 
 		flags = 0;
+
+		// Until it is rendered, moved, (un)frozen or asked for its state, such an object only accumulates
+		// timeBeingInvisible - Scene takes it out of the update ring and WakeUp() adds the time later.
+		// Subclasses may override Update(), so only plain SceneObject is allowed to sleep
+		if ( !isForcedUpdate && pScn->IsObjectSleepEnabled() && typeid(*this) == typeid(SceneObject) )
+			sleepRequested = true;
 	}
 }
 
@@ -491,8 +550,9 @@ void SceneObject::AddToScene( IScene *pScene_, UpdatePriority priority /*= UPDAT
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void SceneObject::RemoveFromScene() 
-{ 
+void SceneObject::RemoveFromScene()
+{
+	WakeUp();
 	SceneObjectBase::RemoveFromScene();
 	flags &= ~FLAGS_VISIBLE;
 }
@@ -690,6 +750,7 @@ void SceneObject::Reinit()
 	Traverse(func);
 
 	// Reinit internal variables
+	WakeUp();
 	timeBeingInvisible = 0.0f;
 	flags   = FLAGS_VISIBLE | FLAGS_MOVED;
   // We are becoming visible now
@@ -730,6 +791,7 @@ void SceneObject::RemoveLocator( const Locator& l)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::CalculateLocatorWorldMatrix(const Locator &locator, Matrix43 &m, const bool isVisible)
 {
+	WakeUp();
 	if (timeBeingInvisible > 0.0f)
 	{
 		SynchronizeToVisibleState();
@@ -742,6 +804,7 @@ void SceneObject::CalculateLocatorWorldMatrix(const Locator &locator, Matrix43 &
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::CalculateLocatorWorldPlacement(const Locator &locator, Placement &pl)
 {
+	WakeUp();
 	if (timeBeingInvisible > 0.0f)
 	{
 		SynchronizeToVisibleState();
@@ -754,6 +817,7 @@ void SceneObject::CalculateLocatorWorldPlacement(const Locator &locator, Placeme
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::CalculateLocatorWorldPosition(const Locator &locator, CVec3 &pos, const bool isVisible/* = true*/)
 {
+	WakeUp();
 	if (timeBeingInvisible > 0.0f)
 	{
 		SynchronizeToVisibleState();
