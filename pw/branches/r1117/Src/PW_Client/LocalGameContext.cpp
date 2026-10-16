@@ -40,8 +40,8 @@ namespace Game
 static string s_localNickname( "Very Local Player" );
 REGISTER_DEV_VAR( "local_nickname", s_localNickname, STORAGE_NONE );
 
-// Simulation step of the local game, ms (100 = 10 Hz, 33 = 30 Hz)
-static int s_localStepLength = 33;
+// Simulation step of the local game, ms (100 = 10 Hz, 50 = 20 Hz, 33 = 30 Hz)
+static int s_localStepLength = 50;
 REGISTER_DEV_VAR( "local_step_length", s_localStepLength, STORAGE_NONE );
 
 static int GetLocalStepLength()
