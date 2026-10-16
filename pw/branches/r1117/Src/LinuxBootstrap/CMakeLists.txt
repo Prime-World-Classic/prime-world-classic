@@ -1010,6 +1010,10 @@ add_test(NAME LinuxMapClocks COMMAND PrimeWorldLinuxClient --bootstrap-map-clock
 	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 # Original counter and rune graphs run through multiple complete map phases in their own bounded suite.
 set_tests_properties(LinuxMapClocks PROPERTIES TIMEOUT 120)
+add_test(NAME LinuxSummonFormula COMMAND PrimeWorldLinuxClient --bootstrap-summon-probe
+	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+# Isolate summon lifetime and real-asset graphs without weakening the full-engine timeout.
+set_tests_properties(LinuxSummonFormula PROPERTIES TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")

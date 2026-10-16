@@ -1429,6 +1429,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "weighted_placement_b13_tests.inc"
 #include "plane_bomb_b13_tests.inc"
 #include "summon_lifetime_b13_tests.inc"
+#include "summon_counts_b13_tests.inc"
 #include "resource_cache_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
@@ -1443,7 +1444,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "fixture_lifetime_b13_tests.inc"
 #include "ai_defaults_b13_tests.inc"
 
-bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly)
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly)
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
 	NDb::AILogicParameters* ai = new NDb::AILogicParameters;
@@ -1453,6 +1454,24 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	NDb::SessionRoot* root = new NDb::SessionRoot; root->logicRoot = logic;
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
+	if (summonsOnly)
+	{
+		SummonLifetimeB13(check);
+		SummonExplicitRemovalB13(check);
+		SummonOwnerDeathB13(check);
+		SummonPausedLifetimeB13(check);
+		SummonApplicatorLifetimeB13(check);
+		SummonReplacementB13(check);
+		SummonCountsB13(check);
+		SummonCountRejectionB13(check);
+		SummonCountLimitsB13(check);
+		SummonCountOrderB13(check);
+		check(dataRoot && *dataRoot, "B13 summon probe requires original asset data");
+		if (dataRoot && *dataRoot) SummonCountsAuthoredB13(check, dataRoot);
+		NDb::SessionRoot::InitRoot(saved);
+		std::printf("Summon formulas: %d checks, %d failures\n", check.count, check.failed);
+		return check.failed == 0;
+	}
 	if (mapClocksOnly)
 	{
 		MapClockNightQueriesB13(check);
@@ -1491,12 +1510,6 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	BombAbilityStateB13(check);
 	BombRetirementB13(check);
 	if (dataRoot && *dataRoot) PlaneBombAuthoredB13(check, dataRoot);
-	SummonLifetimeB13(check);
-	SummonExplicitRemovalB13(check);
-	SummonOwnerDeathB13(check);
-	SummonPausedLifetimeB13(check);
-	SummonApplicatorLifetimeB13(check);
-	SummonReplacementB13(check);
 	FixtureLifetimeB13(check);
 	AiDefaultsB13(check);
 	{

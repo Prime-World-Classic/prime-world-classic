@@ -10,6 +10,7 @@
 #include "libdb/dbid.h"
 #if defined(PW_LINUX_NULL_RENDER)
 #include "LinuxBootstrap/formula_context.h"
+#include <limits>
 #endif
 
 #ifndef VISUAL_CUTTED
@@ -68,6 +69,23 @@ bool PFApplSummon::Start()
 
   const NDb::SummonApplicator& db = GetDB();
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Preserve original evaluation order/defaults, but never turn a failed expression into a summon.
+	const auto retrieveInteger = [this](const ExecutableIntString& authored, int fallback, int& value) {
+		if (authored.sString.empty() && authored.compiledString.empty()) { value = fallback; return true; }
+		auto* random = GetWorld() ? GetWorld()->GetRndGen() : nullptr;
+		const NRandom::RandomGenerator before(random ? *random : NRandom::RandomGenerator(0));
+		const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
+		if (!result.Succeeded() || double(result.value) < std::numeric_limits<int>::min()
+			|| double(result.value) > std::numeric_limits<int>::max())
+		{
+			if (random) *random = before;
+			return false;
+		}
+		value = static_cast<int>(result.value); return true;
+	};
+
+#endif
   bool isSummonClone = ( db.summonSource == NDb::SUMMONSOURCE_TARGETCLONE );
 
   // Obtain unit to summon
@@ -82,7 +100,12 @@ bool PFApplSummon::Start()
   {
     NI_VERIFY( !db.summonedUnits.empty(), NStr::StrFmt( "No units to summon in applicator '%s'!", NDb::GetFormattedDbId(db.GetDBID()) ),
       return true; );
+#if defined(PW_LINUX_NULL_RENDER)
+		int summonedUnitIndex;
+		if (!retrieveInteger(db.summonedUnitIndex, 0, summonedUnitIndex)) return true;
+#else
     int summonedUnitIndex = RetrieveParam( db.summonedUnitIndex, 0 );
+#endif
     NI_VERIFY(summonedUnitIndex >= 0 && summonedUnitIndex < db.summonedUnits.size(),NStr::StrFmt("Wrong summonedUnitIndex formula in applicator '%s' (summonedUnitIndex: %i)!", NDb::GetFormattedDbId(db.GetDBID()), summonedUnitIndex),
       summonedUnitIndex = 0; );
     pUnitDesc = db.summonedUnits[summonedUnitIndex];
@@ -109,7 +132,12 @@ bool PFApplSummon::Start()
 #endif
   NDb::EUnitType unitType = pBehaviourData ? pBehaviourData->GetSummonedUnitType() : NDb::UNITTYPE_DUMMYUNIT; // unit would be an dummy by default (if have no behaviour)
 
+#if defined(PW_LINUX_NULL_RENDER)
+	int summonedUnitsCount;
+	if (!retrieveInteger(db.summonedUnitsCount, 1, summonedUnitsCount)) return true;
+#else
   int summonedUnitsCount = RetrieveParam( db.summonedUnitsCount, 1 );
+#endif
   NI_DATA_VERIFY( summonedUnitsCount > 0, NStr::StrFmt( "Summoned units count should be positive (now %d)!", summonedUnitsCount ), summonedUnitsCount = 1 );
 
   const NDb::SummonBehaviourBase* const pSummonBehaviourBase = db.behaviour;
@@ -123,10 +151,20 @@ bool PFApplSummon::Start()
     if ( summonType == NDb::SUMMONTYPE_PRIMARY && pOwner->IsDead() )
       return true;
 
+#if defined(PW_LINUX_NULL_RENDER)
+		int maxSummonCount;
+		if (!retrieveInteger(pSummonBehaviourCommon->maxCount, 1, maxSummonCount)) return true;
+#else
     int maxSummonCount = pSummonBehaviourCommon->maxCount( GetAbilityOwner(), GetReceiver(), this, 1 );
+#endif
     int curSummonsCount = pOwner->GetSummonsCount( summonType, db.summonGroupName );
 
+#if defined(PW_LINUX_NULL_RENDER)
+		int maxThisSummonCount;
+		if (!retrieveInteger(pSummonBehaviourCommon->maxThisCount, 0, maxThisSummonCount)) return true;
+#else
     int maxThisSummonCount = pSummonBehaviourCommon->maxThisCount( GetAbilityOwner(), GetReceiver(), this, 0 );
+#endif
 
     NI_DATA_ASSERT( maxThisSummonCount <= maxSummonCount, "maxThisCount should be less than maxCount" );
     
