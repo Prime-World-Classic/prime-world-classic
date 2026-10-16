@@ -1430,6 +1430,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "plane_bomb_b13_tests.inc"
 #include "summon_lifetime_b13_tests.inc"
 #include "summon_counts_b13_tests.inc"
+#include "summon_priority_b13_tests.inc"
 #include "resource_cache_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
@@ -1466,6 +1467,13 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 		SummonCountRejectionB13(check);
 		SummonCountLimitsB13(check);
 		SummonCountOrderB13(check);
+		SummonPriorityB13(check);
+		SummonMixedPriorityB13(check);
+		SummonRemovalCountsB13(check);
+		SummonRemovalFiltersB13(check);
+		SummonRemovalReentryB13(check);
+		SummonLargePriorityB13(check);
+		SummonPriorityApplicatorB13(check);
 		check(dataRoot && *dataRoot, "B13 summon probe requires original asset data");
 		if (dataRoot && *dataRoot) SummonCountsAuthoredB13(check, dataRoot);
 		NDb::SessionRoot::InitRoot(saved);

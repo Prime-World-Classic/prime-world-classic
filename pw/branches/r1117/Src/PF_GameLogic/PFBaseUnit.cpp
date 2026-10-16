@@ -2941,12 +2941,15 @@ void PFBaseUnit::ForAllSummons(ISummonAction& action, NDb::SummonType type)
   summonedUnits[type]->ForAllBehaviour(forAll);
 }
 int PFBaseUnit::GetMaxAllowedSummons(NDb::SummonType type, const string& summonGroupName) const { map<string, int>::const_iterator it = maxAllowedSummons[type].find(summonGroupName); return it == maxAllowedSummons[type].end() ? 0 : it->second; }
+/** Apply original feasible-count and removal priority while retaining callback-visible group members. */
 int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType type, const string& summonGroupName, const NDb::Creature* pDBUnit, const int maxCount, UnsummonCriterion* pUnsummonCriterion)
 {
-  if (type < 0 || type >= NDb::KnownEnum<NDb::SummonType>::sizeOf || !summonedUnits[type])
+	if (unsummonCount < 0 || type < 0 || type >= NDb::KnownEnum<NDb::SummonType>::sizeOf || !summonedUnits[type])
     return 0;
 
-  typedef nstl::vector<PFSummonBehaviour*> SummonBehaviours;
+	// Unsummon callbacks can release the owner and other members of this snapshot.
+	CObj<PFBaseUnit> retained(this);
+	typedef nstl::vector<CObj<PFSummonBehaviour>> SummonBehaviours;
   SummonBehaviours summons;
 
   struct AddFunc : NonCopyable
@@ -2979,18 +2982,37 @@ int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType typ
   if (totalCount <= 0)
     return 0;
 
-  int count = maxCount > 0 ? Max(0, totalCount - maxCount + unsummonCount) : unsummonCount;
-  count = Min(count, totalCount);
-  if (count <= 0)
+	// Original policy rejects impossible removals; widening avoids signed count overflow.
+	const long long required = maxCount > 0 ? static_cast<long long>(totalCount) - maxCount + unsummonCount : unsummonCount;
+	if (required <= 0 || required > totalCount)
     return 0;
+	const int count = static_cast<int>(required);
 
   if (pUnsummonCriterion)
     nstl::sort(summons.begin(), summons.end(), *pUnsummonCriterion);
+	else
+	{
+		/** Original default: lower health fraction first, then older elapsed lifetime. */
+		struct HealthComp
+		{
+			bool operator()(PFSummonBehaviour* first, PFSummonBehaviour* second) const
+			{
+				if (first->IsHealthPriority() && second->IsHealthPriority())
+				{
+					const float firstHealth = first->GetUnit()->GetHealth() / first->GetUnit()->GetMaxHealth();
+					const float secondHealth = second->GetUnit()->GetHealth() / second->GetUnit()->GetMaxHealth();
+					if (firstHealth < secondHealth) return true;
+					if (firstHealth > secondHealth) return false;
+				}
+				return first->GetLifeTime() > second->GetLifeTime();
+			}
+		};
+		nstl::sort(summons.begin(), summons.end(), HealthComp());
+	}
 
   for (int i = 0; i < count; ++i)
   {
     summons[i]->Unsummon();
-    summons[i]->OnStop();
   }
 
   return count;
