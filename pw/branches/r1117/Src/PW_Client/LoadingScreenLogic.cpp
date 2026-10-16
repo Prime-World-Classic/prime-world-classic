@@ -36,7 +36,7 @@ REGISTER_VAR( "fair_loadscreen", g_fairLoadscreen, STORAGE_USER );
 
 namespace
 {
-  // the background picked for the current loading screen (one pick per LoadingScreenLogic, see the constructor)
+  // the background picked for the current battle: the lobby screen and the loading screen show the same one (reset in ~LoadingScreenLogic)
   string g_fairPickedBack;
   bool g_fairPicked = false;
 
@@ -82,6 +82,11 @@ namespace
     }
     return g_fairPickedBack.empty() ? string( mapBack ) : g_fairPickedBack;
   }
+}
+
+string FairLoadscreenBack()
+{
+  return FairLoadingBack( "" );
 }
 
 namespace 
@@ -145,14 +150,14 @@ LoadingScreenLogic::LoadingScreenLogic( NGameX::LoadingStatusHandler * statusHan
 , leftTeamForce(0), rightTeamForce(0),
 isShowTeamForce(true),partyFlag(true),tamburFlag(true)
 {
-  g_fairPicked = false; // a new battle - a new background from the fair rotation
-
   levelToExp = NDb::SessionRoot::GetRoot()->logicRoot->aiLogic->levelToExperienceTable; 
 }
 
 
 LoadingScreenLogic::~LoadingScreenLogic()
 {
+  g_fairPicked = false; // the next battle - a new background from the fair rotation
+
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ModeDescriptionTooltip));
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ExitLoadingScreen));
 }
