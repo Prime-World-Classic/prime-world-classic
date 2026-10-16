@@ -156,6 +156,7 @@
 #include "LinuxBootstrap/ruffle_eval/talent_target_input.h"
 #include "LinuxBootstrap/ruffle_eval/action_key_input.h"
 #include "LinuxBootstrap/ground_talent_target.h"
+#include "LinuxBootstrap/targeted_talent.h"
 #endif
 #include <chrono>
 #include "LoadingStatusHandler.h"
@@ -35638,13 +35639,15 @@ float ResolveLinuxMapPreviewMarkerPickRadius(
   return 0.0f;
 }
 
+/** HUD targeting can exclude hidden/stale units before scoring; legacy callers keep their policy. */
 bool FindLinuxMapPreviewMarkerNearWorld(
   NWorld::PFWorld* world,
   const CVec2& point,
   const NWorld::PFBaseHero* controlledHero,
   bool enemiesOnly,
   NWorld::LinuxDynamicWorldMarker* outMarker,
-  float* outDistance
+  float* outDistance,
+	bool visibleUnitsOnly = false
 )
 {
   if (outDistance)
@@ -35670,6 +35673,13 @@ bool FindLinuxMapPreviewMarkerNearWorld(
     {
       continue;
     }
+		if (visibleUnitsOnly)
+		{
+			auto* unit = dynamic_cast<NWorld::PFBaseUnit*>(world->GetObject(marker.objectId));
+			if (!controlledHero || !NWorld::IsUnitValid(unit) || unit->GetWorld() != world ||
+				unit->GetObjectId() != marker.objectId || !unit->IsVisibleForFaction(controlledHero->GetFaction()))
+				continue;
+		}
     if (enemiesOnly &&
         controlledHero &&
         marker.faction == static_cast<int>(controlledHero->GetFaction()))
@@ -51530,17 +51540,42 @@ bool SubmitLinuxRuffleCommand(LinuxBootstrapScreenRuntime* runtime, NCore::World
 }
 
 /** Revalidate the exact authored row/column against current simulation state. */
-bool CanArmLinuxGroundTalent(NWorld::PFBaseMaleHero* hero, int row, int column)
+bool CanArmLinuxRuffleTargetedTalent(NWorld::PFBaseMaleHero* hero, int row, int column)
 {
-	if (!hero || hero->IsDead() || row < 0 || row >= 6 || column < 0 || column >= 6) return false;
-	auto* talent = hero->GetTalent(row, column);
-	return talent && talent->GetDBDesc() && talent->IsActivated() && talent->IsActive() && talent->CanBeUsed() &&
-		std::isfinite(talent->GetUseRange()) &&
-		(talent->GetTargetType() & NDb::SPELLTARGET_LAND) && !(talent->GetTargetType() & NDb::SPELLTARGET_LINEOFSIGHT) &&
-		!talent->GetDBDesc()->requireLineOfSight && talent->GetDBDesc()->alternativeTargets.empty();
+	return NWorld::CanArmLinuxTargetedTalent(hero, row, column);
 }
 
-/** Accept purchases/immediate casts or arm the exact supported ground-target talent. */
+/** Resolve the original HUD endpoint before cast admission.
+ * Mixed masks use LAND when the clicked object fails selection, but never after an
+ * accepted object fails ability conditions, resources or other cast-time checks.
+ */
+bool ResolveLinuxRuffleTalentTarget(NWorld::PFBaseMaleHero* hero, const NWorld::PFTalent* talent,
+	const CVec2& point, NWorld::Target* target)
+{
+	if (!hero || !talent || !target || !hero->GetWorld()) return false;
+	auto* world = hero->GetWorld();
+	const unsigned targets = talent->GetTargetType();
+	if (targets & (NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_SELF))
+	{
+		NWorld::LinuxDynamicWorldMarker marker;
+		if (FindLinuxMapPreviewMarkerNearWorld(world, point, hero, false, &marker, nullptr, true))
+		{
+			auto* unit = dynamic_cast<NWorld::PFBaseUnit*>(world->GetObject(marker.objectId));
+			if (!NWorld::IsUnitValid(unit) || unit->GetWorld() != world ||
+				unit->GetObjectId() != marker.objectId || !unit->IsVisibleForFaction(hero->GetFaction())) return false;
+			if (NWorld::CanSelectLinuxTalentUnit(hero, talent, unit))
+			{
+				*target = NWorld::Target(unit);
+				return true;
+			}
+		}
+	}
+	if (!(targets & NDb::SPELLTARGET_LAND)) return false;
+	*target = NWorld::Target(point);
+	return true;
+}
+
+/** Accept purchases/immediate casts or arm the exact supported ground/unit-target talent. */
 bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 	NWorld::PFBaseMaleHero* hero, LinuxBootstrapScreenRuntime* runtime)
 {
@@ -51581,7 +51616,7 @@ bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 			const unsigned kind = static_cast<unsigned>(unit->GetUnitKind());
 			if (kind >= 32 || !(targets & (1u << kind))) return false;
 			if (!(targets & (unit->GetFaction() == hero->GetFaction() ? NDb::SPELLTARGET_ALLY : NDb::SPELLTARGET_ENEMY))) return false;
-			// The current native command casts immediately; do not bypass range with it.
+			// Keep the existing immediate-action admission; selected unit casts use the approach HFSM below.
 			const float range = talent->GetUseRange(target);
 			const float distance = fabs(unit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D());
 			if (!std::isfinite(range) || range < 0 || (range > 0 && distance > range)) return false;
@@ -51592,14 +51627,18 @@ bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 	else if (request == Request::NeedsTarget)
 	{
 		++runtime->ruffleNeedsTarget;
-		if (!CanArmLinuxGroundTalent(hero, event.row, event.column)) return false;
+		if (!CanArmLinuxRuffleTargetedTalent(hero, event.row, event.column)) return false;
 		const auto epoch = runtime->ruffleInspection.ControlEpoch();
 		if (!runtime->ruffleTargetInput.Arm({hero->GetObjectId(), event.row, event.column, epoch},
 			{hero->GetObjectId(), epoch, true})) return false;
 		runtime->ruffleTalentRequestSteps[slot] = step;
 		++runtime->ruffleTargetArmed;
-		fprintf(stdout, "Ruffle ground target armed: row=%d column=%d range=%.3f\n",
-			event.row, event.column, talent->GetUseRange());
+		const unsigned targets = talent->GetTargetType();
+		if (targets & (NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_SELF))
+			fprintf(stdout, "Ruffle unit target armed: row=%d column=%d\n", event.row, event.column);
+		else
+			fprintf(stdout, "Ruffle ground target armed: row=%d column=%d range=%.3f\n",
+				event.row, event.column, talent->GetUseRange());
 		return true;
 	}
 	if (sent)
@@ -51620,7 +51659,7 @@ void DriveLinuxRuffleTargeting(const LinuxClientLaunchSettings& settings, const 
 	auto* hero = dynamic_cast<NWorld::PFBaseMaleHero*>(ResolveLinuxRuffleCommandHero(settings, runtime));
 	const auto& pending = runtime->ruffleTargetInput.Pending();
 	PwRuffleTalentTargetInput::Context context{hero ? hero->GetObjectId() : -1,
-		runtime->ruffleInspection.ControlEpoch(), hero && (!pending || CanArmLinuxGroundTalent(hero, pending->row, pending->column))};
+		runtime->ruffleInspection.ControlEpoch(), hero && (!pending || CanArmLinuxRuffleTargetedTalent(hero, pending->row, pending->column))};
 	const bool wasPending = pending.has_value();
 	if (!runtime->ruffleTargetInput.Revalidate(context) && wasPending) ++runtime->ruffleTargetCanceled;
 	size_t kept = 0;
@@ -51637,6 +51676,10 @@ void DriveLinuxRuffleTargeting(const LinuxClientLaunchSettings& settings, const 
 		if (decision.request)
 		{
 			bool submitted = false;
+			int targetObjectId = -1;
+			const auto& key = decision.request->key;
+			auto* talent = hero ? hero->GetTalent(key.row, key.column) : nullptr;
+			const bool unitSelection = talent && (talent->GetTargetType() & (NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_SELF));
 			XWindowAttributes attributes = {};
 			float x = 0, y = 0;
 			if (overlay && XGetWindowAttributes(overlay->display, overlay->window, &attributes) &&
@@ -51646,16 +51689,25 @@ void DriveLinuxRuffleTargeting(const LinuxClientLaunchSettings& settings, const 
 				viewport.width = attributes.width; viewport.height = attributes.height;
 				if (ProjectLinuxMapPreviewScreenToWorld(viewport, map, *runtime, message.x, message.y, &x, &y, false))
 				{
-					const NWorld::Target target(CVec2(x, y));
-					const auto& key = decision.request->key;
-					if (NWorld::CanUseLinuxGroundTalent(hero, key.row, key.column, target, runtime->localScheduler->GetMyClientID()))
-						submitted = SubmitLinuxRuffleCommand(runtime, NWorld::CreateCmdUseTalent(hero, key.row, key.column, target, false));
+					NWorld::Target target;
+					if (ResolveLinuxRuffleTalentTarget(hero, talent, CVec2(x, y), &target))
+					{
+						if (target.IsUnit()) targetObjectId = target.GetUnit()->GetObjectId();
+						if (NWorld::CanUseLinuxTargetedTalent(hero, key.row, key.column, target, runtime->localScheduler->GetMyClientID()))
+							submitted = SubmitLinuxRuffleCommand(runtime, target.IsUnit()
+								? NWorld::CreateCmdUseLinuxTargetedTalent(hero, key.row, key.column, target)
+								: NWorld::CreateCmdUseTalent(hero, key.row, key.column, target, false));
+					}
 				}
 			}
 			runtime->ruffleTargetInput.Complete(*decision.request, submitted);
 			if (submitted) { ++runtime->ruffleTargetCasts; ++runtime->ruffleTalentCommands; }
 			else ++runtime->ruffleTargetRejected;
-			fprintf(stdout, "Ruffle ground target: %s position=%.3f,%.3f\n", submitted ? "submitted" : "rejected", x, y);
+			if (unitSelection)
+				fprintf(stdout, "Ruffle unit target: %s object=%d position=%.3f,%.3f\n",
+					submitted ? "submitted" : "rejected", targetObjectId, x, y);
+			else
+				fprintf(stdout, "Ruffle ground target: %s position=%.3f,%.3f\n", submitted ? "submitted" : "rejected", x, y);
 		}
 		if (!decision.consume) input->rawMessages[kept++] = message;
 	}
@@ -51895,7 +51947,7 @@ PwRuffleActionState CaptureLinuxRuffleActions(LinuxBootstrapScreenRuntime* runti
 			entry.status = talent->DoesSpendLifeInsteadEnergy() ? TalentStatus::NotEnoughLife : TalentStatus::NotEnoughMana;
 		if (talent->IsForbidded() || !talent->IsActive()) entry.status = TalentStatus::Disabled;
 		if (runtime->ruffleTargetInput.IsChosen({hero->GetObjectId(), row, column,
-			runtime->ruffleInspection.ControlEpoch()}) && CanArmLinuxGroundTalent(hero, row, column))
+			runtime->ruffleInspection.ControlEpoch()}) && CanArmLinuxRuffleTargetedTalent(hero, row, column))
 			entry.status = TalentStatus::Chosen;
 		entry.alternativeState = (talent->IsOn() && talent->IsMultiState()) || talent->IsSecondState();
 		if (!display.supported) entry.status = TalentStatus::Disabled;
@@ -71481,6 +71533,8 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-summon-probe"))
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), false, true) ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-targeted-talent-probe"))
+		return RunPrimeWorldLinuxApplicatorFormulaProbe(nullptr, false, false, true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))

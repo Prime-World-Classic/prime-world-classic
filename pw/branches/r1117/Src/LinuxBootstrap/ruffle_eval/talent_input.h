@@ -22,7 +22,7 @@ struct PwRuffleTalentInputState
 enum class PwRuffleTalentRequest { Reject, Buy, Self, AttackTarget, NeedsTarget };
 
 /** Match the immediate branches of AdventureScreen::OnTalentSetButtonClick.
- * NeedsTarget is inert until native two-step targeting is implemented. Target
+ * NeedsTarget arms the exact talent for a subsequent ground/unit click. Target
  * validity/cast limitations must still be checked by the caller and world command.
  */
 inline PwRuffleTalentRequest PwRuffleResolveTalentInput(const PwRuffleGameplayEvent& event,

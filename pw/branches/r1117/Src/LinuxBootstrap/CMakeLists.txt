@@ -1015,6 +1015,10 @@ add_test(NAME LinuxSummonFormula COMMAND PrimeWorldLinuxClient --bootstrap-summo
 	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 # Isolate summon lifetime and real-asset graphs without weakening the full-engine timeout.
 set_tests_properties(LinuxSummonFormula PROPERTIES TIMEOUT 120)
+add_test(NAME LinuxTargetedTalent COMMAND PrimeWorldLinuxClient --bootstrap-targeted-talent-probe)
+# Exercise real player ownership, target admission and the original hero casting HFSM.
+set_tests_properties(LinuxTargetedTalent PROPERTIES
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../Bin" TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")

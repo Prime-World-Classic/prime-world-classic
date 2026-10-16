@@ -126,7 +126,7 @@ struct B8BehaviourForeignWorld
 {
 	CObj<NCore::IWorldBase> owner;
 	PFWorld* world = nullptr;
-	explicit B8BehaviourForeignWorld(Checks& check)
+	explicit B8BehaviourForeignWorld(Checks& check, const NCore::TPlayersStartInfo& players = NCore::TPlayersStartInfo())
 	{
 		NDb::Terrain* terrain = new NDb::Terrain;
 		terrain->elemXCount = 4;
@@ -139,7 +139,7 @@ struct B8BehaviourForeignWorld
 		NDb::Ptr<NDb::AdvMapDescription> db = description;
 		owner = PFWorld::CreatePFWorld();
 		world = dynamic_cast<PFWorld*>(owner.GetPtr());
-		const bool loaded = world && world->LoadMap(db, 0, NCore::TPlayersStartInfo(), 0,
+		const bool loaded = world && world->LoadMap(db, 0, players, 0,
 			false, PFResourcesCollection::TalentMap());
 		check(loaded, "B8 foreign mock world loads");
 		if (!loaded)

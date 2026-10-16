@@ -24,6 +24,7 @@
 #include "PF_GameLogic/HeroActions.h"
 #include "PF_GameLogic/TargetSelectorHelper.hpp"
 #include "ground_talent_target.h"
+#include "targeted_talent.h"
 
 namespace NWorld
 {
@@ -286,6 +287,71 @@ namespace NWorld
 			(types & NDb::SPELLTARGET_ENEMY) != 0;
 	}
 
+	/** Arm supported authored endpoints without evaluating a unit-dependent range against self. */
+	bool CanArmLinuxTargetedTalent(PFBaseMaleHero* hero, int row, int column)
+	{
+		PFTalent* talent = LinuxCommandTalent(hero, row, column);
+		if (!CanUseLinuxTalentCommand(hero, talent) || !talent->CanBeUsed() ||
+			!talent->GetDBDesc()->alternativeTargets.empty()) return false;
+		const unsigned types = talent->GetTargetType();
+		if (types & (NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_SELF)) return true;
+		return (types & NDb::SPELLTARGET_LAND) && !(types & NDb::SPELLTARGET_LINEOFSIGHT) &&
+			!talent->GetDBDesc()->requireLineOfSight &&
+			std::isfinite(talent->GetUseRange());
+	}
+
+	/** Mirror AdventureScreen's direct-click mask, not the different automatic UnitMaskingPredicate. */
+	bool CanSelectLinuxTalentUnit(PFBaseMaleHero* hero, const PFTalent* talent, PFBaseUnit* unit)
+	{
+		if (!IsUnitValid(hero) || !IsValid(talent) || !IsUnitValid(unit) || !hero->GetWorld() ||
+			unit->GetWorld() != hero->GetWorld() ||
+			hero->GetWorld()->FindLinuxUnitByObjectId(unit->GetObjectId()) != unit ||
+			!unit->IsVisibleForFaction(hero->GetFaction())) return false;
+		const unsigned types = talent->GetTargetType();
+		if (unit == hero) return (types & NDb::SPELLTARGET_SELF) != 0;
+		if (unit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK)) return false;
+		const int kind = unit->GetUnitKind();
+		if (kind < 0 || kind >= 32 || !(types & (1u << kind))) return false;
+		if (unit->GetUnitType() == NDb::UNITTYPE_FLAGPOLE && unit->GetFaction() == NDb::FACTION_NEUTRAL) return false;
+		return (types & (unit->GetFaction() == hero->GetFaction() ? NDb::SPELLTARGET_ALLY : NDb::SPELLTARGET_ENEMY)) != 0;
+	}
+
+	/** Admit an exact visible unit; the original hero HFSM owns any approach and eventual cast. */
+	bool CanUseLinuxTargetedTalent(PFBaseMaleHero* hero, int row, int column, const Target& target, int clientId)
+	{
+		if (target.IsPosition()) return CanUseLinuxGroundTalent(hero, row, column, target, clientId);
+		if (!target.IsUnit() || !CanArmLinuxTargetedTalent(hero, row, column) ||
+			!IsLinuxHumanTalentActor(hero, clientId) || !hero->GetPlayer()->IsPlaying() ||
+			!hero->GetWorld()->IsSubscribed(hero->GetPlayer()) ||
+			!IsUnitValid(target.GetUnit()) || target.GetDBAlternativeTarget()) return false;
+		PFTalent* talent = hero->GetTalent(row, column);
+		if (!CanSelectLinuxTalentUnit(hero, talent, target.GetUnit()) ||
+			!CanUseLinuxAuthoredTalentTarget(hero, talent, target) || talent->CheckCastLimitations(target)) return false;
+		const float range = talent->GetUseRange(target);
+		const CVec3 position = target.AcquirePosition();
+		if (!std::isfinite(range) || range < 0 || !std::isfinite(position.x) ||
+			!std::isfinite(position.y) || !std::isfinite(position.z)) return false;
+		const bool approach = (target.GetUnit() != hero && range > 0 &&
+			!(talent->GetFlags() & NDb::ABILITYFLAGS_CANUSEOUTOFRANGE) && !hero->IsTargetInRange(target, range)) ||
+			(talent->GetDBDesc()->requireLineOfSight && !hero->CanSee(position));
+		return !approach || !hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE);
+	}
+
+	/** Revalidate ownership without imposing click-time visibility on an original ongoing chase.
+	 * Live PFPlayers are stepped; weak UID/object lookups alone can retain unregistered players.
+	 */
+	static bool CanContinueLinuxHudTalent(PFBaseMaleHero* hero, PFTalent* talent, PFPlayer* player,
+		int level, int slot, const Target& target, int clientId)
+	{
+		return IsValid(player) && CanUseLinuxTalentCommand(hero, talent) &&
+			IsLinuxHumanTalentActor(hero, clientId) && hero->GetPlayer() == player && player->IsPlaying() &&
+			player->GetWorld() == hero->GetWorld() &&
+			hero->GetWorld()->IsSubscribed(player) &&
+			hero->GetWorld()->GetObjectById(player->GetObjectId()) == player &&
+			LinuxCommandTalent(hero, level, slot) == talent && target.IsUnit() && IsUnitValid(target.GetUnit()) &&
+			hero->GetWorld()->FindLinuxUnitByObjectId(target.GetUnit()->GetObjectId()) == target.GetUnit();
+	}
+
   static int EncodeLinuxBootstrapCommandHeroSlotIndex(
     PFBaseHero* hero,
     int slotIndex)
@@ -508,14 +574,21 @@ namespace NWorld
 		/** Reconstruction must retain the allocation's concrete type without issuing a cast. */
 		LinuxTalentCommandState() = default;
 		LinuxTalentCommandState(PFBaseMaleHero* hero, PFTalent* talent, const Target& target,
-			int level, int slot, int clientId, bool recordPayment, bool portalCommand = false)
+			int level, int slot, int clientId, bool recordPayment, bool portalCommand = false, PFPlayer* hudPlayer = nullptr)
 			: PFHeroUseTalentState(hero, talent, target), commandTalent(talent),
-			level(level), slot(slot), clientId(clientId), recordPayment(recordPayment), portalCommand(portalCommand) {}
+			level(level), slot(slot), clientId(clientId), recordPayment(recordPayment), portalCommand(portalCommand),
+			hudCommand(hudPlayer != nullptr), hudPlayer(hudPlayer) {}
 	protected:
+		void OnEnter() override
+		{
+			if (!hudCommand || CanContinueLinuxHudTalent(hero, commandTalent, hudPlayer, level, slot, target, clientId))
+				PFHeroUseTalentState::OnEnter();
+		}
 		bool OnStep(float dt) override
 		{
 			if (!pAbilityInstance && (!CanUseLinuxTalentCommand(hero, commandTalent) ||
-				!CanUseLinuxAuthoredTalentTarget(hero, commandTalent, target)))
+				!CanUseLinuxAuthoredTalentTarget(hero, commandTalent, target) ||
+				(hudCommand && !CanContinueLinuxHudTalent(hero, commandTalent, hudPlayer, level, slot, target, clientId))))
 				return true;
 			const bool hadInstance = IsValid(pAbilityInstance);
 			const bool sample = !hadInstance && IsUnitValid(hero) && IsValid(commandTalent);
@@ -580,10 +653,53 @@ namespace NWorld
 		CPtr<PFTalent> commandTalent;
 		int level = -1, slot = -1, clientId = -1;
 		bool recordPayment = false, portalCommand = false;
+		bool hudCommand = false;
+		CPtr<PFPlayer> hudPlayer;
 		bool admitted = false, reported = false;
 		int admissionStep = -1, admissionInstances = 0;
 		float admissionCooldown = 0, admissionRange = 0;
 	};
+
+	/** Serialized HUD provenance is distinct from shared-scheduler bot/script commands.
+	 * The existing hero state still owns approach, casting, dispatch, payment and cooldown.
+	 */
+	class CmdUseLinuxTargetedTalent : public NCore::WorldCommand
+	{
+		OBJECT_METHODS(0x7B13C109, CmdUseLinuxTargetedTalent);
+	public:
+		CmdUseLinuxTargetedTalent() = default;
+		CmdUseLinuxTargetedTalent(PFBaseMaleHero* hero, int level, int slot, const Target& target)
+			: hero(hero), talent(LinuxCommandTalent(hero, level, slot)), player(hero->GetPlayer()),
+			level(level), slot(slot), target(target) {}
+		int operator&(IBinSaver& saver)
+		{
+			saver.Add(2, &hero); saver.Add(3, &talent); saver.Add(4, &player);
+			saver.Add(5, &level); saver.Add(6, &slot); saver.Add(7, &target);
+			return 0;
+		}
+		bool CanExecute() const override
+		{
+			return target.IsUnit() && CanContinueLinuxHudTalent(hero, talent, player, level, slot, target, GetId()) &&
+				CanUseLinuxTargetedTalent(hero, level, slot, target, GetId());
+		}
+		void Execute(NCore::IWorldBase* world) override
+		{
+			if (!CanExecute() || hero->GetWorld() != dynamic_cast<PFWorld*>(world)) return;
+			hero->EnqueueState(new LinuxTalentCommandState(hero, talent, target,
+				level, slot, GetId(), true, false, player), true);
+		}
+	private:
+		CPtr<PFBaseMaleHero> hero;
+		CPtr<PFTalent> talent;
+		CPtr<PFPlayer> player;
+		int level = -1, slot = -1;
+		AbilityTarget target;
+	};
+
+	NCore::WorldCommand* CreateCmdUseLinuxTargetedTalent(PFBaseMaleHero* hero, int row, int column, const Target& target)
+	{
+		return IsUnitValid(hero) && target.IsUnit() ? new CmdUseLinuxTargetedTalent(hero, row, column, target) : nullptr;
+	}
 #endif
 
   DEFINE_2_PARAM_CMD_CHECK( 0x2C5B9CC0, CmdCombatMoveHero, CPtr<PFBaseHero>, pHero, CVec2, target );
@@ -1966,6 +2082,9 @@ REGISTER_SAVELOAD_CLASS_NM( CmdMinimapSignal, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdUseConsumable, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdActivateTalent, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdUseTalent, NWorld )
+#if defined(PW_LINUX_NULL_RENDER)
+REGISTER_SAVELOAD_CLASS_NM( CmdUseLinuxTargetedTalent, NWorld )
+#endif
 REGISTER_SAVELOAD_CLASS_NM( CmdUsePortal, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdUseUnit, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdBuyConsumable, NWorld )
