@@ -1432,6 +1432,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "summon_counts_b13_tests.inc"
 #include "summon_priority_b13_tests.inc"
 #include "summon_criterion_b13_tests.inc"
+#include "summon_setup_b13_tests.inc"
 #include "resource_cache_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
@@ -1479,9 +1480,16 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 		SummonCriterionFailureB13(check);
 		SummonCriterionRecastB13(check);
 		SummonCriterionLargeB13(check);
+		SummonSetupResourcesB13(check);
+		SummonSetupDamageB13(check);
+		SummonSetupLashB13(check);
+		SummonSetupRejectionB13(check);
+		SummonSetupRandomB13(check);
+		SummonSetupRecastB13(check);
 		check(dataRoot && *dataRoot, "B13 summon probe requires original asset data");
 		if (dataRoot && *dataRoot) SummonCountsAuthoredB13(check, dataRoot);
 		if (dataRoot && *dataRoot) SummonCriterionAuthoredB13(check, dataRoot);
+		if (dataRoot && *dataRoot) SummonSetupAuthoredB13(check, dataRoot);
 		NDb::SessionRoot::InitRoot(saved);
 		std::printf("Summon formulas: %d checks, %d failures\n", check.count, check.failed);
 		return check.failed == 0;

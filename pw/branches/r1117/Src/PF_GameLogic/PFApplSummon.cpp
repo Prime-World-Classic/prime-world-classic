@@ -43,6 +43,39 @@ PFSummonedUnitBehaviour* PFSummonBehaviourDataBase::CreateDummyBehaviour(CPtr<PF
 }
 
 
+#if defined(PW_LINUX_NULL_RENDER)
+/** Read the new candidate, not the summoning applicator's original receiver; empty data keeps its field default. */
+static LinuxBootstrap::NumericFormulaResult EvaluateSummonSetupValue(const ExecutableFloatString& source,
+	const PFBaseApplicator* app, const PFBaseUnit* candidate, float fallback)
+{
+	if (!app || !candidate) return {LinuxBootstrap::NumericFormulaError::ResolverFailure};
+	if (source.sString.empty() && source.compiledString.empty()) return {LinuxBootstrap::NumericFormulaError::None, fallback};
+	return LinuxBootstrap::EvaluateSelectorConditionFormula(source.sString.c_str(), app->GetAbilityOwner(), candidate, app);
+}
+
+/** Validate both original pre-write resource reads as one pair, including their random draws.
+ * Failure leaves resources unchanged. Callers retire the new candidate and skip
+ * its child effects; this does not undo earlier replacement or other setup reads.
+ */
+static bool SetupSummonsLifeAndEnergy(const NDb::SpawnStats& stats, const PFBaseApplicator* app, PFBaseUnit* unit)
+{
+	const CPtr<PFBaseUnit> owner = app ? app->GetAbilityOwner() : nullptr;
+	PFWorld* world = IsValid(owner) ? owner->GetWorld() : nullptr;
+	if (app && world != app->GetWorld()) world = nullptr;
+	const NRandom::RandomGenerator saved = world ? *world->GetRndGen() : NRandom::RandomGenerator();
+	const auto life = EvaluateSummonSetupValue(stats.life, app, unit, -1.f);
+	if (!life.Succeeded()) return false;
+	const auto energy = EvaluateSummonSetupValue(stats.energy, app, unit, -1.f);
+	if (!energy.Succeeded())
+	{
+		if (world) *world->GetRndGen() = saved;
+		return false;
+	}
+	if (life.value > 0.f) unit->ChangeHealth(life.value - unit->GetLife());
+	if (energy.value >= 0.f) unit->ChangeMana(energy.value - unit->GetEnergy());
+	return true;
+}
+#else
 void SetupSummonsLifeAndEnergy( const NDb::SpawnStats& spawnStats, const PFBaseApplicator* pSummoningAppl, PFBaseUnit* pSummonedUnit )
 {
   float life = spawnStats.life( pSummoningAppl->GetAbilityOwner(), pSummonedUnit, pSummoningAppl, -1.0f );
@@ -56,6 +89,7 @@ void SetupSummonsLifeAndEnergy( const NDb::SpawnStats& spawnStats, const PFBaseA
     pSummonedUnit->ChangeMana( energy - pSummonedUnit->GetEnergy() );
   }
 }
+#endif
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +299,17 @@ bool PFApplSummon::Start()
     if(isSummonClone && (unitType != NDb::UNITTYPE_HEROMALE || unitType != NDb::UNITTYPE_HEROFEMALE))
       pSummonedUnit->ModifyStatsByForce();
 
+#if defined(PW_LINUX_NULL_RENDER)
+		const auto damage = EvaluateSummonSetupValue(db.takeModDmg, this, pSummonedUnit, 1.f);
+		if (!damage.Succeeded())
+		{
+			pSummonedUnit->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_UNSUMMON);
+			continue;
+		}
+		pSummonedUnit->SetAdditionalDamageParam(damage.value, db.takeTypeUnit);
+#else
     pSummonedUnit->SetAdditionalDamageParam( db.takeModDmg( pOwner, pSummonedUnit, this, 1.f ), db.takeTypeUnit );
+#endif
 
     if ( pSummonBehaviourCommon && pSummonBehaviourCommon->targetingParams )
     {
@@ -293,7 +337,19 @@ bool PFApplSummon::Start()
 
       if (pSummonBehaviourCommon)
       {
+#if defined(PW_LINUX_NULL_RENDER)
+				const auto lash = EvaluateSummonSetupValue(pSummonBehaviourCommon->lashRange, this, pSummonedUnit, 15.f);
+				if (!lash.Succeeded())
+				{
+					// Install before death so original cleanup retires its owner group, alpha link and behavior together.
+					pSummonedUnit->AddBehaviourOnTop(pBehaviour.GetPtr());
+					pBehaviour->Unsummon();
+					continue;
+				}
+				pBehaviour->SetLashRange(lash.value);
+#else
         pBehaviour->SetLashRange( pSummonBehaviourCommon->lashRange(pOwner, pSummonedUnit, this, 15.f ) );
+#endif
         pBehaviour->SetResponseRange( pSummonBehaviourCommon->responseRange );
         pBehaviour->SetResponseTime( pSummonBehaviourCommon->responseTime );
       }
@@ -332,7 +388,15 @@ bool PFApplSummon::Start()
       pSummonedUnit->DoLevelups( pReceiver->GetNaftaLevel() - 1 );
     }
     
+#if defined(PW_LINUX_NULL_RENDER)
+		if (!SetupSummonsLifeAndEnergy(db.spawnStats, this, pSummonedUnit))
+		{
+			pSummonedUnit->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_UNSUMMON);
+			continue;
+		}
+#else
     SetupSummonsLifeAndEnergy( db.spawnStats, this, pSummonedUnit );
+#endif
 
     // Activate applicators on unit
     Target createdUnit(CPtr<PFBaseUnit>(pSummonedUnit.GetPtr()));
@@ -421,7 +485,15 @@ bool PFApplCloneHero::Start()
   pClone->SetGhostMode(flags & NDb::CLONEFLAGS_GHOSTMOVE, false);
   pClone->EnableAbilityAI(flags & NDb::CLONEFLAGS_USEABILITYAI);
 
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!SetupSummonsLifeAndEnergy(db.spawnStats, this, pClone))
+	{
+		pClone->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_UNSUMMON);
+		return true;
+	}
+#else
   SetupSummonsLifeAndEnergy( db.spawnStats, this, pClone );
+#endif
 
   // Activate applicators on unit
   CPtr<PFBaseUnit> pUnit(pClone);

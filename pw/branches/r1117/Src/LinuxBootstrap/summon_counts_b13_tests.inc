@@ -193,6 +193,11 @@ static void SummonCountsAuthoredB13(Checks& check, const char* dataRoot)
 	{
 		const auto db = NDb::Get<NDb::SummonApplicator>(NDb::DBID("/Items/Talents/Class/Demonolog/SummonDemons.APLR.xdb"));
 		const auto talent = NDb::Get<NDb::Talent>(NDb::DBID("/Items/Talents/Class/Demonolog/Ability0.TALENT.xdb"));
+		const auto rules = NDb::Get<NDb::AILogicParameters>(NDb::DBID("/GameLogic/AILogic.AILP.xdb"));
+		auto* ai = const_cast<NDb::AILogicParameters*>(NDb::SessionRoot::GetRoot()->logicRoot->aiLogic.GetPtr());
+		const auto savedConstants = ai->globalConstants;
+		if (rules) ai->globalConstants = rules->globalConstants;
+		check(rules && rules->globalConstants, "B13 shipped summons use original global damage constants, not literal fallbacks");
 		const auto* behaviour = db ? dynamic_cast<const NDb::SummonBehaviourCommon*>(db->behaviour.GetPtr()) : nullptr;
 		check(db && talent && behaviour && db->summonedUnits.size() == 1 && db->summonedUnits[0]
 			&& db->summonedUnitsCount.sString == "f2l(max(sender.vSaveDemons , 1))" && behaviour->maxCount.sString == "f2l(cA0_MaxDemons)",
@@ -209,9 +214,17 @@ static void SummonCountsAuthoredB13(Checks& check, const char* dataRoot)
 			check(int(units.size()) == expected && f.sender->GetSummonsCount(behaviour->summonType, db->summonGroupName) == expected
 				&& f.sender->GetMaxAllowedSummons(behaviour->summonType, db->summonGroupName) == 3,
 				"B13 original Demonologist leaf produces saved demon count with its authored three-creature owner limit");
-			for (const auto& unit : units) check(unit->DbUnitDesc() == db->summonedUnits[0].GetPtr() && unit->HasBehaviour(),
-				"B13 authored summon is the original Demon2 creature with its real owned behavior, not a mock substitute");
+			const auto neutral = B8BehaviourMoving(isolated.world, NDb::FACTION_NEUTRAL);
+			neutral->SetUnitType(NDb::UNITTYPE_NEUTRALCREEP);
+			for (const auto& unit : units)
+			{
+				check(unit->DbUnitDesc() == db->summonedUnits[0].GetPtr() && unit->HasBehaviour(),
+					"B13 authored summon is the original Demon2 creature with its real owned behavior, not a mock substitute");
+				auto hit = DirectDamage(); hit.amount = 10; hit.pSender = neutral;
+				check(unit->OnBeforeDamage(hit) == 20, "B13 original Demon2 summon applies the shipped global neutral-damage multiplier and target mask");
+			}
 		}
+		ai->globalConstants = savedConstants;
 	}
 	NDb::SetResourceCache(nullptr); RootFileSystem::UnregisterFileSystem(files);
 	std::printf("B13 authored summon counts checks=%d failed=%d\n", check.count - before, check.failed - failed);

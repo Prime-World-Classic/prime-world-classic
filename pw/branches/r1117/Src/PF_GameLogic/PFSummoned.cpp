@@ -7,6 +7,7 @@
 #include "PFAIWorld.h"
 #include "PFHero.h"
 #include "PFWorld.h"
+#include "LinuxBootstrap/formula_context.h"
 
 namespace
 {
@@ -62,7 +63,15 @@ bool PFSummonedUnitAIBehaviour::OnStep(float dtInSeconds)
 
   const NDb::SummonBehaviourCommon* pSummonBehaviourCommon = dynamic_cast<const NDb::SummonBehaviourCommon*>(GetDB());
   if (pSummonBehaviourCommon && IsValid(pMaster) && IsValid(pMovingUnit))
-    SetLashRange(pSummonBehaviourCommon->lashRange(pMaster, pMovingUnit, NULL, 15.f));
+	{
+		// Original refresh has no miscellaneous context. Failed reads retain the last
+		// accepted range, but must not skip behavior/lifetime stepping below.
+		const auto& source = pSummonBehaviourCommon->lashRange;
+		const auto range = source.sString.empty() && source.compiledString.empty()
+			? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 15.f}
+			: LinuxBootstrap::EvaluateUnitNumericFormula(source.sString.c_str(), pMaster, pMovingUnit, nullptr);
+		if (range.Succeeded()) SetLashRange(range.value);
+	}
 
   if (IsValid(pMovingUnit) && !pMovingUnit->GetCurrentState())
     pMovingUnit->EnqueueState(new PFSummonAIBaseState(pMovingUnit), true);
