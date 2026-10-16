@@ -900,7 +900,7 @@ function CameraWaitPosition (x, y, timeMove)
 			if ( DistanceSquared( hx, hy, x, y ) < 0.01 ) then
 				return true
 			end
-			if ( GetGameStep() - guardStep > timeMove*11 ) then
+			if ( GetGameStep() - guardStep > timeMove*11*GetStepsScaleTo10Hz() ) then
 				LuaDebugTrace( "ERROR: Camera buzz" )
 				LuaCameraMoveToPos( x, y )
 				return true

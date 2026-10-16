@@ -9,6 +9,7 @@
 #include "PFAbilityInstance.h"
 #include "PFTargetSelector.h"
 #include "AdventureScreen.h"
+#include "PeriodAt10Hz.h"
 
 namespace NWorld
 {
@@ -50,6 +51,14 @@ bool PFApplChannelling::Start()
 
 	// Strike with periodical spell
 	timer = 0.0f;
+	// a world step shorter than 0.1 s: keep the strike interval of the 10 Hz step (see PeriodAt10Hz.h);
+	// the first strike comes at its 10 Hz time through the timer offset
+	if ( period > 0.0f && IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+	{
+		float first10Hz;
+		PeriodAt10Hz( period, period, first10Hz, period );
+		timer = period - first10Hz;
+	}
 	Strike();
 
 	return false;
@@ -156,7 +165,16 @@ bool PFApplChannelling::Step(float dtInSeconds)
 
   // Strike with periodical spell
   timer += dtInSeconds;
-  if ( ( period > 0.0f ) && ( timer > period ) )
+  if ( IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+  {
+    // the period was translated in Start(), compare it exactly
+    if ( ( period > 0.0f ) && IsPeriodPassed( timer, period ) )
+    {
+      timer = Max( timer - period, 0.0f );
+      Strike();
+    }
+  }
+  else if ( ( period > 0.0f ) && ( timer > period ) )
   {
     timer = fmodf( timer, period );
     Strike();

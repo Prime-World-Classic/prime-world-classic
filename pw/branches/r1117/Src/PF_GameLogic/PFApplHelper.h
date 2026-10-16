@@ -48,11 +48,12 @@ protected:
 	float timer;
 	int   strikeCount;
 	CObj<PFTargetSelector> pTargetSelector;
+	float strikePeriod; // interval between strikes for a world step shorter than 0.1 s (PeriodAt10Hz.h), 0 otherwise
 public:
-  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&period); f.Add(3,&startOffset); f.Add(4,&curPeriod); f.Add(5,&timer); f.Add(6,&strikeCount); f.Add(7,&pTargetSelector); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&period); f.Add(3,&startOffset); f.Add(4,&curPeriod); f.Add(5,&timer); f.Add(6,&strikeCount); f.Add(7,&pTargetSelector); f.Add(8,&strikePeriod); return 0; }
 
-  PFApplSpellPeriodically(PFApplCreatePars const &cp) : Base(cp), period(0.0f), startOffset(0.0f), curPeriod(0.0f), timer(0.0f), strikeCount(0), pTargetSelector(NULL) {}
-  PFApplSpellPeriodically(): period(0.0f), startOffset(0.0f), curPeriod(0.0f), timer(0.0f), strikeCount(0), pTargetSelector(NULL) {/*NI_ALWAYS_ASSERT("Should be never invoked.");*/}
+  PFApplSpellPeriodically(PFApplCreatePars const &cp) : Base(cp), period(0.0f), startOffset(0.0f), curPeriod(0.0f), timer(0.0f), strikeCount(0), pTargetSelector(NULL), strikePeriod(0.0f) {}
+  PFApplSpellPeriodically(): period(0.0f), startOffset(0.0f), curPeriod(0.0f), timer(0.0f), strikeCount(0), pTargetSelector(NULL), strikePeriod(0.0f) {/*NI_ALWAYS_ASSERT("Should be never invoked.");*/}
 
   void DoStrike();
 

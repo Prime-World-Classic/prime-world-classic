@@ -1033,7 +1033,7 @@ function WaveOnDirection( waveNumber, dir, cnt, spawnInterval )
 		LuaDebugTrace("[WaveOnDirection] for dir "..spawnInterval..": interval")
 			
 		local waitStartStep = GetGameStep()
-		while GetGameStep() - waitStartStep < spawnInterval * 20 and not currentWaveState.allFinished do 
+		while GetGameStep() - waitStartStep < spawnInterval * 20 * GetStepsScaleTo10Hz() and not currentWaveState.allFinished do 
 			if GetGlobalVar( "stopSpawnStandardWaves" ) then currentWaveState.st[dir] = 2; return end
 			SleepState()
 		end	

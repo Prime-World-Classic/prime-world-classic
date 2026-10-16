@@ -34,6 +34,12 @@ function GetStepsCountInSecond()
 	return 1 / stepLengthInSeconds
 end
 
+-- how many times more world steps per second than at 10 Hz (exactly 1 at 10 Hz, 2 at 20 Hz):
+-- for step counts that were written for the 0.1 s step
+function GetStepsScaleTo10Hz()
+	return math.floor( GetStepsCountInSecond() + 0.5 ) / 10
+end
+
 function GetGameStep()
 	return rootobj.gameStep
 end

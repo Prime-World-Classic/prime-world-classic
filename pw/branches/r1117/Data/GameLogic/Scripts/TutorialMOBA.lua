@@ -1468,7 +1468,7 @@ function EnemyHeroKilled()
 	lastKills = kills
 	lastKillStep = step
 
-	local dontGuard = (delta > 1) or (steps < 5)
+	local dontGuard = (delta > 1) or (steps < 5*GetStepsScaleTo10Hz())
 
 	while delta > 0 do
 		delta = delta - 1
@@ -1503,7 +1503,7 @@ function HeroKillsAssisted()
 	lastAssists = assists
 	lastAssistStep = step
 
-	local dontGuard = (delta > 1) or (steps < 5)
+	local dontGuard = (delta > 1) or (steps < 5*GetStepsScaleTo10Hz())
 
 	while delta > 0 do
 		delta = delta - 1

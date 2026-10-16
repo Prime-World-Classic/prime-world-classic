@@ -6,6 +6,7 @@
 #include "PFDispatchFactory.h"
 #include "PFDispatchStrike1.h"
 #include "PFTargetSelector.h"
+#include "PeriodAt10Hz.h"
 #ifndef VISUAL_CUTTED
 #include "PF_Core\ControlledStatusEffect.h"
 #include "PFClientDispatch.h"
@@ -49,9 +50,20 @@ bool PFApplSpellPeriodically::Start()
     curPeriod = startOffset;
 
   timer = 0.0f;
+  strikePeriod = 0.0f;
+
+  // a world step shorter than 0.1 s: keep the strike interval of the 10 Hz step (see PeriodAt10Hz.h)
+  if ( IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+  {
+    // period itself stays as set: GetScale() counts time with it, like at 10 Hz
+    if ( period <= 0.0f )
+      curPeriod = strikePeriod = PERIOD_10HZ_STEP; // "every step" of 10 Hz
+    else
+      PeriodAt10Hz( curPeriod, period, curPeriod, strikePeriod );
+  }
 
   if ( startOffset < EPS_VALUE && IsEnabled() )
-    Strike(); 
+    Strike();
 
   return false;
 }
@@ -67,6 +79,19 @@ bool PFApplSpellPeriodically::Step(float dtInSeconds)
 		strikeCount = 0;
 		return false;
 	}
+
+  // a world step shorter than 0.1 s: the period was translated in Start(), compare it exactly
+  if ( IsStepShorterThan10Hz( GetWorld()->GetStepLengthInSeconds() ) )
+  {
+    timer += dtInSeconds;
+    if ( IsPeriodPassed( timer, curPeriod ) )
+    {
+      Strike();
+      timer = Max( timer - curPeriod, 0.0f );
+      curPeriod = strikePeriod;
+    }
+    return false;
+  }
 
 	if (period == 0.0f)
 	{
