@@ -11,11 +11,14 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 #include "PFBaseMovingUnit.h"
 #include "PFBaseAttackData.h"
 #include <cmath>
+#include <limits>
+#include "PFAbilityData.h"
 #include "PFHero.h"
 #include "PFResourcesCollectionClient.h"
 #include "DBAdvMap.h"
 #include "DBHeroesList.h"
 #include "DBSessionRoots.h"
+#include "DBVisualRoots.h"
 #include "TileMap.h"
 #include "CommonPathFinder.h"
 #include "PFPlayer.h"
@@ -869,6 +872,83 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
 
     markers.push_back(marker);
   }
+}
+
+/** Pick original gameplay footprints, independently of the capped presentation export.
+ * Preserve authored hero/faction preference; center distance and object ID break ties.
+ * This point query does not claim Windows scene-hull/ray intersection parity.
+ */
+PFBaseUnit* PFWorld::PickLinuxUnitAt(const CVec2& point, const PFBaseHero* observer,
+	bool enemiesOnly, const PFAbilityData* ability)
+{
+	const CVec2& bounds = GetMapSize();
+	if (!std::isfinite(bounds.x) || !std::isfinite(bounds.y) || bounds.x <= 0 || bounds.y <= 0 ||
+		!std::isfinite(point.x) || !std::isfinite(point.y) || point.x < 0 || point.y < 0 ||
+		point.x >= bounds.x || point.y >= bounds.y || !IsUnitValid(observer) ||
+		observer->GetWorld() != this || FindLinuxUnitByObjectId(observer->GetObjectId()) != observer ||
+		(ability && (!IsValid(ability) || !ability->GetDBDesc() || ability->GetOwner() != observer)))
+		return nullptr;
+
+	const auto root = NDb::SessionRoot::GetRoot();
+	const NDb::UnitCategories* categories = root && root->uiRoot ? root->uiRoot->unitCategories.GetPtr() : nullptr;
+	const bool preferAllies = ability && (ability->GetDBDesc()->targetType & NDb::SPELLTARGET_ALLY) &&
+		!(ability->GetDBDesc()->targetType & NDb::SPELLTARGET_ENEMY);
+	PFBaseUnit* selected = nullptr;
+	bool selectedPreferred = false;
+	double selectedDistance = 0;
+	const double floatHeadroom = std::numeric_limits<float>::max() / 4.0;
+	for (const auto& entry : GetObjects())
+	{
+		auto* unit = dynamic_cast<PFBaseUnit*>(entry.second.GetPtr());
+		if (!IsUnitValid(unit) || unit->GetWorld() != this || unit->GetObjectId() < 0 ||
+			FindLinuxUnitByObjectId(unit->GetObjectId()) != unit || unit->GetHiddenCounter() > 0 ||
+			(unit != observer && unit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK)) ||
+			(enemiesOnly && unit->GetFaction() == observer->GetFaction())) continue;
+
+		const CVec3& position = unit->GetPosition();
+		const float size = unit->GetObjectSize();
+		if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+			!std::isfinite(size) || size < 0) continue;
+		const double dx = double(position.x) - point.x, dy = double(position.y) - point.y;
+		const double distance = dx * dx + dy * dy, halfSize = double(size) * .5;
+		// Leave rounding headroom for the original single-precision squared-distance code.
+		if (distance > floatHeadroom || halfSize * halfSize > floatHeadroom) continue;
+		if (auto* building = dynamic_cast<PFBuilding*>(unit))
+		{
+			const auto& occupied = building->GetOccupiedTiles();
+			if (!occupied.empty())
+			{
+				const auto* tiles = GetTileMap();
+				if (!tiles || !std::isfinite(tiles->GetTileSize()) || tiles->GetTileSize() <= 0 ||
+					tiles->GetSizeX() <= 0 || tiles->GetSizeY() <= 0) continue;
+				const double width = tiles->GetSizeX(), height = tiles->GetSizeY();
+				const float tileX = point.x / tiles->GetTileSize(), tileY = point.y / tiles->GetTileSize();
+				// Validate the actual float quotients before GetTile narrows them to integers.
+				if (width * width + height * height > std::numeric_limits<int>::max() ||
+					!std::isfinite(tileX) || !std::isfinite(tileY) || tileX < 0 || tileY < 0 ||
+					tileX >= width || tileY >= height) continue;
+				bool valid = true;
+				for (const auto& tile : occupied)
+					if (tile.x < 0 || tile.y < 0 || tile.x >= width || tile.y >= height) { valid = false; break; }
+				if (!valid) continue;
+			}
+		}
+		if (!unit->IsInRange(point, 0) || !unit->IsVisibleForFaction(observer->GetFaction())) continue;
+
+		const int type = unit->GetUnitType();
+		const bool preferred = categories && type > NDb::UNITTYPE_INVALID &&
+			type < NDb::KnownEnum<NDb::EUnitType>::SizeOf() && type < categories->elements.size() &&
+			categories->elements[type] == NDb::UNITCATEGORY_HEROES &&
+			((unit->GetFaction() == observer->GetFaction()) == preferAllies);
+		if (!selected || (preferred && !selectedPreferred) || (preferred == selectedPreferred &&
+			(distance < selectedDistance || (distance == selectedDistance && unit->GetObjectId() < selected->GetObjectId()))))
+		{
+			selected = unit;
+			selectedPreferred = preferred;
+			selectedDistance = distance;
+		}
+	}
+	return selected && FindLinuxUnitByObjectId(selected->GetObjectId()) == selected ? selected : nullptr;
 }
 
 void PFWorld::GetLinuxMatchFinishHeroes(vector<CObj<PFBaseUnit> >& heroes)

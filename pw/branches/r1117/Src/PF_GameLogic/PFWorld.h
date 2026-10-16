@@ -87,6 +87,8 @@ class PFPickupableObjectBase;
 class PFMinigamePlace;
 
 #if defined( PW_LINUX_NULL_RENDER )
+class PFAbilityData;
+
 struct LinuxDynamicWorldMarker
 {
 	LinuxAttackPresentation attack;
@@ -540,6 +542,9 @@ public:
   float GetLinuxCommonCreepMovementDistance();
   void GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers);
   PFBaseUnit* FindLinuxUnitByObjectId(int objectId);
+	/** Pick a live manual endpoint; optional ability context controls original hero preference. */
+	PFBaseUnit* PickLinuxUnitAt(const CVec2& point, const PFBaseHero* observer, bool enemiesOnly,
+		const PFAbilityData* ability = nullptr);
 	/** Strong local-hero snapshot, including dead heroes absent from the voxel map. */
 	void GetLinuxMatchFinishHeroes(vector<CObj<PFBaseUnit> >& heroes);
   int GetLinuxCreepSpawnerWavesCount();

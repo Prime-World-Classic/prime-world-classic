@@ -1019,6 +1019,11 @@ add_test(NAME LinuxTargetedTalent COMMAND PrimeWorldLinuxClient --bootstrap-targ
 # Exercise real player ownership, target admission and the original hero casting HFSM.
 set_tests_properties(LinuxTargetedTalent PROPERTIES
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../Bin" TIMEOUT 120)
+add_test(NAME LinuxWorldPicking COMMAND PrimeWorldLinuxClient --bootstrap-world-picking-probe
+	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+# Real registered units and authored footprints must not depend on the capped visual marker export.
+set_tests_properties(LinuxWorldPicking PROPERTIES
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../Bin" TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")

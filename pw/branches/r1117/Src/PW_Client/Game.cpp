@@ -84,6 +84,7 @@
 #include "PF_GameLogic/PFEaselPlayer.h"
 #include "PF_GameLogic/PFConsumable.h"
 #include "PF_GameLogic/PFHero.h"
+#include "PF_GameLogic/PFMainBuilding.h"
 #include "PF_GameLogic/PFMaleHero.h"
 #include "PF_GameLogic/PFMinigamePlace.h"
 #include "PF_GameLogic/PFMinimapEffect.h"
@@ -35460,6 +35461,21 @@ NWorld::PFBaseHero* FindLinuxBootstrapControlledHero(
   return 0;
 }
 
+/** Resolve a subscribed local player and its reciprocal live hero, without inspection fallback. */
+NWorld::PFBaseHero* ResolveLinuxLocalPlayerHero(
+	LinuxBootstrapScreenRuntime* runtime, NWorld::PFWorld* world)
+{
+	if (!runtime || !world || !runtime->localScheduler || runtime->replayFileInputActive) return nullptr;
+	auto* player = world->GetPlayerByUID(runtime->localScheduler->GetMyClientID());
+	if (!IsValid(player) || player->GetWorld() != world || !world->IsSubscribed(player) ||
+		player->IsBot() || !player->IsPlaying()) return nullptr;
+	auto* hero = player->GetHero();
+	if (!IsValid(hero) || hero->GetWorld() != world || hero->GetPlayer() != player ||
+		world->FindLinuxUnitByObjectId(hero->GetObjectId()) != hero)
+		return nullptr;
+	return hero;
+}
+
 NWorld::PFBaseHero* FindLinuxBootstrapEnemyHero(
   NWorld::PFWorld* world,
   const NWorld::PFBaseHero* sourceHero,
@@ -35877,6 +35893,50 @@ void ClearLinuxMapPreviewSelectedTarget(
   runtime->mapPreviewLastAction = runtime->mapPreviewSelectedTargetSource;
 }
 
+/** Snapshot selection/HUD metadata only; this never adds a dynamic render marker. */
+NWorld::LinuxDynamicWorldMarker MakeLinuxSelectedUnitHudMarker(NWorld::PFBaseUnit* unit)
+{
+	NWorld::LinuxDynamicWorldMarker marker;
+	marker.objectId = unit->GetObjectId();
+	marker.faction = static_cast<int>(unit->GetFaction());
+	marker.x = unit->GetPosition().x;
+	marker.y = unit->GetPosition().y;
+	marker.healthPercent = unit->GetHealthPercent();
+	marker.energyPercent = unit->GetManaPercent();
+	marker.objectSize = unit->GetObjectSize();
+	marker.dead = unit->IsDead();
+	if (auto* moving = dynamic_cast<NWorld::PFBaseMovingUnit*>(unit))
+	{
+		marker.moving = moving->IsMoving();
+		const CVec2 direction = moving->GetMoveDirection();
+		marker.moveDirX = direction.x;
+		marker.moveDirY = direction.y;
+		marker.hasMoveDirection = direction.x * direction.x + direction.y * direction.y > 0.0001f;
+	}
+	if (const NDb::Unit* desc = unit->DbUnitDesc())
+	{
+		marker.unitDbid = desc->GetDBID().GetFormatted();
+		if (desc->sceneObject) marker.sceneObjectDbid = desc->sceneObject->GetDBID().GetFormatted();
+	}
+	if (auto* hero = dynamic_cast<NWorld::PFBaseHero*>(unit))
+	{
+		marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_HERO;
+		if (IsValid(hero->GetPlayer()))
+		{
+			marker.playerId = hero->GetPlayer()->GetPlayerID();
+			marker.userId = hero->GetPlayer()->GetUserID();
+		}
+	}
+	else if (unit->IsCreep()) marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
+	else if (unit->GetUnitType() == NDb::UNITTYPE_NEUTRALCREEP ||
+		unit->GetUnitType() == NDb::UNITTYPE_NEUTRALCHAMPION ||
+		unit->GetUnitType() == NDb::UNITTYPE_NEUTRALBOSS)
+		marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+	else if (dynamic_cast<NWorld::PFTower*>(unit)) marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_TOWER;
+	else if (dynamic_cast<NWorld::PFMainBuilding*>(unit)) marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING;
+	return marker;
+}
+
 void RecordLinuxMapPreviewSelectedTarget(
   LinuxBootstrapScreenRuntime* runtime,
   const NWorld::LinuxDynamicWorldMarker& marker,
@@ -35906,6 +35966,7 @@ void RecordLinuxMapPreviewSelectedTarget(
   runtime->mapPreviewLastAction = runtime->mapPreviewSelectedTargetSource;
 }
 
+/** Resolve only live, visible, pickable selections; never expose a hidden unit to command/draw callers. */
 NWorld::PFBaseUnit* ResolveLinuxMapPreviewSelectedTargetUnit(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world
@@ -35916,13 +35977,23 @@ NWorld::PFBaseUnit* ResolveLinuxMapPreviewSelectedTargetUnit(
     return 0;
   }
 
-  NWorld::PFBaseUnit* unit =
-    world->FindLinuxUnitByObjectId(runtime->mapPreviewSelectedTargetObjectId);
-  if (!unit || unit->IsDead())
-  {
-    ClearLinuxMapPreviewSelectedTarget(runtime, "selected-target-expired");
-    return 0;
-  }
+	auto* unit = world->FindLinuxUnitByObjectId(runtime->mapPreviewSelectedTargetObjectId);
+	if (!NWorld::IsUnitValid(unit) || unit->GetWorld() != world ||
+		unit->GetObjectId() != runtime->mapPreviewSelectedTargetObjectId)
+	{
+		// Retain the explicit ID until cleared by input, so HUD sampling cannot substitute an enemy.
+		runtime->mapPreviewSelectedTargetDrawn = false;
+		return nullptr;
+	}
+
+	auto* observer = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!observer || unit->GetHiddenCounter() > 0 ||
+		(unit != observer && unit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK)) ||
+		!unit->IsVisibleForFaction(observer->GetFaction()))
+	{
+		runtime->mapPreviewSelectedTargetDrawn = false;
+		return nullptr;
+	}
 
   runtime->mapPreviewSelectedTargetX = unit->GetPosition().x;
   runtime->mapPreviewSelectedTargetY = unit->GetPosition().y;
@@ -36088,6 +36159,8 @@ LinuxBootstrapTalentCommandSelection ResolveLinuxBootstrapTalentCommandSelection
       &selectedPlayerId,
       &selectedClientId,
       &selectedTarget);
+	const bool hasExplicitTarget = runtime->mapPreviewSelectedTargetObjectId >= 0;
+	if (hasExplicitTarget && !selectedUnit) return selection;
 
   int enemyPlayerId = -1;
   int enemyClientId = -1;
@@ -36127,11 +36200,11 @@ LinuxBootstrapTalentCommandSelection ResolveLinuxBootstrapTalentCommandSelection
       selection.targetPosition = hero->GetPosition().AsVec2D();
 
       const unsigned targetTypes = talent->GetTargetType();
-      if (!targetTypes)
+      if (!hasExplicitTarget && !targetTypes)
       {
         return selection;
       }
-      if ((targetTypes & NDb::SPELLTARGET_SELF) != 0)
+      if (!hasExplicitTarget && (targetTypes & NDb::SPELLTARGET_SELF) != 0)
       {
         selection.targetUnit = hero;
         selection.targetPosition = hero->GetPosition().AsVec2D();
@@ -36147,7 +36220,7 @@ LinuxBootstrapTalentCommandSelection ResolveLinuxBootstrapTalentCommandSelection
         selection.targetPosition = selectedUnit->GetPosition().AsVec2D();
         return selection;
       }
-      if (enemyUnit &&
+      if (!hasExplicitTarget && enemyUnit &&
           IsLinuxBootstrapTalentCompatibleWithUnit(talent, hero, enemyUnit))
       {
         selection.targetUnit = enemyUnit;
@@ -36159,6 +36232,8 @@ LinuxBootstrapTalentCommandSelection ResolveLinuxBootstrapTalentCommandSelection
     }
   }
 
+	// Exhausting compatible talents cannot turn an explicit selection into slot-zero fallback.
+	if (hasExplicitTarget) return LinuxBootstrapTalentCommandSelection();
   selection.level = 0;
   selection.slot = 0;
   selection.targetUnit = selectedUnit;
@@ -36872,13 +36947,14 @@ void UpdateLinuxBootstrapCreepDuelProof(
   }
 }
 
-/** Preserve projected player destinations; the engine pathfinder owns obstacle routing. */
+/** Preserve projected destinations; an explicit input actor must still own the scheduler. */
 bool SendLinuxBootstrapHeroMoveCommandToTarget(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
   const CVec2& target,
   const char* source,
-  bool recordMapPreviewCommand
+  bool recordMapPreviewCommand,
+	NWorld::PFBaseHero* exactHero = nullptr
 )
 {
   if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
@@ -36888,7 +36964,14 @@ bool SendLinuxBootstrapHeroMoveCommandToTarget(
 
   int playerId = -1;
   int clientId = -1;
-  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+	auto* hero = exactHero ? ResolveLinuxLocalPlayerHero(runtime, world) :
+		FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+	if (exactHero)
+	{
+		if (hero != exactHero || !NWorld::IsUnitValid(hero)) return false;
+		playerId = hero->GetPlayer()->GetPlayerID();
+		clientId = hero->GetPlayer()->GetUserID();
+	}
   NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
   if (!hero || !maleHero)
   {
@@ -36998,13 +37081,17 @@ bool SendLinuxBootstrapHeroStopCommandNow(
   return true;
 }
 
+/** Validate the interactive actor at admission; legacy proofs retain their script setup.
+ * The original attack command does not snapshot player ownership across queue delays.
+ */
 bool SendLinuxBootstrapHeroAttackUnitCommandToTarget(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
   NWorld::PFBaseUnit* targetUnit,
   int targetPlayerId,
   int targetClientId,
-  const char* source
+  const char* source,
+	NWorld::PFBaseHero* exactHero = nullptr
 )
 {
   if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted || !targetUnit)
@@ -37014,7 +37101,18 @@ bool SendLinuxBootstrapHeroAttackUnitCommandToTarget(
 
   int playerId = -1;
   int clientId = -1;
-  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+	auto* hero = exactHero ? ResolveLinuxLocalPlayerHero(runtime, world) :
+		FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+	if (exactHero)
+	{
+		if (hero != exactHero || !NWorld::IsUnitValid(hero) || !NWorld::IsUnitValid(targetUnit) ||
+			targetUnit->GetWorld() != world || world->FindLinuxUnitByObjectId(targetUnit->GetObjectId()) != targetUnit ||
+			targetUnit->GetHiddenCounter() > 0 ||
+			(targetUnit != hero && targetUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK)) ||
+			!targetUnit->IsVisibleForFaction(hero->GetFaction())) return false;
+		playerId = hero->GetPlayer()->GetPlayerID();
+		clientId = hero->GetPlayer()->GetUserID();
+	}
   if (!hero || hero == targetUnit || targetUnit->IsDead() || targetUnit->GetFaction() == hero->GetFaction())
   {
     return false;
@@ -37030,7 +37128,7 @@ bool SendLinuxBootstrapHeroAttackUnitCommandToTarget(
     hero->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), true);
   }
 
-  NCore::WorldCommand* attackCommand = NWorld::CreateCmdAttackTarget(hero, targetUnit, true);
+	NCore::WorldCommand* attackCommand = NWorld::CreateCmdAttackTarget(hero, targetUnit, exactHero == nullptr);
   if (!attackCommand)
   {
     return false;
@@ -37493,6 +37591,7 @@ bool MaybeDriveLinuxBootstrapBotCommandDriver(
   return sent;
 }
 
+/** An explicit selection must either accept this attack or fail, never attack a replacement. */
 bool SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
@@ -37542,6 +37641,7 @@ bool SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
     }
   }
 
+	if (runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
   return SendLinuxBootstrapHeroAttackNearestCommand(
     runtime,
     world,
@@ -37653,6 +37753,7 @@ bool SendLinuxBootstrapHeroFollowNearestCommand(
     source);
 }
 
+/** Nearest-target follow is allowed only when no explicit endpoint is selected. */
 bool SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
@@ -37680,6 +37781,7 @@ bool SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
     return true;
   }
 
+	if (runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
   return SendLinuxBootstrapHeroFollowNearestCommand(
     runtime,
     world,
@@ -37736,6 +37838,8 @@ NWorld::PFBaseUnit* ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
     return selectedUnit;
   }
 
+	// Invalid, self or wrong-faction explicit selections must not become a different endpoint.
+	if (runtime->mapPreviewSelectedTargetObjectId >= 0) return nullptr;
   int fallbackPlayerId = -1;
   int fallbackClientId = -1;
   NWorld::PFBaseHero* fallbackHero =
@@ -37840,6 +37944,7 @@ bool SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
       &selectedTarget);
   if (!targetUnit || !targetUnit->CanBeUsedBy(hero))
   {
+		if (runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
     NWorld::PFBaseUnit* usableUnit = world->FindLinuxFirstUsableUnitForHero(hero);
     if (usableUnit)
     {
@@ -38201,6 +38306,7 @@ bool SendLinuxLiveHudUseTalentSlotCommand(
       &targetPlayerId,
       &targetClientId,
       &selectedTarget);
+	if (!targetUnit && runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
   const CVec2 targetPosition =
     targetUnit ? targetUnit->GetPosition().AsVec2D() : hero->GetPosition().AsVec2D();
   const bool sent =
@@ -38358,6 +38464,7 @@ bool SendLinuxBootstrapHeroUseConsumableSelectedOrPointCommand(
       &targetPlayerId,
       &targetClientId,
       &selectedTarget);
+	if (!targetUnit && runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
   const CVec2 targetPosition =
     targetUnit ? targetUnit->GetPosition().AsVec2D() : fallbackTarget;
   int consumableSlot = FindLinuxBootstrapFirstUsableConsumableSlot(hero);
@@ -38762,6 +38869,7 @@ bool SendLinuxLiveHotkeyUseTalentCommand(
         &targetPlayerId,
         &targetClientId,
         &selectedTarget);
+		if (!targetUnit && runtime->mapPreviewSelectedTargetObjectId >= 0) return false;
     const CVec2 targetPosition =
       targetUnit ? targetUnit->GetPosition().AsVec2D() : hero->GetPosition().AsVec2D();
     sent =
@@ -44722,12 +44830,10 @@ bool SendLinuxMapPreviewMoveCommandFromScreen(
     return false;
   }
 
-  return SendLinuxBootstrapHeroMoveCommandToTarget(
-    runtime,
-    world,
-    CVec2(targetX, targetY),
-      "right-click-map",
-      true);
+	auto* hero = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!hero) return false;
+	return SendLinuxBootstrapHeroMoveCommandToTarget(
+		runtime, world, CVec2(targetX, targetY), "right-click-map", true, hero);
 }
 
 bool SendLinuxMapPreviewAttackCommandFromScreen(
@@ -44763,51 +44869,16 @@ bool SendLinuxMapPreviewAttackCommandFromScreen(
     return false;
   }
 
-  int playerId = -1;
-  int clientId = -1;
-  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
-  if (!hero)
-  {
-    return false;
-  }
-
-  int targetPlayerId = -1;
-  int targetClientId = -1;
-  NWorld::LinuxDynamicWorldMarker marker;
-  float targetDistance = 0.0f;
-  if (!FindLinuxMapPreviewMarkerNearWorld(
-    world,
-    CVec2(targetX, targetY),
-    hero,
-    true,
-    &marker,
-    &targetDistance))
-  {
-    return false;
-  }
-
-  NWorld::PFBaseUnit* targetUnit = world->FindLinuxUnitByObjectId(marker.objectId);
-  if (!targetUnit)
-  {
-    return false;
-  }
-
-  targetPlayerId = marker.playerId;
-  targetClientId = marker.userId;
-  RecordLinuxMapPreviewSelectedTarget(
-    runtime,
-    marker,
-    "right-click-target",
-    targetDistance);
-  (void)playerId;
-  (void)clientId;
-  return SendLinuxBootstrapHeroAttackUnitCommandToTarget(
-    runtime,
-    world,
-    targetUnit,
-    targetPlayerId,
-    targetClientId,
-    "right-click-attack");
+	auto* hero = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!hero) return false;
+	auto* targetUnit = world->PickLinuxUnitAt(CVec2(targetX, targetY), hero, true);
+	if (!targetUnit) return false;
+	const auto marker = MakeLinuxSelectedUnitHudMarker(targetUnit);
+	if (!SendLinuxBootstrapHeroAttackUnitCommandToTarget(runtime, world, targetUnit,
+		marker.playerId, marker.userId, "right-click-attack", hero)) return false;
+	RecordLinuxMapPreviewSelectedTarget(runtime, marker, "right-click-target",
+		fabs(targetUnit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D()));
+	return true;
 }
 
 bool SendLinuxMapPreviewMoveOrAttackCommandFromScreen(
@@ -45248,33 +45319,17 @@ bool SelectLinuxMapPreviewTargetFromScreen(
     return false;
   }
 
-  int playerId = -1;
-  int clientId = -1;
-  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
-  NWorld::LinuxDynamicWorldMarker marker;
-  float markerDistance = 0.0f;
-  if (!FindLinuxMapPreviewMarkerNearWorld(
-        world,
-        CVec2(targetX, targetY),
-        hero,
-        false,
-        &marker,
-        &markerDistance))
-  {
-    ClearLinuxMapPreviewSelectedTarget(runtime, "left-click-clear");
-    (void)playerId;
-    (void)clientId;
-    return false;
-  }
-
-  RecordLinuxMapPreviewSelectedTarget(
-    runtime,
-    marker,
-    "left-click-select",
-    markerDistance);
-  (void)playerId;
-  (void)clientId;
-  return true;
+	auto* hero = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!hero) return false;
+	auto* unit = world->PickLinuxUnitAt(CVec2(targetX, targetY), hero, false);
+	if (!unit)
+	{
+		ClearLinuxMapPreviewSelectedTarget(runtime, "left-click-clear");
+		return false;
+	}
+	RecordLinuxMapPreviewSelectedTarget(runtime, MakeLinuxSelectedUnitHudMarker(unit), "left-click-select",
+		fabs(unit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D()));
+	return true;
 }
 
 void RecordLinuxLiveMapPreviewCommandResult(
@@ -51557,12 +51612,8 @@ bool ResolveLinuxRuffleTalentTarget(NWorld::PFBaseMaleHero* hero, const NWorld::
 	const unsigned targets = talent->GetTargetType();
 	if (targets & (NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_SELF))
 	{
-		NWorld::LinuxDynamicWorldMarker marker;
-		if (FindLinuxMapPreviewMarkerNearWorld(world, point, hero, false, &marker, nullptr, true))
+		if (auto* unit = world->PickLinuxUnitAt(point, hero, false, talent))
 		{
-			auto* unit = dynamic_cast<NWorld::PFBaseUnit*>(world->GetObject(marker.objectId));
-			if (!NWorld::IsUnitValid(unit) || unit->GetWorld() != world ||
-				unit->GetObjectId() != marker.objectId || !unit->IsVisibleForFaction(hero->GetFaction())) return false;
 			if (NWorld::CanSelectLinuxTalentUnit(hero, talent, unit))
 			{
 				*target = NWorld::Target(unit);
@@ -52120,12 +52171,14 @@ const char* DescribeLinuxLiveHudUnitKind(int kind)
   }
 }
 
+/** Explicit selections carry their validated unit; automatic marker sampling keeps its existing lookup. */
 void PopulateLinuxLiveUnitHudState(
   const NWorld::LinuxDynamicWorldMarker& marker,
   const std::string& source,
   NWorld::PFWorld* world,
   const LinuxLiveUnitHudState* heroState,
-  LinuxLiveUnitHudState* state
+  LinuxLiveUnitHudState* state,
+	NWorld::PFBaseUnit* selectedUnit = nullptr
 )
 {
   if (!state)
@@ -52160,7 +52213,8 @@ void PopulateLinuxLiveUnitHudState(
     state->distance = sqrtf(dx * dx + dy * dy);
   }
 
-  NWorld::PFBaseUnit* unit = world ? world->FindLinuxUnitByObjectId(marker.objectId) : 0;
+	NWorld::PFBaseUnit* unit = selectedUnit ? selectedUnit :
+		(world ? world->FindLinuxUnitByObjectId(marker.objectId) : nullptr);
   if (!unit)
   {
     return;
@@ -52247,6 +52301,33 @@ void UpdateLinuxLiveHudState(
     return;
   }
 
+	// Explicit selections are resolved before the capped rendering list and never fall back.
+	if (runtime->mapPreviewSelectedTargetObjectId >= 0)
+	{
+		auto* observer = ResolveLinuxLocalPlayerHero(runtime, world);
+		runtime->liveHudTargetSelectionSource = "selected-target-no-observer";
+		if (observer)
+		{
+			PopulateLinuxLiveUnitHudState(MakeLinuxSelectedUnitHudMarker(observer), "selected-hero",
+				world, nullptr, &runtime->liveHeroState, observer);
+			auto* unit = ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
+			runtime->liveHudTargetSelectionSource = "selected-target-missing";
+			if (unit)
+			{
+				runtime->liveHudTargetSelectionSource = "selected-target-hidden";
+				if (unit->IsVisibleForFaction(observer->GetFaction()))
+				{
+					runtime->liveHudTargetSelectionSource = "selected-target";
+					PopulateLinuxLiveUnitHudState(MakeLinuxSelectedUnitHudMarker(unit), "selected-target",
+						world, &runtime->liveHeroState, &runtime->liveTargetState, unit);
+				}
+			}
+		}
+		if (!runtime->liveTargetState.ready) runtime->mapPreviewSelectedTargetDrawn = false;
+		++runtime->liveHudSampleCount;
+		return;
+	}
+
   vector<NWorld::LinuxDynamicWorldMarker> markers;
   world->GetLinuxDynamicWorldMarkers(markers, 640);
   runtime->liveHudTargetSelectionSource = "no-markers";
@@ -52291,21 +52372,8 @@ void UpdateLinuxLiveHudState(
     runtime->liveHeroState.playerId = selectedPlayerId;
   }
 
-  const int selectedTargetObjectId = runtime->mapPreviewSelectedTargetObjectId;
   size_t targetIndex = static_cast<size_t>(-1);
-  std::string targetSource = selectedTargetObjectId >= 0 ? "selected-target-missing" : "no-preferred-target";
-  if (selectedTargetObjectId >= 0)
-  {
-    for (size_t i = 0; i < markers.size(); ++i)
-    {
-      if (markers[i].objectId == selectedTargetObjectId)
-      {
-        targetIndex = i;
-        targetSource = "selected-target";
-        break;
-      }
-    }
-  }
+	std::string targetSource = "no-preferred-target";
 
   if (targetIndex == static_cast<size_t>(-1))
   {
@@ -52932,10 +53000,12 @@ bool DrawLinuxMapPreviewSelectedTarget(
   }
 
   NWorld::PFBaseUnit* unit = ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
-  if (!unit)
-  {
-    return false;
-  }
+	auto* observer = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!unit || !observer || !unit->IsVisibleForFaction(observer->GetFaction()))
+	{
+		runtime->mapPreviewSelectedTargetDrawn = false;
+		return false;
+	}
 
   const float targetX = (runtime->mapPreviewSelectedTargetX - centerX) * scale;
   const float targetZ = (runtime->mapPreviewSelectedTargetY - centerY) * scale;
@@ -71535,6 +71605,8 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), false, true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-targeted-talent-probe"))
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(nullptr, false, false, true) ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-picking-probe"))
+		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), false, false, false, true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))

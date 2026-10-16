@@ -1449,8 +1449,10 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "fixture_lifetime_b13_tests.inc"
 #include "ai_defaults_b13_tests.inc"
 #include "targeted_talent_b13_tests.inc"
+#include "world_picking_b13_tests.inc"
 
-bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly, bool targetedTalentsOnly)
+bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly,
+	bool targetedTalentsOnly, bool worldPickingOnly)
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
 	NDb::AILogicParameters* ai = new NDb::AILogicParameters;
@@ -1460,6 +1462,13 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	NDb::SessionRoot* root = new NDb::SessionRoot; root->logicRoot = logic;
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
+	if (worldPickingOnly)
+	{
+		WorldPickingB13(check, dataRoot);
+		NDb::SessionRoot::InitRoot(saved);
+		std::printf("World picking: %d checks, %d failures\n", check.count, check.failed);
+		return check.failed == 0;
+	}
 	if (targetedTalentsOnly)
 	{
 		TargetedTalentAdmissionB13(check);
