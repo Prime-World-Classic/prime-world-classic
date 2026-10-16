@@ -159,10 +159,10 @@ double ResolveFunction(FunctionBinding& binding, const double* args, std::size_t
 	if (!found) throw Error::UnknownSymbol;
 	return Finite(value);
 }
-/** Reserved one-argument unit queries are emitted only by the engine-context source whitelist. */
+/** Original flag helpers and reserved one-argument engine queries share exact arity checks. */
 bool IsOneArgumentUnitQuery(const std::string& name)
 {
-	return name == "__history_s_taken" || name == "__history_s_dealt" ||
+	return name == "sFlag" || name == "rFlag" || name == "__history_s_taken" || name == "__history_s_dealt" ||
 		name == "__history_r_taken" || name == "__history_r_dealt" ||
 		name == "__recommend_s" || name == "__recommend_r";
 }
@@ -326,7 +326,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 					translated += "(" + symbol("sTerrainType") + "==" + symbol("sFctn") + "?";
 					pendingNativeTerrain = true;
 				}
-				else if (name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsOneArgumentUnitQuery(name) || IsExtendedHistoryFunction(name))
+				else if (name == "s" || name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsOneArgumentUnitQuery(name) || IsExtendedHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -398,6 +398,11 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 				{
 					if (frame.arguments != 2) throw Error::InvalidExpression;
 					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);
+				}
+				else if (frame.context->name == "s")
+				{
+					if (frame.arguments != 3) throw Error::InvalidExpression;
+					parser.DefineFunUserData(frame.context->token, ResolveThree, frame.context, false);
 				}
 				else if (frame.arguments == 3)
 					parser.DefineFunUserData(frame.context->token, ResolveThree, frame.context, false);

@@ -323,6 +323,29 @@ void NumericFunctions()
 /** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
 void ContextFunctions()
 {
+	for (const char* name : {"s", "sFlag", "rFlag"})
+	{
+		int calls = 0;
+		const std::string prefix(name);
+		const NumericFunctionResolver helper = [&](const std::string& method, const double* args, std::size_t count, double& value) {
+			++calls;
+			if (method != name || count != (prefix == "s" ? 3u : 1u)) return false;
+			value = args[count - 1]; return true;
+		};
+		const std::string arguments = prefix == "s" ? "(1,2,7)" : "(7)";
+		Check(EvaluateNumericFormula(prefix + arguments, {}, helper).value == 7 && calls == 1,
+			"original switch and flag helpers transport their exact eager argument count");
+		for (const char* suffix : {"()", "(1,2)", "(1,2,3,4)", "(,1)", "(1,)"})
+			Check(!EvaluateNumericFormula("true ? 7 : " + prefix + suffix, {}, helper).Succeeded() && calls == 1,
+				"switch and flag arity is checked before a lazy branch can hide malformed syntax");
+		Check(EvaluateNumericFormula("true ? 4 : " + prefix + arguments).value == 4,
+			"unselected switch or flag call needs no resolver");
+		Check(EvaluateNumericFormula(prefix + arguments).error == Error::MissingResolver,
+			"selected switch or flag helper requires explicit context");
+		const std::string invalid = prefix == "s" ? "(true,7,1/0)" : "(1/0)";
+		Check(!EvaluateNumericFormula(prefix + invalid, {}, helper).Succeeded() && calls == 1,
+			"invalid eager arguments fail before the switch or flag callback");
+	}
 	// Original nt is a lazy macro, including when branches contain context calls.
 	for (const bool native : {false, true})
 	{

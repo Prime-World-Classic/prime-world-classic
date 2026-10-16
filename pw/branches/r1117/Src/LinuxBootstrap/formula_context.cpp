@@ -326,6 +326,28 @@ bool BindTargetVariable(const std::string& source, std::size_t& pos, std::string
 	return true;
 }
 
+/** Lower a closed pair of original XY getters, leaving arithmetic and lazy evaluation to muParser. */
+bool BindDistance(const std::string& source, std::size_t& pos, std::string& result)
+{
+	pos = source.find_first_not_of(" \t\r\n", pos);
+	if (pos == std::string::npos || source[pos] != '(') return false;
+	std::vector<std::string> args;
+	if (!DamageArguments(source, pos, args) || args.size() != 2) return false;
+	std::string symbol = " __distance_";
+	for (const auto& argument : args)
+	{
+		const auto first = argument.find_first_not_of(" \t\r\n");
+		if (first == std::string::npos) return false;
+		const auto point = argument.substr(first, argument.find_last_not_of(" \t\r\n") - first + 1);
+		if (point == "sPos") symbol += 's';
+		else if (point == "rPos" || point == "tPos") symbol += 'r';
+		else if (point == "pMisc->GetTargetPos()" || point == "appl.GetTargetPos()") symbol += 'm';
+		else return false;
+	}
+	result += symbol + " ";
+	return true;
+}
+
 /** Bind whitelisted unit variables, recent-history calls and exact applicator scalars.
  * Unit variables follow FormulaBuilder's v[A-Z][A-Za-z_0-9]* rule, not a C++ member API.
  * Reserved names cannot enter from source; muParser retains all arithmetic/grammar checks.
@@ -350,8 +372,12 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 			name.compare(0, 10, "__position") == 0 || name.compare(0, 10, "__history_") == 0 ||
 			name.compare(0, 9, "__talent_") == 0 || name.compare(0, 7, "__misc_") == 0 ||
 			name.compare(0, 11, "__recommend") == 0 || name.compare(0, 8, "__named_") == 0 ||
-			name.compare(0, 10, "__applvar_") == 0) return false;
-		if (name == "tal")
+			name.compare(0, 10, "__applvar_") == 0 || name.compare(0, 11, "__distance_") == 0) return false;
+		if (name == "d")
+		{
+			if (!BindDistance(source, pos, result)) return false;
+		}
+		else if (name == "tal")
 		{
 			// Only one bounded ASCII literal is accepted; no C++ escapes, expressions or concatenation.
 			const auto space = [&]() {
@@ -586,6 +612,22 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "s")
+		{
+			if (count != 3 || !std::isfinite(args[0])) return false;
+			for (std::size_t i = 1; i < count; ++i)
+				if (!std::isfinite(args[i]) || std::fabs(args[i]) > std::numeric_limits<float>::max()) return false;
+			value = SwitchByBool(args[0] != 0, static_cast<float>(args[1]), static_cast<float>(args[2]));
+			return true;
+		}
+		if (name == "sFlag" || name == "rFlag")
+		{
+			const auto* unit = name == "sFlag" ? sender : target;
+			if (!unit || count != 1 || !std::isfinite(args[0]) || args[0] < 0
+				|| args[0] > std::numeric_limits<unsigned>::max()) return false;
+			value = unit->GetFlag(static_cast<unsigned>(args[0]));
+			return true;
+		}
 		if (name == "__recommend_s" || name == "__recommend_r")
 		{
 			const auto* unit = name == "__recommend_s" ? sender : target;
@@ -738,6 +780,34 @@ struct Context
 
 	bool Resolve(const std::string& name, double& value)
 	{
+		if (name.size() == 13 && name.compare(0, 11, "__distance_") == 0)
+		{
+			CVec2 points[2];
+			for (unsigned i = 0; i < 2; ++i)
+			{
+				if (name[11 + i] == 'm')
+				{
+					// AbilityData has no target position and its original getter asserts.
+					if (!applicator) return false;
+					const auto& raw = applicator->GetTarget();
+					if (!raw.IsPosition() && (!raw.IsObject() || !IsValid(raw.GetObject()))) return false;
+					points[i] = applicator->GetTargetPos();
+				}
+				else
+				{
+					const auto* unit = name[11 + i] == 's' ? sender : target;
+					if (!unit) return false;
+					points[i] = unit->GetPos();
+				}
+				if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) return false;
+			}
+			// Preserve FormulaPars float arithmetic, including rejection of overflowing intermediates.
+			const CVec2 delta = points[0] - points[1];
+			if (!std::isfinite(delta.x) || !std::isfinite(delta.y)
+				|| !std::isfinite(delta.x * delta.x + delta.y * delta.y)) return false;
+			value = d(points[0], points[1]);
+			return std::isfinite(value);
+		}
 		if (name.compare(0, 10, "__applvar_") == 0)
 		{
 			if (!applicator) return false;

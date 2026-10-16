@@ -16,6 +16,18 @@ namespace LinuxBootstrap
  * continuations remain unsupported. This context-only normalization runs before
  * binding and does not extend the standalone scalar parser or execute comment text.
  * r is the authored receiver prefix; t remains a compatibility alias.
+ * d(a,b) calls the original two-dimensional float distance helper. Each operand
+ * is exactly sPos, rPos/tPos, pMisc->GetTargetPos() or appl.GetTargetPos(). The
+ * miscellaneous position is the applicator's raw target, never its redirected
+ * receiver; ability-only context has no target position. Selected missing or
+ * nonfinite positions and overflowing float differences/squares fail. Geometry
+ * remains lazy and participates in staged RNG; no vector arithmetic, component
+ * access, arbitrary methods or injected transport names are exposed.
+ * s(condition, yes, no) delegates to original SwitchByBool: nonzero truth and
+ * eager float-valued branches, both checked before narrowing. sFlag/rFlag call
+ * the live sender/receiver GetFlag with a finite unsigned-range argument; positive
+ * fractions truncate as in C++. Zero and combined masks keep original semantics.
+ * These helpers retain lazy whole-call branches and transactional random draws.
  * TerrainType reads the existing unit cache, with exact TERR_N/A/B constants;
  * invalid cached terrain fails. nt(native, other) lazily compares sender terrain
  * with sender faction, including neutral equality, without a fresh grid query.

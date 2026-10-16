@@ -11,6 +11,7 @@ namespace LinuxBootstrap
 using NumericSymbolResolver = std::function<bool(const std::string&, double&)>;
 
 /** abilityScale/damageScale use three or four arguments; random/refineScale/ut_bldg/ut_hero use two.
+ * s uses exactly three eager arguments; sFlag/rFlag use one mask argument.
  * Reserved __history_{s,r}_{taken,dealt} engine bindings use one argument.
  * Reserved __recommend_{s,r} bindings pass one stat argument to the engine.
  * Their _ex and _ex_misc variants pass two arguments: interval and bound mask.
@@ -77,6 +78,10 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * ut_bldg/ut_hero pass two evaluated arguments to the receiver-kind context callback.
  * Like FormulaBuilder's SwitchByBool, their arguments are eager unless the entire
  * call is in an unselected ?: branch. This layer does not classify game units.
+ * s(condition, yes, no) transports exactly three eager arguments to the original
+ * boolean-switch context helper. sFlag/rFlag transport one mask to the engine's
+ * unit flag getter. This scalar layer owns neither float narrowing nor flag state;
+ * all three helpers enforce arity even in unselected branches.
  * nt(native, other) preserves the original lazy macro: sTerrainType == sFctn
  * selects one branch. The injected getters share the symbol budget/cache, and
  * each nt counts toward the conditional limit. Arity remains checked when unused.
