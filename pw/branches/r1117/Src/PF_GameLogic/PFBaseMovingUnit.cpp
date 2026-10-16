@@ -40,6 +40,7 @@ PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
 #include "StaticPathInternal.h"
 #include "StandartPath2.h"
 #include "WarFog.h"
+#include "System/Bresenham.h"
 #include "LinuxBootstrap/unit_collision.h"
 
 #define PW_NULL_CAST(TypeName) \
@@ -163,17 +164,6 @@ static bool LinuxStaticMoveSegment(const PFBaseMovingUnit* unit, TileMap* map,
 		tile += shift;
 	}
 	return tile == end;
-}
-
-static CVec2 LinuxSafeDirection(const CVec2& delta, const CVec2& fallback)
-{
-  CVec2 dir = delta;
-  if (fabs2(dir) <= EPS_VALUE)
-    dir = fallback;
-  if (fabs2(dir) <= EPS_VALUE)
-    dir = CVec2(1.0f, 0.0f);
-  Normalize(&dir);
-  return dir;
 }
 
 static bool LinuxUnitsOverlap(const PFBaseMovingUnit* a, const PFBaseMovingUnit* b, const CVec2& aCenter)
@@ -926,6 +916,14 @@ bool MovingUnit::PlaceUnit(const CVec2& newPosition, float radius, bool ignoreUn
   return true;
 }
 
+/** Shared placement occupancy: original tile masks plus native continuous moving-unit circles. */
+static bool LinuxPlacementCell(PFBaseMovingUnit* owner, TileMap* map, int footprint, int mode, const SVector& tile)
+{
+	if (map->IsPointOutsideMap(tile.x, tile.y) || !map->CanUnitGo(footprint, tile)) return false;
+	return !(mode & (MAP_MODE_DYNAMIC | MAP_MODE_IDLE)) || LinuxCanOccupyPosition(owner, map,
+		map->GetPointByTile(tile), false, NDb::GHOSTMOVEMODE_IGNORESTATIC | NDb::GHOSTMOVEMODE_IGNOREBUILDINGS, 0, nullptr, nullptr);
+}
+
 /** Original ring order, shared by radial and requester-bounded placement. Failed queries leave output intact. */
 template<class Accept>
 static bool LinuxPlacementSearch(PFBaseMovingUnit* owner, TileMap* map, const CVec2& position,
@@ -947,13 +945,9 @@ static bool LinuxPlacementSearch(PFBaseMovingUnit* owner, TileMap* map, const CV
 	const SVector tileOwner = checkWalkable ? map->GetTile(owner->GetPos()) : tile;
 	MapModeChanger scopedMode(mode, map);
 	const auto legal = [&](const SVector& candidate) {
-		if (map->IsPointOutsideMap(candidate.x, candidate.y) || !map->CanUnitGo(footprint, candidate) || !accept(candidate)) return false;
-		const CVec2 point = map->GetPointByTile(candidate);
-		// Native movers do not mark dynamic tiles; retain their established continuous-circle collisions.
-		if ((mode & (MAP_MODE_DYNAMIC | MAP_MODE_IDLE)) && !LinuxCanOccupyPosition(owner, map, point, false,
-			NDb::GHOSTMOVEMODE_IGNORESTATIC | NDb::GHOSTMOVEMODE_IGNOREBUILDINGS, 0, nullptr, nullptr)) return false;
+		if (!LinuxPlacementCell(owner, map, footprint, mode, candidate) || !accept(candidate)) return false;
 		if (checkWalkable && !finder->Walkable(tileOwner, candidate, footprint, footprint)) return false;
-		found = point;
+		found = map->GetPointByTile(candidate);
 		return true;
 	};
 	if (legal(tile)) return true;
@@ -980,22 +974,56 @@ bool MovingUnit::FindFreePlace(CVec2 const& newPosition, float radius, CVec2& fo
 		[&](const SVector& tile) { return (!checkLineOfSight || pOwner->CanSee(tile)) && (!nativeTerrainOnly || IsTerrainNative(tile)); }, foundPosition);
 }
 
-bool MovingUnit::FindFreePlace(CVec2 const& newPosition, CVec2 const& attractPoint, float radius, float, CVec2& foundPosition, bool ignoreUnits, bool nativeTerrainOnly, int, bool)
+/** Original weighted Bresenham search; the attractor cell and radius endpoints remain excluded. */
+bool MovingUnit::FindFreePlace(CVec2 const& newPosition, CVec2 const& attractPoint, float radius, float attractPower,
+	CVec2& foundPosition, bool ignoreUnits, bool nativeTerrainOnly, int mapModeFlags, bool checkLineOfSight)
 {
-  foundPosition = newPosition;
-  if (ignoreUnits || CanOccupyPosition(newPosition))
-    return true;
-
-  const float step = Max(0.5f, pOwner ? LinuxUnitCollisionSize(pOwner.GetPtr()) : 1.0f);
-  CVec2 preferred = LinuxSafeDirection(newPosition - attractPoint, CVec2(1.0f, 0.0f));
-  const CVec2 preferredCandidate = newPosition + preferred * step;
-  if (CanOccupyPosition(preferredCandidate))
-  {
-    foundPosition = preferredCandidate;
-    return true;
-  }
-
-  return FindFreePlace(newPosition, radius, foundPosition, false, nativeTerrainOnly, false);
+	const int mode = mapModeFlags ? mapModeFlags : mapModeStatic | ((ignoreUnits || GetGhostMode()) ? 0 : mapMode);
+	if (!IsUnitValid(pOwner) || !LinuxMoveFootprintValid(pOwner) || !LinuxMappedMovePoint(pMap, newPosition)
+		|| !LinuxMappedMovePoint(pMap, attractPoint) || !std::isfinite(radius) || radius < 0
+		|| !std::isfinite(attractPower) || (mode & ~(MAP_MODE_ALL | MAP_MODE_IDLE))) return false;
+	const int placeRadius = Round(float(Min(double(radius) / pMap->GetTileSize(), double(pMap->GetSizeX() + pMap->GetSizeY()))));
+	const int footprint = pOwner->GetUnitRadius();
+	const SVector tile = pMap->GetTile(newPosition), attractor = pMap->GetTile(attractPoint);
+	MapModeChanger scopedMode(mode, pMap);
+	const auto passable = [&](const SVector& candidate) {
+		return LinuxPlacementCell(pOwner, pMap, footprint, mode, candidate) && (!nativeTerrainOnly || IsTerrainNative(candidate));
+	};
+	const auto visible = [&](const SVector& candidate) { return !checkLineOfSight || pOwner->CanSee(candidate); };
+	if (passable(tile) && visible(tile)) { foundPosition = pMap->GetPointByTile(tile); return true; }
+	const float weight = .5f + Clamp(attractPower, 0.f, 1.f) / 2;
+	float best = placeRadius * 1000.f;
+	bool found = false;
+	SVector foundTile, current = tile;
+	CBres line; line.InitPoint(tile, attractor);
+	const SVector shift = abs(tile.x - attractor.x) < abs(tile.y - attractor.y) ? SVector(1, 0) : SVector(0, 1);
+	for (int dx = 0; dx < placeRadius; ++dx)
+	{
+		if (current == attractor) break;
+		float score = dx * (1 - weight);
+		if (score > best) break;
+		if (passable(current) && visible(current))
+		{
+			found = true; foundTile = current; break;
+		}
+		for (int dy = 1; dy < placeRadius / 2; ++dy)
+		{
+			score = dy * weight + dx * (1 - weight);
+			if (score > best) break;
+			SVector candidate = current + shift * dy;
+			if (!passable(candidate))
+			{
+				candidate = current - shift * dy;
+				if (!passable(candidate)) continue;
+			}
+			// Original weighted placement checks sight at the line anchor, not the perpendicular candidate.
+			if (!visible(current)) continue;
+			best = score; found = true; foundTile = candidate;
+		}
+		line.MakeStep(); current += line.GetDirection();
+	}
+	if (found) foundPosition = pMap->GetPointByTile(foundTile);
+	return found;
 }
 
 bool MovingUnit::FindFreePlace2(CVec2 const& newPosition, CVec2 const& attractPoint, float radius, CVec2& foundPosition,
@@ -1192,13 +1220,13 @@ void PFBaseMovingUnit::PlaceUnitWithPush(const CVec2& newPosition, float pushRad
     if (fabs2(currentPosition - finalPosition) >= minDistance * minDistance - EPS_VALUE)
       continue;
 
-    const CVec2 dir = LinuxSafeDirection(currentPosition - finalPosition, unit->GetMoveDirection());
-    CVec2 pushedPosition = finalPosition + dir * minDistance;
-    CVec2 foundPosition = pushedPosition;
-    if (unit->FindFreePlace(pushedPosition, Max(pushRadius, minDistance), foundPosition, false, nativeTerrainOnly))
-      pushedPosition = foundPosition;
-
-    unit->world.PlaceUnit(pushedPosition, MovingUnit::PLACE_UNIT_RADIUS, true, nativeTerrainOnly, true);
+		// Original push policy prefers weighted placement from the old position, then radial fallback.
+		CVec2 foundPosition;
+		const float checkSize = (unit->GetObjectSize() + GetObjectSize()) * 2.f;
+		const bool found = unit->FindFreePlace(currentPosition, finalPosition, checkSize, .9f, foundPosition, false, nativeTerrainOnly)
+			|| unit->FindFreePlace(currentPosition, pushRadius, foundPosition, false, nativeTerrainOnly);
+		if (found && foundPosition != currentPosition)
+			unit->world.PlaceUnit(foundPosition, MovingUnit::PLACE_UNIT_RADIUS, true, nativeTerrainOnly, true);
     if (unit->IsMoving() && !unit->IsMovingSpecial())
       unit->Stop(false);
   }

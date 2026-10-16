@@ -119,7 +119,7 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 		if (rules) { ai->globalConstants = rules->globalConstants; ai->abilityAndDamageScalingParams = rules->abilityAndDamageScalingParams; }
 		if (db && upgrade && superior && rules) for (bool burn : {false, true}) for (int mode : {0, 1, 2})
 		for (bool cancel : {false, true}) for (float distance : {12.f, 24.f, 90.f})
-		for (int landingLayer : {0, int(MAP_MODE_STATIC), int(MAP_MODE_BUILDING)})
+		for (int landingLayer : {0, int(MAP_MODE_STATIC), int(MAP_MODE_BUILDING), -1})
 		{
 			if (landingLayer && (cancel || distance != 24 || mode == 1)) continue;
 			RoutingFixtureB13 isolated(check); if (!isolated.world) continue;
@@ -153,7 +153,12 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 				"B13 maneuver shield scales its larger stat and purchased upper upgrade with original global endpoints");
 			check(hero->TeleportTo(CVec2(5, 15)), "B13 maneuver caster is separated from the descriptor seed hero");
 			const Target point(CVec3(5 + distance, 15, 0)); const CVec2 origin = hero->GetPos();
-			if (landingLayer)
+			CObj<RoutingMoverB13> landingOccupant;
+			if (landingLayer < 0)
+			{
+				landingOccupant = isolated.Mover(point.GetPosition().AsVec2D()); landingOccupant->Footprint(1);
+			}
+			if (landingLayer > 0)
 			{
 				vector<SVector> cells; cells.push_back(isolated.world->GetTileMap()->GetTile(point.GetPosition().AsVec2D()));
 				isolated.world->GetTileMap()->MarkObject(cells, true, landingLayer);
@@ -196,9 +201,15 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 				"B13 original movement retains 30-unit speed and trap protection throughout flight");
 			check(hero->GetMana() == mana - (cancel ? 0 : 100), "B13 maneuver completion pays exactly once and cancellation pays nothing");
 			const CVec2 landing = isolated.world->GetTileMap()->GetPointByTile(isolated.world->GetTileMap()->GetTile(point.GetPosition().AsVec2D()))
-				+ CVec2(0, landingLayer ? 1 : 0);
+				+ CVec2(0, landingLayer > 0 ? 1 : 0);
 			check(cancel ? hero->GetPos() == origin && !flying : fabs(hero->GetPos() - landing) < .01f && flying,
 				"B13 original maneuver flies to its grid-corrected endpoint only after successful channel completion");
+			if (landingOccupant)
+			{
+				const float clearance = (hero->GetObjectSize() + landingOccupant->GetObjectSize()) * .5f;
+				check(fabs2(hero->GetPos() - landingOccupant->GetPos()) >= clearance * clearance - EPS_VALUE,
+					"B13 full original A3 completes its occupied landing and separates the live neighboring mover");
+			}
 			check(maxShield == (!cancel && shield ? capacity.value : 0) && hero->GetShield() == 0,
 				"B13 complete maneuver applies only its purchased shield and retires it at the authored deadline");
 			check(cast && cast->IsFinished() && cast->GetActiveApplicatorsCount() == 0 && !hero->IsInChannelling()
@@ -213,6 +224,7 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 			for (int i = 0; i < 200; ++i) isolated.world->Step(.1f, .1f);
 			check(talent->IsReady() && hero->GetMana() == mana - (cancel ? 0 : 100) && hero->GetShield() == 0,
 				"B13 finished maneuver returns to readiness without repeat payment or shield recreation");
+			if (landingOccupant) landingOccupant->Cleanup();
 			hero->Cleanup(); attacker->Cleanup();
 		}
 		ai->globalConstants = savedConstants; ai->abilityAndDamageScalingParams = savedScaling;
