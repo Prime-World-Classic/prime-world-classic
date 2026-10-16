@@ -40,6 +40,9 @@
 	import flash.display.Loader;
 	import flash.display.Sprite;
 	import flash.net.URLRequest;
+	import flash.text.TextField;
+	import flash.text.TextFormat;
+	import flash.text.TextFieldAutoSize;
 
 	public class MainInterface
 	{
@@ -1162,6 +1165,8 @@
 			_loc3_.text.textColor = param2;
 			_loc3_.x = 0;
 			_loc3_.y = 0;
+			_loc3_.scaleX = 1; // praise texts are scaled down
+			_loc3_.scaleY = 1;
 			_loc3_.alpha = 1;
 			_loc3_.visible = true;
 			return _loc3_;
@@ -1681,6 +1686,18 @@
 			}
 		}
 
+		// pings of a player are off (button "!" in the statistics window; C++ restores them from user.cfg on the battle start)
+		public function SetPlayerPingMuted(playerId:int, muted:Boolean) : void
+		{
+			try
+			{
+				this.mainWindow.statisticsBar_mc.allStats_mc.SetPingMuted(playerId, muted);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
 		// wheel editors of the settings window (C++ AdventureScreen::SendWheelEditors)
 		public function SetWheelEditor(wheel:int, varName:String, ids:String, labels:String, icons:String, items:String, texts:String) : void
 		{
@@ -1867,6 +1884,16 @@
 			this.smartCastModes[param1.toString() + " " + param2.toString()] = param3;
 		}
 		
+		// mode of the shop item in inventory slot `slot`: 0 no checkbox, 1 off, 2 on
+		public function SetItemSmartCast(slot:int, mode:int) : void
+		{
+			if(this.smartCastModes == null)
+			{
+				this.smartCastModes = new Object();
+			}
+			this.smartCastModes["item " + slot.toString()] = mode;
+		}
+
 		private function CreateSmartCastBox() : Sprite
 		{
 			var _loc1_:Sprite = new Sprite();
@@ -1909,6 +1936,16 @@
 					_loc3_ = null;
 					_loc4_ = 0;
 					_loc6_ = _loc2_.Shortcut as TalentShortCut;
+					// shop items on the action bar: key "item <inventory slot>" (ActionButton sends ItemSmartCast)
+					var itemShortcut:InventoryItemShortcut = _loc2_.Shortcut as InventoryItemShortcut;
+					if(itemShortcut != null && itemShortcut.InventoryItem != null)
+					{
+						_loc3_ = "item " + itemShortcut.InventoryItem.InventoryIndex.toString();
+						if(this.smartCastModes != null && this.smartCastModes[_loc3_] != null)
+						{
+							_loc4_ = int(this.smartCastModes[_loc3_]);
+						}
+					}
 					if(_loc6_ != null)
 					{
 						_loc7_ = _loc6_.TalentObj;
@@ -2024,7 +2061,203 @@
 		// width of the praise text between the portraits
 		private static const PRAISE_TEXT_WIDTH:Number = 168;
 
-		// children: 0 bg, 1 sender portrait, 2 target portrait, 3 title, 4 sender name, 5 target name
+		// the praise text between the portraits: broken into lines by words, a smaller font if it still does not fit.
+		// The engine ignores wordWrap / TextFormatAlign.CENTER and does not scale text fields: every line is its own
+		// text field of the needed font size, centred by x; the fields come from a pool (sprite limit of the engine)
+		private static const PRAISE_TEXT_TOP:Number = 6;
+		private static const PRAISE_TEXT_BOTTOM:Number = 72;   // the names start at 74
+		private static const PRAISE_TEXT_CENTER_Y:Number = 51; // a one-line text stays where the old title was
+		private static const PRAISE_TEXT_SIZES:Array = [16, 15, 14, 13, 12, 11, 10];
+		private var praiseTextPool:Array = [];
+
+		private function CreatePraiseTextField(size:int, color:uint) : TextField
+		{
+			var format:TextFormat = new TextFormat();
+			format.font = "DejaVu LGC Sans";
+			format.size = size;
+			format.color = color;
+			var field:TextField = null;
+			if (this.praiseTextPool.length > 0)
+			{
+				field = TextField(this.praiseTextPool.pop());
+			}
+			else
+			{
+				// the format right after the creation: a code-made field has font size 0 in the engine, and setters
+				// like autoSize / width lay the text out at once (assert "Can't set size for fonts" in Alphabet)
+				field = new TextField();
+				field.defaultTextFormat = format;
+				field.selectable = false;
+				field.mouseEnabled = false;
+				field.multiline = false;
+				field.wordWrap = false;
+				field.autoSize = TextFieldAutoSize.NONE;
+			}
+			// the engine takes only the size from the format: the color is set separately
+			field.defaultTextFormat = format;
+			field.textColor = color;
+			field.width = MainInterface.PRAISE_W;
+			field.height = size + 8;
+			field.text = "";
+			field.x = 0;
+			field.y = 0;
+			field.visible = true;
+			return field;
+		}
+
+		private function ReleasePraiseTextField(field:TextField) : void
+		{
+			if (field.parent != null)
+				field.parent.removeChild(field);
+			this.praiseTextPool.push(field);
+		}
+
+		private function TextWidthOf(field:TextField, text:String) : Number
+		{
+			field.text = text;
+			return field.textWidth;
+		}
+
+		// words -> lines no wider than maxWidth; null if one word alone is wider
+		private function WrapPraiseWords(words:Array, maxWidth:Number, measure:TextField) : Array
+		{
+			var lines:Array = [];
+			var line:String = "";
+			for (var i:int = 0; i < words.length; i++)
+			{
+				var test:String = line.length > 0 ? line + " " + words[i] : String(words[i]);
+				if (this.TextWidthOf(measure, test) <= maxWidth)
+				{
+					line = test;
+					continue;
+				}
+				if (line.length == 0 || this.TextWidthOf(measure, String(words[i])) > maxWidth)
+					return null;
+				lines.push(line);
+				line = String(words[i]);
+			}
+			if (line.length > 0)
+				lines.push(line);
+			return lines;
+		}
+
+		// cuts the text with "..." to maxWidth
+		private function CutPraiseText(measure:TextField, text:String, maxWidth:Number) : String
+		{
+			if (this.TextWidthOf(measure, text) <= maxWidth)
+				return text;
+			var cut:String = text;
+			while (cut.length > 1)
+			{
+				cut = cut.substr(0, cut.length - 1);
+				if (this.TextWidthOf(measure, cut + "...") <= maxWidth)
+					return cut + "...";
+			}
+			return cut;
+		}
+
+		private function AddPraiseText(panel:Sprite, text:String, color:uint) : void
+		{
+			var words:Array = [];
+			var parts:Array = text.split(" ");
+			for (var i:int = 0; i < parts.length; i++)
+				if (String(parts[i]).length > 0)
+					words.push(parts[i]);
+			if (words.length == 0)
+				words.push(text);
+
+			var areaH:Number = MainInterface.PRAISE_TEXT_BOTTOM - MainInterface.PRAISE_TEXT_TOP;
+			var maxW:Number = MainInterface.PRAISE_TEXT_WIDTH;
+			var lines:Array = null;
+			var size:int = 16;
+			var lineH:Number = 0;
+			var measure:TextField = null;
+			for (var s:int = 0; s < MainInterface.PRAISE_TEXT_SIZES.length; s++)
+			{
+				size = int(MainInterface.PRAISE_TEXT_SIZES[s]);
+				measure = this.CreatePraiseTextField(size, color);
+				this.TextWidthOf(measure, "Ag");
+				lineH = measure.textHeight + 1;
+				lines = this.WrapPraiseWords(words, maxW, measure);
+				if (lines != null && lines.length * lineH <= areaH)
+					break;
+				lines = null;
+				if (s < MainInterface.PRAISE_TEXT_SIZES.length - 1)
+					this.ReleasePraiseTextField(measure);
+			}
+			if (lines == null)
+			{
+				// too long even with the smallest font: words that do not fit a line are cut, the lines below the area too
+				var maxLines:int = Math.max(1, Math.floor(areaH / lineH));
+				var line:String = "";
+				lines = [];
+				for (var w:int = 0; w < words.length; w++)
+				{
+					var test:String = line.length > 0 ? line + " " + words[w] : String(words[w]);
+					if (this.TextWidthOf(measure, test) <= maxW)
+					{
+						line = test;
+						continue;
+					}
+					if (line.length > 0)
+						lines.push(line);
+					line = this.CutPraiseText(measure, String(words[w]), maxW);
+				}
+				if (line.length > 0)
+					lines.push(line);
+				if (lines.length > maxLines)
+				{
+					lines = lines.slice(0, maxLines);
+					lines[maxLines - 1] = this.CutPraiseText(measure, String(lines[maxLines - 1]) + "...", maxW);
+				}
+			}
+			this.ReleasePraiseTextField(measure);
+
+			var blockH:Number = lines.length * lineH;
+			var top:Number = MainInterface.PRAISE_TEXT_CENTER_Y - blockH / 2;
+			top = Math.min(top, MainInterface.PRAISE_TEXT_BOTTOM - blockH);
+			top = Math.max(top, MainInterface.PRAISE_TEXT_TOP);
+			for (var l:int = 0; l < lines.length; l++)
+			{
+				var field:TextField = this.CreatePraiseTextField(size, color);
+				field.text = String(lines[l]);
+				field.width = Math.ceil(field.textWidth) + 4;
+				field.x = Math.floor(160 - field.width / 2);
+				field.y = Math.floor(top + l * lineH - 2);
+				panel.addChild(field);
+			}
+		}
+
+		// how many panels fit between their top and the minimap: told to C++ (AdventureScreen::SetPraiseRowsFit),
+		// it hides the oldest panel early when there are more
+		private var praiseRowsSent:int = -1;
+
+		private function SendPraiseRowsFit(panelTop:Number) : void
+		{
+			try
+			{
+				var stageH:Number = this.mainWindow.stage.stageHeight;
+				var minimapTop:Number = stageH - 305;
+				var mm:MiniMapWraper = this.mainWindow.miniMap_mc;
+				// main.fla: the minimap clip at (-272, -269) in its wrapper (bottom-right corner), the dragon frame 25 px above it
+				if (mm != null && mm.miniMapAnim_mc != null)
+					minimapTop = mm.y + (mm.miniMapAnim_mc.y - 25) * mm.scaleY;
+				var first:Number = stageH * panelTop;
+				var rows:int = Math.floor((minimapTop - 8 - first - MainInterface.PRAISE_H) / (MainInterface.PRAISE_H + 6)) + 1;
+				if (rows < 1)
+					rows = 1;
+				if (rows != this.praiseRowsSent)
+				{
+					this.praiseRowsSent = rows;
+					FSCommands.Send("PraiseRows", rows.toString());
+				}
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// children: 0 bg, 1 sender portrait, 2 target portrait, 3.. text lines, names
 		// param8: number of the praise chosen in the castle fair, param9: its text (empty - the standard "ХВАЛИТ")
 		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int, param9:String = "") : void
 		{
@@ -2054,10 +2287,7 @@
 			_loc10_.addChild(_loc11_);
 			_loc10_.addChild(this.CreatePraisePortrait(param2,12));
 			_loc10_.addChild(this.CreatePraisePortrait(param5,248));
-			_loc12_ = this.CreatePingLabel(param9 != null && param9.length > 0 ? param9 : "ХВАЛИТ",15784080);
-			this.FitPraiseName(_loc12_,MainInterface.PRAISE_TEXT_WIDTH);
-			_loc10_.addChild(_loc12_);
-			this.PlacePraiseLabel(_loc12_,160,40);
+			this.AddPraiseText(_loc10_,param9 != null && param9.length > 0 ? param9 : "ХВАЛИТ",15784080);
 			// the praise is free: no prime in the panel; long names are cut with "..." to stay inside the panel
 			_loc12_ = this.CreatePingLabel(param3,param4);
 			this.FitPraiseName(_loc12_,MainInterface.PRAISE_NAME_WIDTH);
@@ -2094,6 +2324,10 @@
 					{
 						this.ReleasePingLabel(ShortcutItem(_loc7_.getChildAt(3)));
 					}
+					else if(_loc7_.getChildAt(3) is TextField)
+					{
+						this.ReleasePraiseTextField(TextField(_loc7_.getChildAt(3)));
+					}
 					else
 					{
 						_loc7_.removeChildAt(3);
@@ -2106,6 +2340,7 @@
 				delete this.praisePanels[_loc6_];
 				return;
 			}
+			this.SendPraiseRowsFit(param5);
 			this.FitPraisePortrait(Loader(_loc7_.getChildAt(1)));
 			this.FitPraisePortrait(Loader(_loc7_.getChildAt(2)));
 			_loc7_.x = Math.floor(this.mainWindow.stage.stageWidth - MainInterface.PRAISE_W - 4 + param2 * (MainInterface.PRAISE_W + 12));

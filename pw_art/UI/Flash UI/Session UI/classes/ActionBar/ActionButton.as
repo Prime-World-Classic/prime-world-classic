@@ -91,7 +91,11 @@
 				return false;
 			if (mouseY < SMART_BOX_Y - 3 || mouseY > SMART_BOX_Y + SMART_BOX_SIZE + 3)
 				return false;
-			FSCommands.Send("TalentSmartCast", String(smartKeys[String(ActionBarIndex)]));
+			var key:String = String(smartKeys[String(ActionBarIndex)]);
+			if (key.indexOf("item ") == 0)
+				FSCommands.Send("ItemSmartCast", key.substr(5)); // a shop item: its inventory slot
+			else
+				FSCommands.Send("TalentSmartCast", key);
 			return true;
 		}
 		

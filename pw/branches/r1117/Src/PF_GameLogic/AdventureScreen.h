@@ -144,6 +144,7 @@ namespace NWorld
   struct HeroOpponent;
   class PFHeroLocalStatistics;
   class PFFlagpole;
+  class PFConsumable;
 }
 
 namespace NGameX
@@ -379,6 +380,16 @@ struct GSClientSettings
     int                 lastTalentActivationLevel;
     int                 lastTalentActivationSlot;
     unsigned long       lastAbilityStatusTime;      // anti-spam for Alt+click ability status messages
+    int                 lastAbilityStatusLevel;     // ...and the ability / text of the last one: the same one again is not sent
+    int                 lastAbilityStatusSlot;
+    wstring             lastAbilityStatusText;
+    unsigned long       lastAltStatusPressTime;     // Alt + click on the portal / an item: the click after it is swallowed
+    int                 holdCastSlot;               // action bar slot whose hotkey is watched for the hold self-cast, -1 = none
+    float               holdCastTimer;
+    void UpdateHoldSelfCast( float deltaTime );
+    void SendStatusMessageToTeam( int level, int slot, const wstring & name, const wstring & state );
+    bool CanSendStatusNow() const;
+    bool IsAltStatusPressJustNow() const;
 
     // Ping wheel: Alt + the 'selection' mouse button (or the middle button). A quick click = ordinary ping, holding it opens the wheel
     bool                pingWheelPending;
@@ -426,10 +437,13 @@ struct GSClientSettings
     nstl::vector<PraiseEntry> praises;
     int                 praiseNextId;
     unsigned long       lastPraiseTime;             // GetTickCount() of our last praise
+    int                 praiseRowsFit;              // panels that fit between the top and the minimap (Flash), 0 = unknown
+    void PlayPraiseSound();
 
     // smart cast switches of the action bar (local): -1 = castle setting of the talent, 0 = off, 1 = on
     signed char         smartCastOverride[8][8];    // [level][slot]
     signed char         smartCastSentMode[8][8];    // mode last sent to Flash (-1 = never)
+    signed char         smartCastItemSentMode[64];  // the same for the shop items, by inventory slot
     float               smartCastRefreshTimer;
     int                 autoAttackSent;             // auto attack option last sent to the world (-1 = not yet, the world starts with "on")
     int                 flashMinimapAlertSent;      // options last pushed to the Flash UI of this battle (-1 = not yet)
@@ -584,8 +598,8 @@ struct GSClientSettings
     void GetChatWheelCatalog( vector<wstring> & texts, vector<int> & ids ) const;
     void SendWheelEditors();
   public:
-    // pings of this player are not shown (button in the statistics window)
-    void SetPlayerPingsMuted( int playerId, bool muted );
+    // pings of this player are not shown (button in the statistics window; the saved ones are restored with showInFlash)
+    void SetPlayerPingsMuted( int playerId, bool muted, bool showInFlash );
     // a ward (a lantern bought in the shop) was used: the count per hero for the statistics window; called by the world
     void OnWardUsed( NWorld::PFBaseHero const * pHero );
     // the counts are not in the world: a replay keeps them with its world snapshots and restores them on a rewind
@@ -595,6 +609,7 @@ struct GSClientSettings
     nstl::set<int>      mutedPingPlayers;
     nstl::map<int, int> wardCounts;             // player id -> wards placed
     nstl::map<int, int> unsentWardCounts;       // restored by SetWardCounts, sent to Flash once it is there
+    nstl::map<int, bool> unsentPingMutes;       // restored from user.cfg, sent to Flash on the next step
     void UpdatePingMarkers( float deltaTime );
     void SendTypedSignal( int type );
     void PreloadPingVisuals( const NDb::AdvMapDescription * advMapDescription );
@@ -1087,9 +1102,18 @@ struct GSClientSettings
     // Raw press of an ability button, sent by Flash before its own checks (cooldown, mana, prime...):
     // used for Alt+click status messages. Returns true if handled.
     bool OnTalentButtonPress( int level, int slot );
+    // the same for the portal button and the shop item buttons (Alt + click: state to the team chat)
+    bool OnPortalButtonPress();
+    bool OnItemButtonPress( int slot );
 
     // executed by CmdTypedSignal (ping wheel) and CmdMinimapSignal (type -1, ordinary ping) on every client
     void OnTypedSignal( const CVec3 & pos, int type, NDb::EFaction faction, NWorld::PFBaseHero const * pSender = 0 );
+    // CmdMinimapSignal on a unit (the old red marker above it): the "Attack" sound if it is not of the pinging team.
+    // Returns false if the pings of the sender are off (no marker then)
+    bool OnUnitSignal( NWorld::PFBaseUnit const * pUnit, NDb::EFaction faction, NWorld::PFBaseHero const * pSender );
+
+    // signals of this player are shown (own: always; others: unless all signals are off or the player is muted)
+    bool IsPingShown( NWorld::PFBaseHero const * pSender );
 
     // pings are on the middle mouse button: the camera must not be dragged by it
     static bool IsMiddleMousePingMode();
@@ -1102,12 +1126,17 @@ struct GSClientSettings
     bool TryPraiseHero( NWorld::PFBaseHero * pTarget );
     // click on the smart-cast checkbox of an action bar button (level/slot of the talent)
     void OnTalentSmartCastToggle( int level, int slot );
+    // click on the smart-cast checkbox of an action bar button with a shop item (inventory slot); kept in user.cfg by item
+    void OnItemSmartCastToggle( int slot );
+    bool IsItemSmartCast( NWorld::PFConsumable const * pItem ) const;
     // Switches made on the panel survive a reconnect to the same battle: the game server keeps the
     // player data of the session start, so they are kept locally per session id.
     void SaveSmartCastOverrides() const;
     void LoadSmartCastOverrides();
     // executed by CmdPraise on every client
     void OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBaseHero const * pTarget, int amount );
+    // Flash: so many praise panels fit above the minimap
+    void SetPraiseRowsFit( int rows );
 
     virtual void OnPlayerDisconnected(NWorld::PFPlayer * player, int lastStep);
     virtual void OnStartAiForPlayer( NWorld::PFPlayer * player );

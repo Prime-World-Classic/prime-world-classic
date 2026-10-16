@@ -766,6 +766,16 @@ void AdventureFlashInterface::SetPlayerWards( int playerId, int count )
   CallMethod( "SetPlayerWards", playerId, count );
 }
 
+void AdventureFlashInterface::SetItemSmartCast( int slot, int mode )
+{
+  CallMethod( "SetItemSmartCast", slot, mode );
+}
+
+void AdventureFlashInterface::SetPlayerPingMuted( int playerId, bool muted )
+{
+  CallMethod( "SetPlayerPingMuted", playerId, muted );
+}
+
 void AdventureFlashInterface::SetPingText( const wstring & text )
 {
   CallMethod( "SetPingText", text );

@@ -24,6 +24,7 @@
 	import flash.display.Sprite;
 	import flash.display.Shape;
 	import flash.net.URLRequest;
+	import Controllers.SoundController;
 
 	public class StatisticsBarPlayers extends MovieClip implements IMate
 	{
@@ -81,13 +82,21 @@
 		private var wardCenterX:Number = NaN; // ось колонки фонарей: и значок, и число по её центру
 		// фонари соперников видны только в итоговой статистике после боя
 		private var finalStatistic:Boolean = false;
+		// x of might, scythe, fist and their counts in main.fla; with the ward column they move one step left
+		private var wardBaseX:Array;
+		private var wardShiftStep:Number = 0;
 
 
-		// pings of the player off: button next to the chat mute (allies only, the pings of the enemies are not shown anyway)
-		private static const PING_ICON:String = "/UI/Styles/Icons/PingWheel/ping_icon5.dds";
+		// pings of the player off: button "!" left of the chat mute, drawn like it (pw_art/UI/PingMute; allies only:
+		// the pings of the enemies are not shown anyway). C++ keeps the muted players in user.cfg by account id (SetPingMuted).
+		private static const PING_MUTE_TEX:String = "/UI/Styles/Icons/PingMute/ping_mute_";
+		private static const PING_MUTE_STATES:Array = ["default", "over", "down", "default_mute", "over_mute", "down_mute"];
+		private static const PING_MUTE_SIZE:Number = 24.1; // as muteToggle_cmp (31 px picture in a 32 px texture)
+		private static var pingMutedIds:Object = new Object();
 		private var pingMuteButton:Sprite;
-		private var pingMuteIcon:Loader;
-		private var pingMuted:Boolean = false;
+		private var pingMuteStates:Array;
+		private var pingMuteOver:Boolean = false;
+		private var pingMuteDown:Boolean = false;
 
 		public function StatisticsBarPlayers()
 		{
@@ -126,13 +135,20 @@
 
 		private function CreateWardsAndPingMute():void
 		{
-			// the ward column goes before the kills one with the same step as between the stat columns
+			// the ward column goes between the assists and the score: kills, deaths and assists move one column
+			// to the left (the step between the stat columns), the wards take the place of the assists
 			var step:Number = scythe.x - might.x;
-			var wardX:Number = might.x - step;
+			// sizes from main.fla (fist 20x20, might 24x24): width/height of such clips are not reliable in the engine
+			var wardIconCenterX:Number = fist.x + 10;
+			var wardTextCenterX:Number = sumSupportStat.x + sumSupportStat.width / 2;
+			var wardIconCenterY:Number = might.y + 12;
+			wardShiftStep = step;
+			wardBaseX = [might.x, scythe.x, fist.x, sumKillStat.x, sumDeathStat.x, sumSupportStat.x];
+			var wardX:Number = Math.round(wardIconCenterX - WARD_ICON_SIZE / 2);
 
-			// the names end before the ward column (long ones get "..." and a tooltip)
-			playerNameHolder.RecalcTextWidth(Math.min(playerName.width, wardX - 4 - playerName.x));
-			playerHeroClassHolder.RecalcTextWidth(Math.min(playerHero.width, wardX - 4 - playerHero.x));
+			// the names end before the first stat column of the shifted layout (long ones get "..." and a tooltip)
+			playerNameHolder.RecalcTextWidth(Math.min(playerName.width, might.x - step - 4 - playerName.x));
+			playerHeroClassHolder.RecalcTextWidth(Math.min(playerHero.width, might.x - step - 4 - playerHero.x));
 
 			wardIcon = new Loader();
 			wardIcon.mouseEnabled = false;
@@ -147,12 +163,12 @@
 			wardHolder.addChild(wardHit);
 			wardHolder.addChild(wardIcon);
 			wardHolder.x = wardX;
-			wardHolder.y = might.y;
+			wardHolder.y = Math.round(wardIconCenterY - WARD_ICON_SIZE / 2);
 			wardTooltip = new TooltipSender(wardHolder);
-			// the count on the line of the kills count; the icon is centred right above the count (UpdateWards)
+			// the count on the line of the other counts, centred under the icon (UpdateWards)
 			if (sumWardStat != null)
 			{
-				wardCenterX = sumKillStat.x - step + sumKillStat.width / 2;
+				wardCenterX = wardTextCenterX;
 				sumWardStat.y = sumKillStat.y;
 				sumWardStat.autoSize = TextFieldAutoSize.NONE;
 			}
@@ -161,19 +177,36 @@
 			UpdateWards();
 
 			pingMuteButton = new Sprite();
-			pingMuteIcon = new Loader();
-			pingMuteIcon.mouseEnabled = false;
-			pingMuteIcon.load(new URLRequest(PING_ICON));
-			pingMuteIcon.scaleX = 24 / 64;
-			pingMuteIcon.scaleY = 24 / 64;
-			pingMuteButton.addChild(pingMuteIcon);
-			pingMuteButton.x = muteToggle_cmp.x - 28;
-			pingMuteButton.y = muteToggle_cmp.y + 2;
+			pingMuteButton.mouseChildren = false;
+			// click area under the picture (an almost transparent fill does not catch clicks in the engine)
+			var pingHit:Shape = new Shape();
+			pingHit.graphics.beginFill(0x000000, 0.35);
+			pingHit.graphics.drawCircle(PING_MUTE_SIZE / 2, PING_MUTE_SIZE / 2, PING_MUTE_SIZE / 2 - 2);
+			pingHit.graphics.endFill();
+			pingMuteButton.addChild(pingHit);
+			pingMuteStates = new Array();
+			for (var i:int = 0; i < PING_MUTE_STATES.length; i++)
+			{
+				var state:Loader = new Loader();
+				state.mouseEnabled = false;
+				state.load(new URLRequest(PING_MUTE_TEX + PING_MUTE_STATES[i] + ".dds"));
+				state.scaleX = PING_MUTE_SIZE / 31;
+				state.scaleY = PING_MUTE_SIZE / 31;
+				state.visible = false;
+				pingMuteButton.addChild(state);
+				pingMuteStates.push(state);
+			}
+			// the row of the chat mute, one button to the left of it with a small gap
+			pingMuteButton.x = Math.round(muteToggle_cmp.x - PING_MUTE_SIZE - 3);
+			pingMuteButton.y = muteToggle_cmp.y;
 			pingMuteButton.visible = false;
 			pingMuteButton.addEventListener(MouseEvent.CLICK, OnPingMuteClick);
 			pingMuteButton.addEventListener(MouseEvent.MOUSE_OVER, OnPingMuteOver);
-			pingMuteButton.addEventListener(MouseEvent.MOUSE_OUT, onMuteToggleOut);
+			pingMuteButton.addEventListener(MouseEvent.MOUSE_OUT, OnPingMuteOut);
+			pingMuteButton.addEventListener(MouseEvent.MOUSE_DOWN, OnPingMuteDown);
+			pingMuteButton.addEventListener(MouseEvent.MOUSE_UP, OnPingMuteUp);
 			addChild(pingMuteButton);
+			UpdatePingMuteView();
 		}
 
 		public static function SetWardCount(id:int, count:int):void
@@ -193,6 +226,17 @@
 			// соперникам во время боя фонари не показываем — только в итоговой статистике
 			var shown:Boolean = finalStatistic || _playerData == null || !_playerData.IsEnemyTeam;
 			sumWardStat.visible = shown;
+			// no ward column: kills, deaths and assists stay in their old place (moved left only when the column is there)
+			if (wardBaseX != null)
+			{
+				var shift:Number = shown ? wardShiftStep : 0;
+				might.x = wardBaseX[0] - shift;
+				scythe.x = wardBaseX[1] - shift;
+				fist.x = wardBaseX[2] - shift;
+				sumKillStat.x = wardBaseX[3] - shift;
+				sumDeathStat.x = wardBaseX[4] - shift;
+				sumSupportStat.x = wardBaseX[5] - shift;
+			}
 			if (wardHolder != null)
 			{
 				wardHolder.visible = shown;
@@ -209,13 +253,33 @@
 			}
 		}
 
-		private function UpdatePingMuteView():void
+		// players whose pings are off (C++: on the battle start and after every click)
+		public static function SetPingMuted(id:int, muted:Boolean):void
 		{
-			if (pingMuteIcon == null)
+			if (muted)
+				pingMutedIds[String(id)] = true;
+			else
+				delete pingMutedIds[String(id)];
+		}
+
+		private function IsPingMuted():Boolean
+		{
+			return _playerData != null && pingMutedIds[String(_playerData.HeroId)] == true;
+		}
+
+		public function UpdatePingMuteView():void
+		{
+			if (pingMuteStates == null)
 				return;
-			pingMuteIcon.alpha = 1;
-			if (pingMuted)
-				pingMuteIcon.alpha = 0.3;
+			var index:int = 0;
+			if (pingMuteDown)
+				index = 2;
+			else if (pingMuteOver)
+				index = 1;
+			if (IsPingMuted())
+				index += 3;
+			for (var i:int = 0; i < pingMuteStates.length; i++)
+				Loader(pingMuteStates[i]).visible = (i == index);
 		}
 
 		private function OnPingMuteClick(e:MouseEvent):void
@@ -224,11 +288,14 @@
 			{
 				if (_playerData == null)
 					return;
-				pingMuted = !pingMuted;
+				var muted:Boolean = !IsPingMuted();
+				SetPingMuted(_playerData.HeroId, muted);
+				pingMuteDown = false;
 				UpdatePingMuteView();
 				var value:String = "0";
-				if (pingMuted)
+				if (muted)
 					value = "1";
+				SoundController.PlaySound(SoundController.BUTTON_PRESS_SMALL);
 				FSCommands.Send("PingMuteUser", _playerData.HeroId.toString() + " " + value);
 				OnPingMuteOver(null);
 			}
@@ -239,11 +306,39 @@
 
 		private function OnPingMuteOver(e:MouseEvent):void
 		{
-			var tooltip:String = Localization.Statistics_PingMute;
-			if (pingMuted)
-				tooltip = Localization.Statistics_PingUnmute;
-			var point:Point = pingMuteButton.localToGlobal(new Point());
-			dispatchEvent(new ButtonTooltipEvent(ButtonTooltipEvent.ACTION_TYPE_IN, this, point.x, point.y, tooltip));
+			try
+			{
+				pingMuteOver = true;
+				UpdatePingMuteView();
+				var tooltip:String = Localization.Statistics_PingMute;
+				if (IsPingMuted())
+					tooltip = Localization.Statistics_PingUnmute;
+				var point:Point = pingMuteButton.localToGlobal(new Point());
+				dispatchEvent(new ButtonTooltipEvent(ButtonTooltipEvent.ACTION_TYPE_IN, this, point.x, point.y, tooltip));
+			}
+			catch (err:Error)
+			{
+			}
+		}
+
+		private function OnPingMuteOut(e:MouseEvent):void
+		{
+			pingMuteOver = false;
+			pingMuteDown = false;
+			UpdatePingMuteView();
+			onMuteToggleOut(e);
+		}
+
+		private function OnPingMuteDown(e:MouseEvent):void
+		{
+			pingMuteDown = true;
+			UpdatePingMuteView();
+		}
+
+		private function OnPingMuteUp(e:MouseEvent):void
+		{
+			pingMuteDown = false;
+			UpdatePingMuteView();
 		}
 
 		public function ChangeToggleMute(e:PWComponentValueEvent):void

@@ -631,16 +631,19 @@ namespace NWorld
     {
       if ( NGameX::Minimap *pMinimap = NGameX::AdventureScreen::Instance()->GetMinimap() )
       {
-        pMinimap->AddSignal( target.AcquirePosition(), faction );
+        if ( NGameX::AdventureScreen::Instance()->IsPingShown( pHero.GetPtr() ) )
+          pMinimap->AddSignal( target.AcquirePosition(), faction );
       }
       NGameX::AdventureScreen::Instance()->OnTypedSignal( target.AcquirePosition(), -1, faction, pHero.GetPtr() ); // ring on the ground + "!"
     }
     else if ( target.IsUnitValid() && NGameX::AdventureScreen::Instance()->GetPlayerFaction() == faction )
     {
-      if ( NGameX::MarkersController *pMarkersController = NGameX::AdventureScreen::Instance()->GetMarkersController() )
-      {
-        pMarkersController->AddMarker( target.GetUnit(), faction );
-      }
+      // the red marker above the unit; on an enemy also the "Attack" sound (none of it if the sender's pings are off)
+      if ( NGameX::AdventureScreen::Instance()->OnUnitSignal( target.GetUnit(), faction, pHero.GetPtr() ) )
+        if ( NGameX::MarkersController *pMarkersController = NGameX::AdventureScreen::Instance()->GetMarkersController() )
+        {
+          pMarkersController->AddMarker( target.GetUnit(), faction );
+        }
     }
 #endif
   }
@@ -656,7 +659,8 @@ namespace NWorld
     if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
     {
       if ( NGameX::Minimap *pMinimap = pScreen->GetMinimap() )
-        pMinimap->AddSignal( signalPos, faction );
+        if ( pScreen->IsPingShown( pHero.GetPtr() ) )
+          pMinimap->AddSignal( signalPos, faction );
       pScreen->OnTypedSignal( signalPos, signalType, faction, pHero.GetPtr() );
     }
 #endif

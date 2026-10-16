@@ -82,6 +82,8 @@ public:
 private:
 
   void DoInit(UI::FlashContainer2* const flashContainer);
+  // pings of the player off/on: kept in user.cfg (ping_muted_users) by account id
+  void SavePingMute(const TUserId userId, const bool muted);
 
   TPlayerId GetPlayerIdByUserId(const TUserId userId) const;
   TUserId GetUserIdByPlayerId(const TPlayerId playerId) const;

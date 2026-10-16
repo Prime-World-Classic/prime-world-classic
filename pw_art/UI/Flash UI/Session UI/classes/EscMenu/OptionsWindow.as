@@ -216,6 +216,7 @@
 			OptionsWindow.shownCategory = CAT_GAME;
 
 			this.wFrame_mc.setSize(this.wFrame_mc.width + SIDEBAR_WIDTH + CONTENT_EXTRA_WIDTH, frameHeight);
+			OptionsWindow.pageContentWidth = this.wFrame_mc.width - (this.settingsTab.x + SIDEBAR_WIDTH + 2) - 12;
 			if (this.myBack_mc != null)
 			{
 				this.myBack_mc.width = this.myBack_mc.width + SIDEBAR_WIDTH + CONTENT_EXTRA_WIDTH;
@@ -1319,6 +1320,136 @@
 				ed.catalogRows.push(row);
 				i++;
 			}
+
+			// the list of commands scrolls: EDITOR_CATALOG_ROWS rows are shown, buttons right of the list + mouse wheel
+			ed.catalogTop = 0;
+			var up:Sprite = this.MakeEditorArrowButton(true);
+			var down:Sprite = this.MakeEditorArrowButton(false);
+			var arrowsX:Number = EDITOR_CATALOG_COLUMNS * EDITOR_CATALOG_COLUMN - 34;
+			if (OptionsWindow.pageContentWidth > 0)
+			{
+				arrowsX = Math.min(EDITOR_CATALOG_COLUMNS * EDITOR_CATALOG_COLUMN + 2, OptionsWindow.pageContentWidth - 34);
+			}
+			up.x = arrowsX;
+			up.y = EDITOR_CATALOG_Y;
+			down.x = arrowsX;
+			down.y = EDITOR_CATALOG_Y + EDITOR_CATALOG_ROWS * EDITOR_CATALOG_STEP - 22;
+			up.addEventListener(MouseEvent.CLICK, this.OnEditorCatalogUp);
+			down.addEventListener(MouseEvent.CLICK, this.OnEditorCatalogDownScroll);
+			sprite.addChild(up);
+			sprite.addChild(down);
+			ed.catalogUp = up;
+			ed.catalogDown = down;
+			sprite.addEventListener(MouseEvent.MOUSE_WHEEL, this.OnEditorCatalogWheel);
+			this.LayoutEditorCatalog(ed);
+		}
+
+		private static const EDITOR_CATALOG_ROWS:int = 6;   // rows of the list of commands that fit into the window
+
+		// width of the content area of a page (right edge of the window), set by CreateCategoryLayout
+		private static var pageContentWidth:Number = 0;
+
+		private function CatalogRowCount(ed:Object) : int
+		{
+			return int((ed.catalogRows.length + EDITOR_CATALOG_COLUMNS - 1) / EDITOR_CATALOG_COLUMNS);
+		}
+
+		private function LayoutEditorCatalog(ed:Object) : void
+		{
+			var maxTop:int = Math.max(0, this.CatalogRowCount(ed) - EDITOR_CATALOG_ROWS);
+			if (ed.catalogTop > maxTop)
+				ed.catalogTop = maxTop;
+			if (ed.catalogTop < 0)
+				ed.catalogTop = 0;
+			for (var i:int = 0; i < ed.catalogRows.length; i++)
+			{
+				var row:ShortcutItem = ed.catalogRows[i];
+				var r:int = int(i / EDITOR_CATALOG_COLUMNS) - ed.catalogTop;
+				row.visible = r >= 0 && r < EDITOR_CATALOG_ROWS;
+				row.y = EDITOR_CATALOG_Y + r * EDITOR_CATALOG_STEP;
+			}
+			var scrolls:Boolean = maxTop > 0;
+			ed.catalogUp.visible = scrolls;
+			ed.catalogDown.visible = scrolls;
+			ed.catalogUp.alpha = ed.catalogTop > 0 ? 1 : 0.35;
+			ed.catalogDown.alpha = ed.catalogTop < maxTop ? 1 : 0.35;
+		}
+
+		private function EditorOfCatalogButton(button:Object) : Object
+		{
+			for (var w:int = 0; w < OptionsWindow.wheelEditors.length; w++)
+			{
+				var ed:Object = OptionsWindow.wheelEditors[w];
+				if (ed != null && (ed.catalogUp == button || ed.catalogDown == button || ed.sprite == button))
+					return ed;
+			}
+			return null;
+		}
+
+		private function ScrollEditorCatalog(ed:Object, delta:int) : void
+		{
+			if (ed == null)
+				return;
+			ed.catalogTop = ed.catalogTop + delta;
+			this.LayoutEditorCatalog(ed);
+		}
+
+		private function OnEditorCatalogUp(e:Event) : void
+		{
+			try
+			{
+				this.ScrollEditorCatalog(this.EditorOfCatalogButton(e.currentTarget), -1);
+			}
+			catch (err:Error)
+			{
+			}
+		}
+
+		private function OnEditorCatalogDownScroll(e:Event) : void
+		{
+			try
+			{
+				this.ScrollEditorCatalog(this.EditorOfCatalogButton(e.currentTarget), 1);
+			}
+			catch (err:Error)
+			{
+			}
+		}
+
+		private function OnEditorCatalogWheel(e:MouseEvent) : void
+		{
+			try
+			{
+				if (e.delta != 0)
+					this.ScrollEditorCatalog(this.EditorOfCatalogButton(e.currentTarget), e.delta > 0 ? -1 : 1);
+			}
+			catch (err:Error)
+			{
+			}
+		}
+
+		// square button with a triangle (the game's Graphics: only filled rectangles, the triangle is a stack of them)
+		private function MakeEditorArrowButton(up:Boolean) : Sprite
+		{
+			var button:Sprite = new Sprite();
+			var back:Shape = new Shape();
+			back.graphics.beginFill(14266474, 1);
+			back.graphics.drawRoundRect(0, 0, 30, 22, 6, 6);
+			back.graphics.endFill();
+			back.graphics.beginFill(2059124, 1);
+			back.graphics.drawRoundRect(1, 1, 28, 20, 5, 5);
+			back.graphics.endFill();
+			back.graphics.beginFill(16777215, 1);
+			for (var k:int = 0; k < 6; k++)
+			{
+				var w:Number = 2 + k * 2;
+				var y:Number = up ? 8 + k : 13 - k;
+				back.graphics.drawRect(15 - w / 2, y, w, 1);
+			}
+			back.graphics.endFill();
+			button.addChild(back);
+			button.mouseChildren = false;
+			return button;
 		}
 
 		// everything that depends on the slots

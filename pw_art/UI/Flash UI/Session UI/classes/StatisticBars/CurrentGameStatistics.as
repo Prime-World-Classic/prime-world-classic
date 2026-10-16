@@ -398,7 +398,15 @@
 				mateInfo.UpdateWards();
 		}
 
-		public function SetIgnoreStatus(id:int, ignore:Boolean):void 
+		public function SetPingMuted(id:int, muted:Boolean):void
+		{
+			StatisticsBarPlayers.SetPingMuted(id, muted);
+			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
+			if (mateInfo != null)
+				mateInfo.UpdatePingMuteView();
+		}
+
+		public function SetIgnoreStatus(id:int, ignore:Boolean):void
 		{
 			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
 			

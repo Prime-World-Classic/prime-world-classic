@@ -312,6 +312,8 @@ public:
   void HighlightChatWheel( int index );
   void HideChatWheel();
   void SetPlayerWards( int playerId, int count ); // wards placed, statistics window
+  void SetPlayerPingMuted( int playerId, bool muted ); // button "!" of the statistics window
+  void SetItemSmartCast( int slot, int mode ); // smart-cast checkbox of a shop item: 0 none, 1 off, 2 on
   void SetPingText( const wstring & text );       // ping under the minimap, empty - hidden
   // wheel editor of the settings window: wheel 0 = chat, 1 = ping; catalog ids / labels / icons separated by '|',
   // items = ids of the slots "a,b,c"; varName is set by Flash (PreferenceSetVar) when the slots change
