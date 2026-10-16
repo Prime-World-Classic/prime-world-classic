@@ -38,7 +38,12 @@ public:
   TDBResourceNotifier& NeedChangeNotifier( const DBID &dbid );
 
 protected:
+#if defined(__linux__)
+	/** Return ownership through the caller's handoff, including cold inline root traversal. */
+	virtual Ptr<DbResource> Read(const DBID &dbid, IXmlSaver *_pSaver, const bool fullRead, const bool forceUseParamSaver);
+#else
   virtual DbResource *Read( const DBID &dbid, IXmlSaver *_pSaver, const bool fullRead, const bool forceUseParamSaver );
+#endif
 
   void SetToCache( const DBID &dbid, DbResource *resource );
   DbResource *GetFromCache( const DBID &dbid ); 
@@ -90,6 +95,10 @@ private:
   FileSystemChangesProcessor* changesProcessor;
 
   bool assertionLoadingFiles;
+#if defined(__linux__)
+	// Protected by mutex; recursive lookups reuse an active object without serializing it twice.
+	vector<DbResource*> readingResources;
+#endif
 
   OBJECT_BASIC_METHODS( DbResourceCache )
 };

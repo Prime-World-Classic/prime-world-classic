@@ -134,6 +134,14 @@ private:
 
 class PrecacheResourceReaderForce : public ::IResourceReader
 {
+#if defined(__linux__)
+	struct CompletedRead
+	{
+		Ptr<DbResource> resource;
+		int remainingDepth = -1;
+	};
+	hash_map<DBID, CompletedRead> completed;
+#endif
 public:
   PrecacheResourceReaderForce( DbResourceCache* _pCache, int _depth ) : pCache( _pCache ), depth( _depth ), initialDepth( _depth ) {}
   virtual NDb::Ptr<NDb::DbResource> Read( const NDb::DBID& dbid, IXmlSaver& saver )
@@ -141,7 +149,25 @@ public:
     Ptr<DbResource> pRes;
 
     --depth;
+#if defined(__linux__)
+		// A shorter path may need deeper descendants, but equal-depth diamond edges need no reload.
+		const int requestedDepth = depth > 0 ? depth : 0;
+		const auto found = completed.find(dbid);
+		if (found != completed.end() && found->second.remainingDepth >= requestedDepth)
+		{
+			++depth;
+			return found->second.resource;
+		}
+#endif
     pRes = pCache->GetForce( dbid, &saver, depth > 0 );
+#if defined(__linux__)
+		if (!pRes.IsEmpty())
+		{
+			auto& entry = completed[dbid];
+			entry.resource = pRes;
+			entry.remainingDepth = Max(entry.remainingDepth, requestedDepth);
+		}
+#endif
     ++depth;
     
     return pRes;
@@ -364,6 +390,10 @@ Ptr<DbResource> DbResourceCache::Get( const DBID &dbid, IXmlSaver *_pSaver, bool
 
   if ( resource )
   {
+#if defined(__linux__)
+		if (nstl::find(readingResources.begin(), readingResources.end(), resource) != readingResources.end())
+			return resource;
+#endif
     if ( !fullRead || !resource->NeedReload() )
     {
       db_ResourcesGotFromCache.AddValue( 1 );
@@ -384,6 +414,10 @@ Ptr<DbResource> DbResourceCache::GetForce( const DBID &dbid, IXmlSaver *_pSaver,
 
   if ( resource )
   {
+#if defined(__linux__)
+		if (nstl::find(readingResources.begin(), readingResources.end(), resource) != readingResources.end())
+			return resource;
+#endif
     if( fullRead || resource->NeedReload() )
       return Read( dbid, _pSaver, fullRead, false );
 
@@ -553,7 +587,23 @@ void DbResourceCache::SResourcesBunch::Clear()
 }
 
 
+#if defined(__linux__)
+/** Keep the active identity visible until its serializer has completely unwound. */
+class NativeResourceReadScope : public NonCopyable
+{
+	vector<DbResource*>& active;
+public:
+	NativeResourceReadScope(vector<DbResource*>& active, DbResource* resource) : active(active)
+	{
+		active.push_back(resource);
+	}
+	~NativeResourceReadScope() { active.pop_back(); }
+};
+
+Ptr<DbResource> DbResourceCache::Read(const DBID &dbid, IXmlSaver *_pSaver, const bool fullRead, const bool forceUseParamSaver)
+#else
 DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const bool fullRead, const bool forceUseParamSaver )
+#endif
 {
   NI_PROFILE_FUNCTION
 
@@ -572,7 +622,11 @@ DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const b
   if ( !IsValid( pSaver ) && dbid.IsInlined() )
   {
     //NI_ALWAYS_ASSERT( NI_STRFMT( "Cannot get inlined resource \"%s\" without saver", GetFormattedDbId( dbid ).c_str() ) );
+#if defined(__linux__)
+		const Ptr<DbResource> root = PrecacheForce(dbid, 20);
+#else
     PrecacheForce(dbid, 20);
+#endif
     return GetFromCache( dbid );
   }
 
@@ -619,6 +673,11 @@ DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const b
 
   if ( fullRead )
   {
+#if defined(__linux__)
+		// The return value takes its reference before this holder is released.
+		const Ptr<DbResource> held = pResult;
+		NativeResourceReadScope reading(readingResources, pResult);
+#endif
     db_ResourcesReadFromStream.AddValue( 1 );
 
     DEBUG_LOG_RESOURCE_LOAD(dbid);
@@ -644,6 +703,9 @@ DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const b
       pSaver->SetSourceId( wasId );
     }
 
+#if defined(__linux__)
+		return pResult;
+#endif
   }
 
   return pResult;
@@ -654,6 +716,11 @@ DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const b
 Ptr<DbResource> DbResourceCache::Precache( const DBID& dbid, const int depth )
 {
   threading::MutexLock lock( mutex );
+#if defined(__linux__)
+	DbResource* active = GetFromCache(dbid);
+	if (active && nstl::find(readingResources.begin(), readingResources.end(), active) != readingResources.end())
+		return active;
+#endif
 
   NI_PROFILE_FUNCTION
 
@@ -678,6 +745,13 @@ Ptr<DbResource> DbResourceCache::Precache( const DBID& dbid, const int depth )
   {
     DEBUG_LOG_RESOURCE_LOAD(dbid);
 
+#if defined(__linux__)
+		const Ptr<DbResource> held = pResult;
+		pResult->loaded = true;
+		pResult->outdated = false;
+		SetToCache(dbid, pResult);
+		NativeResourceReadScope reading(readingResources, pResult);
+#endif
 #if defined( NV_WIN_PLATFORM )
     SyncProcessorState();
 #endif
@@ -686,6 +760,9 @@ Ptr<DbResource> DbResourceCache::Precache( const DBID& dbid, const int depth )
     pSaver->FinishChunk();
 
     SetToCache( dbid, pResult );
+#if defined(__linux__)
+		return pResult;
+#endif
   }
 
   return pResult;
@@ -699,6 +776,11 @@ Ptr<DbResource> DbResourceCache::PrecacheForce( const DBID& _dbid, const int dep
   threading::MutexLock lock( mutex );
 
   const DBID dbid = DBID( _dbid.GetFileName() );
+#if defined(__linux__)
+	DbResource* active = GetFromCache(dbid);
+	if (active && nstl::find(readingResources.begin(), readingResources.end(), active) != readingResources.end())
+		return active;
+#endif
 
   CObj<Stream> pStream = fileSystem->OpenFile( dbid.GetFileName(), FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
   NI_VERIFY( pStream && pStream->IsOk(), NI_STRFMT( "DbResourceCache::Precache: Cannot open file \"%s\"", dbid.GetFileName().c_str() ), return 0 );
@@ -719,6 +801,13 @@ Ptr<DbResource> DbResourceCache::PrecacheForce( const DBID& _dbid, const int dep
   {
     DEBUG_LOG_RESOURCE_LOAD(dbid);
 
+#if defined(__linux__)
+		const Ptr<DbResource> held = pResult;
+		pResult->loaded = true;
+		pResult->outdated = false;
+		SetToCache(dbid, pResult);
+		NativeResourceReadScope reading(readingResources, pResult);
+#endif
 #if defined( NV_WIN_PLATFORM )
     SyncProcessorState();
 #endif
@@ -727,6 +816,9 @@ Ptr<DbResource> DbResourceCache::PrecacheForce( const DBID& _dbid, const int dep
     pSaver->FinishChunk();
 
     SetToCache( dbid, pResult );
+#if defined(__linux__)
+		return pResult;
+#endif
   }
 
   return pResult;
