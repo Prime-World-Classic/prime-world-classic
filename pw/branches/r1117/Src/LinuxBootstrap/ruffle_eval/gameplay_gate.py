@@ -241,7 +241,9 @@ def validate(stdout, client_log, mode):
 				'default run activated Ruffle')
 		else:
 			require(status == 'ready' and ruffle['attempted'] == 1 and ruffle['frames'] > 0, 'Ruffle not ready')
-			require(prime == (400, 100), 'Ruffle purchase prime mismatch')
+			# This is the live display, not the immutable local purchase receipt checked below.
+			gold = integer(record(client_log, 'finalLiveHeroGold', '='))
+			require(gold <= 2147483647 and prime == (400, gold), 'Ruffle live prime mismatch')
 			expected = {'priorGlErrors': 0, 'pendingCallbacks': 0, 'targetPending': 0, 'targetArmed': 3,
 				'targetCanceled': 2, 'targetCasts': 1, 'targetRejected': 2, 'shortcutCalls': 3,
 				'talentCommands': 2, 'minimapMoves': 0, 'matchEndCalls': 0, 'matchExitRequests': 0}

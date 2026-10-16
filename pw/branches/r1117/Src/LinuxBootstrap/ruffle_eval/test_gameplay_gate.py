@@ -55,13 +55,36 @@ def fixture(mode='targeting'):
 		'raise=0/0/0/0 can=0 init=0/0/0/0 can=0 pickup=0/0/0/0 can=0 object=0\n'
 		'Prime World Linux client shell finished.\n')
 	if mode == 'targeting':
-		client += 'finalLiveHeroObjectId=7502\nfinalLiveHeroPlayerId=2\nfinalLiveHeroUserId=1984\n'
+		client += 'finalLiveHeroObjectId=7502\nfinalLiveHeroPlayerId=2\nfinalLiveHeroUserId=1984\nfinalLiveHeroGold=100\n'
 	stdout = SESSION_EFFECTS + ('Selected lineup hero: Plane (plane)\n' + PAYMENT + LOCAL_PURCHASE + LOCAL_CAST if mode == 'targeting' else '') + stdout
 	return stdout, client
 
 
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
+
+	def test_live_prime_is_not_the_immutable_purchase_receipt(self):
+		'''Background salary changes the live HUD, but cannot replace the actual 400-to-100 purchase.'''
+		stdout, client = fixture()
+		for gold in (100, 104, 212):
+			current = client.replace('prime:400->100', f'prime:400->{gold}').replace('finalLiveHeroGold=100', f'finalLiveHeroGold={gold}')
+			with self.subTest(gold=gold):
+				self.assertEqual(gate.validate(stdout, current, 'targeting')['world_step'], 1000)
+			with self.subTest(gold=gold, receipt='wrong'), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace(LOCAL_PURCHASE, LOCAL_PURCHASE.replace('gold=400->100', 'gold=400->200')), current, 'targeting')
+
+	def test_live_prime_requires_unique_matching_bounded_hero_balance(self):
+		'''Missing snapshots and inconsistent live balances cannot be explained away as salary.'''
+		stdout, client = fixture()
+		for gold in ('-1', '2147483648', 'nan', '1.0', '1e2'):
+			with self.subTest(gold=gold), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout, client.replace('prime:400->100', f'prime:400->{gold}')
+					.replace('finalLiveHeroGold=100', f'finalLiveHeroGold={gold}'), 'targeting')
+		for changed in (client.replace('finalLiveHeroGold=100\n', ''), client + 'finalLiveHeroGold=100\n',
+			client.replace('finalLiveHeroGold=100', 'finalLiveHeroGold=104'),
+			client.replace('prime:400->100', 'prime:401->100')):
+			with self.subTest(changed=changed), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout, changed, 'targeting')
 
 	def test_failed_drain_cannot_be_hidden_by_completion(self):
 		'''The client emits its ordinary completion record even when timed draining exits nonzero.'''

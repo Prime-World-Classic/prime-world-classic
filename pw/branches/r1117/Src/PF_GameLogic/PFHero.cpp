@@ -59,7 +59,7 @@ NAMEMAP_END
 PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType unitType, NDb::EFaction faction, NDb::EFaction _originalFaction)
   : PFCreature(pWorld, info.placement.pos, INITIALDIR2, *info.pHero)
   , respawnDelay(-1.0f), advanceRespawnDelay(-1.0f), forbidRespawn(false), spawnPos(info.placement.pos), isClone(info.isClone)
-  , experience(0.0f), pPlayer(0), giveWorldGoldOffset(0.0f), distanceRun(0.0f), pDbHero(info.pHero), isolated(false)
+  , experience(0.0f), pPlayer(0), giveWorldGoldOffset(pWorld && pWorld->GetAIWorld() ? pWorld->GetAIWorld()->GetBattleStartDelay() : 0.0f), distanceRun(0.0f), pDbHero(info.pHero), isolated(false)
   , ripTime(0.0f), inTeamId(info.inTeamId), redeemCost(0.0f), redeemCostRecalculateDelay(-1.0f), cloneCounter(0)
   , abilityModsActualizationTime(-1.0f), fountainPos(VNULL3), canControlMount(false), force(0.0f), raiting(info.playerInfo.heroRating)
 	, originalFaction(_originalFaction != NDb::FACTION_NEUTRAL ? _originalFaction : faction), takeModDmg(1.0f), takeTypeUnit(NDb::ESpellTarget(0)), heroSkinId(info.playerInfo.heroSkin)
@@ -193,6 +193,28 @@ bool PFBaseHero::Step(float dtInSeconds)
 	{
 		// Ordinary idle heroes enter the original hold state before base-unit targeting.
 		OnIdle();
+	}
+
+	// Original salary cadence: strict expiry, one award per eligible tick, no catch-up loop.
+	PFAIWorld* ai = GetWorld() ? GetWorld()->GetAIWorld() : nullptr;
+	if (!isClone && ai && (!IsDead() || ai->GetPrimeSettings().giveWorldPrimeToDead)
+		&& std::isfinite(giveWorldGoldOffset) && std::isfinite(g_fGiveWorldGoldDelay))
+	{
+		const float remaining = giveWorldGoldOffset - dtInSeconds;
+		if (std::isfinite(remaining))
+		{
+			giveWorldGoldOffset = remaining;
+			if (giveWorldGoldOffset < 0)
+			{
+				const float salary = ai->GetPrimeSettings().giveWorldPrimeAmount + GetVariable(UnitVariables::szNaftaForTimeBonus);
+				if (std::isfinite(salary))
+				{
+					AddGold(salary, false);
+					AddTSliceSalary(salary);
+				}
+				giveWorldGoldOffset = g_fGiveWorldGoldDelay;
+			}
+		}
 	}
 
 	// Cached descriptor data survives item removal; shared stacks must tick only once.
@@ -446,6 +468,13 @@ void PFBaseHero::DoResurrect()
   TeleportTo(ResurrectParams::Base == resurrectParams.resurrectAt ? spawnPos.AsVec2D() : GetPosition().AsVec2D(), false, false);
   DropTarget();
   Stop(false);
+	// Resurrection must not shorten a remaining battle-start or prior salary delay.
+	if (GetWorld() && GetWorld()->GetAIWorld())
+	{
+		const float delay = GetWorld()->GetAIWorld()->GetPrimeSettings().giveWorldPrimeRessurectDelay;
+		if (std::isfinite(delay) && std::isfinite(giveWorldGoldOffset))
+			giveWorldGoldOffset = Max(delay, giveWorldGoldOffset);
+	}
   OnRessurect();
 	OpenWarFog();
   activatedWhileLastDeathtime.clear();

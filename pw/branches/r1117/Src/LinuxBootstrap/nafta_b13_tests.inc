@@ -223,6 +223,9 @@ static void NaftaRuneAuthoredB13(Checks& check, const char* dataRoot)
 			check(glyphDb && glyphDb->applicators.size() == 1, "B13 original prime rune descriptor loads without asset edits");
 			if (!glyphDb) continue;
 			B8BehaviourForeignWorld f(check); if (!f.world) continue;
+			// Isolate the rune receipt from the independently tested periodic hero salary.
+			auto* salary = new NDb::AdvMapSettings; salary->primeSettings.giveWorldPrimeAmount = 0;
+			NDb::Ptr<NDb::AdvMapSettings> settings = salary; f.world->GetAIWorld()->SetMapData(nullptr, settings);
 			auto hero = B9MaleHero(f.world, faction), ally = B9MaleHero(f.world, faction);
 			auto enemy = B9MaleHero(f.world, faction == NDb::FACTION_FREEZE ? NDb::FACTION_BURN : NDb::FACTION_FREEZE);
 			for (auto* unit : {hero.GetPtr(), ally.GetPtr(), enemy.GetPtr()}) unit->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
