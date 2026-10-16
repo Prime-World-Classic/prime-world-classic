@@ -459,13 +459,16 @@ PFResurrectApplicator::PFResurrectApplicator(PFApplCreatePars const& cp)
 {
 }
 
+/** Honor original start admission and resource percentages; native hero revival timing stays unchanged. */
 bool PFResurrectApplicator::Start()
 {
-  PFBaseApplicator::Start();
-  CDynamicCast<PFBaseHero> pHero(pReceiver);
-  if (pHero && pHero->IsDead() && !pHero->IsResurrecting())
-    pHero->Resurrect();
-  return true;
+	if (Base::Start()) return true;
+	CDynamicCast<PFBaseHero> hero(pReceiver);
+	if (hero && hero->IsDead() && !hero->IsResurrecting()
+		&& std::isfinite(GetDB().healthPercent) && std::isfinite(GetDB().energyPercent))
+		hero->Resurrect(PFBaseHero::ResurrectParams(PFBaseHero::ResurrectParams::Base,
+			Clamp(GetDB().healthPercent * 1e-2f, 0.f, 1.f), Clamp(GetDB().energyPercent * 1e-2f, 0.f, 1.f)));
+	return true;
 }
 
 PFAddNaftaApplicator::PFAddNaftaApplicator(PFApplCreatePars const &cp)

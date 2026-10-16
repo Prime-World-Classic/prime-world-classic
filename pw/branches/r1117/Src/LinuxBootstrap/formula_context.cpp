@@ -450,6 +450,15 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 			bool property = false;
 			for (const auto& binding : unitNumericProperties)
 			{
+				// FormulaBuilder maps sender.Life/receiver.Life and pointer aliases to GetLife().
+				const std::string field = std::string(pointer ? "->" : ".") + binding.name;
+				const std::size_t fieldEnd = pos + field.size();
+				if (source.compare(pos, field.size(), field) == 0
+					&& (fieldEnd == source.size() || !nameChar(source[fieldEnd])))
+				{
+					result += std::string(name == "sender" || name == "pFirst" ? " s" : " r") + binding.name + " ";
+					pos = fieldEnd; property = true; break;
+				}
 				const std::string suffix = std::string(pointer ? "->Get" : ".Get") + binding.name;
 				if (source.compare(pos, suffix.size(), suffix) != 0) continue;
 				std::size_t end = pos + suffix.size();
