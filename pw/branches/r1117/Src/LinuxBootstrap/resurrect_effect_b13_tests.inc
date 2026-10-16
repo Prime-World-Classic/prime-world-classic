@@ -222,7 +222,7 @@ static void ResurrectEffectAuthoredB13(Checks& check, const char* dataRoot)
 					"B13 Angel quarter/half and Reaper/impulse full resurrection preserve unchanged original resource percentages");
 			}
 			else check(hero->IsDead() && hero->GetEnergy() == energy && hero->GetTimeToRespawn() == delay,
-				"B13 unsupported Boss1 parent-object condition cannot turn into an unconditional resurrection");
+				"B13 Boss1 parent-object condition without its original graph context cannot become an unconditional resurrection");
 			check(app && !app->IsAlive() && f.instance->GetActiveApplicatorsCount() == 0,
 				"B13 original resurrection payload balances ability ownership whether admitted or rejected");
 		}

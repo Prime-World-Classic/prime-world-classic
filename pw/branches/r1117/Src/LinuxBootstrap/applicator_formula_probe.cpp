@@ -1418,6 +1418,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "hero_salary_b13_tests.inc"
 #include "resurrection_b13_tests.inc"
 #include "resurrect_effect_b13_tests.inc"
+#include "parent_target_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1659,6 +1660,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	ResurrectEffectAdmissionB13(check);
 	ResurrectEffectFractionsB13(check);
 	if (dataRoot && *dataRoot) ResurrectEffectAuthoredB13(check, dataRoot);
+	ParentTargetQueriesB13(check);
+	ParentTargetSafetyB13(check);
+	if (dataRoot && *dataRoot) ParentTargetBossB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

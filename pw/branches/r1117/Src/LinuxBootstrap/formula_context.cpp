@@ -174,7 +174,7 @@ bool DamageArguments(const std::string& source, std::size_t& pos, std::vector<st
 	return false;
 }
 
-/** Lower exact scale/cooldown calls; only scale permits bounded explicit parent traversal. */
+/** Lower closed scalar calls; scale and original target faction permit bounded parent traversal. */
 bool BindMiscScalar(const std::string& source, const std::string& root, std::size_t& pos, std::string& result)
 {
 	std::size_t end = pos;
@@ -186,6 +186,12 @@ bool BindMiscScalar(const std::string& source, const std::string& root, std::siz
 		if (source.compare(end, parent.size(), parent) != 0) break;
 		if (++depth > 16) return false;
 		end += parent.size(); separator = "->";
+	}
+	const std::string targetFaction = separator + "GetObject(\"Target\")->GetFctn()";
+	if (source.compare(end, targetFaction.size(), targetFaction) == 0)
+	{
+		result += " __misc_target_faction_" + std::to_string(depth) + " ";
+		pos = end + targetFaction.size(); return true;
 	}
 	const std::string scale = separator + "GetScale()";
 	const std::string parentScale = separator + "GetParentScale()";
@@ -645,18 +651,17 @@ struct Context
 		return std::isfinite(value);
 	}
 
-	/** Hold and validate real ancestors before calling potentially recursive virtual scale getters. */
-	bool MiscScale(unsigned depth, bool parentScale, double& value)
+	/** Hold and validate real ancestry before original recursive getters or read-only target access. */
+	const IMiscFormulaPars* MiscAncestor(unsigned depth, std::vector<CObj<NWorld::PFBaseApplicator>>& owners)
 	{
 		const IMiscFormulaPars* current = applicator ? static_cast<const IMiscFormulaPars*>(applicator)
 			: static_cast<const IMiscFormulaPars*>(ability);
-		if (!current) return false;
-		std::vector<CObj<NWorld::PFBaseApplicator>> owners;
+		if (!current) return nullptr;
 		for (const auto* ancestor = applicator; ancestor;)
 		{
 			if (owners.size() >= 128 || std::find_if(owners.begin(), owners.end(), [&](const auto& held) {
 				return held.GetPtr() == ancestor;
-			}) != owners.end()) return false;
+			}) != owners.end()) return nullptr;
 			// Reference ownership only; the formula never mutates an applicator.
 			owners.emplace_back(const_cast<NWorld::PFBaseApplicator*>(ancestor));
 			const auto& parent = ancestor->GetParentAppl();
@@ -665,10 +670,37 @@ struct Context
 		for (unsigned i = 0; i < depth; ++i)
 		{
 			current = current->GetObjectParent();
-			if (!current) return false;
+			if (!current) return nullptr;
 		}
+		return current;
+	}
+
+	bool MiscScale(unsigned depth, bool parentScale, double& value)
+	{
+		std::vector<CObj<NWorld::PFBaseApplicator>> owners;
+		const auto* current = MiscAncestor(depth, owners);
+		if (!current) return false;
 		value = parentScale ? current->GetParentScale() : current->GetScale();
 		return std::isfinite(value);
+	}
+
+	/** Query the original raw unit target, including corpses and retained stopped parents, never a receiver fallback. */
+	bool MiscTargetFaction(unsigned depth, double& value)
+	{
+		if (!applicator) return false;
+		std::vector<CObj<NWorld::PFBaseApplicator>> owners;
+		const auto* current = MiscAncestor(depth, owners);
+		CObj<NWorld::PFWorld> world(const_cast<NWorld::PFWorld*>(applicator->GetWorld()));
+		if (!current || !world) return false;
+		for (const auto& owner : owners) if (owner->GetWorld() != world.GetPtr()) return false;
+		const auto* target = dynamic_cast<const NWorld::PFBaseUnit*>(current->GetObject("Target"));
+		if (!target) return false;
+		CObj<NWorld::PFBaseUnit> held(const_cast<NWorld::PFBaseUnit*>(target));
+		if (held->IsObjectDead() || held->GetWorld() != world.GetPtr()
+			|| world->FindLinuxUnitByObjectId(held->GetObjectId()) != held.GetPtr()) return false;
+		const int faction = held->GetFctn();
+		if (faction < 0 || faction >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return false;
+		value = faction; return true;
 	}
 
 	bool Resolve(const std::string& name, double& value)
@@ -695,6 +727,12 @@ struct Context
 			value = ability->GetRefineRate(); return true;
 		}
 		if (name == "mScale" || name == "mParentScale") return MiscScale(0, name == "mParentScale", value);
+		if (name.compare(0, 22, "__misc_target_faction_") == 0)
+		{
+			for (unsigned depth = 0; depth <= 16; ++depth)
+				if (name == "__misc_target_faction_" + std::to_string(depth)) return MiscTargetFaction(depth, value);
+			return false;
+		}
 		if (name.compare(0, 20, "__misc_parent_scale_") == 0)
 		{
 			for (unsigned depth = 1; depth <= 16; ++depth)
