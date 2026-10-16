@@ -498,6 +498,33 @@ bool BindCombatAccessors(const std::string& source, std::string& result, bool po
 	return true;
 }
 
+/** Accept only an authored return-expression terminator with an optional final line annotation.
+ * Preserve quoted talent IDs. No statements, embedded comments, escapes or line continuations
+ * are introduced; the existing binders and muParser still validate the complete expression.
+ */
+bool AuthoredExpression(const std::string& source, std::string& expression)
+{
+	if (source.size() > NumericFormulaMaxLength || source.find('\0') != std::string::npos) return false;
+	bool quoted = false;
+	for (std::size_t pos = 0; pos < source.size(); ++pos)
+	{
+		if (source[pos] == '\\') return false;
+		if (source[pos] == '"') quoted = !quoted;
+		if (quoted || source[pos] != ';') continue;
+		std::size_t tail = source.find_first_not_of(" \t\r\n", pos + 1);
+		if (tail != std::string::npos)
+		{
+			if (source.compare(tail, 2, "//") != 0 || source.find('\\', tail) != std::string::npos) return false;
+			const auto end = source.find_first_of("\r\n", tail + 2);
+			if (end != std::string::npos && source.find_first_not_of(" \t\r\n", end) != std::string::npos) return false;
+		}
+		expression = source.substr(0, pos);
+		return true;
+	}
+	expression = source;
+	return !quoted;
+}
+
 /** Evaluation-local ownership bounds recursive constants without stale stat caches. */
 struct Context
 {
@@ -514,10 +541,11 @@ struct Context
 	NumericFormulaResult Evaluate(const std::string& expression)
 	{
 		if (++expressions > 128) return {NumericFormulaError::LimitExceeded};
-		std::string bound;
+		std::string authored, bound;
 		std::map<std::string,std::string> talents;
 		std::map<std::string, NamedFormulaQuery> queries;
-		if (!BindCombatAccessors(expression, bound, position != nullptr, talents, queries)) return {NumericFormulaError::UnsupportedSyntax};
+		if (!AuthoredExpression(expression, authored)
+			|| !BindCombatAccessors(authored, bound, position != nullptr, talents, queries)) return {NumericFormulaError::UnsupportedSyntax};
 		return EvaluateNumericFormula(bound, [&](const std::string& name, double& value) {
 			const auto query = queries.find(name);
 			if (query != queries.end()) return ReadNamed(query->second, value);

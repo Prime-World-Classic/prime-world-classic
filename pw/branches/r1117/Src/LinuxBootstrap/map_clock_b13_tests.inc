@@ -189,7 +189,11 @@ static void MapClockAuthoredB13(Checks& check, const char* dataRoot)
 			const auto faction = burn ? NDb::FACTION_BURN : NDb::FACTION_FREEZE;
 			auto hero = B9MaleHero(f.world, faction), ally = B9MaleHero(f.world, faction);
 			auto enemy = B9MaleHero(f.world, burn ? NDb::FACTION_FREEZE : NDb::FACTION_BURN);
-			for (auto* unit : {hero.GetPtr(), ally.GetPtr(), enemy.GetPtr()}) unit->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+			for (auto* unit : {hero.GetPtr(), ally.GetPtr(), enemy.GetPtr()})
+			{
+				unit->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+				unit->GetStat(NDb::STAT_VISIBILITYRANGE)->SetCoreValue(15);
+			}
 			NDb::AdvMapObject object; object.gameObject = db;
 			object.offset = CPlacement(CVec3(20, 15, 0), QNULL, CVec3(1, 1, 1));
 			CObj<PFMainBuilding> base = new PFMainBuilding(f.world, object);
@@ -229,15 +233,25 @@ static void MapClockAuthoredB13(Checks& check, const char* dataRoot)
 			}
 			if (!aram)
 			{
+				const auto vision = [&](float range) {
+					std::printf("B13 natural vision burn=%d night=%d ranges=%g/%g/%g expected=%g\n", burn, f.world->IsNight(),
+						hero->GetVisibilityRange(), ally->GetVisibilityRange(), enemy->GetVisibilityRange(), range);
+					check(hero->GetVisibilityRange() == range && ally->GetVisibilityRange() == range && enemy->GetVisibilityRange() == range,
+						"B13 natural map transitions broadcast original sight-range changes to both factions without an injected vision cast");
+				};
+				vision(burn ? 15 : 12);
 				std::printf("B13 first natural night burn=%d state=%d day=%g night=%g\n", burn,
 					f.world->IsNight(), base->GetVariable("DayDuration"), base->GetVariable("NightDuration"));
 				// The first transition resets immediately; the last deferred first-day pulse arrives afterward.
 				check(f.world->IsNight() && base->GetVariable("DayDuration") == .1f && base->GetVariable("NightDuration") > 0,
 					"B13 original first-night graph retains its final deferred day pulse and starts the authored night counter");
 				step(1805, .1f);
+				// The original dawn program increases range gradually over two one-second delays.
+				step(25, .1f); vision(15);
 				check(!f.world->IsNight() && base->GetVariable("NightDuration") == 0 && base->GetVariable("DayDuration") > 0,
 					"B13 original MOBA night-to-day graph replaces the counter through deferred child dispatch");
 				step(3005, .1f);
+				vision(12);
 				check(f.world->IsNight() && base->GetVariable("DayDuration") == 0 && base->GetVariable("NightDuration") > 0,
 					"B13 original recurring transition graph reaches its second night without injected timer values");
 				const float oldNight = base->GetVariable("NightDuration"); step(10, .1f);

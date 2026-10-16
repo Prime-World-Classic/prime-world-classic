@@ -565,18 +565,43 @@ bool PFApplProgram::ExecuteNext()
 	{
     if ( applicatorExecuting >= 0 )
     {
+#if defined(PW_LINUX_NULL_RENDER)
+			// Keep empty-field defaults, but never treat a failed authored transition as a literal fallback.
+			const auto parameter = [&](const ExecutableString& expression, float emptyValue) {
+				if (expression.sString.empty() && expression.compiledString.empty())
+					return LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, emptyValue};
+				return LinuxBootstrap::EvaluateApplicatorNumericFormula(expression.sString.c_str(), *this);
+			};
+			const auto& entry = GetDB().applicators[applicatorExecuting];
+			const auto stop = parameter(entry.stopCondition, 0);
+			if (!stop.Succeeded()) return false;
+			const bool shouldStopByCondition = stop.value != 0;
+#else
       const bool shouldStopByCondition = RetrieveParam( GetDB().applicators[applicatorExecuting].stopCondition, false );
+#endif
       if ( shouldStopByCondition )
       {
         return false;
       }
 
+#if defined(PW_LINUX_NULL_RENDER)
+			const auto continuation = parameter(entry.continueCondition, 0);
+			if (!continuation.Succeeded()) return false;
+			const bool shouldContinueByCondition = continuation.value != 0;
+#else
       const bool shouldContinueByCondition = RetrieveParam( GetDB().applicators[applicatorExecuting].continueCondition, false );
+#endif
       ready2Execute |= shouldContinueByCondition;
 
       if ( !isDelayTimerEnabled )
       {
+#if defined(PW_LINUX_NULL_RENDER)
+				const auto delay = parameter(entry.delay, -1);
+				if (!delay.Succeeded()) return false;
+				const float delayTimer = delay.value;
+#else
         const float delayTimer = RetrieveParam( GetDB().applicators[applicatorExecuting].delay, -1.0f );
+#endif
         if ( delayTimer >= 0.0f )
         {
           isDelayTimerEnabled = true;

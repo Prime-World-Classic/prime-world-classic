@@ -1422,6 +1422,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "resurrect_effect_b13_tests.inc"
 #include "parent_target_b13_tests.inc"
 #include "map_clock_b13_tests.inc"
+#include "night_vision_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1449,8 +1450,14 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	{
 		MapClockNightQueriesB13(check);
 		MapClockCycleB13(check);
+		FormulaSuffixB13(check);
+		ProgramTransitionsB13(check);
 		check(dataRoot && *dataRoot, "B13 map clock probe requires original asset data");
-		if (dataRoot && *dataRoot) MapClockAuthoredB13(check, dataRoot);
+		if (dataRoot && *dataRoot)
+		{
+			MapClockAuthoredB13(check, dataRoot);
+			NightVisionAuthoredB13(check, dataRoot);
+		}
 		NDb::SessionRoot::InitRoot(saved);
 		std::printf("Map clocks: %d checks, %d failures\n", check.count, check.failed);
 		return check.failed == 0;

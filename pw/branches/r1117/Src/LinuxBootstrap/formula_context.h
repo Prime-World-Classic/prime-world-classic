@@ -10,6 +10,11 @@ namespace NWorld { class PFAbilityData; class PFBaseApplicator; }
 namespace LinuxBootstrap
 {
 /** Resolve the supported s/t/r unit properties through existing live engine getters.
+ * An authored expression may end with one semicolon and an optional final // line
+ * annotation. The original source-length bound includes that suffix. Quoted talent
+ * IDs are preserved; statements, embedded/block comments, NUL, escapes and line
+ * continuations remain unsupported. This context-only normalization runs before
+ * binding and does not extend the standalone scalar parser or execute comment text.
  * r is the authored receiver prefix; t remains a compatibility alias.
  * TerrainType reads the existing unit cache, with exact TERR_N/A/B constants;
  * invalid cached terrain fails. nt(native, other) lazily compares sender terrain
