@@ -19,6 +19,7 @@
 #include "Scripts/lua.hpp"
 #include "LuaScript.h"
 #include "LinuxBootstrap/formula_context.h"
+#include "LinuxBootstrap/summon_criterion.h"
 #include "PFPredefinedUnitVariables.h"
 #include "PFApplInstant.h"
 
@@ -673,9 +674,13 @@ LUA_VALUE_SETTABLE_BEGIN(DeathParamsInfo, 2)
   LUA_VALUE_SETTABLE_PROPERTY( isMelee )
 LUA_VALUE_SETTABLE_END
 
-bool UnsummonCriterion::operator()( PFSummonBehaviour*, PFSummonBehaviour* )
+/** Legacy boolean comparison; destructive callers use checked scores instead of swallowing errors. */
+bool UnsummonCriterion::operator()(PFSummonBehaviour* first, PFSummonBehaviour* second)
 {
-  return false;
+	const auto a = LinuxBootstrap::EvaluateSummonCriterion(*this, first);
+	if (!a.Succeeded()) return false;
+	const auto b = LinuxBootstrap::EvaluateSummonCriterion(*this, second);
+	return b.Succeeded() && a.value < b.value;
 }
 
 NAMEMAP_BEGIN(PFBaseUnit)
@@ -2941,7 +2946,7 @@ void PFBaseUnit::ForAllSummons(ISummonAction& action, NDb::SummonType type)
   summonedUnits[type]->ForAllBehaviour(forAll);
 }
 int PFBaseUnit::GetMaxAllowedSummons(NDb::SummonType type, const string& summonGroupName) const { map<string, int>::const_iterator it = maxAllowedSummons[type].find(summonGroupName); return it == maxAllowedSummons[type].end() ? 0 : it->second; }
-/** Apply original feasible-count and removal priority while retaining callback-visible group members. */
+/** Original feasible-count/priority with owning snapshots; -1 reports a rejected custom sort before mutation. */
 int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType type, const string& summonGroupName, const NDb::Creature* pDBUnit, const int maxCount, UnsummonCriterion* pUnsummonCriterion)
 {
 	if (unsummonCount < 0 || type < 0 || type >= NDb::KnownEnum<NDb::SummonType>::sizeOf || !summonedUnits[type])
@@ -2989,7 +2994,19 @@ int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType typ
 	const int count = static_cast<int>(required);
 
   if (pUnsummonCriterion)
-    nstl::sort(summons.begin(), summons.end(), *pUnsummonCriterion);
+	{
+		// Pure scores are fixed during sorting, so comparisons cannot hide failures or violate ordering through RNG.
+		struct Scored { CObj<PFSummonBehaviour> behaviour; float value; };
+		nstl::vector<Scored> scored;
+		for (const auto& behaviour : summons)
+		{
+			const auto result = LinuxBootstrap::EvaluateSummonCriterion(*pUnsummonCriterion, behaviour);
+			if (!result.Succeeded()) return -1;
+			scored.push_back(Scored{behaviour, result.value});
+		}
+		nstl::sort(scored.begin(), scored.end(), [](const Scored& a, const Scored& b) { return a.value < b.value; });
+		for (int i = 0; i < totalCount; ++i) summons[i] = scored[i].behaviour;
+	}
 	else
 	{
 		/** Original default: lower health fraction first, then older elapsed lifetime. */

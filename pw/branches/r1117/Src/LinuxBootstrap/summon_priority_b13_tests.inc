@@ -15,7 +15,7 @@ static void SummonPriorityB13(Checks& check)
 				units[index] = f.Add(type, 0, noHealth ? PFSummonBehaviour::BEHAVIOURFLAGS_NOHEALTHPRIORITY : 0);
 				units[index].unit->GetStat(NDb::STAT_LIFE)->SetCoreValue(index == 1 ? 1000 : 100);
 			}
-			isolated.world->Step(0, 0);
+			isolated.world->Step(.125f, .125f);
 			const float age[] = {3, 1, 2}, ratio[] = {.8f, .2f, .5f};
 			for (int index = 0; index < 3; ++index)
 			{

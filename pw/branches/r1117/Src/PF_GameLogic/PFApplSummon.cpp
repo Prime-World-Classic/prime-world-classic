@@ -10,6 +10,7 @@
 #include "libdb/dbid.h"
 #if defined(PW_LINUX_NULL_RENDER)
 #include "LinuxBootstrap/formula_context.h"
+#include "LinuxBootstrap/summon_criterion.h"
 #include <limits>
 #endif
 
@@ -205,12 +206,42 @@ bool PFApplSummon::Start()
         bUseCriterion = occurences != 1 || val != 0.0f;
       }
 
+#if defined(PW_LINUX_NULL_RENDER)
+			if (sortingFormula.sString.empty() && !sortingFormula.compiledString.empty()) bUseCriterion = true;
+			if (bUseCriterion)
+			{
+				// Validate the whole named group before either replacement phase can kill a member.
+				struct Validate
+				{
+					UnsummonCriterion& criterion;
+					const string& group;
+					bool valid = true;
+					void operator()(PFSummonBehaviour* behaviour)
+					{
+						if (behaviour && IsValid(behaviour->GetUnit()) && behaviour->GetGroupName() == group
+							&& !LinuxBootstrap::EvaluateSummonCriterion(criterion, behaviour).Succeeded()) valid = false;
+					}
+				} validate{unsummonCriterion, db.summonGroupName};
+				pOwner->GetSummonedGroup(summonType)->ForAllBehaviour(validate);
+				if (!validate.valid) return true;
+			}
+#endif
       int countToUnsummon = summonedUnitsCount;
       if ( maxThisSummonCount > 0 )
       {
+#if defined(PW_LINUX_NULL_RENDER)
+				const int removed = pOwner->RemoveSummons(summonedUnitsCount, summonType, db.summonGroupName, pUnitDesc, maxThisSummonCount, bUseCriterion ? &unsummonCriterion : nullptr);
+				if (removed < 0) return true;
+				countToUnsummon -= removed;
+#else
         countToUnsummon -= pOwner->RemoveSummons( summonedUnitsCount, pSummonBehaviourCommon->summonType, db.summonGroupName, pUnitDesc, maxThisSummonCount, bUseCriterion ? &unsummonCriterion : 0 );
+#endif
       }
+#if defined(PW_LINUX_NULL_RENDER)
+			if (pOwner->RemoveSummons(summonedUnitsCount, summonType, db.summonGroupName, nullptr, maxSummonCount, bUseCriterion ? &unsummonCriterion : nullptr) < 0) return true;
+#else
       pOwner->RemoveSummons( summonedUnitsCount, pSummonBehaviourCommon->summonType, db.summonGroupName, 0, maxSummonCount, bUseCriterion ? &unsummonCriterion : 0 );
+#endif
     }
 
     pOwner->SetMaxAllowedSummons( pSummonBehaviourCommon->summonType, db.summonGroupName, maxSummonCount );

@@ -148,6 +148,14 @@ NumericFormulaResult EvaluateSelectorConditionFormula(const std::string& express
 	const IUnitFormulaPars* sender, const IUnitFormulaPars* candidate,
 	const IMiscFormulaPars* miscellaneous);
 
+/** Read a candidate with actual applicator constants/variables, without a random source.
+ * Sorting and damage reduction cannot mutate world randomness; a selected random
+ * call fails, while an unselected branch remains lazy. No values survive the call.
+ */
+NumericFormulaResult EvaluateReadOnlyApplicatorNumericFormula(const std::string& expression,
+	const IUnitFormulaPars* sender, const IUnitFormulaPars* receiver,
+	const NWorld::PFBaseApplicator* applicator);
+
 /** Reduction uses the actual damage recipient, which can differ after delegation.
  * Applicator constants/variables remain available, but reduction cannot consume RNG.
  */
