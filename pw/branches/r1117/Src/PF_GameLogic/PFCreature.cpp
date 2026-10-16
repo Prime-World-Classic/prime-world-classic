@@ -76,7 +76,19 @@ void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageD
 		}
 	}
 }
-void PFCreature::OnRessurect() { deadUnitLifeTime = -1.0f; unitFallUndergroundOffset = -1.0f; observingTimeOffset = -1.0f; linuxDeathPresentation.active=false; linuxDeathPresentation.fallStartedAt=-1; linuxDeathNotified=false; ++linuxDeathRevision; }
+/** Restore presentation before callbacks; a listener's new death must retain its own metadata. */
+void PFCreature::OnRessurect()
+{
+	CObj<PFCreature> holder(this);
+	deadUnitLifeTime = unitFallUndergroundOffset = observingTimeOffset = -1.0f;
+	linuxDeathPresentation.active = false;
+	linuxDeathPresentation.fallStartedAt = -1;
+	linuxDeathNotified = false;
+	++linuxDeathRevision;
+	PFCreatureResurrectEvent event;
+	EventHappened(event);
+	DropAbilitiesProgress();
+}
 void PFCreature::PlaceSkeleton(bool) {}
 int PFCreature::ReplaceAnimSet(NDb::Ptr<NDb::AnimSet>) { return -1; }
 void PFCreature::RollbackAnimSet(int) {}

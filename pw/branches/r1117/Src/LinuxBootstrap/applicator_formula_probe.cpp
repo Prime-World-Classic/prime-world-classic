@@ -1415,6 +1415,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "glyph_spawn_b13_tests.inc"
 #include "nafta_b13_tests.inc"
 #include "hero_salary_b13_tests.inc"
+#include "resurrection_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
 #include "tile_mask_ownership_b13_tests.inc"
@@ -1647,6 +1648,11 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot)
 	HeroSalaryDeathB13(check);
 	HeroSalaryNumericB13(check);
 	if (dataRoot && *dataRoot) HeroSalaryAuthoredB13(check, dataRoot);
+	ResurrectionEventsB13(check);
+	ResurrectionTalentsB13(check);
+	ResurrectionReentryB13(check);
+	ResurrectionInterruptedQueueB13(check);
+	if (dataRoot && *dataRoot) ResurrectionAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableGrantAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) ConsumableTriggerAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) TargetTriggerAuthoredB13(check, dataRoot);

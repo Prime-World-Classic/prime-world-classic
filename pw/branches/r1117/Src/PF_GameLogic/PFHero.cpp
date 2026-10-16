@@ -453,6 +453,15 @@ void PFBaseHero::AdvanceResurrect()
 void PFBaseHero::AddTalentActivatedWhileDead( CPtr<PFTalent> pTalent ) { activatedWhileLastDeathtime.push_back(pTalent); }
 void PFBaseHero::DoResurrect()
 {
+	// Passive application and resurrection listeners may remove the hero's last external owner.
+	CObj<PFBaseHero> holder(this);
+	CObj<PFWorld> world(GetWorld());
+	const auto canContinue = [&]() {
+		return !IsDead() && !IsObjectDead() && GetWorld() == world.GetPtr()
+			&& (!world || world->FindLinuxUnitByObjectId(GetObjectId()) == this);
+	};
+	respawnDelay = -1.0f;
+	advanceRespawnDelay = -1.0f;
   if (!ringField.isLinked())
     RegisterInAIWorld();
 
@@ -468,6 +477,28 @@ void PFBaseHero::DoResurrect()
   TeleportTo(ResurrectParams::Base == resurrectParams.resurrectAt ? spawnPos.AsVec2D() : GetPosition().AsVec2D(), false, false);
   DropTarget();
   Stop(false);
+	if (!canContinue()) return;
+
+	// Consume only this death's queue; a callback may create a new death and new purchases.
+	vector<CPtr<PFTalent>> pending;
+	pending.swap(activatedWhileLastDeathtime);
+	for (int index = 0; index < pending.size(); ++index)
+	{
+		const auto& entry = pending[index];
+		CObj<PFTalent> talent(IsValid(entry) ? entry.GetPtr() : nullptr);
+		if (talent && talent->GetOwner() == this && talent->GetDBDesc()
+			&& !(talent->GetDBDesc()->flags & NDb::ABILITYFLAGS_APPLYTODEAD))
+			talent->ApplyPassivePart(true);
+		if (!canContinue())
+		{
+			// A new death retains unvisited purchases ahead of purchases made by its callbacks.
+			if (IsDead() && !IsObjectDead() && GetWorld() == world.GetPtr()
+				&& (!world || world->FindLinuxUnitByObjectId(GetObjectId()) == this))
+				activatedWhileLastDeathtime.insert(activatedWhileLastDeathtime.begin(),
+					pending.begin() + index + 1, pending.end());
+			return;
+		}
+	}
 	// Resurrection must not shorten a remaining battle-start or prior salary delay.
 	if (GetWorld() && GetWorld()->GetAIWorld())
 	{
@@ -475,11 +506,9 @@ void PFBaseHero::DoResurrect()
 		if (std::isfinite(delay) && std::isfinite(giveWorldGoldOffset))
 			giveWorldGoldOffset = Max(delay, giveWorldGoldOffset);
 	}
-  OnRessurect();
 	OpenWarFog();
-  activatedWhileLastDeathtime.clear();
-  respawnDelay = -1.0f;
-  advanceRespawnDelay = -1.0f;
+	OnRessurect();
+	if (!canContinue()) return;
 	// Final death releases behavior ownership; resurrection restores it once.
 	if (!HasBehaviour())
 	{
@@ -589,6 +618,9 @@ void PFBaseHero::DebugDie() { OnDie(); }
 /** Keep native immediate revival while balancing the ordinary corpse hide before restoring life. */
 void PFBaseHero::Resurrect( const ResurrectParams& params)
 {
+	// Keep native immediate revival, but never replay it on a living or retired identity.
+	if (!IsDead() || IsObjectDead()) return;
+	CObj<PFBaseHero> holder(this);
 	resurrectParams = params;
 	if (IsDead() && !IsClone() && !IsResurrecting())
 		AdvanceResurrect();
