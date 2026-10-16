@@ -69,7 +69,13 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * Explicit functions: min/max/clamp, parameter-first lerp, round, abs, sqrt,
  * floor, ceil and checked float-to-int f2l. The first five use FormulaPars float argument semantics;
  * round follows its float +/-0.5 then floor/ceil rule. Other helpers use double.
- * Boolean literals true/false are numeric 1/0. Commas are argument separators only.
+ * Boolean literals true/false are numeric 1/0. Comma expressions sequence left
+ * before right, validate both executed operands, and return the right value.
+ * They have lower precedence than ?:; its middle operand may contain an
+ * unparenthesized sequence. Function-level commas still separate arguments;
+ * parentheses distinguish a comma-valued argument. Sequences lower to an internal
+ * eager callback unavailable in source, never ambient muParser expression lists.
+ * Unselected sequences remain lazy; this layer owns no mutation or RNG commit.
  * abilityScale/damageScale additionally accept three or four arguments through
  * the optional context callback. Arity is checked even in unselected branches.
  * random accepts exactly two arguments through that callback; this layer owns no RNG.

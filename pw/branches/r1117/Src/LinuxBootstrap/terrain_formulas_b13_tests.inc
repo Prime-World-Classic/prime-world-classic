@@ -26,7 +26,7 @@ static void TerrainFormulaNumericB13(Checks& check)
 		}
 		const char* invalid[] = {native ? "nt(1/0,7)" : "nt(7,1/0)", native ? "nt(missing,7)" : "nt(7,missing)",
 			native ? "nt(1e39,7)" : "nt(7,1e39)", "nt()", "nt(1)", "nt(1,2,3)", "nt(,2)", "nt(1,)",
-			"nt((1,2),3)", "nt(1, unknown(2))", "nt(1,2+)", "nt(1,2);", "nt(1,0x10)", "nt(1,2=3)"};
+			"nt(1, unknown(2))", "nt(1,2+)", "nt(1,2);", "nt(1,0x10)", "nt(1,2=3)"};
 		for (const char* expression : invalid)
 		{
 			const auto value = EvaluateNumericFormula(expression, resolver);
@@ -35,7 +35,7 @@ static void TerrainFormulaNumericB13(Checks& check)
 		struct Case { const char* text; float yes, no; };
 		for (const Case& c : {Case{"2*nt(1+2,4+5)+1", 7,19}, Case{"nt(0?1:4,1?6:2)",4,6},
 			Case{"max(nt(2,3),nt(4,1))",4,3}, Case{"nt(1&&2,0||3)",1,1}, Case{"!nt(0,2)",1,0},
-			Case{"nt(1,2)<2 == true",1,0}, Case{"nt(1?nt(4,5):6,8)",4,8}})
+			Case{"nt(1,2)<2 == true",1,0}, Case{"nt(1?nt(4,5):6,8)",4,8}, Case{"nt((1,2),3)",2,3}})
 		{
 			const auto value = EvaluateNumericFormula(c.text, resolver);
 			check(value.Succeeded() && value.value == (native ? c.yes : c.no), "nt grouping composes with existing numeric logical and conditional grammar");

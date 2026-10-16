@@ -1,3 +1,5 @@
+#include "../PF_GameLogic/PFApplMove.h"
+
 /** Ability-on formulas read the original miscellaneous context on every evaluation. */
 static void BombAbilityStateB13(Checks& check)
 {
@@ -76,6 +78,97 @@ static void BombRetirementB13(Checks& check)
 	std::printf("B13 bomb retirement checks=%d failed=%d\n", check.count - before, check.failed - failed);
 }
 
+/** The original source 0,1 returns one second; later casts refresh the existing Fly instance. */
+static void BombFlightRefreshB13(Checks& check, const NDb::FlyApplicator* db)
+{
+	const int before = check.count, failed = check.failed;
+	B8BehaviourForeignWorld isolated(check); if (!isolated.world || !db) return;
+	NaftaFixtureB13 f(isolated.world);
+	check(f.receiver->TeleportTo(CVec2(15.25f, 15.25f)), "B13 flight fixture uses an unrounded in-map point");
+	NDb::Ptr<NDb::BaseApplicator> contextDb = WrapperFactoryFixtureB12::Stat(); auto context = f.Create(contextDb);
+	check(context != nullptr, "B13 flight formula fixture uses the real transactional applicator random context");
+	if (!context) return;
+	f.ability->SwitchOn();
+	NRandom::RandomGenerator expected(*isolated.world->GetRndGen());
+	expected.Next(10, 20); const int second = expected.Next(30, 40);
+	const auto sequenced = LinuxBootstrap::EvaluateApplicatorNumericFormula("random(10,20),random(30,40)+mIsAbilityOn", *context);
+	check(sequenced.Succeeded() && sequenced.value == second + 1 && GlyphRngEqualB13(*isolated.world->GetRndGen(), expected),
+		"B13 comma expressions preserve original seeded draw order and live ability context");
+	for (const char* bad : {"random(10,20),cMissing", "random(10,20),1/0", "random(10,20),1e39f"})
+	{
+		expected = *isolated.world->GetRndGen();
+		const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(bad, *context);
+		check(!result.Succeeded() && GlyphRngEqualB13(*isolated.world->GetRndGen(), expected),
+			"B13 failed comma evaluation rolls back preceding staged draws");
+	}
+	const auto lazy = LinuxBootstrap::EvaluateApplicatorNumericFormula("false ? random(10,20),cMissing : 7", *context);
+	check(lazy.Succeeded() && lazy.value == 7 && GlyphRngEqualB13(*isolated.world->GetRndGen(), expected),
+		"B13 unselected comma sequences require no constants and consume no game random draws");
+	expected.Next(10, 20);
+	const auto discarded = LinuxBootstrap::EvaluateApplicatorNumericFormula("true ? random(10,20),5 : cMissing", *context);
+	check(discarded.Succeeded() && discarded.value == 5 && GlyphRngEqualB13(*isolated.world->GetRndGen(), expected),
+		"B13 selected discarded comma operands still commit their real random draw");
+	/** Invalid admission and refresh both leave the old duration and movement state untouched. */
+	auto rejectInvalid = [&](bool flying) {
+		for (const char* expression : {"cMissing", "1/0", "1e39f", "0,", "random(1,9),cMissing", "compiled-only"})
+		{
+			auto* raw = new NDb::FlyApplicator; raw->Assign(*db);
+			raw->lifeTime.sString = expression; raw->lifeTime.compiledString.clear();
+			if (std::strcmp(expression, "compiled-only") == 0) { raw->lifeTime.sString.clear(); raw->lifeTime.compiledString = "unsupported"; }
+			NDb::Ptr<NDb::FlyApplicator> invalid = raw;
+			const NRandom::RandomGenerator savedRng(*isolated.world->GetRndGen()); const CVec2 position = f.receiver->GetPos();
+			auto rejected = f.Create(invalid); check(rejected && f.Activate(rejected), "B13 invalid Fly duration reaches real admission");
+			check(rejected && !rejected->IsAlive() && f.instance->GetActiveApplicatorsCount() == int(flying)
+				&& f.receiver->GetGhostMode() == (flying ? 5 : 0) && f.receiver->GetPos() == position
+				&& GlyphRngEqualB13(*isolated.world->GetRndGen(), savedRng),
+				"B13 invalid flight duration cannot create or extend flight, move the receiver, or consume a staged random draw");
+		}
+	};
+	rejectInvalid(false);
+	auto first = f.Create(db); check(first && f.Activate(first), "B13 original Fly factory activates its actual effect");
+	if (!first) return;
+	const auto duration = LinuxBootstrap::EvaluateApplicatorNumericFormula(db->lifeTime.sString.c_str(), *first);
+	check(duration.Succeeded() && duration.value == 1, "B13 original 0,1 flight duration has C++ comma semantics, not a decimal or zero fallback");
+	isolated.world->Step(.25f, .25f);
+	check(first->IsAlive() && f.receiver->GetGhostMode() == 5 && f.receiver->GetPos() == CVec2(15.25f, 15.25f),
+		"B13 original flight remains alive without premature landing correction");
+	auto refresh = f.Create(db); check(refresh && f.Activate(refresh), "B13 original second Fly reaches the real refresh policy");
+	check(first->IsAlive() && refresh && !refresh->IsAlive() && f.instance->GetActiveApplicatorsCount() == 1,
+		"B13 repeated Fly extends the original instance instead of replacing or stacking it");
+	isolated.world->Step(.75f, .75f);
+	check(first->IsAlive() && f.receiver->GetGhostMode() == 5, "B13 refreshed Fly outlives its original one-second deadline");
+	rejectInvalid(true);
+	isolated.world->Step(.25f, .25f);
+	check(!first->IsAlive() && f.receiver->GetGhostMode() == 0 && f.instance->GetActiveApplicatorsCount() == 0,
+		"B13 refreshed Fly retires exactly one second after refresh and releases its ghost token");
+	for (const char* expression : {"", "0", "-1", "random(2,4)"})
+	{
+		NaftaFixtureB13 timed(isolated.world); auto* raw = new NDb::FlyApplicator; raw->Assign(*db);
+		raw->lifeTime.sString = expression; raw->lifeTime.compiledString.clear();
+		NDb::Ptr<NDb::FlyApplicator> timing = raw;
+		const bool randomDuration = std::strcmp(expression, "random(2,4)") == 0;
+		NRandom::RandomGenerator draws(*isolated.world->GetRndGen());
+		if (randomDuration) { draws.Next(2, 4); draws.Next(2, 4); }
+		auto effect = timed.Create(timing); check(effect && timed.Activate(effect), "B13 Fly preserves authored empty zero negative and random durations");
+		check(effect && effect->IsAlive() && timed.receiver->GetGhostMode() == 5 && GlyphRngEqualB13(*isolated.world->GetRndGen(), draws),
+			"B13 new flight preserves both original duration evaluation sites before stepping");
+		float lifetime = 0;
+		if (randomDuration)
+		{
+			lifetime = draws.Next(2, 4); auto again = timed.Create(timing);
+			check(again && timed.Activate(again) && !again->IsAlive() && effect->IsAlive()
+				&& GlyphRngEqualB13(*isolated.world->GetRndGen(), draws),
+				"B13 refreshing flight preserves the single original duration draw");
+			isolated.world->Step(lifetime - .25f, lifetime - .25f);
+			check(effect->IsAlive(), "B13 seeded refresh remains active before its actual drawn deadline");
+		}
+		isolated.world->Step(.25f, .25f);
+		check(effect && !effect->IsAlive() && timed.receiver->GetGhostMode() == 0 && timed.instance->GetActiveApplicatorsCount() == 0,
+			"B13 zero negative or elapsed random duration retires on the original step boundary");
+	}
+	std::printf("B13 bomb flight refresh checks=%d failed=%d\n", check.count - before, check.failed - failed);
+}
+
 /** Exercise the unmodified Plane A4 graph, not a replacement bomb implementation. */
 static void PlaneBombAuthoredB13(Checks& check, const char* dataRoot)
 {
@@ -86,6 +179,9 @@ static void PlaneBombAuthoredB13(Checks& check, const char* dataRoot)
 		const auto db = NDb::Get<NDb::Talent>(NDb::DBID("/Items/Talents/Class/Plane/Ability_A4.TALENT.xdb"));
 		const auto upgrade = NDb::Get<NDb::Talent>(NDb::DBID("/Items/Talents/Class/Plane/Ability_A4u.TALENT.xdb"));
 		const auto rules = NDb::Get<NDb::AILogicParameters>(NDb::DBID("/GameLogic/AILogic.AILP.xdb"));
+		const auto flightDb = NDb::Get<NDb::FlyApplicator>(NDb::DBID("/Items/Talents/Class/Plane/appl_A4_Fly.APLR.xdb"));
+		check(flightDb && flightDb->lifeTime.sString == "0,1", "B13 original comma-duration flight descriptor loads unchanged");
+		if (flightDb) BombFlightRefreshB13(check, flightDb);
 		check(db && upgrade && rules && db->persistentId == "Plane_A4" && db->type == NDb::ABILITYTYPE_MULTIACTIVE,
 			"B13 original A4 bomb and upgrade load unchanged with their MultiActive lifecycle");
 		auto* ai = const_cast<NDb::AILogicParameters*>(NDb::SessionRoot::GetRoot()->logicRoot->aiLogic.GetPtr());
@@ -139,6 +235,7 @@ static void PlaneBombAuthoredB13(Checks& check, const char* dataRoot)
 				"B13 original bomb flight status applies its live variable and ghost movement while on");
 			bool countdown = false; int offStep = -1, spawnStep = -1, hitStep = -1, removedStep = -1;
 			CObj<PFBaseUnit> bomb; CVec2 bombPosition(0, 0);
+			CObj<PFBaseApplicator> firstFlight; bool continuousFlight = true; int maxFlights = 0;
 			for (int step = 0; step < 150; ++step)
 			{
 				if (early && step == 5)
@@ -151,6 +248,16 @@ static void PlaneBombAuthoredB13(Checks& check, const char* dataRoot)
 				isolated.world->Step(.1f, .1f);
 				if (hero->FindApplicator("PlaneA4", talent, GLOBAL) != talent.GetPtr()) countdown = true;
 				if (!talent->IsOn() && offStep < 0) offStep = step;
+				CObj<PFBaseApplicator> flight; int flightCount = 0;
+				auto observeFlight = [&](const CObj<PFBaseApplicator>& app) {
+					if (dynamic_cast<PFApplFly*>(app.GetPtr()) && app->IsAlive()) { flight = app; ++flightCount; }
+				};
+				hero->ForAllAppliedApplicators(observeFlight); maxFlights = Max(maxFlights, flightCount);
+				if (talent->IsOn())
+				{
+					if (!firstFlight && flight) firstFlight = flight;
+					if (!flight || flight != firstFlight) continuousFlight = false;
+				}
 				if (!bomb)
 				{
 					auto observe = [&](PF_Core::WorldObjectBase& object) {
@@ -168,6 +275,8 @@ static void PlaneBombAuthoredB13(Checks& check, const char* dataRoot)
 				bombPosition.x, bombPosition.y, cast ? cast->GetActiveApplicatorsCount() : -1);
 			check(countdown && (early ? offStep == 5 && spawnStep >= 5 && spawnStep <= 7 : offStep >= 20 && offStep <= 30 && spawnStep >= 16 && spawnStep <= 19),
 				"B13 authored countdown or manual switch-off releases the bomb at the original deadline");
+			check(firstFlight && continuousFlight && maxFlights == 1 && !firstFlight->IsAlive(),
+				"B13 original A4 periodic flight refreshes one continuous Fly identity until release, without per-step landing and recreation");
 			check(bomb && hitStep - spawnStep >= 3 && hitStep - spawnStep <= 5 && removedStep > hitStep
 				&& removedStep - hitStep >= 14 && removedStep - hitStep <= 18,
 				"B13 real bomb waits for its damage timer then removes its corpse after the authored effect delay");

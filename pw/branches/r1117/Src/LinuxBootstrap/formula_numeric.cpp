@@ -64,6 +64,8 @@ double Greater(double a, double b) { return a > b; }
 double GreaterEqual(double a, double b) { return a >= b; }
 double Equal(double a, double b) { return a == b; }
 double NotEqual(double a, double b) { return a != b; }
+/** Internal only: muParser evaluates the ordered operands before returning the right value. */
+double Sequence(double a, double b) { Finite(a); return Finite(b); }
 
 /** Authored FormulaPars helpers take float arguments, including parameter-first lerp. */
 double Minimum(double a, double b)
@@ -202,6 +204,7 @@ struct Parenthesis
 	FunctionBinding* context;
 	bool nativeTerrain;
 	std::size_t arguments = 1;
+	std::size_t openConditionals = 0;
 };
 
 /** Remove all ambient functionality; muParser still owns grammar and lazy branching. */
@@ -239,17 +242,18 @@ void Configure(mu::Parser& parser)
 	parser.DefineFun("floor", Floor, false);
 	parser.DefineFun("ceil", Ceil, false);
 	parser.DefineFun("f2l", FloatToInteger, false);
+	parser.DefineFun("pw_sequence", Sequence, false);
 }
 
 /**
  * Token validation/renaming only: no precedence, expression tree or evaluation here.
  * Numeric constants use locale-independent from_chars. Symbols become private
- * zero-argument callbacks. Only explicit helpers accept calls; commas are allowed
- * inside their argument parentheses, never as muParser expression-list operators.
+ * zero-argument callbacks. Only explicit helpers accept source calls. Commas are
+ * either argument separators or sequences lowered below, never muParser lists.
  */
 std::string BindTokens(const std::string& expression, const NumericSymbolResolver& resolver,
 	const NumericFunctionResolver& functions, mu::Parser& parser,
-	std::map<std::string, Binding>& bindings, std::map<std::string, FunctionBinding>& calls)
+	std::map<std::string, Binding>& bindings, std::map<std::string, FunctionBinding>& calls, bool& hasSequence)
 {
 	if (expression.size() > NumericFormulaMaxLength) throw Error::LimitExceeded;
 	std::string translated;
@@ -414,21 +418,30 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		}
 		else if (ch == ',')
 		{
-			if (functionParentheses.empty() || !functionParentheses.back().function) throw Error::UnsupportedSyntax;
-			++functionParentheses.back().arguments;
-			if (functionParentheses.back().nativeTerrain)
+			// C++ permits a comma expression in a conditional's middle operand without extra parentheses.
+			if (!functionParentheses.empty() && functionParentheses.back().function && !functionParentheses.back().openConditionals)
 			{
-				if (functionParentheses.back().arguments != 2) throw Error::InvalidExpression;
-				translated += "):(";
-				++pos;
-				continue;
+				++functionParentheses.back().arguments;
+				if (functionParentheses.back().nativeTerrain)
+				{
+					if (functionParentheses.back().arguments != 2) throw Error::InvalidExpression;
+					translated += "):(";
+					++pos;
+					continue;
+				}
 			}
+			else hasSequence = true;
 		}
 		else if (ch == '?')
 		{
 			if (++conditionals > NumericFormulaMaxNesting) throw Error::LimitExceeded;
+			if (!functionParentheses.empty()) ++functionParentheses.back().openConditionals;
 		}
-		else if (ch != ':' && ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '<' && ch != '>' && ch != '!')
+		else if (ch == ':')
+		{
+			if (!functionParentheses.empty() && functionParentheses.back().openConditionals) --functionParentheses.back().openConditionals;
+		}
+		else if (ch != '+' && ch != '-' && ch != '*' && ch != '/' && ch != '<' && ch != '>' && ch != '!')
 			throw Error::UnsupportedSyntax;
 		translated += ch;
 		translated += ' ';
@@ -439,7 +452,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 	return translated;
 }
 
-/** Lower validated, bound logical syntax to muParser's lazy conditional bytecode.
+/** Lower validated logical syntax to lazy bytecode and sequences to ordered eager calls.
  * This translates structure only: muParser still validates calls and evaluates all
  * arithmetic. Its eager logical opcodes cannot provide C++ callback short-circuiting.
  * Input length, tokens, nesting and conditional count are bounded by BindTokens.
@@ -466,7 +479,7 @@ public:
 
 	std::string Translate()
 	{
-		const std::string result = Expression(1);
+		const std::string result = Expression(0);
 		if (position != tokens.size()) throw Error::InvalidExpression;
 		return result;
 	}
@@ -489,13 +502,14 @@ private:
 
 	static int Precedence(const std::string& op)
 	{
+		if (op == ",") return 0;
 		if (op == "||") return 2;
 		if (op == "&&") return 3;
 		if (op == "==" || op == "!=") return 4;
 		if (op == "<" || op == "<=" || op == ">" || op == ">=") return 5;
 		if (op == "+" || op == "-") return 6;
 		if (op == "*" || op == "/") return 7;
-		return 0;
+		return -1;
 	}
 
 	std::string Operand()
@@ -511,7 +525,7 @@ private:
 		}
 		if (token == "(")
 		{
-			const std::string result = Expression(1);
+			const std::string result = Expression(0);
 			Require(")");
 			return "(" + result + ")";
 		}
@@ -536,7 +550,7 @@ private:
 			if (op == "?" && minimum <= 1)
 			{
 				++position;
-				const std::string yes = Expression(1);
+				const std::string yes = Expression(0);
 				Require(":");
 				const std::string no = Expression(1);
 				left = "(" + left + "?" + yes + ":" + no + ")";
@@ -546,7 +560,8 @@ private:
 			if (precedence < minimum) break;
 			++position;
 			const std::string right = Expression(precedence + 1);
-			if (op == "&&") left = "(" + left + "?(" + right + "!=0):0)";
+			if (op == ",") left = "pw_sequence(" + left + "," + right + ")";
+			else if (op == "&&") left = "(" + left + "?(" + right + "!=0):0)";
 			else if (op == "||") left = "(" + left + "?1:(" + right + "!=0))";
 			else left = "(" + left + op + right + ")";
 		}
@@ -565,8 +580,9 @@ NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
 		std::map<std::string, FunctionBinding> calls;
 		mu::Parser parser;
 		Configure(parser);
-		std::string bound = BindTokens(expression, resolver, functions, parser, bindings, calls);
-		if (bound.find("&&") != std::string::npos || bound.find("||") != std::string::npos || bound.find("! ") != std::string::npos)
+		bool hasSequence = false;
+		std::string bound = BindTokens(expression, resolver, functions, parser, bindings, calls, hasSequence);
+		if (hasSequence || bound.find("&&") != std::string::npos || bound.find("||") != std::string::npos || bound.find("! ") != std::string::npos)
 			bound = LogicalLowering(bound).Translate();
 		parser.SetExpr(bound);
 		const float value = Narrow(parser.Eval());

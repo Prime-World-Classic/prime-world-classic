@@ -493,7 +493,7 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 			{"damageScale(115,10,21,false)", 15.5f}, {"damageScale(115,10,21,true)", 16},
 			{"abilityScale(max(sBaseStrength,sBaseIntellect),5,26.5)", 6},
 			{"abilityScale(105,4,30)+damageScale(115,4,30)", 34},
-			{"abilityScale(105,4,damageScale(115,10,22),false)", 10}})
+			{"abilityScale(105,4,damageScale(115,10,22),false)", 10}, {"abilityScale((1,2),3,4)", 3}})
 			expectScale(entry.first, entry.second);
 		NDb::Ptr<NDb::UnitConstant> authored = NDb::Get<NDb::UnitConstant>(
 			NDb::DBID("/Items/Talents/Class/Plane/const_A4_BaseDamage.xdb"));
@@ -506,7 +506,7 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 		check(ability->GetUseRange() == 15, "scaling parameters refresh between evaluations");
 		scaling.abilityScaleStatRight = 160;
 		for (const char* expression : {"abilityScale()", "abilityScale(1,2)", "abilityScale(1,2,3,4,5)",
-			"1 ? 2 : damageScale(1,2)", "abilityScaleLife(1,2)", "abilityScale((1,2),3,4)",
+			"1 ? 2 : damageScale(1,2)", "abilityScaleLife(1,2)",
 			"abilityScale(1e39,4,30)", "damageScale(115,1e38,1e38)",
 			"abilityScale(1e38,-1e38,1e38,false)", "abilityScale(105,4,30,1/0)"})
 			check(!scale(expression).Succeeded(), expression);

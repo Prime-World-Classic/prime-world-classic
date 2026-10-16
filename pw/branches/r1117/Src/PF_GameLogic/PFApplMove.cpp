@@ -23,6 +23,9 @@
 #endif
 #include "PFTalent.h"
 #include "PFStatistics.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxBootstrap/formula_context.h"
+#endif
 
 #ifndef VISUAL_CUTTED
 #include "PFClientBaseMovingUnit.h"
@@ -882,6 +885,18 @@ namespace NWorld
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Keep original duration evaluation sites, but reject invalid native formulas before flight mutation. */
+	static bool LinuxFlyDuration(const PFBaseApplicator& app, const ExecutableFloatString& expression, float& duration)
+	{
+		const auto result = expression.sString.empty() && expression.compiledString.empty()
+			? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 0.f}
+			: LinuxBootstrap::EvaluateApplicatorNumericFormula(expression.sString.c_str(), app);
+		if (!result.Succeeded()) return false;
+		duration = result.value; return true;
+	}
+
+#endif
   bool PFApplFly::Start()
   {
     if ( PFBaseApplicator::Start() )
@@ -913,6 +928,11 @@ namespace NWorld
       return false;
     }
 
+#if defined(PW_LINUX_NULL_RENDER)
+		float newLifeTime;
+		if (!LinuxFlyDuration(*this, GetDB().lifeTime, newLifeTime)) return false;
+
+#endif
     struct UpdateApplicator
     {
       UpdateApplicator( const PFApplFly* _pNewcomer, float _newLifeTime ) : pNewcomer( _pNewcomer ), newLifeTime( _newLifeTime ), found(false) { }
@@ -929,7 +949,11 @@ namespace NWorld
       const PFApplFly* pNewcomer;
       float newLifeTime;
       bool found;
+#if defined(PW_LINUX_NULL_RENDER)
+		} f(this, newLifeTime);
+#else
     } f( this, RetrieveParam( GetDB().lifeTime ) );
+#endif
 
     pReceiver->ForAllAppliedApplicators( f );
 
@@ -942,7 +966,16 @@ namespace NWorld
   void PFApplFly::StartFly()
   {
     animatedTime = 0.0f;
+#if defined(PW_LINUX_NULL_RENDER)
+		if (!LinuxFlyDuration(*this, GetDB().lifeTime, lifeTime))
+		{
+			bStarted = false;
+			NotifyParent(NDb::PARENTNOTIFICATION_CANCEL);
+			return;
+		}
+#else
     lifeTime = RetrieveParam( GetDB().lifeTime );
+#endif
 
     const NDb::FlyApplicator &DB = GetDB();
 

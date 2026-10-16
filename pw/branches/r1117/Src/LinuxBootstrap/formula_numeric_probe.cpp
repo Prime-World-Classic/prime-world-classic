@@ -91,6 +91,74 @@ void LiteralsAndOperators()
 	ExpectValue("1e300 / 1e300", 1.0f);
 }
 
+/** Original comma expressions sequence both operands and return the right value, never a decimal fraction. */
+void CommaOperators()
+{
+	for (const auto& sample : {std::pair<const char*, float>{"0,1", 1}, {"1,2", 2}, {"(1,2)", 2},
+		{"1?2:3,4", 4}, {"true ? 1,2 : 3", 2}, {"false ? 1,2 : 3", 3},
+		{"max((1,2),3)", 3}, {"(max(1,2),3)", 3}, {"max(1,2),3", 3}, {"min(1,max(2,3)),4", 4},
+		{"max(true ? 1,2 : 3,4)", 4}, {"max(false ? 1,2 : 3,4)", 4}, {"1+(2,3)*4", 13},
+		{"1,2,3,4", 4}, {"1e300,2", 2}, {"(1,2)>1 && (3,0)", 0}, {"!(1,0)", 1},
+		{"true ? false ? 1,2 : 3,4 : 5", 4}, {"max(true ? false ? 1,2 : 3,4 : 5,6)", 6}})
+		ExpectValue(sample.first, sample.second);
+	for (float a : {-1.f, 0.f, 1.f, 2.f}) for (float b : {-1.f, 0.f, 1.f, 2.f}) for (float c : {-1.f, 0.f, 1.f, 2.f})
+	{
+		const NumericSymbolResolver resolver = [&](const std::string& name, double& value) {
+			value = name == "a" ? a : name == "b" ? b : c; return true;
+		};
+		ExpectValue("a ? b,c : a", a ? (b, c) : a, resolver);
+		ExpectValue("a ? b : c,a", (a ? b : c, a), resolver);
+		ExpectValue("(a,b) && c", (a, b) && c, resolver);
+		ExpectValue("a || (b,c)", a || (b, c), resolver);
+	}
+	std::vector<int> trace;
+	const NumericFunctionResolver call = [&](const std::string& name, const double* args, std::size_t count, double& value) {
+		if (name != "random" || count != 2) return false;
+		trace.push_back(int(args[0])); value = args[0]; return true;
+	};
+	const auto sequenced = EvaluateNumericFormula("random(1,1),(random(2,2),random(3,3))", {}, call);
+	Check(sequenced.Succeeded() && sequenced.value == 3 && trace == std::vector<int>{1, 2, 3},
+		"comma callbacks execute left to right without folding away discarded operands");
+	trace.clear();
+	const auto lazy = EvaluateNumericFormula("false ? random(1,1),random(2,2) : random(3,3)", {}, call);
+	Check(lazy.Succeeded() && lazy.value == 3 && trace == std::vector<int>{3}, "unselected comma operands do not execute callbacks");
+	trace.clear();
+	const auto failure = EvaluateNumericFormula("random(1,1),1/0,random(2,2)", {}, call);
+	Check(!failure.Succeeded() && trace == std::vector<int>{1}, "discarded invalid operands stop subsequent comma callbacks");
+	for (const char* bad : {",1", "1,", "1,,2", "(,1)", "(1,)", "max((1,2))", "max(1,2,3)",
+		"true ? 1, : 2", "true ? ,1 : 2", "pw_sequence(1,2)", "random(1,2,3)", "random((1,2))"})
+	{
+		ExpectFailure(bad);
+		Check(!EvaluateNumericFormula(std::string("true ? 7 : (") + bad + ")", {}, call).Succeeded(),
+			"invalid comma structure and helper arity remain rejected in unselected branches");
+	}
+	for (const char* bad : {"1/0,2", "sqrt(-1),2", "missing,2", "1e39f,2"}) ExpectFailure(bad);
+	const NumericSymbolResolver terrain = [](const std::string& name, double& value) {
+		value = 1; return name == "sTerrainType" || name == "sFctn";
+	};
+	ExpectValue("nt((1,2),3)", 2, terrain);
+	ExpectValue("nt(true ? 1,2 : 3,4)", 2, terrain);
+	ExpectValue("nt(false ? 1,2 : 3,4),5", 5, terrain);
+	const auto scale = EvaluateNumericFormula("abilityScale((1,2),3,4),5", {},
+		[](const std::string& name, const double* args, std::size_t count, double& value) {
+			if (name != "abilityScale" || count != 3 || args[0] != 2 || args[1] != 3 || args[2] != 4) return false;
+			value = 432; return true;
+		});
+	Check(scale.Succeeded() && scale.value == 5, "parenthesized sequences preserve exact context function arity");
+	std::string flat = "0";
+	for (int i = 1; i < 256; ++i) flat += "," + std::to_string(i);
+	ExpectValue(flat, 255);
+	ExpectError(flat + ",256", Error::LimitExceeded);
+	std::string nested = "1";
+	for (std::size_t i = 0; i < NumericFormulaMaxNesting; ++i) nested = "(0," + nested + ")";
+	ExpectValue(nested, 1);
+	ExpectError("(0," + nested + ")", Error::LimitExceeded);
+	trace.clear();
+	const auto conditionalArgument = EvaluateNumericFormula("random(true ? random(1,1),2 : 3,4)", {}, call);
+	Check(conditionalArgument.Succeeded() && conditionalArgument.value == 2 && trace == std::vector<int>{1, 2},
+		"conditional middle commas do not increase an enclosing context helper's argument count");
+}
+
 /** Logical lowering retains C++ precedence, nonzero truth and lazy side-effect boundaries. */
 void LogicalOperators()
 {
@@ -297,9 +365,9 @@ void NumericFunctions()
 	ExpectValue("0 ? max(missing,live) : 8", 8, resolver);
 	Check(calls == 1, "unused function arguments are lazy");
 	for (const char* expression : {"min()", "min(1)", "min(1,2,3)", "max(,1)",
-		"max(1,)", "max((1,2),3)", "(max(1,2),3)", "max(1,2),3",
+		"max(1,)",
 		"1 ? 2 : min(1)", "min(1,2)(3)", "floor(1,2)", "clamp(1,2)",
-		"lerp(1,2,3,4)", "true(1)", "min(1;2)", "min(1,max(2,3)),4"})
+		"lerp(1,2,3,4)", "true(1)", "min(1;2)"})
 		ExpectFailure(expression);
 	for (const char* expression : {"sqrt(-1)", "min(1/0,2)", "max(1,0/0)",
 		"clamp(1e39,0,1)", "lerp(1e38,1e38,1e38)", "abs(1e300*1e300)"})
@@ -470,8 +538,7 @@ void ContextFunctions()
 	expect("0 ? abilityScale(1,2,3) : 7", 7);
 	Check(calls == before, "unselected context functions are lazy");
 	for (const char* expression : {"abilityScale(1,2)", "1 ? 2 : damageScale(1,2)",
-		"abilityScale(1,2,3,4,5)", "abilityScale(1,,3)", "abilityScale(1,2,3),4",
-		"damageScale((1,2),3,4)", "abilityScale(1,2,3)+", "unknown(1,2,3)"})
+		"abilityScale(1,2,3,4,5)", "abilityScale(1,,3)", "abilityScale(1,2,3)+", "unknown(1,2,3)"})
 	{
 		Check(!EvaluateNumericFormula(expression, {}, resolver).Succeeded(), expression);
 		Check(calls == before, "invalid call syntax invokes no resolver");
@@ -501,7 +568,7 @@ void ContextFunctions()
 /** Unsupported C++/muParser surfaces must fail instead of acquiring new semantics. */
 void RejectedSyntax()
 {
-	for (const char* expression : {"x=1", "x+=1", "1,2", "(1,2)", "1?2:3,4", "\"x\"",
+	for (const char* expression : {"x=1", "x+=1", "\"x\"",
 		"'x'", "rnd()", "sin(0)", "random(0,1)", "tal(\"Plane_A1u\")", "live ()",
 		"1^2", "1**2", "1&2", "1|2", "1<<2", "1>>2", "~1",
 		"5%2", "x++", "--x", "1//2", "1/*x*/+2", "1;2", "x[0]", "x.y",
@@ -675,6 +742,7 @@ static void RefinementFunctions()
 int main()
 {
 	LiteralsAndOperators();
+	CommaOperators();
 	LogicalOperators();
 	LogicalCorpus();
 	PlaneRange();
