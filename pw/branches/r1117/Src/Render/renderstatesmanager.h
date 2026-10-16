@@ -3,6 +3,7 @@
 #include "renderstates.h"
 #include "smartrenderer.h"
 #include "material.h"
+#include "renderbackend.h"   // BackendPipelineState (шаг 13.4b)
 
 namespace Render
 {
@@ -81,6 +82,17 @@ public:
   UINT64 GetSamplerShadowHash() const;
   UINT64 GetStencilShadowKey() const;
 
+  // Модель состояний конвейера для бэкенда (шаг 13.4b). Строится из теней и
+  // вызывается на каждом выводе, поэтому кэшируется: пересборка только после
+  // изменения состояний (плавкий флаг ставит каждая запись). Хэш модели входит
+  // в кэш пайплайнов бэкенда.
+  const BackendPipelineState& GetPipelineState() const;
+  unsigned long long GetPipelineStateHash() const;
+
+  // Сверка тени с устройством (отладка, см. dev-var verify_state_model).
+  // Возвращает число расхождений, печатает первые maxReports.
+  unsigned VerifyShadowAgainstDevice(unsigned maxReports) const;
+
   // debugging functionality
   static void DumpStates();
 
@@ -103,12 +115,37 @@ private:
   // менеджера обязаны идти через неё, иначе тень отстаёт от устройства и
   // GetStateDirectValue() врёт.
   void ApplyState(D3DRENDERSTATETYPE State, DWORD Value);
+  // Только тень, без устройства: для путей, где состояние уже применено блоком
+  // состояний (USE_STATEBLOCK_CACHE) — иначе тень расходится с устройством.
+  void ShadowState(D3DRENDERSTATETYPE State, DWORD Value);
+  // Значение из тени; при неизвестности — одно чтение с устройства (тот же
+  // приём, что в GetStateDirectValue).
+  DWORD ShadowValue(D3DRENDERSTATETYPE State) const;
 
-  // Тень состояний: индекс — числовое значение D3DRS_* (max в d3d9types.h = 209;
-  // размер 256 — тот же, что у g_cachedStates).
+  // Тень сэмплерных состояний (шаг 13.4b): индекс — слот сэмплера, второй —
+  // числовое значение D3DSAMP_* (база 1 = D3DSAMP_MAXMIPLEVEL). Пресет
+  // SamplerState не описывает bordercolor/anisotropy/lodBias/maxMip, а
+  // SetSamplerStateDirect пишет именно их, поэтому модель строится по сырой
+  // тени, а не по пресету.
+  static const int kSamplerShadowBase = 1;
+  static const int kSamplerShadowSize = 12;
+  void ShadowSampler(unsigned slot, D3DSAMPLERSTATETYPE type, DWORD value);
+  DWORD SamplerShadowValue(unsigned slot, D3DSAMPLERSTATETYPE type) const;
+
+  void MarkStateDirty() { m_pipeStateDirty = true; }
+  void BuildPipelineState() const;
+
+  // Тень состояний: индекс — числовое значение D3DRS_* (max в d3d9types.h = 209; размер 256 — тот же, что у g_cachedStates).
   static const int kRenderStateShadowSize = 256;
   DWORD stateShadow[kRenderStateShadowSize];
   bool  stateShadowKnown[kRenderStateShadowSize];
+
+  DWORD samplerShadow[kBackendSamplerSlots][kSamplerShadowSize];
+  bool  samplerShadowKnown[kBackendSamplerSlots][kSamplerShadowSize];
+
+  mutable bool m_pipeStateDirty;
+  mutable BackendPipelineState m_pipeState;
+  mutable unsigned long long m_pipeStateHash;
 
 	hash_map<unsigned long, DXStateBlockRef> renderStateCache;
   hash_map<unsigned long, DXStateBlockRef> samplerStateCache;

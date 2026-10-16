@@ -131,6 +131,10 @@ public:
   // --- очистка ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil);
 
+  // Модель состояний (шаг 13.4b). D3D9-бэкенду состояния не нужны — их уже
+  // применил RenderStatesManager. Реализация здесь — контроль полноты модели.
+  virtual void SetPipelineState(const BackendPipelineState& state, unsigned long long stateKey);
+
   // --- константы шейдеров ---
   virtual HRESULT SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData);
   virtual HRESULT SetPixelShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData);

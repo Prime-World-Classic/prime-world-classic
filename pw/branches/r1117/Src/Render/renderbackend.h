@@ -177,6 +177,94 @@ struct BackendSystemInfo {
   unsigned features;                // биты Render::Features
 };
 
+// Модель состояний конвейера (шаг 13.4b, docs/PLAN_NVRHI.md §2.8).
+// На этапе 3 бэкенд обязан уметь построить объект пайплайна (Vulkan/DX12), а
+// состояния клиент держит в менеджере, устроенном по D3D9. Поэтому модель —
+// нейтральный КОНТЕЙНЕР со значениями D3D9: поля перечислены по смыслу, а
+// словари «число D3D9 →枚举 бэкенда» живут в самом бэкенде (nvrhibackend.cpp),
+// где они и нужны. Полный нейтральный словарь (без D3D9-чисел) — этап 4, когда
+// D3D9-путь будет удалён и переводить станет нечего.
+//
+// Набор полей — не «весь D3D9», а то, что реально выставляет клиент: снимок по
+// исходникам (grep D3DRS_/D3DSAMP_ по Src) даёт ~25 состояний рендера и 9
+// сэмплерных; легаси (fog, источники материала, тесселяция, WRAP-блендинг,
+// point scale, CCW-стencil, vertex blend) нигде не устанавливается и в модель
+// не вошло — при появлении установщика модель надо расширять осознанно.
+// ALPHATEST оставлен в модели только как признак: фиксированной альфа-смены в
+// Vulkan/DX12 нет, состояние обязано переехать в шейдер (шаг 13/14).
+struct BackendSamplerState {
+  unsigned minFilter;      // D3DTEXTUREFILTERTYPE
+  unsigned magFilter;
+  unsigned mipFilter;
+  unsigned addressU;       // D3DTEXTUREADDRESS
+  unsigned addressV;
+  unsigned addressW;
+  unsigned borderColor;    // D3DTOP
+  int      lodBias;        // D3DSAMP_MIPMAPLODBIAS, 16.16 со знаком
+  unsigned maxAnisotropy;  // D3DSAMP_MAXANISOTROPY
+  int      maxMipLevel;    // D3DSAMP_MAXMIPLEVEL
+  bool     set;            // слот хоть раз выставлялся (иначе — состояние по умолчанию)
+};
+
+enum { kBackendSamplerSlots = 16 };   // столько же, сколько у менеджера состояний
+
+struct BackendPipelineState {
+  // растеризация
+  unsigned cullMode;            // D3DCULL
+  unsigned fillMode;            // D3DFILLMODE
+  bool     scissorTestEnable;   // D3DRS_SCISSORTESTENABLE
+  // глубина
+  bool     zEnable;             // D3DRS_ZENABLE
+  bool     zWriteEnable;        // D3DRS_ZWRITEENABLE
+  unsigned zFunc;               // D3DCMPFUNC
+  float    slopeScaleDepthBias; // D3DRS_SLOPESCALEDEPTHBIAS (биты float из DWORD)
+  unsigned depthBiasRaw;        // D3DRS_DEPTHBIAS, DWORD как его выставил клиент
+  // трафарет
+  bool     stencilEnable;
+  unsigned stencilFunc, stencilRef, stencilReadMask, stencilWriteMask;
+  unsigned stencilFail, stencilZFail, stencilPass;
+  // смешивание
+  bool     alphaBlendEnable;     // D3DRS_ALPHABLENDENABLE
+  bool     separateAlphaBlend;   // D3DRS_SEPARATEALPHABLENDENABLE
+  unsigned srcBlend, destBlend, blendOp;             // D3DBLEND / D3DBLENDOP
+  unsigned srcBlendAlpha, destBlendAlpha, blendOpAlpha;
+  unsigned colorWriteEnable;     // D3DCOLORWRITEENABLE_* (биты 1|2|4|8 — совпадают с nvrhi::ColorMask)
+  // альфа-тест — только признак (см. комментарий выше)
+  bool     alphaTestEnable;
+  unsigned alphaRef, alphaFunc;
+  // клип-плоскости (битовая маска D3DRS_CLIPPLANEENABLE; сами плоскости — SetClipPlane)
+  unsigned clipPlaneEnable;
+
+  BackendSamplerState sampler[kBackendSamplerSlots];
+
+  BackendPipelineState() { Reset(); }
+  // Обнуление: 0 означает «не задано», а не «выключено» — заполняет менеджер
+  // состояний из тени (для неизвестных состояний — значениями по умолчанию D3D9,
+  // см. RenderStatesManager::GetPipelineState), бэкенд не должен сам
+  // интерпретировать нули как «не применять».
+  void Reset() {
+    cullMode = 0; fillMode = 0; scissorTestEnable = false;
+    zEnable = false; zWriteEnable = false; zFunc = 0;
+    slopeScaleDepthBias = 0.f; depthBiasRaw = 0;
+    stencilEnable = false;
+    stencilFunc = 0; stencilRef = 0; stencilReadMask = 0; stencilWriteMask = 0;
+    stencilFail = 0; stencilZFail = 0; stencilPass = 0;
+    alphaBlendEnable = false; separateAlphaBlend = false;
+    srcBlend = 0; destBlend = 0; blendOp = 0;
+    srcBlendAlpha = 0; destBlendAlpha = 0; blendOpAlpha = 0;
+    colorWriteEnable = 0;
+    alphaTestEnable = false; alphaRef = 0; alphaFunc = 0;
+    clipPlaneEnable = 0;
+    for (unsigned i = 0; i < kBackendSamplerSlots; ++i) {
+      sampler[i].minFilter = 0; sampler[i].magFilter = 0; sampler[i].mipFilter = 0;
+      sampler[i].addressU = 0; sampler[i].addressV = 0; sampler[i].addressW = 0;
+      sampler[i].borderColor = 0; sampler[i].lodBias = 0;
+      sampler[i].maxAnisotropy = 0; sampler[i].maxMipLevel = 0;
+      sampler[i].set = false;
+    }
+  }
+};
+
 class IRenderBackend {
 public:
   virtual ~IRenderBackend() {}
@@ -199,6 +287,17 @@ public:
 
   // --- очистка привязанных поверхностей ---
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil) = 0;
+
+  // --- состояния конвейера (шаг 13.4b) ---
+  // Вызывается из путей вывода (SmartRenderer) перед каждым выводом: бэкенд
+  // использует модель при создании объекта пайплайна. stateKey — хэш модели,
+  // пересчитанный менеджером состояний только при их изменении; он входит в
+  // кэш пайплайнов, поэтому бэкенд не обязан сравнивать структуру полей.
+  // D3D9-бэкенд состояния получает напрямую из RenderStatesManager (исторический
+  // путь), поэтому для него вызов — проверка полноты модели (dev-var
+  // verify_state_model), а не способ применить состояние.
+  virtual void SetPipelineState(const BackendPipelineState& state,
+                                unsigned long long stateKey) = 0;
 
   // --- константы шейдеров: «виртуальные регистры» c0..c255 (GlobalMasks.h) ---
   virtual HRESULT SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData) = 0;

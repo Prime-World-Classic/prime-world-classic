@@ -38,6 +38,7 @@ namespace {
 }
 
 RenderStatesManager::RenderStatesManager()
+  : m_pipeStateDirty(true), m_pipeStateHash(0)
 {
 	g_cachedStates.SetSize(256);
 	g_cachedStates.FillZero();
@@ -76,9 +77,15 @@ void RenderStatesManager::Init()
   // Тень состояния пуста: неизвестные значения подтягиваются с устройства при
   // первом запросе (GetStateDirectValue), остальные — при записи.
   std::fill( stateShadowKnown, stateShadowKnown + kRenderStateShadowSize, false );
+  for (int s = 0; s < kBackendSamplerSlots; ++s)
+  {
+    std::fill( samplerShadowKnown[s], samplerShadowKnown[s] + kSamplerShadowSize, false );
+    std::fill( samplerShadow[s], samplerShadow[s] + kSamplerShadowSize, DWORD(0) );
+  }
   lastRenderState.alwaysFailCompare = 1;
   for (int i = 0; i < ARRAY_SIZE(lastSamplerState); ++i)
     lastSamplerState[i].alwaysFailCompare = 1;
+  m_pipeStateDirty = true;
 }
 
 void RenderStatesManager::SetState(RenderState state)
@@ -177,6 +184,67 @@ void RenderStatesManager::ApplyState(D3DRENDERSTATETYPE State, DWORD Value)
 		stateShadow[idx] = Value;
 		stateShadowKnown[idx] = true;
 	}
+	MarkStateDirty();
+}
+
+// Только тень: состояние уже легло на устройство блоком состояний, повторная
+// запись трогать нельзя (иначе пропадает смысл кэша), но и отставать тень не
+// обязана — по ней строится модель для бэкенда.
+void RenderStatesManager::ShadowState(D3DRENDERSTATETYPE State, DWORD Value)
+{
+	const DWORD idx = static_cast<DWORD>(State);
+	if (idx < kRenderStateShadowSize)
+	{
+		stateShadow[idx] = Value;
+		stateShadowKnown[idx] = true;
+	}
+	MarkStateDirty();
+}
+
+DWORD RenderStatesManager::ShadowValue(D3DRENDERSTATETYPE State) const
+{
+	const DWORD idx = static_cast<DWORD>(State);
+	if (idx >= kRenderStateShadowSize)
+		return 0;
+	if (!stateShadowKnown[idx])
+	{
+		DWORD v = 0;
+		if (FAILED(GetDevice()->GetRenderState(State, &v)))
+			return 0;
+		// тень догоняем не const-путём: модель обязана отражать устройство
+		const_cast<DWORD*>(stateShadow)[idx] = v;
+		const_cast<bool*>(stateShadowKnown)[idx] = true;
+		return v;
+	}
+	return stateShadow[idx];
+}
+
+void RenderStatesManager::ShadowSampler(unsigned slot, D3DSAMPLERSTATETYPE type, DWORD value)
+{
+	const int t = static_cast<int>(type) - kSamplerShadowBase;
+	if (slot < kBackendSamplerSlots && t >= 0 && t < kSamplerShadowSize)
+	{
+		samplerShadow[slot][t] = value;
+		samplerShadowKnown[slot][t] = true;
+	}
+	MarkStateDirty();
+}
+
+DWORD RenderStatesManager::SamplerShadowValue(unsigned slot, D3DSAMPLERSTATETYPE type) const
+{
+	const int t = static_cast<int>(type) - kSamplerShadowBase;
+	if (slot >= kBackendSamplerSlots || t < 0 || t >= kSamplerShadowSize)
+		return 0;
+	if (!samplerShadowKnown[slot][t])
+	{
+		DWORD v = 0;
+		if (FAILED(GetDevice()->GetSamplerState(slot, type, &v)))
+			return 0;
+		const_cast<DWORD*>(samplerShadow[slot])[t] = v;
+		const_cast<bool*>(samplerShadowKnown[slot])[t] = true;
+		return v;
+	}
+	return samplerShadow[slot][t];
 }
 
 bool RenderStatesManager::GetStateDirectValue(D3DRENDERSTATETYPE State, DWORD & outValue)
@@ -204,7 +272,11 @@ void RenderStatesManager::SetStateDirect(D3DRENDERSTATETYPE State, DWORD Value)
 	if (g_cachedStates.GetData(State))
 		lastRenderState.alwaysFailCompare = 1;
 
-	GetDevice()->SetRenderState(State, Value);
+	// Запись идёт через ApplyState: устройство получает тот же вызов, что раньше,
+	// но тень больше не отстаёт. Без этого модель состояний (шаг 13.4b) и хэш
+	// «raw» из шага 8 не видели бы прямых записей — а это как раз ShadowManager
+	// (DEPTHBIAS/SLOPESCALEDEPTHBIAS), PostFX и альфа-тест.
+	ApplyState(State, Value);
 	STATESTATS(g_statesDebugDirect++);
 }
 
@@ -216,6 +288,7 @@ void RenderStatesManager::SetSamplerStateDirect(unsigned index, D3DSAMPLERSTATET
 		lastSamplerState[index].alwaysFailCompare = 1;
 
 	GetDevice()->SetSamplerState(index, type, value);
+	ShadowSampler(index, type, value);
 	STATESTATS(g_statesDebugDirect++);
 }
 
@@ -240,6 +313,18 @@ void RenderStatesManager::SetSamplerState(unsigned index, SamplerState const& st
   static const D3DTEXTUREFILTERTYPE tblMipFilter[] = {D3DTEXF_NONE, D3DTEXF_POINT, D3DTEXF_LINEAR};
 
   IDirect3DDevice9* device = GetDevice();
+
+  // Тень сэмплера ведём по пресету и ДО ветки кэша состояний: при попадании в
+  // кэш отдельные SetSamplerState не выполняются (их делает блок), поэтому
+  // иначе тень отстаёт от устройства, а по ней строится модель для бэкенда.
+  if (index < ARRAY_SIZE(lastSamplerState))
+  {
+    ShadowSampler(index, D3DSAMP_ADDRESSU, tblAddress[state.addressU]);
+    ShadowSampler(index, D3DSAMP_ADDRESSV, tblAddress[state.addressV]);
+    ShadowSampler(index, D3DSAMP_MINFILTER, tblMinFilter[state.minFilter]);
+    ShadowSampler(index, D3DSAMP_MAGFILTER, tblMagFilter[state.magFilter]);
+    ShadowSampler(index, D3DSAMP_MIPFILTER, tblMipFilter[state.mipFilter]);
+  }
 
 #ifdef USE_STATEBLOCK_CACHE
   // Check cache first
@@ -351,6 +436,14 @@ void RenderStatesManager::SetStencilState(StencilState state, DWORD mask /*= 0xF
   if (cached)
   {
     cached->Apply();
+    // Блок вернул состояния устройства; тень обязана отразить то же самое, иначе
+    // модель для бэкенда разойдётся с тем, что реально действует.
+    NI_ASSERT(presets[state].state == state, "Array of StencilStateParams corrupted.");
+    ShadowState(D3DRS_STENCILENABLE, presets[state].enable);
+    ShadowState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
+    ShadowState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
+    ShadowState(D3DRS_STENCILPASS, presets[state].pass);
+    ShadowState(D3DRS_STENCILFUNC, presets[state].func);
     return;
   }
 
@@ -359,6 +452,7 @@ void RenderStatesManager::SetStencilState(StencilState state, DWORD mask /*= 0xF
 #endif // USE_STATEBLOCK_CACHE
 
   NI_ASSERT(presets[state].state == state, "Array of StencilStateParams corrupted.");
+
   StencilStateParams& params = presets[state];
 
   ApplyState(D3DRS_STENCILENABLE, params.enable);
@@ -378,7 +472,7 @@ void RenderStatesManager::SetStencilState(StencilState state, DWORD mask /*= 0xF
 void RenderStatesManager::SetStencilStateAddonBits(DWORD mask, DWORD bits)
 {
   if (lastStencilState == STENCILSTATE_WRITEBITS)
-    GetDevice()->SetRenderState(D3DRS_STENCILREF, lastStencilBits & ~mask | bits & mask);
+    ApplyState(D3DRS_STENCILREF, lastStencilBits & ~mask | bits & mask);
 }
 
 void RenderStatesManager::UpdateStats()
@@ -431,6 +525,126 @@ UINT64 RenderStatesManager::GetStencilShadowKey() const
   h = StateHashMix(h, lastStencilBits);
   h = StateHashMix(h, lastStencilMask);
   return h;
+}
+
+// Модель состояний конвейера (шаг 13.4b). Значения берутся из теней; то, что
+// менеджер ни разу не писал, один раз читается с устройства (ShadowValue /
+// SamplerShadowValue) — модель обязана отражать реальное состояние, а не «нули
+// по умолчанию»: D3D9 по умолчанию пишет COLORWRITEENABLE=RGB без альфы,
+// CULLMODE=CW и ZFUNC=LESS, и подстановка нуля вместо этого молча меняла бы
+// картинку на Vulkan.
+void RenderStatesManager::BuildPipelineState() const
+{
+  BackendPipelineState& st = m_pipeState;
+  st.Reset();
+
+  st.cullMode          = ShadowValue(D3DRS_CULLMODE);
+  st.fillMode          = ShadowValue(D3DRS_FILLMODE);
+  st.scissorTestEnable = ShadowValue(D3DRS_SCISSORTESTENABLE) != 0;
+
+  st.zEnable      = ShadowValue(D3DRS_ZENABLE) != 0;
+  st.zWriteEnable = ShadowValue(D3DRS_ZWRITEENABLE) != 0;
+  st.zFunc        = ShadowValue(D3DRS_ZFUNC);
+  {
+    const DWORD ssdb = ShadowValue(D3DRS_SLOPESCALEDEPTHBIAS);
+    float f = 0.f;
+    memcpy(&f, &ssdb, sizeof(f));   // D3D9 хранит это состояние как биты float в DWORD
+    st.slopeScaleDepthBias = f;
+    st.depthBiasRaw = ShadowValue(D3DRS_DEPTHBIAS);
+  }
+
+  st.stencilEnable    = ShadowValue(D3DRS_STENCILENABLE) != 0;
+  st.stencilFunc      = ShadowValue(D3DRS_STENCILFUNC);
+  st.stencilRef       = ShadowValue(D3DRS_STENCILREF);
+  st.stencilReadMask  = ShadowValue(D3DRS_STENCILMASK);
+  st.stencilWriteMask = ShadowValue(D3DRS_STENCILWRITEMASK);
+  st.stencilFail      = ShadowValue(D3DRS_STENCILFAIL);
+  st.stencilZFail     = ShadowValue(D3DRS_STENCILZFAIL);
+  st.stencilPass      = ShadowValue(D3DRS_STENCILPASS);
+
+  st.alphaBlendEnable   = ShadowValue(D3DRS_ALPHABLENDENABLE) != 0;
+  st.separateAlphaBlend = ShadowValue(D3DRS_SEPARATEALPHABLENDENABLE) != 0;
+  st.srcBlend  = ShadowValue(D3DRS_SRCBLEND);
+  st.destBlend = ShadowValue(D3DRS_DESTBLEND);
+  st.blendOp   = ShadowValue(D3DRS_BLENDOP);
+  st.srcBlendAlpha  = ShadowValue(D3DRS_SRCBLENDALPHA);
+  st.destBlendAlpha = ShadowValue(D3DRS_DESTBLENDALPHA);
+  st.blendOpAlpha   = ShadowValue(D3DRS_BLENDOPALPHA);
+  st.colorWriteEnable = ShadowValue(D3DRS_COLORWRITEENABLE);
+
+  st.alphaTestEnable = ShadowValue(D3DRS_ALPHATESTENABLE) != 0;
+  st.alphaRef  = ShadowValue(D3DRS_ALPHAREF);
+  st.alphaFunc = ShadowValue(D3DRS_ALPHAFUNC);
+
+  st.clipPlaneEnable = ShadowValue(D3DRS_CLIPPLANEENABLE);
+
+  for (unsigned s = 0; s < kBackendSamplerSlots; ++s)
+  {
+    BackendSamplerState& ss = st.sampler[s];
+    ss.minFilter     = SamplerShadowValue(s, D3DSAMP_MINFILTER);
+    ss.magFilter     = SamplerShadowValue(s, D3DSAMP_MAGFILTER);
+    ss.mipFilter     = SamplerShadowValue(s, D3DSAMP_MIPFILTER);
+    ss.addressU      = SamplerShadowValue(s, D3DSAMP_ADDRESSU);
+    ss.addressV      = SamplerShadowValue(s, D3DSAMP_ADDRESSV);
+    ss.addressW      = SamplerShadowValue(s, D3DSAMP_ADDRESSW);
+    ss.borderColor   = SamplerShadowValue(s, D3DSAMP_BORDERCOLOR);
+    ss.maxAnisotropy = SamplerShadowValue(s, D3DSAMP_MAXANISOTROPY);
+    ss.maxMipLevel   = SamplerShadowValue(s, D3DSAMP_MAXMIPLEVEL);
+    ss.lodBias       = (int)SamplerShadowValue(s, D3DSAMP_MIPMAPLODBIAS);
+    for (int t = 0; t < kSamplerShadowSize; ++t)
+      if (samplerShadowKnown[s][t]) { ss.set = true; break; }
+  }
+
+  // Хэш — по полям, а не по байтам структуры: выравнивание и мусор в
+  // заполнителях сделали бы ключ нестабильным.
+  UINT64 h = kStateHashSeed;
+  const unsigned* fields[] = {
+    &st.cullMode, &st.fillMode, &st.zFunc, &st.depthBiasRaw,
+    &st.stencilFunc, &st.stencilRef, &st.stencilReadMask, &st.stencilWriteMask,
+    &st.stencilFail, &st.stencilZFail, &st.stencilPass,
+    &st.srcBlend, &st.destBlend, &st.blendOp,
+    &st.srcBlendAlpha, &st.destBlendAlpha, &st.blendOpAlpha, &st.colorWriteEnable,
+    &st.alphaRef, &st.alphaFunc, &st.clipPlaneEnable,
+  };
+  h = StateHashMix(h, st.scissorTestEnable ? 1u : 0u);
+  h = StateHashMix(h, st.zEnable ? 1u : 0u);
+  h = StateHashMix(h, st.zWriteEnable ? 1u : 0u);
+  h = StateHashMix(h, st.stencilEnable ? 1u : 0u);
+  h = StateHashMix(h, st.alphaBlendEnable ? 1u : 0u);
+  h = StateHashMix(h, st.separateAlphaBlend ? 1u : 0u);
+  h = StateHashMix(h, st.alphaTestEnable ? 1u : 0u);
+  for (unsigned i = 0; i < ARRAY_SIZE(fields); ++i)
+    h = StateHashMix(StateHashMix(h, i), *fields[i]);
+  float ssdbBits = st.slopeScaleDepthBias;
+  unsigned ssdb;
+  memcpy(&ssdb, &ssdbBits, sizeof(ssdb));
+  h = StateHashMix(h, ssdb);
+  for (unsigned s = 0; s < kBackendSamplerSlots; ++s) {
+    const BackendSamplerState& ss = st.sampler[s];
+    h = StateHashMix(h, s);
+    h = StateHashMix(h, ss.set ? 1u : 0u);
+    h = StateHashMix(h, ss.minFilter); h = StateHashMix(h, ss.magFilter);
+    h = StateHashMix(h, ss.mipFilter); h = StateHashMix(h, ss.addressU);
+    h = StateHashMix(h, ss.addressV);  h = StateHashMix(h, ss.addressW);
+    h = StateHashMix(h, ss.borderColor); h = StateHashMix(h, ss.maxAnisotropy);
+    h = StateHashMix(h, (unsigned)ss.maxMipLevel); h = StateHashMix(h, (unsigned)ss.lodBias);
+  }
+  m_pipeStateHash = h;
+  m_pipeStateDirty = false;
+}
+
+const BackendPipelineState& RenderStatesManager::GetPipelineState() const
+{
+  if (m_pipeStateDirty)
+    BuildPipelineState();
+  return m_pipeState;
+}
+
+unsigned long long RenderStatesManager::GetPipelineStateHash() const
+{
+  if (m_pipeStateDirty)
+    BuildPipelineState();
+  return m_pipeStateHash;
 }
 
 namespace {
@@ -556,6 +770,54 @@ void RenderStatesManager::DumpStates()
   {
     DebugTrace("FAILED");
   }
+}
+
+// Сверка тени с фактическим состоянием устройства (шаг 13.4b).
+//
+// Модель состояний конвейера строится ИЗ ТЕНИ, поэтому тень обязана отражать
+// каждую запись. Вызовы, пишущие прямо в устройство
+// (GetDevice()->SetRenderState / SetSamplerState), тень минуют: на D3D9 это
+// безвредно (устройство и так получает значение), а на Vulkan такое состояние
+// молча не доезжает. Именно так 2026-10-16 нашлись дыры в SetStateDirect и
+// SetSamplerStateDirect. Список состояний — тот же, что у dump_states.
+unsigned RenderStatesManager::VerifyShadowAgainstDevice(unsigned maxReports) const
+{
+	unsigned mismatch = 0;
+
+	for (int i = 0; i < ARRAY_SIZE(g_renderStates); i++)
+	{
+		const int idx = static_cast<int>(g_renderStates[i].state);
+		if (idx < 0 || idx >= kRenderStateShadowSize || !stateShadowKnown[idx])
+			continue;
+		DWORD dev = 0;
+		if (FAILED(GetDevice()->GetRenderState(g_renderStates[i].state, &dev)))
+			continue;
+		if (dev == stateShadow[idx])
+			continue;
+		++mismatch;
+		if (mismatch <= maxReports)
+			DebugTrace("StateShadow: %s тень 0x%08X, устройство 0x%08X — запись мимо менеджера",
+				g_renderStates[i].pName, stateShadow[idx], dev);
+	}
+
+	for (unsigned slot = 0; slot < kBackendSamplerSlots; ++slot)
+		for (int i = 0; i < ARRAY_SIZE(g_samplerStates); i++)
+		{
+			const int t = static_cast<int>(g_samplerStates[i].state) - kSamplerShadowBase;
+			if (t < 0 || t >= kSamplerShadowSize || !samplerShadowKnown[slot][t])
+				continue;
+			DWORD dev = 0;
+			if (FAILED(GetDevice()->GetSamplerState(slot, g_samplerStates[i].state, &dev)))
+				continue;
+			if (dev == samplerShadow[slot][t])
+				continue;
+			++mismatch;
+			if (mismatch <= maxReports)
+				DebugTrace("StateShadow: сэмплер %u %s тень 0x%08X, устройство 0x%08X",
+					slot, g_samplerStates[i].pName, samplerShadow[slot][t], dev);
+		}
+
+	return mismatch;
 }
 
 }; // namespace Render

@@ -25,6 +25,11 @@
 #include "stdafx.h"
 #include "nvrhibackend.h"
 #include "shadercontainer.h"                              // формат .shd v2
+// Модель состояний конвейера несёт ЧИСЛА D3D9 (см. комментарий в
+// renderbackend.h), поэтому переводчику нужны константы d3d9types.h. Это
+// временная зависимость: на этапе 4, когда D3D9-путь уйдёт, менеджер состояний
+// станет нейтральным, и include исчезнет вместе с переводчиком.
+#include "Vendor/DirectX/Include/d3d9types.h"
 #include "System/FileSystem/FileStream.h"                 // Stream для чтения контейнера
 #include "System/FileSystem/FileSystem.h"                 // RootFileSystem::OpenFile
 
@@ -334,6 +339,10 @@ struct NvrhiBackendImpl
     // подпись шагов потоков, для которой построена раскладка (см. IlEntry):
     // без неё два VB с разными шагами дают один и тот же ключ пайплайна
     unsigned long long lsig;
+    // хэш модели состояний (шаг 13.4b): состояния — часть объекта пайплайна на
+    // Vulkan (blend/depth/stencil/raster), поэтому без них два вывода с разными
+    // состояниями получили бы один пайплайн молча
+    unsigned long long stateHash;
   };
   std::vector<BufferObj> buffers;
   std::vector<ShaderObj> shaderObjs;
@@ -374,7 +383,6 @@ struct NvrhiBackendImpl
     // registerSpace на layout, а NVRHI рвёт «Can't have multiple binding sets
     // with the same registerSpace» (vulkan-resource-bindings.cpp:1031)
     nvrhi::BindingLayoutHandle layoutTex, layoutSmp, layoutSsbo;
-    nvrhi::BindingSetHandle setSmp;   // сэмплеры статичны (один сэмплер по умолчанию)
     std::vector<ResItem> items;
     unsigned vs, ps;
     ResMapObj() : vs(kNoRes), ps(kNoRes) {}
@@ -384,10 +392,23 @@ struct NvrhiBackendImpl
   // подпись (набор привязок текстур) -> готовый набор; линейный поиск: за кадр
   // уникальных подписей мало (замер шага 8: 85 активных ключей на кадр)
   std::vector<std::pair<unsigned long long, nvrhi::BindingSetHandle> > setCache;
-  nvrhi::SamplerHandle defSampler;    // состояние сэмплера через seam НЕ приходит
+  nvrhi::SamplerHandle defSampler;    // состояние по умолчанию: слот, которого модель не касалась
   nvrhi::TextureHandle dummyTex;      // в несвязанный слот кладётся 1x1
   unsigned texBound[16];              // слот сэмплера D3D9 -> индекс текстуры
   unsigned setsCreated, texMissing, resMapsCreated;
+
+  // Модель состояний конвейера (шаг 13.4b): SetPipelineState кладёт сюда то,
+  // что собрал RenderStatesManager. Хэш модели входит в ключ пайплайна, поэтому
+  // сравнивать структуру полей не нужно: совпал хэш — состояния те же.
+  BackendPipelineState model;
+  unsigned long long modelHash;
+  unsigned stateSets;
+  // Сэмплеры больше не статичны: состояния различаются по слотам, поэтому
+  // сэмплер кэшируется по подписи одного слота, а набор сэмплеров — по подписи
+  // всех слотов (линейный поиск: уникальных состояний за бой десятки).
+  std::vector<std::pair<unsigned long long, nvrhi::SamplerHandle> > samplerCache;
+  std::vector<std::pair<unsigned long long, nvrhi::BindingSetHandle> > smpSetCache;
+  unsigned samplersCreated, smpSetsCreated, stateUnsupported;
 
   // Раскладка (input layout) в Vulkan ЗАШИВАЕТ шаг потока: у
   // createInputLayout шаг — часть описания потока (vulkan-shader.cpp:
@@ -441,6 +462,8 @@ struct NvrhiBackendImpl
       instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
       recording(false), draws(0), pipesCreated(0), pipeHits(0), uploads(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
+      modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
+      stateUnsupported(0),
       layoutsBuilt(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
   {
     deviceName[0] = 0;
@@ -1043,6 +1066,8 @@ void NvrhiBackend::Shutdown()
   // порядок: ВСЕ nvrhi-ресурсы обязаны умереть раньше nvrhiDevice и VkDevice
   // (иначе деструкторы RefCountPtr работают с уже уничтоженным устройством)
   d.setCache.clear();
+  d.smpSetCache.clear();
+  d.samplerCache.clear();
   d.resMaps.clear();
   d.pipes.clear();
   d.textures.clear();
@@ -1086,6 +1111,9 @@ void NvrhiBackend::DumpStats(const char* pTag) const
   DebugTrace("VkUp%s: UP-вывод=%u колец-сбросов=%u раскладок построено=%u (кэш %u)",
              pTag ? pTag : "", d.upDraws, d.upFlushes, d.layoutsBuilt,
              (unsigned)d.ilCache.size());
+  DebugTrace("VkState%s: смен состояний=%u сэмплеров=%u наборов сэмплеров=%u потерь=%u",
+             pTag ? pTag : "", d.stateSets, d.samplersCreated, d.smpSetsCreated,
+             d.stateUnsupported);
   for (int i = 0; i < st_count; ++i)
     if (d.stubCalls[i])
       DebugTrace("VkStub: %s вызван %u раз", kStubNames[i], d.stubCalls[i]);
@@ -1267,6 +1295,18 @@ void NvrhiBackend::SetClipPlane(bool enable, const float* pPlaneEquation)
 {
   m_clipPlaneEnabled = enable;
   if (pPlaneEquation) memcpy(m_clipPlane, pPlaneEquation, sizeof(m_clipPlane));
+}
+
+void NvrhiBackend::SetPipelineState(const BackendPipelineState& state, unsigned long long stateKey)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  // менеджер отдаёт закэшированную модель и её хэш; пока хэш не менялся,
+  // копия не нужна (вызов происходит на каждом выводе)
+  if (d.modelHash == stateKey)
+    return;
+  d.model = state;
+  d.modelHash = stateKey;
+  ++d.stateSets;
 }
 
 HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil)
@@ -1908,17 +1948,8 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
     else rm.layoutSsbo = lh;
   }
 
-  // набор сэмплеров статичен: состояние сэмплера через seam не приходит
-  // (RenderStatesManager пишет прямо в D3D9), поэтому везде один сэмплер
-  if (rm.layoutSmp)
-  {
-    nvrhi::BindingSetDesc bsd;
-    for (size_t k = 0; k < rm.items.size(); ++k)
-      if (rm.items[k].set == 3u && rm.items[k].kind == rkSampler)
-        bsd.bindings.push_back(nvrhi::BindingSetItem::Sampler(rm.items[k].binding, d.defSampler));
-    rm.setSmp = d.nvrhiDevice->createBindingSet(bsd, rm.layoutSmp);
-    if (!rm.setSmp) VkNote("ResMap: createBindingSet(сэмплеры)", false, 0);
-  }
+  // набор сэмплеров НЕ статичен: с шагом 13.4b состояния приходят через seam,
+  // поэтому набор строится по подписи состояний (FindOrCreateSamplerSet)
   // SSBO (набор 1) пока нечем заполнять: seam передаёт per-instance данные через
   // SetInstanceSource как вершинный буфер, а SPIR-V ждёт StructuredBuffer —
   // это шаг 13.2 (там же ключ пайплайна из шага 8)
@@ -1945,6 +1976,334 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
     VkNote("ResMap", true, det);
   }
   return (int)d.resMaps.size() - 1;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Модель состояний (шаг 13.4b): перевод чисел D3D9 в перечисления NVRHI.
+//
+// Числа в BackendPipelineState — D3D9-ные намеренно: менеджер состояний устроен
+// по D3D9, а нейтральный словарь состояний — этап 4, когда переводить станет
+// нечего. Проверено по Vendor/DirectX/Include/d3d9types.h:264-284 и
+// Vendor/NVRHI/include/nvrhi/nvrhi.h:1211-1234: нумерация сравнений, операций
+// со stencil, множителей и операций смешивания в NVRHI ДОСЛОВНО совпадает с
+// D3D9 (в том числе D3DSTENCILOP_INCRSAT=4 -> IncrementAndClamp=4 и
+// D3DSTENCILOP_INCR=7 -> IncrementAndWrap=7 — порядок у них разный, но числа
+// подобраны так, что совпадают). Верить этому совпадению молча нельзя, поэтому
+// ниже стоят static_assert: если NVRHI сменит нумерацию, сборка падает здесь, а
+// не начинает рисовать инверсные сравнения. Для fill/cull/адресации/фильтров
+// перечисления разные — они переводятся таблицей.
+
+static void NoteStateIssue(NvrhiBackendImpl& d, const char* what, unsigned value)
+{
+  ++d.stateUnsupported;
+  if (d.stateUnsupported <= 8u)
+  {
+    char det[96];
+    snprintf(det, sizeof(det), "%s = %u", what, value);
+    VkNote("Состояния: аналога у Vulkan нет", false, det);
+  }
+}
+
+static_assert((unsigned)nvrhi::ComparisonFunc::Never == D3DCMP_NEVER &&
+              (unsigned)nvrhi::ComparisonFunc::Always == D3DCMP_ALWAYS,
+              "нумерация nvrhi::ComparisonFunc разошлась с D3DCMP_*");
+static_assert((unsigned)nvrhi::StencilOp::Keep == D3DSTENCILOP_KEEP &&
+              (unsigned)nvrhi::StencilOp::IncrementAndClamp == D3DSTENCILOP_INCRSAT &&
+              (unsigned)nvrhi::StencilOp::DecrementAndClamp == D3DSTENCILOP_DECRSAT &&
+              (unsigned)nvrhi::StencilOp::Invert == D3DSTENCILOP_INVERT &&
+              (unsigned)nvrhi::StencilOp::IncrementAndWrap == D3DSTENCILOP_INCR &&
+              (unsigned)nvrhi::StencilOp::DecrementAndWrap == D3DSTENCILOP_DECR,
+              "нумерация nvrhi::StencilOp разошлась с D3DSTENCILOP_*");
+static_assert((unsigned)nvrhi::BlendFactor::Zero == D3DBLEND_ZERO &&
+              (unsigned)nvrhi::BlendFactor::SrcAlphaSaturate == D3DBLEND_SRCALPHASAT &&
+              (unsigned)nvrhi::BlendFactor::ConstantColor == D3DBLEND_BLENDFACTOR &&
+              (unsigned)nvrhi::BlendFactor::InvConstantColor == D3DBLEND_INVBLENDFACTOR,
+              "нумерация nvrhi::BlendFactor разошлась с D3DBLEND_*");
+static_assert((unsigned)nvrhi::BlendOp::Add == D3DBLENDOP_ADD &&
+              (unsigned)nvrhi::BlendOp::Max == D3DBLENDOP_MAX,
+              "нумерация nvrhi::BlendOp разошлась с D3DBLENDOP_*");
+
+static float FloatBits(unsigned raw)
+{
+  float f = 0.f;
+  memcpy(&f, &raw, sizeof(f));
+  return f;
+}
+
+static nvrhi::ComparisonFunc CmpOf(NvrhiBackendImpl& d, unsigned d3dCmp)
+{
+  if (d3dCmp < (unsigned)nvrhi::ComparisonFunc::Never ||
+      d3dCmp > (unsigned)nvrhi::ComparisonFunc::Always)
+  {
+    NoteStateIssue(d, "функция сравнения", d3dCmp);
+    return nvrhi::ComparisonFunc::Less;
+  }
+  return static_cast<nvrhi::ComparisonFunc>(d3dCmp);
+}
+
+static nvrhi::StencilOp StencilOpOf(NvrhiBackendImpl& d, unsigned d3dOp)
+{
+  // 0 в модели — «состояние не запрашивалось» (D3DSTENCILOP_KEEP = 1), а не
+  // «операция вне словаря»; для пары без трафарета это нормальная ситуация
+  if (d3dOp == 0u) return nvrhi::StencilOp::Keep;
+  if (d3dOp < (unsigned)nvrhi::StencilOp::Keep ||
+      d3dOp > (unsigned)nvrhi::StencilOp::DecrementAndWrap)
+  {
+    NoteStateIssue(d, "операция трафарета", d3dOp);
+    return nvrhi::StencilOp::Keep;
+  }
+  return static_cast<nvrhi::StencilOp>(d3dOp);
+}
+
+static nvrhi::BlendFactor BlendOf(NvrhiBackendImpl& d, unsigned d3dFactor)
+{
+  // D3DBLEND_BOTHSRCALPHA(12) и BOTHINVSRCALPHA(13) — режимы D3D9, у которых
+  // нет аналога в D3D11/Vulkan (у NVRHI на этих числах другие множители),
+  // поэтому они переводятся явно и считаются потерей
+  if (d3dFactor == D3DBLEND_BOTHSRCALPHA || d3dFactor == D3DBLEND_BOTHINVSRCALPHA)
+  {
+    NoteStateIssue(d, "режим смешивания (устарел)", d3dFactor);
+    return d3dFactor == D3DBLEND_BOTHSRCALPHA ? nvrhi::BlendFactor::SrcAlpha
+                                              : nvrhi::BlendFactor::InvSrcAlpha;
+  }
+  if (d3dFactor < (unsigned)nvrhi::BlendFactor::Zero ||
+      d3dFactor > (unsigned)nvrhi::BlendFactor::InvConstantColor)
+  {
+    NoteStateIssue(d, "множитель смешивания", d3dFactor);
+    return nvrhi::BlendFactor::One;
+  }
+  return static_cast<nvrhi::BlendFactor>(d3dFactor);
+}
+
+static nvrhi::RasterCullMode CullOf(NvrhiBackendImpl& d, unsigned d3dCull)
+{
+  switch (d3dCull)
+  {
+  case D3DCULL_NONE: return nvrhi::RasterCullMode::None;
+  // намотка у нас frontCounterClockwise=true (см. FillPipelineState), т.е.
+  // «видимые против часовой» = лицевые, и D3DCULL_CW снимает задние
+  case D3DCULL_CW:  return nvrhi::RasterCullMode::Back;
+  case D3DCULL_CCW: return nvrhi::RasterCullMode::Front;
+  default:
+    NoteStateIssue(d, "режим отсечения", d3dCull);
+    return nvrhi::RasterCullMode::None;
+  }
+}
+
+static nvrhi::RasterFillMode FillOf(NvrhiBackendImpl& d, unsigned d3dFill)
+{
+  if (d3dFill == D3DFILL_WIREFRAME) return nvrhi::RasterFillMode::Wireframe;
+  if (d3dFill != D3DFILL_SOLID) NoteStateIssue(d, "режим растеризации", d3dFill);
+  return nvrhi::RasterFillMode::Solid;
+}
+
+static nvrhi::SamplerAddressMode AddressOf(NvrhiBackendImpl& d, unsigned d3dAddr)
+{
+  switch (d3dAddr)
+  {
+  case D3DTADDRESS_WRAP:       return nvrhi::SamplerAddressMode::Wrap;
+  case D3DTADDRESS_MIRROR:     return nvrhi::SamplerAddressMode::Mirror;
+  case D3DTADDRESS_CLAMP:      return nvrhi::SamplerAddressMode::Clamp;
+  case D3DTADDRESS_BORDER:     return nvrhi::SamplerAddressMode::Border;
+  case D3DTADDRESS_MIRRORONCE: return nvrhi::SamplerAddressMode::MirrorOnce;
+  default:
+    NoteStateIssue(d, "режим адресации", d3dAddr);
+    return nvrhi::SamplerAddressMode::Clamp;
+  }
+}
+
+// подпись одного сэмплера (для кэша объектов сэмплеров)
+static unsigned long long SamplerKeyOf(const BackendSamplerState& s)
+{
+  unsigned long long h = 1469598103934665603ull;
+  const unsigned vals[] = { s.minFilter, s.magFilter, s.mipFilter, s.addressU,
+                            s.addressV, s.addressW, s.borderColor, s.maxAnisotropy,
+                            (unsigned)s.maxMipLevel, (unsigned)s.lodBias,
+                            s.set ? 1u : 0u };
+  for (size_t i = 0; i < sizeof(vals) / sizeof(vals[0]); ++i)
+  {
+    h ^= vals[i];
+    h *= 1099511628211ull;
+  }
+  return h;
+}
+
+static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned slot)
+{
+  const BackendSamplerState& s = d.model.sampler[slot];
+  if (!s.set) return d.defSampler;      // этого слота модель не касалась
+  const unsigned long long key = SamplerKeyOf(s);
+  for (size_t i = 0; i < d.samplerCache.size(); ++i)
+    if (d.samplerCache[i].first == key) return d.samplerCache[i].second;
+
+  nvrhi::SamplerDesc sd;
+  sd.setMinFilter(s.minFilter == D3DTEXF_LINEAR || s.minFilter == D3DTEXF_ANISOTROPIC)
+    .setMagFilter(s.magFilter == D3DTEXF_LINEAR || s.magFilter == D3DTEXF_ANISOTROPIC)
+    .setMipFilter(s.mipFilter != D3DTEXF_NONE)
+    .setAddressU(AddressOf(d, s.addressU))
+    .setAddressV(AddressOf(d, s.addressV))
+    .setAddressW(AddressOf(d, s.addressW));
+  if (s.maxAnisotropy > 1u)
+  {
+    // Vulkan требует линейные фильтры при анизотропной фильтрации
+    sd.setMaxAnisotropy((float)s.maxAnisotropy).setAllFilters(true);
+  }
+  // D3DSAMP_BORDERCOLOR — это не цвет, а константа D3DTOP_* (0 = TRANSPARENTBLACK,
+  // 1 = OPAQUEBLACK, 2 = TRANSPARENTWHITE, 3 = OPAQUEWHITE); в вендоренном
+  // d3d9types.h этих имён нет, поэтому числа
+  switch (s.borderColor)
+  {
+  case 0u: sd.setBorderColor(nvrhi::Color(0.f, 0.f, 0.f, 0.f)); break;
+  case 1u: sd.setBorderColor(nvrhi::Color(0.f, 0.f, 0.f, 1.f)); break;
+  case 2u: sd.setBorderColor(nvrhi::Color(1.f, 1.f, 1.f, 0.f)); break;
+  case 3u: sd.setBorderColor(nvrhi::Color(1.f, 1.f, 1.f, 1.f)); break;
+  default: NoteStateIssue(d, "цвет границы", s.borderColor); break;
+  }
+  // lodBias в модели — биты float: клиент пишет float прямо в
+  // D3DSAMP_MIPMAPLODBIAS (PFRenderInterface.cpp:1613), поэтому интерпретация
+  // побитовая, а не «16.16 с дробной частью в младших битах»
+  const float bias = FloatBits((unsigned)s.lodBias);
+  if (bias != 0.f) sd.setMipBias(bias);
+
+  nvrhi::SamplerHandle sh = d.nvrhiDevice->createSampler(sd);
+  if (!sh)
+  {
+    VkNote("Состояния: createSampler", false, 0);
+    return d.defSampler;
+  }
+  d.samplerCache.push_back(std::make_pair(key, sh));
+  ++d.samplersCreated;
+  return sh;
+}
+
+// подпись всех сэмплеров, которые реально нужны этой паре шейдеров
+static unsigned long long SamplerSetSignature(NvrhiBackendImpl& d, const NvrhiBackendImpl::ResMapObj& rm)
+{
+  unsigned long long h = 1469598103934665603ull;
+  for (size_t k = 0; k < rm.items.size(); ++k)
+  {
+    const NvrhiBackendImpl::ResItem& it = rm.items[k];
+    if (it.set != 3u || it.kind != rkSampler) continue;
+    unsigned long long sk = 0;
+    if (it.binding < kMaxSamplerSlots) sk = SamplerKeyOf(d.model.sampler[it.binding]);
+    h ^= sk;
+    h *= 1099511628211ull;
+    h ^= it.binding;
+    h *= 1099511628211ull;
+  }
+  return h ? h : 1ull;
+}
+
+static nvrhi::BindingSetHandle FindOrCreateSamplerSet(NvrhiBackendImpl& d, const NvrhiBackendImpl::ResMapObj& rm,
+                                                      unsigned long long sig)
+{
+  for (size_t i = 0; i < d.smpSetCache.size(); ++i)
+    if (d.smpSetCache[i].first == sig) return d.smpSetCache[i].second;
+  if (d.smpSetCache.size() > 4096u)
+  {
+    d.smpSetCache.clear();
+    VkNote("smpSetCache очищен (>4096 подписей)", true, 0);
+  }
+  nvrhi::BindingSetDesc bsd;
+  for (size_t k = 0; k < rm.items.size(); ++k)
+  {
+    const NvrhiBackendImpl::ResItem& it = rm.items[k];
+    if (it.set != 3u || it.kind != rkSampler) continue;
+    nvrhi::SamplerHandle sh = (it.binding < kMaxSamplerSlots) ? FindOrCreateSampler(d, it.binding)
+                                                              : d.defSampler;
+    if (!sh) sh = d.defSampler;
+    bsd.bindings.push_back(nvrhi::BindingSetItem::Sampler(it.binding, sh));
+  }
+  nvrhi::BindingSetHandle bs = d.nvrhiDevice->createBindingSet(bsd, rm.layoutSmp);
+  if (!bs)
+  {
+    VkNote("Состояния: createBindingSet(сэмплеры)", false, 0);
+    return nvrhi::BindingSetHandle();
+  }
+  d.smpSetCache.push_back(std::make_pair(sig, bs));
+  ++d.smpSetsCreated;
+  return bs;
+}
+
+// Собирает nvrhi::RenderState из модели. Ноль в полях модели — «состояние не
+// запрашивалось», но тень заполняется чтением устройства, поэтому для
+// состояний с дефолтом D3D9 = 1 (ZENABLE, ZWRITEENABLE) ноль означает именно
+// «выключено»: расхождение возможно только если чтение устройства не удалось.
+static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& pd)
+{
+  const BackendPipelineState& st = d.model;
+
+  nvrhi::RasterState& rs = pd.renderState.rasterState;
+  // намотка: у NVRHI вьюпорт с отрицательной высотой, без frontCounterClockwise
+  // геометрия вырезается (замер спайка b0cull: 0 против 3072 пикселей)
+  rs.setFrontCounterClockwise(true)
+    .setScissorEnable(st.scissorTestEnable != 0)
+    .setFillMode(FillOf(d, st.fillMode ? st.fillMode : D3DFILL_SOLID))
+    .setCullMode(CullOf(d, st.cullMode ? st.cullMode : D3DCULL_NONE));
+  // имя сеттера в этой версии NVRHI — setSlopeScaleDepthBias (без «d» в
+  // середине), хотя поле называется slopeScaledDepthBias
+
+  // D3DRS_DEPTHBIAS и D3DRS_SLOPESCALEDEPTHBIAS клиент пишет БИТАМИ float
+  // (ShadowMap.cpp:238-239), поэтому интерпретация побитовая. У NVRHI
+  // постоянный сдвиг целочисленный (nvrhi.h:1149) — дробная часть теряется, и
+  // об этом печатаем, иначе тень в A/B расходится молча
+  rs.setSlopeScaleDepthBias(st.slopeScaleDepthBias);
+  const float db = FloatBits(st.depthBiasRaw);
+  rs.setDepthBias((int)(db >= 0.f ? db + 0.5f : db - 0.5f));
+  if (db != 0.f && db != (float)(int)db)
+  {
+    char det[64];
+    snprintf(det, sizeof(det), "constant depth bias %g усечён до %d", (double)db, (int)db);
+    VkNote("Состояния: дробная часть потеряна", false, det);
+    ++d.stateUnsupported;
+  }
+
+  nvrhi::DepthStencilState& ds = pd.renderState.depthStencilState;
+  ds.depthTestEnable = st.zEnable != 0;
+  ds.depthWriteEnable = st.zWriteEnable != 0;
+  ds.depthFunc = st.zFunc ? CmpOf(d, st.zFunc) : nvrhi::ComparisonFunc::Less;
+  ds.stencilEnable = st.stencilEnable != 0;
+  ds.stencilReadMask = (uint8_t)st.stencilReadMask;
+  ds.stencilWriteMask = (uint8_t)st.stencilWriteMask;
+  ds.stencilRefValue = (uint8_t)st.stencilRef;
+  // D3D9 не различает лицевые и обратные грани в трафарете (D3DRS_STENCIL* —
+  // общие), поэтому второй набор повторяет первый; StencilOpDesc — вложенный
+  // тип DepthStencilState, отдельного nvrhi::StencilOpDesc в этой версии нет
+  nvrhi::DepthStencilState::StencilOpDesc& front = ds.frontFaceStencil;
+  front.failOp = StencilOpOf(d, st.stencilFail);
+  front.depthFailOp = StencilOpOf(d, st.stencilZFail);
+  front.passOp = StencilOpOf(d, st.stencilPass);
+  front.stencilFunc = st.stencilFunc ? CmpOf(d, st.stencilFunc) : nvrhi::ComparisonFunc::Always;
+  // D3D9 не различает лицевые и обратные грани в трафарете (D3DRS_STENCIL* —
+  // общие), поэтому второй набор повторяет первый
+  ds.backFaceStencil = front;
+
+  nvrhi::BlendState::RenderTarget target;
+  target.blendEnable = st.alphaBlendEnable != 0;
+  target.srcBlend = st.srcBlend ? BlendOf(d, st.srcBlend) : nvrhi::BlendFactor::One;
+  target.destBlend = st.destBlend ? BlendOf(d, st.destBlend) : nvrhi::BlendFactor::Zero;
+  target.blendOp = st.blendOp ? static_cast<nvrhi::BlendOp>(st.blendOp) : nvrhi::BlendOp::Add;
+  if (st.separateAlphaBlend)
+  {
+    target.srcBlendAlpha = st.srcBlendAlpha ? BlendOf(d, st.srcBlendAlpha) : target.srcBlend;
+    target.destBlendAlpha = st.destBlendAlpha ? BlendOf(d, st.destBlendAlpha) : target.destBlend;
+    target.blendOpAlpha = st.blendOpAlpha ? static_cast<nvrhi::BlendOp>(st.blendOpAlpha) : target.blendOp;
+  }
+  else
+  {
+    target.srcBlendAlpha = target.srcBlend;
+    target.destBlendAlpha = target.destBlend;
+    target.blendOpAlpha = target.blendOp;
+  }
+  // D3D9 по умолчанию пишет RGB без альфы (7), а не всё (0x0f)
+  target.colorWriteMask = static_cast<nvrhi::ColorMask>(
+      st.colorWriteEnable ? st.colorWriteEnable : 0x7u);
+  pd.renderState.blendState.setRenderTarget(0, target);
+
+  // фиксированной альфа-смены ни в Vulkan, ни в D3D12 нет: ALPHATESTENABLE
+  // обязан переехать в шейдер (шаг 13/14), иначе материал рисуется без вырезания
+  if (st.alphaTestEnable) NoteStateIssue(d, "альфа-тест (ALPHATESTENABLE)", st.alphaRef);
+  if (st.clipPlaneEnable) NoteStateIssue(d, "плоскость отсечения (CLIPPLANEENABLE)", st.clipPlaneEnable);
 }
 
 // Подпись привязок текстур пары (FNV-64 по парам binding->текстура). Набор
@@ -2018,7 +2377,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   {
     const NvrhiBackendImpl::PipeObj& p = d.pipes[i];
     if (p.vs == d.curVs && p.ps == d.curPs && p.layout == d.curLayout &&
-        p.lsig == lsig &&
+        p.lsig == lsig && p.stateHash == d.modelHash &&
         p.rt == d.curRt && p.ds == d.curDs && p.prim == (unsigned)type)
     {
       ++d.pipeHits;
@@ -2050,9 +2409,11 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   nvrhi::GraphicsPipelineDesc pd;
   pd.setPrimType(PrimType(type)).setInputLayout(il)
     .setVertexShader(d.shaderObjs[d.curVs].sh).setPixelShader(d.shaderObjs[d.curPs].sh);
-  // Намотка: у NVRHI вьюпорт с отрицательной высотой, без этого флага геометрия
-  // вырезается (замер спайка b0cull: 0 против 3072 пикселей).
-  pd.renderState.rasterState.setCullNone().setFrontCounterClockwise(true);
+  // Намотка: у NVRHI вьюпорт с отрицательной высотой, без флага frontCounterClockwise
+  // геометрия вырезается (замер спайка b0cull: 0 против 3072 пикселей). Остальное
+  // — из модели состояний (шаг 13.4b): на Vulkan blend, глубина и трафарет —
+  // часть объекта пайплайна, а не динамическое состояние
+  FillPipelineState(d, pd);
   if (d.set0Layout) pd.addBindingLayout(d.set0Layout);
   const int rmIdx = FindOrCreateResMap(d);
   if (rmIdx >= 0)
@@ -2076,6 +2437,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   po.vs = d.curVs; po.ps = d.curPs; po.layout = d.curLayout;
   po.rt = d.curRt; po.ds = d.curDs; po.prim = (unsigned)type;
   po.lsig = lsig;
+  po.stateHash = d.modelHash;
   d.pipes.push_back(po);
   ++d.pipesCreated;
   if (ppFb) *ppFb = fb;
@@ -2140,7 +2502,11 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   if (rmIdx >= 0)
   {
     const NvrhiBackendImpl::ResMapObj& rm = d.resMaps[rmIdx];
-    if (rm.setSmp) gs.addBindingSet(rm.setSmp);
+    if (rm.layoutSmp)
+    {
+      nvrhi::BindingSetHandle bsSmp = FindOrCreateSamplerSet(d, rm, SamplerSetSignature(d, rm));
+      if (bsSmp) gs.addBindingSet(bsSmp);
+    }
     if (rm.layoutTex)
     {
       nvrhi::BindingSetHandle bsTex = FindOrCreateTexSet(d, rm, TexSignature(d, rm));

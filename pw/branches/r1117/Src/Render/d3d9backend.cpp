@@ -2,6 +2,7 @@
 #include "d3d9backend.h"
 #include "renderflagsconverter.h"
 #include "dxutils.h"   // GetD3DPoolAndUsagesParamaters + PoolType (D3D9-реализация знает про D3D9)
+#include "renderstatesmanager.h"  // VerifyShadowAgainstDevice (проверка полноты модели)
 #include "System/Compatibility.h"   // IsRunnedUnderWine / IsRunnedUnderCrossOverWine (mip-цепочка)
 
 namespace Render
@@ -659,6 +660,45 @@ HRESULT D3D9Backend::UnlockSurface(HSurface surface) {
   if (!surface.p)
     return E_INVALIDARG;
   return static_cast<IDirect3DSurface9*>(surface.p)->UnlockRect();
+}
+
+// Модель состояний приходит от менеджера перед каждым выводом. D3D9-бэкенду
+// она не нужна (состояния уже записаны в устройство), но вызов оставлен как
+// контроль полноты модели: если тень менеджера отстаёт от устройства — значит
+// кто-то пишет прямо в D3D9, и на Vulkan/DX12 это потерянное состояние.
+// Заметить это можно только здесь, где есть с чем сравнить. Проверка дорогая
+// (GetRenderState на каждое состояние), поэтому под dev-var и не каждый кадр:
+//   setvar verify_state_model 1
+// Регистрация — REGISTER_VAR, а не REGISTER_DEV_VAR: во shipping-конфигурации
+// (Commands.h:457-469: _SHIPPING без _RELEASE) REGISTER_DEV_VAR сворачивается в
+// пустоту, и переключатель молча исчезает вместе с проверкой. Так же сделано в
+// multishader.cpp:31,51 (dump_shader_index, shader_target).
+static bool s_verifyStateModel = false;
+REGISTER_VAR("verify_state_model", s_verifyStateModel, STORAGE_NONE)
+
+void D3D9Backend::SetPipelineState(const BackendPipelineState& /*state*/, unsigned long long /*stateKey*/) {
+  if (!s_verifyStateModel)
+    return;
+  static unsigned s_verifyTick = 0;
+  if ((++s_verifyTick % 120u) != 0u)
+    return;
+  RenderStatesManager* const sm = GetStatesManager();
+  if (!sm)
+    return;
+  const unsigned bad = sm->VerifyShadowAgainstDevice(6u);
+  // Сводка печатается и при нуле: молчание в гейте неотличимо от «проверка не
+  // запускалась» (переключатель не прочитан, SetPipelineState не вызывается).
+  // Периодичность — не каждый кадр, но достаточно часто, чтобы покрыть бой
+  // (проверка только на загрузке экрана ничего не доказывает).
+  static unsigned s_checks = 0, s_badTotal = 0, s_reported = 0;
+  ++s_checks;
+  s_badTotal += bad;
+  if (s_checks == 1u || (s_checks % 200u) == 0u || (bad && s_badTotal != s_reported))
+  {
+    s_reported = s_badTotal;
+    DebugTrace("D3D9Backend: сверка модели состояний с устройством — проверок: %u, расхождений: %u",
+               s_checks, s_badTotal);
+  }
 }
 
 HRESULT D3D9Backend::CreateVertexBuffer(unsigned size, EBackendPool pool, HBuffer* pOut) {

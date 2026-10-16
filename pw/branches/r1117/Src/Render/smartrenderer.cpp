@@ -578,6 +578,17 @@ namespace
 }
 #endif
 
+// Модель состояний конвейера для бэкенда (шаг 13.4b). Перед каждым выводом:
+// бэкенд строит по ней объект пайплайна, а менеджер пересобирает модель только
+// после изменения состояний, поэтому здесь — копирование готовой структуры и
+// хэш (замер шага 8: ~458 выводов на кадр в бою).
+inline void NotePipelineState()
+{
+  RenderStatesManager* const sm = Render::GetStatesManager();
+  if (sm)
+    GetBackend()->SetPipelineState(sm->GetPipelineState(), sm->GetPipelineStateHash());
+}
+
 void DrawIndexedPrimitive(const DipDescriptor& _descr)
 {
   if(nullrender)
@@ -593,6 +604,7 @@ void DrawIndexedPrimitive(const DipDescriptor& _descr)
 #ifdef USE_RENDER_SHADER_STATS
   NotePipeline(_descr.primitiveType);
 #endif
+  NotePipelineState();
   HRESULT hr = GetBackend()->DrawIndexed( _descr.primitiveType,
     _descr.baseVertexIndex, _descr.minIndex, _descr.numVertices, _descr.startIndex, _descr.primitiveCount );
 
@@ -635,6 +647,7 @@ void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData,
 #ifdef USE_RENDER_SHADER_STATS
   NotePipeline(_descr.primitiveType);
 #endif
+  NotePipelineState();
   HRESULT hr = GetBackend()->DrawIndexedUP( _descr.primitiveType,
                   _descr.minIndex, _descr.numVertices, _descr.primitiveCount,
                   pIndexData, true /* D3DFMT_INDEX16 */, pVertexStreamZeroData, VertexStreamZeroStride);
@@ -663,6 +676,7 @@ void DrawPrimitive(const DipDescriptor& _descr)
 #ifdef USE_RENDER_SHADER_STATS
   NotePipeline(_descr.primitiveType);
 #endif
+  NotePipelineState();
   HRESULT hr = GetBackend()->Draw( _descr.primitiveType,
     _descr.startIndex, _descr.primitiveCount );
 
@@ -685,6 +699,7 @@ void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroD
 #ifdef USE_RENDER_SHADER_STATS
   NotePipeline(_descr.primitiveType);
 #endif
+  NotePipelineState();
   HRESULT hr = GetBackend()->DrawUP(_descr.primitiveType,
                                             _descr.primitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
   if(s_DXWarnLevel)

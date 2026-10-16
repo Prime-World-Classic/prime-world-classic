@@ -70,6 +70,9 @@ public:
   virtual void GetScissorRect(BackendRect* pOut);
 
   // --- очистка привязанных поверхностей ---
+  // модель состояний конвейера (шаг 13.4b): вызывается путями вывода перед
+  // каждым выводом; здесь это только источник ключа для кэша пайплайнов
+  virtual void SetPipelineState(const BackendPipelineState& state, unsigned long long stateKey);
   virtual HRESULT Clear(unsigned clearFlags, unsigned colorRGBA, float z, unsigned stencil);
 
   // --- константы шейдеров ---
