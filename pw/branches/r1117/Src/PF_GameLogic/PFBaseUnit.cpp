@@ -822,7 +822,19 @@ void PFBaseUnit::OnDestroyContents()
 	PFBaseUnit::CloseWarFog(true);
   LinuxUnregisterBootstrapUnit(this);
 }
-void PFBaseUnit::OnDie() { PFBaseUnit::CloseWarFog(true); }
+/** Permanent object retirement also stops effects that survive ordinary combat death. */
+void PFBaseUnit::OnDie()
+{
+	// Cleanup can release the last effect-owned reference while invoking nested callbacks.
+	CObj<PFBaseUnit> holder(this);
+	PFFsm::Cleanup();
+	CleanupAfterDeath(true);
+	eventListeners.clear();
+	variablesRing.clear(ring::DeleteEraser<Variable>());
+	RemoveBehaviour();
+	PFBaseUnit::CloseWarFog(true);
+	PFLogicObject::OnDie();
+}
 void PFBaseUnit::InitializeLifeEnergy()
 {
   maxHealth = GetStatValue(NDb::STAT_LIFE);

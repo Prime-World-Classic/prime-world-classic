@@ -89,6 +89,10 @@ namespace LinuxBootstrap
  * behavior. Invalid state indices and nonfinite running/total timers fail before
  * the original getter can conceal corruption as readiness. No parent traversal
  * or generic cooldown mutation API is exposed; lazy reads and staged RNG remain.
+ * mIsAbilityOn and exact pMisc->IsAbilityOn()/appl.IsAbilityOn() aliases read the
+ * original miscellaneous getter on every evaluation. Ability and applicator
+ * contexts retain their actual toggle state; missing selected context fails.
+ * No parent traversal, mutation or arbitrary boolean getters are exposed.
  * sender/receiver.GetDamageTaken(dt)/GetDamageDealt(dt), plus exact pFirst/pSecond->
  * spellings, use checked production PFBaseUnit history with one finite float argument.
  * Valid nonpositive intervals return zero. Unavailable clocks and malformed visited
