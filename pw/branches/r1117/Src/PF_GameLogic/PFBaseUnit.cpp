@@ -2307,6 +2307,7 @@ void PFBaseUnit::CancelAllDispatchFromUnit(const PFBaseUnit* unit)
 void PFBaseUnit::KillUnit(const CPtr<PFBaseUnit>& pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { OnUnitDie(pKiller, flags, pDamageDesc); }
 void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
 {
+	CObj<PFBaseUnit> retained(this);
 	// Deferred death performs combat cleanup while the restored unit remains alive.
 	if ((flags & UNITDIEFLAGS_DEFERREDDEATH) == 0)
 		health = 0.0f;
@@ -2314,6 +2315,11 @@ void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamage
   DropTarget();
   StopAttackingMe();
   CancelAbilities();
+
+	// Original dependent summons retire even when this owner's rewards are suppressed.
+	PFSummonBehaviour::UnsummonFunc unsummon(this);
+	for (auto type : {NDb::SUMMONTYPE_PRIMARY, NDb::SUMMONTYPE_PET})
+		if (summonedUnits[type]) summonedUnits[type]->ForAllBehaviour(unsummon);
 
   PFAIWorld* aiWorld = GetWorld() ? GetWorld()->GetAIWorld() : 0;
   const bool deathDeferred = (flags & UNITDIEFLAGS_DEFERREDDEATH) != 0;

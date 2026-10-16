@@ -13,8 +13,12 @@ namespace NWorld
 
 void PFSummonBehaviour::UnsummonFunc::operator()(PFSummonBehaviour* pBehaviour)
 {
-  if (pBehaviour)
-    pBehaviour->OnStop();
+	if (!pBehaviour) return;
+	CObj<PFSummonBehaviour> retained(pBehaviour);
+	if (IsValid(pBehaviour->GetUnit()) && pBehaviour->GetUnit()->GetMasterUnit() == master)
+		pBehaviour->Unsummon();
+	else
+		pBehaviour->OnStop();
 }
 
 PFBaseBehaviour::PFBaseBehaviour(PFBaseMovingUnit* pUnit_)
@@ -129,9 +133,14 @@ PFSummonBehaviour::PFSummonBehaviour()
 {
 }
 
+/** Use original unsummon death policy; callbacks may release the behavior or request removal again. */
 void PFSummonBehaviour::Unsummon()
 {
-  lifeTime = -1.0f;
+	CObj<PFSummonBehaviour> retained(this);
+	lifeTime = -1.0f;
+	if (!IsUnitValid(pUnit)) return;
+	CObj<PFBaseMovingUnit> unit(pUnit.GetPtr());
+	unit->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_UNSUMMON);
 }
 
 float PFSummonBehaviour::GetLashRange() const
@@ -139,10 +148,14 @@ float PFSummonBehaviour::GetLashRange() const
   return lashRange > 0.0f ? lashRange : 0.0f;
 }
 
+/** Preserve the original strict lifetime crossing and controlled/unlimited policy. */
 bool PFSummonBehaviour::OnStep(float dtInSeconds)
 {
-  lifeTime += dtInSeconds;
-  return true;
+	const bool result = PFBaseBehaviour::OnStep(dtInSeconds);
+	lifeTime += dtInSeconds;
+	if (maxLifeTime > EPS_VALUE && lifeTime > maxLifeTime && (behaviourFlags & BEHAVIOURFLAGS_CONTROLLEDLIFETIME))
+		Unsummon();
+	return result;
 }
 
 void PFBehaviourGroup::AddBehavior(CPtr<PFSummonBehaviour> const& behaviour)

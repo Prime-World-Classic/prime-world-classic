@@ -8,6 +8,9 @@
 #include "PFTargetSelector.h"
 #include "../System/InlineProfiler.h"
 #include "libdb/dbid.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "LinuxBootstrap/formula_context.h"
+#endif
 
 #ifndef VISUAL_CUTTED
 #include "PFClientApplicators.h"
@@ -94,7 +97,16 @@ bool PFApplSummon::Start()
     pBehaviourData->Initialize(this);
   }
 
+#if defined(PW_LINUX_NULL_RENDER)
+	// Validate duration before replacement, pet toggling or any summoned-unit creation.
+	const auto duration = db.lifeTime.sString.empty() && db.lifeTime.compiledString.empty()
+		? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 0.f}
+		: LinuxBootstrap::EvaluateApplicatorNumericFormula(db.lifeTime.sString.c_str(), *this);
+	if (!duration.Succeeded()) return true;
+	const float lifeTime = duration.value;
+#else
   float lifeTime = RetrieveParam(db.lifeTime, 0.0f);
+#endif
   NDb::EUnitType unitType = pBehaviourData ? pBehaviourData->GetSummonedUnitType() : NDb::UNITTYPE_DUMMYUNIT; // unit would be an dummy by default (if have no behaviour)
 
   int summonedUnitsCount = RetrieveParam( db.summonedUnitsCount, 1 );

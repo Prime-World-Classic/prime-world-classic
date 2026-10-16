@@ -1428,6 +1428,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "landing_placement_b13_tests.inc"
 #include "weighted_placement_b13_tests.inc"
 #include "plane_bomb_b13_tests.inc"
+#include "summon_lifetime_b13_tests.inc"
 #include "resource_cache_b13_tests.inc"
 #include "talent_formula_b13_tests.inc"
 #include "special_movement_b13_tests.inc"
@@ -1490,6 +1491,12 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	BombAbilityStateB13(check);
 	BombRetirementB13(check);
 	if (dataRoot && *dataRoot) PlaneBombAuthoredB13(check, dataRoot);
+	SummonLifetimeB13(check);
+	SummonExplicitRemovalB13(check);
+	SummonOwnerDeathB13(check);
+	SummonPausedLifetimeB13(check);
+	SummonApplicatorLifetimeB13(check);
+	SummonReplacementB13(check);
 	FixtureLifetimeB13(check);
 	AiDefaultsB13(check);
 	{
