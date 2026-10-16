@@ -4614,3 +4614,81 @@ c-банк) по **объединённому** снимку живых инде
 сцены). Классы (6) владение и (1) lifecycle на этом шаге не трогаются — они
 нужны только для present-пути. Затем (3) DDS и (2) фиксированный 2D-путь.
 
+
+### Сделано (шаг 13.4b: модель состояний конвейера легла в seam — 2026-10-16, `8264233c9`)
+
+Seam (`Src/Render/renderbackend.h`, +99 строк): `BackendPipelineState` (cull,
+fill, scissor, zEnable/zWriteEnable/zFunc, slopeScaleDepthBias + depthBiasRaw,
+трафарет (func/ref/readMask/writeMask/fail/zFail/pass), бленд (вкл., separate
+alpha, src/dest/op, альфа-вариант, colorWriteEnable), alphaTest/alphaRef/
+alphaFunc, clipPlaneEnable, 16 `BackendSamplerState`) и
+`virtual void SetPipelineState(const BackendPipelineState&, unsigned long long
+stateKey)`. Значения в полях — **числа D3D9**: полный нейтральный словарь —
+этап 4, здесь только переводчики в бэкендах. Вызов — из четырёх путей вывода
+`SmartRenderer` (`NotePipelineState()`, `smartrenderer.cpp:585-590`, вызовы
+:607, :650, :679, :702); `NotePipeline()` остаётся только под
+`USE_RENDER_SHADER_STATS`.
+
+Менеджер состояний (`renderstatesmanager.{h,cpp}`, +309): тень стала единственным
+источником модели. **Найдено и закрыто:** `SetStateDirect` и
+`SetSamplerStateDirect` писали прямо в устройство, минуя тень, а
+`SetStencilStateAddonBits` — прямо в `D3DRS_STENCILREF`; значит `GetRenderStateShadowHash()`
+(шаг 8) и вся модель не видели прямых записей (ShadowManager: DEPTHBIAS /
+SLOPESCALEDEPTHBIAS, PostFX, альфа-тест, скачок). Теперь `SetStateDirect` →
+`ApplyState`, сэмплерные пути пишут `samplerShadow[16][12]`, `SetStencilState`
+пишет тень и в cache-hit ветке. Добавлены `BuildPipelineState()` (30 D3DRS +
+10 D3DSAMP на слот, хэш FNV по полям, не по байтам), `GetPipelineState/
+GetPipelineStateHash` (ленивая пересборка по флагу) и
+`VerifyShadowAgainstDevice(maxReports)` — сверка тени с устройством по таблицам
+`g_renderStates[]`/`g_samplerStates[]` (те же, что у `dump_states`), строка
+`StateShadow: <имя> тень 0x…, устройство 0x… — запись мимо менеджера`.
+
+Vulkan-бэкенд (`nvrhibackend.cpp`, +402): переводчики `CmpOf/StencilOpOf/
+BlendOf/CullOf/FillOf/AddressOf` + 4 `static_assert` на совпадение нумерации
+D3D9/NVRHI (смена вендора = падение сборки, а не инверсные сравнения);
+`FillPipelineState(d, pd)` вместо жёсткого `setCullNone()`; `stateHash` вошёл в
+ключ кэша пайплайнов; сэмплеры — кэш по ключу модели сэмплера и набор сэмплеров
+по подписи (прежний статичный `rm.setSmp` удалён); счётчики `VkState: смен
+состояний=… сэмплеров=… наборов сэмплеров=… потерь=…`.
+
+Замеры и гейты.
+- tiny10/WARP, `setvar verify_state_model 1` (прогон `2026.10.16-07.42.37`,
+  exe 15 719 424 Б, md5 `02b53442…`): **17 200 сверок тени с устройством,
+  0 расхождений** — тень покрывает все состояния и в загрузке, и в бою. Рядом
+  `login reply` 1, `all map objects loaded` 1, `ShaderContainer` 16,
+  `ShaderTarget` 58, «нужен рантайм-компилятор» 0, `CRC32 mismatch` 0,
+  `StateShadow` 0. Кадр против `refs/stage3-shd2-2026-10-15/`: **diff 4,80%,
+  грубых 0,68%** при шуме того же прогона 5,07% / **1,22%** → PASS.
+- Wine/RTX 3060 (`2026.10.16-09.09.33`): `DIP`/`TexDIP`/`SurfOps` — все OK,
+  `VkState: потерь=0`, `VkMsg` 0. Первый прогон давал `потерь=9` —
+  `StencilOpOf` считал отсутствующее значение (0) «вне словаря», тогда как
+  `D3DSTENCILOP_KEEP = 1`, а `Reset()` оставляет нули: теперь `0 → Keep`.
+
+Что выяснилось про состояния (важно для этапа 4).
+- Нумерация `D3DCMP_*` и `D3DSTENCILOP_*` в вендоренном `d3d9types.h` **1-based
+  и совпадает с NVRHI дословно** (`INCRSAT=4 → IncrementAndClamp=4`,
+  `INCR=7 → IncrementAndWrap=7`); `BlendFactor` 1..11 и 14/15 тоже совпадают.
+  Прежнее утверждение «нужен сдвиг +1» было неверно. Таблицы нужны только для
+  FILL / CULL / ADDRESS / фильтров.
+- Клиент пишет в «DWORD»-состояния **биты float**: `ShadowMap.cpp:238-239`
+  (`D3DRS_DEPTHBIAS`, `D3DRS_SLOPESCALEDEPTHBIAS`), `PFRenderInterface.cpp:1613`
+  (`D3DSAMP_MIPMAPLODBIAS` по всем 16 слотам). В модели это биты float; у NVRHI
+  `RasterState::depthBias` — `int`, дробная часть теряется (бэкенд печатает
+  заметку). Постоянный сдвиг при этом целочисленный — это другое состояние.
+- Дефолт `D3DRS_COLORWRITEENABLE` в D3D9 = **7** (RGB, без альфы), а не 0x0f —
+  в модели трактуются оба значения.
+- Аналогов у Vulkan нет: `ALPHATESTENABLE`/`ALPHAREF`/`ALPHAFUNC` (фиксированной
+  альфа-смены нет — состояние обязано переехать в шейдер, шаг 14),
+  `CLIPPLANEENABLE`, `D3DBLEND_BOTHSRCALPHA/BOTHINVSRCALPHA` (12/13).
+  `D3DFILL_POINTS` не поддержан.
+- Во shipping `REGISTER_DEV_VAR` свёрнут в пустоту (`System/Commands.h:457-469`:
+  `_SHIPPING` без `_RELEASE` и без `USE_DEVELOPER_COMMANDS`) — из-за этого
+  `verify_state_model` молча не регистрировался, а `shadowBias`, `shadowSlope`,
+  `shadowForceMRT` (`ShadowMap.cpp:14-19`) во shipping **не устанавливаются
+  вообще**. Рабочие переключатели этого ствола зарегистрированы `REGISTER_VAR`
+  (`multishader.cpp:31,51`, `smartrenderer.cpp:20,29,37`).
+
+Не закрыто: `смен состояний=0` на Wine-спайке — `pBackend` ещё D3D9, поэтому
+частота смены состояний (а значит и число разных пайплайнов в бою) не измерена;
+измерение переносится на 13.4c вместе с env-гейтом `PW_VK_BACKEND=1` и
+offscreen A/B.
