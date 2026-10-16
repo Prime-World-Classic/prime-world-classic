@@ -630,8 +630,29 @@ void PFBaseHero::OnScream( const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamT
 CVec3 PFBaseHero::GetPetEscortPosition() const { return GetPosition(); }
 void PFBaseHero::Emote(NDb::EEmotion emotion) { (void)emotion; }
 const wstring& PFBaseHero::GetTeamName() const { return g_linuxHeroEmptyText; }
-void PFBaseHero::DismountSpecial() { pMount = 0; canControlMount = false; }
-void PFBaseHero::OnMountSpecial( CPtr<NWorld::PFBaseMovingUnit> const& pMountUnit, bool _canControlMount ) { pMount = pMountUnit; canControlMount = _canControlMount; }
+/** Release this hero's link before state callbacks, detaching only its own passenger identity. */
+void PFBaseHero::DismountSpecial()
+{
+	if (!pMount) return;
+	CObj<PFBaseHero> retained(this);
+	CObj<PFBaseMovingUnit> mount(pMount.GetPtr());
+	OnUnmountSpecial();
+	if (IsValid(mount) && mount->GetAttachUnit() == this)
+	{
+		mount->DetachUnit();
+		if (!mount->IsTrueHero()) mount->DropStates();
+	}
+}
+/** Preserve original passenger movement restriction and control permission without duplicate flag ownership. */
+void PFBaseHero::OnMountSpecial(CPtr<NWorld::PFBaseMovingUnit> const& mount, bool control)
+{
+	if (!IsUnitValid(this) || !IsUnitValid(mount) || mount == this || mount->GetWorld() != GetWorld()
+		|| pMount || mount->GetAttachUnit() != this) return;
+	CObj<PFBaseHero> retained(this);
+	pMount = mount; canControlMount = control;
+	AddFlag(NDb::UNITFLAG_FORBIDMOVE);
+	PFHFSM::Cleanup();
+}
 /** Compare original recommended enum values without converting an arbitrary query to an enum. */
 bool PFBaseHero::IsRecommended(int stat) const
 {
@@ -650,7 +671,13 @@ void PFBaseHero::SetRecommendedStats(int* flags)
 	for (int i = 0; i < 9; ++i)
 		if (flags[i]) profileStats.push_back(mapping[i]);
 }
-void PFBaseHero::OnUnmountSpecial() { DismountSpecial(); }
+/** Balance only the movement restriction acquired by OnMountSpecial, including repeated cleanup. */
+void PFBaseHero::OnUnmountSpecial()
+{
+	if (!pMount) return;
+	pMount = nullptr; canControlMount = false;
+	RemoveFlag(NDb::UNITFLAG_FORBIDMOVE);
+}
 NDb::ERoute PFBaseHero::GetNearestRoute(float* pDistance) const { if (pDistance) *pDistance = 0.0f; return NDb::ROUTE_UNASSIGNED; }
 bool PFBaseHero::IsSlotValid( int slot ) const { return slot >= 0 && slot < consumables.size(); }
 int PFBaseHero::GetSlotCount() const { return consumables.size(); }

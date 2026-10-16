@@ -1165,6 +1165,27 @@ void PFApplLockTiles::Stop()
 
 bool PFApplMount::Start()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Own links only after live same-world attachment succeeds; rejected siblings must be side-effect free.
+	CObj<PFApplMount> retained(this);
+	if (PFBaseApplicator::Start()) return true;
+	CObj<PFBaseHero> hero(dynamic_cast<PFBaseHero*>(pReceiver.GetPtr()));
+	if (!IsUnitValid(hero) || hero->GetMount() || hero->IsMounted()) return true;
+	Target target; MakeApplicationTarget(target, GetDB().mountTarget);
+	if (!target.IsUnit()) return true;
+	CObj<PFBaseMovingUnit> mount(dynamic_cast<PFBaseMovingUnit*>(target.GetUnit().GetPtr()));
+	if (!mount || mount == hero || mount->GetWorld() != hero->GetWorld() || mount->GetAttachUnit()) return true;
+	if (!IsUnitValid(mount)) { NotifyParent(NDb::PARENTNOTIFICATION_CANCEL); return true; }
+	hero->Stop();
+	if (!PFBaseApplicator::IsAlive() || !IsUnitValid(hero) || !IsUnitValid(mount) || hero->GetMount() || mount->GetAttachUnit()) return true;
+	mount->AttachUnit(hero.GetPtr());
+	if (mount->GetAttachUnit() != hero || !hero->IsMounted()) return true;
+	pHero = hero.GetPtr(); pMount = mount.GetPtr();
+	hero->AddEventListener(this); mount->AddEventListener(this);
+	mount->SetMount(true);
+	hero->OnMountSpecial(mount.GetPtr(), GetDB().controlMount);
+	return !PFBaseApplicator::IsAlive() || !IsUnitValid(hero) || !IsUnitValid(mount) || hero->GetMount() != mount;
+#else
   if (PFBaseApplicator::Start())
     return true;
 
@@ -1201,16 +1222,34 @@ bool PFApplMount::Start()
   pReceiver->AddEventListener(this);
 
   return false;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFApplMount::Stop()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Clear ownership before notifications; do not detach a replacement rider or a different sibling's mount.
+	if (!PFBaseApplicator::IsAlive()) return;
+	CObj<PFApplMount> retained(this);
+	CObj<PFBaseHero> hero(pHero.GetPtr());
+	CObj<PFBaseMovingUnit> mount(pMount.GetPtr());
+	pHero = nullptr; pMount = nullptr;
+	if (IsValid(hero)) hero->RemoveEventListener(this);
+	if (IsValid(mount)) mount->RemoveEventListener(this);
+	if (IsValid(hero) && hero->GetMount() == mount && mount) hero->DismountSpecial();
+	if (IsValid(mount))
+	{
+		if (hero && mount->GetAttachUnit() == hero) mount->DetachUnit();
+		if (!mount->GetAttachUnit()) mount->SetMount(false);
+	}
+#else
   pReceiver->RemoveEventListener(this);
   if ( IsValid( pHero) )
     pHero->DismountSpecial();
   if ( IsValid( pMount ) )
     pMount->SetMount( false );
+#endif
 
   Base::Stop();
 }
@@ -1218,6 +1257,11 @@ void PFApplMount::Stop()
 
 bool PFApplMount::Step(float dtInSeconds)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Movement teardown, death and direct dismount must retire the remaining applicator links as well.
+	if (!PFBaseApplicator::IsAlive() || !IsUnitValid(pHero) || !IsUnitValid(pMount) || pHero->GetMount() != pMount
+		|| pMount->GetAttachUnit() != pHero || !pHero->IsMounted()) return true;
+#endif
   if ( IsValid( pMount ) )
   {
     if ( PFBaseHero* hero = dynamic_cast<PFBaseHero*>(pMount.GetPtr()) )
@@ -1235,6 +1279,18 @@ bool PFApplMount::Step(float dtInSeconds)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 unsigned int PFApplMount::OnEvent(const PFBaseUnitEvent *pEvent)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Death is broadcast to nearby heroes; only an owned endpoint can end this attachment.
+	if (!pEvent) return 0;
+	bool release = pEvent->GetType() == NDb::BASEUNITEVENT_ISOLATE;
+	if (const auto* death = dynamic_cast<const PFBaseUnitEventUnitDeath*>(pEvent))
+		release = death->GetVictim() == pHero || death->GetVictim() == pMount;
+	else if (const auto* minigame = dynamic_cast<const PFBaseUnitMinigameEvent*>(pEvent))
+		release = pEvent->GetType() == NDb::BASEUNITEVENT_MINIGAMESTARTED
+			&& (minigame->GetUnit() == pHero || minigame->GetUnit() == pMount);
+	if (release) Stop();
+	return 0;
+#else
   if ( pEvent->GetType() != NDb::BASEUNITEVENT_DEATH && pEvent->GetType() != NDb::BASEUNITEVENT_ISOLATE )
     return 0;
   
@@ -1254,6 +1310,7 @@ unsigned int PFApplMount::OnEvent(const PFBaseUnitEvent *pEvent)
   }
 
   return 0;
+#endif
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
