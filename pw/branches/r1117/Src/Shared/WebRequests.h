@@ -113,6 +113,7 @@ std::string GetFormattedJson(Json::Value value);
 #elif defined( NV_LINUX_PLATFORM )
 
 #include <curl/curl.h>
+#include <pthread.h>
 
 extern int usedServer;
 
@@ -125,6 +126,15 @@ struct HttpPostSink
   {
     static_cast<std::string *>(userdata)->append(static_cast<char *>(data), size * nmemb);
     return size * nmemb;
+  }
+
+  // HTTP requests come from more than one thread (lobby finish delivery,
+  // game server awards worker): curl_global_init must run exactly once.
+  static void GlobalInitOnce() { curl_global_init(CURL_GLOBAL_DEFAULT); }
+  static void GlobalInit()
+  {
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, &HttpPostSink::GlobalInitOnce);
   }
 };
 
@@ -162,7 +172,7 @@ inline std::string HttpPostJson(const std::string& url, const std::string& jsonD
   std::string response;
   response.reserve(4096);
 
-  curl_global_init(CURL_GLOBAL_DEFAULT);
+  HttpPostSink::GlobalInit();
   CURL *curl = curl_easy_init();
   if (!curl)
     return response;

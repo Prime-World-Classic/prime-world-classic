@@ -1,8 +1,11 @@
 sources = [
     'AwardsRoll.h',
     'AwardsRoll.cpp',
+    'WebAwardsRoll.h',
+    'WebAwardsRoll.cpp',
 ]
 
 components = [
     'Vendor/Libc',
+    'Vendor/JsonCpp',
 ]
