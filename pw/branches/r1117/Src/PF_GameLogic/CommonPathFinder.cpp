@@ -740,11 +740,24 @@ bool CCommonPathFinder::Walkable( const SVector &start, const SVector &finish )
 bool CCommonPathFinder::Walkable( const SVector &start, const SVector &finish, 
                                   const int _nBoundTileRadius, const int _nBoundTileRadiusDyn )
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Placement can precede any path query; validate both geometry and its explicit footprint.
+	if (!IsValid(tileMap) || !IsSupportedMapSize(tileMap->GetSizeX(), tileMap->GetSizeY())
+		|| _nBoundTileRadius < 1 || _nBoundTileRadius > NWorld::MAX_UNIT_SIZE
+		|| _nBoundTileRadiusDyn < 1 || _nBoundTileRadiusDyn > NWorld::MAX_UNIT_SIZE
+		|| start.x < 0 || start.y < 0 || start.x >= tileMap->GetSizeX() || start.y >= tileMap->GetSizeY()
+		|| finish.x < 0 || finish.y < 0 || finish.x >= tileMap->GetSizeX() || finish.y >= tileMap->GetSizeY()) return false;
+#endif
 	int nLastBoundTileRadius    = nBoundTileRadius;
 	int nLastBoundTileRadiusDyn = nBoundTileRadiusDyn;
 
+#if defined(PW_LINUX_NULL_RENDER)
+	nBoundTileRadius = _nBoundTileRadius;
+	nBoundTileRadiusDyn = _nBoundTileRadiusDyn;
+#else
 	nLastBoundTileRadius    = _nBoundTileRadius;
 	nLastBoundTileRadiusDyn = _nBoundTileRadiusDyn;
+#endif
 
 	bool isWalkable = Walkable(start, finish);
 

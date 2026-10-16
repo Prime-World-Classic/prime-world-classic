@@ -140,9 +140,15 @@ static void DispatchMaceB12(Checks& check)
 		check((mode != 1 && mode != 4) || distance < 10, "building-layer obstruction participates in the real straight-move query");
 		check((mode != 2 && mode != 3) || distance == 10, "mace building-only collision ignores static and dynamic map layers");
 		for (int tick = 0; tick != 5; ++tick) f.fixture.world->Step(.5f, .5f);
-		const float finalX = mode == 5 || mode == 7 ? 8 : destinationX;
+		// Initially coincident units separate through real collision resolution before the pursuing dispatch arrives.
+		const float finalX = mode == 6 ? f.receiver->GetPos().x : mode == 5 || mode == 7 ? 8 : destinationX;
+		if (!mace->HasArrived() || mace->HasApplied() || mace->IsObjectDead() || fabs(mace->GetCurPos().x - finalX) >= .001f)
+			std::printf("Mace landing context: mode=%d arrived=%d applied=%d dead=%d actual=%g,%g expectedX=%g receiver=%g,%g\n",
+				mode, mace->HasArrived(), mace->HasApplied(), mace->IsObjectDead(), mace->GetCurPos().x, mace->GetCurPos().y,
+				finalX, f.receiver->GetPos().x, f.receiver->GetPos().y);
 		check(mace->HasArrived() && !mace->HasApplied() && !mace->IsObjectDead() && fabs(mace->GetCurPos().x - finalX) < .001f,
 			"collision zero-distance and distance-limit arrivals preserve original deferred mace policy");
+		if (mode == 6) check(mace->GetCurPos() == f.receiver->GetPos(), "initially coincident mace follows its collision-corrected live target in both coordinates");
 		check(f.receiver->GetHealth() == 1000 && mace->GetCurrentPosition().IsFinite(),
 			"mace clipping and arrival cannot create implicit damage or nonfinite coordinates");
 		if (!wall.empty()) map->MarkObject(wall, false, layer);

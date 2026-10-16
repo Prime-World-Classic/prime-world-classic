@@ -6,6 +6,8 @@
 #include "PFAbilityInstance.h"
 #include "PFAbilityData.h"
 #include "PFBaseUnit.h"
+#include "PFBaseMovingUnit.h"
+#include "TileMap.h"
 #include "PFAIWorld.h"
 #include "TargetSelectorHelper.hpp"
 #include "PFWorld.h"
@@ -699,26 +701,35 @@ PFUnitPlaceCorrector::PFUnitPlaceCorrector(const NDb::TargetSelector &db, PFWorl
 
 bool PFUnitPlaceCorrector::FindTarget(const RequestParams &pars, Target &target)
 {
-  if (!pTargetSelector || !pars.pRequester)
-    return false;
-
-  if (!pTargetSelector->FindTarget(pars, target))
-    return false;
-
-  CVec3 targetPos = target.AcquirePosition();
-  if (GetDB().checkByRangeToRequester && GetDB().radius > 0.0f)
-  {
-    const CVec3 requestPos = pars.pRequester->AcquirePosition();
-    CVec3 dir = targetPos - requestPos;
-    dir.z = 0.0f;
-    const float len = sqrt(fabs2(dir.AsVec2D()));
-    if (len > GetDB().radius && len > EPS_VALUE)
-      targetPos = requestPos + dir * (GetDB().radius / len);
-  }
-
-  target.SetPosition(targetPos);
-  DUMP_SELECTOR_TARGET(target);
-  return target.IsValid(true);
+	PFBaseMovingUnit* owner = dynamic_cast<PFBaseMovingUnit*>(pars.pOwner.GetPtr());
+	const float radius = GetDB().radius;
+	if (!IsUnitValid(owner) || !pTargetSelector || !std::isfinite(radius) || radius < 0
+		|| (GetDB().checkByRangeToRequester && (!pars.pRequester || !pars.pRequester->IsValid(true)))) return false;
+	Target selected;
+	if (!pTargetSelector->FindTarget(pars, selected) || !selected.IsValid(true)) return false;
+	CVec2 point = selected.AcquirePosition().AsVec2D();
+	if (!std::isfinite(point.x) || !std::isfinite(point.y)) return false;
+	int mode = 0;
+	if (GetDB().passabilityCheckMode & NDb::TRACEMODE_STATIC) mode |= MAP_MODE_STATIC;
+	if (GetDB().passabilityCheckMode & NDb::TRACEMODE_BUILDING) mode |= MAP_MODE_BUILDING;
+	if (GetDB().passabilityCheckMode & NDb::TRACEMODE_DYNAMIC) mode |= MAP_MODE_DYNAMIC;
+	CVec2 found;
+	bool success = false;
+	// Preserve the original bounded attempt, followed by radial fallback around the clamped point.
+	if (GetDB().checkByRangeToRequester)
+	{
+		const CVec2 request = pars.pRequester->AcquirePosition().AsVec2D();
+		if (!std::isfinite(request.x) || !std::isfinite(request.y)) return false;
+		const double dx = double(point.x) - request.x, dy = double(point.y) - request.y;
+		const double length = sqrt(dx * dx + dy * dy);
+		if (radius > 0 && length > radius) point = CVec2(request.x + dx * radius / length, request.y + dy * radius / length);
+		if (fabs2(point - request) > 1)
+			success = owner->FindFreePlace2(point, request, radius, found, false, GetDB().nativeTerrainOnly, mode, GetDB().checkLineOfSight);
+	}
+	if (!success && !owner->FindFreePlace(point, radius, found, false, GetDB().nativeTerrainOnly, mode, GetDB().checkLineOfSight)) return false;
+	target.SetPosition(CVec3(found, 0));
+	DUMP_SELECTOR_TARGET(target);
+	return true;
 }
 
 PFConvertTargetToLand::PFConvertTargetToLand(const NDb::TargetSelector &db, PFWorld* world)

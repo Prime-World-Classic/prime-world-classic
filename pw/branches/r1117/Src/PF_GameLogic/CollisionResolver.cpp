@@ -92,7 +92,11 @@ bool LinuxResolverTryPlace(
   if (!LinuxResolverCanStand(unit, position, skipUnit, units))
     return false;
 
-  return unit->PlaceUnit(position, true, false, false);
+	// Placement rounds to grid centers; validate the committed cell, including the anchor.
+	CVec2 placed;
+	if (!unit->FindFreePlace(position, 0, placed, true) || !LinuxResolverCanStand(unit, placed, nullptr, units))
+		return false;
+	return unit->PlaceUnit(placed, true, false, false);
 }
 
 bool LinuxResolverTryPlaceAround(

@@ -119,7 +119,9 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 		if (rules) { ai->globalConstants = rules->globalConstants; ai->abilityAndDamageScalingParams = rules->abilityAndDamageScalingParams; }
 		if (db && upgrade && superior && rules) for (bool burn : {false, true}) for (int mode : {0, 1, 2})
 		for (bool cancel : {false, true}) for (float distance : {12.f, 24.f, 90.f})
+		for (int landingLayer : {0, int(MAP_MODE_STATIC), int(MAP_MODE_BUILDING)})
 		{
+			if (landingLayer && (cancel || distance != 24 || mode == 1)) continue;
 			RoutingFixtureB13 isolated(check); if (!isolated.world) continue;
 			const bool shield = mode != 0;
 			auto hero = CommandHeroB10(isolated.world); hero->ChangeFaction(burn ? NDb::FACTION_BURN : NDb::FACTION_FREEZE);
@@ -151,6 +153,11 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 				"B13 maneuver shield scales its larger stat and purchased upper upgrade with original global endpoints");
 			check(hero->TeleportTo(CVec2(5, 15)), "B13 maneuver caster is separated from the descriptor seed hero");
 			const Target point(CVec3(5 + distance, 15, 0)); const CVec2 origin = hero->GetPos();
+			if (landingLayer)
+			{
+				vector<SVector> cells; cells.push_back(isolated.world->GetTileMap()->GetTile(point.GetPosition().AsVec2D()));
+				isolated.world->GetTileMap()->MarkObject(cells, true, landingLayer);
+			}
 			const float mana = hero->GetMana(); CObj<PFAbilityInstance> cast = hero->UseTalent(talent, point);
 			check(cast && hero->IsInChannelling() && hero->GetMana() == mana && hero->GetPos() == origin,
 				"B13 original maneuver begins a stationary creation channel without premature mana payment");
@@ -179,8 +186,8 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 					lastFlight = i + 1; trapProtected = trapProtected && hero->GetVariable("NoTraps") == 1;
 				}
 			}
-			std::printf("B13 A3 burn=%d mode=%d cancel=%d distance=%g pos=%g,%g payStep=%d flight=%d..%d mana=%g cd=%g maxShield=%g active=%d\n",
-				burn, mode, cancel, distance, hero->GetPos().x, hero->GetPos().y, paymentStep, firstFlight, lastFlight,
+			std::printf("B13 A3 burn=%d mode=%d cancel=%d distance=%g landingLayer=%d pos=%g,%g payStep=%d flight=%d..%d mana=%g cd=%g maxShield=%g active=%d\n",
+				burn, mode, cancel, distance, landingLayer, hero->GetPos().x, hero->GetPos().y, paymentStep, firstFlight, lastFlight,
 				hero->GetMana(), talent->GetCurrentCooldown(), maxShield, cast ? cast->GetActiveApplicatorsCount() : -1);
 			const float channel = Max(distance / 30 - (mode == 2 ? 2 : 0), .1f);
 			check(stationaryChannel && (cancel ? paymentStep == 0 : paymentStep * .1f >= channel && paymentStep * .1f <= channel + .21f),
@@ -188,8 +195,10 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 			check(trapProtected && (cancel || (firstFlight > paymentStep && std::fabs((lastFlight - firstFlight + 1) * .1f - distance / 30) <= .11f)),
 				"B13 original movement retains 30-unit speed and trap protection throughout flight");
 			check(hero->GetMana() == mana - (cancel ? 0 : 100), "B13 maneuver completion pays exactly once and cancellation pays nothing");
-			check(cancel ? hero->GetPos() == origin && !flying : fabs(hero->GetPos() - point.GetPosition().AsVec2D()) < .01f && flying,
-				"B13 original maneuver flies to its selected endpoint only after successful channel completion");
+			const CVec2 landing = isolated.world->GetTileMap()->GetPointByTile(isolated.world->GetTileMap()->GetTile(point.GetPosition().AsVec2D()))
+				+ CVec2(0, landingLayer ? 1 : 0);
+			check(cancel ? hero->GetPos() == origin && !flying : fabs(hero->GetPos() - landing) < .01f && flying,
+				"B13 original maneuver flies to its grid-corrected endpoint only after successful channel completion");
 			check(maxShield == (!cancel && shield ? capacity.value : 0) && hero->GetShield() == 0,
 				"B13 complete maneuver applies only its purchased shield and retires it at the authored deadline");
 			check(cast && cast->IsFinished() && cast->GetActiveApplicatorsCount() == 0 && !hero->IsInChannelling()
