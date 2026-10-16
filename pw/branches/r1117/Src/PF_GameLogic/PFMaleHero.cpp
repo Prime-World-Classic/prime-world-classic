@@ -259,7 +259,19 @@ float PFBaseMaleHero::GetForce( bool countPersistentStats ) const
 float PFBaseMaleHero::GetManaCostModifier( bool altCost ) const { return altCost ? lifeCostForceModifier : manaCostForceModifier; }
 void PFBaseMaleHero::RecalculateManaCostModifier() { manaCostForceModifier = 1.0f; lifeCostForceModifier = 1.0f; }
 float PFBaseMaleHero::GetTalentsAcquiredBudgetPercent() const { return pTalents ? pTalents->GetAcquiredBudgetPercent() : 0.0f; }
-void PFBaseMaleHero::DropTalentsCooldowns( DropCooldownParams const& dropCooldownParams ) const { (void)dropCooldownParams; }
+/** Restore original portal/set selection; an explicit list takes precedence over exceptAbility. */
+void PFBaseMaleHero::DropTalentsCooldowns(DropCooldownParams const& params) const
+{
+	auto drop = [&params](PFTalent* talent, int, int)
+	{
+		if (!talent || talent->IsReady()) return;
+		const bool selected = params.talentsList.empty() ? talent != params.exceptAbility
+			: PFAbilityData::IsAbilitySuitable(talent->GetTalentDesc(), params.talentsList, params.mode);
+		if (selected) talent->DropCooldown(true, params.cooldownReduction, params.reduceByPercent);
+	};
+	if (portal) drop(portal, 0, 0);
+	ForAllTalents(drop);
+}
 /** Start only shorter sibling cooldowns; the base call avoids recursive group propagation. */
 void PFBaseMaleHero::RestartGroupCooldowns(PFTalent const* pTalent)
 {
