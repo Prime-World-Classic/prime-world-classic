@@ -6122,7 +6122,7 @@ void CloneHeroApplicator::Assign( const CloneHeroApplicator& _cloneHeroApplicato
 NWorld::PFBaseApplicator* CloneHeroApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplCloneHero>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplCloneHero>( *this, cp );

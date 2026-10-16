@@ -904,7 +904,20 @@ void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const S
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const NDb::DbResource * resource) { (void)eventType; (void)resource; }
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, int intParam1) { (void)eventType; (void)intParam1; }
 void PFBaseHero::LoggTimeSliceIfNeeded( float deltaTime ) { (void)deltaTime; }
-void PFBaseHero::ForAllClones( CloneFunc& cloneFunc ) { for (int i = 0; i < clones.size(); ++i) if (clones[i].clone) cloneFunc(clones[i].clone); }
+/** Visit an owning snapshot, rechecking membership after callbacks; newly created clones wait for the next visit. */
+void PFBaseHero::ForAllClones(CloneFunc& cloneFunc)
+{
+	CObj<PFBaseHero> owner(this);
+	nstl::vector<CObj<PFBaseHero>> snapshot;
+	for (const auto& entry : clones) if (IsValid(entry.clone)) snapshot.push_back(entry.clone.GetPtr());
+	for (const auto& unit : snapshot)
+	{
+		if (!IsValid(unit)) continue;
+		bool registered = false;
+		for (const auto& entry : clones) if (entry.clone == unit) { registered = true; break; }
+		if (registered) cloneFunc(unit);
+	}
+}
 void PFBaseHero::DoLevelups( int count, float statsBonusBudget )
 {
   if ( IsClone() )
@@ -1061,14 +1074,6 @@ void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamag
     RecalculateRedeemCost();
     StartRespawnTimer();
   }
-}
-PFBaseHero* PFBaseHero::Clone( const CloneParams& params, float takeModDmg, NDb::ESpellTarget takeTypeUnit, const string& summonGroupName )
-{
-  (void)params;
-  (void)takeModDmg;
-  (void)takeTypeUnit;
-  (void)summonGroupName;
-  return 0;
 }
 
 

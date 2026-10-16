@@ -53,6 +53,22 @@ static LinuxBootstrap::NumericFormulaResult EvaluateSummonSetupValue(const Execu
 	return LinuxBootstrap::EvaluateSelectorConditionFormula(source.sString.c_str(), app->GetAbilityOwner(), candidate, app);
 }
 
+/** Preserve original truncation/defaults, rejecting failed or out-of-range integer reads without their random draws. */
+static bool EvaluateSummonSetupInteger(PFBaseApplicator& app, const ExecutableIntString& authored, int fallback, int& value)
+{
+	if (authored.sString.empty() && authored.compiledString.empty()) { value = fallback; return true; }
+	auto* random = app.GetWorld() ? app.GetWorld()->GetRndGen() : nullptr;
+	const NRandom::RandomGenerator before(random ? *random : NRandom::RandomGenerator(0));
+	const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), app);
+	if (!result.Succeeded() || double(result.value) < std::numeric_limits<int>::min()
+		|| double(result.value) > std::numeric_limits<int>::max())
+	{
+		if (random) *random = before;
+		return false;
+	}
+	value = static_cast<int>(result.value); return true;
+}
+
 /** Validate both original pre-write resource reads as one pair, including their random draws.
  * Failure leaves resources unchanged. Callers retire the new candidate and skip
  * its child effects; this does not undo earlier replacement or other setup reads.
@@ -107,17 +123,7 @@ bool PFApplSummon::Start()
 #if defined(PW_LINUX_NULL_RENDER)
 	// Preserve original evaluation order/defaults, but never turn a failed expression into a summon.
 	const auto retrieveInteger = [this](const ExecutableIntString& authored, int fallback, int& value) {
-		if (authored.sString.empty() && authored.compiledString.empty()) { value = fallback; return true; }
-		auto* random = GetWorld() ? GetWorld()->GetRndGen() : nullptr;
-		const NRandom::RandomGenerator before(random ? *random : NRandom::RandomGenerator(0));
-		const auto result = LinuxBootstrap::EvaluateApplicatorNumericFormula(authored.sString.c_str(), *this);
-		if (!result.Succeeded() || double(result.value) < std::numeric_limits<int>::min()
-			|| double(result.value) > std::numeric_limits<int>::max())
-		{
-			if (random) *random = before;
-			return false;
-		}
-		value = static_cast<int>(result.value); return true;
+		return EvaluateSummonSetupInteger(*this, authored, fallback, value);
 	};
 
 #endif
@@ -423,9 +429,15 @@ bool PFApplCloneHero::Start()
   }
 
   PFBaseHero* pHero      = dynamic_cast<PFBaseHero*>( pReceiver.GetPtr() );
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!pHero) return true;
+#endif
   NI_ASSERT( pHero, "PFApplCloneHero can be applied only on a hero" );
 
   PFBaseHero* pOwnerHero = dynamic_cast<PFBaseHero*>( pOwner.GetPtr() );
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!pOwnerHero) return true;
+#endif
   NI_ASSERT( pOwnerHero, "PFApplCloneHero can be applied only by a hero" );
 
   NDb::CloneHeroApplicator const& db = GetDB();
@@ -434,8 +446,17 @@ bool PFApplCloneHero::Start()
 
 	// prepare clone parameters
 	CloneParams params;
+#if defined(PW_LINUX_NULL_RENDER)
+	const auto duration = EvaluateSummonSetupValue(db.lifeTime, this, pHero, 0.f);
+	if (!duration.Succeeded()) return true;
+	params.lifeTime = duration.value;
+	const auto following = EvaluateSummonSetupValue(db.followRange, this, pHero, 0.f);
+	if (!following.Succeeded()) return true;
+	const float followRange = following.value;
+#else
 	params.lifeTime = RetrieveParam(   db.lifeTime,    0.0f );
 	float followRange = RetrieveParam( db.followRange, 0.0f );
+#endif
 	if ( followRange > 0 )
   {
     params.followRange = followRange;
@@ -460,14 +481,30 @@ bool PFApplCloneHero::Start()
     params.targetingParams = db.targetingParams;
 
     // remove old clones
+#if defined(PW_LINUX_NULL_RENDER)
+		int maxSummonCount;
+		if (!EvaluateSummonSetupInteger(*this, db.maxCount, 0, maxSummonCount)) return true;
+		const int curSummonsCount = pOwnerHero->GetSummonsCount(NDb::SUMMONTYPE_PRIMARY, db.summonGroupName);
+		const long long requested = 1LL + curSummonsCount - maxSummonCount;
+		if (requested > std::numeric_limits<int>::max()) return true;
+		pOwnerHero->RemoveSummons(requested > 0 ? static_cast<int>(requested) : 0, NDb::SUMMONTYPE_PRIMARY, db.summonGroupName);
+#else
     int maxSummonCount = RetrieveParam( db.maxCount, 0 );
     int curSummonsCount = pOwnerHero->GetSummonsCount( NDb::SUMMONTYPE_PRIMARY, db.summonGroupName );
     pOwnerHero->RemoveSummons( 1 + curSummonsCount - maxSummonCount, NDb::SUMMONTYPE_PRIMARY, db.summonGroupName );
+#endif
     pOwnerHero->SetMaxAllowedSummons( NDb::SUMMONTYPE_PRIMARY, db.summonGroupName, maxSummonCount );
   }
 
 	// clone hero
+#if defined(PW_LINUX_NULL_RENDER)
+	// Preserve original post-replacement read order; earlier unsummon callbacks are not rolled back on failure.
+	const auto damage = EvaluateSummonSetupValue(db.takeModDmg, this, pHero, 1.f);
+	if (!damage.Succeeded()) return true;
+	PFBaseHero* pClone = pHero->Clone(params, damage.value, db.takeTypeUnit, db.summonGroupName);
+#else
   PFBaseHero *pClone = pHero->Clone(params, db.takeModDmg( pOwner, pHero, this, 1.f ), db.takeTypeUnit, db.summonGroupName );
+#endif
   if (!pClone)
     return true;
 

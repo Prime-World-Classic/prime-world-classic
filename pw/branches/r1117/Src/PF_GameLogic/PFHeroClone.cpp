@@ -5,6 +5,10 @@
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFStatistics.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include <cmath>
+#include <limits>
+#endif
 
 #ifndef VISUAL_CUTTED
 #include "PFClientHero.h"
@@ -42,8 +46,16 @@ public:
 
 	virtual void OnStop()
 	{
+#if defined(PW_LINUX_NULL_RENDER)
+		// Remove both weak ownership links before callbacks can stop this behavior again.
+		CObj<PFHeroCloneBehaviour> retained(this);
+		CObj<PFBaseHero> master(IsValid(pHeroMaster) ? pHeroMaster.GetPtr() : nullptr);
+		pHeroMaster = nullptr; pMaster = nullptr;
+		if (master) { master->RemoveEventListener(this); master->RemoveClone(cloneId); }
+#else
 		pHeroMaster->RemoveEventListener( this );
     pHeroMaster->RemoveClone( cloneId );
+#endif
 
     PFSummonBehaviour::OnStop();
 	}
@@ -52,6 +64,12 @@ public:
 	{
 		CPtr<PFBaseHero> pUnit = static_cast<PFBaseHero*>(GetUnit().GetPtr());
 
+#if defined(PW_LINUX_NULL_RENDER)
+		// A removed master cannot leave an orphan clone alive indefinitely.
+		CObj<PFHeroCloneBehaviour> retained(this);
+		if (!IsUnitValid(pUnit)) return true;
+		if (!IsValid(pMaster)) { Unsummon(); return true; }
+#endif
 		// kill controlled unit when master is dead
 		if (!pUnit->IsDead() && IsValid(pMaster))
 		{
@@ -132,6 +150,14 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PFBaseHero* PFBaseHero::Clone( const CloneParams& params, float takeModDmg, NDb::ESpellTarget takeTypeUnit, const string& summonGroupName )
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	// Keep factory inputs finite and slave ownership in the same world; retain the source across initialization callbacks.
+	if (!GetWorld() || IsObjectDead() || !GetDbHero() || !std::isfinite(params.lifeTime)
+		|| !std::isfinite(params.followRange) || !std::isfinite(takeModDmg)
+		|| (!params.bSlave && cloneCounter == std::numeric_limits<int>::max())
+		|| (params.bSlave && (!IsUnitValid(params.pOwner) || params.pOwner->GetWorld() != GetWorld()))) return nullptr;
+	CObj<PFBaseHero> source(this);
+#endif
   PFBaseHero* pOwner = params.pOwner;
   //bool isSlave = ( pOwner != NULL );
 
@@ -154,6 +180,10 @@ PFBaseHero* PFBaseHero::Clone( const CloneParams& params, float takeModDmg, NDb:
 	info.shouldPlaySummonEffect = params.shouldPlaySummonEffect;
   info.playerInfo.heroSkin = GetSkinId();
 	PFBaseHero* pNewHero = CreateHero( GetWorld(), info );
+#if defined(PW_LINUX_NULL_RENDER)
+	if (!pNewHero) return nullptr;
+	CObj<PFBaseHero> created(pNewHero);
+#endif
 
   pNewHero->playerGender = playerGender;
 

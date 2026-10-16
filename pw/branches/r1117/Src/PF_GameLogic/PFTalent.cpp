@@ -445,8 +445,9 @@ void PFTalentsSet::PreparePredefinedSet(const NDb::AILogicParameters* pAIParams,
     pDefaultSet = NDb::Get<NDb::TalentsSet>( NDb::DBID(g_strTalentSetToLoad) );
   if ( !pDefaultSet )
   {
-    if ( NDb::Ptr<NDb::Hero> pHero = dynamic_cast<NDb::Hero const*>(pDBHero) )
-      pDefaultSet = pHero->defaultTalentsSets[0];
+		// Clones may initialize talents from a descriptor with no hero-specific set.
+		if (NDb::Ptr<NDb::Hero> pHero = dynamic_cast<NDb::Hero const*>(pDBHero))
+			if (!pHero->defaultTalentsSets.empty()) pDefaultSet = pHero->defaultTalentsSets[0];
   }
   if ( !pDefaultSet && pAIParams )
     pDefaultSet = pAIParams->defaultTalentsSet;

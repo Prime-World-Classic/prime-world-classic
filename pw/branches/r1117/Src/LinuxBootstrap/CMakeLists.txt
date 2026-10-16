@@ -566,6 +566,7 @@ add_executable(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+	../PF_GameLogic/PFHeroClone.cpp
   hero_actions_bootstrap.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFHeroStates.cpp
@@ -1138,6 +1139,7 @@ add_library(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+	../PF_GameLogic/PFHeroClone.cpp
   hero_actions_bootstrap.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
@@ -1306,6 +1308,7 @@ add_library(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+	../PF_GameLogic/PFHeroClone.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFHeroStates.cpp
   ../PF_GameLogic/PointersHolder.cpp
@@ -1958,6 +1961,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+	../PF_GameLogic/PFHeroClone.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
   ../PF_GameLogic/PFMainBuilding.cpp
@@ -2081,6 +2085,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFEaselPlayer.cpp
   ../PF_GameLogic/PFHero.cpp
+	../PF_GameLogic/PFHeroClone.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFHeroStates.cpp
   ../PF_GameLogic/PointersHolder.cpp
