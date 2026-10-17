@@ -4852,3 +4852,231 @@ Xvfb и управляется XTEST (`/tmp/xui.py`: click/type/key/ctrl/schord;
 появляется. Добавлено в код: env `PW_VK_LAYERS` (включение слоёв инстанса самим
 приложением, максимум 8) — слой подтверждается в логе клиента, захвата всё равно
 нет: под winevulkan хуки RenderDoc обходятся загрузчиком winevulkan.
+
+
+### Сделано (шаг 14 срез A + нативный RenderDoc-стенд + рекордер вывода — 2026-10-17, WIP; продолжение в новой сессии)
+
+Ветка `nvrhi`, HEAD `887f6421f` (шаги 13.4c–13.4e + срез A). В дереве
+**незакоммичены** правки рекордера (`Src/Render/nvrhibackend.cpp`,
+`nvrhibackend.h`, `LayoutObj::desc`) и `tools/nvrhi_probe/probe.cpp`
+(X11-стенд + RenderDoc-триггер) + `tools/nvrhi_probe/CMakeLists.txt` (`X11`).
+
+#### Почему RenderDoc только в нативном процессе (замер, не повторять)
+
+Полный порт клиента под Linux = недели: в `Src/` (3094 `.cpp`) SEH `__try` —
+47 файлов / `__except` — 44 (у GCC аналога нет), `windows.h` — 38, `WinMain` — 11,
+`#pragma comment` — 20, `intrin.h` — 550, `nstl::` — 783; в `Src/Render` 81
+`.cpp`, из них **32 трогают d3d9/D3DX и 0 платформенных `#ifdef`**, `D3DXCreate*`
+— 7 файлов (D3DX9 = только MSVC .lib). Граф MSVC-зависим
+(`Tools/ClientCMake/gen_cmake.py` переводит `vcxflags`). НЕ блокираторы:
+`Src/System`, `Network`, `Shared`, `Game` компилируются GCC (сервер
+`UniServerApp` собирается нативно; `LINUX_PORT_REPORT.md`, ветка `linux_server`,
+`57f57c147`).
+
+Вывод: рендер-подмножество (NVRHI + Vulkan + SDL3/X11) независимо и собирается
+СЕЙЧАС → отладочный контур строится на нём, клиента не портируем. Прежний вывод
+«RenderDoc — тупик» (§ выше) верен только для Wine: инъекция уходит в
+wine-загрузчик, а гость (Windows PE) не может вызвать `RENDERDOC_GetAPI`.
+
+#### п.1 — ГОТОВ: нативный X11-стенд кадра + захват RenderDoc
+
+`tools/nvrhi_probe/probe.cpp`: на Linux `#define VK_USE_PLATFORM_XLIB_KHR 1` +
+`#include <X11/Xlib.h>` ДО `<vulkan/vulkan_xlib.h>` (сам он Xlib не включает),
+затем ОБЯЗАТЕЛЬНО `#undef None True False Status Success Bool Always Never
+Complex AnyOrder GrayScale StaticGray StaticColor PseudoColor TrueColor
+DirectColor TileShape Unsorted Any` (X.h/Xlib.h переопределяют идентификаторы
+`nvrhi.h:685 struct TileShape`, `nvrhi.h:3818`, `nvrhiHLSL.h:85` →
+`expected identifier before numeric constant`). Указатели surface/swapchain и их
+загрузка выведены из-под `#ifdef _WIN32` в
+`#if defined(_WIN32) || defined(VK_USE_PLATFORM_XLIB_KHR)` (иначе
+`нет VK_KHR_xlib_surface в драйвере` — загрузка оставалась внутри `#ifdef`).
+Экземплярные расширения на Linux: `VK_KHR_surface` + `VK_KHR_xlib_surface`.
+`ProbeNativeWindow(...)`: `XOpenDisplay` → `XCreateWindow` 640x480 + `XMapWindow`
++ `XSync` → `vkCreateXlibSurfaceKHR` → swapchain (FIFO, 3 картинки) →
+`createHandleForNativeTexture(VK_Image, …, SBGRA8_UNORM, setIsRenderTarget,
+setInitialState(RenderTarget), setKeepInitialState(true))` → цикл
+acquire/clear/execute/present. Замер: `[PASS] x11: … цикл present'а present'ов 60
+из 3 картинок`. `tools/nvrhi_probe/CMakeLists.txt`: `if(UNIX AND NOT APPLE)
+target_link_libraries(nvrhi_probe PRIVATE X11) endif()`. Сборка:
+`./tools/nvrhi_probe/build_probe_linux.sh --clean` → `build-linux/nvrhi_probe`.
+
+**Рабочий рецепт захвата** (тупик `renderdoccmd capture` — он НИЧЕГО не
+инжектирует: у цели `LD_PRELOAD=` пусто, `VK_INSTANCE_LAYERS` нет; есть только
+`ENABLE_VULKAN_RENDERDOC_CAPTURE`, `RENDERDOC_CAPFILE`, `RENDERDOC_CAPOPTS`):
+
+    LD_PRELOAD=/tmp/renderdoc_1.46/lib/librenderdoc.so \
+    VK_ADD_IMPLICIT_LAYER_PATH=/tmp/rdlayer/implicit_layer.d \
+    ENABLE_VULKAN_RENDERDOC_CAPTURE=1 DISPLAY=:97 \
+    PW_PROBE_FRAMES=40 PW_PROBE_MANUAL=20 ./build-linux/nvrhi_probe
+
+Слой — правленый манифест `/tmp/rdlayer/implicit_layer.d/renderdoc_capture.json`
+(в поставке заглушка `"library_path": "/io/dist/lib/librenderdoc.so"` →
+`/tmp/renderdoc_1.46/lib/librenderdoc.so`). В коде: `RenderDocApi()` =
+`dlsym(RTLD_DEFAULT, "RENDERDOC_GetAPI")` + `getApi(eRENDERDOC_API_Version_1_4_0,
+&out)` (**1 = успех, 0 = отказ**, `renderdoc_app.h:867`; в 1.46
+`RENDERDOC_API_1_4_0` — typedef на `RENDERDOC_API_1_7_0`, `StartFrameCapture`/
+`EndFrameCapture` возвращают `void`), env `PW_PROBE_MANUAL=<кадр>` (Start/End
+вокруг кадра) и `PW_PROBE_CAPTURE=<кадр>` (`TriggerCapture`). Результат:
+`/tmp/rdcap/manual_capture.rdc` 8929 Б; проверка без GUI:
+`/tmp/renderdoc_1.46/bin/renderdoccmd thumb -o /tmp/rdcap/thumb.jpg -s 512
+manual_capture.rdc` → однотонный красный кадр = ровно тот `Color(1,0,0,1)`, что
+залит внутри захваченного кадра.
+
+#### п.2 — ГОТОВ (не коммичен): рекордер вывода клиента
+
+`Src/Render/nvrhibackend.cpp`: env `PW_VK_RECORD=<имя файла>` (имя БЕЗ `/`,
+иначе Wine трактует путь), `PW_VK_RECORD_MAX` (дефолт 40), `PW_VK_RECORD_RT=ШхВ`
+фильтр по размеру цели. `RecOpen` в конце блока env в `Init`, `RecClose` в
+`Shutdown()`, `RecDraw(...)` в `DrawImpl` перед `VK_TRACE("setGfxState >")`
+(т.е. после `FindOrCreateResMap`, потоков, IB и вьюпорта — всё состояние
+доступно). Логи: `VkRec: вывод пишется в %s (лимит %u, цель %ux%u)`,
+`VkRec: записано выводов=%u ресурсов=%u`.
+
+Формат (всё u32/f32 LE): `"PWRD"` + u32 **версия 2** + u32 ширина + u32 высота
+swapchain'а (может быть `0x0` — swapchain создаётся после `Init`; реплеер берёт
+размер цели из каждой записи вывода). Далее записи: u32 тип + поля. Типы
+`kRecShader=1, kRecBuffer=2, kRecTexture=3, kRecLayout=4, kRecDraw=5, kRecEnd=6`.
+Блоб = `u32 размер; u32 записано; байты`, потолок `kRecBlobCap = 8 MiB`
+(геометрия карты — гигабайты; при превышении байты НЕ пишутся, реплеер подставляет
+dummy). Записи ресурсов идут ПОСЛЕ тела вывода, id дедуплицированы по seam-индексу
+(`recShader/recBuffer/recTexture/recLayout` — векторы пар), `0xffffffff` = `kNoRes`.
+
+- SHADER: id, стадия (0 VS / 1 PS), entry (блоб), SPIR-V (блоб; `ShaderObj::spv`
+  наполняется при создании шейдера).
+- BUFFER: id, isIndex, index32, блоб байтов CPU-зеркала (`BufferObj::cpu`).
+  Смещения потоков пишутся **логическими** (внутри seam-буфера), slab-смещение
+  `BufferObj::off` в файл НЕ попадает → реплеер делает каждому буферу отдельный
+  nvrhi-буфер.
+- TEXTURE: id, w, h, mipLevels, cube, seamFormat, блоб `mirror` (уровень 0).
+- LAYOUT (v2): count `VertexElementDescriptor` + по 5 слов (`stream, offset,
+  type, usage, usageIndex`), ЗАТЕМ count `lo.desc` + на атрибут блоб имени и
+  6 слов (`format, arraySize, bufferIndex, offset, elementStride, isInstanced`) —
+  это готовый массив, реально переданный в `createInputLayout` (`LayoutObj::desc`,
+  стэш в `BuildInputLayout` после `lo.il = il;`). Дублирование сознательное:
+  в нативном реплеере нельзя повторять ни сканер SPIR-V, ни сопоставление
+  семантик (`SemEq`, `FormatIntClass`, заполнители location).
+- DRAW: 28 слов — `recDraws, vsId, psId, layId, rtW, rtH, rtDepth, dsW, dsH,
+  dsDepth, prim, indexed, startIndexLocation, startVertexLocation, primitiveCount,
+  vtx, instanceCount, vpX, vpY, vpW, vpH, minZ(f32), maxZ(f32), scissorValid,
+  scL, scT, scR, scB`; затем u32 `kMaxVertexStreams`(=8) + по 3 слова на поток
+  (`bufId, vbOffset, vbStride`); затем 5 слов `ibId, instBufId, instSlot,
+  instOffset, instStride`; затем u32 `kBackendSamplerSlots`(=16) + по 12 слов на
+  слот (`texId` + `minFilter, magFilter, mipFilter, addressU, addressV, addressW,
+  borderColor, lodBias, maxAnisotropy, maxMipLevel, set`); затем **29** слов модели
+  состояний (`cullMode, fillMode, scissorTestEnable, zEnable, zWriteEnable, zFunc,
+  slopeScaleDepthBias(f32), depthBiasRaw, stencilEnable, stencilFunc, stencilRef,
+  stencilReadMask, stencilWriteMask, stencilFail, stencilZFail, stencilPass,
+  alphaBlendEnable, separateAlphaBlend, srcBlend, destBlend, blendOp,
+  srcBlendAlpha, destBlendAlpha, blendOpAlpha, colorWriteEnable, alphaTestEnable,
+  alphaRef, alphaFunc, clipPlaneEnable`); затем два банка констант (`u32 1024` +
+  1024 float VS, то же PS — из `m_constShadow[csVertex]/[csPixel]`,
+  `SHADER_CONST_REGISTERS=256`); затем (v2) count ресурсов набора + по 5 слов
+  (`set, binding, kind, dim, count`) из `ResMapObj::items` — нумерация
+  `enum EResKind { rkSampler=0, rkTexture, rkUbo, rkSsbo, rkOther }`
+  (`nvrhibackend.cpp:118`).
+
+**Дефект формата, найденный офлайн-парсером (починен):** id ресурсов считались
+как побочный эффект вызовов `RecShaderId/RecBufferId/RecTextureId/RecLayoutId`,
+поэтому записи ресурсов втиснуты в ТЕЛО первого вывода — парсер расходился на
+`struct.error: unpack_from requires a buffer of at least 19589490848 bytes`,
+после поправки счётчика (30→28 слов) — на `…402992500 bytes at offset 136`
+(offset 136 и доказал, что первая запись уже DRAW). Починка: в начале `RecDraw`
+собираются ВСЕ id, потом пишется тело.
+
+Первый снимок (до починки): `wine-client/Game/Bin/vk_rec.pwrd` 18 223 104 Б,
+клиент при этом штатно в бою (`VkStatsflip: presents=1799 recreates=1
+swap=1024x768`, `VkResflip: буферы=10858 шейдеры=120 раскладки=20
+пайплайны=3978/3978 (попаданий 602269) вывод=606461 загруз=1266198
+(ожиданий кольца 202)`). Сборка с починками и v2 — `/tmp/vk14a_build51.log`
+`ИТОГ: OK`, 0 `error C`, exe 15 930 880 Б; **на стенд ещё не развёрнут**
+(там exe 15 927 296 Б и старый `vk_rec.pwrd` v1).
+
+#### п.3 — КОНТРАКТ реплеера (следующее действие, кода ещё нет)
+
+`tools/render_replay/` (нативный Linux, g++/CMake по образцу
+`tools/nvrhi_probe/CMakeLists.txt`, линкует нативные `nvrhi` + `nvrhi_vk` +
+Vulkan-Headers; `X11` не нужен — рисуем offscreen, захват работает без swapchain'а):
+1. Бутстрап Vulkan — копия `ProbeVulkan()` (`tools/nvrhi_probe/probe.cpp:2299`):
+   `VkApplicationInfo.apiVersion = VK_API_VERSION_1_3`, exts только instance-level
+   (surface не просить), `loadInstanceLevel`, `EnumeratePhysicalDevices`,
+   `VK_QUEUE_GRAPHICS_BIT`, `vkCreateDevice` (NVRHI требует
+   `VK_KHR_synchronization2` и timeline semaphore), затем
+   `nvrhi::vulkan::DeviceDesc dd; dd.errorCB = &g_probeMsg; dd.instance/physicalDevice/
+   device/graphicsQueue/graphicsQueueIndex` → `nvrhi::vulkan::createDevice(dd)`.
+2. Чтение PWRD v2 → шейдеры (`createShader(ShaderDesc().setShaderType(...).
+   setEntryName(entry), spv, size)`), буферы (`createBuffer` + `writeBuffer` из
+   байтов; отдельный буфер на запись, slab не воспроизводить), текстуры
+   (`createTexture` + `writeTexture(tex, 0, 0, bytes, rowPitch)`; mip>0 и
+   сжатые форматы — dummy), раскладки (`createInputLayout(desc, n, vs)` —
+   **из `lo.desc`**, location = индекс массива), наборы (из `ResMapObj::items`:
+   set 0 = два UBO-банка (binding 0 VS, 1 PS), set 1 = SSBO (пока dummy, как в
+   клиенте), set 2 = текстуры по `binding`/`arrayElement`, set 3 = сэмплеры из
+   11 слов состояния — таблицы `AddressOf`/фильтры перенести из
+   `nvrhibackend.cpp:3843,3886`).
+3. Цель: RT `BGRA8_UNORM` `rtW x rtH` + DS `D24S8` `dsW x dsH` (глубина обязана
+   быть равного размера — иначе VUID-06088), `createGraphicsPipeline` из модели
+   (переводчики `CullOf`/`FillOf`/`ZFuncOf`/blend — из `FillPipelineState`,
+   `nvrhibackend.cpp:3733`; `setFrontCounterClockwise(true)` обязательно),
+   `createFramebuffer`, `setViewport`/`addScissorRect` по записанным значениям,
+   `setGraphicsState` + `drawIndexed(DrawArguments().setVertexCount(vtx)...)`.
+4. Результат: `mapStagingTexture` → число ненулевых пикселей + PPM/BMP; при
+   `PW_RP_CAPTURE=1` — `StartFrameCapture`/`EndFrameCapture` вокруг вывода тем же
+   рабочим способом (LD_PRELOAD + implicit-слой) → капча, в которой видно
+   Pipeline State конкретного вывода, дающего пустоту.
+5. Цель реплеера — объяснить пустой кадр: остаток VUID 07904 (у VS вход без
+   атрибута), 08733 (формат вершинного входа vs тип в шейдере), 08743 (у PS вход
+   без выхода VS) и выбор варианта материала (у Vulkan-бэкенда `caps=0x5`, у DXVK
+   `caps=0x7` → разные индексы, третий снимок живых индексов не снят).
+
+#### Процедура прогона Wine-стенда (повторять дословно)
+
+1. `cp prime-world-classic-client-modern/pw/branches/r1117/Tools/ClientCMake/
+   build/x64-wine/PW_Game.exe /home/rekon/PW/wine-client/Game/Bin/PW_Game.exe`
+   — **после каждой сборки**, иначе прогоны меряют старый exe (грабля: артефакт в
+   двух местах, `build/PW_Game.exe` и `Tools/ClientCMake/build/x64-wine/`;
+   `wine-client` лежит в КОРНЕ `PW`, не в worktree).
+2. Сервер: `pkill -x UniServerApp; cd /home/rekon/PW/local-gameserver-test &&
+   setsid nohup ./run_local.sh > server.log 2>&1 &` (ждать 12 с, порты 27301/27310
+   в `ss -lun`).
+3. Токен ОДНОРАЗОВЫЙ: `timeout 90 docker compose -f pw-api-docker/docker-compose.dev.yml
+   exec -T -e PW_VERSION=2.16.1 api node cli/session.js --ips 7f000001 |
+   grep -oE "pwclassic://runGame/[a-f0-9]+/2\.16\.1/2/7f000001/27300" > /tmp/vkurl.txt`
+   (повторный URL → `pick: n=1 alive=0 dead=…` + `web session push failed on ALL
+   servers`).
+4. Запуск: `cd /home/rekon/PW/wine-client && setsid nohup env PW_VK_BACKEND=1
+   PW_VK_TRACE=0 PW_VK_WATCHDOG=0 PW_VK_SHOT=600 PW_VK_SHOT_PROBE=0
+   PW_VK_RECORD=vk_rec.pwrd PW_VK_RECORD_RT=1024x768 PW_VK_RECORD_MAX=80
+   VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation timeout 190 ./run_vk_flip.sh
+   > /tmp/runNN.log 2>&1 &`.
+5. Лог клиента — `~/Документы/My Games/Prime World Classic/Session/Logs/<UTC>/
+   PW-pwclassic-2.16.01.0000-<UTC>-output.txt`, каталоги **прунятся самим
+   клиентом** при следующем запуске → сразу `cp` в `/tmp/run_now.log`.
+6. В `wine-client/Game/Profiles/autoexec.cfg` обязателен `setvar auto_screenshot 0`
+   (иначе `ReadSurface` по presented-картинке вешает `waitForIdle` навсегда),
+   Xvfb `:97` (скрипт поднимает сам), `setvar shader_target 2` в конфиге —
+   оставляет старый диагностический блок `ShaderTarget: … беру SM3`.
+7. Разбор `vk_shot.bmp` (BMP 24 bpp, height отрицательный): `off=d[10:14]`,
+   `w,h,bpp = d[18:28]`, `row=((w*3+3)//4)*4`, считать уникальные цвета.
+
+#### Открытое (по порядку)
+
+1. Деплой build51 → пересъём `vk_rec.pwrd` (v2) → офлайн-парсер (раскладка выше).
+2. п.3 реплеер → RenderDoc-капча вывода → причина пустого кадра.
+3. Починки по капче: согласование пар VS/PS в писателе (`tools/spirv_probe/shim.py`
+   переименовывает `COLORn` → `TEXCOORD(100+n)` детерминированно; нужен офлайн-чекер
+   интерфейса по 58 парам корпуса), 07752 (2D-вью против `Dim = Cube`),
+   00331 (dummy SSBO без `STORAGE_BUFFER`-usage).
+4. 13.5: SSBO по делу (сейчас dummy-буфер), загрузка UBO диапазоном
+   `ConstBlock::TakeDirty()` (замер шага 7: ~513k изменённых VS-регистров за окно),
+   чистка авто-патча спайка.
+5. Перед коммитом ОБРЕЗАТЬ диагностику: `VK_TRACE`-кольцо (`kTraceRing=64`,
+   `PW_VK_TRACE`), пады vtable 3..29, `VkBeat`, `Watchdog` (`PW_VK_WATCHDOG`),
+   `NoteForeign`, `VkFb`, `VkDs`, `VkThread`, `VkProbe`, `VkDiag`, `VkIlMap`,
+   `VkRec` (рекордер оставить за env).
+6. Гейты: Wine-сборка + `check_exe.py` (`vulkan-1.dll` запрещён в импортах exe),
+   регресс tiny10 (`C:\pw64\Game\Bin\PW_Game.exe`, откаты
+   `.bak-2026-10-15-131/-132/-133`, pile union 228 221 Б; кадр против эталона
+   `tools/render_shot/refs/stage3-shd2-2026-10-15/`, решать по шуму того же
+   прогона, а не по эвристике «ПОХОЖЕ НА ПОЛОСУ»).
+7. Коммит/пуш — ТОЛЬКО в ветку `nvrhi` (разрешение m08533: «Коммитить можно
+   только в текущую ветку prime-world-classic, но не в тесты и не в прод»).
