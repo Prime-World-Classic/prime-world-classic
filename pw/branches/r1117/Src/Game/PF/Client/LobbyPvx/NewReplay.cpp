@@ -22,28 +22,60 @@
 #include "PW_Client/GameStatistics.h"
 #include "System/SystemLog.h"
 
+extern string g_sessionToken; // 32 hex chars from the launcher protocol, empty for a local game
+
 namespace
 {
-	// Picks a free replay file name; the file itself is created by the replay writer thread
+  // The web session token is safe to put into a file name only as 32 hex chars
+  bool IsFileNameSessionToken(const string & token)
+  {
+    if (token.size() != 32)
+      return false;
+
+    for (int i = 0; i < token.size(); ++i)
+    {
+      const char c = token[i];
+      if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+        return false;
+    }
+
+    return true;
+  }
+
+	// Picks a free replay file name; the file itself is created by the replay writer thread.
+	// A game started by the launcher is named by its web session token: after the game the
+	// launcher picks the replay of exactly that session (and uploads it). A reconnect writes
+	// its own file, it differs by the timestamp. A local game keeps the server session id.
 	bool ChooseReplayFilePath(string &replaysFolderPath, string &replayFilePath, const Peered::TSessionId serverId)
   {
     replaysFolderPath = GetFullFolderPath(NProfile::FOLDER_REPLAYS);
     if (!NFile::DoesFolderExist(replaysFolderPath))
       NFile::CreatePath(replaysFolderPath);
 
+    string sessionTag;
+    if (IsFileNameSessionToken(g_sessionToken))
+      sessionTag = g_sessionToken;
+    else
+      sessionTag = NStr::StrFmt("%016llx", serverId);
+
     string replayFileName;
 
     for (unsigned index = 0; index < 10; ++index)
     {
-      const string suffix = index ? NStr::StrFmt("%016llx-%u", serverId, index) : NStr::StrFmt("%016llx", serverId);
+      string suffix = sessionTag;
+      if (index)
+        suffix = NStr::StrFmt("%s-%u", sessionTag.c_str(), index);
       replayFileName = NDebug::GenerateDebugFileName(suffix.c_str(), "pwrp", 0, false);
       replayFilePath = NFile::Combine(replaysFolderPath, replayFileName);
 
       if (!NFile::DoesFileExist(replayFilePath))
+      {
+        MessageTrace("replay_writer: recording to %s", replayFileName.c_str());
         return true;
+      }
     }
 
-    MessageTrace("replay_writer: no free replay file name for session %016llx", serverId);
+    MessageTrace("replay_writer: no free replay file name for session %s", sessionTag.c_str());
     return false;
   }
 
