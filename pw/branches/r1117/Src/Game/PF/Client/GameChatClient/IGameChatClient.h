@@ -12,6 +12,7 @@ namespace gamechat
       MyTeam,
       Session,
       SmartChat,
+      Spectators, // live match spectators only
     };
   };
 

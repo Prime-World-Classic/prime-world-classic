@@ -97,6 +97,10 @@ public:
 
   void NotifyChatMuted(const NWorld::PFPlayer* const player);
 
+  // spectator: "my team" is the spectators channel, "both teams" is the session chat;
+  // the input is opened only for a live match (a replay has no chat client); call before AddChatUI
+  void SetSpectatorMode();
+
 private:
   typedef nstl::list<Strong<NGameX::IChatMessageHook>> MessageHooks;
   
@@ -143,6 +147,7 @@ private:
   bool isMuted;
   bool isLeaver;
   bool isLeaverParty;
+  bool isSpectator;
 
   bool active;
   bool chatOffSendedToFlash;

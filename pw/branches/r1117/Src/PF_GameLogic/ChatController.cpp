@@ -71,6 +71,8 @@ namespace
       return NDb::CHATCHANNEL_BOTHTEAMS;
     case gamechat::ChannelType::SmartChat:
       return NDb::CHATCHANNEL_SMARTCHAT;
+    case gamechat::ChannelType::Spectators:
+      return NDb::CHATCHANNEL_MYTEAM; // the spectators' "team"
     default:
       NI_ALWAYS_ASSERT("Invalid chat channel type!");
       return NDb::CHATCHANNEL_MYTEAM;
@@ -105,6 +107,7 @@ ChatUiController::ChatUiController( gamechat::IClient * _chatClient )
   , isMuted(false)
   , isLeaver(false)
   , isLeaverParty(false)
+  , isSpectator(false)
   , active(false)
 {
   uiData = NDb::Get<NDb::DBUIData>( NDb::DBID( "UI/Content/_.UIDT.xdb" ) );
@@ -159,15 +162,28 @@ void ChatUiController::AddChatUI( UI::FlashContainer2* _flashContainer, IFlashCh
   isLeaver = leaver;
   isLeaverParty = leaverParty;
 
+  // SwitchToSpectatorMode (Flash) disables the chat input; SetChatVisible enables it back
+  if (isSpectator && chatClient)
+    _flashChat->SetChatVisible(isChatVisible);
+
   flashChats.push_back(_flashChat);
 }
 
 
+// texts are \u escapes (independent of the source codepage); C4428 just notes that
+#pragma warning( push )
+#pragma warning( disable : 4428 )
 void ChatUiController::AddChannel( NGameX::IFlashChat * _flashChat, NDb::EChatChannel channel, bool canWrite2Channel )
 {
   const NDb::ChatChannelDescription & channelDesc = uiData->chatChannelDescriptions[channel];
+
+  // a spectator's "team" are the other spectators
+  const wstring channelName = (isSpectator && channel == NDb::CHATCHANNEL_MYTEAM)
+    ? wstring(GetLanguageShortCode() == "en" ? L"Spectators" : L"\u0417\u0440\u0438\u0442\u0435\u043b\u0438")
+    : channelDesc.channelName.GetText();
+
   // virtual void AddChannel(NDb::EChatChannel channel,  const wstring & channelName, uint channelColor, bool showChannelName, bool showPlayerName, bool canWrite2Channel) = 0;
-  _flashChat->AddChannel(channel, channelDesc.channelName.GetText(), channelDesc.channelColor.Dummy, channelDesc.showChannelName, channelDesc.showPlayerName, canWrite2Channel)  ;
+  _flashChat->AddChannel(channel, channelName, channelDesc.channelColor.Dummy, channelDesc.showChannelName, channelDesc.showPlayerName, canWrite2Channel)  ;
 
   for (int i = 0; i<channelDesc.shortcuts.size();i++)
   {
@@ -179,6 +195,7 @@ void ChatUiController::AddChannel( NGameX::IFlashChat * _flashChat, NDb::EChatCh
     _flashChat->AddChannelShortCut(channel, shorcut.c_str());
   }
 }
+#pragma warning( pop )
 
 void ChatUiController::Update()
 {
@@ -383,6 +400,19 @@ void ChatUiController::SendPlayerMessage( const wstring & text, NDb::EChatChanne
     }
   }
 
+  if (isSpectator)
+  {
+    // a replay has nobody to talk to
+    if (!chatClient || g_sessionChatOff)
+      return;
+
+    if (channel == NDb::CHATCHANNEL_MYTEAM)
+      chatClient->SendMsg(message, gamechat::ChannelType::Spectators);
+    else if (channel == NDb::CHATCHANNEL_BOTHTEAMS)
+      chatClient->SendMsg(message, gamechat::ChannelType::Session);
+    return;
+  }
+
   if (!g_sessionChatOff)
   {
     if (!chatClient)
@@ -411,6 +441,11 @@ void ChatUiController::SetIgnoreListController(IgnoreListController* ilc)
 void ChatUiController::SetPlayerIdMapper(IPlayerIdMapper* pim)
 {
   playerIdMapper = pim;
+}
+
+void ChatUiController::SetSpectatorMode()
+{
+  isSpectator = true;
 }
 
 int AsyncMessagesFilter::FilterMessage(const gamechat::ChatMessage& msg)

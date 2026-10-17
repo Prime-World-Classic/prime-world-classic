@@ -425,6 +425,10 @@ void AdventureScreenLogic::SetOwner( NGameX::AdventureScreen * owner, const NDb:
   //chat
   if (IsValid(chatController))
   {
+    // a live match spectator writes to the spectators ("team", the default) or to everybody
+    if ( owner->IsSpectator() )
+      chatController->SetSpectatorMode();
+
     chatController->AddChatUI(flashWnd, flashInterface, isMuted, isLeaver, isLeaverParty);
 
     ignoreListStorage = m_owner->GetIgnoreListStorage();
