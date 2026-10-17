@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "RdpLoginClient.h"
 #include "Server/RdpTransport/RdpTransportUtils.h"
+#include "Network/RUDP/UdpAddr.h"
 #include "Network/PacketDispatcher.h"
 #include "RdpClientChannel.h"
 #include "PW_Game/server_ip.h"
@@ -244,7 +245,9 @@ void LoginClient::OnSvcReqReply( const newLogin::ServiceReqReply  & _reply )
   _reply.externalAddress = newAddress;
   }
   
-  MessageTrace( "LoginClient: Got svc request reply. svcid=%s, req_id=%d, code=%d, addr=%s", _reply.svcId.c_str(), _reply.requestId, (int)_reply.code, _reply.externalAddress );
+  char maskedAddr[64];
+  MessageTrace( "LoginClient: Got svc request reply. svcid=%s, req_id=%d, code=%d, addr=%s", _reply.svcId.c_str(), _reply.requestId, (int)_reply.code,
+    ni_udp::MaskAddrString( maskedAddr, sizeof( maskedAddr ), _reply.externalAddress.c_str() ) );
 
   if ( state != ELoginClientState::Ready )
   {

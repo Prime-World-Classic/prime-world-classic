@@ -146,7 +146,8 @@ struct SAuxData : public rpc::Data
   lobby::GameGuildData    guildData;
   lobby::ETypeOfSession::Enum     sessiontype;
   vector<SAuxUserData>    users;
-  ZEND int operator&( IBinSaver &f ) { f.Add(2,&lobbyGameType); f.Add(3,&mapType); f.Add(4,&mmBasket); f.Add(5,&socialLobbyGameId); f.Add(6,&hadPreGameLobby); f.Add(7,&customGame); f.Add(8,&mapDesc); f.Add(9,&guildData); f.Add(10,&sessiontype); f.Add(11,&users); return 0; }
+  nstl::string            sessionToken; // web session token (back-end game_session.externalId), empty if the game is not from a web session
+  ZEND int operator&( IBinSaver &f ) { f.Add(2,&lobbyGameType); f.Add(3,&mapType); f.Add(4,&mmBasket); f.Add(5,&socialLobbyGameId); f.Add(6,&hadPreGameLobby); f.Add(7,&customGame); f.Add(8,&mapDesc); f.Add(9,&guildData); f.Add(10,&sessiontype); f.Add(11,&users); f.Add(12,&sessionToken); return 0; }
 
   SAuxData() :
   lobbyGameType( lobby::EGameType::None ),

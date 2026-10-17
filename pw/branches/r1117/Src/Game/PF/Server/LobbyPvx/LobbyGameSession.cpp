@@ -368,6 +368,7 @@ void GameSession::SetupAuxGameServerData( Peered::SAuxData & gsAuxData )
   gsAuxData.customGame = socialGameDetails.customGame;
   gsAuxData.guildData = params.guildData;
   gsAuxData.sessiontype = params.sessiontype;
+  gsAuxData.sessionToken = sessionToken;
 
   if ( socialGameData.mapType != NDb::MAPTYPE_NONE )
   {

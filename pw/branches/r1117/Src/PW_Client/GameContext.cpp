@@ -8,6 +8,8 @@
 #include "Network/Initializer.h"
 #include "Network/TransportInitializer.h"
 #include "Network/ClientTransportConfig.h"
+#include "Network/RUDP/UdpAddr.h"
+#include "System/LogIpMode.h"
 #pragma warning(push)
 #pragma warning(disable:4996)
 #include "Network/ClientTransportSystem2.h"
@@ -149,7 +151,17 @@ void GameContext::Init()
 
   if ( rdp_transport::ParseAddress( loginSvcAddr, loginSvcMux, loginAdr ) && loginSvcMux )
   {
-    MessageTrace( "UDP transport login address: %s@%u", loginSvcAddr, loginSvcMux );
+    if ( NGlobal::GetLogIpMode() )
+    {
+      // Masked builds (System/LogIpMode.h): this is the one and only address line of
+      // a client log - the server selected for the session, in hex, at connect
+      // time. Every other line keeps ports/muxes but no address.
+      char maskedAddr[32];
+      loginSvcAddr.StrHex( maskedAddr, sizeof( maskedAddr ) );
+      MessageTrace( "UDP transport login address: %s@%u", maskedAddr, loginSvcMux );
+    }
+    else
+      MessageTrace( "UDP transport login address: %s@%u", loginSvcAddr, loginSvcMux );
 
     ni_udp::NetAddr rdpBindAddr( 0, s_base_udp_port );
     StrongMT<rdp_transport::ClientTransport> clTr = new rdp_transport::ClientTransport( rdpBindAddr, 1000, Transport::GetGlobalMessageFactory() );
@@ -157,7 +169,8 @@ void GameContext::Init()
   }
   else
   {
-    MessageTrace( "TCP transport login address: %s", loginAdr );
+    char maskedAddr[64];
+    MessageTrace( "TCP transport login address: %s", ni_udp::MaskAddrString( maskedAddr, sizeof( maskedAddr ), loginAdr ) );
     clientTransportSystem = new Transport::ClientTransportSystem3( networkDriver, Transport::GetGlobalMessageFactory(), ver );
   }
 }

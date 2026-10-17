@@ -2,6 +2,7 @@
 #define RDPCONNDESCRIPTOR_H_INCLUDED
 
 #include "ISockSrv.h"
+#include "System/LogIpMode.h"
 
 namespace ni_udp
 {
@@ -50,7 +51,14 @@ public:
   virtual void Format( IBuffer * buffer, const SFormatSpecs & specs ) const
   {
     char buf[48] = "";
+    // Masked builds (System/LogIpMode.h): the address is skipped, the port and
+    // both muxes are logged as before.
+    const bool maskIp = ( NGlobal::GetLogIpMode() != 0 );
 #if defined( NV_WIN_PLATFORM )
+    if ( maskIp )
+      _snprintf( buf, 47, "(%u %u:%u)",
+        (unsigned)descr.remote.Port(), descr.localMux, descr.remoteMux );
+    else
     _snprintf( buf, 47, "(%d.%d.%d.%d:%u %u:%u)", 
       (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b1, (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b2,
       (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b3, (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b4,
@@ -58,6 +66,10 @@ public:
       descr.localMux, descr.remoteMux );
 #else
     unsigned char *bytes = (unsigned char *)&descr.remote.sin_addr.s_addr;
+    if ( maskIp )
+      snprintf( buf, 47, "(%u %u:%u)",
+        (unsigned)descr.remote.Port(), descr.localMux, descr.remoteMux );
+    else
     snprintf( buf, 47, "(%d.%d.%d.%d:%u %u:%u)",
       bytes[0], bytes[1], bytes[2], bytes[3],
       (unsigned)descr.remote.Port(),

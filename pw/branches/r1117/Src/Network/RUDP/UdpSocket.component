@@ -8,6 +8,7 @@ sources = [
 components = [ 
   'Vendor/Libc',
   'System/Pointers',
+  'System/Commands',
 ]
 
 # Linux doesn't need ws2_32 (sockets are in libc)

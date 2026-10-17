@@ -32,6 +32,7 @@
 #include "System/FileSystem/FileActivitySimpleMonitor.h"
 #include "System/CmdLineLite.h"
 #include "System/InlineProfiler.h"
+#include "System/LogIpMode.h"
 #include "System/InlineProfiler3/Profiler3UI.h"
 #include "System/InlineProfiler3/InlineProfiler3Control.h"
 #include "System/PersistEvents.h"
@@ -1388,8 +1389,15 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
         return 0;
       }
       SetDynamicServerIps(protocolServerIps);
-      for (int ipIndex = 0; ipIndex < protocolServerIps.size(); ++ipIndex)
-        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP #" << ipIndex << ": " << protocolServerIps[ipIndex].c_str() << endl;
+      // Masked builds (System/LogIpMode.h): candidate addresses stay out of the log.
+      // The only address a masked session logs is the server actually dialed, in hex,
+      // at connect time (GameContext::Init -> "UDP transport login address").
+      if (NGlobal::GetLogIpMode())
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP block: " << (int)protocolServerIps.size()
+          << " address(es), selected #" << usedServer % (int)protocolServerIps.size() << endl;
+      else
+        for (int ipIndex = 0; ipIndex < protocolServerIps.size(); ++ipIndex)
+          systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP #" << ipIndex << ": " << protocolServerIps[ipIndex].c_str() << endl;
     }
 
     // Optional 6th token — base port of the TARGET server (decimal). The
