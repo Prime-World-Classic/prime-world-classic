@@ -33,7 +33,9 @@ bool PFCreature::Step(float dtInSeconds)
 	{
 		observingTimeOffset -= dtInSeconds;
 		if (unitFallUndergroundOffset >= 0 && (unitFallUndergroundOffset -= dtInSeconds) < 0 &&
-			deadUnitLifeTime>0 && linuxDeathPresentation.active && linuxDeathPresentation.fallStartedAt<0 && GetWorld())
+			deadUnitLifeTime>0 && linuxDeathPresentation.active &&
+			linuxDeathPresentation.kind==LinuxDeathPresentation::Kind::Death &&
+			linuxDeathPresentation.fallStartedAt<0 && GetWorld())
 			linuxDeathPresentation.fallStartedAt=GetWorld()->GetTimeElapsed();
 		if (deadUnitLifeTime >= 0 && (deadUnitLifeTime -= dtInSeconds) < 0) RemoveCorpse();
 	}
@@ -61,17 +63,19 @@ void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageD
 		RemoveCorpse();
 		return;
 	}
-	const float duration = (flags & UNITDIEFLAGS_UNSUMMON) ? params->unsummonTime : params->deathTime;
+	const bool unsummon = (flags & UNITDIEFLAGS_UNSUMMON) != 0;
+	const float duration = unsummon ? params->unsummonTime : params->deathTime;
 	// Finite negative lifetimes retain their original disabled-timer meaning.
 	deadUnitLifeTime = std::isfinite(duration) ? duration : -1;
-	if (!(flags & (UNITDIEFLAGS_DONTPLAYDEATHANIMATION | UNITDIEFLAGS_DEFERREDDEATH | UNITDIEFLAGS_UNSUMMON)))
+	if (!(flags & (UNITDIEFLAGS_DONTPLAYDEATHANIMATION | UNITDIEFLAGS_DEFERREDDEATH)))
 	{
-		unitFallUndergroundOffset = std::isfinite(params->fallOffset) ? params->fallOffset : -1;
+		unitFallUndergroundOffset = !unsummon && std::isfinite(params->fallOffset) ? params->fallOffset : -1;
 		if (notify && revision==linuxDeathRevision && IsDead() && std::isfinite(duration) && GetWorld() &&
 			std::isfinite(GetWorld()->GetTimeElapsed()) && GetWorld()->GetTimeElapsed()>=0) {
 			if (++linuxDeathPresentation.sequence==0) ++linuxDeathPresentation.sequence;
+			linuxDeathPresentation.kind=unsummon ? LinuxDeathPresentation::Kind::Unsummon : LinuxDeathPresentation::Kind::Death;
 			linuxDeathPresentation.startedAt=GetWorld()->GetTimeElapsed();
-			linuxDeathPresentation.fallSpeed=std::isfinite(params->fallSpeed) && params->fallSpeed>0 ? params->fallSpeed : 0;
+			linuxDeathPresentation.fallSpeed=!unsummon && std::isfinite(params->fallSpeed) && params->fallSpeed>0 ? params->fallSpeed : 0;
 			linuxDeathPresentation.active=true;
 		}
 	}

@@ -1,9 +1,123 @@
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+/** Asset-only negative controls: descriptor copies are mocks, never registered DB replacements. */
+template<class Check>
+static void CheckLinuxSummonUnsummonStates(Check&& check, const LinuxHeroSceneAssetPreview& asset,
+	const NDb::AnimSet* set)
+{
+	using Kind = NWorld::LinuxDeathPresentation::Kind;
+	if (!check(set && set->states.size() > NDb::ANIMSTATES_UNSUMMON && asset.animationComponent &&
+		asset.animationComponent->animGraph, "unsummon state controls have original graph and creep aliases")) return;
+	const auto& component = *asset.animationComponent;
+	const auto& name = set->states[NDb::ANIMSTATES_UNSUMMON].commonNode;
+	const auto& deathName = set->states[NDb::ANIMSTATES_DEATH].commonNode;
+	int nodeIndex = -1;
+	for (int i = 0; i < component.animGraph->macroNodes.size(); ++i)
+		if (component.animGraph->macroNodes[i].nodeName == name) nodeIndex = i;
+	if (!check(LinuxAnimationGraphSupported(component) && !name.empty() && name != deathName && nodeIndex >= 0,
+		"original Demon2 has a supported UNSUMMON state distinct from DEATH")) return;
+	int world = 0;
+	auto scene = std::make_shared<int>(1);
+	NWorld::LinuxDynamicWorldMarker marker;
+	marker.objectId = 100;
+	marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_SUMMON;
+	marker.moveSpeed = 5;
+	{
+		LinuxAnimationGraphBank bank;
+		bank.Begin(&world, scene, 0);
+		auto* player = bank.Resolve(asset, marker);
+		if (check(player != nullptr, "ordinary death control starts with an original living Demon2 graph"))
+		{
+			auto dead = marker;
+			dead.dead = dead.death.active = true;
+			dead.death.sequence = 1;
+			dead.death.startedAt = 0;
+			dead.death.kind = Kind::Death;
+			const auto* resolved = bank.Resolve(asset, dead);
+			const int target = player->TargetNode();
+			check(resolved == player && player->Dying() && target >= 0 && target < component.animGraph->macroNodes.size() &&
+				component.animGraph->macroNodes[target].nodeName == deathName && bank.deathStarts == 1,
+				"ordinary DEATH retains its existing authored state and counter");
+		}
+	}
+	{
+		LinuxAnimationGraphBank bank;
+		bank.Begin(&world, scene, 0);
+		auto* player = bank.Resolve(asset, marker);
+		if (check(player != nullptr, "invalid-kind control starts with an original living Demon2 graph"))
+		{
+			const auto pose = player->Matrices();
+			const auto updates = player->Updates();
+			const int target = player->TargetNode();
+			auto invalid = marker;
+			invalid.dead = invalid.death.active = true;
+			invalid.death.sequence = 1;
+			invalid.death.startedAt = 0;
+			invalid.death.kind = static_cast<Kind>(255);
+			check(!bank.Resolve(asset, invalid) && !player->Dying() && player->Updates() == updates &&
+				player->LastSampleTime() == 0 && player->TargetNode() == target && player->Matrices().size() == pose.size() &&
+				!pose.empty() && std::memcmp(pose.data(), player->Matrices().data(), pose.size() * sizeof(Matrix43)) == 0 &&
+				bank.deathStarts == 0 && bank.deathSamples == 0,
+				"invalid presentation kind fails closed without falling back to DEATH or changing the live pose");
+		}
+	}
+	{
+		LinuxHeroSceneAssetPreview missing = asset;
+		auto* altered = new NDb::DBAnimatedSceneComponent(component);
+		missing.animationComponent = altered;
+		auto* graph = new NDb::AnimGraphCreator(*component.animGraph);
+		altered->animGraph = graph;
+		// Rename every reference, keeping the graph valid but its original UNSUMMON alias absent.
+		const nstl::string replacement("probe-missing-unsummon");
+		if (graph->defaultNode == name) graph->defaultNode = replacement;
+		for (auto& node : graph->macroNodes)
+		{
+			if (node.nodeName == name) node.nodeName = replacement;
+			if (node.nextNode == name) node.nextNode = replacement;
+			for (auto& edge : node.simpleTransactions)
+				if (edge.targetNode == name) edge.targetNode = replacement;
+		}
+		LinuxAnimationGraphBank bank;
+		bank.Begin(&world, scene, 0);
+		auto* player = bank.Resolve(missing, marker);
+		if (check(LinuxAnimationGraphSupported(*altered) && player,
+			"mock missing-UNSUMMON alias preserves supported original idle move and death metadata"))
+		{
+			auto unsummon = marker;
+			unsummon.dead = unsummon.death.active = true;
+			unsummon.death.sequence = 1;
+			unsummon.death.startedAt = 0;
+			unsummon.death.kind = Kind::Unsummon;
+			check(!bank.Resolve(missing, unsummon) && !player->Dying() &&
+				bank.deathStarts == 0 && bank.deathSamples == 0,
+				"mock missing UNSUMMON state rejects the cue instead of playing ordinary death");
+		}
+	}
+	for (int malformed = 0; malformed < 3; ++malformed)
+	{
+		LinuxHeroSceneAssetPreview invalid = asset;
+		auto* altered = new NDb::DBAnimatedSceneComponent(component);
+		invalid.animationComponent = altered;
+		auto* graph = new NDb::AnimGraphCreator(*component.animGraph);
+		altered->animGraph = graph;
+		auto& node = graph->macroNodes[nodeIndex];
+		if (malformed == 0) node.sequenceName = "probe-missing-clip";
+		if (malformed == 1) node.speed.value = std::numeric_limits<float>::quiet_NaN();
+		// 3 is representable by this non-fixed enum, but is not a declared node type.
+		if (malformed == 2) node.nodeType = static_cast<NDb::EAnGrNodeType>(3);
+		check(!LinuxAnimationGraphSupported(*altered) && !LinuxAnimationGraphPlayback::Create(invalid, set),
+			"mock invalid unsummon clip speed or node type rejects before original graph construction");
+	}
+	check(component.animGraph->macroNodes[nodeIndex].nodeName == name && LinuxAnimationGraphSupported(component),
+		"mock negative controls leave the loaded original Demon2 descriptor untouched");
+}
+#endif
+
 /** Original Demon2 asset/GL proof, included after the preview draw functions and graph bank.
  * Marker IDs identify presentation owners only, not registered world objects.
- * This covers the base scene and creep idle/move graphs, not skins, world ownership,
- * spawn effects, ordinary corpse lifetime or the unsupported unsummon presentation.
+ * This covers the base scene and creep idle/move/unsummon graphs, not skins, world ownership,
+ * spawn effects or simulation corpse/unsummon lifetime and removal.
  * The production map-unit draw uses its zero-height fallback for isolated asset framing.
- * A nonempty capturePath retains original idle/move framebuffer PNGs with summon suffixes.
+ * A nonempty capturePath retains original idle/move/unsummon framebuffer PNGs with summon suffixes.
  */
 static bool RunLinuxSummonPresentationEngineProbe(const LinuxClientEnvironment& environment, const std::string& capturePath)
 {
@@ -16,7 +130,7 @@ static bool RunLinuxSummonPresentationEngineProbe(const LinuxClientEnvironment& 
 		return good;
 	};
 	const auto finish = [&]() {
-		fprintf(stdout, "Summon presentation summary: checks=%u failures=%u scope=base-scene-asset-only draw=map-unit terrain=zero-height-fallback world-ownership=not-tested unsummon=not-tested\n",
+		fprintf(stdout, "Summon presentation summary: checks=%u failures=%u scope=base-scene-asset-only draw=map-unit terrain=zero-height-fallback world-ownership=not-tested unsummon=asset-state-only\n",
 			checks, failures);
 		return failures == 0;
 	};
@@ -276,6 +390,146 @@ static bool RunLinuxSummonPresentationEngineProbe(const LinuxClientEnvironment& 
 		fprintf(stdout, "Summon presentation pixels: idle=%zu moving=%zu textured=%zu textures=%zu textured-triangles=%zu owners=%zu pose-builds=%zu pose-hits=%zu\n",
 			idleVisible, movingVisible, texturedPixels, uploadedTextures, texturedTriangles, bank.Size(), poses.builds, poses.hits);
 		check(glGetError() == GL_NO_ERROR, "summon asset rendering leaves no GL errors");
+
+		/** Exercise fresh removal snapshots through the production bank, never a direct BeginDeath overload. */
+		const auto checkUnsummon = [&]() {
+			const auto& nodes = asset.animationComponent->animGraph->macroNodes;
+			if (!check(creepSet->states.size() > NDb::ANIMSTATES_UNSUMMON,
+				"original creep map contains the UNSUMMON alias")) return;
+			const auto& state = creepSet->states[NDb::ANIMSTATES_UNSUMMON];
+			int unsummonNode = -1, terminalNode = -1;
+			for (int i = 0; i < nodes.size(); ++i)
+				if (nodes[i].nodeName == state.commonNode) unsummonNode = i;
+			if (!check(unsummonNode >= 0, "original UNSUMMON alias resolves a real graph node")) return;
+			const auto& node = nodes[unsummonNode];
+			for (int i = 0; i < nodes.size(); ++i)
+				if (nodes[i].nodeName == node.nextNode) terminalNode = i;
+			if (!check(terminalNode >= 0 && terminalNode != unsummonNode &&
+				node.startPar.value == 0 && node.stopPar.value == 1 && node.speed.value == 1 &&
+				nodes[terminalNode].nextNode == nodes[terminalNode].nodeName &&
+				nodes[terminalNode].sequenceName == node.sequenceName &&
+				nodes[terminalNode].startPar.value == 1 && nodes[terminalNode].stopPar.value == 1,
+				"original unsummon advances into its authored terminal final-pose node")) return;
+			double duration = 0;
+			for (const auto& clip : asset.animationComponent->animations)
+				if (clip.name == node.sequenceName)
+				{
+					const auto* loaded = Render::RenderResourceManager::LoadSkeletalAnimation(clip.animationFileName);
+					if (loaded && loaded->GetData()) duration = double(loaded->GetData()->maxTime) - loaded->GetData()->minTime;
+				}
+			if (!check(std::isfinite(duration) && duration >= .05 && duration <= 10,
+				"unsummon timing comes from the original decoded clip within the bounded probe window")) return;
+			const auto removalBank = std::make_shared<LinuxAnimationGraphBank>();
+			overlay.unitAnimationGraphs = removalBank;
+			auto marker = idleMarker;
+			marker.objectId = 10;
+			removalBank->Begin(&worldToken, sceneToken, 0);
+			auto* player = removalBank->Resolve(asset, marker);
+			if (!check(player != nullptr, "unsummon fixture first owns an actual living Demon2 graph")) return;
+			auto peerMarker = idleMarker;
+			peerMarker.objectId = 11;
+			auto* peer = removalBank->Resolve(asset, peerMarker);
+			if (!check(peer && peer != player && removalBank->Size() == 2,
+				"unsummon and live peer own independent graphs in the same bank")) return;
+			auto peerPose = peer->Matrices();
+			auto peerUpdates = peer->Updates();
+			double peerTime = peer->LastSampleTime();
+			marker.dead = marker.death.active = true;
+			marker.death.sequence = 1;
+			marker.death.startedAt = 0;
+			marker.death.kind = NWorld::LinuxDeathPresentation::Kind::Unsummon;
+			// Deliberately nonzero corpse metadata must never sink an unsummoning unit.
+			marker.death.fallStartedAt = 0;
+			marker.death.fallSpeed = 3;
+			float drop = 99;
+			if (!check(removalBank->Resolve(asset, marker, nullptr, &drop) == player && player->Dying() &&
+				mapped(player, NDb::ANIMSTATES_UNSUMMON) && !mapped(player, NDb::ANIMSTATES_DEATH) && drop == 0,
+				"fresh Unsummon cue selects authored UNSUMMON rather than DEATH with zero fall")) return;
+			check(peerTime == 0 && peer->Updates() == peerUpdates && peer->LastSampleTime() == peerTime &&
+				samePose(peerPose, peer->Matrices()) && !peer->Dying() && mapped(peer, NDb::ANIMSTATES_IDLE) &&
+				peer->DeathCompletedAt() < 0,
+				"fresh unsummon cue leaves its same-bank living companion clock and pose untouched immediately");
+			const auto startPose = player->Matrices();
+			const auto startPixels = draw(marker, 0);
+			capture("-summon-unsummon-start.png");
+			const double step = std::min(.001, duration * .002);
+			const int maxSamples = std::min(12000, static_cast<int>(std::ceil((duration + 1) / step)) + 2);
+			double clock = 0, completed = -1, terminal = -1;
+			bool valid = true, zeroFall = true, completedInUnsummon = false, progressed = false;
+			bool peerUnchanged = true, peerLivingNormal = true;
+			std::vector<unsigned char> progressPixels;
+			for (int sample = 1; sample <= maxSamples; ++sample)
+			{
+				clock = sample * step;
+				removalBank->Begin(&worldToken, sceneToken, clock);
+				drop = 99;
+				if (removalBank->Resolve(asset, marker, nullptr, &drop) != player) { valid = false; break; }
+				zeroFall &= drop == 0;
+				if (progressPixels.empty() && clock >= duration * .5 && player->CurrentNode() == unsummonNode)
+				{
+					progressed = !samePose(startPose, player->Matrices());
+					progressPixels = draw(marker, clock);
+					capture("-summon-unsummon-progress.png");
+				}
+				if (completed < 0 && player->DeathCompletedAt() >= 0)
+				{
+					completed = player->DeathCompletedAt();
+					completedInUnsummon = player->CurrentNode() == unsummonNode && std::abs(completed - clock) < step * .1;
+				}
+				peerUnchanged &= peer->Updates() == peerUpdates && peer->LastSampleTime() == peerTime &&
+					samePose(peerPose, peer->Matrices()) && !peer->Dying();
+				// Keep the visible peer resident, but only after checking that removal sampling left it untouched.
+				if (removalBank->Resolve(asset, peerMarker) != peer) { valid = false; break; }
+				peerPose = peer->Matrices();
+				peerUpdates = peer->Updates();
+				peerTime = peer->LastSampleTime();
+				peerLivingNormal &= peerTime == clock && !peer->Dying() && mapped(peer, NDb::ANIMSTATES_IDLE) &&
+					peer->DeathCompletedAt() < 0 && removalBank->Size() == 2;
+				if (player->CurrentNode() == terminalNode) { terminal = clock; break; }
+			}
+			check(valid && peerUnchanged && peerTime > 0,
+				"each unsummon sample leaves its same-bank live peer unchanged until that peer is explicitly sampled");
+			check(valid && peerLivingNormal && peerTime == clock && clock > 0,
+				"same-bank companion stays resident and samples the current clock in authored living idle throughout unsummon");
+			check(valid && progressed && visible(startPixels) > 256 && !progressPixels.empty() &&
+				visible(progressPixels) > 0 && startPixels != progressPixels,
+				"original unsummon skeletal pose and actual textured framebuffer progress independently of idle");
+			check(valid && completedInUnsummon && terminal > completed && completed >= 0 &&
+				std::abs((terminal - completed) - duration * .01) <= 2.5 * step,
+				"original 99 percent completion occurs before the authored terminal transition at clip end");
+			check(valid && terminal >= 0 && player->CurrentNode() == terminalNode && player->TargetNode() == unsummonNode,
+				"unsummon follows its authored terminal transition without returning to idle or ordinary death");
+			if (valid && terminal >= 0)
+			{
+				const auto terminalPose = player->Matrices();
+				const auto terminalPixels = draw(marker, clock);
+				capture("-summon-unsummon-terminal.png");
+				clock += .1;
+				removalBank->Begin(&worldToken, sceneToken, clock);
+				drop = 99;
+				const bool held = removalBank->Resolve(asset, marker, nullptr, &drop) == player;
+				zeroFall &= drop == 0;
+				check(held && player->CurrentNode() == terminalNode && player->DeathCompletedAt() == completed &&
+					samePose(terminalPose, player->Matrices()) && draw(marker, clock) == terminalPixels,
+					"authored terminal pose and pixels remain stable after completion without restarting unsummon");
+				const bool peerHeld = peer->Updates() == peerUpdates && peer->LastSampleTime() == peerTime &&
+					samePose(peerPose, peer->Matrices()) && !peer->Dying();
+				const bool peerSampled = removalBank->Resolve(asset, peerMarker) == peer;
+				check(peerHeld && peerSampled && !peer->Dying() && peer->DeathCompletedAt() < 0 &&
+					mapped(peer, NDb::ANIMSTATES_IDLE) && peer->LastSampleTime() == clock && removalBank->Size() == 2,
+					"terminal unsummon hold leaves the companion intact and allows normal same-bank living playback");
+			}
+			check(zeroFall && removalBank->deathStarts == 0 && removalBank->deathSamples == 0,
+				"unsummon never consumes ordinary death counters or corpse-fall translation");
+			check(idle->Updates() == idleUpdates && idle->LastSampleTime() == .4 && samePose(idlePose, idle->Matrices()),
+				"unsummon also leaves the separate original bank's live owner clock and matrices unchanged");
+			marker.death.active = false;
+			check(!removalBank->Resolve(asset, marker), "inactive world removal snapshot stops unsummon presentation");
+			fprintf(stdout, "Summon unsummon pixels: clip-seconds=%.6f step=%.6f completed=%.6f terminal=%.6f start=%zu progress=%zu scope=asset-only\n",
+				duration, step, completed, terminal, visible(startPixels), visible(progressPixels));
+		};
+		checkUnsummon();
+		overlay.unitAnimationGraphs = ownedBank;
 	}
 	GLint restoredViewport[4] = {};
 	glGetIntegerv(GL_VIEWPORT, restoredViewport);
@@ -305,6 +559,7 @@ static bool RunLinuxSummonPresentationEngineProbe(const LinuxClientEnvironment& 
 	check(bank.Resolve(asset, idleMarker) && bank.Resolve(asset, movingMarker) && bank.Size() == 3 && bank.CueSize() == 3 &&
 		bank.created == createdBeforeEviction + 2 && bank.unsupported == 0 && bank.failed == 0,
 		"both evicted owners recreate independently without reusing stale asset state");
+	CheckLinuxSummonUnsummonStates(check, asset, creepSet.GetPtr());
 	return finish();
 #else
 	(void)environment;

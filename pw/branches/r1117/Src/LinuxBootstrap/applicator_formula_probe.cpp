@@ -1331,6 +1331,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "state_world_b11_tests.inc"
 #include "stationary_world_b12_tests.inc"
 #include "moving_world_b12_tests.inc"
+#include "dispatch_order_b13_tests.inc"
 #include "resource_tick_b12_tests.inc"
 #include "applicator_enabled_b12_tests.inc"
 #include "applicator_wrapper_b12_tests.inc"
@@ -1451,6 +1452,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "targeted_talent_b13_tests.inc"
 #include "world_picking_b13_tests.inc"
 #include "dynamic_presentation_b13_tests.inc"
+#include "demonologist_startup_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly,
 	bool targetedTalentsOnly, bool worldPickingOnly, bool dynamicPresentationOnly)
@@ -1465,7 +1467,10 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	Checks check;
 	if (dynamicPresentationOnly)
 	{
+		DeathPresentationB13(check);
 		DynamicPresentationB13(check, dataRoot);
+		DemonologistStartupB13(check, dataRoot);
+		DispatchOrderB13(check);
 		NDb::SessionRoot::InitRoot(saved);
 		std::printf("Dynamic presentation: %d checks, %d failures\n", check.count, check.failed);
 		return check.failed == 0;
@@ -1848,6 +1853,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 			DispatchWorldMixedB11(check);
 			DispatchWorldLifecycleB11(check);
 			DispatchWorldMutationB11(check);
+			DispatchOrderB13(check);
 			DispatchFormulaB11(check, world);
 			DispatchLinearB11(check, world);
 			DispatchPersistentB11(check, world);

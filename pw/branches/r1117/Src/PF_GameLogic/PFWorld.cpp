@@ -10,6 +10,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 #include "PFWorld.h"
 #include "PFBaseMovingUnit.h"
 #include "PFBaseAttackData.h"
+#include "PFDispatchStrike1.h"
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -556,6 +557,8 @@ bool PFWorld::Step(float dtInSeconds, float)
 		return true;
 	}
 	vector<CObj<PFDispatch> > detachedDispatches;
+	vector<CObj<PFDispatch> > beforeOwnerDispatches;
+	vector<PFBaseUnit*> precedingUnits;
 	vector<CObj<PFBaseUnit> > lifecycleUnits;
 	vector<CObj<PFBaseUnit> > movementSteppedUnits;
 	vector<CObj<PFGlyphSpawner> > glyphSpawners;
@@ -572,13 +575,33 @@ bool PFWorld::Step(float dtInSeconds, float)
 	// A strong pre-tick snapshot allows callback removal and defers newborn objects to the next tick.
 	ForAllObjectsBeingStepped(collectLifecycle);
 	auto collectDispatch = [&](PF_Core::WorldObjectBase& object) {
+		if (PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(&object))
+			precedingUnits.push_back(unit);
 		PFDispatch* dispatch = dynamic_cast<PFDispatch*>(&object);
 		if (dispatch && dispatch->GetWorld() == this && !dispatch->IsObjectDead()
 			&& dispatch->Started() && !LinuxDispatchOwnedByUnit(*dispatch))
-			detachedDispatches.push_back(CObj<PFDispatch>(dispatch));
+		{
+			PFBaseUnit* sender = dispatch->GetSender().GetPtr();
+			// Constructor immediate responses subscribe before their deferred owner.
+			// Preserve that order without changing movement-before-travel physics.
+			const bool beforeOwner = dynamic_cast<PFDispatchImmediate*>(dispatch)
+				&& IsValid(sender) && sender->GetWorld() == this
+				&& IsSubscribed(sender) && FindLinuxUnitByObjectId(sender->GetObjectId()) == sender
+				&& nstl::find(precedingUnits.begin(), precedingUnits.end(), sender) == precedingUnits.end();
+			(beforeOwner ? beforeOwnerDispatches : detachedDispatches).push_back(CObj<PFDispatch>(dispatch));
+		}
 	};
 	// Snapshot before units/spawners: children created during this tick start travelling next tick.
 	ForAllObjectsBeingStepped(collectDispatch);
+	const auto stepDetached = [&](const vector<CObj<PFDispatch> >& dispatches) {
+		for (const auto& dispatch : dispatches)
+		{
+			// Recheck after callbacks that cancel siblings or transfer ability ownership.
+			if (IsValid(dispatch) && !dispatch->IsObjectDead() && dispatch->Started()
+				&& !LinuxDispatchOwnedByUnit(*dispatch))
+				dispatch->Step(dtInSeconds);
+		}
+	};
   if (dtInSeconds > 0.0f)
     ++step;
   timeElapsed += dtInSeconds;
@@ -586,9 +609,12 @@ bool PFWorld::Step(float dtInSeconds, float)
     protection->Update();
   if (pNatureMap)
     pNatureMap->OnStep(dtInSeconds);
+	// Original AI timers advance before object callbacks, including pre-owner responses.
+	if (pAIWorld)
+		pAIWorld->Update(dtInSeconds);
+	stepDetached(beforeOwnerDispatches);
   if (pAIWorld)
   {
-    pAIWorld->Update(dtInSeconds);
 		// Glyph spawners are not PFBaseSpawner units and do not participate in movement ticking.
 		for (const auto& spawner : glyphSpawners)
 		{
@@ -648,12 +674,7 @@ bool PFWorld::Step(float dtInSeconds, float)
 			&& IsSubscribed(unit) && FindLinuxUnitByObjectId(unit->GetObjectId()) == unit)
 			unit->Step(dtInSeconds);
 	}
-	for (vector<CObj<PFDispatch> >::iterator it = detachedDispatches.begin(); it != detachedDispatches.end(); ++it)
-	{
-		// Callbacks may cancel siblings, flush registration, or transfer ownership during this phase.
-		if (IsValid(*it) && !(*it)->IsObjectDead() && (*it)->Started() && !LinuxDispatchOwnedByUnit(**it))
-			(*it)->Step(dtInSeconds);
-	}
+	stepDetached(detachedDispatches);
 	ProcessAddRemove();
   KillDeadUnits(false);
 	// Visibility-only phase includes stationary units without stepping their gameplay.

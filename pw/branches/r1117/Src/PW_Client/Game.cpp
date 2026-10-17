@@ -69316,7 +69316,7 @@ void AppendRuntimeInputLog(
 		<< " meshes:" << screenRuntime.mapPreviewDynamicSummonMeshes
 		<< " triangles:" << screenRuntime.mapPreviewDynamicSummonMeshTriangles
 		<< " minimap:" << screenRuntime.visibleLiveMinimapSummonMarkersDrawn
-		<< " baseSceneOnly:yes unsummonAnimation:no\n";
+		<< " baseSceneOnly:yes unsummonAnimation:authored\n";
 	logFile << "  finalBakedMapColors=lookups:" << overlay.bakedColorLookups
 		<< " matches:" << overlay.bakedColorMatches << " selectedPayloads:" << overlay.bakedSelectedPayloads
 		<< " drawnPayloads:" << overlay.bakedDrawnPayloads << " drawCalls:" << overlay.bakedDrawCalls << "\n";
@@ -75376,13 +75376,14 @@ int main(int argc, char** argv)
     UI::Release();
   }
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
-	fprintf(stdout, "Native dynamic presentation shutdown: assetLoads=%zu assetHits=%zu assetFailures=%zu assetEvictions=%zu missing=%zu graphsForgotten=%zu summonMarkers=%zu summonMeshes=%zu summonTriangles=%zu baseSceneOnly=yes unsummonAnimation=no\n",
+	fprintf(stdout, "Native dynamic presentation shutdown: assetLoads=%zu assetHits=%zu assetFailures=%zu assetEvictions=%zu missing=%zu graphsForgotten=%zu summonMarkers=%zu summonMeshes=%zu summonTriangles=%zu baseSceneOnly=yes unsummonAnimation=authored\n",
 		overlay.dynamicAssetLoads, overlay.dynamicAssetHits, overlay.dynamicAssetFailures, overlay.dynamicAssetEvictions,
 		overlay.dynamicUnitMissingAssets.size(), overlay.dynamicAssetGraphsForgotten,
 		screenRuntime.mapPreviewDynamicSummonMarkers, screenRuntime.mapPreviewDynamicSummonMeshes,
 		screenRuntime.mapPreviewDynamicSummonMeshTriangles);
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
+		fprintf(stdout,"Native unsummon presentation shutdown: starts=%zu samples=%zu\n",graphs.unsummonStarts,graphs.unsummonSamples);
 		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu deaths=%zu corpseSamples=%zu syncedAttacks=%zu fireMarkers=%zu casts=%zu syncedCasts=%zu castMarkers=%zu skippedCasts=%zu castFaces=%zu\n",
 			graphs.created,graphs.unsupported,graphs.sampled,graphs.movingSamples,graphs.failed,graphs.Size(),graphs.attackStarts,graphs.attackSkipped,graphs.CueSize(),graphs.attackFaces,graphs.deathStarts,graphs.deathSamples,graphs.attackSyncStarts,graphs.attackMarkers,
 			graphs.abilityStarts,graphs.abilitySyncStarts,graphs.abilityMarkers,graphs.abilitySkipped,graphs.abilityFaces);

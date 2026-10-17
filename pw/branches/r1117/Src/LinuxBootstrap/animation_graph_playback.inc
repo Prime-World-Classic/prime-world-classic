@@ -8,6 +8,7 @@
 class LinuxAnimationGraphPlayback
 {
 public:
+	using Kind=NWorld::LinuxDeathPresentation::Kind;
 	/** Admit validated single-skeleton assets before calling the original fixed-capacity graph API.
 	 * Dynamic external parameters and upper-body graphs remain unsupported in this adapter.
 	 */
@@ -49,12 +50,19 @@ public:
 		}
 		if (set->states.size()>NDb::ANIMSTATES_DEATH && mapped(set->states[NDb::ANIMSTATES_DEATH]))
 			result->death=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_DEATH].commonNode.c_str());
+		if (set->states.size()>NDb::ANIMSTATES_UNSUMMON && mapped(set->states[NDb::ANIMSTATES_UNSUMMON]))
+			result->unsummon=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_UNSUMMON].commonNode.c_str());
 		if (set->states.size()>NDb::ANIMSTATES_STUN && mapped(set->states[NDb::ANIMSTATES_STUN]))
 			result->stun=result->graph->GetNodeIDByNameSlowQuite(set->states[NDb::ANIMSTATES_STUN].commonNode.c_str());
-		// Match PFClientCreature's original normal-graph death-completion event, without world callbacks.
-		if (result->death>=0 && static_cast<unsigned>(result->death)<result->graph->GetNumNodes() &&
-			!result->graph->RegisterCallback(DIANGR_NODE,result->death,DeathComplete,DIANGR_CF_EXACT_PARAM,result.get(),.99f))
-			result->death=-1;
+		// Match original terminal events once per mapped node, including shared death/unsummon aliases.
+		const auto registerTerminal=[&](int node) {
+			return node>=0 && static_cast<unsigned>(node)<result->graph->GetNumNodes() &&
+				result->graph->RegisterCallback(DIANGR_NODE,node,DeathComplete,DIANGR_CF_EXACT_PARAM,result.get(),.99f);
+		};
+		const int authoredDeath=result->death;
+		if (!registerTerminal(result->death)) result->death=-1;
+		if (result->unsummon==authoredDeath) result->unsummon=result->death;
+		else if (!registerTerminal(result->unsummon)) result->unsummon=-1;
 		if (result->idle<0 || result->move<0 || static_cast<unsigned>(result->idle)>=result->graph->GetNumNodes() ||
 			static_cast<unsigned>(result->move)>=result->graph->GetNumNodes()) return {};
 		if (!result->locomotion.Initialize(*result->graph,result->move)) return {};
@@ -87,7 +95,7 @@ public:
 		}
 		if (Attacking() && (moving || seconds>=attackUntil || !attackTiming.BoundedRate())) CancelAttack();
 		if (Casting() && (moving || (abilityTiming && !abilityTiming->BoundedRate()))) CancelAbility();
-		const int requested=dying ? death : stunned && !frozen ? (stun>=0 ? stun : idle) : Casting() ? abilityNode : Attacking() ? attack : moving ? move : idle;
+		const int requested=dying ? terminalNode : stunned && !frozen ? (stun>=0 ? stun : idle) : Casting() ? abilityNode : Attacking() ? attack : moving ? move : idle;
 		if (requested!=target) {
 			if (!blender->SetMainAGTargetNode(requested)) return false;
 			target=requested;
@@ -129,23 +137,27 @@ public:
 	}
 	bool Stunned() const { return stunned; }
 	bool Frozen() const { return frozen; }
-	/** Death presentation overrides locomotion and attack without firing simulation callbacks. */
-	bool BeginDeath()
+	/** Select the authored terminal state without fallback or simulation callbacks.
+	 * Repeated requests are idempotent only for the same kind; EndDeath releases the old identity.
+	 */
+	bool BeginDeath(Kind kind=Kind::Death)
 	{
-		if (dying) return true;
-		if (last<0 || death<0 || static_cast<unsigned>(death)>=graph->GetNumNodes()) return false;
+		const int node=kind==Kind::Death ? death : kind==Kind::Unsummon ? unsummon : -1;
+		if (last<0 || node<0 || static_cast<unsigned>(node)>=graph->GetNumNodes()) return false;
+		if (dying) return terminalKind==kind && terminalNode==node;
 		graph->UnFreeze();
-		if (!blender->SetMainAGTargetNode(death)) { if (frozen) graph->Freeze(); return false; }
+		if (!blender->SetMainAGTargetNode(node)) { if (frozen) graph->Freeze(); return false; }
 		attackTiming.Cancel();
 		if (abilityTiming) abilityTiming->Cancel();
 		abilityUntil=-1; abilityTiming=nullptr;
 		stunned=frozen=false;
-		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=death; dirty=true; return true;
+		terminalKind=kind; terminalNode=node;
+		dying=true; deathFinished=false; deathCompletedAt=-1; attackUntil=-1; target=node; dirty=true; return true;
 	}
-	/** Resurrection discards the previous death pose and clock. */
-	void EndDeath() { if (dying) { dying=false; deathFinished=false; deathCompletedAt=-1; last=-1; target=-1; attackUntil=-1; dirty=true; } }
+	/** Resurrection discards the previous terminal identity, pose and clock. */
+	void EndDeath() { if (dying) { dying=false; terminalKind=Kind::Death; terminalNode=-1; deathFinished=false; deathCompletedAt=-1; last=-1; target=-1; attackUntil=-1; dirty=true; } }
 	bool Dying() const { return dying; }
-	/** World-clock frame in which the original 99% death callback was reached, or -1. */
+	/** World-clock frame of the selected terminal state's original 99% callback, or -1. */
 	double DeathCompletedAt() const { return deathCompletedAt; }
 	/** Reach the session fire marker when supported; otherwise preserve normal-rate attack-state playback.
 	 * Successful calls report whether synchronization was admitted, independently of visual fallback.
@@ -220,11 +232,17 @@ public:
 	int TargetNode() const { return target; }
 	unsigned Updates() const { return updates; }
 private:
-	/** Callback storage is graph-owned and destroyed while its presentation owner is still alive. */
+	/** Only the selected terminal node can complete presentation; outgoing-node callbacks are stale.
+	 * Callback storage is graph-owned and destroyed while its presentation owner is still alive.
+	 */
 	static DiInt32 DeathComplete(const DiAnGrCallbackParams& event)
 	{
 		auto* owner=static_cast<LinuxAnimationGraphPlayback*>(event.vpUserData);
-		if (owner && owner->dying) owner->deathFinished=true;
+		if (!owner || !owner->dying || owner->terminalNode<0 ||
+			static_cast<unsigned>(owner->terminalNode)>=owner->graph->GetNumNodes()) return DIOBJMSG_CONTINUE;
+		const DiAnimNode* node=event.geElement==DIANGR_NODE ? event.anpNode :
+			event.geElement==DIANGR_MACRONODE ? static_cast<const DiAnimNode*>(event.anmpMacronode) : nullptr;
+		if (node && node==owner->graph->GetNodeData(owner->terminalNode)) owner->deathFinished=true;
 		return DIOBJMSG_CONTINUE;
 	}
 	struct DeleteGraph { void operator()(DiAnimGraph* graph) const { if (graph) DiAnimGraph::Destroy(graph); } };
@@ -241,7 +259,9 @@ private:
 	double last=-1,attackUntil=-1,deathCompletedAt=-1;
 	double abilityUntil=-1;
 	int abilityNode=-1;
-	int idle=-1,move=-1,attack=-1,death=-1,stun=-1,target=-1;
+	int idle=-1,move=-1,attack=-1,death=-1,unsummon=-1,stun=-1,target=-1;
+	int terminalNode=-1;
+	Kind terminalKind=Kind::Death;
 	bool wasMoving=false,dirty=false,dying=false,deathFinished=false;
 	bool stunned=false,frozen=false;
 	unsigned updates=0;

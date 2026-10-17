@@ -32,7 +32,7 @@ static std::vector<int> Ids(const vector<LinuxDynamicWorldMarker>& markers)
 static bool SameDeath(const LinuxDeathPresentation& a, const LinuxDeathPresentation& b)
 {
 	return a.sequence == b.sequence && a.startedAt == b.startedAt && a.fallStartedAt == b.fallStartedAt
-		&& a.fallSpeed == b.fallSpeed && a.active == b.active;
+		&& a.fallSpeed == b.fallSpeed && a.active == b.active && a.kind == b.kind;
 }
 
 /** Selection is global before truncation; observer and eligible selection reserve the first two slots. */
@@ -390,13 +390,14 @@ static void Corpses(Checks& check)
 		const int id = unit->GetObjectId();
 		unit->KillUnit(nullptr, flags | PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
 		const auto cue = unit->GetLinuxDeathPresentation();
-		check(unit->IsDead() && !unit->IsObjectDead() && cue.active == (flags == 0),
+		check(unit->IsDead() && !unit->IsObjectDead() && cue.active && cue.kind == (flags == 0 ?
+			LinuxDeathPresentation::Kind::Death : LinuxDeathPresentation::Kind::Unsummon),
 			"dynamic presentation: actual animated death or unsummon establishes its original distinct corpse state");
 		const int refs = unit->GetRefCount(), owners = unit->GetObjCount(), ticks = unit->ticks;
 		const float lifetime = unit->CorpseTime();
 		const auto snapshot = Read(f, 20, CVec2(12, 12)); const auto* marker = Find(snapshot, id);
 		check(marker && marker->kind == LinuxDynamicWorldMarker::KIND_SUMMON && marker->dead && SameDeath(marker->death, cue),
-			"dynamic presentation: registered corpse copies every original cue field without inventing an unsummon death animation");
+			"dynamic presentation: registered corpse copies its exact death or unsummon cue without substituting terminal states");
 		for (int repeat = 0; repeat != 4; ++repeat) Read(f, 20, CVec2(12, 12), id);
 		check(unit->GetRefCount() == refs && unit->GetObjCount() == owners && unit->ticks == ticks
 			&& unit->CorpseTime() == lifetime && SameDeath(unit->GetLinuxDeathPresentation(), cue),

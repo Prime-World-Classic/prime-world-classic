@@ -10,6 +10,7 @@ class LinuxAnimationGraphBank
 		float heading=0;
 		bool hasFacing=false;
 		unsigned long long deathSequence=0;
+		NWorld::LinuxDeathPresentation::Kind deathKind=NWorld::LinuxDeathPresentation::Kind::Death;
 		unsigned long long castSequence=0;
 		unsigned markerHits=0;
 		unsigned abilityMarkerHits=0;
@@ -28,6 +29,7 @@ public:
 	size_t abilityStarts=0,abilitySyncStarts=0,abilityMarkers=0;
 	size_t abilitySkipped=0,abilityFaces=0;
 	size_t deathStarts=0,deathSamples=0;
+	size_t unsummonStarts=0,unsummonSamples=0;
 	/** Release borrowers before an exact scene asset leaves the mesh working set.
 	 * Other graph players, cue histories, counters and the current world clock stay intact.
 	 * Returns the number of removed owners; null or already-forgotten assets are no-ops.
@@ -62,6 +64,8 @@ public:
 	/** Resolve the SessionVisualRoot's actual Hero/Creep aliases, never infer clip names. */
 	LinuxAnimationGraphPlayback* Resolve(const LinuxHeroSceneAssetPreview& asset,const NWorld::LinuxDynamicWorldMarker& marker,float* heading=nullptr,float* corpseDrop=nullptr)
 	{
+		// Invalid terminal cues cannot leave a caller's previous sinking offset in use.
+		if (marker.dead && corpseDrop) *corpseDrop=0;
 		if (marker.objectId<0 || !std::isfinite(clock) || clock<0) return nullptr;
 		auto it=entries.find(marker.objectId);
 		// Only already-visible owners can start a fresh death; never recreate an offscreen corpse.
@@ -84,16 +88,21 @@ public:
 		}
 		if (!entry.player) return nullptr;
 		if (marker.dead) {
+			using Kind=NWorld::LinuxDeathPresentation::Kind;
 			const auto& death=marker.death;
+			if (death.kind!=Kind::Death && death.kind!=Kind::Unsummon) return nullptr;
 			const double age=clock-death.startedAt;
 			if (!death.sequence || !std::isfinite(age) || age<0) return nullptr;
+			// An already-consumed event cannot change terminal state without a new world sequence.
+			if (entry.deathSequence==death.sequence && entry.deathKind!=death.kind) return nullptr;
 			if (entry.deathSequence!=death.sequence) {
 				if (age>.25) return nullptr;
 				entry.player->EndDeath();
 				entry.player->CancelAbility();
 				entry.player->CancelAttack();
-				if (!entry.player->Advance(clock,false) || !entry.player->BeginDeath()) return nullptr;
-				entry.deathSequence=death.sequence; ++deathStarts;
+				if (!entry.player->Advance(clock,false) || !entry.player->BeginDeath(death.kind)) return nullptr;
+				entry.deathSequence=death.sequence; entry.deathKind=death.kind;
+				if (death.kind==Kind::Unsummon) ++unsummonStarts; else ++deathStarts;
 			}
 			if (!entry.player->Advance(clock,false)) return nullptr;
 			attackMarkers+=entry.player->AttackMarkerHits()-entry.markerHits; entry.markerHits=entry.player->AttackMarkerHits();
@@ -104,14 +113,16 @@ public:
 				const double completed=entry.player->DeathCompletedAt();
 				const double falling=clock-std::max(death.fallStartedAt,completed);
 				const double height=double(asset.meshPreview.maxZ)-asset.meshPreview.minZ;
-				// Original StartFallThrough caps travel at three authored half-heights.
-				if (completed>=0 && death.fallStartedAt>=0 && std::isfinite(falling) && falling>0 &&
+				// Unsummon never sinks, even with malformed fall metadata. Ordinary death keeps its authored cap.
+				if (death.kind==Kind::Death && completed>=0 && death.fallStartedAt>=0 && std::isfinite(falling) && falling>0 &&
 					std::isfinite(death.fallSpeed) && death.fallSpeed>0 && std::isfinite(height) && height>0) {
 					const double distance=std::min(falling*death.fallSpeed,1.5*height);
 					if (std::isfinite(distance) && distance<=std::numeric_limits<float>::max()) *corpseDrop=static_cast<float>(distance);
 				}
 			}
-			++sampled; ++deathSamples; return entry.player.get();
+			++sampled;
+			if (death.kind==Kind::Unsummon) ++unsummonSamples; else ++deathSamples;
+			return entry.player.get();
 		}
 		entry.player->EndDeath(); entry.deathSequence=0;
 		entry.player->SetControlState(marker.stunned,marker.frozen);

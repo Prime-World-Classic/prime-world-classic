@@ -3,7 +3,10 @@ static void DeathPresentationB13(Checks& check)
 {
 	const int before=check.count,failed=check.failed;
 	for (int flags : {0,int(PFBaseUnit::UNITDIEFLAGS_UNSUMMON),int(PFBaseUnit::UNITDIEFLAGS_DONTPLAYDEATHANIMATION),
-		int(PFBaseUnit::UNITDIEFLAGS_FORCEREMOVECORPSE)}) {
+		int(PFBaseUnit::UNITDIEFLAGS_FORCEREMOVECORPSE),
+		int(PFBaseUnit::UNITDIEFLAGS_UNSUMMON | PFBaseUnit::UNITDIEFLAGS_DONTPLAYDEATHANIMATION),
+		int(PFBaseUnit::UNITDIEFLAGS_UNSUMMON | PFBaseUnit::UNITDIEFLAGS_DEFERREDDEATH),
+		int(PFBaseUnit::UNITDIEFLAGS_UNSUMMON | PFBaseUnit::UNITDIEFLAGS_FORCEREMOVECORPSE)}) {
 		B8BehaviourForeignWorld f(check); if (!f.world) continue;
 		auto db=DeadCreatureDbB13(f.world);
 		const_cast<NDb::UnitDeathParameters*>(db->deathParameters.GetPtr())->fallSpeed=3;
@@ -13,9 +16,27 @@ static void DeathPresentationB13(Checks& check)
 		check(!unit->GetLinuxDeathPresentation().active,"B13 living creature has no death presentation");
 		unit->KillUnit(nullptr,flags|PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
 		const auto cue=unit->GetLinuxDeathPresentation();
-		check(cue.active==(flags==0),"B13 only ordinary animated death admits a native corpse");
+		check(cue.active==(flags==0 || flags==PFBaseUnit::UNITDIEFLAGS_UNSUMMON),
+			"B13 ordinary death and unsummon admit distinct cues unless presentation is suppressed");
+		if (flags==PFBaseUnit::UNITDIEFLAGS_UNSUMMON) {
+			check(cue.kind==LinuxDeathPresentation::Kind::Unsummon && cue.sequence==1 &&
+				cue.startedAt==f.world->GetTimeElapsed() && cue.fallStartedAt<0 && cue.fallSpeed==0,
+				"B13 unsummon captures its exact identity and clock without ordinary corpse falling");
+			unit->KillUnit(nullptr,flags | PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+			check(unit->GetLinuxDeathPresentation().sequence==cue.sequence &&
+				unit->GetLinuxDeathPresentation().kind==cue.kind,
+				"B13 duplicate unsummon cannot restart or relabel its visual cue");
+			f.world->Step(.5f,.5f);
+			check(unit->GetLinuxDeathPresentation().active && !unit->IsObjectDead() &&
+				unit->GetLinuxDeathPresentation().fallStartedAt<0 && unit->GetLinuxDeathPresentation().fallSpeed==0,
+				"B13 exact unsummon deadline retains its visual owner without scheduling sinking");
+			f.world->Step(.125f,.125f);
+			check(!unit->GetLinuxDeathPresentation().active && unit->IsObjectDead(),
+				"B13 world timer retires unsummon strictly after zero independently of animation completion");
+		}
 		if (flags) continue;
-		check(cue.sequence==1 && cue.startedAt==f.world->GetTimeElapsed() && cue.fallStartedAt<0 && cue.fallSpeed==3,
+		check(cue.kind==LinuxDeathPresentation::Kind::Death && cue.sequence==1 &&
+			cue.startedAt==f.world->GetTimeElapsed() && cue.fallStartedAt<0 && cue.fallSpeed==3,
 			"B13 death captures the original world clock and authored fall speed");
 		vector<LinuxDynamicWorldMarker> markers; f.world->GetLinuxDynamicWorldMarkers(markers,10000);
 		bool found=false;
@@ -34,11 +55,11 @@ static void DeathPresentationB13(Checks& check)
 		f.world->Step(.125f,.125f);
 		check(!unit->GetLinuxDeathPresentation().active && unit->IsObjectDead(),"B13 corpse retirement cancels visual ownership");
 	}
-	{
+	for (int flags : {0,int(PFBaseUnit::UNITDIEFLAGS_UNSUMMON)}) {
 		B8BehaviourForeignWorld f(check); if (!f.world) return;
 		auto db=DeadCreatureDbB13(f.world);
 		CObj<DeadCreatureB13<PFCreature>> unit=new DeadCreatureB13<PFCreature>(f.world,CVec3(5,5,0),CVec2(1,0),*db);
-		unit->KillUnit(nullptr,PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+		unit->KillUnit(nullptr,flags | PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
 		check(unit->GetLinuxDeathPresentation().active,"B13 base creature records an admitted visual death");
 		unit->OnRessurect();
 		check(!unit->GetLinuxDeathPresentation().active && unit->GetLinuxDeathPresentation().fallStartedAt<0,

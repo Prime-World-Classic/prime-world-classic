@@ -138,6 +138,8 @@ static void PlaneManeuverAuthoredB13(Checks& check, const char* dataRoot)
 			if (shield) { info[0][1].pTalentDesc = upgrade; info[0][1].refineRate = 1; }
 			if (mode == 2) { info[0][2].pTalentDesc = superior; info[0][2].refineRate = 1; }
 			hero->GetTalentsSet()->LoadSet(hero.GetPtr(), info); hero->AddGold(2000);
+			// Player commands target an admitted hero, not a still-pending constructor object.
+			isolated.world->ProcessAddRemove();
 			for (int i = 0; i <= mode; ++i)
 			{
 				CObj<NCore::WorldCommand> buy = CreateCmdActivateTalent(hero.GetPtr(), 0, i);
