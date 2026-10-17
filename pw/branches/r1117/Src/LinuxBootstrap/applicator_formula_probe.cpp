@@ -1450,9 +1450,10 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "ai_defaults_b13_tests.inc"
 #include "targeted_talent_b13_tests.inc"
 #include "world_picking_b13_tests.inc"
+#include "dynamic_presentation_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly,
-	bool targetedTalentsOnly, bool worldPickingOnly)
+	bool targetedTalentsOnly, bool worldPickingOnly, bool dynamicPresentationOnly)
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
 	NDb::AILogicParameters* ai = new NDb::AILogicParameters;
@@ -1462,6 +1463,13 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 	NDb::SessionRoot* root = new NDb::SessionRoot; root->logicRoot = logic;
 	NDb::SessionRoot::InitRoot(root);
 	Checks check;
+	if (dynamicPresentationOnly)
+	{
+		DynamicPresentationB13(check, dataRoot);
+		NDb::SessionRoot::InitRoot(saved);
+		std::printf("Dynamic presentation: %d checks, %d failures\n", check.count, check.failed);
+		return check.failed == 0;
+	}
 	if (worldPickingOnly)
 	{
 		WorldPickingB13(check, dataRoot);

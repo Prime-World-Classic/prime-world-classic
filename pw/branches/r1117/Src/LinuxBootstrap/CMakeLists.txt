@@ -994,6 +994,22 @@ add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxSceneWindowProbe)
 target_compile_features(PrimeWorldLinuxSceneResourceCacheProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxSceneResourceCache COMMAND PrimeWorldLinuxSceneResourceCacheProbe)
 add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxSceneResourceCacheProbe)
+add_executable(PrimeWorldLinuxDynamicAssetCacheProbe dynamic_asset_cache_probe.cpp)
+target_compile_features(PrimeWorldLinuxDynamicAssetCacheProbe PRIVATE cxx_std_17)
+add_test(NAME LinuxDynamicAssetCache COMMAND PrimeWorldLinuxDynamicAssetCacheProbe)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxDynamicAssetCacheProbe)
+add_executable(PrimeWorldLinuxMeshReindexOwnershipProbe mesh_reindex_ownership_probe.cpp
+	../Render/renderresourcemanager.cpp ../Render/primitive.cpp ../Render/smartrenderer.cpp
+	../Render/dxutils.cpp ../Render/vertexformatdescriptor.cpp)
+target_include_directories(PrimeWorldLinuxMeshReindexOwnershipProbe PRIVATE .. ../System)
+target_compile_definitions(PrimeWorldLinuxMeshReindexOwnershipProbe PRIVATE PW_LINUX_NULL_RENDER PW_LINUX_DB_BOOTSTRAP)
+target_compile_features(PrimeWorldLinuxMeshReindexOwnershipProbe PRIVATE cxx_std_17)
+target_compile_options(PrimeWorldLinuxMeshReindexOwnershipProbe PRIVATE -fpermissive -ffunction-sections -fdata-sections)
+target_link_options(PrimeWorldLinuxMeshReindexOwnershipProbe PRIVATE -Wl,--gc-sections,--wrap=_ZdaPv,--wrap=_ZdaPvm)
+add_test(NAME LinuxMeshReindexOwnership COMMAND PrimeWorldLinuxMeshReindexOwnershipProbe
+	"${CMAKE_CURRENT_SOURCE_DIR}/../../Data/Summons/Demon2/_.skin")
+set_tests_properties(LinuxMeshReindexOwnership PROPERTIES TIMEOUT 120)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxMeshReindexOwnershipProbe)
 add_executable(PrimeWorldLinuxDrawProfileProbe draw_profile_probe.cpp)
 target_compile_features(PrimeWorldLinuxDrawProfileProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxDrawProfile COMMAND PrimeWorldLinuxDrawProfileProbe)
@@ -1023,6 +1039,11 @@ add_test(NAME LinuxWorldPicking COMMAND PrimeWorldLinuxClient --bootstrap-world-
 	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
 # Real registered units and authored footprints must not depend on the capped visual marker export.
 set_tests_properties(LinuxWorldPicking PROPERTIES
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../Bin" TIMEOUT 120)
+add_test(NAME LinuxDynamicPresentation COMMAND PrimeWorldLinuxClient --bootstrap-dynamic-presentation-probe
+	--bootstrap-nature-data "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+# Visibility, global focus ordering, and original summon/corpse snapshots precede the native display cap.
+set_tests_properties(LinuxDynamicPresentation PROPERTIES
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../Bin" TIMEOUT 120)
 add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	"-DCLIENT=$<TARGET_FILE:PrimeWorldLinuxClient>" "-DROOT=${CMAKE_CURRENT_SOURCE_DIR}/../.."

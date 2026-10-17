@@ -294,7 +294,6 @@ MeshGeometry* LoadMeshGeometry(const char* pData, bool bSkeletalMesh, bool appen
       size += Align((*reindex)[i].size() * sizeof((*reindex)[0][0]), 16);
 
     char* reindexCopy = new char[size];
-    GetNullRenderMeshOwnedBlocks().push_back(reindexCopy);
     pMeshGeometry->pReindex = reinterpret_cast<const GeometryReindex*>(reindexCopy);
     memcpy(reindexCopy, pReindexData, size);
   }

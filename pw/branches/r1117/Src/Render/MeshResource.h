@@ -29,6 +29,10 @@ struct MeshGeometry : NonCopyable // The "primitives" member requires special ca
 	{
 		for (nstl::vector<Primitive*>::iterator it = primitives.begin(); it != primitives.end(); ++it)
 			delete *it;
+#if defined(PW_LINUX_NULL_RENDER)
+		// Native loads own this copy; Windows reindices remain owned by the renderer pool.
+		delete[] reinterpret_cast<const char*>(pReindex);
+#endif
 		//primitives.clear();
 	}
 

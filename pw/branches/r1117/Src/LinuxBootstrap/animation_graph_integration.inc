@@ -28,6 +28,23 @@ public:
 	size_t abilityStarts=0,abilitySyncStarts=0,abilityMarkers=0;
 	size_t abilitySkipped=0,abilityFaces=0;
 	size_t deathStarts=0,deathSamples=0;
+	/** Release borrowers before an exact scene asset leaves the mesh working set.
+	 * Other graph players, cue histories, counters and the current world clock stay intact.
+	 * Returns the number of removed owners; null or already-forgotten assets are no-ops.
+	 */
+	size_t ForgetAsset(const LinuxHeroSceneAssetPreview* asset)
+	{
+		if (!asset) return 0;
+		size_t removed = 0;
+		for (auto it = entries.begin(); it != entries.end();) {
+			if (it->second.asset != asset) { ++it; continue; }
+			cues.erase(it->first);
+			it = entries.erase(it);
+			++removed;
+		}
+		return removed;
+	}
+
 	/** Retain only the previous visible frame; at most 58 meshes are admitted by the caller. */
 	void Begin(const void* nextWorld,const std::shared_ptr<const void>& nextScene,double seconds)
 	{

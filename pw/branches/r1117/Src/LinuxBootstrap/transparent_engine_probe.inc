@@ -146,7 +146,7 @@ bool RunLinuxBasicFxTransparentProbe(const NDb::BasicFXMaterial& authored, const
 		clear(); LinuxStaticTransparentPass pass(1, {}); enqueue(pass, {1,0,0,.5f}, 1, 0);
 		unsigned boundaries = 0;
 		DrawLinuxMapDynamicWorldMarkerPreview(nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,
-			0,0,1,0, nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,
+			nullptr,nullptr,0,0,1,0, nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,
 			nullptr,nullptr,nullptr,nullptr,nullptr,nullptr,nullptr, [&]() { ++boundaries; pass.Flush(); });
 		check(boundaries == 1 && pixel(140,26,38,102), "missing dynamic world still flushes the map view exactly once");
 	}

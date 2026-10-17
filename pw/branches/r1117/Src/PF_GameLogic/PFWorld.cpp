@@ -12,6 +12,8 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 #include "PFBaseAttackData.h"
 #include <cmath>
 #include <limits>
+#include <algorithm>
+#include <vector>
 #include "PFAbilityData.h"
 #include "PFHero.h"
 #include "PFResourcesCollectionClient.h"
@@ -35,6 +37,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 #include "PFTower.h"
 #include "PFGlyph.h"
 #include "PFNeutralCreep.h"
+#include "PFSummoned.h"
 #include "PFMainBuilding.h"
 #include "PFMinigamePlace.h"
 #include "PFRoadFlagpole.h"
@@ -792,86 +795,138 @@ float PFWorld::GetLinuxCommonCreepMovementDistance()
   return distance;
 }
 
+/** Keep runtime identity distinct from authored unit categories and shared scene assets. */
+static int LinuxDynamicWorldMarkerKind(PFBaseUnit* unit)
+{
+	if (dynamic_cast<PFBaseHero*>(unit)) return LinuxDynamicWorldMarker::KIND_HERO;
+	if (dynamic_cast<PFCommonCreep*>(unit)) return LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
+	if (dynamic_cast<PFNeutralCreep*>(unit)) return LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+	if (dynamic_cast<PFTower*>(unit)) return LinuxDynamicWorldMarker::KIND_TOWER;
+	if (dynamic_cast<PFMainBuilding*>(unit)) return LinuxDynamicWorldMarker::KIND_MAIN_BUILDING;
+	if (dynamic_cast<PFBaseSummonedUnit*>(unit)) return LinuxDynamicWorldMarker::KIND_SUMMON;
+	return 0;
+}
+
+/** Copy presentation values only; a snapshot cannot own a unit or advance its lifecycle. */
+static LinuxDynamicWorldMarker CaptureLinuxDynamicWorldMarker(PFBaseUnit* unit, int kind)
+{
+	LinuxDynamicWorldMarker marker;
+	marker.kind = kind;
+	marker.x = unit->GetPosition().x;
+	marker.y = unit->GetPosition().y;
+	marker.objectId = unit->GetObjectId();
+	marker.faction = static_cast<int>(unit->GetFaction());
+	marker.healthPercent = unit->GetHealthPercent();
+	marker.energyPercent = unit->GetManaPercent();
+	marker.objectSize = unit->GetObjectSize();
+	if (auto* moving = dynamic_cast<PFBaseMovingUnit*>(unit))
+	{
+		marker.moving = moving->IsMoving();
+		marker.moveSpeed = moving->GetUnitSpeed();
+		const CVec2 direction = moving->GetMoveDirection();
+		if (direction.x * direction.x + direction.y * direction.y > 0.0001f)
+		{
+			marker.moveDirX = direction.x;
+			marker.moveDirY = direction.y;
+			marker.hasMoveDirection = true;
+		}
+	}
+	marker.dead = unit->IsDead();
+	marker.stunned = unit->CheckFlagType(NDb::UNITFLAGTYPE_STUN);
+	marker.frozen = marker.stunned && unit->CheckFlagType(NDb::UNITFLAGTYPE_FREEZE);
+	if (const auto* creature = dynamic_cast<const PFCreature*>(unit)) marker.death = creature->GetLinuxDeathPresentation();
+	if (const auto* attack = unit->GetAttackAbility()) marker.attack = attack->GetLinuxPresentation();
+	marker.ability = unit->GetLinuxAbilityPresentation();
+	if (const auto* desc = unit->DbUnitDesc())
+	{
+		marker.unitDbid = desc->GetDBID().GetFormatted();
+		if (desc->sceneObject) marker.sceneObjectDbid = desc->sceneObject->GetDBID().GetFormatted();
+		if (const auto* creep = dynamic_cast<const NDb::AdvMapCreep*>(desc)) marker.creepType = static_cast<int>(creep->creepType);
+	}
+	if (auto* hero = dynamic_cast<PFBaseHero*>(unit))
+		if (IsValid(hero->GetPlayer()))
+		{
+			marker.playerId = hero->GetPlayer()->GetPlayerID();
+			marker.userId = hero->GetPlayer()->GetUserID();
+		}
+	return marker;
+}
+
+/** Preserve the diagnostic export's existing traversal and caller-controlled cap. */
 void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers)
 {
-  markers.clear();
-  if (maxMarkers <= 0)
-    return;
+	markers.clear();
+	if (maxMarkers <= 0) return;
+	for (const auto& entry : GetObjects())
+	{
+		if (markers.size() >= maxMarkers) break;
+		auto* unit = dynamic_cast<PFBaseUnit*>(entry.second.GetPtr());
+		const int kind = LinuxDynamicWorldMarkerKind(unit);
+		if (kind) markers.push_back(CaptureLinuxDynamicWorldMarker(unit, kind));
+	}
+}
 
-  TObjects& objects = GetObjects();
-  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
-  {
-    if (static_cast<int>(markers.size()) >= maxMarkers)
-      break;
-
-    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(it->second.GetPtr());
-    if (!unit)
-      continue;
-
-    LinuxDynamicWorldMarker marker;
-    marker.x = unit->GetPosition().x;
-    marker.y = unit->GetPosition().y;
-    marker.objectId = unit->GetObjectId();
-    marker.faction = static_cast<int>(unit->GetFaction());
-    marker.healthPercent = unit->GetHealthPercent();
-    marker.energyPercent = unit->GetManaPercent();
-    marker.objectSize = unit->GetObjectSize();
-    marker.moving = false;
-    if (PFBaseMovingUnit* movingUnit = dynamic_cast<PFBaseMovingUnit*>(unit))
-    {
-      marker.moving = movingUnit->IsMoving();
-			marker.moveSpeed=movingUnit->GetUnitSpeed();
-      const CVec2 moveDir = movingUnit->GetMoveDirection();
-      if (moveDir.x * moveDir.x + moveDir.y * moveDir.y > 0.0001f)
-      {
-        marker.moveDirX = moveDir.x;
-        marker.moveDirY = moveDir.y;
-        marker.hasMoveDirection = true;
-      }
-    }
-    marker.dead = unit->IsDead();
-		marker.stunned=unit->CheckFlagType(NDb::UNITFLAGTYPE_STUN);
-		marker.frozen=marker.stunned && unit->CheckFlagType(NDb::UNITFLAGTYPE_FREEZE);
-		if (const auto* creature=dynamic_cast<const PFCreature*>(unit)) marker.death=creature->GetLinuxDeathPresentation();
-		if (const auto* attack=unit->GetAttackAbility()) marker.attack=attack->GetLinuxPresentation();
-		marker.ability=unit->GetLinuxAbilityPresentation();
-
-    const NDb::Unit* unitDesc = unit->DbUnitDesc();
-    if (unitDesc)
-    {
-      marker.unitDbid = unitDesc->GetDBID().GetFormatted();
-      if (unitDesc->sceneObject)
-      {
-        marker.sceneObjectDbid = unitDesc->sceneObject->GetDBID().GetFormatted();
-      }
-      if (const NDb::AdvMapCreep* creepDesc = dynamic_cast<const NDb::AdvMapCreep*>(unitDesc))
-      {
-        marker.creepType = static_cast<int>(creepDesc->creepType);
-      }
-    }
-
-    if (PFBaseHero* hero = dynamic_cast<PFBaseHero*>(unit))
-    {
-      marker.kind = LinuxDynamicWorldMarker::KIND_HERO;
-      if (IsValid(hero->GetPlayer()))
-      {
-        marker.playerId = hero->GetPlayer()->GetPlayerID();
-        marker.userId = hero->GetPlayer()->GetUserID();
-      }
-    }
-    else if (dynamic_cast<PFCommonCreep*>(unit))
-      marker.kind = LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
-    else if (dynamic_cast<PFNeutralCreep*>(unit))
-      marker.kind = LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
-    else if (dynamic_cast<PFTower*>(unit))
-      marker.kind = LinuxDynamicWorldMarker::KIND_TOWER;
-    else if (dynamic_cast<PFMainBuilding*>(unit))
-      marker.kind = LinuxDynamicWorldMarker::KIND_MAIN_BUILDING;
-    else
-      continue;
-
-    markers.push_back(marker);
-  }
+/** Rank eligible live-registry entries before truncation, with O(cap) temporary storage.
+ * Corpse metadata remains authoritative; FORBIDPICK does not imply invisibility.
+ */
+void PFWorld::GetLinuxVisibleDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers,
+	const PFBaseHero* observer, const CVec2& focus, int preferredObjectId, bool minimap)
+{
+	markers.clear();
+	const CVec2& bounds = GetMapSize();
+	if (maxMarkers <= 0 || !std::isfinite(focus.x) || !std::isfinite(focus.y) ||
+		!std::isfinite(bounds.x) || !std::isfinite(bounds.y) || bounds.x <= 0 || bounds.y <= 0 ||
+		!IsValid(observer) || observer->GetWorld() != this || FindLinuxUnitByObjectId(observer->GetObjectId()) != observer ||
+		observer->GetFaction() < 0 || observer->GetFaction() >= NDb::KnownEnum<NDb::EFaction>::SizeOf()) return;
+	struct Candidate { PFBaseUnit* unit; int kind, priority, id; double distance; };
+	const auto better = [](const Candidate& a, const Candidate& b) {
+		if (a.priority != b.priority) return a.priority < b.priority;
+		if (a.distance != b.distance) return a.distance < b.distance;
+		return a.id < b.id;
+	};
+	const size_t limit = std::min(maxMarkers, 640);
+	std::vector<Candidate> candidates;
+	candidates.reserve(limit);
+	const double headroom = std::numeric_limits<float>::max() / 4.0;
+	for (const auto& entry : GetObjects())
+	{
+		auto* unit = dynamic_cast<PFBaseUnit*>(entry.second.GetPtr());
+		if (!IsValid(unit) || unit->GetWorld() != this || unit->GetObjectId() < 0 || unit->GetHiddenCounter() > 0 ||
+			FindLinuxUnitByObjectId(unit->GetObjectId()) != unit) continue;
+		const int kind = LinuxDynamicWorldMarkerKind(unit);
+		if (!kind) continue;
+		const CVec3& position = unit->GetPosition();
+		const float size = unit->GetObjectSize();
+		if (!std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z) ||
+			position.x < 0 || position.y < 0 || position.x >= bounds.x || position.y >= bounds.y ||
+			!std::isfinite(size) || size < 0 || double(size) * size > headroom ||
+			double(position.z) * position.z > headroom || !unit->IsVisibleForFaction(observer->GetFaction())) continue;
+		if (const auto* summon = dynamic_cast<const PFBaseSummonedUnit*>(unit))
+		{
+			// Original minimap exclusions must not consume the bounded marker budget.
+			if (minimap && !summon->GetOpenWarFog()) continue;
+			if (!summon->GetOpenWarFog() &&
+				!(unit->GetFaction() == observer->GetFaction() && unit->GetUnitType() == NDb::UNITTYPE_PET) &&
+				!unit->IsPlacementVisible(observer->GetFaction())) continue;
+		}
+		const double dx = double(position.x) - focus.x, dy = double(position.y) - focus.y;
+		const Candidate candidate{unit, kind, unit == observer ? 0 : unit->GetObjectId() == preferredObjectId ? 1 : 2,
+			unit->GetObjectId(), dx * dx + dy * dy};
+		if (candidates.size() < limit)
+		{
+			candidates.push_back(candidate);
+			std::push_heap(candidates.begin(), candidates.end(), better);
+		}
+		else if (better(candidate, candidates.front()))
+		{
+			std::pop_heap(candidates.begin(), candidates.end(), better);
+			candidates.back() = candidate;
+			std::push_heap(candidates.begin(), candidates.end(), better);
+		}
+	}
+	std::sort(candidates.begin(), candidates.end(), better);
+	for (const auto& candidate : candidates)
+		markers.push_back(CaptureLinuxDynamicWorldMarker(candidate.unit, candidate.kind));
 }
 
 /** Pick original gameplay footprints, independently of the capped presentation export.

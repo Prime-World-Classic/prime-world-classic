@@ -102,7 +102,8 @@ struct LinuxDynamicWorldMarker
     KIND_COMMON_CREEP = 2,
     KIND_NEUTRAL_CREEP = 3,
     KIND_TOWER = 4,
-    KIND_MAIN_BUILDING = 5
+    KIND_MAIN_BUILDING = 5,
+		KIND_SUMMON = 6
   };
 
   float x;
@@ -541,6 +542,12 @@ public:
   int GetLinuxMovedCommonCreepObjectsCount();
   float GetLinuxCommonCreepMovementDistance();
   void GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers);
+	/** Visible value snapshots, capped at 640 after observer/selection/distance ordering.
+	 * A finite off-map camera focus is valid; the observer must remain registered.
+	 * Minimap mode excludes no-war-fog summons before ranking and truncation.
+	 */
+	void GetLinuxVisibleDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers,
+		const PFBaseHero* observer, const CVec2& focus, int preferredObjectId = -1, bool minimap = false);
   PFBaseUnit* FindLinuxUnitByObjectId(int objectId);
 	/** Pick a live manual endpoint; optional ability context controls original hero preference. */
 	PFBaseUnit* PickLinuxUnitAt(const CVec2& point, const PFBaseHero* observer, bool enemiesOnly,

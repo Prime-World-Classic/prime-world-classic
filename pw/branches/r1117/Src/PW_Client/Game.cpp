@@ -72,6 +72,7 @@
 #include "PF_GameLogic/PFAbilityData.h"
 #include "PF_GameLogic/PFAbilityInstance.h"
 #include "PF_GameLogic/PFAdvancedSummon.h"
+#include "PF_GameLogic/PFSummoned.h"
 #include "PF_GameLogic/PFBaseAttackData.h"
 #include "PF_GameLogic/PFBaseUnit.h"
 #include "PF_GameLogic/PFBuildings.h"
@@ -133,6 +134,7 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "LinuxBootstrap/dynamic_asset_cache.h"
 #include "LinuxBootstrap/scene_window.h"
 #include <iostream>
 #include "LinuxBootstrap/baked_vertex_colors.h"
@@ -397,6 +399,9 @@ class LinuxAnimationGraphBank;
 struct LinuxWindowOverlay
 {
 	std::shared_ptr<LinuxAnimationGraphBank> unitAnimationGraphs;
+	std::set<std::string> dynamicUnitMissingAssets;
+	size_t dynamicAssetLoads = 0, dynamicAssetHits = 0, dynamicAssetFailures = 0;
+	size_t dynamicAssetEvictions = 0, dynamicAssetGraphsForgotten = 0;
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
 	std::array<LinuxBootstrap::SceneResourceCache<LinuxStaticMapResource>, 3> staticMapResources;
 	std::weak_ptr<const void> skySceneOwner;
@@ -5387,6 +5392,8 @@ struct LinuxBootstrapScreenRuntime
   size_t mapPreviewDynamicHeroMarkers;
   size_t mapPreviewDynamicCommonCreepMarkers;
   size_t mapPreviewDynamicNeutralCreepMarkers;
+	size_t mapPreviewDynamicSummonMarkers = 0;
+	size_t mapPreviewDynamicSummonMeshes = 0, mapPreviewDynamicSummonMeshTriangles = 0;
   size_t mapPreviewDynamicTowerMarkers;
   size_t mapPreviewDynamicMainBuildingMarkers;
   size_t mapPreviewDynamicMovingMarkers;
@@ -5631,6 +5638,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveMinimapHeroMarkersDrawn;
   size_t visibleLiveMinimapDeadHeroMarkersDrawn;
   size_t visibleLiveMinimapCreepMarkersDrawn;
+	size_t visibleLiveMinimapSummonMarkersDrawn = 0;
   size_t visibleLiveMinimapNeutralCreepMarkersDrawn;
   size_t visibleLiveMinimapObjectiveMarkersDrawn;
   size_t visibleLiveMinimapMarkersSkippedDead;
@@ -20847,6 +20855,12 @@ bool IsLinuxDynamicWorldCreepMarker(const NWorld::LinuxDynamicWorldMarker& marke
     marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
 }
 
+/** Summons share the authored creep animation aliases, not the creep world identity. */
+bool IsLinuxDynamicWorldAnimatedUnitMarker(const NWorld::LinuxDynamicWorldMarker& marker)
+{
+	return IsLinuxDynamicWorldCreepMarker(marker) || marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON;
+}
+
 bool IsLinuxDynamicWorldObjectiveMarker(const NWorld::LinuxDynamicWorldMarker& marker)
 {
   return
@@ -20889,9 +20903,9 @@ void ProbeLinuxDynamicWorldUnitMeshPreview(
     preview->title =
       kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ?
       "Neutral creep" :
-      "Common creep";
+			(kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON ? "Summon" : "Common creep");
   }
-  if (creepType >= 0)
+	if (creepType >= 0 && kind != NWorld::LinuxDynamicWorldMarker::KIND_SUMMON)
   {
     preview->heroRace = NDb::EnumToString(static_cast<NDb::ECreepType>(creepType));
   }
@@ -20944,66 +20958,40 @@ size_t CountLinuxDynamicWorldUnitMeshPreviewsReady(
 
 size_t ProbeLinuxDynamicWorldUnitMeshPreviews(
   const LinuxClientEnvironment& environment,
-  NWorld::PFWorld* world,
+	const vector<NWorld::LinuxDynamicWorldMarker>& markers,
+	LinuxWindowOverlay* overlay,
   std::map<std::string, LinuxSelectedHeroDbPreview>* previews,
   size_t* readyCount
 )
 {
-  if (readyCount)
-  {
-    *readyCount = 0;
-  }
-  if (!world || !previews)
-  {
-    return 0;
-  }
-
-  vector<NWorld::LinuxDynamicWorldMarker> markers;
-  world->GetLinuxDynamicWorldMarkers(markers, 640);
-  if (markers.empty())
-  {
-    if (readyCount)
-    {
-      *readyCount = CountLinuxDynamicWorldUnitMeshPreviewsReady(*previews);
-    }
-    return previews->size();
-  }
-
-  const size_t previewLimit = 32;
-  for (size_t i = 0; i < markers.size(); ++i)
-  {
-    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-    if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
-    {
-      continue;
-    }
-
-    const std::string key = BuildLinuxDynamicWorldUnitMeshPreviewKey(marker);
-    if (key.empty() || previews->find(key) != previews->end())
-    {
-      continue;
-    }
-    if (previews->size() >= previewLimit)
-    {
-      break;
-    }
-
-    LinuxSelectedHeroDbPreview preview;
-    ProbeLinuxDynamicWorldUnitMeshPreview(
-      environment,
-      ToStdString(marker.unitDbid),
-      key,
-      marker.kind,
-      marker.creepType,
-      &preview);
-    (*previews)[key] = preview;
-  }
-
-  if (readyCount)
-  {
-    *readyCount = CountLinuxDynamicWorldUnitMeshPreviewsReady(*previews);
-  }
-  return previews->size();
+	if (readyCount) *readyCount = 0;
+	if (!overlay || !previews) return 0;
+	std::vector<std::string> keys;
+	std::map<std::string, const NWorld::LinuxDynamicWorldMarker*> sources;
+	for (const auto& marker : markers) {
+		if ((marker.dead && !marker.death.active) || !IsLinuxDynamicWorldAnimatedUnitMarker(marker)) continue;
+		const auto key = BuildLinuxDynamicWorldUnitMeshPreviewKey(marker);
+		if (!key.empty() && sources.emplace(key, &marker).second) keys.push_back(key);
+	}
+	// Update only between frames: graph entries borrow scene/component identities.
+	// Invalidate only the evicted asset; retained attack/cast/death playback must not restart.
+	const auto update = LinuxBootstrap::UpdateDynamicAssetCache(*previews, overlay->dynamicUnitMissingAssets, keys, 32,
+		[&](const std::string& key, LinuxSelectedHeroDbPreview& preview) {
+			const auto& marker = *sources.at(key);
+			ProbeLinuxDynamicWorldUnitMeshPreview(environment, ToStdString(marker.unitDbid), key,
+				marker.kind, marker.creepType, &preview);
+			return IsLinuxHeroMeshDbPreviewRenderableForMap(preview);
+		},
+		[&](const std::string&, LinuxSelectedHeroDbPreview& preview) {
+			if (overlay->unitAnimationGraphs)
+				overlay->dynamicAssetGraphsForgotten += overlay->unitAnimationGraphs->ForgetAsset(&preview.sceneAsset);
+		});
+	overlay->dynamicAssetLoads += update.loads;
+	overlay->dynamicAssetHits += update.hits;
+	overlay->dynamicAssetFailures += update.failures;
+	overlay->dynamicAssetEvictions += update.evicted;
+	if (readyCount) *readyCount = CountLinuxDynamicWorldUnitMeshPreviewsReady(*previews);
+	return previews->size();
 }
 
 void ProbeHeroMeshDbPreviewForCatalogIndex(
@@ -30713,6 +30701,7 @@ bool RunLinuxFlashViewportProbe(Render::IUIRenderer* uiRenderer, unsigned int wi
 
 bool RunLinuxHeroMeshTextureProbe();
 bool RunLinuxBasicFxEngineProbe(const std::string& capturePath, const LinuxClientEnvironment& environment);
+static bool RunLinuxSummonPresentationEngineProbe(const LinuxClientEnvironment& environment, const std::string& capturePath);
 
 // Exercises queued Flash commands through the native OpenGL UI renderer and checks
 // replay state, texturing, masking, fill morphing, and framebuffer output.
@@ -31614,8 +31603,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height, const s
 	const bool viewportPassed = RunLinuxFlashViewportProbe(uiRenderer, width, height);
 	const bool heroTexturesPassed = RunLinuxHeroMeshTextureProbe();
 	const bool basicFxPassed = RunLinuxBasicFxEngineProbe(capturePath, environment);
+	const bool summonPresentationPassed = RunLinuxSummonPresentationEngineProbe(environment, capturePath);
   uiRenderer->Release();
-	return passed && viewportPassed && heroTexturesPassed && basicFxPassed;
+	return passed && viewportPassed && heroTexturesPassed && basicFxPassed && summonPresentationPassed;
 #else
   (void)width;
   (void)height;
@@ -35927,6 +35917,7 @@ NWorld::LinuxDynamicWorldMarker MakeLinuxSelectedUnitHudMarker(NWorld::PFBaseUni
 			marker.userId = hero->GetPlayer()->GetUserID();
 		}
 	}
+	else if (dynamic_cast<NWorld::PFBaseSummonedUnit*>(unit)) marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_SUMMON;
 	else if (unit->IsCreep()) marker.kind = NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
 	else if (unit->GetUnitType() == NDb::UNITTYPE_NEUTRALCREEP ||
 		unit->GetUnitType() == NDb::UNITTYPE_NEUTRALCHAMPION ||
@@ -44796,6 +44787,51 @@ void TransformLinuxMapPreviewEyeVectorToMap(
 
 #include "LinuxBootstrap/map_camera_integration.inc"
 
+/** Diagnostic/replay views keep their historical global snapshot; local presentation has one exact observer. */
+bool UseLinuxVisibleDynamicPresentation(const LinuxClientLaunchSettings* settings, const LinuxBootstrapScreenRuntime* runtime)
+{
+	return settings && runtime && !settings->bootstrapWorldDebug && !settings->spectator &&
+		!runtime->replayFileInputActive && IsLinuxWorldPresentationActive(runtime);
+}
+
+/** Filter and rank before either the 640-marker, 32-scene, or 48-unit-mesh budget is applied.
+ * Minimap mode excludes no-war-fog summons before the world's bounded selection.
+ */
+bool CollectLinuxDynamicPresentationMarkers(NWorld::PFWorld* world, const LinuxClientLaunchSettings* settings,
+	const LinuxSelectedMapPreview* map, LinuxBootstrapScreenRuntime* runtime,
+	vector<NWorld::LinuxDynamicWorldMarker>& markers, bool minimap = false)
+{
+	markers.clear();
+	const bool ranked = UseLinuxVisibleDynamicPresentation(settings, runtime);
+	if (!world) return ranked;
+	if (!ranked) {
+		// Diagnostic/replay policy stays global and capped; minimap callers still filter their glyphs.
+		world->GetLinuxDynamicWorldMarkers(markers, 640);
+		return false;
+	}
+	const auto* observer = ResolveLinuxLocalPlayerHero(runtime, world);
+	if (!observer) return true; // Lost ownership must not reveal another player's view.
+	CVec2 focus = observer->GetPosition().AsVec2D();
+	if (map) {
+		const auto camera = ResolveLinuxMapCameraFrame(*settings, *map, *runtime);
+		if (camera.valid) {
+			focus.x = camera.centerX - camera.panX / camera.scale;
+			focus.y = camera.centerY - camera.panZ / camera.scale;
+		}
+	}
+	world->GetLinuxVisibleDynamicWorldMarkers(markers, 640, observer, focus, runtime->mapPreviewSelectedTargetObjectId, minimap);
+	return true;
+}
+
+/** Original PFCreep::UpdateMinimap omits no-war-fog summons, including allied pets. */
+bool ShouldDrawLinuxSummonOnMinimap(NWorld::PFWorld* world, const NWorld::LinuxDynamicWorldMarker& marker)
+{
+	if (marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_SUMMON) return true;
+	const auto* unit = world ? world->FindLinuxUnitByObjectId(marker.objectId) : nullptr;
+	const auto* summon = dynamic_cast<const NWorld::PFBaseSummonedUnit*>(unit);
+	return summon && summon->GetWorld() == world && summon->GetOpenWarFog();
+}
+
 bool SendLinuxMapPreviewMoveCommandFromScreen(
   const LinuxClientLaunchSettings& settings,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -52113,7 +52149,7 @@ const LinuxSelectedHeroDbPreview* ResolveLinuxDynamicUnitMeshPreviewForMarker(
   const std::map<std::string, LinuxSelectedHeroDbPreview>* dynamicUnitMeshPreviews
 )
 {
-  if (!dynamicUnitMeshPreviews || !IsLinuxDynamicWorldCreepMarker(marker))
+	if (!dynamicUnitMeshPreviews || !IsLinuxDynamicWorldAnimatedUnitMarker(marker))
   {
     return 0;
   }
@@ -52162,6 +52198,8 @@ const char* DescribeLinuxLiveHudUnitKind(int kind)
     return "creep";
   case NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP:
     return "neutral";
+	case NWorld::LinuxDynamicWorldMarker::KIND_SUMMON:
+		return "summon";
   case NWorld::LinuxDynamicWorldMarker::KIND_TOWER:
     return "tower";
   case NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING:
@@ -53124,6 +53162,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   const std::map<std::string, LinuxSelectedHeroDbPreview>* dynamicUnitMeshPreviews,
   const LinuxEngineMapStartPreview* engineMapStartPreview,
   NWorld::PFWorld* world,
+	const LinuxClientLaunchSettings* settings,
+	LinuxBootstrapScreenRuntime* runtime,
   float centerX,
   float centerY,
   float scale,
@@ -53169,12 +53209,12 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   }
 
   vector<NWorld::LinuxDynamicWorldMarker> markers;
-  world->GetLinuxDynamicWorldMarkers(markers, 640);
+	const bool ranked = CollectLinuxDynamicPresentationMarkers(world, settings, selectedMapPreview, runtime, markers);
 	if (overlay) {
 		if (!overlay->unitAnimationGraphs) overlay->unitAnimationGraphs=std::make_shared<LinuxAnimationGraphBank>();
 		overlay->unitAnimationGraphs->Begin(world,selectedMapPreview->sceneCatalog,world->GetTimeElapsed());
 	}
-	if (localView && camera && camera->valid) {
+	if (!ranked && localView && camera && camera->valid) {
 		const double focusX = camera->centerX - camera->panX / camera->scale;
 		const double focusY = camera->centerY - camera->panZ / camera->scale;
 		const auto distance = [&](const NWorld::LinuxDynamicWorldMarker& marker) {
@@ -53208,6 +53248,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t heroMeshes = 0;
   size_t heroMeshTriangleCount = 0;
   size_t creepMeshes = 0;
+	size_t unitMeshes = 0;
   size_t creepMeshTriangleCount = 0;
   size_t selectedHeroBadgeCount = 0;
   const size_t ringSegments = 18;
@@ -53237,7 +53278,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
 		if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
 			ResolveLinuxMapHeroPreviewForMarker(marker, localMatchPreview, engineMapStartPreview, lineupHeroPreviews, selectedHeroPreview))
 			anyHeroMesh = true;
-		if (IsLinuxDynamicWorldCreepMarker(marker) && ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews))
+		if (IsLinuxDynamicWorldAnimatedUnitMarker(marker) && ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews))
 			anyCreepMesh = true;
 	}
 
@@ -53297,10 +53338,10 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (size_t i = 0; i < markers.size() && creepMeshes < creepMeshLimit; ++i)
+		for (size_t i = 0; i < markers.size() && unitMeshes < creepMeshLimit; ++i)
     {
       const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-      if ((marker.dead && !marker.death.active) || !IsLinuxDynamicWorldCreepMarker(marker))
+			if ((marker.dead && !marker.death.active) || !IsLinuxDynamicWorldAnimatedUnitMarker(marker))
       {
         continue;
       }
@@ -53329,8 +53370,16 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
             green,
             blue, &poses, localView))
       {
-        ++creepMeshes;
-        creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
+				++unitMeshes;
+				if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON) {
+					if (runtime) {
+						++runtime->mapPreviewDynamicSummonMeshes;
+						runtime->mapPreviewDynamicSummonMeshTriangles += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
+					}
+				} else {
+					++creepMeshes;
+					creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
+				}
       }
     }
   }
@@ -53378,6 +53427,11 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       columnHeight = 2.25f;
       ++neutralCreeps;
     }
+		else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON)
+		{
+			radiusWorld = std::max(.1f, marker.objectSize * .5f);
+			if (runtime) ++runtime->mapPreviewDynamicSummonMarkers;
+		}
     else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER)
     {
       radiusWorld = 12.5f;
@@ -53438,7 +53492,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       heroMeshLayerReady &&
       !marker.dead &&
       markerUnitPreview &&
-      IsLinuxDynamicWorldCreepMarker(marker) &&
+			IsLinuxDynamicWorldAnimatedUnitMarker(marker) &&
       creepMeshCandidates < creepMeshLimit;
     if (drawUnitMesh)
     {
@@ -54240,6 +54294,9 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewDynamicUnitMeshPreviewReady = 0;
     renderContext.screenRuntime->mapPreviewDynamicCreepMeshesDrawn = false;
     renderContext.screenRuntime->mapPreviewDynamicCreepMeshes = 0;
+		renderContext.screenRuntime->mapPreviewDynamicSummonMarkers = 0;
+		renderContext.screenRuntime->mapPreviewDynamicSummonMeshes = 0;
+		renderContext.screenRuntime->mapPreviewDynamicSummonMeshTriangles = 0;
     renderContext.screenRuntime->mapPreviewDynamicCreepMeshTriangles = 0;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerMatched = false;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerPlayerId = -1;
@@ -54706,6 +54763,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.dynamicUnitMeshPreviews,
     renderContext.engineMapStartPreview,
     dynamicWorld,
+		renderContext.settings,
+		renderContext.screenRuntime,
     centerX,
     centerY,
     scale,
@@ -55274,6 +55333,33 @@ void ApplyLinuxHeroPreviewVertexColor(
     textureAlpha ? 255 : 232);
 }
 
+/** Release diffuse uploads whose last selected/lineup/dynamic asset owner left the working set.
+ * Called between frames, after mesh eviction; no queued draw may retain these texture names.
+ */
+void PruneLinuxHeroPreviewDiffuseTextures(LinuxWindowOverlay* overlay,
+	const LinuxSelectedHeroDbPreview& selected, const std::vector<LinuxSelectedHeroDbPreview>& lineup,
+	const std::map<std::string, LinuxSelectedHeroDbPreview>& dynamic)
+{
+	if (!overlay) return;
+	std::set<std::string> retained;
+	const auto collect = [&](const LinuxSelectedHeroDbPreview& preview) {
+		for (const auto& texture : preview.sceneAsset.skinDiffuseTextures)
+			if (!texture.sourceFile.empty()) retained.insert(texture.sourceFile);
+	};
+	collect(selected);
+	for (const auto& preview : lineup) collect(preview);
+	for (const auto& entry : dynamic) collect(entry.second);
+	for (auto it = overlay->heroPreviewDiffuseTextureCache.begin(); it != overlay->heroPreviewDiffuseTextureCache.end();) {
+		if (retained.count(it->first)) { ++it; continue; }
+		DeleteOpenGlTexture(&it->second);
+		it = overlay->heroPreviewDiffuseTextureCache.erase(it);
+	}
+	for (auto it = overlay->heroPreviewDiffuseTextureFailedSourceFiles.begin(); it != overlay->heroPreviewDiffuseTextureFailedSourceFiles.end();) {
+		if (retained.count(*it)) ++it;
+		else it = overlay->heroPreviewDiffuseTextureFailedSourceFiles.erase(it);
+	}
+}
+
 GLuint ResolveLinuxHeroPreviewDiffuseTexture(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedHeroDbPreview* heroPreview,
@@ -55476,6 +55562,7 @@ bool DrawLinuxHeroMeshPreview(
 }
 
 #include "../LinuxBootstrap/basicfx_engine_probe.inc"
+#include "../LinuxBootstrap/summon_presentation_engine_probe.inc"
 
 /// Render two cold-cache materials through the actual preview draw path, then repeat warm.
 bool RunLinuxHeroMeshTextureProbe()
@@ -56907,7 +56994,9 @@ PwRuffleMinimapState CaptureLinuxRuffleMinimap(const LinuxOverlayUiRenderContext
 {
 	PwRuffleMinimapState result;
 	NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(context.screenRuntime);
-	NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(context.screenRuntime, world, 0, 0);
+	NWorld::PFBaseHero* hero = UseLinuxVisibleDynamicPresentation(context.settings, context.screenRuntime)
+		? ResolveLinuxLocalPlayerHero(context.screenRuntime, world)
+		: FindLinuxBootstrapControlledHero(context.screenRuntime, world, 0, 0);
 	const auto* texture = ResolveLinuxLobbyPreferredMinimap(context.selectedMapPreview);
 	if (!world || !hero || !texture || !texture->artwork.ready) return result;
 	const auto& art = texture->artwork;
@@ -56919,10 +57008,12 @@ PwRuffleMinimapState CaptureLinuxRuffleMinimap(const LinuxOverlayUiRenderContext
 	if (terrain.worldWidth <= 0 || terrain.worldHeight <= 0) return PwRuffleMinimapState();
 	result.bounds = {0, 0, terrain.worldWidth, terrain.worldHeight};
 	vector<NWorld::LinuxDynamicWorldMarker> markers;
-	world->GetLinuxDynamicWorldMarkers(markers, PwRuffleMinimapMarker::MaxCount);
-	for (int i = 0; i < markers.size(); ++i)
+	CollectLinuxDynamicPresentationMarkers(world, context.settings, context.selectedMapPreview, context.screenRuntime, markers, true);
+	// The bridge limit may be smaller than the world's 640-marker presentation budget.
+	for (int i = 0; i < markers.size() && result.markers.size() < PwRuffleMinimapMarker::MaxCount; ++i)
 	{
 		const auto& source = markers[i];
+		if (!ShouldDrawLinuxSummonOnMinimap(world, source)) continue;
 		PwRuffleMinimapMarker marker;
 		marker.worldX = source.x; marker.worldY = source.y;
 		marker.dead = source.dead;
@@ -56934,6 +57025,8 @@ PwRuffleMinimapState CaptureLinuxRuffleMinimap(const LinuxOverlayUiRenderContext
 		if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO) marker.kind = Kind::Hero;
 		else if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
 			source.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP) marker.kind = Kind::Creep;
+		// The bridge's existing small-unit glyph is shared; the world kind remains KIND_SUMMON.
+		else if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON) marker.kind = Kind::Creep;
 		else if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER ||
 			source.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING) marker.kind = Kind::Objective;
 		const auto* unit = world->FindLinuxUnitByObjectId(source.objectId);
@@ -60410,6 +60503,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLiveMinimapHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapDeadHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapCreepMarkersDrawn = 0;
+		runtime->visibleLiveMinimapSummonMarkersDrawn = 0;
     runtime->visibleLiveMinimapNeutralCreepMarkersDrawn = 0;
     runtime->visibleLiveMinimapObjectiveMarkersDrawn = 0;
     runtime->visibleLiveMinimapMarkersSkippedDead = 0;
@@ -60443,13 +60537,13 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     return;
   }
 
-  vector<NWorld::LinuxDynamicWorldMarker> markers;
-  world->GetLinuxDynamicWorldMarkers(markers, 640);
-  if (markers.empty())
-  {
-    return;
-  }
-  runtime->visibleLiveMinimapMarkersLoaded = markers.size();
+	vector<NWorld::LinuxDynamicWorldMarker> markers;
+	CollectLinuxDynamicPresentationMarkers(world, renderContext.settings, selectedMapPreview, runtime, markers, true);
+	markers.erase(std::remove_if(markers.begin(), markers.end(), [&](const auto& marker) {
+		return !ShouldDrawLinuxSummonOnMinimap(world, marker);
+	}), markers.end());
+	if (markers.empty()) return;
+	runtime->visibleLiveMinimapMarkersLoaded = markers.size();
 
   const int width = renderContext.width;
   const int height = renderContext.height;
@@ -60481,6 +60575,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t heroCount = 0;
   size_t deadHeroCount = 0;
   size_t creepCount = 0;
+	size_t summonCount = 0;
   size_t neutralCreepCount = 0;
   size_t objectiveCount = 0;
   size_t skippedDeadCount = 0;
@@ -60599,7 +60694,12 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
         ++neutralCreepCount;
       }
     }
-    else if (IsLinuxDynamicWorldObjectiveMarker(marker))
+		else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_SUMMON)
+		{
+			markerSize = 4;
+			++summonCount;
+		}
+		else if (IsLinuxDynamicWorldObjectiveMarker(marker))
     {
       markerSize =
         marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING ? 10 : 7;
@@ -60750,7 +60850,10 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     ++markerCount;
   }
 
-  if (runtime->liveMinimapCommandTargetDrawn)
+	// Selection decoration belongs only to the filtered marker pass above. Cached selection
+	// coordinates must not resurrect a hidden, no-war-fog, retired or subsequently cleared unit.
+	if (runtime->liveMinimapCommandTargetDrawn && runtime->liveMinimapLastAction != "live-minimap-select" &&
+		runtime->liveMinimapLastAction != "live-minimap-clear")
   {
     const float normalizedX = std::max(
       0.0f,
@@ -60834,6 +60937,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   runtime->visibleLiveMinimapHeroMarkersDrawn = heroCount;
   runtime->visibleLiveMinimapDeadHeroMarkersDrawn = deadHeroCount;
   runtime->visibleLiveMinimapCreepMarkersDrawn = creepCount;
+	runtime->visibleLiveMinimapSummonMarkersDrawn = summonCount;
   runtime->visibleLiveMinimapNeutralCreepMarkersDrawn = neutralCreepCount;
   runtime->visibleLiveMinimapObjectiveMarkersDrawn = objectiveCount;
   runtime->visibleLiveMinimapMarkersSkippedDead = skippedDeadCount;
@@ -69204,6 +69308,15 @@ void AppendRuntimeInputLog(
 	}
 	logFile << "  finalDynamicPoseCache=builds:" << overlay.dynamicPoseBuilds
 		<< " hits:" << overlay.dynamicPoseHits << "\n";
+	logFile << "  finalDynamicAssetCache=loads:" << overlay.dynamicAssetLoads
+		<< " hits:" << overlay.dynamicAssetHits << " failures:" << overlay.dynamicAssetFailures
+		<< " evicted:" << overlay.dynamicAssetEvictions << " missing:" << overlay.dynamicUnitMissingAssets.size()
+		<< " graphsForgotten:" << overlay.dynamicAssetGraphsForgotten << "\n";
+	logFile << "  finalDynamicSummonPresentation=markers:" << screenRuntime.mapPreviewDynamicSummonMarkers
+		<< " meshes:" << screenRuntime.mapPreviewDynamicSummonMeshes
+		<< " triangles:" << screenRuntime.mapPreviewDynamicSummonMeshTriangles
+		<< " minimap:" << screenRuntime.visibleLiveMinimapSummonMarkersDrawn
+		<< " baseSceneOnly:yes unsummonAnimation:no\n";
 	logFile << "  finalBakedMapColors=lookups:" << overlay.bakedColorLookups
 		<< " matches:" << overlay.bakedColorMatches << " selectedPayloads:" << overlay.bakedSelectedPayloads
 		<< " drawnPayloads:" << overlay.bakedDrawnPayloads << " drawCalls:" << overlay.bakedDrawCalls << "\n";
@@ -71607,6 +71720,9 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(nullptr, false, false, true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-picking-probe"))
 		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), false, false, false, true) ? 0 : 1;
+	// Reuse the original-asset harness for the dynamic presentation regression gate.
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-dynamic-presentation-probe"))
+		return RunPrimeWorldLinuxApplicatorFormulaProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-nature-data", 0), false, false, false, false, true) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))
@@ -73495,6 +73611,9 @@ int main(int argc, char** argv)
 
     if (previousSelectedIndex != mapBrowserState.selectedIndex || localMatchChanged || demoChanged)
     {
+			// Graph players must release borrowed metadata before any hero or unit preview replacement.
+			overlay.unitAnimationGraphs.reset();
+			overlay.dynamicUnitMissingAssets.clear();
       ProbeSelectedHeroDbPreview(environment, sessionRootPreview, heroCatalog, localMatchPreview, &selectedHeroPreview);
       ProbeLocalMatchHeroMeshPreviews(
         environment,
@@ -73558,11 +73677,16 @@ int main(int argc, char** argv)
 		const auto assetsStart = ProfileClock::now();
 		UpdateLinuxMapSceneWindow(environment, ResolveLinuxMapSceneRequest(settings, selectedMapPreview, screenRuntime),
 			&selectedMapPreview, &overlay);
+		vector<NWorld::LinuxDynamicWorldMarker> presentationMarkers;
+		CollectLinuxDynamicPresentationMarkers(dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()),
+			&settings, &selectedMapPreview, &screenRuntime, presentationMarkers);
     ProbeLinuxDynamicWorldUnitMeshPreviews(
       environment,
-      dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()),
+			presentationMarkers,
+			&overlay,
       &dynamicUnitMeshPreviews,
       0);
+		PruneLinuxHeroPreviewDiffuseTextures(&overlay, selectedHeroPreview, lineupHeroPreviews, dynamicUnitMeshPreviews);
 
 		const auto drawStart = ProfileClock::now();
     DrawWindowOverlay(
@@ -75252,6 +75376,11 @@ int main(int argc, char** argv)
     UI::Release();
   }
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
+	fprintf(stdout, "Native dynamic presentation shutdown: assetLoads=%zu assetHits=%zu assetFailures=%zu assetEvictions=%zu missing=%zu graphsForgotten=%zu summonMarkers=%zu summonMeshes=%zu summonTriangles=%zu baseSceneOnly=yes unsummonAnimation=no\n",
+		overlay.dynamicAssetLoads, overlay.dynamicAssetHits, overlay.dynamicAssetFailures, overlay.dynamicAssetEvictions,
+		overlay.dynamicUnitMissingAssets.size(), overlay.dynamicAssetGraphsForgotten,
+		screenRuntime.mapPreviewDynamicSummonMarkers, screenRuntime.mapPreviewDynamicSummonMeshes,
+		screenRuntime.mapPreviewDynamicSummonMeshTriangles);
 	if (overlay.unitAnimationGraphs) {
 		const auto& graphs=*overlay.unitAnimationGraphs;
 		fprintf(stdout,"Native unit animation shutdown: created=%zu unsupported=%zu samples=%zu moving=%zu failed=%zu retained=%zu attacks=%zu skippedAttacks=%zu cues=%zu attackFaces=%zu deaths=%zu corpseSamples=%zu syncedAttacks=%zu fireMarkers=%zu casts=%zu syncedCasts=%zu castMarkers=%zu skippedCasts=%zu castFaces=%zu\n",
