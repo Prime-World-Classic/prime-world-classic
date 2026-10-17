@@ -51,6 +51,23 @@ inline constexpr std::size_t NumericFormulaMaxNesting = 32;
 inline constexpr std::size_t NumericFormulaMaxSymbols = 64;
 inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
 
+/** Maximum idle compiled expressions retained per calling thread. */
+inline constexpr std::size_t NumericFormulaCacheCapacity = 256;
+
+/** Current-thread cache observations; counters count acquisitions, not gameplay results. */
+struct NumericFormulaCacheStats
+{
+	std::size_t entries = 0;
+	std::size_t hits = 0;
+	std::size_t misses = 0;
+};
+
+/** Inspect only this thread's idle cache, without touching resolver state. */
+NumericFormulaCacheStats GetNumericFormulaCacheStats() noexcept;
+
+/** Discard idle expressions and reset counters; active evaluations remain independent. */
+void ClearNumericFormulaCache() noexcept;
+
 /**
  * @brief Evaluate a bounded numeric subset with muParser, without engine dependencies.
  *
@@ -109,9 +126,12 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * executes. Unselected symbols need no context; malformed/unsupported syntax
  * in any branch still fails. A missing resolver is valid for literal-only or
  * unselected-symbol expressions. Resolvers must write a finite value on success.
- * Nonfinite executed arithmetic (even if later masked) fails. Every call owns its
- * parser/bindings; no results, callbacks or pointers survive the call. Resolver
- * exceptions are contained. Callers must provide thread-safe resolver state if
+ * Nonfinite executed arithmetic (even if later masked) fails. A bounded per-thread
+ * cache retains compiled muParser expressions, not evaluated results. Every call
+ * exclusively leases its parser, including recursive calls with identical source.
+ * Symbol snapshots and borrowed resolver pointers are cleared before release;
+ * callbacks and engine objects are never retained. Failed evaluations are discarded.
+ * Resolver exceptions are contained. Callers must provide thread-safe resolver state if
  * sharing it; no engine/default-value policy is implemented here.
  *
  * Requires C++17 floating-point from_chars, exceptions, and no fast-math. Build

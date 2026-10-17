@@ -4,8 +4,11 @@
 
 #include <charconv>
 #include <cmath>
+#include <cstdint>
 #include <map>
+#include <memory>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 #if defined(__FAST_MATH__)
@@ -111,7 +114,7 @@ bool IsNumericFunction(const std::string& name)
 		name == "round" || name == "abs" || name == "sqrt" || name == "floor" || name == "ceil" || name == "f2l";
 }
 
-/** Stable map entries are callback userdata, owned only by the current evaluation. */
+/** Stable parser-owned userdata; resolver and value are borrowed only during evaluation. */
 struct Binding
 {
 	const NumericSymbolResolver* resolver;
@@ -142,7 +145,7 @@ double Resolve(void* data)
 	return binding.value;
 }
 
-/** Stable per-call userdata never escapes this evaluation; callbacks remain lazy. */
+/** Cached userdata retains names only; the resolver is cleared before returning the lease. */
 struct FunctionBinding
 {
 	const NumericFunctionResolver* resolver;
@@ -251,8 +254,7 @@ void Configure(mu::Parser& parser)
  * zero-argument callbacks. Only explicit helpers accept source calls. Commas are
  * either argument separators or sequences lowered below, never muParser lists.
  */
-std::string BindTokens(const std::string& expression, const NumericSymbolResolver& resolver,
-	const NumericFunctionResolver& functions, mu::Parser& parser,
+std::string BindTokens(const std::string& expression, mu::Parser& parser,
 	std::map<std::string, Binding>& bindings, std::map<std::string, FunctionBinding>& calls, bool& hasSequence)
 {
 	if (expression.size() > NumericFormulaMaxLength) throw Error::LimitExceeded;
@@ -272,7 +274,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 		{
 			if (bindings.size() >= NumericFormulaMaxSymbols) throw Error::LimitExceeded;
 			const std::string token = "pw_symbol_" + std::to_string(bindings.size());
-			binding = bindings.emplace(name, Binding{&resolver, name, token}).first;
+			binding = bindings.emplace(name, Binding{nullptr, name, token}).first;
 			parser.DefineFunUserData(token, Resolve, &binding->second, false);
 		}
 		return binding->second.token + "() ";
@@ -333,7 +335,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 				else if (name == "s" || name == "abilityScale" || name == "damageScale" || name == "refineScale" || name == "random" || name == "ut_bldg" || name == "ut_hero" || IsOneArgumentUnitQuery(name) || IsExtendedHistoryFunction(name))
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
-					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
+					pendingContext = &calls.emplace(token, FunctionBinding{nullptr, name, token}).first->second;
 					translated += token;
 				}
 				else
@@ -568,6 +570,123 @@ private:
 		return left;
 	}
 };
+
+/** Own stable userdata before the parser; the cache moves only this object's owner. */
+struct CompiledFormula
+{
+	std::map<std::string, Binding> bindings;
+	std::map<std::string, FunctionBinding> calls;
+	mu::Parser parser;
+	std::uint64_t lastUse = 0;
+
+	explicit CompiledFormula(const std::string& expression)
+	{
+		Configure(parser);
+		bool hasSequence = false;
+		std::string bound = BindTokens(expression, parser, bindings, calls, hasSequence);
+		if (hasSequence || bound.find("&&") != std::string::npos || bound.find("||") != std::string::npos || bound.find("! ") != std::string::npos)
+			bound = LogicalLowering(bound).Translate();
+		parser.SetExpr(bound);
+	}
+
+	void Bind(const NumericSymbolResolver& resolver, const NumericFunctionResolver& functions) noexcept
+	{
+		for (auto& entry : bindings) entry.second.resolver = &resolver;
+		for (auto& entry : calls) entry.second.resolver = &functions;
+	}
+
+	void Unbind() noexcept
+	{
+		for (auto& entry : bindings)
+		{
+			entry.second.resolver = nullptr;
+			entry.second.value = std::numeric_limits<double>::quiet_NaN();
+			entry.second.resolved = false;
+		}
+		for (auto& entry : calls) entry.second.resolver = nullptr;
+	}
+};
+
+/** Idle entries only: recursive evaluations cannot find or evict an active parser. */
+struct FormulaCache
+{
+	using Entries = std::map<std::string, std::unique_ptr<CompiledFormula>>;
+	Entries idle;
+	std::size_t hits = 0, misses = 0;
+	std::uint64_t serial = 0;
+
+	Entries::node_type Acquire(const std::string& expression)
+	{
+		auto entry = idle.extract(expression);
+		if (!entry.empty()) { ++hits; return entry; }
+		++misses;
+		Entries fresh;
+		fresh.try_emplace(expression, std::make_unique<CompiledFormula>(expression));
+		return fresh.extract(fresh.begin());
+	}
+
+	/** Node insertion uses matching standard allocators and a nonthrowing string comparator. */
+	void Release(Entries::node_type entry) noexcept
+	{
+		// A wrapped clock only loses eviction priority, never expression/value correctness.
+		if (++serial == 0)
+		{
+			for (auto& existing : idle) existing.second->lastUse = 0;
+			++serial;
+		}
+		entry.mapped()->lastUse = serial;
+		// A recursive evaluation may already have returned the same source. Keep one copy.
+		auto result = idle.insert(std::move(entry));
+		result.position->second->lastUse = serial;
+		if (idle.size() > NumericFormulaCacheCapacity)
+		{
+			auto oldest = idle.begin();
+			for (auto candidate = idle.begin(); candidate != idle.end(); ++candidate)
+				if (candidate->second->lastUse < oldest->second->lastUse) oldest = candidate;
+			idle.erase(oldest);
+		}
+	}
+};
+
+thread_local FormulaCache formulaCache;
+
+/** Failed parses/evaluations are discarded; no partially executed parser is reused. */
+class FormulaLease
+{
+	FormulaCache::Entries::node_type entry;
+	bool reusable = false;
+
+public:
+	explicit FormulaLease(const std::string& expression) : entry(formulaCache.Acquire(expression)) {}
+	FormulaLease(const FormulaLease&) = delete;
+	FormulaLease& operator=(const FormulaLease&) = delete;
+
+	~FormulaLease()
+	{
+		entry.mapped()->Unbind();
+		if (reusable) formulaCache.Release(std::move(entry));
+	}
+
+	float Evaluate(const NumericSymbolResolver& resolver, const NumericFunctionResolver& functions)
+	{
+		auto& formula = *entry.mapped();
+		formula.Bind(resolver, functions);
+		const float value = Narrow(formula.parser.Eval());
+		reusable = true;
+		return value;
+	}
+};
+}
+
+NumericFormulaCacheStats GetNumericFormulaCacheStats() noexcept
+{
+	return {formulaCache.idle.size(), formulaCache.hits, formulaCache.misses};
+}
+
+void ClearNumericFormulaCache() noexcept
+{
+	formulaCache.idle.clear();
+	formulaCache.hits = formulaCache.misses = 0;
 }
 
 NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
@@ -575,18 +694,9 @@ NumericFormulaResult EvaluateNumericFormula(const std::string& expression,
 {
 	try
 	{
-		// Bindings outlive the parser and never escape this evaluation.
-		std::map<std::string, Binding> bindings;
-		std::map<std::string, FunctionBinding> calls;
-		mu::Parser parser;
-		Configure(parser);
-		bool hasSequence = false;
-		std::string bound = BindTokens(expression, resolver, functions, parser, bindings, calls, hasSequence);
-		if (hasSequence || bound.find("&&") != std::string::npos || bound.find("||") != std::string::npos || bound.find("! ") != std::string::npos)
-			bound = LogicalLowering(bound).Translate();
-		parser.SetExpr(bound);
-		const float value = Narrow(parser.Eval());
-		return {Error::None, value};
+		if (expression.size() > NumericFormulaMaxLength) throw Error::LimitExceeded;
+		FormulaLease formula(expression);
+		return {Error::None, formula.Evaluate(resolver, functions)};
 	}
 	catch (Error error)
 	{

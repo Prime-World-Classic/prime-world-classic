@@ -1,12 +1,15 @@
 #include "formula_numeric.h"
 
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <future>
 #include <limits>
 #include <map>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -714,6 +717,8 @@ void Ownership()
 	for (auto& worker : workers) worker.join();
 	for (int failed : failures) Check(failed == 0, "concurrent state isolation");
 }
+
+#include "formula_numeric_cache_tests.inc"
 }
 
 /** The scalar parser transports refinement arguments without inventing a talent or caching context. */
@@ -739,8 +744,63 @@ static void RefinementFunctions()
 	}).error == Error::NonFiniteValue, "invalid refinement callback result cannot escape scalar validation");
 }
 
-int main()
+/** Fixed cold/warm parser workload; stats are per-pass deltas and elapsed time is informational. */
+static int BenchmarkNumericFormula()
 {
+	const char* expressions[] = {"1", "x > 10 ? x/2 : x+1", "min(x,20)+max(x,3)",
+		"x && (random(1,5)>2 || y)", "nt(x*2,y+1)", "refineScale(x,2)+x"};
+	double live = 0;
+	std::size_t calls = 0;
+	const NumericSymbolResolver symbols = [&](const std::string& name, double& value) {
+		value = name == "x" ? live : 2; return true;
+	};
+	const NumericFunctionResolver functions = [&](const std::string&, const double* args, std::size_t count, double& value) {
+		++calls; value = args[0] + args[count - 1]; return true;
+	};
+	ClearNumericFormulaCache();
+	for (int pass = 0; pass < 2; ++pass)
+	{
+		calls = 0;
+		double checksum = 0;
+		const auto before = GetNumericFormulaCacheStats();
+		const auto start = std::chrono::steady_clock::now();
+		for (unsigned i = 0; i < 20000; ++i)
+		{
+			live = i % 100;
+			for (const char* expression : expressions)
+			{
+				const auto result = EvaluateNumericFormula(expression, symbols, functions);
+				if (!result.Succeeded())
+				{
+					std::fprintf(stderr, "Numeric benchmark failed: %s, iteration %u, status %d\n", expression, i, int(result.error));
+					return 1;
+				}
+				checksum += result.value;
+			}
+		}
+		const double elapsed = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+		const auto after = GetNumericFormulaCacheStats();
+		std::printf("Numeric formula benchmark: pass=%s evaluations=120000 ms=%.3f checksum=%.1f callbacks=%zu entries=%zu hits=%zu misses=%zu\n",
+			pass ? "warm" : "cold", elapsed, checksum, calls, after.entries, after.hits - before.hits, after.misses - before.misses);
+		// Independent scalar sums over x=0..99; random is skipped only when x is zero.
+		if (checksum != 5891700.0 || calls != 39800)
+		{
+			std::fprintf(stderr, "Numeric benchmark expected checksum=5891700.0 callbacks=39800\n");
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int main(int argc, char** argv)
+{
+	if (argc == 2 && std::string(argv[1]) == "--benchmark") return BenchmarkNumericFormula();
+	if (argc != 1)
+	{
+		std::fprintf(stderr, "Usage: %s [--benchmark]\n", argv[0]);
+		return 2;
+	}
+	CompiledFormulaCache();
 	LiteralsAndOperators();
 	CommaOperators();
 	LogicalOperators();
