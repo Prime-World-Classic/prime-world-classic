@@ -40,9 +40,10 @@ static float s_gpuWaitSpinMs = 0.5f;
 REGISTER_VAR("gfx_gpu_wait_spin_ms", s_gpuWaitSpinMs, STORAGE_NONE);
 static bool s_gpuWaitLegacy = false;
 REGISTER_VAR("gfx_gpu_wait_legacy", s_gpuWaitLegacy, STORAGE_NONE);
-// Wait for the previous frame instead of the current one, so the GPU draws a frame while the CPU prepares the next
+// Wait for the previous frame instead of the current one, so the GPU draws a frame while the CPU prepares the next;
+// saved in user.cfg, the launcher battle settings switch it
 static bool s_gpuSyncLag = false;
-REGISTER_VAR("gfx_gpu_sync_lag", s_gpuSyncLag, STORAGE_NONE);
+REGISTER_VAR("gfx_gpu_sync_lag", s_gpuSyncLag, STORAGE_USER);
 
 static UINT s_adapterToUse = D3DADAPTER_DEFAULT;
 REGISTER_VAR("adapter_to_use", s_adapterToUse, STORAGE_NONE);
