@@ -262,18 +262,23 @@ void SaveMeshGeometry( MeshGeometry const *pGeometry, Stream *pStream )
     Primitive *prim = pGeometry->primitives[fragmentNumber];
     H6FragmentHeader& fragmentHeader = pH6GeometryFileHeader->fragments[fragmentNumber];
 
-    D3DVERTEXELEMENT9 decl[MAXD3DDECLLENGTH];
-    UINT strideElementsCount;
-    prim->GetVertexDeclaration()->GetDeclaration( decl, &strideElementsCount);
+    // Шаг 13.4c: раскладка читается через seam (GetDeclaration по COM-ручке в
+    // D3D9). Словарь тот же, что у аргумента CreateInputLayout, поэтому
+    // конвертация D3D9->проект уехала в бэкенд.
+    Render::VertexElementDescriptor declElems[IRenderBackend::kMaxVertexElements];
+    unsigned int strideElementsCount = 0;
+    if (FAILED(GetBackend()->GetInputLayoutElements(
+          MakeBackendHandle<HInputLayout>(Get(prim->GetVertexDeclaration())),
+          declElems, IRenderBackend::kMaxVertexElements, &strideElementsCount)))
+    {
+      DebugTrace("SaveMeshGeometry: раскладка примитива не получена — геометрия не сохраняется");
+      return;
+    }
 
     /// 
     fragmentHeader.vertexElementDescriptor.resize( strideElementsCount, &allocator );	
     for (unsigned int i = 0; i < strideElementsCount; ++i)
-    {
-      D3DVERTEXELEMENT9 &d = decl[i];
-      fragmentHeader.vertexElementDescriptor[i] = Render::VertexElementDescriptor(d.Stream, d.Offset, Convert2VertexElementType(d.Type),
-                                                                                  Convert2VertexElementUsage(d.Usage), d.UsageIndex);
-    }
+      fragmentHeader.vertexElementDescriptor[i] = declElems[i];
 
     /// 
     const DipDescriptor& dip = prim->GetDipDescriptor();
@@ -312,10 +317,12 @@ void SaveMeshGeometry( MeshGeometry const *pGeometry, Stream *pStream )
   // write vertex buffer (single for all primitives)
   {
     DXVertexBufferRef vb = pGeometry->primitives[0]->GetVertexBuffer();
-    D3DVERTEXBUFFER_DESC vbDesc;
-    vb->GetDesc(&vbDesc);
+    // Размер — через seam: GetDesc по ручке бэкенда = вызов по чужой vtable.
+    unsigned vbSize = 0;
+    if (FAILED(GetBackend()->GetBufferInfo(MakeBackendHandle<HBuffer>(Get(vb)), &vbSize)))
+      return;
     void *pData = LockVB(Get(vb), LOCK_READONLY);
-    pStream->Write(pData, vbDesc.Size);
+    pStream->Write(pData, vbSize);
     BackendUnlockBuffer(Get(vb));
   }
 
@@ -325,10 +332,11 @@ void SaveMeshGeometry( MeshGeometry const *pGeometry, Stream *pStream )
   {
     Primitive const *prim = pGeometry->primitives[fragmentNumber];
     DXIndexBufferRef ib = prim->GetIndexBuffer();
-    D3DINDEXBUFFER_DESC ibDesc;
-    ib->GetDesc(&ibDesc);
+    unsigned ibSize = 0;   // то же: размер через seam
+    if (FAILED(GetBackend()->GetBufferInfo(MakeBackendHandle<HBuffer>(Get(ib)), &ibSize)))
+      continue;
     unsigned int *pData = LockIB(Get(ib), LOCK_READONLY);
-    pStream->Write(pData, ibDesc.Size);
+    pStream->Write(pData, ibSize);
     BackendUnlockBuffer(Get(ib));
   }
 }

@@ -61,6 +61,11 @@ class Renderer
   // столько, сколько pBackend (пересоздаётся вместе с устройством).
   NvrhiBackend*         pVkSpike;
 
+  // Шаг 13.4c: pBackend УКАЗЫВАЕТ на Vulkan-бэкенд (env PW_VK_BACKEND=1).
+  // Отдельного указателя нет — владение остаётся у pBackend, иначе два
+  // delete на один объект.
+  bool                  bVkBackend;
+
 	ReallocateWrapper<RenderStatesManager> statesMan;
   LightsManager         lightsMan;
 
@@ -127,6 +132,10 @@ public:
 
 	DXVertexShaderRef CreateVertexShader(unsigned char const* data);
 	DXPixelShaderRef CreatePixelShader(unsigned char const* data);
+	// Тот же вызов с явной длиной кода (шаг 13.4d: SPIR-V-слой контейнера v2).
+	// Пустая ссылка при неудаче — NI_DX_THROW в shipping не бросает исключение.
+	DXVertexShaderRef CreateVertexShader(unsigned char const* data, unsigned size);
+	DXPixelShaderRef CreatePixelShader(unsigned char const* data, unsigned size);
 
 	DXVertexDeclarationRef CreateVertexFormatDeclaration(const VertexFormatDescriptor& descr);
 

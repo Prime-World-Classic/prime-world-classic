@@ -195,6 +195,27 @@ namespace Render
         NI_PROFILE_BLOCK("create shaders");
 				render_TranslationCount.AddValue( 1 );
 				unsigned char* pBegin = (unsigned char*)pInfo - 4;
+				// Шаг 13.4d: слой выбирает бэкенд (IRenderBackend::GetShaderTargetTag),
+				// а не dev-var `shader_target`. Для цели блоб берётся из разреженной
+				// таблицы v2 и создаётся с явной длиной; если комбинации в цели нет или
+				// создание не вышло — прежний SM3-путь, но НЕ молча: без строки
+				// «не та версия шейдера» неотличима от «всё в порядке».
+				const unsigned tag = Render::GetRenderer()->GetBackend()->GetShaderTargetTag();
+				if ( tag )
+				{
+					unsigned vsOff = 0, vsSz = 0, psOff = 0, psSz = 0;
+					if ( GetShaderTargetOffsets( tag, index, vsOff, vsSz, psOff, psSz ) )
+					{
+						pairs[index].pVertexShader = Render::GetRenderer()->CreateVertexShader( pBegin + vsOff, vsSz );
+						pairs[index].pPixelShader = Render::GetRenderer()->CreatePixelShader( pBegin + psOff, psSz );
+						if ( Get( pairs[index].pVertexShader ) && Get( pairs[index].pPixelShader ) )
+							return pairs[index];
+						DebugTrace( "ShaderTarget: %s #%u — цель %u не создана (VS %u Б, PS %u Б), беру SM3",
+							fileName.c_str(), index, tag, vsSz, psSz );
+						pairs[index].pVertexShader = 0;
+						pairs[index].pPixelShader = 0;
+					}
+				}
 				pairs[index].pVertexShader = Render::GetRenderer()->CreateVertexShader( pBegin + pInfo[index].vsOffset );
 				pairs[index].pPixelShader = Render::GetRenderer()->CreatePixelShader( pBegin + pInfo[index].psOffset );
 			}

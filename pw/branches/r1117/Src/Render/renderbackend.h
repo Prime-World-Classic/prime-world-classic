@@ -409,9 +409,32 @@ public:
   // логирует код ошибки (NI_DX_THROW), терять его нельзя.
   virtual HRESULT CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) = 0;
   virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut) = 0;
+
+  // Какой слой контейнера .shd просит бэкенд (формат v2, PLAN_NVRHI §3.z п.3).
+  // Значение = тег секции: stSm3 (0, плотная v1-таблица, DXBC) или stSpirv (2).
+  // Шаг 13.4d: выбор слоя объявляет бэкенд, а не dev-var `shader_target`: цель,
+  // которую бэкенд не умеет создавать, давала бы молчаливый фолбэк на дефолтный
+  // шейдер. Для stSpirv код передаётся С ЯВНОЙ ДЛИНОЙ: SPIR-V не самоописывающийся
+  // (в отличие от DXBC, где длину знает D3D9), а smещения блобов цели в контейнере
+  // не связаны с соседями (блобы дедуплицированы).
+  virtual unsigned GetShaderTargetTag() const = 0;
   // Вершинная декларация строится из проектного VertexFormatDescriptor: перевод
   // в D3DVERTEXELEMENT9 (а в Vulkan — в VkVertexInputState) делает бэкенд.
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut) = 0;
+
+  // Элементы вершинной раскладки обратно (шаг 13.4c). Клиент читает декларацию,
+  // чтобы решить, есть ли в вершине цвет (StaticMesh.cpp, SkeletalMesh.cpp), и
+  // чтобы перенести раскладку в заголовок H6-геометрии
+  // (renderresourcemanager.cpp:267). В D3D9 это был
+  // IDirect3DVertexDeclaration9::GetDeclaration поверх полученной ручки; по
+  // Vulkan-ручке такого слота vtable нет — вызов уходил за конец нашей vtable
+  // (молча: мусор вместо элементов).
+  // Словарь — проектный VertexElementDescriptor, тот же, что аргумент
+  // CreateInputLayout. Если элементов больше maxElements — E_FAIL: молчаливая
+  // обрезка изменила бы шаг вершины.
+  enum { kMaxVertexElements = 32 };   // MAXD3DDECLLENGTH в D3D9
+  virtual HRESULT GetInputLayoutElements(HInputLayout layout, VertexElementDescriptor* pOut,
+                                         unsigned maxElements, unsigned* pCount) = 0;
 
   // Создание буферов (этап 2, пулы). Выбор D3DPOOL/usage — за бэкендом.
   // Ручка владеет одной ссылкой на созданный объект (в D3D9 — счётчик от Create*).
@@ -441,9 +464,14 @@ public:
   // который дал бэкенд: у D3D9 он кратен 4 и не обязан равняться width*4,
   // у Vulkan — как у staging-текстуры, поэтому вызывать seam'у нельзя
   // предполагать свой шаг.
-  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+  // face — грань кубической текстуры (0 = обычная 2D,
+  // 0..5 = D3DCUBEMAP_FACES). До шага 13.4c грани куба блокировались
+  // COM-вызом напрямую по ручке бэкенда (ReadDDS.cpp); под другим
+  // бэкендом это вызов по чужой vtable (зависание потока рендера).
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, unsigned face,
+                                const BackendRect* pRect,
                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch) = 0;
-  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level) = 0;
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level, unsigned face) = 0;
 
   // Описание текстуры таким, каким бэкенд его создал (шаг 13.2). Клиент хранит
   // D3D9-подобное описание (D3DSURFACE_DESC) и до этой правки читал его напрямую
@@ -456,8 +484,12 @@ public:
     EBackendFormat format;
     EBackendUsage usage;
     EBackendPool pool;
+    // Cube-текстура ли (шаг 13.4c): клиент местами проверял тип через
+    // IDirect3DBaseTexture9::GetType(), под NvrhiBackend это вызов по чужой
+    // vtable — признак типа должен приходить из бэкенда.
+    bool cube;
     BackendTextureInfo() : width(0), height(0), levels(1), format(bfUnknown),
-                           usage(usageNone), pool(BACKEND_POOL_DEFAULT) {}
+                           usage(usageNone), pool(BACKEND_POOL_DEFAULT), cube(false) {}
   };
   virtual HRESULT GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo) = 0;
 
@@ -465,6 +497,13 @@ public:
   // COM-объекты, а размеры нужны и по RT/бэк-буферу (снимок экрана,
   // пересоздание после потери устройства).
   virtual HRESULT GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo) = 0;
+
+  // Просматриваемая поверхность уровня текстуры (шаг 13.4c) — прежний путь был
+  // IDirect3DTexture9::GetSurfaceLevel в клиенте (Texture2D::GetSurface), им
+  // пользуются PostFX, вода, миникарты: под NvrhiBackend вызов по ручке бэкенда
+  // = вызов по чужой vtable. Возвращает НОВУЮ ссылку на поверхность (как
+  // GetSurfaceLevel): владение переходит к вызывающему.
+  virtual HRESULT GetTextureSurface(HTexture texture, unsigned level, HSurface* pOut) = 0;
 
   // Построение цепочки mip'ов (шаг 13.2). До правки клиент строил её сам:
   // либо IDirect3DBaseTexture9::GenerateMipSubLevels, либо по COM-поверхностям
@@ -502,6 +541,12 @@ public:
   virtual HRESULT LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
                                   ERenderLockType mode, void** ppData) = 0;
   virtual HRESULT UnlockIndexBuffer(HBuffer ib) = 0;
+
+  // Размер буфера таким, каким бэкенд его создавал (шаг 13.4c).
+  // Клиент местами читал D3DVERTEXBUFFER_DESC/D3DINDEXBUFFER_DESC напрямую
+  // по ручке (учёт геометрий и CRC): под другим бэкендом это вызов
+  // по чужой vtable. Из описания нужен только размер.
+  virtual HRESULT GetBufferInfo(HBuffer buffer, unsigned* pByteSize) = 0;
 
   // --- поверхности ---
   // Фильтр при копировании прямоугольника: замер вызовов показал, что в клиенте

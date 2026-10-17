@@ -100,11 +100,21 @@ def read_v1(data):
 
 
 def strip_trailer(data):
-    """Если вход уже v2 — отрезать секции и трэйлер, оставить v1-часть."""
+    """Если вход уже v2 — отрезать секции, заголовок и трэйлер, оставить v1-часть.
+
+    Резать по v2HeaderOffset НЕЛЬЗЯ: секции лежат ПЕРЕД заголовком, поэтому
+    старый слой попадал в «v1-часть» мёртвым грузом (замер: BasicMaterial
+    2 133 940 -> 2 317 708 Б, а v1Size = 2 133 896 = старый v2HeaderOffset,
+    т.е. писатель принял чужие секции за v1). Режем по v1Size из заголовка.
+    """
     if len(data) >= 16:
         tail = data[-16:]
         if tail[:4] == b"SHD2" and tail[12:16] == b"SHD2":
             v2off, _ver = struct.unpack_from("<II", tail, 4)
+            if v2off + 16 <= len(data):
+                tag, _ver2, v1size, _tcnt = struct.unpack_from("<4sIII", data, v2off)
+                if tag == b"V2H\0" and v1size <= v2off:
+                    return data[:v1size]
             return data[:v2off]
     return data
 

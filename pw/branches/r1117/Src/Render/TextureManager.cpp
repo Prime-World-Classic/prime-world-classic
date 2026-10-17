@@ -174,7 +174,17 @@ HRESULT ProcessMipMaps(IDirect3DTexture9 **ppD3DTexture, UINT skipMipLevels, Str
   IDirect3DBaseTexture9* pBaseTexture = 0;
   HRESULT hResult = CreateTextureFromDDSFileInMemory( pStream->GetBuffer(), pStream->GetSize(), skipMipLevels, &pBaseTexture );
   IDirect3DTexture9* pD3DTexture = 0;
-  if( SUCCEEDED( hResult ) && pBaseTexture && pBaseTexture->GetType() == D3DRTYPE_TEXTURE )
+  // Тип и описание берём из бэкенда: под NvrhiBackend в pBaseTexture лежит
+  // ручка бэкенда, а не COM-объект, поэтому GetType()/GetLevelCount()/LockRect()
+  // напрямую по ней = вызов по чужой vtable (замер 2026-10-16 — зависание потока
+  // рендера сразу после DDS). Release() остаётся: обёртка бэкенда делает те же
+  // AddRef/Release, что и COM-политика умных указателей клиента.
+  IRenderBackend* const pBackend = GetBackend();
+  IRenderBackend::BackendTextureInfo texInfo;
+  const bool texIs2D = pBackend &&
+                       SUCCEEDED(pBackend->GetTextureInfo(MakeBackendHandle<HTexture>(pBaseTexture), &texInfo)) &&
+                       !texInfo.cube;
+  if( SUCCEEDED( hResult ) && pBaseTexture && texIs2D )
     pD3DTexture = static_cast<IDirect3DTexture9*>( pBaseTexture );
   else if( pBaseTexture )
   {
@@ -185,13 +195,23 @@ HRESULT ProcessMipMaps(IDirect3DTexture9 **ppD3DTexture, UINT skipMipLevels, Str
   if (hResult == D3D_OK)
   {
     D3DLOCKED_RECT rect;
-    for (DWORD level = 0, maxlevel = pD3DTexture->GetLevelCount(); level < maxlevel; level++)
+    for (DWORD level = 0, maxlevel = texInfo.levels; level < maxlevel; level++)
     {
       int const* pColors = mipMapColors[Min(level, (DWORD)(ARRAY_SIZE(mipMapColors) - 1))];
-      if (pD3DTexture->LockRect(level, &rect, 0, 0) == D3D_OK)
+      void* lockBits = 0;
+      unsigned lockPitch = 0;
+      if (GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(pD3DTexture), level, 0u, 0,
+                                      LOCK_DEFAULT, &lockBits, &lockPitch) == D3D_OK)
       {
+        rect.pBits = lockBits;
+        rect.Pitch = (LONG)lockPitch;
+        // Описание уровня строим из texInfo: COM-описания у ручки бэкенда нет.
+        // Размеры уровня — половинки предыдущего (DDS-цепочка), формат общий.
         D3DSURFACE_DESC levelDesc;
-        if (pD3DTexture->GetLevelDesc(level, &levelDesc) == D3D_OK)
+        ZeroMemory(&levelDesc, sizeof(levelDesc));
+        levelDesc.Width  = Max(texInfo.width  >> level, 1u);
+        levelDesc.Height = Max(texInfo.height >> level, 1u);
+        levelDesc.Format = (texInfo.format == bfA8R8G8B8) ? D3DFMT_A8R8G8B8 : D3DFMT_UNKNOWN;
         {
           if (levelDesc.Format == D3DFMT_A8R8G8B8)
           {
@@ -207,7 +227,7 @@ HRESULT ProcessMipMaps(IDirect3DTexture9 **ppD3DTexture, UINT skipMipLevels, Str
             }
           }
         }
-        pD3DTexture->UnlockRect(level);
+        GetBackend()->UnlockTexture2D(MakeBackendHandle<HTexture>(pD3DTexture), level, 0u);
       }
     }
   }
@@ -224,7 +244,13 @@ static HRESULT CreateTextureFromFileInMemoryImpl(IDirect3DTexture9** _pResult, c
   const HRESULT hr = CreateTextureFromDDSFileInMemory(_pBuffer, _dataSize, _skipMipLevels, &pBaseTex);
 
   if( SUCCEEDED(hr) ) {
-    NI_VERIFY(pBaseTex->GetType() == D3DRTYPE_TEXTURE,
+    // Тип — через seam: под NvrhiBackend в pBaseTex ручка бэкенда, GetType() по
+    // ней = вызов по чужой vtable (зависание, замер 2026-10-16).
+    IRenderBackend::BackendTextureInfo info2D;
+    const bool ok2D = GetBackend() &&
+                      SUCCEEDED(GetBackend()->GetTextureInfo(MakeBackendHandle<HTexture>(pBaseTex), &info2D)) &&
+                      !info2D.cube;
+    NI_VERIFY(ok2D,
               NStr::StrFmt("Inconsistent texture %s: 2D texture requested, yet it isn't", _fileName),
               pBaseTex->Release(); return E_INVALIDARG);
     *_pResult = static_cast<IDirect3DTexture9*>(pBaseTex);
@@ -571,15 +597,21 @@ Texture2DRef Create2DTextureFromArray2D( const CArray2D<Render::Color> & src )
 	NI_VERIFY( SUCCEEDED( hResult ), NStr::StrFmt( "D3DXCreateTexture failed with result 0x%08X", hResult ), return GetDefaultTexture2D(); );
 
 	D3DLOCKED_RECT rect;
-	if ( SUCCEEDED( pD3DTexture->LockRect( 0, &rect, NULL, 0 ) ) )
+	// Блокировка через seam: pD3DTexture здесь = ручка, возвращённая бэкендом.
+	// COM-вызов по ней под другим бэкендом = вызов по чужой vtable (шаг 13.4c).
+	void* lockBits = 0;
+	unsigned lockPitch = 0;
+	if ( SUCCEEDED( GetBackend()->LockTexture2D( hTex, 0, 0, NULL, LOCK_DEFAULT, &lockBits, &lockPitch ) ) )
 	{
+		rect.pBits = lockBits;
+		rect.Pitch = ( LONG ) lockPitch;
 		char *p = (char *)rect.pBits;
 		for ( int y = 0; y < h; ++y )
 		{
 			memcpy( p, &src[y][0], 4*w );
 			p += rect.Pitch;
 		}
-		pD3DTexture->UnlockRect( 0 );
+		GetBackend()->UnlockTexture2D( hTex, 0, 0 );
 	}
 	return Create<Texture2D>( pD3DTexture );
 }

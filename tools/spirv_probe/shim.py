@@ -240,9 +240,14 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
             newbody = re.sub(r":\s*COLOR\d*\b", to_target, body)
             src = src[:sm.start(1)] + newbody + src[sm.end(1):]
     def color_field(m):
-        _TEXCOORD_CTR[0] += 1
-        return ": TEXCOORD%d" % _TEXCOORD_CTR[0]
-    src, n_col = re.subn(r":\s*COLOR\d*\b", color_field, src)
+        # Детерминированное имя: COLORn -> TEXCOORD(100+n). Прежний счётчик по
+        # порядку в файлу (первый COLOR = TEXCOORD101, второй = TEXCOORD102,
+        # независимо от индекса) делал сопоставление атрибута клиента с location
+        # гадалкой: на стенде COLOR0 попадал на вход, который DXC назначил
+        # COLOR3, и вершинные данные разъезжались молча.
+        idx = m.group(1)
+        return ": TEXCOORD%d" % (100 + (int(idx) if idx else 0))
+    src, n_col = re.subn(r":\s*COLOR(\d*)\b", color_field, src)
 
     # PS-вход: позиция в структуре-параметре — это выход VS (мы только что
     # сделали из него SV_POSITION). Если PS-точка входа одновременно объявляет

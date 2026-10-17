@@ -395,13 +395,15 @@ void OnFrameStart()
         const bool bb = pR->SaveScreenshotToFile(name, 0, 0, 0, 0, false);
         // 3) кроп, заведомо выходящий за кадр, — проверяется ограничение
         //    прямоугольника (иначе это молча отказ или чтение чужой памяти)
-        D3DSURFACE_DESC sd;
+        IRenderBackend::BackendTextureInfo sd;
         bool crop = false;
-        if ( SUCCEEDED( Get( pR->GetColorSurface() )->GetDesc(&sd) ) )
+        // Описание поверхности — через seam: ручка бэкенда, GetDesc по ней =
+        // вызов по чужой vtable под другим бэкендом (шаг 13.4c).
+        if ( SUCCEEDED( GetBackend()->GetSurfaceInfo(MakeBackendHandle<HSurface>(Get(pR->GetColorSurface())), &sd) ) )
         {
           sprintf_s(name, "pw_auto_crop_%d.png", frame);
-          crop = pR->SaveScreenshotToFile(name, (int)sd.Width - 200,
-                                          (int)sd.Height - 200, 400, 400, true);
+          crop = pR->SaveScreenshotToFile(name, (int)sd.width - 200,
+                                          (int)sd.height - 200, 400, 400, true);
         }
         DebugTrace( "AutoShot: frame=%d bb=%d crop=%d (bb/crop — бэк-буфер, scene — поверхность кадра)",
                     frame, bb ? 1 : 0, crop ? 1 : 0 );
@@ -854,19 +856,23 @@ void BindRenderTargetColor( unsigned int renderTargetIndex, IDirect3DSurface9* p
 
     if (0 == renderTargetIndex)
     {
-      D3DSURFACE_DESC rtDesc;
-      pColorSurface->GetDesc(&rtDesc);
-      curColorSurfaceWidth = rtDesc.Width;
-      curColorSurfaceHeight = rtDesc.Height;
+      IRenderBackend::BackendTextureInfo rtInfo;
+      if (SUCCEEDED(GetBackend()->GetSurfaceInfo(MakeBackendHandle<HSurface>(pColorSurface), &rtInfo)))
+      {
+        curColorSurfaceWidth = rtInfo.width;
+        curColorSurfaceHeight = rtInfo.height;
+      }
     }
     {
       // Цель может быть и NULL (снятие MRT) — формат тогда «неизвестен».
       // Поймано на E2E-стенде: BindRenderTargetColor(..., 0) ронял клиент на
       // GetDesc() (чтение по нулевому указателю, exception.dmp в сессии
       // 2026.10.15-02.28.44).
-      D3DSURFACE_DESC fmtDesc;
-      HRESULT hrFmt = pColorSurface ? pColorSurface->GetDesc(&fmtDesc) : D3DERR_INVALIDCALL;
-      curColorSurfaceFormat[renderTargetIndex] = SUCCEEDED(hrFmt) ? fmtDesc.Format : D3DFMT_UNKNOWN;
+      IRenderBackend::BackendTextureInfo fmtInfo;
+      HRESULT hrFmt = pColorSurface ? GetBackend()->GetSurfaceInfo(MakeBackendHandle<HSurface>(pColorSurface), &fmtInfo) : D3DERR_INVALIDCALL;
+      D3DFORMAT fmt = D3DFMT_UNKNOWN;
+      BackendFormatToD3D(fmtInfo.format, &fmt);
+      curColorSurfaceFormat[renderTargetIndex] = SUCCEEDED(hrFmt) ? fmt : D3DFMT_UNKNOWN;
     }
 	}
 }
@@ -881,11 +887,23 @@ void BindRenderTargetDepth( IDirect3DSurface9* pDepthStencilSurface )
       NI_DX_WARN(hr, "BindRenderTargetDepth");
 
     if(curDepthSurface) {
-      D3DSURFACE_DESC desc;
-      curDepthSurface->GetDesc(&desc);
-      curDepthSurfaceWidth = desc.Width;
-      curDepthSurfaceHeight = desc.Height;
-      curDepthSurfaceFormat = desc.Format;
+      // Описание — через seam: под NvrhiBackend в curDepthSurface лежит ручка
+      // бэкенда, GetDesc() по ней = вызов по чужой vtable. Формат идёт через
+      // словарь конвертера: он же кормит ключ состояний конвейера (:565),
+      // поэтому расхождение с молчаливым desc.Format недопустимо.
+      IRenderBackend::BackendTextureInfo info;
+      if (SUCCEEDED(GetBackend()->GetSurfaceInfo(MakeBackendHandle<HSurface>(curDepthSurface), &info)))
+      {
+        curDepthSurfaceWidth  = info.width;
+        curDepthSurfaceHeight = info.height;
+        D3DFORMAT fmt = D3DFMT_UNKNOWN;
+        if (BackendFormatToD3D(info.format, &fmt))
+          curDepthSurfaceFormat = fmt;
+        else
+          DebugTrace("BindRenderTargetDepth: seam-формат %d вне словаря D3D9", (int)info.format);
+      }
+      else
+        DebugTrace("BindRenderTargetDepth: GetSurfaceInfo не удалось");
     }
     else
       curDepthSurfaceFormat = D3DFMT_UNKNOWN;

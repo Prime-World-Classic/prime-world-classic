@@ -50,13 +50,13 @@ def crc32(data: bytes) -> int:
     return zlib.crc32(data) & 0xFFFFFFFF
 
 
-def build(root, out, mask="*.shd", comp_size=1, max_ratio=0.90):
+def build(root, out, mask=("*.shd",), comp_size=1, max_ratio=0.90):
     import fnmatch
     files = []
     for dirpath, _dirs, names in os.walk(root):
         for n in names:
             rel = os.path.relpath(os.path.join(dirpath, n), root).replace(os.sep, "/")
-            if fnmatch.fnmatch(n, mask):
+            if any(fnmatch.fnmatch(n, m) for m in mask):
                 files.append(rel)
     files.sort()
     if not files:
@@ -136,7 +136,9 @@ def main():
     b = sub.add_parser("build")
     b.add_argument("--root", required=True)
     b.add_argument("--out", required=True)
-    b.add_argument("--mask", default="*.shd")
+    # масок может быть несколько (напр. '*.shd' для контейнеров материалов и
+    # '*.spv' для sidecar-слоя OnlineShaders — шаг 14)
+    b.add_argument("--mask", action="append", default=[])
     b.add_argument("--comp-size", type=int, default=1)
     b.add_argument("--max-ratio", type=float, default=0.90)
     l = sub.add_parser("list")
@@ -144,7 +146,7 @@ def main():
     l.add_argument("--grep")
     a = ap.parse_args()
     if a.cmd == "build":
-        build(a.root, a.out, a.mask, a.comp_size, a.max_ratio)
+        build(a.root, a.out, a.mask or ["*.shd"], a.comp_size, a.max_ratio)
     else:
         list_pile(a.pile, a.grep)
 

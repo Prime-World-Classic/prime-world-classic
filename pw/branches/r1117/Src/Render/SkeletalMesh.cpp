@@ -7,6 +7,7 @@
 #include "SkeletonReindexResource.h"
 #include "renderresourcemanager.h"
 #include "SkeletonWrapper.h"
+#include "renderer.h"                   // GetBackend() — шаг 13.4c: раскладка читается через seam
 #include "GlobalMasks.h"
 
 static NDebug::DebugVar<int> render_Skel_Update( "Skel_Update", "PerfCnt", true );
@@ -31,13 +32,20 @@ namespace
 
 inline bool VertexHasColors(DXVertexDeclarationRef decl)
 {
-  D3DVERTEXELEMENT9  elements[MAXD3DDECLLENGTH];
-  unsigned int n;
-  decl->GetDeclaration(elements, &n);
+  // Шаг 13.4c: декларация читается через seam (в D3D9 это был GetDeclaration по
+  // COM-ручке; по ручке другого бэкенда такого метода нет).
+  // Анонимное пространство здесь — на файловом уровне (вне namespace Render),
+  // поэтому имена seam'а квалифицированы.
+  Render::VertexElementDescriptor elements[Render::IRenderBackend::kMaxVertexElements];
+  unsigned int n = 0;
+  if (FAILED(Render::GetBackend()->GetInputLayoutElements(
+        Render::MakeBackendHandle<Render::HInputLayout>(Get(decl)),
+        elements, Render::IRenderBackend::kMaxVertexElements, &n)))
+    return false;
 
   for (unsigned int i = 0; i < n; ++i)
   {
-    if (elements[i].Usage == D3DDECLUSAGE_COLOR)
+    if (elements[i].usage == Render::VERETEXELEMENTUSAGE_COLOR)
     {
       return true;
     }

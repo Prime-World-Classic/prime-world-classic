@@ -34,6 +34,8 @@ namespace Render
 
 // Реализация (nvrhi/vulkan) живёт целиком в nvrhibackend.cpp.
 struct NvrhiBackendImpl;
+// SurfaceObj определён в nvrhibackend.cpp (уровень файла, тот же namespace).
+struct SurfaceObj;
 
 class NvrhiBackend : public IRenderBackend
 {
@@ -117,6 +119,12 @@ public:
   virtual HRESULT CreateVertexShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
   virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut);
+
+  // Шаг 13.4d: шейдеры берутся из SPIR-V-слоя контейнера v2 (см. seam-комментарий
+  // к GetShaderTargetTag и CreateShaderImpl — он умеет только SPIR-V).
+  virtual unsigned GetShaderTargetTag() const;
+  virtual HRESULT GetInputLayoutElements(HInputLayout layout, VertexElementDescriptor* pOut,
+                                         unsigned maxElements, unsigned* pCount);
   virtual HRESULT CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
                                   EBackendUsage usage, EBackendFormat format, EBackendPool pool,
                                   HTexture* pOut);
@@ -127,12 +135,14 @@ public:
                                 EBackendFormat format, EBackendPool pool, HSurface* pOut);
   virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture);
   // Загрузка бит в текстуру (шаг 13.1) — часть seam'а, см. renderbackend.h:345
-  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, unsigned face,
+                                const BackendRect* pRect,
                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch);
-  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level);
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level, unsigned face);
   // Описание и mip-цепочка (шаг 13.2) — см. renderbackend.h:363
   virtual HRESULT GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo);
   virtual HRESULT GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo);
+  virtual HRESULT GetTextureSurface(HTexture texture, unsigned level, HSurface* pOut);
   virtual HRESULT GenerateMipmaps(HTexture texture);
   // Блокировка поверхности (шаг 13.2) — RenderSurface::LockRect в клиенте звал
   // COM напрямую
@@ -149,6 +159,7 @@ public:
   virtual HRESULT LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
                                   ERenderLockType mode, void** ppData);
   virtual HRESULT UnlockIndexBuffer(HBuffer ib);
+  virtual HRESULT GetBufferInfo(HBuffer buffer, unsigned* pByteSize);
 
   // --- поверхности ---
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);
@@ -188,6 +199,12 @@ private:
   // либо там, где вызывающему нужен результат (ReadSurface, тест 12b).
   bool EnsureRecording();
   void FlushRecording();
+  void FlushPendingUploads();   // загрузки с чужого потока (см. ownerThread)
+  void ProbeFrameSurfaces();   // диагностика offscreen-поверхностей (снимок)
+  bool RawReadback(SurfaceObj& so, unsigned x0, unsigned y0,
+                       unsigned x1, unsigned y1, void* pDst, unsigned dstPitch);
+  // Шаг 13.4d: учёт загрузки бит в GPU (см. определение)
+  void NoteUpload(size_t bytes);
   HRESULT CreateShaderImpl(const void* pCode, unsigned codeSize, bool fragment, HShader* pOut);
   // Блокировка/разблокировка: у seam'а четыре метода, у реализации — два
   // (разница только в том, индексный буфер или вершинный).
@@ -206,6 +223,12 @@ public:
   // Тест шага 13.3: UP-вывод (DrawUP/DrawIndexedUP из памяти вызывающего) +
   // ColorFill + StretchRect + readback. Env PW_VK_DIP бит 4.
   bool RunSurfaceOpsTest();
+  // Шаг 13.4c: снимок бэк-буфера через seam (ReadSurface) в BMP — первый
+  // «перевёрнутый» кадр, сравниваемый с D3D9-скриншотом той же сцены.
+  bool SaveBackBufferShot(const char* pPath);
+  // Шаг 13.4c: выключает заливку бэк-буфера в Present (режим, когда бэкенд —
+  // основной, и кадр рисует клиент).
+  void SetClearOnPresent(bool on);
 
 private:
   NvrhiBackendImpl* m_pImpl;

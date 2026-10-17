@@ -6,6 +6,7 @@
 #include "renderresourcemanager.h"
 #include "shadercompiler.h"
 #include "renderbackend.h"   // seam этапа 2: GetBackend()/BackendViewport
+#include "shadercontainer.h" // Materials::ShaderTargetTag — выбор слоя шейдеров
 #include "GlobalMasks.h"
 
 namespace Render
@@ -22,18 +23,75 @@ struct ImmRendererVertex
 	float u, v;
 };
 
+// Шаг 14 (срез A): блобы OnlineShaders — SM3 DXIL, а Vulkan-бэкенд умеет
+// только SPIR-V. Рядом с блобом лежит sidecar `<блоб>.spv` (пишет
+// tools/online_shaders/build.py из HLSL-портов в OnlineShaders/port/; сам
+// блоб не меняется — D3D9-путь обязан остаться побайтово прежним).
+// Слой объявляет БЭКЕНД, а не dev-var: иначе цель, которую бэкенд не умеет
+// создавать, даёт молчаливый фолбэк. Замер: за 100 с прогона 2869 обращений к
+// VertexShader.vsb/DiffuseMap.psb — это композит кадра (экран-квад
+// RenderScreenQuad), без него кадр чёрный при полностью исправном выводе.
+// Возвращает открытый sidecar (или пустой указатель, если слоя нет / бэкенд
+// его не объявил). Пустой CObj() здесь корректен: политика CObj добавляет
+// ссылку при копировании.
+static CObj<Stream> OpenSpvSidecar(char const* pFileName, unsigned* pSizeOut)
+{
+	if (GetBackend()->GetShaderTargetTag() != (unsigned)Materials::stSpirv)
+		return CObj<Stream>();
+	nstl::string spv(pFileName);
+	spv += ".spv";
+	CObj<Stream> pSpv(RootFileSystem::OpenFile(spv.c_str(), FILEACCESS_READ, FILEOPEN_OPEN_EXISTING));
+	if (!pSpv || !pSpv->IsOk() || pSpv->GetSize() == 0)
+	{
+		DebugTrace("OnlineShader: %s — SPIR-V sidecar не открылся, беру DXBC", spv.c_str());
+		return CObj<Stream>();
+	}
+	*pSizeOut = (unsigned)pSpv->GetSize();
+	return pSpv;
+}
+
 DXVertexShaderRef LoadVertexShader(char const* pFileName)
 {
+	// Сначала SPIR-V-слой, если бэкенд его объявил.
+	unsigned spvSize = 0;
+	CObj<Stream> pSpv(OpenSpvSidecar(pFileName, &spvSize));
+	if (pSpv)
+	{
+		DXVertexShaderRef shSpv = GetRenderer()->CreateVertexShader(
+			(unsigned char const*)pSpv->GetBuffer(), spvSize);
+		if (Get(shSpv))
+			return shSpv;
+		DebugTrace("OnlineShader: %s.spv (%u Б) — бэкенд не создал VS из SPIR-V", pFileName, spvSize);
+	}
 	CObj<Stream> pStream(RootFileSystem::OpenFile(pFileName, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING));
 	NI_VERIFY(pStream && pStream->IsOk(), NStr::StrFmt("Cannot open file for reading: %s", pFileName), return DXVertexShaderRef(); );
-	return GetRenderer()->CreateVertexShader((unsigned char const*)pStream->GetBuffer());
+	// Без имени файла сбой неотличим от «шейдер вообще не просили».
+	DXVertexShaderRef sh = GetRenderer()->CreateVertexShader((unsigned char const*)pStream->GetBuffer());
+	if (!Get(sh))
+		DebugTrace("OnlineShader: %s (%u Б) — бэкенд не создал VS", pFileName,
+			(unsigned)pStream->GetSize());
+	return sh;
 }
 
 DXPixelShaderRef LoadPixelShader(char const* pFileName)
 {
+	unsigned spvSize = 0;
+	CObj<Stream> pSpv(OpenSpvSidecar(pFileName, &spvSize));
+	if (pSpv)
+	{
+		DXPixelShaderRef shSpv = GetRenderer()->CreatePixelShader(
+			(unsigned char const*)pSpv->GetBuffer(), spvSize);
+		if (Get(shSpv))
+			return shSpv;
+		DebugTrace("OnlineShader: %s.spv (%u Б) — бэкенд не создал PS из SPIR-V", pFileName, spvSize);
+	}
 	CObj<Stream> pStream(RootFileSystem::OpenFile(pFileName, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING));
 	NI_VERIFY(pStream && pStream->IsOk(), NStr::StrFmt("Cannot open file for reading: %s", pFileName), return DXPixelShaderRef(); );
-	return GetRenderer()->CreatePixelShader((unsigned char const*)pStream->GetBuffer());
+	DXPixelShaderRef sh = GetRenderer()->CreatePixelShader((unsigned char const*)pStream->GetBuffer());
+	if (!Get(sh))
+		DebugTrace("OnlineShader: %s (%u Б) — бэкенд не создал PS", pFileName,
+			(unsigned)pStream->GetSize());
+	return sh;
 }
 
 } // anonymous namespace

@@ -315,6 +315,28 @@ HRESULT D3D9Backend::CreateInputLayout(const VertexFormatDescriptor& descr, HInp
   return hr;
 }
 
+// Шаг 13.4c: GetDeclaration обратно (см. комментарий в renderbackend.h).
+// GetDeclaration возвращает элементы без завершающего D3DDECL_END.
+HRESULT D3D9Backend::GetInputLayoutElements(HInputLayout layout, VertexElementDescriptor* pOut,
+                                            unsigned maxElements, unsigned* pCount) {
+  if (pCount) *pCount = 0;
+  if (!layout.p || !pOut || !pCount) return E_INVALIDARG;
+  D3DVERTEXELEMENT9 decl[MAXD3DDECLLENGTH];
+  UINT n = 0;
+  IDirect3DVertexDeclaration9* base = static_cast<IDirect3DVertexDeclaration9*>(layout.p);
+  if (FAILED(base->GetDeclaration(decl, &n))) return E_FAIL;
+  if (n > maxElements) {
+    DebugTrace("D3D9Backend: раскладка из %u элементов не влезает в %u", n, maxElements);
+    return E_FAIL;
+  }
+  for (UINT i = 0; i < n; ++i)
+    pOut[i] = VertexElementDescriptor(decl[i].Stream, decl[i].Offset,
+                                      Convert2VertexElementType(decl[i].Type),
+                                      Convert2VertexElementUsage(decl[i].Usage), decl[i].UsageIndex);
+  *pCount = (unsigned)n;
+  return S_OK;
+}
+
 // Нейтральный пул -> D3DPOOL + usage. Единственное место, где EBackendPool
 // превращается в D3D9-параметры (docs/PLAN_NVRHI.md §2.3): в Vulkan/DX12 тот же
 // enum разворачивается в staging + default + upload-кольцо.
@@ -393,6 +415,16 @@ HRESULT D3D9Backend::CreateTextureCube(unsigned edgeLen, unsigned mipLevels,
   return hr;
 }
 
+// Shag 13.4c: pri perevorote D3D9-ustroistvo zhivyoT parallelno s Vulkan-bekendom,
+// i ego poverkhnosti ukhodyat v SmartRenderer kak chuzhie (magiya ne SEAM). Bez
+// adresa sozdaniya chuzhuyu ruchku v loge ne opoznat', pojetomu sozdanie pechataetsya.
+static unsigned g_d3d9SurfLogged = 0;
+static void NoteD3D9Surf(const char* what, const void* p, unsigned w, unsigned h, int kind)
+{
+  if (g_d3d9SurfLogged++ >= 24u) return;
+  DebugTrace("D3D9Surf: %s 0x%llX %ux%u kind=%d", what, (unsigned long long)(size_t)p, w, h, kind);
+}
+
 HRESULT D3D9Backend::CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
                                    EBackendFormat format, EBackendPool pool, HSurface* pOut) {
   if (!pOut)
@@ -420,6 +452,7 @@ HRESULT D3D9Backend::CreateSurface(EBackendSurfaceKind kind, unsigned width, uns
       break;
     }
   }
+  NoteD3D9Surf("CreateSurface", surf, width, height, (int)kind);
   *pOut = MakeBackendHandle<HSurface>(surf);
   return hr;
 }
@@ -429,7 +462,8 @@ HRESULT D3D9Backend::UpdateTexture(HTexture srcTexture, HTexture dstTexture) {
                                 static_cast<IDirect3DBaseTexture9*>(dstTexture.p));
 }
 
-HRESULT D3D9Backend::LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+HRESULT D3D9Backend::LockTexture2D(HTexture texture, unsigned level, unsigned face,
+                                   const BackendRect* pRect,
                                    ERenderLockType mode, void** ppData, unsigned* pRowPitch) {
   if (!texture.p || !ppData)
     return E_INVALIDARG;
@@ -448,16 +482,27 @@ HRESULT D3D9Backend::LockTexture2D(HTexture texture, unsigned level, const Backe
     r.right = pRect->right; r.bottom = pRect->bottom;
     pR = &r;
   }
-  const HRESULT hr = tex->LockRect(level, &lr, pR, ConvertRenderLockType(mode));
+  // Cube-текстура блокируется по граням (face = D3DCUBEMAP_FACES).
+  // Тип берём из самой текстуры: клиент (ReadDDS.cpp) знал его, но
+  // передавал в бэкенд только void*.
+  HRESULT hr;
+  if (face || tex->GetType() == D3DRTYPE_CUBETEXTURE)
+    hr = static_cast<IDirect3DCubeTexture9*>(texture.p)
+             ->LockRect((D3DCUBEMAP_FACES)face, level, &lr, pR, ConvertRenderLockType(mode));
+  else
+    hr = tex->LockRect(level, &lr, pR, ConvertRenderLockType(mode));
   *ppData = lr.pBits;
   if (pRowPitch)
     *pRowPitch = (unsigned)lr.Pitch;
   return hr;
 }
 
-HRESULT D3D9Backend::UnlockTexture2D(HTexture texture, unsigned level) {
+HRESULT D3D9Backend::UnlockTexture2D(HTexture texture, unsigned level, unsigned face) {
   if (!texture.p)
     return E_INVALIDARG;
+  IDirect3DBaseTexture9* base = static_cast<IDirect3DBaseTexture9*>(texture.p);
+  if (face || base->GetType() == D3DRTYPE_CUBETEXTURE)
+    return static_cast<IDirect3DCubeTexture9*>(texture.p)->UnlockRect((D3DCUBEMAP_FACES)face, level);
   return static_cast<IDirect3DTexture9*>(texture.p)->UnlockRect(level);
 }
 
@@ -522,6 +567,7 @@ HRESULT D3D9Backend::GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo)
   pInfo->format = D3DFormatToBackend(d.Format);
   pInfo->usage  = D3DUsageToBackend(d.Usage);
   pInfo->pool   = D3DPoolToBackend(d.Pool, d.Usage);
+  pInfo->cube   = (base->GetType() == D3DRTYPE_CUBETEXTURE);
   CheckTextureInfoRoundTrip(d, levels, *pInfo);
   return S_OK;
 }
@@ -543,7 +589,21 @@ HRESULT D3D9Backend::GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo)
   pInfo->format = D3DFormatToBackend(d.Format);
   pInfo->usage  = D3DUsageToBackend(d.Usage);
   pInfo->pool   = D3DPoolToBackend(d.Pool, d.Usage);
+  pInfo->cube   = false;   // поверхность уровня cube-текстуры — не cube
   CheckTextureInfoRoundTrip(d, 1u, *pInfo);
+  return S_OK;
+}
+
+// Прежний путь — GetSurfaceLevel в клиенте (Texture2D::GetSurface); владение
+// переходит к вызывающему, как у COM-вызова (умный указатель не AddRef'ит).
+HRESULT D3D9Backend::GetTextureSurface(HTexture texture, unsigned level, HSurface* pOut) {
+  if (!texture.p || !pOut)
+    return E_INVALIDARG;
+  IDirect3DSurface9* pSurf = 0;
+  const HRESULT hr = static_cast<IDirect3DTexture9*>(texture.p)->GetSurfaceLevel(level, &pSurf);
+  if (FAILED(hr) || !pSurf)
+    return hr;
+  *pOut = MakeBackendHandle<HSurface>(pSurf);
   return S_OK;
 }
 
@@ -751,6 +811,28 @@ HRESULT D3D9Backend::UnlockIndexBuffer(HBuffer ib) {
   return static_cast<IDirect3DIndexBuffer9*>(ib.p)->Unlock();
 }
 
+// Шаг 13.4c: размер буфера. Клиент (учёт геометрий, CRC)
+// читал D3DVERTEXBUFFER_DESC/D3DINDEXBUFFER_DESC напрямую по ручке;
+// тип (VB или IB) берётся из самого ресурса — вызывающий передаёт void*.
+HRESULT D3D9Backend::GetBufferInfo(HBuffer buffer, unsigned* pByteSize) {
+  if (!buffer.p) return D3DERR_INVALIDCALL;
+  IDirect3DResource9* res = static_cast<IDirect3DResource9*>(buffer.p);
+  const D3DRESOURCETYPE type = res->GetType();
+  if (type == D3DRTYPE_VERTEXBUFFER) {
+    D3DVERTEXBUFFER_DESC d;
+    const HRESULT hr = static_cast<IDirect3DVertexBuffer9*>(buffer.p)->GetDesc(&d);
+    if (SUCCEEDED(hr) && pByteSize) *pByteSize = (unsigned)d.Size;
+    return hr;
+  }
+  if (type == D3DRTYPE_INDEXBUFFER) {
+    D3DINDEXBUFFER_DESC d;
+    const HRESULT hr = static_cast<IDirect3DIndexBuffer9*>(buffer.p)->GetDesc(&d);
+    if (SUCCEEDED(hr) && pByteSize) *pByteSize = (unsigned)d.Size;
+    return hr;
+  }
+  return D3DERR_INVALIDCALL;
+}
+
 HRESULT D3D9Backend::GetRenderTargetData(HSurface srcSurface, HSurface dstSurface) {
   return pDevice->GetRenderTargetData(static_cast<IDirect3DSurface9*>(srcSurface.p),
                                       static_cast<IDirect3DSurface9*>(dstSurface.p));
@@ -848,7 +930,10 @@ HRESULT D3D9Backend::GetDepthStencil(HSurface* pOut) {
   IDirect3DSurface9* pSurf = 0;
   const HRESULT hr = pDevice->GetDepthStencilSurface(&pSurf);
   if (SUCCEEDED(hr))
+  {
     pOut->p = pSurf;   // владеющая
+    NoteD3D9Surf("GetDepthStencil", pSurf, 0, 0, -1);
+  }
   return hr;
 }
 
@@ -859,6 +944,7 @@ HRESULT D3D9Backend::GetBackBuffer(HSurface* pOut) {
   const HRESULT hr = pDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pBB);
   if (SUCCEEDED(hr)) {
     pOut->p = pBB;
+    NoteD3D9Surf("GetBackBuffer", pBB, 0, 0, -2);
     pBB->Release();   // владеет устройством; ручка действительна до конца вызова звенящего
   }
   return hr;

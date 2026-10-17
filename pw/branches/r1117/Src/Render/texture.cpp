@@ -150,7 +150,7 @@ LockedRect Texture2D::LockRect(unsigned int level, RECT *pRect, ERenderLockType 
   void* data = 0;
   unsigned pitch = 0;
   const BackendRect r = MakeBackendRect(pRect->left, pRect->top, pRect->right, pRect->bottom);
-  HRESULT hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, &r,
+  HRESULT hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, 0u, &r,
                                            lockType, &data, &pitch);
   NI_DX_THROW(hr, __FUNCTION__);
 
@@ -167,7 +167,7 @@ LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
   void* data = 0;
   unsigned pitch = 0;
   if( !RENDER_DISABLED && GetDXTexture() ) {
-    hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, 0,
+    hr = GetBackend()->LockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, 0u, 0,
                                      lockType, &data, &pitch);
     NI_DX_THROW(hr, __FUNCTION__);
   }
@@ -183,7 +183,7 @@ LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
 void Texture2D::UnlockRect(unsigned int level)
 {
   if(!RENDER_DISABLED) {
-    HRESULT hr = GetBackend()->UnlockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level);
+    HRESULT hr = GetBackend()->UnlockTexture2D(MakeBackendHandle<HTexture>(GetDXTexture()), level, 0u);
     NI_DX_THROW(hr, __FUNCTION__);
   }
 }
@@ -191,10 +191,13 @@ void Texture2D::UnlockRect(unsigned int level)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DXSurfaceRef Texture2D::GetSurface(unsigned int level) const
 {
-	IDirect3DSurface9* pSurf = 0;
-	HRESULT hr = GetDXTexture()->GetSurfaceLevel(level, &pSurf);
+  // Поверхность уровня спрашиваем у бэкенда (шаг 13.4c): под NvrhiBackend в
+  // pDXTexture лежит ручка бэкенда, GetSurfaceLevel() по ней = вызов по чужой
+  // vtable. Владение — как у COM: умный указатель присоединяет ссылку без AddRef.
+  HSurface surf;
+  const HRESULT hr = GetBackend()->GetTextureSurface(MakeBackendHandle<HTexture>(GetDXTexture()), level, &surf);
   NI_DX_THROW(hr, __FUNCTION__);
-	return DXSurfaceRef(pSurf, false);
+	return DXSurfaceRef(static_cast<IDirect3DSurface9*>(surf.p), false);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

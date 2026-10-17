@@ -83,6 +83,7 @@ Renderer::Renderer(NativeWindow _window) :
 	pDevice(0),
 	pBackend(0),
   pVkSpike(0),
+  bVkBackend(false),
 	window(_window),
 	bDeviceLost(true),
   bResetDevice(false),
@@ -445,6 +446,38 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   // не меняет (см. ResetDevice()), а вот CreateDevice() меняет.
   delete pBackend;
   pBackend = new D3D9Backend(pDevice);
+  bVkBackend = false;
+
+  // Шаг 13.4c (docs/PLAN_NVRHI.md §3.z): «переворот» — pBackend становится
+  // Vulkan-бэкендом. Включается только env PW_VK_BACKEND=1. D3D9-устройство при
+  // этом СОХРАНЯЕТСЯ: классы lifecycle (CreateQuery/Reset/TestCooperativeLevel),
+  // D3DX-загрузка DDS и прямые обращения GetDevice() (20 сайтов внутри Src/Render,
+  // PostFX/ShadowMap/ImmediateRenderer) пока идут через него. Поэтому картинка на
+  // этом гейте смешанная, а цель — прогнать боевые вызовы seam'а через
+  // NvrhiBackend и снять счётчики (частота смен состояний, число пайплайнов,
+  // владение ручками).
+  {
+    char vkBackendFlag[8] = { 0 };
+    const bool backendOn =
+      (GetEnvironmentVariableA("PW_VK_BACKEND", vkBackendFlag, sizeof(vkBackendFlag) - 1) > 0 &&
+       vkBackendFlag[0] == '1');
+    if (backendOn)
+    {
+      NvrhiBackend* vk = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight);
+      if (vk)
+      {
+        delete pBackend;
+        pBackend = vk;
+        bVkBackend = true;
+        // Кадр рисует клиент (его Clear/Draw идут через этот бэкенд), поэтому
+        // заливка бэк-буфера в Present выключается.
+        vk->SetClearOnPresent(false);
+        systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_BACKEND up" << endl;
+      }
+      else
+        systemLog(NLogg::LEVEL_CRITICAL) << "Renderer: PW_VK_BACKEND FAILED" << endl;
+    }
+  }
 
   // Шаг 12a (docs/PLAN_NVRHI.md §3.z): поднимает Vulkan-бэкенд на ТОМ ЖЕ окне,
   // что и D3D9. Включается только env PW_VK_SPIKE=1 (в проде его нет, поэтому
@@ -464,7 +497,7 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
                           vkSpikeFlag[0] == '1');
     const bool dipOn = (GetEnvironmentVariableA("PW_VK_DIP", vkDipFlag, sizeof(vkDipFlag) - 1) > 0 &&
                         atoi(vkDipFlag) != 0);
-    if (spikeOn || dipOn)
+    if ((spikeOn || dipOn) && !bVkBackend)
     {
       pVkSpike = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight);
       systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_SPIKE "
@@ -608,9 +641,14 @@ DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexForma
 
 DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 {
+	return CreateVertexShader(data, 0);
+}
+
+DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data, unsigned size)
+{
 	IDirect3DVertexShader9* d3dshader = 0;
   HShader shader;
-	HRESULT hr = pBackend->CreateVertexShader(data, 0, &shader);
+	HRESULT hr = pBackend->CreateVertexShader(data, size, &shader);
 	NI_DX_THROW(hr, "Creating vertex shader error!");
   d3dshader = static_cast<IDirect3DVertexShader9*>(shader.p);
 	return DXVertexShaderRef(d3dshader, false);
@@ -620,10 +658,15 @@ DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
 
 DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data)
 {
+	return CreatePixelShader(data, 0);
+}
+
+DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data, unsigned size)
+{
 	IDirect3DPixelShader9* d3dshader = 0;
   HShader shader;
-	HRESULT hr = pBackend->CreatePixelShader(data, 0, &shader);
-	NI_DX_THROW(hr, "Creating vertex shader error!");
+	HRESULT hr = pBackend->CreatePixelShader(data, size, &shader);
+	NI_DX_THROW(hr, "Creating pixel shader error!");
   d3dshader = static_cast<IDirect3DPixelShader9*>(shader.p);
 	return DXPixelShaderRef(d3dshader, false);
 }
@@ -858,6 +901,47 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
           systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_SURF "
                                          << (pVkSpike->RunSurfaceOpsTest() ? "OK" : "FAILED") << endl;
       }
+    }
+
+    // Шаг 13.4c: «переворот» (env PW_VK_BACKEND=1) — pBackend и есть
+    // Vulkan-бэкенд, поэтому отдельный present выше не нужен (основной путь уже
+    // вызывает pBackend->Present). Остаются тесты seam'а, снимок кадра
+    // (env PW_VK_SHOT=<номер кадра>) и счётчики — они и есть цель гейта:
+    // частота смен состояний, число пайплайнов, владение ручками в бою.
+    if (bVkBackend)
+    {
+      NvrhiBackend* vk = static_cast<NvrhiBackend*>(pBackend);
+      static unsigned s_vkFlipFrames = 0;
+      static bool   s_vkFlipFlagsRead = false;
+      static unsigned s_vkFlipDipMask = 0;
+      static unsigned s_vkShotAt = 0;
+      ++s_vkFlipFrames;
+      if (!s_vkFlipFlagsRead)
+      {
+        char dipFlag[8] = { 0 };
+        char shotFlag[16] = { 0 };
+        if (GetEnvironmentVariableA("PW_VK_DIP", dipFlag, sizeof(dipFlag) - 1) > 0)
+          s_vkFlipDipMask = (unsigned)atoi(dipFlag);
+        if (GetEnvironmentVariableA("PW_VK_SHOT", shotFlag, sizeof(shotFlag) - 1) > 0)
+          s_vkShotAt = (unsigned)atoi(shotFlag);
+        s_vkFlipFlagsRead = true;
+      }
+      if (s_vkFlipDipMask && s_vkFlipFrames == 30u)
+      {
+        if (s_vkFlipDipMask & 1u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP(flip) "
+            << (vk->RunSeamDipTest() ? "OK" : "FAILED") << endl;
+        if (s_vkFlipDipMask & 2u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_TEX(flip) "
+            << (vk->RunTextureDipTest() ? "OK" : "FAILED") << endl;
+        if (s_vkFlipDipMask & 4u)
+          systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_DIP_SURF(flip) "
+            << (vk->RunSurfaceOpsTest() ? "OK" : "FAILED") << endl;
+      }
+      // снимок кадра переехал в NvrhiBackend::Present: здесь он читал бы
+      // картинку уже следующего acquire'а (acquire в Present — последний шаг)
+      if ((s_vkFlipFrames % 300) == 0)
+        vk->DumpStats("flip");
     }
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );

@@ -4692,3 +4692,163 @@ D3D9/NVRHI (смена вендора = падение сборки, а не и�
 частота смены состояний (а значит и число разных пайплайнов в бою) не измерена;
 измерение переносится на 13.4c вместе с env-гейтом `PW_VK_BACKEND=1` и
 offscreen A/B.
+
+### Сделано (шаги 13.4c–13.4e: клиент рисуется через Vulkan-бэкенд — 2026-10-17, WIP)
+
+Env-гейт `PW_VK_BACKEND=1` (`renderer.cpp:443`, рядом с `PW_VK_SPIKE`/`PW_VK_DIP`):
+`pBackend = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight)`,
+D3D9-устройство **сохраняется** (его lifecycle: `CreateQuery`, `Reset`,
+`TestCooperativeLevel`; D3DX-загрузка; PostFX/ShadowMap/ImmediateRenderer).
+Клиент доходит до боя и рисует через seam: `VkStatsflip: presents=2099
+recreates=1 swap=1024x768 device=NVIDIA GeForce RTX 3060`, `VkResflip:
+буферы=10858 шейдеры=120 раскладки=20 пайплайны=6911/6911 (попаданий 924834)
+вывод=931959`, `вывод: в бэк-буфер=2099 в offscreen=967891`, RSS ~2,1 ГБ
+(DXVK-эталон того же клиента 2,44 ГБ).
+
+Мост владения (`nvrhibackend.cpp`): клиент хранит seam-ручки в COM-умных
+указателях (`DxIntrusivePtr.h:53` → `AddRef()/Release()`), поэтому у ручки свой
+vtable-префикс `SeamUnknown` (вендорный DX-SDK не даёт `unknwn.h`) и
+`SeamHandle{magic='SEAM', impl, index, kind, refs}`. `Hnd2Idx` проверяет магию;
+освобождённая обёртка помечается `kFreed=0xDEAD5245` (не удаляется) — это сняло
+4495 «чужих» ручек, которые на самом деле были нашими мёртвыми. **Корень
+прежних крахов:** `NewHandle` возвращал существующую обёртку БЕЗ `AddRef` →
+умный указатель клиента ронял счётчик единственного владельца в 0, ресурс умирал,
+а индекс оставался в кэшах (`curRt`/`rtSlot`/`backDepthIdx`) → access violation
+в `clearTextureFloat`. Теперь каждая выдача ручки = отдельная ссылка (как в COM).
+
+Инструмент поиска остатков UB: **пады vtable** `SeamHandle` на слоты 3..29
+(`SEAM_PAD_SLOT(n)`, деструктор `SeamUnknown` сделан НЕ виртуальным, иначе
+нумерация разъехалась бы с индексами методов D3D9). Номер слота = индекс метода
+по `Vendor/DirectX/Include/d3d9.h`; лог `клиент позвал COM-метод по seam-ручке
+(слот %u, kind=%u index=%u refs=%ld, вызов из RVA 0x%x)` сам указывает, какого
+метода seam'а не хватает. Так был найден `IDirect3DVertexDeclaration9::GetDeclaration`
+(слот 4) — и объяснены прежние fastfail-крахи: пад возвращал 0, не записав
+out-параметры → `strideElementsCount` = мусор → `resize(мусор)` → порча кучи.
+
+Seam расширен (все три бэкенда): `GetBufferInfo(HBuffer, unsigned* pByteSize)`,
+`GetTextureSurface(HTexture, level, HSurface* pOut)` (D3D9 — `GetSurfaceLevel`,
+владение переходит; Vulkan — просмотрка на ту же картинку, держит внутреннюю
+ссылку текстуры, `level != 0` отказ), `GetInputLayoutElements(HInputLayout,
+VertexElementDescriptor*, maxElements, unsigned* pCount)` + `kMaxVertexElements=32`
+(обрезка при переполнении запрещена — сдвигает шаг вершины),
+`GetShaderTargetTag()` (слой шейдеров объявляет бэкенд: D3D9 → 0, Vulkan →
+`Materials::stSpirv`), `LockTexture2D/UnlockTexture2D` с параметром `face`
+(0=2D, 0..5 = `D3DCUBEMAP_FACES`), `BackendTextureInfo.cube`.
+Переведённые COM-сайты клиента: `ReadDDS.cpp:305-340`, `TextureManager.cpp:179-229,566-583`
+(mip-подкраска и проверка 2D через `GetTextureInfo`, а не `GetType()`),
+`renderresourcemanager.cpp:317,331` и `StaticMesh.cpp:392,499` (`GetBufferInfo`),
+`smartrenderer.cpp:402,860,872,891` (`GetSurfaceInfo`, в т.ч. формат глубины,
+который кормит ключ состояний), `texture.cpp:195` (`GetSurface` → `GetTextureSurface`).
+`DX_RESOURCE_CONTROL` (`DxResourcesControl.h:6`) закомментирован → учёт ресурсов
+не компилируется, сайтом не является.
+
+Память (было 25,3 ГБ RSS, 11 636 отображений `nvidiactl` = 22,7 ГБ при 0,95 ГБ
+видеопамяти): (а) загрузка бит везде через `ICommandList::writeTexture` —
+`createStagingTexture` у этой версии NVRHI делает отдельное host-visible
+выделение (`vulkan-staging-texture.cpp:111`), а NVRHI делает по одному
+`vkAllocateMemory` на ресурс (`vulkan-allocator.cpp:56`), драйвер поднимает
+минимум ~2 МБ; (б) слэбы VB/IB по 64 МБ (`Slab`/`SlabAlloc`/`SlabFree`, дыры с
+слиянием, `BufferObj::slab/off`, привязки через `setOffset(off + vbOffset)`);
+(в) `FreeMirror(v)` = `vector().swap(v)` — `clear()` не отдаёт ёмкость.
+Барьеры буферов NVRHI не генерирует (`transitionBufferStates` отсутствует) →
+смешивать VB и IB в одном слэбе безопасно.
+
+Потоки: клиент грузит геометрию НЕ из рендер-потока (`(0036)` рендер, `(0368)`
+загрузчик) → два потока в одном командном списке NVRHI = `THREADING ERROR …
+VkCommandPool is simultaneously used` и `vkCmdEndRendering-renderpass`
+(`CommandList::open()` не вызывает `endRenderPass()` и не чистит
+`m_CurrentGraphicsState`, в отличие от `close()`/`clearState()`). Рекурсивный
+мьютекс (`VK_API_GUARD`, 68 методов) гонку сериализует, но дефект не снимает.
+Решение: **отсрочка загрузок** — если `GetCurrentThreadId() != ownerThread`,
+в список не пишем, ставим `needUpload` (у текстуры дополнительно `upLevel/
+upFace/upRowBytes`, т.к. следующий Lock перезапишет уровень) и исполняем в
+`FlushPendingUploads()`, которую вызывает `DrawImpl`. Важно: `EnsureRecording()`
+обязан предшествовать КАЖДОЙ записи, т.к. `NoteUpload` закрывает и исполняет
+список (иначе запись в закрытый буфер = `VUID-vkCmdUpdateBuffer-commandBuffer-recording`).
+Загрузки батчатся по байтам: `uploadPending >= 64 МБ` → `FlushRecording`,
+`flushesSinceIdle >= 4` → `waitForIdle`; без порогов winevulkan падает на
+ассертах `vkBeginCommandBuffer`/`vkQueueSubmit` (пул команд пополняется только
+после исполнения на GPU, `vulkan-queue.cpp:329`).
+
+Swapchain: acquire переведён с семафора на **fence** (один семафор на все
+acquire'ы = VUID-01779; fence создаётся без SIGNALED и сбрасывается ДО acquire);
+`Present` больше не делает acquire в начале — кадр рисуется в картинку текущего
+acquire'а, acquire идёт ПОСЛЕ present'а, первый acquire выполняется в
+`CreateSwapchain` (иначе `вывод: в бэк-буфер=0 в offscreen=107143`);
+`SurfaceObj::backBufferAlias` + `ResolveSurfaceIdx` (клиент кэширует поверхность
+бэк-буфера один раз в `renderer.cpp:301-303`); при пересоздании swapchain'а
+записи бэк-буфера и выданные ручки **переиспользуются** (иначе клиент держал
+освобождённую картинку → зависание в `createImageView`); NVRHI не моделирует
+`PRESENT_SRC_KHR` → ручные переходы `TransitionBackImage` до и после present'а;
+readback картинки swapchain'а — прямым путём `RawReadback` (staging-путь для
+presented-изображения зависает в `mapStagingTexture`: `mapBuffer` ждёт
+`waitCommandList` по таймлайну, у native-обёртки пара «submission → сигнал» не
+сходится); снимок кадра делается ВНУТРИ `Present` (из `renderer.cpp` после
+`Present` читается картинка СЛЕДУЮЩЕГО acquire'а — потому vk_shot.bmp был чёрным).
+
+Валидационный слой (`VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`,
+`apt install vulkan-validationlayers spirv-tools vulkan-tools`) дал точный
+список дефектов; сняты: порядок `addBindingSet` должен совпадать с порядком
+`addBindingLayout` (NVRHI сопоставляет **позиционно**; было 00358/08600),
+`setArraySize(6)` для куба (08866/07968), `BindingLayoutItem::setSize(count)` +
+цикл по `BindingSetItem::arrayElement` для массивов ресурсов (08114), dummy VB
+для пустых вершинных слотов (04001), depth-usage для D24S8-текстур (06088/06089:
+клиент создаёт карту теней как обычную текстуру и привязывает как глубину),
+привязка набора 1 (SSBO) dummy-буфером (08600 для set 1), `KindOk` — проверка
+`kind` ручки (индекс сквозной внутри рода, поэтому hkTexture читался как запись
+`d.surfaces`), подмена глубины не-равного размера (Vulkan требует равных
+размеров RT/DS, D3D9 — нет), `FormatIntClass` (D3DCOLOR обязан стать
+RGBA8_SINT/UINT — 08733), `SemEq` (`POSITION0`↔`POSITION`, `COLORn`↔
+`TEXCOORD(100+n)`), закрытие атрибута без входа + заполнители location.
+Остаток: 07752 (2D-вью там, где шейдер ждёт `Dim = Cube`), 00331 (dummy SSBO без
+STORAGE_BUFFER-usage), 07904/08743 (интерфейс пар VS/PS: у VS вход без атрибута;
+у PS вход без выхода VS — чинится согласованием пар в писателе).
+
+Срез A шага 14 (портирование блобов `OnlineShaders`): дизассемблировано SM3
+(`tools/hlsl_compile_test --blob --disasm` под Wine с подменой `d3dcompiler_47`),
+восстановлены 4 пары (`default_shader`, `VertexShader`+`DiffuseMap`), написаны
+HLSL-порты `Data/Shaders/OnlineShaders/port/*.hlsl` (константы — канонический
+c-банк с `packoffset`), писатель `tools/online_shaders/build.py` (общий драйвер
+`tools/shader_build/dxcdrv.py`, гейт по BuiltIn Position/FragCoord), sidecar-и
+`<блоб>.spv` в pile (`mkpile.py --mask` стал повторяемым), читатель
+`ImmRenderer::OpenSpvSidecar` + `LoadVertexShader/LoadPixelShader` (сначала
+SPIR-V, при неудаче прежний DXBC). Композит создаётся: финальный вывод кадра —
+экран-квад `ImmRenderer::RenderScreenQuad` с парой `VertexShader`+`DiffuseMap`,
+именно он и давал `нет VS=…` каждый кадр и полностью чёрный кадр.
+
+Дефект писателя `.shd`: `mkshd2.py:strip_trailer` резал вход по `v2HeaderOffset`,
+но секции лежат ПЕРЕД заголовком → старый SPIR-V-слой попадал в «v1-часть»
+мёртвым грузом (BasicMaterial 2 133 940 → 2 317 708 Б). Починка: читать `v1Size`
+из заголовка (`V2H\0` + version + v1Size + targetCount) и резать по нему.
+Корпус перегенерён (16 материалов, 0 пропусков), **v1-слой побайтово идентичен
+16/16** → D3D9-путь не меняется. Грабля: без `--materials` писатель затирает
+лишние контейнеры (31 файл вместо 16).
+
+Не закрыто (WIP): кадр не осмысленный — `vk_shot.bmp` = 2 цвета: (230,230,30)
+785664 px + (0,0,0) 768 px (одна колонка) при 2099 present'ах и 931959 выводах;
+гипотеза — геометрия не проходит из-за несогласованного вершинного интерфейса
+(07904/08733/08743) и/или выбора варианта материала (у Vulkan-бэкенда
+`caps=0x5`, у DXVK `caps=0x7` → разные индексы материалов, третий снимок живых
+индексов не снят). Не снят регресс tiny10 на этой сборке, диагностика не обрезана
+(`VK_TRACE`-кольцо, пады vtable, `VkBeat`, `Watchdog`, `NoteForeign`, `VkFb`,
+`VkDs`, `VkThread`, `VkProbe`, `VkDiag`, `VkIlMap`), SSBO-набор пока dummy.
+
+RenderDoc (разрешение пользователя m12251): **захват получить не удалось**,
+ветка тупиковая. Сделано: скачан официальный 1.46 (`renderdoc.org/stable/1.46/
+renderdoc_1.46.tar.gz`), манифест слоя починен (в поставке заглушка
+`"library_path": "/io/dist/lib/librenderdoc.so"`), слой виден хостовому
+загрузчику (`VK_ADD_IMPLICIT_LAYER_PATH` + `ENABLE_VULKAN_RENDERDOC_CAPTURE=1` →
+`vulkaninfo --summary` показывает `VK_LAYER_RENDERDOC_Capture`), GUI поднят под
+Xvfb и управляется XTEST (`/tmp/xui.py`: click/type/key/ctrl/schord; координаты
+брать из root-скриншота, поля чистить `End`+`Shift+Home`+`Delete`, `Ctrl+A` в Qt
+не работает). Проверено и отвергнуто: `renderdoccmd capture` не делает
+авто-захват при выходе; `RENDERDOC_CAPOPTS` — 48-символьная кодировка полей
+(расшифрована: api-validation→5, capture-callstacks→7, …), диапазона кадров нет;
+в официальном tarball НЕТ python-модуля (`_renderdoc*.so`), поэтому
+`qrenderdoc --python` скрипт не выполняет; crash-capture (`delayforcrash`) в либе
+нет. Инъекция: `/usr/bin/wine` и `wine64-stable` — шелл-скрипты, хуки уходили в
+`/usr/bin/dash`; настоящий ELF — `/usr/lib/x86_64-linux-gnu/wine/wine`, при нём
+`Loading into …/wine/wine` и `Registering Vulkan hooks` есть, но `.rdc` не
+появляется. Добавлено в код: env `PW_VK_LAYERS` (включение слоёв инстанса самим
+приложением, максимум 8) — слой подтверждается в логе клиента, захвата всё равно
+нет: под winevulkan хуки RenderDoc обходятся загрузчиком winevulkan.

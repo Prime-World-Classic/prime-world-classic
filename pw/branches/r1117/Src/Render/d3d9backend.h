@@ -175,6 +175,11 @@ public:
   virtual HRESULT CreatePixelShader(const void* pShaderCode, unsigned codeSize, HShader* pOut);
   virtual HRESULT CreateInputLayout(const VertexFormatDescriptor& descr, HInputLayout* pOut);
 
+  // D3D9 читает плотную v1-таблицу (DXBC SM3) — слой цели ему не нужен.
+  virtual unsigned GetShaderTargetTag() const { return 0; }
+  virtual HRESULT GetInputLayoutElements(HInputLayout layout, VertexElementDescriptor* pOut,
+                                         unsigned maxElements, unsigned* pCount);
+
   virtual HRESULT CreateTexture2D(unsigned width, unsigned height, unsigned mipLevels,
                                   EBackendUsage usage, EBackendFormat format, EBackendPool pool,
                                   HTexture* pOut);
@@ -184,11 +189,13 @@ public:
   virtual HRESULT CreateSurface(EBackendSurfaceKind kind, unsigned width, unsigned height,
                                 EBackendFormat format, EBackendPool pool, HSurface* pOut);
   virtual HRESULT UpdateTexture(HTexture srcTexture, HTexture dstTexture);
-  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, const BackendRect* pRect,
+  virtual HRESULT LockTexture2D(HTexture texture, unsigned level, unsigned face,
+                                const BackendRect* pRect,
                                 ERenderLockType mode, void** ppData, unsigned* pRowPitch);
-  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level);
+  virtual HRESULT UnlockTexture2D(HTexture texture, unsigned level, unsigned face);
   virtual HRESULT GetTextureInfo(HTexture texture, BackendTextureInfo* pInfo);
   virtual HRESULT GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo);
+  virtual HRESULT GetTextureSurface(HTexture texture, unsigned level, HSurface* pOut);
   virtual HRESULT GenerateMipmaps(HTexture texture);
   virtual HRESULT LockSurface(HSurface surface, const BackendRect* pRect,
                               ERenderLockType mode, void** ppData, unsigned* pRowPitch);
@@ -204,6 +211,7 @@ public:
   virtual HRESULT LockIndexBuffer(HBuffer ib, unsigned offset, unsigned size,
                                   ERenderLockType mode, void** ppData);
   virtual HRESULT UnlockIndexBuffer(HBuffer ib);
+  virtual HRESULT GetBufferInfo(HBuffer buffer, unsigned* pByteSize);
 
   // --- поверхности ---
   virtual HRESULT GetRenderTargetData(HSurface srcSurface, HSurface dstSurface);

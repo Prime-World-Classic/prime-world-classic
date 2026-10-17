@@ -22,13 +22,17 @@ inline bool VertexHasColors(DXVertexDeclarationRef decl)
   if(RENDER_DISABLED)
     return false;
 
-  D3DVERTEXELEMENT9  elements[MAXD3DDECLLENGTH];
-  unsigned int n;
-  decl->GetDeclaration(elements, &n);
+  // Шаг 13.4c: декларация читается через seam (в D3D9 это был GetDeclaration по
+  // COM-ручке; по ручке другого бэкенда такого метода нет).
+  Render::VertexElementDescriptor elements[IRenderBackend::kMaxVertexElements];
+  unsigned int n = 0;
+  if (FAILED(GetBackend()->GetInputLayoutElements(MakeBackendHandle<HInputLayout>(Get(decl)),
+                                                  elements, IRenderBackend::kMaxVertexElements, &n)))
+    return false;
 
   for (unsigned int i = 0; i < n; ++i)
   {
-    if (elements[i].Usage == D3DDECLUSAGE_COLOR)
+    if (elements[i].usage == Render::VERETEXELEMENTUSAGE_COLOR)
     {
       return true;
     }
@@ -386,11 +390,14 @@ void StaticMesh::DoCalculateLighting(const SceneConstants& sceneConst, const DXV
   }
 
   // calculate vertex stride
-  D3DVERTEXBUFFER_DESC desc;
-  pMeshGeom->primitives[0]->GetVertexBuffer()->GetDesc(&desc);
-  unsigned int stride = desc.Size / numVertices;
+  // Размер буфера — через seam: ручка бэкенда, GetDesc по ней = вызов по чужой
+  // vtable под другим бэкендом (шаг 13.4c).
+  unsigned vbSize = 0;
+  if (FAILED(GetBackend()->GetBufferInfo(MakeBackendHandle<HBuffer>(Get(pMeshGeom->primitives[0]->GetVertexBuffer())), &vbSize)))
+    return;
+  unsigned int stride = vbSize / numVertices;
 
-  NI_ASSERT(stride * numVertices == desc.Size, "Invalid number of vertices");
+  NI_ASSERT(stride * numVertices == vbSize, "Invalid number of vertices");
   NI_ASSERT(stride >= sizeof(Vertex), "Vertex too small to hold required data");
 
   unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), LOCK_DEFAULT);
@@ -492,10 +499,11 @@ void StaticMesh::AddGeometryCRC(Crc32Checksum &crc)
   if(RENDER_DISABLED)
     return;
 
-  D3DVERTEXBUFFER_DESC desc;
-  pMeshGeom->primitives[0]->GetVertexBuffer()->GetDesc(&desc);
+  unsigned vbSize = 0;
+  if (FAILED(GetBackend()->GetBufferInfo(MakeBackendHandle<HBuffer>(Get(pMeshGeom->primitives[0]->GetVertexBuffer())), &vbSize)))
+    return;
   unsigned char *geovb = LockVB<unsigned char>(Get(pMeshGeom->primitives[0]->GetVertexBuffer()), LOCK_DEFAULT);
-  crc.Add(geovb, desc.Size);
+  crc.Add(geovb, vbSize);
   BackendUnlockBuffer(Get(pMeshGeom->primitives[0]->GetVertexBuffer()));
 }
 
