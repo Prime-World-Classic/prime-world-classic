@@ -37,6 +37,33 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <unistd.h>
+// Нативный стенд кадра (X11). vulkan_xlib.h НЕ включает <X11/Xlib.h> сам
+// (использует Display*/Window как объявленные типы), поэтому Xlib идёт ДО.
+#define VK_USE_PLATFORM_XLIB_KHR 1
+#include <X11/Xlib.h>
+// Xlib объявляет макросами None/True/False/Status/Success/Bool/Always/Never,
+// а nvrhi.h использует эти слова как значения enum'ов (nvrhiHLSL.h:85,
+// nvrhi.h:269) — без #undef заголовки NVRHI не разбираются.
+#undef None
+#undef True
+#undef False
+#undef Status
+#undef Success
+#undef Bool
+#undef Always
+#undef Never
+#undef Complex
+#undef AnyOrder
+#undef GrayScale
+#undef StaticGray
+#undef StaticColor
+#undef PseudoColor
+#undef TrueColor
+#undef DirectColor
+#undef TileShape
+#undef Unsorted
+#undef Any
 #endif
 
 #include <stdio.h>
@@ -48,6 +75,8 @@
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
 #include <vulkan/vulkan_win32.h>
+#elif defined(VK_USE_PLATFORM_XLIB_KHR)
+#include <vulkan/vulkan_xlib.h>
 #endif
 #include <vulkan/vulkan.hpp>
 
@@ -99,8 +128,13 @@ namespace vkp
   PFN_vkCreateDevice CreateDevice = nullptr;
   PFN_vkDestroyDevice DestroyDevice = nullptr;
   PFN_vkGetDeviceQueue GetDeviceQueue = nullptr;
+#if defined(_WIN32) || defined(VK_USE_PLATFORM_XLIB_KHR)
 #ifdef _WIN32
   PFN_vkCreateWin32SurfaceKHR CreateWin32SurfaceKHR = nullptr;
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+  PFN_vkCreateXlibSurfaceKHR CreateXlibSurfaceKHR = nullptr;
+#endif
   PFN_vkDestroySurfaceKHR DestroySurfaceKHR = nullptr;
   PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR = nullptr;
   PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
@@ -183,7 +217,7 @@ static bool loadInstanceLevel(VkInstance instance)
   LOAD_INST(CreateDevice);
   LOAD_INST(DestroyDevice);
   LOAD_INST(GetDeviceQueue);
-#ifdef _WIN32
+#if defined(_WIN32) || defined(VK_USE_PLATFORM_XLIB_KHR)
   LOAD_INST(DestroySurfaceKHR);
   LOAD_INST(GetPhysicalDeviceSurfaceSupportKHR);
   LOAD_INST(GetPhysicalDeviceSurfaceCapabilitiesKHR);
@@ -199,8 +233,14 @@ static bool loadInstanceLevel(VkInstance instance)
   // surface-функции — instance-level (через инстанс), swapchain — device-level
   // (через устройство): vkGetInstanceProcAddr(instance, "vkCreateSwapchainKHR")
   // отдаёт trampoline, этого достаточно.
+#ifdef _WIN32
   vkp::CreateWin32SurfaceKHR =
       (PFN_vkCreateWin32SurfaceKHR)vkp::GetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+  vkp::CreateXlibSurfaceKHR =
+      (PFN_vkCreateXlibSurfaceKHR)vkp::GetInstanceProcAddr(instance, "vkCreateXlibSurfaceKHR");
+#endif
 #endif
 #undef LOAD_INST
   if (!vkp::DestroyInstance || !vkp::EnumeratePhysicalDevices || !vkp::CreateDevice ||
@@ -1984,6 +2024,269 @@ static bool ProbeSdl3Window(nvrhi::IDevice* dev, VkInstance instance, VkPhysical
 }
 #endif
 
+#if !defined(_WIN32)
+// ------------------------------------------------- окно + surface + swapchain (Linux/X11)
+//
+// Нативный стенд кадра нужен ради RenderDoc: под Wine захват не получается
+// (инъекция уходит в wine-загрузчик, слой инстанса кадр не сериализует — см. §6
+// плана), а нативный процесс RenderDoc снимает штатно. Здесь проверяется ровно
+// тот минимум, который понадобится реплееру вывода клиента: X11-окно ->
+// VkSurfaceKHR -> VkSwapchainKHR -> обёртка бэк-буфера -> clear -> present.
+//
+// Захват: env PW_PROBE_CAPTURE=<номер кадра> -> RENDERDOC_GetAPI()->
+// TriggerCapture(). Символ RENDERDOC_GetAPI экспортируется инъекцией
+// (renderdoccmd capture либо implicit-слой), поэтому вне захвата он просто
+// отсутствует и стенд работает как обычный смоук present'а.
+#include "vendor/renderdoc/renderdoc_app.h"
+
+static RENDERDOC_API_1_4_0* RenderDocApi()
+{
+  static RENDERDOC_API_1_4_0* api = nullptr;
+  static bool tried = false;
+  if (tried)
+    return api;
+  tried = true;
+  typedef int (*GetApip)(RENDERDOC_Version, void**);
+  GetApip getApi = (GetApip)dlsym(RTLD_DEFAULT, "RENDERDOC_GetAPI");
+  if (!getApi)
+  {
+    Print("renderdoc: RENDERDOC_GetAPI", false,
+          "инъекции нет — запускать через renderdoccmd capture");
+    return nullptr;
+  }
+  void* out = nullptr;
+  // Возврат: 1 = указатель заполнен, 0 = версия не поддержана (renderdoc_app.h:867)
+  if (getApi(eRENDERDOC_API_Version_1_4_0, &out) == 0 || !out)
+  {
+    Print("renderdoc: RENDERDOC_GetAPI(1.4.0)", false);
+    return nullptr;
+  }
+  api = (RENDERDOC_API_1_4_0*)out;
+  Print("renderdoc: RENDERDOC_GetAPI", true);
+  return api;
+}
+
+static bool ProbeNativeWindow(nvrhi::IDevice* dev, VkInstance instance, VkPhysicalDevice phys,
+                              VkDevice device, VkQueue queue, uint32_t queueFamily)
+{
+  if (!vkp::CreateXlibSurfaceKHR || !vkp::CreateSwapchainKHR || !vkp::QueuePresentKHR ||
+      !vkp::AcquireNextImageKHR)
+  {
+    Print("x11: surface/swapchain точки входа", false, "нет VK_KHR_xlib_surface в драйвере");
+    return false;
+  }
+
+  const char* dispName = getenv("DISPLAY");
+  Display* dpy = XOpenDisplay(dispName);
+  if (!dpy)
+  {
+    Print("x11: XOpenDisplay", false, dispName ? dispName : "DISPLAY не задан");
+    return false;
+  }
+  const int screenId = DefaultScreen(dpy);
+  XSetWindowAttributes swa = {};
+  swa.event_mask = ExposureMask | StructureNotifyMask;
+  const unsigned W = 640, H = 480;
+  Window win = XCreateWindow(dpy, RootWindow(dpy, screenId), 0, 0, (int)W, (int)H, 0,
+                             CopyFromParent, InputOutput, CopyFromParent, CWEventMask, &swa);
+  XStoreName(dpy, win, "nvrhi_probe x11");
+  XMapWindow(dpy, win);
+  XSync(dpy, 0);
+  char info[128];
+  snprintf(info, sizeof(info), "%ux%u", W, H);
+  Print("x11: XCreateWindow + XMapWindow", true, info);
+
+  bool ok = false;
+  VkSurfaceKHR surface = VK_NULL_HANDLE;
+  VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+  std::vector<VkImage> images;
+  std::vector<nvrhi::TextureHandle> backs;
+  do
+  {
+    VkXlibSurfaceCreateInfoKHR sci = {};
+    sci.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+    sci.dpy = dpy;
+    sci.window = win;
+    if (vkp::CreateXlibSurfaceKHR(instance, &sci, nullptr, &surface) != VK_SUCCESS)
+    {
+      Print("x11: vkCreateXlibSurfaceKHR", false);
+      break;
+    }
+    Print("x11: VkSurfaceKHR", true);
+
+    VkBool32 supported = VK_FALSE;
+    vkp::GetPhysicalDeviceSurfaceSupportKHR(phys, queueFamily, surface, &supported);
+    if (!supported)
+    {
+      Print("x11: surface поддерживается очередью present'а", false);
+      break;
+    }
+    VkSurfaceCapabilitiesKHR caps = {};
+    if (vkp::GetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &caps) != VK_SUCCESS)
+    {
+      Print("x11: vkGetPhysicalDeviceSurfaceCapabilitiesKHR", false);
+      break;
+    }
+    uint32_t fmtCount = 0;
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, nullptr);
+    std::vector<VkSurfaceFormatKHR> formats(fmtCount ? fmtCount : 1);
+    vkp::GetPhysicalDeviceSurfaceFormatsKHR(phys, surface, &fmtCount, formats.data());
+    VkSurfaceFormatKHR chosen = formats[0];
+    for (uint32_t i = 0; i < fmtCount; ++i)
+    {
+      if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM)
+      {
+        chosen = formats[i];
+        break;
+      }
+    }
+
+    uint32_t imageCount = caps.minImageCount + 1;
+    if (caps.maxImageCount && imageCount > caps.maxImageCount) imageCount = caps.maxImageCount;
+    const uint32_t width = caps.currentExtent.width != 0xFFFFFFFFu ? caps.currentExtent.width : W;
+    const uint32_t height = caps.currentExtent.height != 0xFFFFFFFFu ? caps.currentExtent.height : H;
+
+    VkSwapchainCreateInfoKHR swci = {};
+    swci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swci.surface = surface;
+    swci.minImageCount = imageCount;
+    swci.imageFormat = chosen.format;
+    swci.imageColorSpace = chosen.colorSpace;
+    swci.imageExtent = { width, height };
+    swci.imageArrayLayers = 1;
+    swci.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                      VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    swci.preTransform = caps.currentTransform;
+    swci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swci.clipped = VK_TRUE;
+    if (vkp::CreateSwapchainKHR(device, &swci, nullptr, &swapchain) != VK_SUCCESS)
+    {
+      Print("x11: vkCreateSwapchainKHR", false);
+      break;
+    }
+    uint32_t imgCount = 0;
+    vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, nullptr);
+    images.resize(imgCount);
+    vkp::GetSwapchainImagesKHR(device, swapchain, &imgCount, images.data());
+    snprintf(info, sizeof(info), "%ux%u, картинок %u", width, height, imgCount);
+    Print("x11: VkSwapchainKHR", true, info);
+
+    for (uint32_t i = 0; i < imgCount; ++i)
+    {
+      nvrhi::TextureHandle back = dev->createHandleForNativeTexture(
+          nvrhi::ObjectTypes::VK_Image, nvrhi::Object(images[i]),
+          nvrhi::TextureDesc()
+              .setDimension(nvrhi::TextureDimension::Texture2D)
+              .setFormat(nvrhi::Format::SBGRA8_UNORM)
+              .setWidth(width).setHeight(height)
+              .setIsRenderTarget(true)
+              .setInitialState(nvrhi::ResourceStates::RenderTarget)
+              .setKeepInitialState(true)
+              .setDebugName("x11 back"));
+      if (!back)
+      {
+        Print("x11: createHandleForNativeTexture(бэк-буфер X11)", false);
+        break;
+      }
+      backs.push_back(back);
+    }
+    if (backs.size() != imgCount) break;
+    Print("x11: NVRHI принял бэк-буферы swapchain'а", true, info);
+
+    const int frames = getenv("PW_PROBE_FRAMES") ? atoi(getenv("PW_PROBE_FRAMES")) : 30;
+    const int capAt = getenv("PW_PROBE_CAPTURE") ? atoi(getenv("PW_PROBE_CAPTURE")) : -1;
+    // PW_PROBE_MANUAL=<кадр>: вместо TriggerCapture (который зависит от того,
+    // сочтёт ли RenderDoc кадр границей кадра) — явный StartFrameCapture/
+    // EndFrameCapture вокруг вывода этого кадра. Это документированный
+    // программный путь, он пишет файл сразу и не требует UI.
+    const int manualAt = getenv("PW_PROBE_MANUAL") ? atoi(getenv("PW_PROBE_MANUAL")) : -1;
+    RENDERDOC_API_1_4_0* rd = (capAt >= 0 || manualAt >= 0) ? RenderDocApi() : nullptr;
+    if (rd && manualAt >= 0)
+    {
+      int maj = 0, min = 0, patch = 0;
+      if (rd->GetAPIVersion)
+        rd->GetAPIVersion(&maj, &min, &patch);
+      char ver[64];
+      snprintf(ver, sizeof(ver), "%d.%d.%d", maj, min, patch);
+      Print("renderdoc: версия API", true, ver);
+      if (rd->SetCaptureFilePathTemplate)
+        rd->SetCaptureFilePathTemplate("/tmp/rdcap/manual");
+      else
+        Print("renderdoc: SetCaptureFilePathTemplate", false);
+    }
+
+    // Макет PRESENT_SRC_KHR NVRHI не моделирует (тот же дефект, что в клиенте,
+    // см. TransitionBackImage в Src/Render/nvrhibackend.cpp). Здесь переход не
+    // делается: стенд без валидатора, драйвер это терпит; для реплеера вывод
+    // всё равно читается до present'а.
+    nvrhi::CommandListHandle cl = dev->createCommandList();
+    int presented = 0;
+    for (int f = 0; f < frames; ++f)
+    {
+      uint32_t idx = 0;
+      const VkResult ar = vkp::AcquireNextImageKHR(device, swapchain, ~0ull, VK_NULL_HANDLE,
+                                                   VK_NULL_HANDLE, &idx);
+      if (ar != VK_SUCCESS || idx >= backs.size())
+      {
+        Print("x11: vkAcquireNextImageKHR", false,
+              ar == VK_SUCCESS ? "индекс вне числа картинок" : vkResultToString(ar));
+        break;
+      }
+      cl->open();
+      cl->clearTextureFloat(backs[idx], nvrhi::TextureSubresourceSet(),
+                            nvrhi::Color((f & 1) ? 1.f : 0.f, (f & 1) ? 0.f : 1.f, 0.25f, 1.f));
+      cl->close();
+      dev->executeCommandList(cl);
+      VkPresentInfoKHR pi = {};
+      pi.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+      pi.swapchainCount = 1;
+      pi.pSwapchains = &swapchain;
+      pi.pImageIndices = &idx;
+      if (vkp::QueuePresentKHR(queue, &pi) != VK_SUCCESS)
+      {
+        Print("x11: vkQueuePresentKHR", false);
+        break;
+      }
+      if (f == manualAt && rd)
+      {
+        // В этой версии заголовка Start/EndFrameCapture возвращают void
+        rd->StartFrameCapture(nullptr, nullptr);
+        Print("renderdoc: StartFrameCapture", true, "вызов сделан");
+        {
+          // кадр внутри захвата: тот же clear, что и в обычном цикле
+          cl->open();
+          cl->clearTextureFloat(backs[idx], nvrhi::TextureSubresourceSet(),
+                                nvrhi::Color(1.f, 0.f, 0.f, 1.f));
+          cl->close();
+          dev->executeCommandList(cl);
+          rd->EndFrameCapture(nullptr, nullptr);
+          Print("renderdoc: EndFrameCapture", true, "ждём /tmp/rdcap/manual_NNN.rdc");
+        }
+      }
+      ++presented;
+      if (f == capAt && rd)
+      {
+        rd->TriggerCapture();
+        snprintf(info, sizeof(info), "кадр %d", f);
+        Print("renderdoc: TriggerCapture", true, info);
+      }
+      usleep(16000);
+    }
+    snprintf(info, sizeof(info), "present'ов %d из %u картинок", presented, imgCount);
+    Print("x11: цикл present'а", presented > 0, info);
+    ok = presented > 0;
+  } while (false);
+
+  backs.clear();
+  if (swapchain != VK_NULL_HANDLE) vkp::DestroySwapchainKHR(device, swapchain, nullptr);
+  if (surface != VK_NULL_HANDLE) vkp::DestroySurfaceKHR(instance, surface, nullptr);
+  XDestroyWindow(dpy, win);
+  XCloseDisplay(dpy);
+  return ok;
+}
+#endif // !defined(_WIN32)
+
 // ---------------------------------------------------------------- Vulkan probe
 
 #ifdef _WIN32
@@ -2009,8 +2312,8 @@ static bool ProbeVulkan()
   const char* exts[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
   const uint32_t extCount = 2;
 #else
-  const char* exts[] = { VK_KHR_SURFACE_EXTENSION_NAME };
-  const uint32_t extCount = 1;
+  const char* exts[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_EXTENSION_NAME };
+  const uint32_t extCount = 2;
 #endif
 
   VkInstanceCreateInfo ici = {};
@@ -2239,6 +2542,8 @@ static bool ProbeVulkan()
 #ifdef PW_WITH_SDL3
     ProbeSdl3Window(nvrhiDevice, instance, phys, device, queue, graphicsFamily);
 #endif
+#else
+    ProbeNativeWindow(nvrhiDevice, instance, phys, device, queue, graphicsFamily);
 #endif
   }
 

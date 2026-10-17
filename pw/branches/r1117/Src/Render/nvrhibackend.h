@@ -212,6 +212,15 @@ private:
   HRESULT UnlockBuffer(HBuffer h);
   HRESULT DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned startIndexLocation,
                    unsigned startVertexLocation, unsigned count, unsigned explicitVtx = 0);
+  // Шаг 14: рекордер вывода (env PW_VK_RECORD) — вывод клиента выгружается в
+  // файл, чтобы его повторил нативный реплеер tools/render_replay (RenderDoc
+  // под Wine кадр не сериализует: гость не может вызвать RENDERDOC_GetAPI).
+  // Формат файла описан у определений в nvrhibackend.cpp.
+  void RecOpen(NvrhiBackendImpl& d);
+  void RecClose(NvrhiBackendImpl& d);
+  void RecDraw(NvrhiBackendImpl& d, ERenderPrimitiveType type, bool indexed,
+               unsigned startIndexLocation, unsigned startVertexLocation,
+               unsigned primitiveCount, unsigned vtx);
 
 public:
   // Тест шага 12b: один настоящий DIP через seam (материал из .shd v2 в

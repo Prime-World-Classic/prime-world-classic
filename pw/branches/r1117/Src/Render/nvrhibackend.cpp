@@ -24,6 +24,7 @@
 //
 #include "stdafx.h"
 #include <intrin.h>       // _ReturnAddress — RVA вызывающего кода (диагностика шага 13.4c)
+#include <cstdio>         // FILE — рекордер вывода (шаг 14)
 #include "nvrhibackend.h"
 #include "shadercontainer.h"                              // формат .shd v2
 // Модель состояний конвейера несёт ЧИСЛА D3D9 (см. комментарий в
@@ -537,6 +538,10 @@ struct NvrhiBackendImpl
     std::vector<std::pair<std::string, unsigned> > inputs;
     std::vector<unsigned> inputKinds; // класс скаляра входа (0 float, 1 sint, 2 uint)
     std::vector<ResItem> res;         // ресурсы этой стадии (шаг 13.1)
+    // байты SPIR-V, из которых создан шейдер — только при включённом рекорде
+    // (реплеер обязан компилировать ровно те же байты, иначе вывод про
+    // компилятор не воспроизведётся)
+    std::vector<unsigned char> spv;
     SeamHandle* hnd;
     bool dead;
     ShaderObj() : sh(0), hnd(0), dead(false) {}
@@ -547,6 +552,11 @@ struct NvrhiBackendImpl
     // копия описания клиента — раскладку собираем позже, чем CreateInputLayout:
     // шаг потока известен только на момент вывода
     std::vector<VertexElementDescriptor> elems;
+    // готовый массив nvrhi-атрибутов, которым реально построена раскладка
+    // (location = позиция в массиве). Нужен рекордеру/реплееру: пересобирать
+    // сопоставление семантик в реплеере нельзя — он обязан получить ровно ту же
+    // раскладку, что видел драйвер.
+    std::vector<nvrhi::VertexAttributeDesc> desc;
     SeamHandle* hnd;
     bool dead;
     LayoutObj() : il(0), hnd(0), dead(false) {}
@@ -696,6 +706,22 @@ struct NvrhiBackendImpl
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
 
+  // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>). Нужен потому, что
+  // RenderDoc ловит кадры ТОЛЬКО нативно: под Wine слой активен (winevulkan
+  // идёт через хостовый загрузчик), но гость — Windows PE — не может вызвать
+  // RENDERDOC_GetAPI, а без app-API слой кадр не сериализует (замер
+  // 2026-10-17: слой в списке инстанса, клиент жив 120+ с, .rdc нет нигде).
+  // Поэтому выводы пишутся в файл, а рисует их нативный реплеер
+  // tools/render_replay — он и снимает капчу.
+  bool recOn;
+  FILE* recFile;
+  unsigned recMax;        // лимит выводов (env PW_VK_RECORD_MAX)
+  unsigned recDraws;      // сколько выводов записано
+  unsigned recObjs;       // сколько ресурсов выгружено
+  unsigned recRtW, recRtH;   // фильтр цели (env PW_VK_RECORD_RT=ШхВ), 0 = любой
+  // seam-индекс -> id записи в файле (ресурс выгружается один раз)
+  std::vector<std::pair<unsigned, unsigned> > recShader, recBuffer, recTexture, recLayout;
+
   // Модель состояний конвейера (шаг 13.4b): SetPipelineState кладёт сюда то,
   // что собрал RenderStatesManager. Хэш модели входит в ключ пайплайна, поэтому
   // сравнивать структуру полей не нужно: совпал хэш — состояния те же.
@@ -821,6 +847,7 @@ struct NvrhiBackendImpl
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
       ssboSetsCreated(0), texDimMismatch(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotProbe(0), drawDiag(0),
+      recOn(false), recFile(0), recMax(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
       layoutsBuilt(0), ilPadHoles(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
@@ -1341,6 +1368,7 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
     char sp[8];
     if (GetEnvironmentVariableA("PW_VK_SHOT_PROBE", sp, sizeof(sp) - 1) > 0)
       d.shotProbe = (unsigned)atoi(sp);
+    RecOpen(d);
   }
 
   d.hVulkan = LoadLibraryA("vulkan-1.dll");
@@ -2118,7 +2146,7 @@ void NvrhiBackend::Shutdown()
     VK_TRACE("waitIdle >");
   d.nvrhiDevice->waitForIdle();
   VK_TRACE("waitIdle <");
-  d.commandList = nullptr;
+  RecClose(d);
   d.backTextures.clear();
   // Шаг 13.4c: обёртки ручек, у которых ещё есть ссылки клиента (умные указатели
   // живут в ShaderPair, Texture, RenderSurface), переживают бэкенд НАМЕРЕННО:
@@ -3187,6 +3215,7 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
   d.ilCache.push_back(ent);
   ++d.layoutsBuilt;
   lo.il = il;   // для диагностики: «последняя построенная»
+  lo.desc = vads;   // см. LayoutObj::desc — тот же массив, что ушёл в драйвер
   return il;
 }
 
@@ -4270,6 +4299,319 @@ void NvrhiBackend::FlushPendingUploads()
   d.pendSrf.clear();
 }
 
+////////////////////////////////////////////////////////////////////
+// Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>).
+//
+// Рендер-отладчик работает только нативно: под Wine слой RenderDoc активен
+// (winevulkan идёт через хостовый загрузчик), но гость — Windows PE — не может
+// вызвать RENDERDOC_GetAPI, а без app-API слой кадр не сериализует (замер
+// 2026-10-17: слой в списке инстанса, клиент жив 120+ с, .rdc нет ни в одном
+// каталоге). Поэтому выводы выгружаются в файл, а рисует их нативный реплеер
+// tools/render_replay — он и снимает капчу.
+//
+// Формат: "PWRD" + u32 версия + u32 ширина + u32 высота swapchain'а, далее
+// последовательные записи: u32 тип + поля (u32/f32, little-endian). Ресурс
+// выгружается ОДИН РАЗ, вывод ссылается на него по id:
+//   1 SHADER : id, стадия (0 VS / 1 PS), entry, SPIR-V
+//   2 BUFFER : id, isIndex, index32, байты CPU-зеркала
+//   3 TEXTURE: id, w, h, mipLevels, cube, seamFormat, байты уровня 0
+//   4 LAYOUT : id, количество, (stream, offset, type, usage, usageIndex)
+//   5 DRAW   : см. RecDraw
+//   6 END
+// Смещения потоков пишутся ЛОГИЧЕСКИМИ (внутри seam-буфера): в бэкенде VB/IB
+// лежат в слэбах, а реплеер делает каждому буферу отдельный nvrhi-буфер, так
+// что slab-смещение (BufferObj::off) в файл не попадает.
+enum {
+  kRecShader = 1, kRecBuffer = 2, kRecTexture = 3, kRecLayout = 4,
+  kRecDraw = 5, kRecEnd = 6
+};
+
+// Потолок блоба: геометрия карты в сумме — гигабайты, а смысл реплея — несколько
+// выводов. При превышении размер пишется настоящий, байты — нет; реплеер по
+// отсутствующим байтам подставляет dummy и говорит об этом.
+static const size_t kRecBlobCap = 8u * 1024u * 1024u;
+
+static void RecU32(FILE* f, unsigned v) { fwrite(&v, 4, 1, f); }
+static void RecF32(FILE* f, float v) { fwrite(&v, 4, 1, f); }
+static void RecBlob(FILE* f, const void* p, size_t n)
+{
+  size_t w = n;
+  if (w > kRecBlobCap) w = kRecBlobCap;
+  RecU32(f, (unsigned)n);
+  RecU32(f, (unsigned)w);
+  if (w && p) fwrite(p, 1, w, f);
+}
+static unsigned RecLookup(const std::vector<std::pair<unsigned, unsigned> >& m, unsigned idx)
+{
+  for (size_t i = 0; i < m.size(); ++i)
+    if (m[i].first == idx) return m[i].second;
+  return 0xffffffffu;
+}
+
+static unsigned RecShaderId(NvrhiBackendImpl& d, unsigned idx, unsigned stage)
+{
+  if (idx >= d.shaderObjs.size()) return 0xffffffffu;
+  unsigned id = RecLookup(d.recShader, idx);
+  if (id != 0xffffffffu) return id;
+  id = (unsigned)d.recShader.size();
+  d.recShader.push_back(std::make_pair(idx, id));
+  const NvrhiBackendImpl::ShaderObj& so = d.shaderObjs[idx];
+  RecU32(d.recFile, kRecShader);
+  RecU32(d.recFile, id);
+  RecU32(d.recFile, stage);
+  RecBlob(d.recFile, so.entry.empty() ? "" : so.entry.c_str(), so.entry.size());
+  RecBlob(d.recFile, so.spv.empty() ? 0 : &so.spv[0], so.spv.size());
+  ++d.recObjs;
+  return id;
+}
+
+static unsigned RecBufferId(NvrhiBackendImpl& d, unsigned idx)
+{
+  if (idx >= d.buffers.size()) return 0xffffffffu;
+  unsigned id = RecLookup(d.recBuffer, idx);
+  if (id != 0xffffffffu) return id;
+  id = (unsigned)d.recBuffer.size();
+  d.recBuffer.push_back(std::make_pair(idx, id));
+  const NvrhiBackendImpl::BufferObj& bo = d.buffers[idx];
+  RecU32(d.recFile, kRecBuffer);
+  RecU32(d.recFile, id);
+  RecU32(d.recFile, bo.isIndex ? 1u : 0u);
+  RecU32(d.recFile, bo.index32 ? 1u : 0u);
+  RecBlob(d.recFile, bo.cpu.empty() ? 0 : &bo.cpu[0], bo.cpu.size());
+  ++d.recObjs;
+  return id;
+}
+
+static unsigned RecTextureId(NvrhiBackendImpl& d, unsigned idx)
+{
+  if (idx >= d.textures.size()) return 0xffffffffu;
+  unsigned id = RecLookup(d.recTexture, idx);
+  if (id != 0xffffffffu) return id;
+  id = (unsigned)d.recTexture.size();
+  d.recTexture.push_back(std::make_pair(idx, id));
+  const NvrhiBackendImpl::TextureObj& to = d.textures[idx];
+  RecU32(d.recFile, kRecTexture);
+  RecU32(d.recFile, id);
+  RecU32(d.recFile, to.w);
+  RecU32(d.recFile, to.h);
+  RecU32(d.recFile, to.mipLevels);
+  RecU32(d.recFile, to.cube ? 1u : 0u);
+  RecU32(d.recFile, (unsigned)to.seamFormat);
+  RecBlob(d.recFile, to.mirror.empty() ? 0 : &to.mirror[0], to.mirror.size());
+  ++d.recObjs;
+  return id;
+}
+
+static unsigned RecLayoutId(NvrhiBackendImpl& d, unsigned idx)
+{
+  if (idx >= d.layoutObjs.size()) return 0xffffffffu;
+  unsigned id = RecLookup(d.recLayout, idx);
+  if (id != 0xffffffffu) return id;
+  id = (unsigned)d.recLayout.size();
+  d.recLayout.push_back(std::make_pair(idx, id));
+  const NvrhiBackendImpl::LayoutObj& lo = d.layoutObjs[idx];
+  RecU32(d.recFile, kRecLayout);
+  RecU32(d.recFile, id);
+  RecU32(d.recFile, (unsigned)lo.elems.size());
+  for (size_t k = 0; k < lo.elems.size(); ++k)
+  {
+    const VertexElementDescriptor& e = lo.elems[k];
+    RecU32(d.recFile, e.stream);
+    RecU32(d.recFile, e.offset);
+    RecU32(d.recFile, (unsigned)e.type);
+    RecU32(d.recFile, (unsigned)e.usage);
+    RecU32(d.recFile, e.usageIndex);
+  }
+  RecU32(d.recFile, (unsigned)lo.desc.size());
+  for (size_t k = 0; k < lo.desc.size(); ++k)
+  {
+    const nvrhi::VertexAttributeDesc& a = lo.desc[k];
+    RecBlob(d.recFile, a.name.empty() ? "" : a.name.c_str(), a.name.size());
+    RecU32(d.recFile, (unsigned)a.format);
+    RecU32(d.recFile, a.arraySize);
+    RecU32(d.recFile, a.bufferIndex);
+    RecU32(d.recFile, (unsigned)a.offset);
+    RecU32(d.recFile, (unsigned)a.elementStride);
+    RecU32(d.recFile, a.isInstanced ? 1u : 0u);
+  }
+  ++d.recObjs;
+  return id;
+}
+
+void NvrhiBackend::RecOpen(NvrhiBackendImpl& d)
+{
+  char path[512];
+  if (GetEnvironmentVariableA("PW_VK_RECORD", path, sizeof(path) - 1) <= 0) return;
+  d.recFile = fopen(path, "wb");
+  if (!d.recFile)
+  {
+    VkNote("VkRec: файл записи не открыт", false, path);
+    return;
+  }
+  d.recOn = true;
+  d.recMax = 40u;
+  char rm[16];
+  if (GetEnvironmentVariableA("PW_VK_RECORD_MAX", rm, sizeof(rm) - 1) > 0)
+    d.recMax = (unsigned)atoi(rm);
+  char rr[32];
+  if (GetEnvironmentVariableA("PW_VK_RECORD_RT", rr, sizeof(rr) - 1) > 0)
+    sscanf(rr, "%ux%u", &d.recRtW, &d.recRtH);
+  fwrite("PWRD", 1, 4, d.recFile);
+  // версия 2: в LAYOUT добавлен готовый массив nvrhi-атрибутов (lo.desc),
+  // в DRAW — список ресурсов набора (set/binding/kind/dim/count)
+  RecU32(d.recFile, 2u);
+  // размер swapchain'а на момент открытия (может быть 0x0 — swapchain создаётся
+  // после Init); реплеер берёт размер цели из каждой записи вывода
+  RecU32(d.recFile, d.width);
+  RecU32(d.recFile, d.height);
+  DebugTrace("VkRec: вывод пишется в %s (лимит %u, цель %ux%u)", path, d.recMax, d.recRtW, d.recRtH);
+}
+
+void NvrhiBackend::RecClose(NvrhiBackendImpl& d)
+{
+  if (!d.recFile) return;
+  RecU32(d.recFile, kRecEnd);
+  fclose(d.recFile);
+  d.recFile = 0;
+  d.recOn = false;
+  DebugTrace("VkRec: записано выводов=%u ресурсов=%u", d.recDraws, d.recObjs);
+}
+
+void NvrhiBackend::RecDraw(NvrhiBackendImpl& d, ERenderPrimitiveType type, bool indexed,
+                           unsigned startIndexLocation, unsigned startVertexLocation,
+                           unsigned primitiveCount, unsigned vtx)
+{
+  if (!d.recFile || d.recDraws >= d.recMax) return;
+  ++d.recDraws;
+  // Ресурсы пишутся ДО тела вывода: id считаются как побочный эффект (запись
+  // ресурса уходит в файл), поэтому без предварительного сбора идентификаторов
+  // тело вывода перемешалось бы с записями ресурсов.
+  const unsigned vsId = RecShaderId(d, d.curVs, 0u);
+  const unsigned psId = RecShaderId(d, d.curPs, 1u);
+  const unsigned layId = RecLayoutId(d, d.curLayout);
+  unsigned streamId[kMaxVertexStreams];
+  for (unsigned i = 0; i < (unsigned)kMaxVertexStreams; ++i)
+    streamId[i] = (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size()) ? RecBufferId(d, d.vb[i]) : 0xffffffffu;
+  const unsigned ibId = (d.curIb != kNoRes && d.curIb < d.buffers.size()) ? RecBufferId(d, d.curIb) : 0xffffffffu;
+  const unsigned instId = (d.instSrc != kNoRes && d.instSrc < d.buffers.size()) ? RecBufferId(d, d.instSrc) : 0xffffffffu;
+  unsigned texId[kBackendSamplerSlots];
+  for (unsigned i = 0; i < (unsigned)kBackendSamplerSlots; ++i)
+    texId[i] = (d.texBound[i] != kNoRes && d.texBound[i] < d.textures.size()) ? RecTextureId(d, d.texBound[i]) : 0xffffffffu;
+  RecU32(d.recFile, kRecDraw);
+  RecU32(d.recFile, d.recDraws);
+  RecU32(d.recFile, vsId);
+  RecU32(d.recFile, psId);
+  RecU32(d.recFile, layId);
+  const unsigned rtI = (d.curRt < d.surfaces.size()) ? d.curRt : kNoRes;
+  const unsigned dsI = (d.curDs < d.surfaces.size()) ? d.curDs : kNoRes;
+  RecU32(d.recFile, (rtI == kNoRes) ? 0u : d.surfaces[rtI].w);
+  RecU32(d.recFile, (rtI == kNoRes) ? 0u : d.surfaces[rtI].h);
+  RecU32(d.recFile, (rtI == kNoRes) ? 0u : (d.surfaces[rtI].depth ? 1u : 0u));
+  RecU32(d.recFile, (dsI == kNoRes) ? 0u : d.surfaces[dsI].w);
+  RecU32(d.recFile, (dsI == kNoRes) ? 0u : d.surfaces[dsI].h);
+  RecU32(d.recFile, (dsI == kNoRes) ? 0u : (d.surfaces[dsI].depth ? 1u : 0u));
+  RecU32(d.recFile, (unsigned)type);
+  RecU32(d.recFile, indexed ? 1u : 0u);
+  RecU32(d.recFile, startIndexLocation);
+  RecU32(d.recFile, startVertexLocation);
+  RecU32(d.recFile, primitiveCount);
+  RecU32(d.recFile, vtx);
+  RecU32(d.recFile, m_instanceCount ? m_instanceCount : 1u);
+  RecU32(d.recFile, (unsigned)m_viewport.x);
+  RecU32(d.recFile, (unsigned)m_viewport.y);
+  RecU32(d.recFile, (unsigned)m_viewport.width);
+  RecU32(d.recFile, (unsigned)m_viewport.height);
+  RecF32(d.recFile, m_viewport.minZ);
+  RecF32(d.recFile, m_viewport.maxZ);
+  RecU32(d.recFile, m_scissorValid ? 1u : 0u);
+  RecU32(d.recFile, (unsigned)m_scissor.left);
+  RecU32(d.recFile, (unsigned)m_scissor.top);
+  RecU32(d.recFile, (unsigned)m_scissor.right);
+  RecU32(d.recFile, (unsigned)m_scissor.bottom);
+  RecU32(d.recFile, (unsigned)kMaxVertexStreams);
+  for (unsigned i = 0; i < (unsigned)kMaxVertexStreams; ++i)
+  {
+    RecU32(d.recFile, streamId[i]);
+    RecU32(d.recFile, d.vbOffset[i]);
+    RecU32(d.recFile, d.vbStride[i]);
+  }
+  RecU32(d.recFile, ibId);
+  RecU32(d.recFile, instId);
+  RecU32(d.recFile, d.instSlot);
+  RecU32(d.recFile, d.instOffset);
+  RecU32(d.recFile, d.instStride);
+  RecU32(d.recFile, (unsigned)kBackendSamplerSlots);
+  for (unsigned i = 0; i < (unsigned)kBackendSamplerSlots; ++i)
+  {
+    RecU32(d.recFile, texId[i]);
+    const BackendSamplerState& ss = d.model.sampler[i];
+    RecU32(d.recFile, ss.minFilter);
+    RecU32(d.recFile, ss.magFilter);
+    RecU32(d.recFile, ss.mipFilter);
+    RecU32(d.recFile, ss.addressU);
+    RecU32(d.recFile, ss.addressV);
+    RecU32(d.recFile, ss.addressW);
+    RecU32(d.recFile, ss.borderColor);
+    RecU32(d.recFile, (unsigned)ss.lodBias);
+    RecU32(d.recFile, ss.maxAnisotropy);
+    RecU32(d.recFile, (unsigned)ss.maxMipLevel);
+    RecU32(d.recFile, ss.set ? 1u : 0u);
+  }
+  const BackendPipelineState& ms = d.model;
+  RecU32(d.recFile, ms.cullMode);
+  RecU32(d.recFile, ms.fillMode);
+  RecU32(d.recFile, ms.scissorTestEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.zEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.zWriteEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.zFunc);
+  RecF32(d.recFile, ms.slopeScaleDepthBias);
+  RecU32(d.recFile, ms.depthBiasRaw);
+  RecU32(d.recFile, ms.stencilEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.stencilFunc);
+  RecU32(d.recFile, ms.stencilRef);
+  RecU32(d.recFile, ms.stencilReadMask);
+  RecU32(d.recFile, ms.stencilWriteMask);
+  RecU32(d.recFile, ms.stencilFail);
+  RecU32(d.recFile, ms.stencilZFail);
+  RecU32(d.recFile, ms.stencilPass);
+  RecU32(d.recFile, ms.alphaBlendEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.separateAlphaBlend ? 1u : 0u);
+  RecU32(d.recFile, ms.srcBlend);
+  RecU32(d.recFile, ms.destBlend);
+  RecU32(d.recFile, ms.blendOp);
+  RecU32(d.recFile, ms.srcBlendAlpha);
+  RecU32(d.recFile, ms.destBlendAlpha);
+  RecU32(d.recFile, ms.blendOpAlpha);
+  RecU32(d.recFile, ms.colorWriteEnable);
+  RecU32(d.recFile, ms.alphaTestEnable ? 1u : 0u);
+  RecU32(d.recFile, ms.alphaRef);
+  RecU32(d.recFile, ms.alphaFunc);
+  RecU32(d.recFile, ms.clipPlaneEnable);
+  const unsigned nf = (unsigned)SHADER_CONST_REGISTERS * 4u;
+  RecU32(d.recFile, nf);
+  for (unsigned i = 0; i < nf; ++i) RecF32(d.recFile, m_constShadow[csVertex][i]);
+  RecU32(d.recFile, nf);
+  for (unsigned i = 0; i < nf; ++i) RecF32(d.recFile, m_constShadow[csPixel][i]);
+  // набор ресурсов (set/binding/kind/dim/count): реплеер строит наборы по этому
+  // списку, повторять сканер SPIR-V в нативном коде нельзя — иная реализация
+  // даст иную раскладку, и вывод перестанет быть тем же самым
+  const int rmIdx = FindOrCreateResMap(d);
+  if (rmIdx >= 0 && rmIdx < (int)d.resMaps.size())
+  {
+    const std::vector<NvrhiBackendImpl::ResItem>& items = d.resMaps[rmIdx].items;
+    RecU32(d.recFile, (unsigned)items.size());
+    for (size_t k = 0; k < items.size(); ++k)
+    {
+      RecU32(d.recFile, items[k].set);
+      RecU32(d.recFile, items[k].binding);
+      RecU32(d.recFile, items[k].kind);
+      RecU32(d.recFile, items[k].dim);
+      RecU32(d.recFile, items[k].count);
+    }
+  }
+  else RecU32(d.recFile, 0u);
+}
+
 HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned startIndexLocation,
                                unsigned startVertexLocation, unsigned primitiveCount,
                                unsigned explicitVtx)
@@ -4557,6 +4899,15 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     }
     else
       DebugTrace("VkDiag:   vb0 пуст (ручка kNoRes)");
+  }
+  // Рекордер вывода (env PW_VK_RECORD): снимается ВСЁ, что нужно реплееру,
+  // чтобы повторить этот вывод нативно и открыть его в RenderDoc.
+  if (d.recOn && d.recDraws < d.recMax)
+  {
+    const bool rtOk = (!d.recRtW && !d.recRtH) ||
+                      (d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w == d.recRtW &&
+                       d.surfaces[d.curRt].h == d.recRtH);
+    if (rtOk) RecDraw(d, type, indexed, startIndexLocation, startVertexLocation, primitiveCount, vtx);
   }
   VK_TRACE("setGfxState >");
   d.commandList->setGraphicsState(gs);
@@ -5043,6 +5394,8 @@ HRESULT NvrhiBackend::CreateShaderImpl(const void* pCode, unsigned codeSize, boo
   so.entry = entry;
   so.inputs = inputs;
   so.inputKinds = ikinds;
+  if (d.recOn)   // см. комментарий к полям рекорда: байты обязаны быть те же
+    so.spv.assign((const unsigned char*)pCode, (const unsigned char*)pCode + codeSize);
   SpvResScan(pCode, codeSize, &so.res);
   d.shaderObjs.push_back(so);
   pOut->p = NewHandle(&d, (unsigned)d.shaderObjs.size() - 1u, hkShader);

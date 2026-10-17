@@ -86,6 +86,12 @@ endif()
 
 add_executable(nvrhi_probe probe.cpp)
 target_link_libraries(nvrhi_probe PRIVATE ${NVRHI_LIBS} Vulkan::Headers)
+
+# Нативный стенд кадра (X11): окно и surface делаются напрямую через Xlib,
+# SDL3 под Linux в этой сборке не включён (тянет Wayland/libdecor/ALSA).
+if(UNIX AND NOT APPLE)
+  target_link_libraries(nvrhi_probe PRIVATE X11)
+endif()
 if(TARGET SDL3::SDL3-static)
   target_link_libraries(nvrhi_probe PRIVATE SDL3::SDL3-static)
   target_compile_definitions(nvrhi_probe PRIVATE PW_WITH_SDL3=1)
