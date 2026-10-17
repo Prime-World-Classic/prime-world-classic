@@ -40,6 +40,9 @@ static float s_gpuWaitSpinMs = 0.5f;
 REGISTER_VAR("gfx_gpu_wait_spin_ms", s_gpuWaitSpinMs, STORAGE_NONE);
 static bool s_gpuWaitLegacy = false;
 REGISTER_VAR("gfx_gpu_wait_legacy", s_gpuWaitLegacy, STORAGE_NONE);
+// Wait for the previous frame instead of the current one, so the GPU draws a frame while the CPU prepares the next
+static bool s_gpuSyncLag = false;
+REGISTER_VAR("gfx_gpu_sync_lag", s_gpuSyncLag, STORAGE_NONE);
 
 static UINT s_adapterToUse = D3DADAPTER_DEFAULT;
 REGISTER_VAR("adapter_to_use", s_adapterToUse, STORAGE_NONE);
@@ -91,6 +94,7 @@ Renderer::Renderer(HWND _hWnd) :
   bResetDevice(false),
   bTripleBufferUsed(false),
 	isRunningUnderPerfHUD(false),
+  prevFrameSynchIssued(false),
   renderSceneLocked( false )
 {
   SmartRenderer::ResetTriangleAndDipCount();
@@ -111,6 +115,8 @@ Renderer::~Renderer()
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   NotifyDeviceLost();
   DeviceDeleteHandler::NotifyDeviceDelete();
@@ -315,6 +321,8 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   if(RENDER_DISABLED) {
     bDeviceLost = true;
@@ -462,6 +470,8 @@ bool Renderer::ResetDevice(D3DPRESENT_PARAMETERS& pp)
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   // Try to create chosen device
   DebugTrace("Before device reset");
@@ -726,6 +736,29 @@ void Renderer::Synchronize()
   HRESULT issueResult = pFrameSynchQuery->Issue(D3DISSUE_END);
   RenderResourceManager::FrameTick();
 
+  if ( issueResult != D3DERR_DEVICELOST && s_gpuSyncLag )
+  {
+    // The query just issued is waited for in the next frame; now wait for the one issued a frame ago
+    if ( !pPrevFrameSynchQuery )
+    {
+      IDirect3DQuery9* pQuery = 0;
+      if ( FAILED( pDevice->CreateQuery( D3DQUERYTYPE_EVENT, &pQuery ) ) || !pQuery )
+        return;
+      pPrevFrameSynchQuery = DXQueryRef( pQuery, false );
+    }
+
+    DXQueryRef issuedNow = pFrameSynchQuery;
+    pFrameSynchQuery = pPrevFrameSynchQuery;
+    pPrevFrameSynchQuery = issuedNow;
+
+    const bool hasPrevFrame = prevFrameSynchIssued;
+    prevFrameSynchIssued = true;
+    if ( !hasPrevFrame )
+      return;
+  }
+  else
+    prevFrameSynchIssued = false;
+
   if ( issueResult != D3DERR_DEVICELOST )
   {
     HRESULT queryResult = pFrameSynchQuery->GetData( NULL, 0, D3DGETDATA_FLUSH );
@@ -805,6 +838,8 @@ void Renderer::ClearDeviceResources()
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
   
   //SmartRenderer::NullThePointers();
 }
