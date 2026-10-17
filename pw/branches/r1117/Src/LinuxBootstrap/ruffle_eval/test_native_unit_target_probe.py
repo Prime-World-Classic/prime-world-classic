@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 import gameplay_gate as gate
 import native_unit_target_probe as probe
+from test_gameplay_gate import startup_fixture
 
 
 PURCHASE = ('Native local talent purchase: hero=7502 player=2 user=1984 activated=1 '
@@ -37,19 +38,20 @@ def fixture():
 		'finalLiveHeroDead=no\nfinalLiveHeroUnitDbid=Heroes/Healer/_.HROB.xdb\n'
 		'finalInteractiveClock=ticks:876 pumps:575 pendingSeconds:0.05 discardedSeconds:2.35\n'
 		'finalLocalMapCamera=active:1 follow:1 updates:569 focusHeight:6.68912\n'
-		'mapTacticalBounds=0,0 -> 400,400\n')
+		'mapTacticalBounds=0,0 -> 400,400\n' + startup_fixture('ordinary', 2))
 	stdout = ('Logs: logs/mock\nSelected lineup hero: Healer (healer)\n' +
 		''.join(f'Session effects {name} runtime: {value}\n' for name, value in gate.SESSION_EFFECTS.items()) +
 		'Ruffle talent command: buy row=0 column=0 prime=400 step=122\n' + PURCHASE + ARM + REJECT + SUBMIT + CAST + PAYMENT +
 		'Final game transceiver runtime: ready=yes world=yes step=875 commands=130 replayCommands=130 replayBytes=7409 '
+		'runtimeSent=3 productionSent=3 '
 		'heroMoveCommands=0 heroStopCommands=0 heroAttackCommands=0 heroCancelCommands=0 '
 		'heroUseUnitCommands=0 heroUseTalentCommands=0\n'
 		'Final replay capture validation: valid=yes magic=yes bounds=yes bytes=yes commands=yes statuses=yes '
-		'records=49 steps=49 commandBlocks=130/130 statusBlocks=3/3 active=2 away=1 disconnected=0 leaver=0 '
+		'records=49 steps=49 commandBlocks=130/130 statusBlocks=1/1 active=1 away=0 disconnected=0 leaver=0 '
 		'bytesRead=7409/7409 largest=71 startStep=0 firstStep=1 lastStep=874 error=none\n'
 		'Final replay readback: decoded=yes commands=130/130 failures=0 bytes=4611 distinctTypes=12 '
-		'clients=1984..1984 first=0x9E6A1193/1984/211271519 last=0x7B13C109/1984/211363113 countMatch=yes\n'
-		'Final replay storage: valid=yes segments=49/49 commands=130/130 statuses=3/3 failures=0 steps=1..874 '
+		'clients=1984..1984 first=0x229AD400/1984/211271519 last=0x7B13C109/1984/211363113 countMatch=yes\n'
+		'Final replay storage: valid=yes segments=49/49 commands=130/130 statuses=1/1 failures=0 steps=1..874 '
 		'segmentMatch=yes commandMatch=yes statusMatch=yes header=yes/10 client=1984 stepLength=100 '
 		'map=Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb error=none source=ReplayStorage2\n'
 		'Native unit animation shutdown: created=27 unsupported=13 samples=7839 moving=6566 failed=0 casts=3\n'
@@ -61,6 +63,25 @@ def fixture():
 
 class UnitTargetEvidenceTests(unittest.TestCase):
 	'''Bind unique input, execution, payment and shutdown records to the same human hero.'''
+
+	def test_requires_ordinary_policy_without_extra_startup_commands(self):
+		'''A successful Healer cast cannot conceal startup diagnostics or unsolicited commands.'''
+		stdout, client = fixture()
+		for mode in ('diagnostics', 'diagnostics-interactive'):
+			changed = client.replace(startup_fixture('ordinary', 2), startup_fixture(mode, 2))
+			with self.subTest(mode=mode), self.assertRaises(gate.EvidenceError):
+				probe.validate_unit_target(stdout, changed)
+		for old, new in (('bootstrapInteractiveWorld=1', 'bootstrapInteractiveWorld=0'),
+			('finalGameWorldBootstrapRuntimeCommands=0', 'finalGameWorldBootstrapRuntimeCommands=1'),
+			('finalGameWorldTimeScale=1', 'finalGameWorldTimeScale=1.05'),
+			('finalGameTransceiverTimescaleCommandsSent=0', 'finalGameTransceiverTimescaleCommandsSent=1')):
+			with self.subTest(old=old), self.assertRaises(gate.EvidenceError):
+				probe.validate_unit_target(stdout, client.replace(old, new))
+		for sent in (2, 4, 5):
+			with self.subTest(sent=sent), self.assertRaises(gate.EvidenceError):
+				probe.validate_unit_target(stdout.replace('runtimeSent=3 productionSent=3',
+					f'runtimeSent={sent} productionSent={sent}'),
+					client.replace('CommandsSent=3\n', f'CommandsSent={sent}\n'))
 
 	def test_complete_healer_evidence(self):
 		result = probe.validate_unit_target(*fixture(), 90, 600)
@@ -209,6 +230,8 @@ class UnitTargetDriverTests(unittest.TestCase):
 		args = probe.command(Path('/client with spaces'), Path('/bridge'), Path('/capture'), 90)
 		self.assertEqual(args, probe.controls_command(Path('/client with spaces'), Path('/bridge'), Path('/capture'), 90) + ['--hero', 'healer'])
 		self.assertEqual(args[args.index('--bootstrap-frame-capture-after') + 1], '75')
+		self.assertNotIn('--bootstrap-diagnostics', args)
+		self.assertNotIn('--bootstrap-interactive-world', args)
 
 	def test_timing_is_checked_before_launch(self):
 		with patch.object(probe.subprocess, 'Popen') as start:

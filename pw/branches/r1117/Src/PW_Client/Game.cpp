@@ -298,7 +298,9 @@ struct LinuxClientLaunchSettings
   bool spectator;
   bool tutorial;
   bool bootstrapCreateGame;
-	bool bootstrapInteractiveWorld = false;
+	// Ordinary sessions accept live input; automated gameplay proofs require explicit opt-in.
+	bool bootstrapDiagnosticActions = false;
+	bool bootstrapInteractiveWorld = true;
   bool bootstrapFlashRendererProbe;
   bool bootstrapClickEnabled;
   int bootstrapClickBaseX;
@@ -42140,6 +42142,7 @@ void EnsureLinuxBootstrapGameScheduler(
     if (NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()))
     {
       world->SetLinuxAutoAIEnabled(settings.bootstrapCreateGame);
+			world->SetLinuxDiagnosticActionsEnabled(settings.bootstrapDiagnosticActions);
 			world->SetLinuxAbilityAnimationTiming(std::make_shared<LinuxAuthoredAbilityTiming>());
       if (settings.bootstrapCreateGame)
         world->SetAIContainer(new NWorld::PFAIContainer(world, runtime->transceiver));
@@ -42157,10 +42160,12 @@ void EnsureLinuxBootstrapGameScheduler(
     if (!runtime->transceiverRuntimeCommandSent)
     {
       runtime->transceiverRuntimeCommandQueuedBeforePrime = runtime->transceiverStepCalls == 0;
-      runtime->transceiver->SendCommand(
-        new LinuxBootstrapWorldRuntimeCommand(linuxBootstrapWorldRuntimeCommandToken, 1.0f),
-        true);
-      ++runtime->transceiverRuntimeCommandsSent;
+			if (settings.bootstrapDiagnosticActions)
+			{
+				runtime->transceiver->SendCommand(
+					new LinuxBootstrapWorldRuntimeCommand(linuxBootstrapWorldRuntimeCommandToken, 1.0f), true);
+				++runtime->transceiverRuntimeCommandsSent;
+			}
 
       NCore::WorldCommand* keepAliveCommand = NWorld::CreateCmdKeepAlive();
       if (keepAliveCommand)
@@ -42170,15 +42175,17 @@ void EnsureLinuxBootstrapGameScheduler(
         ++runtime->transceiverProductionRuntimeCommandsSent;
       }
 
-      NCore::WorldCommand* timescaleCommand =
-        NWorld::CreateCmdSetTimescale(linuxBootstrapTimescaleCommandValue);
-      if (timescaleCommand)
-      {
-        runtime->transceiver->SendCommand(timescaleCommand, true);
-        ++runtime->transceiverRuntimeCommandsSent;
-        ++runtime->transceiverProductionRuntimeCommandsSent;
-        ++runtime->transceiverTimescaleRuntimeCommandsSent;
-      }
+			if (settings.bootstrapDiagnosticActions)
+			{
+				NCore::WorldCommand* timescaleCommand = NWorld::CreateCmdSetTimescale(linuxBootstrapTimescaleCommandValue);
+				if (timescaleCommand)
+				{
+					runtime->transceiver->SendCommand(timescaleCommand, true);
+					++runtime->transceiverRuntimeCommandsSent;
+					++runtime->transceiverProductionRuntimeCommandsSent;
+					++runtime->transceiverTimescaleRuntimeCommandsSent;
+				}
+			}
 
       runtime->transceiverRuntimeCommandSent = true;
     }
@@ -42393,7 +42400,7 @@ void DriveLinuxBootstrapGameScheduler(
   }
   else if (runtime->transceiver && canDriveWorld())
   {
-    if (runtime->transceiverWorld && !settings.bootstrapInteractiveWorld && !draining)
+    if (runtime->transceiverWorld && settings.bootstrapDiagnosticActions && !settings.bootstrapInteractiveWorld && !draining)
     {
       NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
       UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
@@ -42483,7 +42490,7 @@ void DriveLinuxBootstrapGameScheduler(
       NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
       if (world)
       {
-        if (!settings.bootstrapInteractiveWorld)
+        if (settings.bootstrapDiagnosticActions && !settings.bootstrapInteractiveWorld)
         {
           UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
           UpdateLinuxBootstrapCreepDuelProof(runtime, world);
@@ -42670,7 +42677,8 @@ void DriveLinuxBootstrapGameScheduler(
       }
       else
       {
-        MaybeQueueLinuxBootstrapPlayerStatusScript(runtime, world);
+				if (settings.bootstrapDiagnosticActions || settings.bootstrapNetworkStatusProbe)
+					MaybeQueueLinuxBootstrapPlayerStatusScript(runtime, world);
         UpdateLinuxBootstrapPlayerStatusScriptRuntime(runtime);
       }
     }
@@ -44567,8 +44575,8 @@ bool HandleLinuxCharacterPreviewInput(
     return false;
   }
 
-  // Keep automated create-game smoke deterministic; normal runs still accept live input.
-  if (settings.bootstrapCreateGame && !settings.bootstrapInteractiveWorld && runtime->liveHeroState.ready)
+  // Only explicit automated diagnostics suppress live input.
+  if (settings.bootstrapCreateGame && settings.bootstrapDiagnosticActions && !settings.bootstrapInteractiveWorld && runtime->liveHeroState.ready)
   {
     return false;
   }
@@ -46024,8 +46032,8 @@ bool HandleLinuxMapPreviewInput(
   {
     return false;
   }
-  // Keep automated create-game smoke deterministic; normal runs still accept map input.
-  if (settings.bootstrapCreateGame && !settings.bootstrapInteractiveWorld)
+  // Only explicit automated diagnostics suppress live map input.
+  if (settings.bootstrapCreateGame && settings.bootstrapDiagnosticActions && !settings.bootstrapInteractiveWorld)
   {
     return false;
   }
@@ -66302,6 +66310,7 @@ void WriteStartupLog(
   logFile << "  demoCycleSeconds=" << settings.demoCycleSeconds << "\n";
   logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
 	logFile << "  bootstrapInteractiveWorld=" << settings.bootstrapInteractiveWorld << "\n";
+	logFile << "  bootstrapDiagnosticActions=" << settings.bootstrapDiagnosticActions << "\n";
   logFile << "  bootstrapFlashRendererProbe=" << (settings.bootstrapFlashRendererProbe ? "yes" : "no") << "\n";
   logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
   logFile << "  bootstrapLegacyHeroOverlay="
@@ -71767,7 +71776,9 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
-	settings.bootstrapInteractiveWorld = CmdLineLite::Instance().IsKeyDefined("--bootstrap-interactive-world");
+	settings.bootstrapDiagnosticActions = CmdLineLite::Instance().IsKeyDefined("--bootstrap-diagnostics");
+	settings.bootstrapInteractiveWorld = !settings.bootstrapDiagnosticActions ||
+		CmdLineLite::Instance().IsKeyDefined("--bootstrap-interactive-world");
   settings.bootstrapFlashRendererProbe = ReadBootstrapFlashRendererProbeFlag(argc, argv);
   settings.bootstrapClickDouble = ReadBootstrapClickDoubleFlag(argc, argv);
   settings.bootstrapClickAfterSeconds = ReadBootstrapClickAfterSeconds(argc, argv);

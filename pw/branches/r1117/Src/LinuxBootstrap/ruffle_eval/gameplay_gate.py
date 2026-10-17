@@ -71,6 +71,56 @@ CAPTURE_FIELDS = '''valid magic bounds bytes commands statuses records steps com
 statusBlocks active away disconnected leaver bytesRead largest startStep firstStep lastStep error'''
 STORAGE_FIELDS = '''valid segments commands statuses failures steps segmentMatch commandMatch
 statusMatch header client stepLength map error source'''
+SESSION_MODES = ('ordinary', 'diagnostics', 'diagnostics-interactive')
+
+
+def session_policy(stdout, client_log, session_mode, player_commands):
+	'''Bind startup evidence to the requested policy, never infer it from recorded flags.
+
+	Ordinary sessions inject one real keepalive; the remaining submissions must be
+	the driver's independently expected inputs. Diagnostic startup additionally
+	submits one synthetic command and one timescale command. Only noninteractive
+	diagnostics may add the historical player-command demonstrations. Real AI
+	commands enter through a separate sender and may increase replay totals.
+	'''
+	require(session_mode in SESSION_MODES, 'unknown session mode')
+	require(type(player_commands) is int and player_commands >= 0, 'invalid expected player command count')
+	diagnostics = session_mode != 'ordinary'
+	interactive = session_mode != 'diagnostics'
+	for key, expected in (('bootstrapDiagnosticActions', diagnostics), ('bootstrapInteractiveWorld', interactive)):
+		require(record(client_log, key, '=') == str(int(expected)), f'{key}: unexpected session policy')
+	for key in ('finalGameWorldBootstrapRuntimeCommands', 'finalGameTransceiverTimescaleCommandsSent'):
+		require(integer(record(client_log, key, '=')) == int(diagnostics), f'{key}: unexpected diagnostic action')
+	scale = record(client_log, 'finalGameWorldTimeScale', '=')
+	number(scale)
+	require(Decimal(scale) == Decimal('1.05' if diagnostics else '1'), 'unexpected world timescale')
+	sent = integer(record(client_log, 'finalGameTransceiverRuntimeCommandsSent', '='))
+	production = integer(record(client_log, 'finalGameTransceiverProductionCommandsSent', '='))
+	world = fields(record(stdout, 'Final game transceiver runtime', ': '), '=')
+	require(integer(world.get('runtimeSent', '')) == sent and
+		integer(world.get('productionSent', '')) == production, 'startup sent counters disagree')
+	require(sent - production == int(diagnostics), 'unexpected synthetic command count')
+	expected = 1 + player_commands + 2 * diagnostics
+	require(sent == expected if interactive else sent >= expected,
+		'unexpected injected/player command count')
+
+	status = fields(record(client_log, 'finalGameTransceiverStatusScript', '='), ':', 'queued applied completed')
+	queued = integer(status['queued'])
+	integer(status['applied'])  # Includes actual connection updates, not only the status script.
+	require(status['completed'] in ('yes', 'no'), 'malformed status script completion')
+	if not diagnostics:
+		require(queued == 0 and status['completed'] == 'no', 'ordinary run queued synthetic player statuses')
+	for key in ('finalLinuxBotCommandDriverActive', 'finalLiveHudActivateTalentProof',
+		'finalLiveHotkeyCommandProof', 'finalLiveMapPreviewCommandProof', 'finalLiveMinimapCommandProof'):
+		value = record(client_log, key, '=')
+		require(value in ('yes', 'no'), f'{key}: malformed proof flag')
+		if interactive:
+			require(value == 'no', f'{key}: unexpected player automation')
+	for key in ('finalLinuxBotMoveCommandsSent', 'finalLinuxBotAttackCommandsSent'):
+		count = integer(record(client_log, key, '='))
+		if interactive:
+			require(count == 0, f'{key}: unexpected bootstrap bot demonstration')
+	return sent
 
 
 SESSION_EFFECTS = {
@@ -200,9 +250,11 @@ def hero_execution(stdout, client_log):
 	return after
 
 
-def validate(stdout, client_log, mode):
-	'''Validate complete text evidence; raise EvidenceError on the first failed invariant.'''
+def validate(stdout, client_log, mode, *, session_mode='ordinary', expected_moves=0):
+	'''Validate a fixed HUD/startup policy; movement callers supply their known input count.'''
 	require(mode in ('targeting', 'default'), 'unknown mode')
+	require(type(expected_moves) is int and expected_moves >= 0 and
+		(mode == 'default' or expected_moves == 0), 'invalid expected movement count')
 	if mode == 'default':
 		require('Ruffle' not in stdout, 'default stdout contains Ruffle activity')
 	for name, text in (('stdout', stdout), ('client log', client_log)):
@@ -226,6 +278,8 @@ def validate(stdout, client_log, mode):
 	require(integer(world.get('commands', '')) == integer(world.get('replayCommands', '')) == commands,
 		'world/replay command counts disagree')
 	require(integer(world.get('replayBytes', '')) == byte_count, 'world/replay byte counts disagree')
+	sent = session_policy(stdout, client_log, session_mode, (2 if mode == 'targeting' else 0) + expected_moves)
+	require(commands >= sent, 'replay is missing submitted commands')
 	raw = record(client_log, 'finalRuffleInspection', '=', optional=mode == 'default')
 	if raw is not None:
 		status, space, rest = raw.partition(' ')
@@ -253,14 +307,15 @@ def validate(stdout, client_log, mode):
 		cast_step = hero_execution(stdout, client_log)
 		require(cast_step <= step, 'cast execution is ahead of the world')
 		talent_payment(stdout, cast_step)
-	return {'mode': mode, 'world_step': step, 'replay_commands': commands}
+	return {'mode': mode, 'session_mode': session_mode, 'world_step': step, 'replay_commands': commands}
 
 
-def validate_interactive(stdout, client_log, seconds, min_cast_step=0):
+def validate_interactive(stdout, client_log, seconds, min_cast_step=0, *, session_mode='ordinary'):
 	'''Check the fixed MOBA/Plane driver, clock continuity and unrelated native-key aliases.'''
 	require(math.isfinite(seconds) and seconds > 0 and isinstance(min_cast_step, int) and min_cast_step >= 0,
 		'invalid interactive evidence boundaries')
-	result = validate(stdout, client_log, 'targeting')
+	require(session_mode in ('ordinary', 'diagnostics-interactive'), 'interactive validation requires interactive policy')
+	result = validate(stdout, client_log, 'targeting', session_mode=session_mode)
 	cast_step = hero_execution(stdout, client_log)
 	require(cast_step >= min_cast_step, 'cast executed before the requested late-session boundary')
 	clock = fields(record(client_log, 'finalInteractiveClock', '='), ':',
@@ -301,6 +356,8 @@ def main(argv=None):
 	parser.add_argument('--stdout', required=True, type=Path)
 	parser.add_argument('--client-log', required=True, type=Path)
 	parser.add_argument('--mode', required=True, choices=('targeting', 'default'))
+	parser.add_argument('--session-mode', required=True, choices=SESSION_MODES,
+		help='Expected launch policy; diagnostics-interactive means both bootstrap policy flags were supplied')
 	parser.add_argument('--interactive-seconds', type=float)
 	parser.add_argument('--min-cast-step', type=int, default=0)
 	args = parser.parse_args(argv)
@@ -308,10 +365,11 @@ def main(argv=None):
 		stdout, client_log = args.stdout.read_text(encoding='utf-8'), args.client_log.read_text(encoding='utf-8')
 		if args.interactive_seconds is not None:
 			require(args.mode == 'targeting', 'interactive validation requires targeting mode')
-			result = validate_interactive(stdout, client_log, args.interactive_seconds, args.min_cast_step)
+			result = validate_interactive(stdout, client_log, args.interactive_seconds, args.min_cast_step,
+				session_mode=args.session_mode)
 		else:
 			require(args.min_cast_step == 0, 'minimum cast step requires interactive validation')
-			result = validate(stdout, client_log, args.mode)
+			result = validate(stdout, client_log, args.mode, session_mode=args.session_mode)
 	except (OSError, UnicodeError, ValueError) as error:
 		print(f'Gameplay gate FAILED: {error}', file=sys.stderr)
 		return 1

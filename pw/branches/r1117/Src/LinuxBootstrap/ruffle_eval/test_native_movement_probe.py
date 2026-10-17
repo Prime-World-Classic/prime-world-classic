@@ -7,6 +7,7 @@ import tempfile
 from unittest.mock import Mock, patch
 
 import native_movement_probe as probe
+from test_gameplay_gate import fixture
 
 
 def evidence(scenario='obstructed'):
@@ -81,11 +82,39 @@ class NativeMovementTests(unittest.TestCase):
 				patch.object(probe, 'drive', side_effect=probe.EvidenceError('lost focus')):
 				with self.assertRaisesRegex(probe.EvidenceError, 'lost focus'):
 					probe.run(Path('/client'), Path('/bin'), Path(directory)/'output.log', 'obstructed')
-				self.assertIn('--bootstrap-interactive-world', launch.call_args.args[0])
+				self.assertNotIn('--bootstrap-interactive-world', launch.call_args.args[0])
+				self.assertNotIn('--bootstrap-diagnostics', launch.call_args.args[0])
 				self.assertNotIn('--bootstrap-click-script', launch.call_args.args[0])
 				process.terminate.assert_called_once()
 				self.assertEqual(process.kill.call_count, int(timeout))
 				self.assertEqual(process.wait.call_count, 1 + int(timeout))
+
+	def test_driver_validates_ordinary_policy_and_exact_move_allowance(self):
+		'''Exercise the real gate after a mocked owned-window session, without sending input.'''
+		for scenario in probe.SCENARIOS:
+			for mode in ('ordinary', 'diagnostics-interactive'):
+				with self.subTest(scenario=scenario, mode=mode), tempfile.TemporaryDirectory() as directory:
+					base = Path(directory)
+					stdout, client = fixture('default', mode, expected_moves=len(probe.SCENARIOS[scenario]))
+					stdout += f'Logs: {base}\n' + evidence(scenario)
+					(base / 'linux-client-shell.log').write_text(client, encoding='utf-8')
+					process = Mock()
+					process.poll.return_value = process.wait.return_value = 0
+					def launch(*args, **kwargs):
+						kwargs['stdout'].write(stdout)
+						return process
+					with patch.object(probe.subprocess, 'Popen', side_effect=launch), \
+						patch.object(probe, 'wait_for_window'), patch.object(probe, 'wait_for'), \
+						patch.object(probe, 'pause'), patch.object(probe, 'owned_window', return_value='42'), \
+						patch.object(probe, 'drive'):
+						if mode == 'ordinary':
+							result, _, _ = probe.run(Path('/client'), base, base / 'out.log', scenario)
+							self.assertEqual(result['session_mode'], 'ordinary')
+							self.assertEqual(result['replay_commands'], 1 + len(probe.SCENARIOS[scenario]))
+						else:
+							with self.assertRaises(probe.EvidenceError):
+								probe.run(Path('/client'), base, base / 'out.log', scenario)
+						process.terminate.assert_not_called()
 
 
 if __name__ == '__main__':

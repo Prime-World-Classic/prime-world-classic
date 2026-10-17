@@ -28,6 +28,9 @@
 #include "../PF_GameLogic/DayNightController.h"
 #include "../Render/DBRender.h"
 #include "../PF_GameLogic/PFAIWorld.h"
+#include "../Core/Scheduler.h"
+#include "../PF_GameLogic/PFAIController.h"
+#include "../PF_GameLogic/PFAIStates.h"
 #include "../PF_GameLogic/PFResourcesCollectionClient.h"
 #include "../PF_GameLogic/DBAdvMap.h"
 #include "../PF_GameLogic/DBSessionRoots.h"
@@ -1453,6 +1456,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "world_picking_b13_tests.inc"
 #include "dynamic_presentation_b13_tests.inc"
 #include "demonologist_startup_b13_tests.inc"
+#include "diagnostic_actions_b13_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapClocksOnly, bool summonsOnly,
 	bool targetedTalentsOnly, bool worldPickingOnly, bool dynamicPresentationOnly)
@@ -1559,6 +1563,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe(const char* dataRoot, bool mapCloc
 		std::printf("Map clocks: %d checks, %d failures\n", check.count, check.failed);
 		return check.failed == 0;
 	}
+	DiagnosticActionsB13(check);
 	ResourceCacheOwnershipB13(check);
 	if (dataRoot && *dataRoot) ResourceCacheAuthoredB13(check, dataRoot);
 	if (dataRoot && *dataRoot) PlaneRocketAuthoredB13(check, dataRoot);

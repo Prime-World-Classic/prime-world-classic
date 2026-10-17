@@ -54,7 +54,7 @@ def run(binary, bin_dir, output, scenario):
 	deadline = time.monotonic() + 180
 	with output.open('x') as stream:
 		process = subprocess.Popen(['stdbuf', '-oL', '-eL', str(binary), '--seconds', '60',
-			'--width', '1280', '--height', '720', '--bootstrap-create-game', '--bootstrap-interactive-world',
+			'--width', '1280', '--height', '720', '--bootstrap-create-game',
 			'--bootstrap-frame-capture', str(output.with_suffix('.png')), '--bootstrap-frame-capture-after', '45'],
 			cwd=bin_dir, stdout=stream, stderr=subprocess.STDOUT)
 		try:
@@ -73,8 +73,9 @@ def run(binary, bin_dir, output, scenario):
 					process.wait(timeout=10)
 	stdout = output.read_text(encoding='utf-8', errors='replace')
 	log = Path(record(stdout, 'Logs', ': ')) / 'linux-client-shell.log'
-	result = validate(stdout, log.read_text(), 'default')
-	return result, validate_movement(stdout, scenario), log
+	movement = validate_movement(stdout, scenario)
+	result = validate(stdout, log.read_text(), 'default', session_mode='ordinary', expected_moves=len(SCENARIOS[scenario]))
+	return result, movement, log
 
 
 def main():

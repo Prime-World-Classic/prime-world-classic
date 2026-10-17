@@ -329,6 +329,7 @@ class PFWorld : public PF_Core::World
   int linuxAILastCommandTargetObjectId;
   int linuxAILastCommandSent;
   bool linuxAutoAIEnabled;
+	bool linuxDiagnosticActionsEnabled;
 	std::shared_ptr<LinuxAbilityAnimationTiming> linuxAbilityAnimationTiming;
 #endif
 
@@ -536,6 +537,11 @@ public:
   int GetLinuxAILastCommandSent() const { return linuxAILastCommandSent; }
   void SetLinuxAutoAIEnabled(bool enabled) { linuxAutoAIEnabled = enabled; }
   bool IsLinuxAutoAIEnabled() const { return linuxAutoAIEnabled; }
+	/** Configure local proof actions before play; ordinary worlds never enable them implicitly.
+	 * This does not undo previously queued commands and is not saved or sent over the network.
+	 */
+	void SetLinuxDiagnosticActionsEnabled(bool enabled) { linuxDiagnosticActionsEnabled = enabled; }
+	bool IsLinuxDiagnosticActionsEnabled() const { return linuxDiagnosticActionsEnabled; }
   int GetLinuxRegisteredCreepObjectsCount() const { return GetRegisteredCreepsCount(); }
   int GetLinuxSpawnedNeutralCreepObjectsCount();
   int GetLinuxMovingCommonCreepObjectsCount();

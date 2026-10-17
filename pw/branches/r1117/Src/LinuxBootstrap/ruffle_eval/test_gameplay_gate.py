@@ -29,7 +29,25 @@ LOCAL_CAST = ('Native local talent cast: hero=7502 player=2 user=1984 slot=0,0 '
 	'target=2/-1/-1 talentState=-1->496/0->0/0.00->10.00\n')
 
 
-def fixture(mode='targeting'):
+def startup_fixture(session_mode='ordinary', player_commands=0):
+	'''Model the policy counters, not production execution or native evidence.'''
+	diagnostics = session_mode != 'ordinary'
+	interactive = session_mode != 'diagnostics'
+	sent = 1 + player_commands + 2 * diagnostics + (12 if not interactive else 0)
+	return (f'bootstrapDiagnosticActions={int(diagnostics)}\n'
+		f'bootstrapInteractiveWorld={int(interactive)}\n'
+		f'finalGameWorldBootstrapRuntimeCommands={int(diagnostics)}\n'
+		f'finalGameWorldTimeScale={"1.05" if diagnostics else "1"}\n'
+		f'finalGameTransceiverTimescaleCommandsSent={int(diagnostics)}\n'
+		f'finalGameTransceiverRuntimeCommandsSent={sent}\n'
+		f'finalGameTransceiverProductionCommandsSent={sent - diagnostics}\n'
+		f'finalGameTransceiverStatusScript=queued:{5 if diagnostics else 0} applied:{5 if diagnostics else 0} completed:{"yes" if diagnostics else "no"}\n'
+		'finalLinuxBotCommandDriverActive=no\nfinalLinuxBotMoveCommandsSent=0\nfinalLinuxBotAttackCommandsSent=0\n'
+		'finalLiveHudActivateTalentProof=no\nfinalLiveHotkeyCommandProof=no\n'
+		'finalLiveMapPreviewCommandProof=no\nfinalLiveMinimapCommandProof=no\n')
+
+
+def fixture(mode='targeting', session_mode='ordinary', expected_moves=0):
 	'''Generate a complete shape-matched mock; never claim this is native evidence.'''
 	counts = dict.fromkeys(gate.RUFFLE_COUNTERS.split(), 0)
 	if mode == 'targeting':
@@ -41,11 +59,17 @@ def fixture(mode='targeting'):
 		'  finalGameTransceiverWorldAttached=yes\n  finalGameTransceiverWorldStep=1000\n'
 		'  finalNativeWorldPresentationFrames=20\n'
 		f'  finalRuffleInspection={status} {ruffle} minimapTarget:0,0 prime:400->100 error:\n')
-	stdout = ('Final game transceiver runtime: ready=yes world=yes step=1000 commands=2 replayCommands=2 replayBytes=50\n'
+	startup = startup_fixture(session_mode, (2 if mode == 'targeting' else 0) + expected_moves)
+	policy = dict(line.split('=', 1) for line in startup.splitlines())
+	commands = int(policy['finalGameTransceiverRuntimeCommandsSent'])
+	production = policy['finalGameTransceiverProductionCommandsSent']
+	client += startup
+	stdout = (f'Final game transceiver runtime: ready=yes world=yes step=1000 commands={commands} '
+		f'replayCommands={commands} replayBytes=50 runtimeSent={commands} productionSent={production}\n'
 		'Final replay capture validation: valid=yes magic=yes bounds=yes bytes=yes commands=yes statuses=yes '
-		'records=2 steps=2 commandBlocks=2/2 statusBlocks=1/1 active=1 away=0 disconnected=0 leaver=0 '
+		f'records=2 steps=2 commandBlocks={commands}/{commands} statusBlocks=1/1 active=1 away=0 disconnected=0 leaver=0 '
 		'bytesRead=50/50 largest=30 startStep=0 firstStep=1 lastStep=90 error=none\n'
-		'Final replay storage: valid=yes segments=2/2 commands=2/2 statuses=1/1 failures=0 steps=1..90 '
+		f'Final replay storage: valid=yes segments=2/2 commands={commands}/{commands} statuses=1/1 failures=0 steps=1..90 '
 		'segmentMatch=yes commandMatch=yes statusMatch=yes header=yes/10 client=1984 stepLength=100 '
 		'map=Maps/Map.xdb error=none source=ReplayStorage2\n'
 		'Final hero gameplay command execution: useUnit=0/0/0/0 can=0 '
@@ -62,6 +86,114 @@ def fixture(mode='targeting'):
 
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
+
+	def test_startup_policy_is_explicit_and_independent_of_hud(self):
+		'''A diagnostic run cannot satisfy ordinary acceptance, even with identical HUD receipts.'''
+		for mode in ('default', 'targeting'):
+			for actual in ('ordinary', 'diagnostics', 'diagnostics-interactive'):
+				stdout, client = fixture(mode, actual)
+				for expected in ('ordinary', 'diagnostics', 'diagnostics-interactive'):
+					with self.subTest(mode=mode, actual=actual, expected=expected):
+						if actual == expected:
+							self.assertEqual(gate.validate(stdout, client, mode, session_mode=expected)['session_mode'], expected)
+						else:
+							with self.assertRaises(gate.EvidenceError):
+								gate.validate(stdout, client, mode, session_mode=expected)
+		for actual in ('diagnostics', 'diagnostics-interactive'):
+			with self.assertRaises(gate.EvidenceError):
+				gate.validate(*fixture('default', actual), 'default')
+
+	def test_startup_policy_records_fail_closed(self):
+		'''Require all policy records and exact finite numeric values in every policy.'''
+		for mode in ('ordinary', 'diagnostics', 'diagnostics-interactive'):
+			stdout, client = fixture('default', mode)
+			for line in startup_fixture(mode).splitlines(True):
+				key, value = line.rstrip().split('=')
+				for replacement in ('', line + line, f'{key}=nan\n', f'{key}=-1\n',
+					f'{key}=true\n', f'{key}={value} extra=0\n'):
+					with self.subTest(mode=mode, line=line, replacement=replacement), self.assertRaises(gate.EvidenceError):
+						gate.validate(stdout, client.replace(line, replacement), 'default', session_mode=mode)
+		stdout, client = fixture()
+		for key, bad in (('bootstrapDiagnosticActions', '1'), ('bootstrapInteractiveWorld', '0'),
+			('bootstrapInteractiveWorld', '01'), ('finalGameWorldBootstrapRuntimeCommands', '1'),
+			('finalGameTransceiverTimescaleCommandsSent', '1'), ('finalGameWorldTimeScale', '1.05'),
+			('finalGameWorldTimeScale', '1.000000000000000001')):
+			changed = re.sub(r'(?m)^' + key + r'=.*$', key + '=' + bad, client)
+			with self.subTest(key=key), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout, changed, 'targeting')
+
+	def test_keepalive_is_the_only_ordinary_injected_command(self):
+		'''Require one keepalive plus exactly the independently expected player inputs.'''
+		for mode in ('default', 'targeting'):
+			stdout, client = fixture(mode)
+			sent = 3 if mode == 'targeting' else 1
+			for changed_count in (sent - 1, sent + 1, sent + 2):
+				changed_client = client.replace(f'CommandsSent={sent}\n', f'CommandsSent={changed_count}\n')
+				changed_stdout = stdout.replace(f'runtimeSent={sent}', f'runtimeSent={changed_count}')
+				changed_stdout = changed_stdout.replace(f'productionSent={sent}', f'productionSent={changed_count}')
+				with self.subTest(mode=mode, sent=changed_count), self.assertRaises(gate.EvidenceError):
+					gate.validate(changed_stdout, changed_client, mode)
+			for key in ('runtimeSent', 'productionSent'):
+				with self.subTest(key=key), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout.replace(f'{key}={sent}', f'{key}={sent + 1}'), client, mode)
+
+	def test_movement_allowance_is_bound_to_driver_scenario(self):
+		'''No-HUD does not mean diagnostic: one or two actual moves supplement the keepalive.'''
+		for moves in (1, 2):
+			stdout, client = fixture('default', expected_moves=moves)
+			self.assertEqual(gate.validate(stdout, client, 'default', session_mode='ordinary',
+				expected_moves=moves)['replay_commands'], moves + 1)
+			with self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout, client, 'default')
+		for moves in (-1, True, 1.5):
+			with self.assertRaises(gate.EvidenceError):
+				gate.validate(*fixture('default'), 'default', expected_moves=moves)
+		with self.assertRaises(gate.EvidenceError):
+			gate.validate(*fixture(), 'targeting', expected_moves=1)
+
+	def test_ordinary_mode_rejects_status_and_player_proofs(self):
+		'''Real AI and connection updates are distinct from the bootstrap demonstration driver.'''
+		stdout, client = fixture()
+		for before, after in (('queued:0', 'queued:1'), ('completed:no', 'completed:yes'),
+			('finalLinuxBotCommandDriverActive=no', 'finalLinuxBotCommandDriverActive=yes'),
+			('finalLinuxBotMoveCommandsSent=0', 'finalLinuxBotMoveCommandsSent=1'),
+			('finalLinuxBotAttackCommandsSent=0', 'finalLinuxBotAttackCommandsSent=1'),
+			('finalLiveHudActivateTalentProof=no', 'finalLiveHudActivateTalentProof=yes'),
+			('finalLiveHotkeyCommandProof=no', 'finalLiveHotkeyCommandProof=yes'),
+			('finalLiveMapPreviewCommandProof=no', 'finalLiveMapPreviewCommandProof=yes'),
+			('finalLiveMinimapCommandProof=no', 'finalLiveMinimapCommandProof=yes')):
+			with self.subTest(before=before), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout, client.replace(before, after), 'targeting')
+		gate.validate(stdout, client.replace('applied:0', 'applied:1'), 'targeting')
+
+	def test_diagnostics_cannot_omit_its_startup_actions(self):
+		'''Opt-in expectations stay strict; accepting ordinary counters is not compatibility.'''
+		for mode in ('diagnostics', 'diagnostics-interactive'):
+			stdout, client = fixture('default', mode)
+			for old, new in (('finalGameWorldBootstrapRuntimeCommands=1', 'finalGameWorldBootstrapRuntimeCommands=0'),
+				('finalGameTransceiverTimescaleCommandsSent=1', 'finalGameTransceiverTimescaleCommandsSent=0'),
+				('finalGameWorldTimeScale=1.05', 'finalGameWorldTimeScale=1')):
+				with self.subTest(mode=mode, old=old), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout, client.replace(old, new), 'default', session_mode=mode)
+		with self.assertRaises(gate.EvidenceError):
+			gate.validate(*fixture(), 'targeting', session_mode='auto')
+		with self.assertRaises(gate.EvidenceError):
+			gate.validate_interactive(*fixture('targeting', 'diagnostics'), 100, session_mode='diagnostics')
+
+	def test_cli_requires_policy_and_legacy_smoke_uses_diagnostics(self):
+		'''An omitted or wrong expectation cannot silently reinterpret a legacy smoke log.'''
+		with tempfile.TemporaryDirectory() as directory:
+			out, log = Path(directory) / 'stdout', Path(directory) / 'client.log'
+			stdout, client = fixture('default', 'diagnostics')
+			out.write_text(stdout, encoding='utf-8')
+			log.write_text(client, encoding='utf-8')
+			args = ['--stdout', str(out), '--client-log', str(log), '--mode', 'default']
+			with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+				with self.assertRaises(SystemExit) as error:
+					gate.main(args)
+				self.assertEqual(error.exception.code, 2)
+				self.assertEqual(gate.main(args + ['--session-mode', 'ordinary']), 1)
+				self.assertEqual(gate.main(args + ['--session-mode', 'diagnostics']), 0)
 
 	def test_live_prime_is_not_the_immutable_purchase_receipt(self):
 		'''Background salary changes the live HUD, but cannot replace the actual 400-to-100 purchase.'''
@@ -329,7 +461,7 @@ class GameplayGateTests(unittest.TestCase):
 		'''Submission logs alone cannot satisfy actual engine execution evidence.'''
 		stdout, client = fixture()
 		for before, after in (('valid=yes', 'valid=no'), ('failures=0', 'failures=1'),
-			('commandBlocks=2/2', 'commandBlocks=1/2'), ('commands=2/2', 'commands=3/3'),
+			('commandBlocks=3/3', 'commandBlocks=1/3'), ('commands=3/3', 'commands=4/4'),
 			('statuses=1/1', 'statuses=2/2'), ('segments=2/2', 'segments=1/2'),
 			('bytesRead=50/50', 'bytesRead=49/50'), ('commandMatch=yes', 'commandMatch=no'),
 			('error=none', 'error=bad'), ('steps=1..90', 'steps=1..89'),
@@ -387,7 +519,7 @@ class GameplayGateTests(unittest.TestCase):
 			stdout, client = fixture()
 			out.write_text(stdout, encoding='utf-8')
 			log.write_text(client, encoding='utf-8')
-			args = ['--stdout', str(out), '--client-log', str(log), '--mode', 'targeting']
+			args = ['--stdout', str(out), '--client-log', str(log), '--session-mode', 'ordinary', '--mode', 'targeting']
 			with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
 				self.assertEqual(gate.main(args), 0)
 				self.assertEqual(gate.main(args + ['--min-cast-step', '650']), 1)

@@ -170,7 +170,8 @@ linuxAILastCommandPlayerId(-1),
 linuxAILastCommandUserId(-1),
 linuxAILastCommandTargetObjectId(-1),
 linuxAILastCommandSent(0),
-linuxAutoAIEnabled(false)
+linuxAutoAIEnabled(false),
+linuxDiagnosticActionsEnabled(false)
 {
 }
 
@@ -280,7 +281,8 @@ linuxAILastCommandPlayerId(-1),
 linuxAILastCommandUserId(-1),
 linuxAILastCommandTargetObjectId(-1),
 linuxAILastCommandSent(0),
-linuxAutoAIEnabled(false)
+linuxAutoAIEnabled(false),
+linuxDiagnosticActionsEnabled(false)
 {
 }
 

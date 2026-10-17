@@ -16,6 +16,8 @@ class NativeControlsTests(unittest.TestCase):
 		self.assertEqual(args[:4], ['stdbuf', '-oL', '-eL', '/binary with spaces'])
 		self.assertEqual(args[args.index('--seconds') + 1], '60')
 		self.assertEqual(args[args.index('--bootstrap-click-script') + 1], '1119,971;-156,835;1119,971')
+		self.assertNotIn('--bootstrap-diagnostics', args)
+		self.assertNotIn('--bootstrap-interactive-world', args)
 
 	def test_long_run_configuration(self):
 		args = probe.command(Path('/client'), Path('/bridge'), Path('/capture'), 90)
@@ -112,6 +114,27 @@ class NativeControlsTests(unittest.TestCase):
 			tool.assert_not_called()
 			drive.assert_not_called()
 			validate.assert_not_called()
+
+	def test_completed_driver_binds_ordinary_policy(self):
+		'''The launcher forwards a fixed expected policy instead of trusting the client's flags.'''
+		with tempfile.TemporaryDirectory() as directory:
+			base = Path(directory)
+			log = base / 'linux-client-shell.log'
+			log.write_text('mock client evidence\n', encoding='utf-8')
+			process = Mock()
+			process.poll.return_value = process.wait.return_value = 0
+			def launch(*args, **kwargs):
+				kwargs['stdout'].write(f'Logs: {base}\n')
+				return process
+			with patch.object(probe.subprocess, 'Popen', side_effect=launch), \
+				patch.object(probe, 'wait_for_window'), patch.object(probe, 'wait_for'), \
+				patch.object(probe, 'pause'), patch.object(probe, 'owned_window', return_value='42'), \
+				patch.object(probe, 'probe_alias_keys'), patch.object(probe, 'drive'), \
+				patch.object(probe, 'validate_interactive', return_value={'mock': True}) as validate:
+				probe.run(Path('/client'), Path('/bridge'), base, base / 'out.log', 90, 45, 600)
+				validate.assert_called_once_with(f'Logs: {base}\n', 'mock client evidence\n', 90, 600,
+					session_mode='ordinary')
+				process.terminate.assert_not_called()
 
 	def test_startup_failure_never_sends_input(self):
 		'''Mock launch failures require neither a display nor a cleanup command to another PID.'''

@@ -17,7 +17,7 @@ import re
 import subprocess
 import time
 
-from gameplay_gate import EvidenceError, RUFFLE_COUNTERS, fields, integer, number, pair, record, replay, require, session_effects
+from gameplay_gate import EvidenceError, RUFFLE_COUNTERS, fields, integer, number, pair, record, replay, require, session_effects, session_policy
 from native_controls_probe import check_timing, command as controls_command, owned_window, pause, tool, wait_for, wait_for_window
 
 
@@ -88,6 +88,8 @@ def validate_unit_target(stdout, client_log, seconds=90, min_cast_step=0):
 	require(integer(world.get('commands', '')) == integer(world.get('replayCommands', '')) == commands >= 2,
 		'World/replay command counts disagree')
 	require(integer(world.get('replayBytes', '')) == byte_count, 'World/replay byte counts disagree')
+	sent = session_policy(stdout, client_log, 'ordinary', 2)
+	require(commands >= sent, 'Replay is missing submitted commands')
 	for key in ('heroMoveCommands', 'heroStopCommands', 'heroAttackCommands', 'heroCancelCommands', 'heroUseUnitCommands', 'heroUseTalentCommands'):
 		require(integer(world.get(key, '')) == 0, f'Unexpected legacy command: {key}')
 	clock = fields(record(client_log, 'finalInteractiveClock', '='), ':', 'ticks pumps pendingSeconds discardedSeconds')

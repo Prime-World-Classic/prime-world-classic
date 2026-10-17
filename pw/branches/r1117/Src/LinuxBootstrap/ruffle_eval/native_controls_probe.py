@@ -20,7 +20,7 @@ def command(binary, library, capture, seconds=60):
 	'''Keep purchase setup deterministic; gameplay controls use X11, not the script.'''
 	check_timing(seconds, 0)
 	return ['stdbuf', '-oL', '-eL', str(binary), '--seconds', str(seconds), '--width', '1280',
-		'--height', '720', '--bootstrap-create-game', '--bootstrap-interactive-world',
+		'--height', '720', '--bootstrap-create-game',
 		'--bootstrap-ruffle-library', str(library), '--bootstrap-click-after', '12',
 		'--bootstrap-click-interval', '3', '--bootstrap-click-script',
 		'1119,971;-156,835;1119,971', '--bootstrap-frame-capture', str(capture),
@@ -175,7 +175,8 @@ def run(binary, library, bin_dir, output, seconds=60, control_delay=0, min_cast_
 	if len(paths) != 1:
 		raise EvidenceError('Missing or ambiguous client log directory')
 	client_log = Path(paths[0]) / 'linux-client-shell.log'
-	result = validate_interactive(text, client_log.read_text(encoding='utf-8'), seconds, min_cast_step)
+	result = validate_interactive(text, client_log.read_text(encoding='utf-8'), seconds, min_cast_step,
+		session_mode='ordinary')
 	return result, client_log
 
 

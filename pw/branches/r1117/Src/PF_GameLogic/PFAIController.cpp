@@ -452,6 +452,10 @@ void PFAIController::RecoverHealth()
 
 bool PFAIController::TryLinuxConsumableProof()
 {
+	// Ordinary worlds must not read or advance the process-global proof state.
+	if (!GetWorld() || !GetWorld()->IsLinuxDiagnosticActionsEnabled())
+		return false;
+
   if ( g_linuxAIConsumableProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_CONSUMABLE_PROOF_START_STEP )
     return false;
 
@@ -543,6 +547,10 @@ bool PFAIController::TryLinuxConsumableProof()
 
 bool PFAIController::TryLinuxInteractionProof()
 {
+	// Keep a disabled world's proof phase and wait counter untouched.
+	if (!GetWorld() || !GetWorld()->IsLinuxDiagnosticActionsEnabled())
+		return false;
+
   if ( g_linuxAIInteractionProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_INTERACTION_PROOF_START_STEP )
     return false;
 
@@ -1000,6 +1008,10 @@ void PFAIController::DoNotAttackTower()
 
 bool PFAIController::TryLinuxTowerProof()
 {
+	// Fall through to ordinary tower decisions unless diagnostics were explicitly enabled.
+	if (!GetWorld() || !GetWorld()->IsLinuxDiagnosticActionsEnabled())
+		return false;
+
   if ( g_linuxAITowerProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TOWER_PROOF_START_STEP )
     return false;
 
