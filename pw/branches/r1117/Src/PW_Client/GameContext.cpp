@@ -22,6 +22,7 @@
 
 extern string g_sessionToken;
 extern string g_playerToken;
+extern wstring g_spectatorNickname;
 
 
 #include "Client/ScreenCommands.h"
@@ -924,7 +925,13 @@ void GameContext::StartGameClient()
 
   gameClient->SetDebugVarSender( debugVarsSender );
   
-  CreateChatClient(gameClient->GetNickname());
+  // A spectator is in no lineup (its GetNickname() is the first player's one):
+  // the chat nickname comes with the spectator launch token (Game.cpp), else a plain "Spectator"
+  if ( isSpectator )
+    CreateChatClient( !g_spectatorNickname.empty() ? g_spectatorNickname
+      : wstring( GetLanguageShortCode() == "en" ? L"Spectator" : L"\u0417\u0440\u0438\u0442\u0435\u043b\u044c" ) );
+  else
+    CreateChatClient(gameClient->GetNickname());
   gameClient->SetChatClient( chatClient );
 
   //If we tried, but could not get game statistics pointer, clean up resources

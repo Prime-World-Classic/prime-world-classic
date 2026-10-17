@@ -214,6 +214,8 @@ static NDebug::DebugVar<int> unfreeVirtualAllocs( "UnfreeVirtualAllocs", "", tru
 static NDebug::DebugVar<int> totalAllocsSize( "TotalAllocsSize", "", true );
 
 std::string g_protocolToken;
+// Spectator's own nickname from the launch token (ParseSpectatorNickname); empty when not given
+wstring g_spectatorNickname;
 extern bool g_localGameRun;
 
 //CRAP
@@ -222,6 +224,50 @@ extern "C" INTERMODULE_EXPORT void TooSmartLinker();
 
 namespace
 {
+// A spectator is in no lineup, so its nickname for the battle chat comes from
+// the back-end as a tail of the launch token (pw-api objects/spectator.model.js):
+//   <sessionToken 32><spectatorKey 64><user_id>.<hex of the UTF-8 nickname>
+// The tail is not part of the key: the client cuts it off before the login and
+// the lobby join, the server sees the usual token (Shared/WebSpectatorKey.h).
+// Returns the nickname (empty for a malformed tail).
+const int SpectatorNicknameMaxBytes = 64;
+
+wstring ParseSpectatorNickname( const char * hex )
+{
+  const int len = (int)strlen( hex );
+  if ( len == 0 || len % 2 != 0 || len > SpectatorNicknameMaxBytes * 2 )
+    return wstring();
+
+  string utf8;
+  for ( int i = 0; i < len; i += 2 )
+  {
+    int byte = 0;
+    for ( int j = 0; j < 2; ++j )
+    {
+      const char c = hex[i + j];
+      int digit;
+      if ( c >= '0' && c <= '9' )
+        digit = c - '0';
+      else if ( c >= 'a' && c <= 'f' )
+        digit = c - 'a' + 10;
+      else
+        return wstring();
+      byte = byte * 16 + digit;
+    }
+    if ( byte < 0x20 ) // no control characters in a nickname
+      return wstring();
+    utf8 += (char)byte;
+  }
+
+  const int wideLen = ::MultiByteToWideChar( CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), (int)utf8.size(), 0, 0 );
+  if ( wideLen <= 0 )
+    return wstring();
+  wstring nickname;
+  nickname.resize( wideLen );
+  ::MultiByteToWideChar( CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), (int)utf8.size(), &nickname[0], wideLen );
+  return nickname;
+}
+
 // Language of the texts, last token of the launch protocol (allTokens[7]):
 // "en" or "en-US". Returns the short code ("en") or an empty string when the
 // token does not look like a language code.
@@ -1484,6 +1530,20 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [bad token length]! Please start the game via the launcher." );
       return 0;
     }
+    // Spectator: the nickname tail goes to the chat only (see ParseSpectatorNickname)
+    if (protocolSpectator) {
+      const char * nicknameTail = strchr(protocolToken + 32 + 64, '.');
+      if (nicknameTail) {
+        g_spectatorNickname = ParseSpectatorNickname(nicknameTail + 1);
+        if (g_spectatorNickname.empty())
+          systemLog( NLogg::LEVEL_MESSAGE ) << "Ignored spectator nickname in protocol" << endl;
+        const nstl::string tokenWithoutNickname(protocolToken, nicknameTail - protocolToken);
+        allTokens[2] = tokenWithoutNickname;
+        protocolToken = allTokens[2].c_str();
+        g_protocolToken = protocolToken;
+      }
+    }
+
     g_sessionToken = string(protocolToken, 32);
     // A spectator key keeps the user id after the 64 hex chars
     g_playerToken = protocolSpectator ? string(protocolToken + 32) : string(protocolToken + 32, 64);

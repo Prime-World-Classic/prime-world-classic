@@ -258,6 +258,11 @@ void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerI
   NI_VERIFY(!!_chatController, "Invalid chat controller!", return);
 
   chatController = _chatController;
+
+  // a live match spectator may write already on the loading screen (spectators / everybody)
+  if ( isSpectator )
+    chatController->SetSpectatorMode();
+
   chatController->AddChatUI(flashWnd, flashInterface, muted, leaver, leaverParty);
 
   if (_ignoreListStorage)
