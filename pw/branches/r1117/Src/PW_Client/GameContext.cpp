@@ -19,6 +19,7 @@
 #include "Network/StreamAllocator.h"
 #include "PW_Game/server_ip.h"
 #include <Shared/ServerIps.h>
+#include <Shared/WebSpectatorKey.h>
 
 extern string g_sessionToken;
 extern string g_playerToken;
@@ -680,9 +681,13 @@ void GameContext::ConnectToCluster( const string & login, const string & passwor
   // Web-session login: the player is identified by playerKey (launcher URL,
   // g_playerToken) instead of the nickname; the server delivers the session
   // data in the login reply. The same token/key pair is reused for fast
-  // reconnects (the session outlives a single login).
+  // reconnects (the session outlives a single login). A spectator key that
+  // does not fit the login field goes in the compact form
+  // (Shared/WebSpectatorKey.h).
   string token = sessionToken.empty() ? g_sessionToken : sessionToken;
   string playerKey = g_playerToken;
+  if ( WebSession::IsSpectatorPlayerKey( playerKey.c_str() ) )
+    playerKey = WebSession::SpectatorLoginKey( std::string( playerKey.c_str() ) ).c_str();
 
   clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, token, playerKey, _loginType );
   lastLogin = login;
