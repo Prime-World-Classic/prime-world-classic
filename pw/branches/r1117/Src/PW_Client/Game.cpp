@@ -134,7 +134,50 @@ REGISTER_VAR( "debug_dump_info", g_DebugDumpInfo, STORAGE_GLOBAL );
 REGISTER_VAR( "boost_main_thread_priority", g_boostPriority, STORAGE_NONE );
 REGISTER_VAR( "boost_mtp_processor_number", g_preferredProcessor, STORAGE_NONE );
 REGISTER_VAR( "inactive_sleep", g_inactiveSleep, STORAGE_NONE );
+// Frame rate to the log every fps_log_period seconds (0 - off)
+static float  g_fpsLogPeriod = 0.0f;
+REGISTER_VAR( "fps_log_period", g_fpsLogPeriod, STORAGE_NONE );
 REGISTER_DEV_VAR( "video_FPS", g_VideoFPS, STORAGE_NONE);
+
+static void LogFrameRate()
+{
+  static NHPTimer::STime periodStart = 0;
+  static NHPTimer::STime frameStart = 0;
+  static int frames = 0;
+  static NHPTimer::FTime maxFrameTime = 0.0;
+
+  if ( g_fpsLogPeriod <= 0.0f )
+  {
+    periodStart = 0;
+    frames = 0;
+    maxFrameTime = 0.0;
+    return;
+  }
+
+  NHPTimer::STime now;
+  NHPTimer::GetTime( now );
+  if ( periodStart == 0 )
+  {
+    periodStart = frameStart = now;
+    return;
+  }
+
+  NHPTimer::STime frameTime = now - frameStart;
+  maxFrameTime = Max( maxFrameTime, NHPTimer::Time2Seconds( frameTime ) );
+  frameStart = now;
+  ++frames;
+
+  NHPTimer::STime periodTime = now - periodStart;
+  const NHPTimer::FTime period = NHPTimer::Time2Seconds( periodTime );
+  if ( period < g_fpsLogPeriod )
+    return;
+
+  MessageTrace( "fps: %.1f (%d frames in %.2f s, frame avg %.2f ms, max %.2f ms)",
+    frames / period, frames, period, period * 1000.0 / frames, maxFrameTime * 1000.0 );
+  periodStart = now;
+  frames = 0;
+  maxFrameTime = 0.0;
+}
 REGISTER_DEV_VAR( "video_recording_time", g_RecordingTime, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender", s_NullRender, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender_no_log_box", g_NullRenderNoLogBox, STORAGE_NONE);
@@ -1713,6 +1756,8 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       NMainLoop::VSyncController::MarkPresentFinished();
       mainPerf_Present.Stop();
     }
+
+    LogFrameRate();
     
     NMainLoop::SetTemporaryTimeDelta( commonTimeDelta );
 
