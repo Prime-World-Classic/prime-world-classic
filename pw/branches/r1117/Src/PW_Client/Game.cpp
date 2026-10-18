@@ -42141,11 +42141,12 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->transceiverWorld = NWorld::PFWorld::CreatePFWorld();
     if (NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()))
     {
-      world->SetLinuxAutoAIEnabled(settings.bootstrapCreateGame);
+			// This branch owns a live local session, whether launched by Lua or the CLI.
+			// Replay setup returns above and must not generate a second stream of AI orders.
+			world->SetLinuxAutoAIEnabled(true);
 			world->SetLinuxDiagnosticActionsEnabled(settings.bootstrapDiagnosticActions);
 			world->SetLinuxAbilityAnimationTiming(std::make_shared<LinuxAuthoredAbilityTiming>());
-      if (settings.bootstrapCreateGame)
-        world->SetAIContainer(new NWorld::PFAIContainer(world, runtime->transceiver));
+			world->SetAIContainer(new NWorld::PFAIContainer(world, runtime->transceiver));
     }
     runtime->transceiver->SetWorld(runtime->transceiverWorld);
     runtime->transceiverReady = true;

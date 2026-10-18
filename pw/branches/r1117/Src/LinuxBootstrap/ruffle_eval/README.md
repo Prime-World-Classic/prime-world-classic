@@ -148,6 +148,28 @@ python3 -B "$EVAL/native_movement_probe.py" --binary /absolute/path/PrimeWorldLi
 python3 -B -m unittest discover -s "$EVAL" -p test_native_movement_probe.py
 ```
 
+## Native Menu Regression
+
+`native_menu_probe.py` selects MOBA, clicks Create, then Ready in the original
+XDB/Lua screens using window-addressed X11 events. It does not use auto-create,
+legacy overlays, scripted UI input, diagnostic gameplay, or Ruffle. Run it with
+the same isolated X11/window-manager prerequisites as the movement probe:
+
+```sh
+python3 -B "$EVAL/native_menu_probe.py" --binary /absolute/path/PrimeWorldLinuxClient \
+  --bin-dir "$DATA/../Bin" --output /tmp/pw-menu-session.log --seconds 120
+python3 -B "$EVAL/test_native_menu_probe.py"
+```
+
+The bounded run verifies both authored screen presentations and callbacks, ten
+loaded heroes, nine active bots, transceiver-backed AI orders without direct
+fallback, and replay command accounting. The screenshot is taken fifteen seconds
+before shutdown. Use fresh output paths; the driver refuses lost focus, a resized
+viewport, or ambiguous owned windows, and reaps the client on failure. Its mock
+evidence and process-ownership tests run in the client's `LinuxMenuSessionEvidence`
+CTest without a display. Passing this gate is not a natural full-match victory,
+Windows visual parity, multiplayer, or desktop-FPS claim.
+
 The original Ruffle acceptance notes below are historical evaluation scope;
 the port plan is authoritative for subsequent integration work.
 

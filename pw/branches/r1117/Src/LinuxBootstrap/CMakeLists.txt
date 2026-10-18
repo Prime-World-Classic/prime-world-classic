@@ -1050,6 +1050,9 @@ add_test(NAME LinuxSessionStartup COMMAND ${CMAKE_COMMAND}
 	-P "${CMAKE_CURRENT_SOURCE_DIR}/session_startup_gate.cmake")
 set_tests_properties(LinuxSessionStartup PROPERTIES TIMEOUT 60
 	ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy;DISPLAY=;WAYLAND_DISPLAY=")
+add_test(NAME LinuxMenuSessionEvidence COMMAND "${PW_LINUX_PYTHON3}" -B
+	"${CMAKE_CURRENT_SOURCE_DIR}/ruffle_eval/test_native_menu_probe.py")
+set_tests_properties(LinuxMenuSessionEvidence PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxAbilityAnimationTiming COMMAND PrimeWorldLinuxClient --bootstrap-ability-timing-probe
 	--root "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 set_tests_properties(LinuxAbilityAnimationTiming PROPERTIES TIMEOUT 60
