@@ -1,31 +1,34 @@
 @echo off
+rem Clones of the update repos in UpdateRepos: origin fetches from gitflic and
+rem pushes to gitflic + gitlab + github at once. Safe to re-run: existing clones
+rem are kept, only missing mirrors and fetch rules are added (no duplicates).
 setlocal
 
 if not exist UpdateRepos mkdir UpdateRepos
 cd UpdateRepos
 
-git clone git@gitflic.ru:prime-world-classic/content_pwc.git
-git clone git@gitflic.ru:prime-world-classic/content-test.git
-git clone git@gitflic.ru:prime-world-classic/pwc-gitupdates.git
-git clone git@gitflic.ru:prime-world-classic/pwc-gitupdates-test.git
-
-cd content_pwc
-git remote set-url --add origin git@gitlab.com:prime-world-classic/content.git
-git remote set-url --add origin git@github.com:Prime-World-Classic/content.git
-cd ..
-
-cd content-test
-git remote set-url --add origin git@gitlab.com:prime-world-classic/content-test.git
-git remote set-url --add origin git@github.com:Prime-World-Classic/content-test.git
-cd ..
-
-cd pwc-gitupdates
-git remote set-url --add origin git@gitlab.com:prime-world-classic/PWCGitUpdates.git
-git remote set-url --add origin git@github.com:Prime-World-Classic/pw-git-updates.git
-cd ..
-
-cd pwc-gitupdates-test
-git remote set-url --add origin git@gitlab.com:prime-world-classic/pwc-git-updates-test.git
-git remote set-url --add origin git@github.com:Prime-World-Classic/pw-git-updates-test.git
+rem production launcher (+ testers in refs/testing/test)
+call :repo content_pwc git@gitflic.ru:prime-world-classic/content_pwc.git git@gitlab.com:prime-world-classic/content.git git@github.com:Prime-World-Classic/content.git testing
+rem test launcher (old scheme)
+call :repo content-test git@gitflic.ru:prime-world-classic/content-test.git git@gitlab.com:prime-world-classic/content-test.git git@github.com:Prime-World-Classic/content-test.git
+rem production client (+ testers in refs/testing/test)
+call :repo pwc-gitupdates git@gitflic.ru:prime-world-classic/pwc-gitupdates.git git@gitlab.com:prime-world-classic/PWCGitUpdates.git git@github.com:Prime-World-Classic/PWCGitUpdates.git testing
+rem test client (old scheme)
+call :repo pwc-gitupdates-test git@gitflic.ru:prime-world-classic/pwc-gitupdates-test.git git@gitlab.com:prime-world-classic/pwc-git-updates-test.git git@github.com:Prime-World-Classic/PWCGitUpdates-test.git
 
 endlocal
+exit /b 0
+
+rem :repo <folder> <gitflic> <gitlab> <github> [testing]
+:repo
+if not exist "%~1\.git" git clone "%~2" "%~1"
+call :mirror "%~1" "%~3"
+call :mirror "%~1" "%~4"
+rem Hidden testers ref (refs/testing/test) is not fetched by default
+if "%~5"=="" exit /b 0
+git -C "%~1" config --get-all --fixed-value remote.origin.fetch "+refs/testing/*:refs/remotes/origin/testing/*" >nul || git -C "%~1" config --add remote.origin.fetch "+refs/testing/*:refs/remotes/origin/testing/*"
+exit /b 0
+
+:mirror
+git -C "%~1" config --get-all --fixed-value remote.origin.url "%~2" >nul || git -C "%~1" remote set-url --add origin "%~2"
+exit /b 0
