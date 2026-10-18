@@ -123,12 +123,21 @@ void CheckError(const char* stage)
 
 
 static std::string refName;
+// Remote ref to track, e.g. "refs/heads/main" or hidden "refs/testing/test"
+static std::string remoteRef;
+// Local branch it is checked out to, e.g. "refs/heads/test"
+static std::string localRef;
 int fetchhead_callback(const char* ref_name, const char* remote_url, const git_oid* oid, unsigned int is_merge, void* payload) {
+   // FETCH_HEAD may list several refs: take only the tracked one
+   if (remoteRef != ref_name) {
+      return 0;
+   }
+
    memcpy(payload, oid, sizeof(git_oid));
 
-   refName = ref_name;
+   refName = localRef;
 
-   return 0; // return-zero to stop iterating
+   return 0; // return-zero to continue iterating
 }
 
 
@@ -212,17 +221,21 @@ bool NeedUpdate(git_repository* repo)
       error = git_remote_ls(&refs, &size, remote);
       CheckError("Remote ls");
 
+      // Compare with the tracked branch, not with remote HEAD
+      const git_oid* remote_commit = nullptr;
+      for (size_t i = 0; i < size; ++i) {
+         if (remoteRef == refs[i]->name) {
+            remote_commit = &refs[i]->oid;
+            break;
+         }
+      }
+
       error = git_remote_disconnect(remote);
 
-      int cmmm = git_oid_cmp(local_commit, &refs[0]->oid);
+      // Local branch must also be the tracked one (switch e.g. main -> test)
+      bool isTrackedBranch = (localRef == git_reference_name(head));
 
-      char oid[GIT_OID_SHA1_HEXSIZE + 1] = { 0 };
-      git_oid_fmt(oid, &refs[1]->oid);
-
-      char oidLocal[GIT_OID_SHA1_HEXSIZE + 1] = { 0 };
-      git_oid_fmt(oidLocal, local_commit);
-
-      if (git_oid_cmp(local_commit, &refs[0]->oid) == 0) {
+      if (remote_commit && isTrackedBranch && git_oid_cmp(local_commit, remote_commit) == 0) {
          return false;
       }
    }
@@ -251,7 +264,11 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
    error = git_remote_connect(remote, GIT_DIRECTION_FETCH, &remoteCallbacks, nullptr, nullptr);
    CheckError("Fetch connect");
 
-   error = git_remote_download(remote, nullptr, &fetchOpts);
+   // Fetch only the tracked ref
+   std::string refspec = "+" + remoteRef + ":refs/remotes/origin/" + branchName;
+   char* refspecStr = refspec.data();
+   git_strarray refspecs = { &refspecStr, 1 };
+   error = git_remote_download(remote, &refspecs, &fetchOpts);
    CheckError("Fetch download");
 
    error = git_remote_disconnect(remote);
@@ -262,7 +279,12 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
 
    // Search for heads
    git_oid fetch_head_oid;
+   refName = "";
    error = git_repository_fetchhead_foreach(repo, fetchhead_callback, &fetch_head_oid);
+   if (refName.empty()) {
+      std::cerr << "Ref " << remoteRef << " not found on remote" << std::endl;
+      throw unhandled_error();
+   }
 
    // Delete main branch first
    git_reference* mainBranch;
@@ -293,6 +315,18 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
    git_reference* branch;
    error = git_branch_create(&branch, repo, branchName, commit, true);
    CheckError("Create main brach");
+
+   // Upstream of the branch: launcher reads branch.<name>.merge to watch the right ref
+   git_config* config = nullptr;
+   error = git_repository_config(&config, repo);
+   CheckError("Open config");
+   std::string branchKey = std::string("branch.") + branchName;
+   error = git_config_set_string(config, (branchKey + ".remote").c_str(), "origin");
+   if (error >= 0) {
+      error = git_config_set_string(config, (branchKey + ".merge").c_str(), remoteRef.c_str());
+   }
+   git_config_free(config);
+   CheckError("Set branch upstream");
 
    // Set head to it
    error = git_repository_set_head(repo, refName.c_str());
@@ -376,7 +410,33 @@ void ResetRepo(git_repository* repo, const char* repoPath)
 }
 
 
-void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* branchName) {
+// Point origin to remoteRepoUrl if it is not one of the known urls (primary or mirrors)
+void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl, const char* const* knownUrls, int knownUrlsCount)
+{
+   git_remote* origin = nullptr;
+   if (git_remote_lookup(&origin, repo, "origin") < 0) {
+      return;
+   }
+
+   const char* url = git_remote_url(origin);
+   bool isKnown = false;
+   for (int i = 0; url && i < knownUrlsCount; ++i) {
+      if (strcmp(url, knownUrls[i]) == 0) {
+         isKnown = true;
+         break;
+      }
+   }
+   git_remote_free(origin);
+
+   if (!isKnown) {
+      ThrowIfNotWithAdminRights();
+      error = git_remote_set_url(repo, "origin", remoteRepoUrl);
+      CheckError("Set remote url");
+   }
+}
+
+
+void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* branchName, const char* const* knownUrls, int knownUrlsCount) {
    git_repository* repo = nullptr;
    git_remote* remote = nullptr;
 
@@ -384,6 +444,9 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
    error = git_repository_open(&repo, repoPath);
    if (error < 0) {
       InitRepo(&repo, &remote, repoPath, remoteRepoUrl);
+   }
+   else {
+      SyncRemoteUrl(repo, remoteRepoUrl, knownUrls, knownUrlsCount);
    }
 
    // Once the repository is cloned or opened, perform the rest of the
@@ -586,7 +649,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       "https://github.com/Prime-World-Classic/content.git",
       "https://github.com/Prime-World-Classic/PWCGitUpdates.git",
    };
+#ifdef PW_TEST_UPDATER
+   // Testers build: same repos, hidden ref (old updaters fetch only refs/heads/*)
+   const char* branchName = "test";
+   remoteRef = "refs/testing/test";
+#else
    const char* branchName = "main";
+   remoteRef = "refs/heads/main";
+#endif
+   localRef = std::string("refs/heads/") + branchName;
 
 
    // Initialize the library
@@ -608,6 +679,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #ifndef NDEBUG
       break;
 #endif
+      const char* knownUrls[] = { remoteRepoUrl[i], remoteMirrorUrl[i], remoteMirrorUrl2[i] };
       try {
          if (isRunningAdm) {
             std::stringstream strStream;
@@ -618,7 +690,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             std::cout << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
          }
          refName = "";
-         UpdateRepo(repoPath[i], remoteRepoUrl[i], branchName);
+         UpdateRepo(repoPath[i], remoteRepoUrl[i], branchName, knownUrls, _countof(knownUrls));
       }
       catch (admin_rights_exception) {
 #ifndef ADMIN_MANIFEST
@@ -637,13 +709,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
          try {
             CleanRepo(repoPath[i]);
             refName = "";
-            UpdateRepo(repoPath[i], remoteMirrorUrl[i], branchName);
+            UpdateRepo(repoPath[i], remoteMirrorUrl[i], branchName, knownUrls, _countof(knownUrls));
          }
          catch (unhandled_error) {
             try {
                CleanRepo(repoPath[i]);
                refName = "";
-               UpdateRepo(repoPath[i], remoteMirrorUrl2[i], branchName);
+               UpdateRepo(repoPath[i], remoteMirrorUrl2[i], branchName, knownUrls, _countof(knownUrls));
             }
             catch (unhandled_error) {
                throw std::exception("Failed mirrors");
