@@ -638,18 +638,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    // Update repos with branches main (players) and test (testers): gitflic first,
    // then mirrors in order. Old content_pwc / pwc-gitupdates (*-test) clones are
    // re-pointed here by SyncRemoteUrl.
-   const char* remoteUrls[][4] = {
+   const char* remoteUrls[][3] = {
       {
          "https://gitflic.ru/project/prime-world-classic/launcher-pwc.git",
          "https://gitlab.com/prime-world-classic/launcher-pwc.git",
          "https://github.com/Prime-World-Classic/launcher-pwc.git",
-         "https://git.sourcecraft.dev/prime-world-classic/launcher-pwc.git",
       },
       {
          "https://gitflic.ru/project/prime-world-classic/game-pwc.git",
          "https://gitlab.com/prime-world-classic/game-pwc.git",
          "https://github.com/Prime-World-Classic/game-pwc.git",
-         "https://git.sourcecraft.dev/prime-world-classic/game-pwc.git",
       },
    };
 #ifdef PW_TEST_UPDATER
