@@ -635,29 +635,30 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       "game",
    };
 
-   const char* remoteRepoUrl[] = {
-      "https://gitflic.ru/project/prime-world-classic/content_pwc.git",
-      "https://gitflic.ru/project/prime-world-classic/pwc-gitupdates.git",
-   };
-
-   const char* remoteMirrorUrl[] = {
-      "https://gitlab.com/prime-world-classic/content.git",
-      "https://gitlab.com/prime-world-classic/PWCGitUpdates.git",
-   };
-
-   const char* remoteMirrorUrl2[] = {
-      "https://github.com/Prime-World-Classic/content.git",
-      "https://github.com/Prime-World-Classic/PWCGitUpdates.git",
+   // Update repos with branches main (players) and test (testers): gitflic first,
+   // then mirrors in order. Old content_pwc / pwc-gitupdates (*-test) clones are
+   // re-pointed here by SyncRemoteUrl.
+   const char* remoteUrls[][4] = {
+      {
+         "https://gitflic.ru/project/prime-world-classic/launcher-pwc.git",
+         "https://gitlab.com/prime-world-classic/launcher-pwc.git",
+         "https://github.com/Prime-World-Classic/launcher-pwc.git",
+         "https://git.sourcecraft.dev/prime-world-classic/launcher-pwc.git",
+      },
+      {
+         "https://gitflic.ru/project/prime-world-classic/game-pwc.git",
+         "https://gitlab.com/prime-world-classic/game-pwc.git",
+         "https://github.com/Prime-World-Classic/game-pwc.git",
+         "https://git.sourcecraft.dev/prime-world-classic/game-pwc.git",
+      },
    };
 #ifdef PW_TEST_UPDATER
-   // Testers build: same repos, hidden ref (old updaters fetch only refs/heads/*)
    const char* branchName = "test";
-   remoteRef = "refs/testing/test";
 #else
    const char* branchName = "main";
-   remoteRef = "refs/heads/main";
 #endif
    localRef = std::string("refs/heads/") + branchName;
+   remoteRef = localRef;
 
 
    // Initialize the library
@@ -679,7 +680,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #ifndef NDEBUG
       break;
 #endif
-      const char* knownUrls[] = { remoteRepoUrl[i], remoteMirrorUrl[i], remoteMirrorUrl2[i] };
+      const char* const* knownUrls = remoteUrls[i];
+      const int knownUrlsCount = _countof(remoteUrls[i]);
       try {
          if (isRunningAdm) {
             std::stringstream strStream;
@@ -690,7 +692,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             std::cout << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
          }
          refName = "";
-         UpdateRepo(repoPath[i], remoteRepoUrl[i], branchName, knownUrls, _countof(knownUrls));
+         UpdateRepo(repoPath[i], knownUrls[0], branchName, knownUrls, knownUrlsCount);
       }
       catch (admin_rights_exception) {
 #ifndef ADMIN_MANIFEST
@@ -706,20 +708,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       }
 #endif
       catch (unhandled_error) {
-         try {
-            CleanRepo(repoPath[i]);
-            refName = "";
-            UpdateRepo(repoPath[i], remoteMirrorUrl[i], branchName, knownUrls, _countof(knownUrls));
-         }
-         catch (unhandled_error) {
+         // Primary failed: re-clone from the mirrors one by one
+         bool updated = false;
+         for (int m = 1; m < knownUrlsCount && !updated; ++m) {
             try {
                CleanRepo(repoPath[i]);
                refName = "";
-               UpdateRepo(repoPath[i], remoteMirrorUrl2[i], branchName, knownUrls, _countof(knownUrls));
+               UpdateRepo(repoPath[i], knownUrls[m], branchName, knownUrls, knownUrlsCount);
+               updated = true;
             }
             catch (unhandled_error) {
-               throw std::exception("Failed mirrors");
             }
+         }
+         if (!updated) {
+            std::cerr << "Exception: Failed mirrors";
+            return 1;
          }
       }
       catch (std::exception ex) {
