@@ -58,12 +58,20 @@ static std::string repoConfigDir;
 
 static std::filesystem::path ExeDirectory()
 {
-   char buf[MAX_PATH] = { 0 };
-   DWORD n = GetModuleFileNameA(nullptr, buf, MAX_PATH);
-   if (n == 0 || n >= MAX_PATH) {
-      return {};
+   std::vector<char> buf(MAX_PATH);
+   for (;;) {
+      DWORD n = GetModuleFileNameA(nullptr, buf.data(), (DWORD)buf.size());
+      if (n == 0) {
+         return {};
+      }
+      if (n < buf.size()) {
+         return std::filesystem::path(buf.data()).parent_path();
+      }
+      if (buf.size() >= 32768) {
+         return {};
+      }
+      buf.resize(buf.size() * 2);
    }
-   return std::filesystem::path(buf).parent_path();
 }
 
 static std::string ResolveRepoPath(const std::string& repoPath)
@@ -343,53 +351,6 @@ static void RankAllRemoteUrls(bool verbose)
    }
 }
 
-static const char* DefaultBranchName()
-{
-#ifdef PW_TEST_UPDATER
-   return "test";
-#else
-   return "main";
-#endif
-}
-
-static void LoadDefaultRepos()
-{
-   const char* branch = DefaultBranchName();
-
-   repos = {
-      {
-         "..\\Launcher\\content\\updater",
-         "updater",
-         branch,
-         {
-            "https://gitflic.ru/project/prime-world-classic/updater.git",
-            "https://gitlab.com/prime-world-classic/updater.git",
-            "https://github.com/Prime-World-Classic/updater.git",
-         },
-      },
-      {
-         "..\\Launcher\\content",
-         "content",
-         branch,
-         {
-            "https://gitflic.ru/project/prime-world-classic/launcher-pwc.git",
-            "https://gitlab.com/prime-world-classic/launcher-pwc.git",
-            "https://github.com/Prime-World-Classic/launcher-pwc.git",
-         },
-      },
-      {
-         "..\\Game",
-         "game",
-         branch,
-         {
-            "https://gitflic.ru/project/prime-world-classic/game-pwc.git",
-            "https://gitlab.com/prime-world-classic/game-pwc.git",
-            "https://github.com/Prime-World-Classic/game-pwc.git",
-         },
-      },
-   };
-}
-
 static bool LoadReposFromFile(const std::string& path)
 {
    std::ifstream file(path);
@@ -448,41 +409,26 @@ static bool LoadReposFromFile(const std::string& path)
    return true;
 }
 
-static void LoadRepos()
+static bool LoadRepos()
 {
    repoConfigDir.clear();
 
-   std::vector<std::string> paths;
-   auto addPath = [&](const std::filesystem::path& p) {
-      if (!p.empty()) {
-         paths.push_back(p.string());
-      }
-   };
-
    auto exeDir = ExeDirectory();
-   if (!exeDir.empty()) {
-      addPath(exeDir / "updater_repos.txt");
-   }
-   addPath("updater_repos.txt");
-   addPath("..\\Tools\\updater_repos.txt");
-   addPath("Tools\\updater_repos.txt");
-   if (!exeDir.empty()) {
-      addPath(exeDir / ".." / "Tools" / "updater_repos.txt");
-      addPath(exeDir / ".." / "Launcher" / "content" / "updater" / "updater_repos.txt");
+   if (exeDir.empty()) {
+      std::cerr << "Failed to resolve updater executable directory" << std::endl;
+      return false;
    }
 
-   bool loaded = false;
-   for (const std::string& path : paths) {
-      if (LoadReposFromFile(path)) {
-         std::cerr << "Loaded repo config: " << path << std::endl;
-         loaded = true;
-         break;
-      }
+   std::filesystem::path path = exeDir / "updater_repos.txt";
+   std::error_code ec;
+   if (!std::filesystem::exists(path, ec)) {
+      std::cerr << "Repo config not found: " << path.string() << std::endl;
+      return false;
    }
 
-   if (!loaded) {
-      std::cerr << "Repo config not found, using built-in defaults" << std::endl;
-      LoadDefaultRepos();
+   if (!LoadReposFromFile(path.string())) {
+      std::cerr << "Invalid repo config: " << path.string() << std::endl;
+      return false;
    }
 
 #ifdef PW_TEST_UPDATER
@@ -490,6 +436,8 @@ static void LoadRepos()
       repo.branch = "test";
    }
 #endif
+
+   return true;
 }
 
 static bool RepoNeedsUpdate(const RepoConfig& repo)
@@ -907,13 +855,25 @@ void LaunchAdminNanoUpdater() {
 
 bool IsAdminRequired() {
    for (const auto& repo : repos) {
-      std::filesystem::path dir(repo.path);
+      std::filesystem::path target(repo.path);
       std::error_code ec;
-      if (!std::filesystem::exists(dir, ec)) {
+      std::filesystem::path testDir;
+
+      if (std::filesystem::exists(target, ec)) {
+         testDir = target;
+      }
+      else {
+         std::filesystem::path parent = target.parent_path();
+         if (!parent.empty() && std::filesystem::exists(parent, ec)) {
+            testDir = parent;
+         }
+      }
+
+      if (testDir.empty()) {
          continue;
       }
 
-      std::filesystem::path testPath = dir / "test";
+      std::filesystem::path testPath = testDir / "test";
       std::ofstream srrr(testPath);
       if (!srrr.fail()) {
          srrr.close();
@@ -924,12 +884,7 @@ bool IsAdminRequired() {
       return true;
    }
 
-   std::ofstream srrr("..\\Tools\\test");
-   if (!srrr.fail()) {
-      srrr.close();
-      remove("..\\Tools\\test");
-   }
-   return srrr.fail();
+   return true;
 }
 
 
@@ -1004,13 +959,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    }
 
    if (speedtestMode) {
-      LoadRepos();
+      if (!LoadRepos()) {
+         return 1;
+      }
       RankAllRemoteUrls(true);
       return 0;
    }
 
 #ifdef ADMIN_MANIFEST
    isRunningAdm = true;
+#endif
+
+   if (!LoadRepos()) {
+      return 1;
+   }
+
+#ifdef ADMIN_MANIFEST
    std::atomic<bool> doWork;
    doWork.store(true);
    killAdminProcess.store(false);
@@ -1045,8 +1009,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       }
       });
 #endif
-
-   LoadRepos();
 
    isAdminRightsRequired = IsAdminRequired();
    std::ofstream errLogs;
