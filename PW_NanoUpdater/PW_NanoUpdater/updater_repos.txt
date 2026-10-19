@@ -1,0 +1,14 @@
+# PW NanoUpdater repository configuration
+# repo <local-path> <label> <branch>
+# mirror <git-url>
+# The first mirror is used as origin after speed ranking.
+
+repo ..\Launcher\content content main
+mirror https://gitflic.ru/project/prime-world-classic/launcher-pwc.git
+mirror https://gitlab.com/prime-world-classic/launcher-pwc.git
+mirror https://github.com/Prime-World-Classic/launcher-pwc.git
+
+repo ..\Game game main
+mirror https://gitflic.ru/project/prime-world-classic/game-pwc.git
+mirror https://gitlab.com/prime-world-classic/game-pwc.git
+mirror https://github.com/Prime-World-Classic/game-pwc.git

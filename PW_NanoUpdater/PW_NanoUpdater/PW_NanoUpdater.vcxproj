@@ -288,6 +288,9 @@
     <ResourceCompile Include="PW_NanoUpdater.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="updater_repos.txt" />
+  </ItemGroup>
+  <ItemGroup>
     <Image Include="..\..\PW_MicroUpdater\App.ico" />
     <Image Include="icon1.ico" />
   </ItemGroup>

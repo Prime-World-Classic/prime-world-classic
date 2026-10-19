@@ -15,6 +15,15 @@
 #include <thread>
 #include <fstream>
 #include <functional>
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstring>
+#include <numeric>
+#include <sstream>
+#include <wininet.h>
+
+#pragma comment(lib, "wininet.lib")
 
 class admin_rights_exception : std::exception {};
 class unhandled_error : std::exception {};
@@ -35,7 +44,18 @@ static bool isAdminRightsRequired = false;
 
 bool isRunningAdm = false;
 
+struct RepoConfig
+{
+   std::string path;
+   std::string label;
+   std::string branch;
+   std::vector<std::string> mirrors;
+};
 
+static std::vector<RepoConfig> repos;
+static bool remoteUrlsRanked = false;
+
+#if defined(TEST_HASHES) || defined(ENABLE_RELEASE_FILES)
 static const char* releaseFileUrls[] = {
    "https://gitflic.ru/project/prime-world-classic/prime-world-classic-game/release/c24c9dd1-ac10-4045-8773-7083e4a70d80/b7a8d56f-9f7d-4dbf-87b0-7c939ecd7194/download",
    "https://gitflic.ru/project/prime-world-classic/prime-world-classic-game/release/c24c9dd1-ac10-4045-8773-7083e4a70d80/a7112311-ed44-4c1d-9c63-95dbc92b9bdd/download",
@@ -79,6 +99,7 @@ static const char* releaseFileHashes[] = {
    "..\\Game\\Hashes\\Asks_RU.fsb.md5",
    "..\\Game\\Hashes\\Music.fsb.md5"
 };
+#endif
 
 #ifdef ADMIN_MANIFEST
 class kill_admin_process_exception : std::exception {};
@@ -127,6 +148,326 @@ static std::string refName;
 static std::string remoteRef;
 // Local branch it is checked out to, e.g. "refs/heads/test"
 static std::string localRef;
+bool NeedUpdate(git_repository* repo);
+
+struct SpeedProbeResult
+{
+   std::string url;
+   double bytesPerSec = 0.0;
+   unsigned long bytes = 0;
+   unsigned long elapsedMs = 0;
+   bool ok = false;
+};
+
+static std::string Trim(const std::string& value)
+{
+   size_t first = value.find_first_not_of(" \t\r\n");
+   if (first == std::string::npos) {
+      return "";
+   }
+   size_t last = value.find_last_not_of(" \t\r\n");
+   return value.substr(first, last - first + 1);
+}
+
+static std::string GitRefsProbeUrl(const std::string& repoUrl)
+{
+   std::string url = Trim(repoUrl);
+   while (!url.empty() && (url.back() == '/' || url.back() == '\\')) {
+      url.pop_back();
+   }
+
+   const std::string suffix = ".git";
+   if (url.size() < suffix.size() ||
+       _stricmp(url.c_str() + (url.size() - suffix.size()), suffix.c_str()) != 0) {
+      url += suffix;
+   }
+
+   return url + "/info/refs?service=git-upload-pack";
+}
+
+static SpeedProbeResult ProbeGitUrl(const std::string& repoUrl)
+{
+   SpeedProbeResult result;
+   result.url = repoUrl;
+
+   DWORD timeoutMs = 5000;
+   const DWORD maxBytes = 512 * 1024;
+   const DWORD chunkSize = 8 * 1024;
+
+   HINTERNET hInternet = InternetOpenA("PWClassicNanoUpdater", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+   if (!hInternet) {
+      return result;
+   }
+
+   InternetSetOptionA(hInternet, INTERNET_OPTION_CONNECT_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+   InternetSetOptionA(hInternet, INTERNET_OPTION_SEND_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+   InternetSetOptionA(hInternet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+
+   std::string probeUrl = GitRefsProbeUrl(repoUrl);
+   const char* headers = "Accept-Encoding: identity\r\n";
+   HINTERNET hUrl = InternetOpenUrlA(
+      hInternet,
+      probeUrl.c_str(),
+      headers,
+      (DWORD)strlen(headers),
+      INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_NO_COOKIES |
+      INTERNET_FLAG_NO_UI | INTERNET_FLAG_SECURE,
+      0);
+
+   if (!hUrl) {
+      InternetCloseHandle(hInternet);
+      return result;
+   }
+
+   auto start = std::chrono::steady_clock::now();
+   std::vector<char> buffer(chunkSize);
+
+   while (result.bytes < maxBytes) {
+      DWORD bytesRead = 0;
+      if (!InternetReadFile(hUrl, buffer.data(), chunkSize, &bytesRead)) {
+         break;
+      }
+      if (bytesRead == 0) {
+         break;
+      }
+
+      result.bytes += bytesRead;
+
+      auto now = std::chrono::steady_clock::now();
+      result.elapsedMs = (unsigned long)std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+      if (result.elapsedMs >= timeoutMs) {
+         break;
+      }
+   }
+
+   auto now = std::chrono::steady_clock::now();
+   result.elapsedMs = (unsigned long)std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+   if (result.elapsedMs == 0) {
+      result.elapsedMs = 1;
+   }
+
+   result.ok = result.bytes > 0;
+   result.bytesPerSec = (double)result.bytes * 1000.0 / (double)result.elapsedMs;
+
+   InternetCloseHandle(hUrl);
+   InternetCloseHandle(hInternet);
+   return result;
+}
+
+static void RankRemoteUrls(std::vector<std::string>& urls, const std::string& label, bool verbose)
+{
+   if (urls.empty()) {
+      return;
+   }
+
+   std::vector<SpeedProbeResult> results(urls.size());
+   std::vector<std::thread> threads;
+   threads.reserve(urls.size());
+
+   for (size_t i = 0; i < urls.size(); ++i) {
+      threads.emplace_back([&, i]() {
+         results[i] = ProbeGitUrl(urls[i]);
+         });
+   }
+
+   for (auto& t : threads) {
+      t.join();
+   }
+
+   std::vector<size_t> order(urls.size());
+   std::iota(order.begin(), order.end(), 0);
+   std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+      return results[a].bytesPerSec > results[b].bytesPerSec;
+      });
+
+   std::vector<SpeedProbeResult> sortedResults;
+   sortedResults.reserve(results.size());
+   for (size_t idx : order) {
+      sortedResults.push_back(results[idx]);
+   }
+
+   urls.clear();
+   urls.reserve(sortedResults.size());
+   for (const auto& r : sortedResults) {
+      urls.push_back(r.url);
+   }
+
+   for (size_t i = 0; i < sortedResults.size(); ++i) {
+      const auto& r = sortedResults[i];
+      unsigned long long speed = (unsigned long long)r.bytesPerSec;
+      if (verbose) {
+         std::cout << "#{\"type\":\"speed_probe\",\"repo\":\"" << label
+            << "\",\"rank\":" << (i + 1)
+            << ",\"url\":\"" << r.url
+            << "\",\"bytesPerSec\":" << speed
+            << ",\"bytes\":" << r.bytes
+            << ",\"elapsedMs\":" << r.elapsedMs
+            << ",\"ok\":" << (r.ok ? "true" : "false")
+            << "}" << std::endl;
+      }
+      else {
+         std::cerr << "probe " << label << " " << (i + 1) << " " << speed << " B/s " << r.url << std::endl;
+      }
+   }
+}
+
+static void RankAllRemoteUrls(bool verbose)
+{
+   for (auto& repo : repos) {
+      RankRemoteUrls(repo.mirrors, repo.label, verbose);
+   }
+}
+
+static const char* DefaultBranchName()
+{
+#ifdef PW_TEST_UPDATER
+   return "test";
+#else
+   return "main";
+#endif
+}
+
+static void LoadDefaultRepos()
+{
+   const char* branch = DefaultBranchName();
+
+   repos = {
+      {
+         "..\\Launcher\\content",
+         "content",
+         branch,
+         {
+            "https://gitflic.ru/project/prime-world-classic/launcher-pwc.git",
+            "https://gitlab.com/prime-world-classic/launcher-pwc.git",
+            "https://github.com/Prime-World-Classic/launcher-pwc.git",
+         },
+      },
+      {
+         "..\\Game",
+         "game",
+         branch,
+         {
+            "https://gitflic.ru/project/prime-world-classic/game-pwc.git",
+            "https://gitlab.com/prime-world-classic/game-pwc.git",
+            "https://github.com/Prime-World-Classic/game-pwc.git",
+         },
+      },
+   };
+}
+
+static bool LoadReposFromFile(const std::string& path)
+{
+   std::ifstream file(path);
+   if (file.fail()) {
+      return false;
+   }
+
+   std::vector<RepoConfig> parsed;
+   std::string line;
+
+   while (std::getline(file, line)) {
+      line = Trim(line);
+      if (line.empty() || line[0] == '#') {
+         continue;
+      }
+
+      std::istringstream stream(line);
+      std::string key;
+      stream >> key;
+
+      if (key == "repo") {
+         RepoConfig repo;
+         stream >> repo.path >> repo.label >> repo.branch;
+         if (!repo.path.empty() && !repo.label.empty() && !repo.branch.empty()) {
+            parsed.push_back(repo);
+         }
+      }
+      else if (key == "mirror") {
+         std::string url;
+         stream >> url;
+         if (!parsed.empty() && !url.empty()) {
+            parsed.back().mirrors.push_back(url);
+         }
+      }
+   }
+
+   if (parsed.empty()) {
+      return false;
+   }
+
+   for (const auto& repo : parsed) {
+      if (repo.mirrors.empty()) {
+         return false;
+      }
+   }
+
+   repos.swap(parsed);
+   return true;
+}
+
+static void LoadRepos()
+{
+   const char* paths[] = {
+      "updater_repos.txt",
+      "..\\Tools\\updater_repos.txt",
+      "Tools\\updater_repos.txt",
+   };
+
+   bool loaded = false;
+   for (const char* path : paths) {
+      if (LoadReposFromFile(path)) {
+         std::cerr << "Loaded repo config: " << path << std::endl;
+         loaded = true;
+         break;
+      }
+   }
+
+   if (!loaded) {
+      std::cerr << "Repo config not found, using built-in defaults" << std::endl;
+      LoadDefaultRepos();
+   }
+
+#ifdef PW_TEST_UPDATER
+   for (auto& repo : repos) {
+      repo.branch = "test";
+   }
+#endif
+}
+
+static bool RepoNeedsUpdate(const RepoConfig& repo)
+{
+   localRef = std::string("refs/heads/") + repo.branch;
+   remoteRef = localRef;
+
+   git_repository* repoHandle = nullptr;
+   if (git_repository_open(&repoHandle, repo.path.c_str()) < 0) {
+      return true;
+   }
+
+   bool needUpdate = true;
+   try {
+      refName = "";
+      needUpdate = NeedUpdate(repoHandle);
+   }
+   catch (...) {
+      needUpdate = true;
+   }
+
+   git_repository_free(repoHandle);
+   return needUpdate;
+}
+
+static bool AnyRepoNeedsUpdate()
+{
+   for (const auto& repo : repos) {
+      if (RepoNeedsUpdate(repo)) {
+         return true;
+      }
+   }
+   return false;
+}
+
+// refName/remoteRef/localRef are declared above.
 int fetchhead_callback(const char* ref_name, const char* remote_url, const git_oid* oid, unsigned int is_merge, void* payload) {
    // FETCH_HEAD may list several refs: take only the tracked one
    if (remoteRef != ref_name) {
@@ -428,7 +769,7 @@ void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl, const char* 
    }
    git_remote_free(origin);
 
-   if (!isKnown) {
+   if (!isKnown || (url && strcmp(url, remoteRepoUrl) != 0)) {
       ThrowIfNotWithAdminRights();
       error = git_remote_set_url(repo, "origin", remoteRepoUrl);
       CheckError("Set remote url");
@@ -566,10 +907,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    return 0;
 #endif
 
-   bool skipRelease = false;
+   bool speedtestMode = false;
    for (int a = 0; a < argc; ++a) {
-      if (std::string(argv[a]) == "inno") {
-         skipRelease = true;
+      std::string arg(argv[a]);
+      if (arg == "speedtest") {
+         speedtestMode = true;
+      }
+      else if (arg == "inno") {
          if (a + 1 < argc) {
             progressBarHandle = argv[a + 1];
             HWND hwndProgressBar = (HWND)atoi(progressBarHandle);
@@ -577,6 +921,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
          }
          break;
       }
+   }
+
+   if (speedtestMode) {
+      LoadRepos();
+      RankAllRemoteUrls(true);
+      return 0;
    }
 
 #ifdef ADMIN_MANIFEST
@@ -625,39 +975,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       std::cerr.rdbuf(new null_streambuf);
    }
 
-   const char* repoPath[] = {
-      "..\\Launcher\\content",
-      "..\\Game",
-   };
-
-   const char* repoLabels[] = {
-      "content",
-      "game",
-   };
-
-   // Update repos with branches main (players) and test (testers): gitflic first,
-   // then mirrors in order. Old content_pwc / pwc-gitupdates (*-test) clones are
-   // re-pointed here by SyncRemoteUrl.
-   const char* remoteUrls[][3] = {
-      {
-         "https://gitflic.ru/project/prime-world-classic/launcher-pwc.git",
-         "https://gitlab.com/prime-world-classic/launcher-pwc.git",
-         "https://github.com/Prime-World-Classic/launcher-pwc.git",
-      },
-      {
-         "https://gitflic.ru/project/prime-world-classic/game-pwc.git",
-         "https://gitlab.com/prime-world-classic/game-pwc.git",
-         "https://github.com/Prime-World-Classic/game-pwc.git",
-      },
-   };
-#ifdef PW_TEST_UPDATER
-   const char* branchName = "test";
-#else
-   const char* branchName = "main";
-#endif
-   localRef = std::string("refs/heads/") + branchName;
-   remoteRef = localRef;
-
+   LoadRepos();
 
    // Initialize the library
    int _error = git_libgit2_init();
@@ -674,23 +992,43 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    }
 #endif
 
-   for (int i = 0; i < _countof(repoPath); ++i) {
+   if (!isAdminRightsRequired && !remoteUrlsRanked && AnyRepoNeedsUpdate()) {
+      RankAllRemoteUrls(false);
+      remoteUrlsRanked = true;
+   }
+
+   for (size_t i = 0; i < repos.size(); ++i) {
 #ifndef NDEBUG
       break;
 #endif
-      const char* const* knownUrls = remoteUrls[i];
-      const int knownUrlsCount = _countof(remoteUrls[i]);
+      RepoConfig& repo = repos[i];
+      std::vector<const char*> knownPtrs;
+      knownPtrs.reserve(repo.mirrors.size());
+      for (const std::string& url : repo.mirrors) {
+         knownPtrs.push_back(url.c_str());
+      }
+
+      if (knownPtrs.empty()) {
+         continue;
+      }
+
+      const char* const* knownUrls = knownPtrs.data();
+      const int knownUrlsCount = (int)knownPtrs.size();
+
+      localRef = std::string("refs/heads/") + repo.branch;
+      remoteRef = localRef;
+
       try {
          if (isRunningAdm) {
             std::stringstream strStream;
-            strStream << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
+            strStream << "#{\"type\":\"label\", \"data\":\"" << repo.label << "\"}" << std::endl;
             TransmitMessage(strStream.str().c_str(), strStream.str().size());
          }
          else {
-            std::cout << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
+            std::cout << "#{\"type\":\"label\", \"data\":\"" << repo.label << "\"}" << std::endl;
          }
          refName = "";
-         UpdateRepo(repoPath[i], knownUrls[0], branchName, knownUrls, knownUrlsCount);
+         UpdateRepo(repo.path.c_str(), knownUrls[0], repo.branch.c_str(), knownUrls, knownUrlsCount);
       }
       catch (admin_rights_exception) {
 #ifndef ADMIN_MANIFEST
@@ -710,9 +1048,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
          bool updated = false;
          for (int m = 1; m < knownUrlsCount && !updated; ++m) {
             try {
-               CleanRepo(repoPath[i]);
+               CleanRepo(repo.path.c_str());
                refName = "";
-               UpdateRepo(repoPath[i], knownUrls[m], branchName, knownUrls, knownUrlsCount);
+               UpdateRepo(repo.path.c_str(), knownUrls[m], repo.branch.c_str(), knownUrls, knownUrlsCount);
                updated = true;
             }
             catch (unhandled_error) {
@@ -734,6 +1072,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       std::cerr << "Failed to shutdown libgit2 library!";
    }
 
+#ifdef ENABLE_RELEASE_FILES
    try {
       for (int r = 0; r < _countof(releaseFileUrls); ++r) {
          try {
@@ -758,6 +1097,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       mainProcessChecker.join();
       exit(0);
    }
+#endif
 #endif
 
 #ifdef ADMIN_MANIFEST
