@@ -1,32 +1,25 @@
 #!/usr/bin/env bash
+# Clones of the update repos in UpdateRepos: origin fetches from gitflic and
+# pushes to gitflic + gitlab + github at once. Safe to re-run: existing clones
+# are kept, only missing mirrors and fetch rules are added (no duplicates).
 set -e
 
 mkdir -p UpdateRepos
 cd UpdateRepos
-git clone https://gitflic.ru/project/prime-world-classic/content_pwc.git # production laucher
-git clone https://gitflic.ru/project/prime-world-classic/content-test.git # test launcher
-git clone https://gitflic.ru/project/prime-world-classic/pwc-gitupdates.git # production client
-git clone https://gitflic.ru/project/prime-world-classic/pwc-gitupdates-test.git # test client
 
-cd content_pwc
-# gilab and github mirrors (production laucher)
-git remote set-url --add origin https://gitlab.com/prime-world-classic/content.git
-git remote set-url --add origin https://github.com/Prime-World-Classic/content.git
-cd ..
+# repo <folder> <gitflic> <gitlab> <github>
+repo() {
+  [ -d "$1/.git" ] || git clone "$2" "$1"
+  local url
+  for url in "$3" "$4"; do
+    git -C "$1" config --get-all --fixed-value remote.origin.url "$url" >/dev/null ||
+      git -C "$1" remote set-url --add origin "$url"
+  done
+}
 
-cd content-test
-# gilab and github mirrors (test laucher)
-git remote set-url --add origin https://gitlab.com/prime-world-classic/content-test.git
-git remote set-url --add origin https://github.com/Prime-World-Classic/content-test.git
-cd ..
-
-cd pwc-gitupdates
-# gilab and github mirrors (production client)
-git remote set-url --add origin https://gitlab.com/prime-world-classic/PWCGitUpdates.git
-git remote set-url --add origin https://github.com/Prime-World-Classic/pw-git-updates.git
-cd ..
-
-cd pwc-gitupdates-test
-# gilab and github mirrors (test client)
-git remote set-url --add origin https://gitlab.com/prime-world-classic/pwc-git-updates-test.git
-git remote set-url --add origin https://github.com/Prime-World-Classic/pw-git-updates-test.git
+# launcher content (main/test)
+repo launcher-pwc https://gitflic.ru/project/prime-world-classic/launcher-pwc.git https://gitlab.com/prime-world-classic/launcher-pwc.git https://github.com/Prime-World-Classic/launcher-pwc.git
+# game client updates (main/test)
+repo game-pwc https://gitflic.ru/project/prime-world-classic/game-pwc.git https://gitlab.com/prime-world-classic/game-pwc.git https://github.com/Prime-World-Classic/game-pwc.git
+# updater in Tools (main/test)
+repo updater https://gitflic.ru/project/prime-world-classic/updater.git https://gitlab.com/prime-world-classic/updater.git https://github.com/Prime-World-Classic/updater.git

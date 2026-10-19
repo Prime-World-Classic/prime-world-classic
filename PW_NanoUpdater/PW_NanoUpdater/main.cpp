@@ -15,6 +15,15 @@
 #include <thread>
 #include <fstream>
 #include <functional>
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstring>
+#include <numeric>
+#include <sstream>
+#include <wininet.h>
+
+#pragma comment(lib, "wininet.lib")
 
 class admin_rights_exception : std::exception {};
 class unhandled_error : std::exception {};
@@ -35,7 +44,52 @@ static bool isAdminRightsRequired = false;
 
 bool isRunningAdm = false;
 
+struct RepoConfig
+{
+   std::string path;
+   std::string label;
+   std::string branch;
+   std::vector<std::string> mirrors;
+};
 
+static std::vector<RepoConfig> repos;
+static bool remoteUrlsRanked = false;
+static std::string repoConfigDir;
+static std::string updateBranch = "main";
+
+static std::filesystem::path ExeDirectory()
+{
+   std::vector<char> buf(MAX_PATH);
+   for (;;) {
+      DWORD n = GetModuleFileNameA(nullptr, buf.data(), (DWORD)buf.size());
+      if (n == 0) {
+         return {};
+      }
+      if (n < buf.size()) {
+         return std::filesystem::path(buf.data()).parent_path();
+      }
+      if (buf.size() >= 32768) {
+         return {};
+      }
+      buf.resize(buf.size() * 2);
+   }
+}
+
+static std::string ResolveRepoPath(const std::string& repoPath)
+{
+   std::filesystem::path p(repoPath);
+   if (p.is_absolute() || repoConfigDir.empty()) {
+      return repoPath;
+   }
+   try {
+      return (std::filesystem::path(repoConfigDir) / p).lexically_normal().string();
+   }
+   catch (...) {
+      return repoPath;
+   }
+}
+
+#if defined(TEST_HASHES) || defined(ENABLE_RELEASE_FILES)
 static const char* releaseFileUrls[] = {
    "https://gitflic.ru/project/prime-world-classic/prime-world-classic-game/release/c24c9dd1-ac10-4045-8773-7083e4a70d80/b7a8d56f-9f7d-4dbf-87b0-7c939ecd7194/download",
    "https://gitflic.ru/project/prime-world-classic/prime-world-classic-game/release/c24c9dd1-ac10-4045-8773-7083e4a70d80/a7112311-ed44-4c1d-9c63-95dbc92b9bdd/download",
@@ -79,6 +133,7 @@ static const char* releaseFileHashes[] = {
    "..\\Game\\Hashes\\Asks_RU.fsb.md5",
    "..\\Game\\Hashes\\Music.fsb.md5"
 };
+#endif
 
 #ifdef ADMIN_MANIFEST
 class kill_admin_process_exception : std::exception {};
@@ -123,12 +178,318 @@ void CheckError(const char* stage)
 
 
 static std::string refName;
+// Remote ref to track, e.g. "refs/heads/main" or hidden "refs/testing/test"
+static std::string remoteRef;
+// Local branch it is checked out to, e.g. "refs/heads/test"
+static std::string localRef;
+bool NeedUpdate(git_repository* repo);
+
+struct SpeedProbeResult
+{
+   std::string url;
+   double bytesPerSec = 0.0;
+   unsigned long bytes = 0;
+   unsigned long elapsedMs = 0;
+   bool ok = false;
+};
+
+static std::string Trim(const std::string& value)
+{
+   size_t first = value.find_first_not_of(" \t\r\n");
+   if (first == std::string::npos) {
+      return "";
+   }
+   size_t last = value.find_last_not_of(" \t\r\n");
+   return value.substr(first, last - first + 1);
+}
+
+static std::string GitRefsProbeUrl(const std::string& repoUrl)
+{
+   std::string url = Trim(repoUrl);
+   while (!url.empty() && (url.back() == '/' || url.back() == '\\')) {
+      url.pop_back();
+   }
+
+   const std::string suffix = ".git";
+   if (url.size() < suffix.size() ||
+       _stricmp(url.c_str() + (url.size() - suffix.size()), suffix.c_str()) != 0) {
+      url += suffix;
+   }
+
+   return url + "/info/refs?service=git-upload-pack";
+}
+
+static SpeedProbeResult ProbeGitUrl(const std::string& repoUrl)
+{
+   SpeedProbeResult result;
+   result.url = repoUrl;
+
+   DWORD timeoutMs = 5000;
+   const DWORD maxBytes = 512 * 1024;
+   const DWORD chunkSize = 8 * 1024;
+
+   HINTERNET hInternet = InternetOpenA("PWClassicNanoUpdater", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+   if (!hInternet) {
+      return result;
+   }
+
+   InternetSetOptionA(hInternet, INTERNET_OPTION_CONNECT_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+   InternetSetOptionA(hInternet, INTERNET_OPTION_SEND_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+   InternetSetOptionA(hInternet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeoutMs, sizeof(timeoutMs));
+
+   std::string probeUrl = GitRefsProbeUrl(repoUrl);
+   const char* headers = "Accept-Encoding: identity\r\n";
+   HINTERNET hUrl = InternetOpenUrlA(
+      hInternet,
+      probeUrl.c_str(),
+      headers,
+      (DWORD)strlen(headers),
+      INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_NO_COOKIES |
+      INTERNET_FLAG_NO_UI | INTERNET_FLAG_SECURE,
+      0);
+
+   if (!hUrl) {
+      InternetCloseHandle(hInternet);
+      return result;
+   }
+
+   auto start = std::chrono::steady_clock::now();
+   std::vector<char> buffer(chunkSize);
+
+   while (result.bytes < maxBytes) {
+      DWORD bytesRead = 0;
+      if (!InternetReadFile(hUrl, buffer.data(), chunkSize, &bytesRead)) {
+         break;
+      }
+      if (bytesRead == 0) {
+         break;
+      }
+
+      result.bytes += bytesRead;
+
+      auto now = std::chrono::steady_clock::now();
+      result.elapsedMs = (unsigned long)std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+      if (result.elapsedMs >= timeoutMs) {
+         break;
+      }
+   }
+
+   auto now = std::chrono::steady_clock::now();
+   result.elapsedMs = (unsigned long)std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+   if (result.elapsedMs == 0) {
+      result.elapsedMs = 1;
+   }
+
+   result.ok = result.bytes > 0;
+   result.bytesPerSec = (double)result.bytes * 1000.0 / (double)result.elapsedMs;
+
+   InternetCloseHandle(hUrl);
+   InternetCloseHandle(hInternet);
+   return result;
+}
+
+static void RankRemoteUrls(std::vector<std::string>& urls, const std::string& label, bool verbose)
+{
+   if (urls.empty()) {
+      return;
+   }
+
+   std::vector<SpeedProbeResult> results(urls.size());
+   std::vector<std::thread> threads;
+   threads.reserve(urls.size());
+
+   for (size_t i = 0; i < urls.size(); ++i) {
+      threads.emplace_back([&, i]() {
+         results[i] = ProbeGitUrl(urls[i]);
+         });
+   }
+
+   for (auto& t : threads) {
+      t.join();
+   }
+
+   std::vector<size_t> order(urls.size());
+   std::iota(order.begin(), order.end(), 0);
+   std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+      return results[a].bytesPerSec > results[b].bytesPerSec;
+      });
+
+   std::vector<SpeedProbeResult> sortedResults;
+   sortedResults.reserve(results.size());
+   for (size_t idx : order) {
+      sortedResults.push_back(results[idx]);
+   }
+
+   urls.clear();
+   urls.reserve(sortedResults.size());
+   for (const auto& r : sortedResults) {
+      urls.push_back(r.url);
+   }
+
+   for (size_t i = 0; i < sortedResults.size(); ++i) {
+      const auto& r = sortedResults[i];
+      unsigned long long speed = (unsigned long long)r.bytesPerSec;
+      if (verbose) {
+         std::cout << "#{\"type\":\"speed_probe\",\"repo\":\"" << label
+            << "\",\"rank\":" << (i + 1)
+            << ",\"url\":\"" << r.url
+            << "\",\"bytesPerSec\":" << speed
+            << ",\"bytes\":" << r.bytes
+            << ",\"elapsedMs\":" << r.elapsedMs
+            << ",\"ok\":" << (r.ok ? "true" : "false")
+            << "}" << std::endl;
+      }
+      else {
+         std::cerr << "probe " << label << " " << (i + 1) << " " << speed << " B/s " << r.url << std::endl;
+      }
+   }
+}
+
+static void RankAllRemoteUrls(bool verbose)
+{
+   for (auto& repo : repos) {
+      RankRemoteUrls(repo.mirrors, repo.label, verbose);
+   }
+}
+
+static bool LoadReposFromFile(const std::string& path)
+{
+   std::ifstream file(path);
+   if (file.fail()) {
+      return false;
+   }
+
+   std::vector<RepoConfig> parsed;
+   std::string line;
+
+   try {
+      repoConfigDir = std::filesystem::absolute(std::filesystem::path(path)).parent_path().string();
+   }
+   catch (...) {
+      repoConfigDir.clear();
+   }
+
+   while (std::getline(file, line)) {
+      line = Trim(line);
+      if (line.empty() || line[0] == '#') {
+         continue;
+      }
+
+      std::istringstream stream(line);
+      std::string key;
+      stream >> key;
+
+      if (key == "repo") {
+         RepoConfig repo;
+         stream >> repo.path >> repo.label;
+         if (!repo.path.empty() && !repo.label.empty()) {
+            repo.path = ResolveRepoPath(repo.path);
+            parsed.push_back(repo);
+         }
+      }
+      else if (key == "mirror") {
+         std::string url;
+         stream >> url;
+         if (!parsed.empty() && !url.empty()) {
+            parsed.back().mirrors.push_back(url);
+         }
+      }
+   }
+
+   if (parsed.empty()) {
+      return false;
+   }
+
+   for (const auto& repo : parsed) {
+      if (repo.mirrors.empty()) {
+         return false;
+      }
+   }
+
+   repos.swap(parsed);
+   return true;
+}
+
+static bool LoadRepos()
+{
+   repoConfigDir.clear();
+
+   auto exeDir = ExeDirectory();
+   if (exeDir.empty()) {
+      std::cerr << "Failed to resolve updater executable directory" << std::endl;
+      return false;
+   }
+
+   std::filesystem::path path = exeDir / "updater_repos.txt";
+   std::error_code ec;
+   if (!std::filesystem::exists(path, ec)) {
+      std::cerr << "Repo config not found: " << path.string() << std::endl;
+      return false;
+   }
+
+   if (!LoadReposFromFile(path.string())) {
+      std::cerr << "Invalid repo config: " << path.string() << std::endl;
+      return false;
+   }
+
+#ifdef PW_TEST_UPDATER
+   updateBranch = "test";
+#endif
+   if (updateBranch.empty()) {
+      updateBranch = "main";
+   }
+   for (auto& repo : repos) {
+      repo.branch = updateBranch;
+   }
+
+   return true;
+}
+
+static bool RepoNeedsUpdate(const RepoConfig& repo)
+{
+   localRef = std::string("refs/heads/") + repo.branch;
+   remoteRef = localRef;
+
+   git_repository* repoHandle = nullptr;
+   if (git_repository_open(&repoHandle, repo.path.c_str()) < 0) {
+      return true;
+   }
+
+   bool needUpdate = true;
+   try {
+      refName = "";
+      needUpdate = NeedUpdate(repoHandle);
+   }
+   catch (...) {
+      needUpdate = true;
+   }
+
+   git_repository_free(repoHandle);
+   return needUpdate;
+}
+
+static bool AnyRepoNeedsUpdate()
+{
+   for (const auto& repo : repos) {
+      if (RepoNeedsUpdate(repo)) {
+         return true;
+      }
+   }
+   return false;
+}
+
+// refName/remoteRef/localRef are declared above.
 int fetchhead_callback(const char* ref_name, const char* remote_url, const git_oid* oid, unsigned int is_merge, void* payload) {
+   // FETCH_HEAD may list several refs: take only the tracked one
+   if (remoteRef != ref_name) {
+      return 0;
+   }
+
    memcpy(payload, oid, sizeof(git_oid));
 
-   refName = ref_name;
+   refName = localRef;
 
-   return 0; // return-zero to stop iterating
+   return 0; // return-zero to continue iterating
 }
 
 
@@ -212,17 +573,21 @@ bool NeedUpdate(git_repository* repo)
       error = git_remote_ls(&refs, &size, remote);
       CheckError("Remote ls");
 
+      // Compare with the tracked branch, not with remote HEAD
+      const git_oid* remote_commit = nullptr;
+      for (size_t i = 0; i < size; ++i) {
+         if (remoteRef == refs[i]->name) {
+            remote_commit = &refs[i]->oid;
+            break;
+         }
+      }
+
       error = git_remote_disconnect(remote);
 
-      int cmmm = git_oid_cmp(local_commit, &refs[0]->oid);
+      // Local branch must also be the tracked one (switch e.g. main -> test)
+      bool isTrackedBranch = (localRef == git_reference_name(head));
 
-      char oid[GIT_OID_SHA1_HEXSIZE + 1] = { 0 };
-      git_oid_fmt(oid, &refs[1]->oid);
-
-      char oidLocal[GIT_OID_SHA1_HEXSIZE + 1] = { 0 };
-      git_oid_fmt(oidLocal, local_commit);
-
-      if (git_oid_cmp(local_commit, &refs[0]->oid) == 0) {
+      if (remote_commit && isTrackedBranch && git_oid_cmp(local_commit, remote_commit) == 0) {
          return false;
       }
    }
@@ -251,7 +616,11 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
    error = git_remote_connect(remote, GIT_DIRECTION_FETCH, &remoteCallbacks, nullptr, nullptr);
    CheckError("Fetch connect");
 
-   error = git_remote_download(remote, nullptr, &fetchOpts);
+   // Fetch only the tracked ref
+   std::string refspec = "+" + remoteRef + ":refs/remotes/origin/" + branchName;
+   char* refspecStr = refspec.data();
+   git_strarray refspecs = { &refspecStr, 1 };
+   error = git_remote_download(remote, &refspecs, &fetchOpts);
    CheckError("Fetch download");
 
    error = git_remote_disconnect(remote);
@@ -262,7 +631,12 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
 
    // Search for heads
    git_oid fetch_head_oid;
+   refName = "";
    error = git_repository_fetchhead_foreach(repo, fetchhead_callback, &fetch_head_oid);
+   if (refName.empty()) {
+      std::cerr << "Ref " << remoteRef << " not found on remote" << std::endl;
+      throw unhandled_error();
+   }
 
    // Delete main branch first
    git_reference* mainBranch;
@@ -293,6 +667,18 @@ void RemoteFetch(git_repository* repo, git_remote* remote, const char* remoteRep
    git_reference* branch;
    error = git_branch_create(&branch, repo, branchName, commit, true);
    CheckError("Create main brach");
+
+   // Upstream of the branch: launcher reads branch.<name>.merge to watch the right ref
+   git_config* config = nullptr;
+   error = git_repository_config(&config, repo);
+   CheckError("Open config");
+   std::string branchKey = std::string("branch.") + branchName;
+   error = git_config_set_string(config, (branchKey + ".remote").c_str(), "origin");
+   if (error >= 0) {
+      error = git_config_set_string(config, (branchKey + ".merge").c_str(), remoteRef.c_str());
+   }
+   git_config_free(config);
+   CheckError("Set branch upstream");
 
    // Set head to it
    error = git_repository_set_head(repo, refName.c_str());
@@ -376,7 +762,33 @@ void ResetRepo(git_repository* repo, const char* repoPath)
 }
 
 
-void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* branchName) {
+// Point origin to remoteRepoUrl if it is not one of the known urls (primary or mirrors)
+void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl, const char* const* knownUrls, int knownUrlsCount)
+{
+   git_remote* origin = nullptr;
+   if (git_remote_lookup(&origin, repo, "origin") < 0) {
+      return;
+   }
+
+   const char* url = git_remote_url(origin);
+   bool isKnown = false;
+   for (int i = 0; url && i < knownUrlsCount; ++i) {
+      if (strcmp(url, knownUrls[i]) == 0) {
+         isKnown = true;
+         break;
+      }
+   }
+   git_remote_free(origin);
+
+   if (!isKnown || (url && strcmp(url, remoteRepoUrl) != 0)) {
+      ThrowIfNotWithAdminRights();
+      error = git_remote_set_url(repo, "origin", remoteRepoUrl);
+      CheckError("Set remote url");
+   }
+}
+
+
+void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* branchName, const char* const* knownUrls, int knownUrlsCount) {
    git_repository* repo = nullptr;
    git_remote* remote = nullptr;
 
@@ -384,6 +796,9 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
    error = git_repository_open(&repo, repoPath);
    if (error < 0) {
       InitRepo(&repo, &remote, repoPath, remoteRepoUrl);
+   }
+   else {
+      SyncRemoteUrl(repo, remoteRepoUrl, knownUrls, knownUrlsCount);
    }
 
    // Once the repository is cloned or opened, perform the rest of the
@@ -399,14 +814,20 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
 
 void LaunchAdminNanoUpdater() {
    std::filesystem::path cwd = std::filesystem::current_path();
+   std::filesystem::path exeDir = ExeDirectory();
+   std::filesystem::path admPath = exeDir.empty()
+      ? std::filesystem::path("..\\Tools\\PW_NanoUpdaterAdm.exe")
+      : exeDir / "PW_NanoUpdaterAdm.exe";
+   std::string admPathString = admPath.string();
+   std::string admParameters = "--branch " + (updateBranch.empty() ? std::string("main") : updateBranch);
 
    SHELLEXECUTEINFO ShExecInfo = { 0 };
    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
    ShExecInfo.hwnd = NULL;
    ShExecInfo.lpVerb = "open";
-   ShExecInfo.lpFile = "..\\Tools\\PW_NanoUpdaterAdm.exe";
-   ShExecInfo.lpParameters = "";
+   ShExecInfo.lpFile = admPathString.c_str();
+   ShExecInfo.lpParameters = admParameters.c_str();
    ShExecInfo.lpDirectory = cwd.string().c_str();
    ShExecInfo.nShow = SW_SHOW;
    ShExecInfo.hInstApp = NULL;
@@ -439,13 +860,37 @@ void LaunchAdminNanoUpdater() {
 
 
 bool IsAdminRequired() {
+   for (const auto& repo : repos) {
+      std::filesystem::path target(repo.path);
+      std::error_code ec;
+      std::filesystem::path testDir;
 
-   std::ofstream srrr("..\\Tools\\test");
-   if (!srrr.fail()) {
-      srrr.close();
-      remove("..\\Tools\\test");
+      if (std::filesystem::exists(target, ec)) {
+         testDir = target;
+      }
+      else {
+         std::filesystem::path parent = target.parent_path();
+         if (!parent.empty() && std::filesystem::exists(parent, ec)) {
+            testDir = parent;
+         }
+      }
+
+      if (testDir.empty()) {
+         continue;
+      }
+
+      std::filesystem::path testPath = testDir / "test";
+      std::ofstream srrr(testPath);
+      if (!srrr.fail()) {
+         srrr.close();
+         std::error_code removeEc;
+         std::filesystem::remove(testPath, removeEc);
+         return false;
+      }
+      return true;
    }
-   return srrr.fail();
+
+   return true;
 }
 
 
@@ -503,21 +948,47 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    return 0;
 #endif
 
-   bool skipRelease = false;
+   bool speedtestMode = false;
    for (int a = 0; a < argc; ++a) {
-      if (std::string(argv[a]) == "inno") {
-         skipRelease = true;
+      std::string arg(argv[a]);
+      if (arg == "speedtest") {
+         speedtestMode = true;
+      }
+      else if (arg == "inno") {
          if (a + 1 < argc) {
-            progressBarHandle = argv[a + 1];
+            progressBarHandle = argv[++a];
             HWND hwndProgressBar = (HWND)atoi(progressBarHandle);
             int result = PostMessage(hwndProgressBar, PBM_SETRANGE, 0, 100);
          }
-         break;
       }
+      else if (arg.rfind("--branch=", 0) == 0) {
+         updateBranch = arg.substr(9);
+      }
+      else if (arg.rfind("branch=", 0) == 0) {
+         updateBranch = arg.substr(7);
+      }
+      else if ((arg == "--branch" || arg == "branch") && a + 1 < argc) {
+         updateBranch = argv[++a];
+      }
+   }
+
+   if (speedtestMode) {
+      if (!LoadRepos()) {
+         return 1;
+      }
+      RankAllRemoteUrls(true);
+      return 0;
    }
 
 #ifdef ADMIN_MANIFEST
    isRunningAdm = true;
+#endif
+
+   if (!LoadRepos()) {
+      return 1;
+   }
+
+#ifdef ADMIN_MANIFEST
    std::atomic<bool> doWork;
    doWork.store(true);
    killAdminProcess.store(false);
@@ -562,33 +1033,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       std::cerr.rdbuf(new null_streambuf);
    }
 
-   const char* repoPath[] = {
-      "..\\Launcher\\content",
-      "..\\Game",
-   };
-
-   const char* repoLabels[] = {
-      "content",
-      "game",
-   };
-
-   const char* remoteRepoUrl[] = {
-      "https://gitflic.ru/project/prime-world-classic/content_pwc.git",
-      "https://gitflic.ru/project/prime-world-classic/pwc-gitupdates.git",
-   };
-
-   const char* remoteMirrorUrl[] = {
-      "https://gitlab.com/prime-world-classic/content.git",
-      "https://gitlab.com/prime-world-classic/PWCGitUpdates.git",
-   };
-
-   const char* remoteMirrorUrl2[] = {
-      "https://github.com/Prime-World-Classic/content.git",
-      "https://github.com/Prime-World-Classic/PWCGitUpdates.git",
-   };
-   const char* branchName = "main";
-
-
    // Initialize the library
    int _error = git_libgit2_init();
    if (_error < 0) {
@@ -604,21 +1048,43 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    }
 #endif
 
-   for (int i = 0; i < _countof(repoPath); ++i) {
+   if (!isAdminRightsRequired && !remoteUrlsRanked && AnyRepoNeedsUpdate()) {
+      RankAllRemoteUrls(false);
+      remoteUrlsRanked = true;
+   }
+
+   for (size_t i = 0; i < repos.size(); ++i) {
 #ifndef NDEBUG
       break;
 #endif
+      RepoConfig& repo = repos[i];
+      std::vector<const char*> knownPtrs;
+      knownPtrs.reserve(repo.mirrors.size());
+      for (const std::string& url : repo.mirrors) {
+         knownPtrs.push_back(url.c_str());
+      }
+
+      if (knownPtrs.empty()) {
+         continue;
+      }
+
+      const char* const* knownUrls = knownPtrs.data();
+      const int knownUrlsCount = (int)knownPtrs.size();
+
+      localRef = std::string("refs/heads/") + repo.branch;
+      remoteRef = localRef;
+
       try {
          if (isRunningAdm) {
             std::stringstream strStream;
-            strStream << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
+            strStream << "#{\"type\":\"label\", \"data\":\"" << repo.label << "\"}" << std::endl;
             TransmitMessage(strStream.str().c_str(), strStream.str().size());
          }
          else {
-            std::cout << "#{\"type\":\"label\", \"data\":\"" << repoLabels[i] << "\"}" << std::endl;
+            std::cout << "#{\"type\":\"label\", \"data\":\"" << repo.label << "\"}" << std::endl;
          }
          refName = "";
-         UpdateRepo(repoPath[i], remoteRepoUrl[i], branchName);
+         UpdateRepo(repo.path.c_str(), knownUrls[0], repo.branch.c_str(), knownUrls, knownUrlsCount);
       }
       catch (admin_rights_exception) {
 #ifndef ADMIN_MANIFEST
@@ -634,20 +1100,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       }
 #endif
       catch (unhandled_error) {
-         try {
-            CleanRepo(repoPath[i]);
-            refName = "";
-            UpdateRepo(repoPath[i], remoteMirrorUrl[i], branchName);
-         }
-         catch (unhandled_error) {
+         // Primary failed: re-clone from the mirrors one by one
+         bool updated = false;
+         for (int m = 1; m < knownUrlsCount && !updated; ++m) {
             try {
-               CleanRepo(repoPath[i]);
+               CleanRepo(repo.path.c_str());
                refName = "";
-               UpdateRepo(repoPath[i], remoteMirrorUrl2[i], branchName);
+               UpdateRepo(repo.path.c_str(), knownUrls[m], repo.branch.c_str(), knownUrls, knownUrlsCount);
+               updated = true;
             }
             catch (unhandled_error) {
-               throw std::exception("Failed mirrors");
             }
+         }
+         if (!updated) {
+            std::cerr << "Exception: Failed mirrors";
+            return 1;
          }
       }
       catch (std::exception ex) {
@@ -661,6 +1128,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       std::cerr << "Failed to shutdown libgit2 library!";
    }
 
+#ifdef ENABLE_RELEASE_FILES
    try {
       for (int r = 0; r < _countof(releaseFileUrls); ++r) {
          try {
@@ -685,6 +1153,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       mainProcessChecker.join();
       exit(0);
    }
+#endif
 #endif
 
 #ifdef ADMIN_MANIFEST
