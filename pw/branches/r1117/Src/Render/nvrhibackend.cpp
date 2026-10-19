@@ -60,6 +60,8 @@
 #include <cstring>
 #include <map>
 #include <set>
+#include <tuple>          // ключ кэша пайплайнов (шаг 14: скан по 30k записей на вывод)
+#include <unordered_map>  // кэш наборов текстур по подписи
 #include <string>
 #include <vector>
 
@@ -574,7 +576,15 @@ struct NvrhiBackendImpl
   {
     nvrhi::GraphicsPipelineHandle pipe;
     nvrhi::FramebufferHandle fb;
-    unsigned vs, ps, layout, rt, ds, prim;
+    unsigned vs, ps, layout, prim;
+    // Цель вывода входит в КЛЮЧ форматом и размером (SurfKey), а не индексом
+    // поверхности. С индексами пайплайнов становилось столько же, сколько пар
+    // (шейдеры x поверхности): замер 19.10 — 230@299 -> 3166@599 -> 8998@1199 ->
+    // 17873@2099 present'ов и 32782 за длинный прогон 18.10 при 14536
+    // поверхностях, тогда как смысловых ключей (§1.4) 206. Пайплайн Vulkan
+    // совместим с любым framebuffer'ом той же конфигурации вложений, поэтому
+    // привязка к индексу избыточна; картинка держится отдельным кэшем fbIdx.
+    unsigned long long rtKey, dsKey;
     // подпись шагов потоков, для которой построена раскладка (см. IlEntry):
     // без неё два VB с разными шагами дают один и тот же ключ пайплайна
     unsigned long long lsig;
@@ -608,6 +618,19 @@ struct NvrhiBackendImpl
   std::vector<ShaderObj> shaderObjs;
   std::vector<LayoutObj> layoutObjs;
   std::vector<PipeObj> pipes;
+  // Кэш пайплайнов — по ключу, не линейным сканом: при десятках тысяч записей
+  // скан на каждый вывод (1,86M попаданий за прогон) сам становится дороже вывода.
+  // vs, ps, layout, prim, lsig, stateHash, rtKey, dsKey
+  typedef std::tuple<unsigned, unsigned, unsigned, unsigned,
+                     unsigned long long, unsigned long long,
+                     unsigned long long, unsigned long long> PipeKey;
+  std::map<PipeKey, unsigned> pipeIdx;   // ключ -> индекс в pipes
+  // Framebuffer — ОТДЕЛЬНЫЙ кэш по паре индексов поверхностей: он обязан
+  // указывать ровно на эти картинки, но их комбинаций на порядок меньше, чем
+  // (пайплайн x поверхность), и живут они дешевле.
+  struct FbObj { unsigned rt, ds; nvrhi::FramebufferHandle fb; };
+  std::vector<FbObj> fbObjs;
+  std::map<std::pair<unsigned, unsigned>, unsigned> fbIdx;   // (rt,ds) -> индекс в fbObjs
 
   ////////////////////////////////////////////////////////////////////
   // Шаг 13.1: текстуры и наборы ресурсов.
@@ -677,9 +700,10 @@ struct NvrhiBackendImpl
   };
   std::vector<TextureObj> textures;
   std::vector<ResMapObj> resMaps;
+  std::map<std::pair<unsigned, unsigned>, int> resMapIdx;   // (vs,ps) -> индекс в resMaps
   // подпись (набор привязок текстур) -> готовый набор; линейный поиск: за кадр
   // уникальных подписей мало (замер шага 8: 85 активных ключей на кадр)
-  std::vector<std::pair<unsigned long long, nvrhi::BindingSetHandle> > setCache;
+  std::unordered_map<unsigned long long, nvrhi::BindingSetHandle> setCache;
   // Поток загрузки карты (замер 2026-10-16: поток (0036) — рендер, (0368) —
   // загрузка `_.baked_terrain`) создаёт буферы и грузит в них биты ПОСРЕДИ
   // вывода рендер-потока. В D3D9 это переживалось (рантайм сериализует), здесь
@@ -1167,7 +1191,11 @@ void NvrhiBackendImpl::InvalidateRefsTo(unsigned kind, unsigned index)
   }
 
   pipes.clear();
+  pipeIdx.clear();
+  fbObjs.clear();
+  fbIdx.clear();
   resMaps.clear();
+  resMapIdx.clear();
   setCache.clear();
   smpSetCache.clear();
   ilCache.clear();
@@ -2187,6 +2215,9 @@ void NvrhiBackend::DestroySwapchain()
   // пересоздания swapchain'а часть из них указывает на мёртвые картинки,
   // поэтому сбрасываем (дороже, но молча рисовать по чужой картинке — хуже).
   d.pipes.clear();
+  d.pipeIdx.clear();
+  d.fbObjs.clear();
+  d.fbIdx.clear();
   d.setCache.clear();
   d.currentSurface = 0;
   // Собственный кэш бэкенда по текущим RT/DS тоже обязан быть сброшен:
@@ -2326,7 +2357,11 @@ void NvrhiBackend::Shutdown()
   d.smpSetCache.clear();
   d.samplerCache.clear();
   d.resMaps.clear();
+  d.resMapIdx.clear();
   d.pipes.clear();
+  d.pipeIdx.clear();
+  d.fbObjs.clear();
+  d.fbIdx.clear();
   d.textures.clear();
   d.buffers.clear();
   d.shaderObjs.clear();
@@ -2437,9 +2472,10 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) загруз=%u "
+  DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u загруз=%u "
              "объектов B/T/S=%u/%u/%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
+             (unsigned)d.fbObjs.size(),
              d.uploads, (unsigned)d.buffers.size(), (unsigned)d.textures.size(),
              (unsigned)d.surfaces.size());
 }
@@ -4078,8 +4114,9 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
 {
   if (d.curVs == kNoRes || d.curPs == kNoRes) return -1;
   if (d.curVs >= d.shaderObjs.size() || d.curPs >= d.shaderObjs.size()) return -1;
-  for (size_t i = 0; i < d.resMaps.size(); ++i)
-    if (d.resMaps[i].vs == d.curVs && d.resMaps[i].ps == d.curPs) return (int)i;
+  const std::pair<unsigned, unsigned> rk(d.curVs, d.curPs);
+  std::map<std::pair<unsigned, unsigned>, int>::const_iterator ri = d.resMapIdx.find(rk);
+  if (ri != d.resMapIdx.end() && ri->second < (int)d.resMaps.size()) return ri->second;
 
   NvrhiBackendImpl::ResMapObj rm;
   rm.vs = d.curVs; rm.ps = d.curPs;
@@ -4157,6 +4194,7 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
     VkNote("ResMap: SSBO в наборе 1 ещё не привязан (шаг 13.2)", false, 0);
 
   d.resMaps.push_back(rm);
+  d.resMapIdx.insert(std::make_pair(rk, (int)d.resMaps.size() - 1));
   ++d.resMapsCreated;
   if (d.resMaps.size() <= 4u || (d.resMaps.size() % 50u) == 0u)
   {
@@ -4554,8 +4592,9 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
                                                   const NvrhiBackendImpl::ResMapObj& rm,
                                                   unsigned long long sig)
 {
-  for (size_t i = 0; i < d.setCache.size(); ++i)
-    if (d.setCache[i].first == sig) return d.setCache[i].second;
+  std::unordered_map<unsigned long long, nvrhi::BindingSetHandle>::const_iterator sc =
+      d.setCache.find(sig);
+  if (sc != d.setCache.end()) return sc->second;
   // кэп: за бой подписей больше, чем пайплайнов (текстуры меняются чаще), а
   // набор держит VkDescriptorSet — при переполнении чистим и строим заново
   if (d.setCache.size() > 4096u)
@@ -4613,9 +4652,46 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     VkNote("Draw: createBindingSet(текстуры)", false, 0);
     return nvrhi::BindingSetHandle();
   }
-  d.setCache.push_back(std::make_pair(sig, bs));
+  d.setCache.insert(std::make_pair(sig, bs));
   ++d.setsCreated;
   return bs;
+}
+
+// Ключ цели вывода: формат + размер (+ признак глубины), БЕЗ индекса поверхности.
+// Упаковано без потерь: fmt/w/h по 20 бит, глубина — в 61-м бите.
+static unsigned long long SurfKey(const NvrhiBackendImpl& d, unsigned idx)
+{
+  if (idx == kNoRes || idx >= d.surfaces.size()) return 0ull;
+  const SurfaceObj& s = d.surfaces[idx];
+  return ((unsigned long long)(s.depth ? 1u : 0u) << 61)
+       | ((unsigned long long)(unsigned)s.fmt << 40)
+       | ((unsigned long long)(s.w & 0xFFFFFu) << 20)
+       | (unsigned long long)(s.h & 0xFFFFFu);
+}
+
+// Framebuffer по паре индексов поверхностей, отдельным кэшем. Пайплайн теперь
+// переиспользуется между поверхностями одного формата и размера, а framebuffer
+// обязан указывать ровно на эти картинки. Чистится вместе с кэшем пайплайнов
+// (пересоздание swapchain'а, Shutdown) — иначе останется вьюха мёртвой картинки.
+static nvrhi::FramebufferHandle FindOrCreateFb(NvrhiBackendImpl& d, unsigned rt, unsigned ds)
+{
+  if (rt == kNoRes || rt >= d.surfaces.size()) return nvrhi::FramebufferHandle();
+  const std::pair<unsigned, unsigned> k(rt, ds);
+  std::map<std::pair<unsigned, unsigned>, unsigned>::const_iterator f = d.fbIdx.find(k);
+  if (f != d.fbIdx.end() && f->second < (unsigned)d.fbObjs.size()) return d.fbObjs[f->second].fb;
+  nvrhi::FramebufferDesc fbd;
+  fbd.addColorAttachment(d.surfaces[rt].tex);
+  if (ds != kNoRes && ds < d.surfaces.size())
+    fbd.setDepthAttachment(d.surfaces[ds].tex);
+  VK_TRACE("fb >");
+  nvrhi::FramebufferHandle fb = d.nvrhiDevice->createFramebuffer(fbd);
+  VK_TRACE("fb <");
+  if (!fb) { VkNote("Пайплайн: createFramebuffer", false, 0); return nvrhi::FramebufferHandle(); }
+  NvrhiBackendImpl::FbObj o;
+  o.rt = rt; o.ds = ds; o.fb = fb;
+  d.fbObjs.push_back(o);
+  d.fbIdx.insert(std::make_pair(k, (unsigned)d.fbObjs.size() - 1u));
+  return fb;
 }
 
 nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderPrimitiveType type,
@@ -4624,18 +4700,22 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   // подпись шагов потоков обязана входить в ключ: раскладка в Vulkan несёт шаг
   // потока, и без неё два VB с разными шагами получили бы один пайплайн
   const unsigned long long lsig = StrideSignature(d);
-  for (size_t i = 0; i < d.pipes.size(); ++i)
+  const unsigned long long rtKey = SurfKey(d, d.curRt), dsKey = SurfKey(d, d.curDs);
+  const NvrhiBackendImpl::PipeKey pk = std::make_tuple(d.curVs, d.curPs, d.curLayout,
+                                                       (unsigned)type, lsig, d.modelHash,
+                                                       rtKey, dsKey);
+  std::map<NvrhiBackendImpl::PipeKey, unsigned>::const_iterator pi = d.pipeIdx.find(pk);
+  if (pi != d.pipeIdx.end() && pi->second < (unsigned)d.pipes.size())
   {
-    const NvrhiBackendImpl::PipeObj& p = d.pipes[i];
-    if (p.vs == d.curVs && p.ps == d.curPs && p.layout == d.curLayout &&
-        p.lsig == lsig && p.stateHash == d.modelHash &&
-        p.rt == d.curRt && p.ds == d.curDs && p.prim == (unsigned)type)
+    ++d.pipeHits;
+    const NvrhiBackendImpl::PipeObj& p = d.pipes[pi->second];
+    if (ppFb)
     {
-      ++d.pipeHits;
-      if (ppFb) *ppFb = p.fb;   // RefCountPtr::operator& возвращает T**, поэтому
-                                // наружу отдаётся сырой указатель (владеет PipeObj)
-      return p.pipe;
+      nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, d.curDs);
+      if (!fb) return nvrhi::GraphicsPipelineHandle();
+      *ppFb = fb;   // владеет кэш framebuffer'ов (RefCountPtr::operator& -> T**)
     }
+    return p.pipe;
   }
   if (d.curVs == kNoRes || d.curPs == kNoRes || d.curLayout == kNoRes || d.curRt == kNoRes)
     return nvrhi::GraphicsPipelineHandle();
@@ -4670,14 +4750,8 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
                  (d.curDs != kNoRes && d.curDs < d.surfaces.size()) ? d.surfaces[d.curDs].h : 0u);
     }
   }
-  nvrhi::FramebufferDesc fbd;
-  fbd.addColorAttachment(d.surfaces[d.curRt].tex);
-  if (d.curDs != kNoRes && d.curDs < d.surfaces.size())
-    fbd.setDepthAttachment(d.surfaces[d.curDs].tex);
-  VK_TRACE("fb >");
-  nvrhi::FramebufferHandle fb = d.nvrhiDevice->createFramebuffer(fbd);
-  VK_TRACE("fb <");
-  if (!fb) { VkNote("Пайплайн: createFramebuffer", false, 0); return nvrhi::GraphicsPipelineHandle(); }
+  nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, d.curDs);
+  if (!fb) return nvrhi::GraphicsPipelineHandle();
 
   nvrhi::GraphicsPipelineDesc pd;
   pd.setPrimType(PrimType(type)).setInputLayout(il)
@@ -4712,10 +4786,11 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   NvrhiBackendImpl::PipeObj po;
   po.pipe = pipe; po.fb = fb;
   po.vs = d.curVs; po.ps = d.curPs; po.layout = d.curLayout;
-  po.rt = d.curRt; po.ds = d.curDs; po.prim = (unsigned)type;
+  po.prim = (unsigned)type; po.rtKey = rtKey; po.dsKey = dsKey;
   po.lsig = lsig;
   po.stateHash = d.modelHash;
   d.pipes.push_back(po);
+  d.pipeIdx.insert(std::make_pair(pk, (unsigned)d.pipes.size() - 1u));
   ++d.pipesCreated;
   if (ppFb) *ppFb = fb;
   return pipe;
