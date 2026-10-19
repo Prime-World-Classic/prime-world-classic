@@ -28,4 +28,8 @@ exit /b 0
 :mirror
 if "%~2"=="" exit /b 0
 git -C "%~1" config --get-all --fixed-value remote.origin.url "%~2" >nul || git -C "%~1" remote set-url --add origin "%~2"
+rem Clones with explicit pushurl entries push only to pushurl, so the mirror is
+rem added as pushurl too when the clone has any.
+git -C "%~1" config --get-all remote.origin.pushurl >nul 2>nul || exit /b 0
+git -C "%~1" config --get-all --fixed-value remote.origin.pushurl "%~2" >nul || git -C "%~1" remote set-url --add --push origin "%~2"
 exit /b 0
