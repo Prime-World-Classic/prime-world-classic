@@ -7,26 +7,21 @@ setlocal
 if not exist UpdateRepos mkdir UpdateRepos
 cd UpdateRepos
 
-rem production launcher (+ testers in refs/testing/test)
-call :repo content_pwc git@gitflic.ru:prime-world-classic/content_pwc.git git@gitlab.com:prime-world-classic/content.git git@github.com:Prime-World-Classic/content.git testing
-rem test launcher (old scheme)
-call :repo content-test git@gitflic.ru:prime-world-classic/content-test.git git@gitlab.com:prime-world-classic/content-test.git git@github.com:Prime-World-Classic/content-test.git
-rem production client (+ testers in refs/testing/test)
-call :repo pwc-gitupdates git@gitflic.ru:prime-world-classic/pwc-gitupdates.git git@gitlab.com:prime-world-classic/PWCGitUpdates.git git@github.com:Prime-World-Classic/PWCGitUpdates.git testing
-rem test client (old scheme)
-call :repo pwc-gitupdates-test git@gitflic.ru:prime-world-classic/pwc-gitupdates-test.git git@gitlab.com:prime-world-classic/pwc-git-updates-test.git git@github.com:Prime-World-Classic/PWCGitUpdates-test.git
+rem launcher content (main/test)
+call :repo launcher-pwc git@gitflic.ru:prime-world-classic/launcher-pwc.git git@gitlab.com:prime-world-classic/launcher-pwc.git git@github.com:Prime-World-Classic/launcher-pwc.git
+rem game client updates (main/test)
+call :repo game-pwc git@gitflic.ru:prime-world-classic/game-pwc.git git@gitlab.com:prime-world-classic/game-pwc.git git@github.com:Prime-World-Classic/game-pwc.git
+rem updater in Tools (main/test)
+call :repo updater git@gitflic.ru:prime-world-classic/updater.git git@gitlab.com:prime-world-classic/updater.git git@github.com:Prime-World-Classic/updater.git
 
 endlocal
 exit /b 0
 
-rem :repo <folder> <gitflic> <gitlab> <github> [testing]
+rem :repo <folder> <gitflic> <gitlab> <github>
 :repo
 if not exist "%~1\.git" git clone "%~2" "%~1"
 call :mirror "%~1" "%~3"
 call :mirror "%~1" "%~4"
-rem Hidden testers ref (refs/testing/test) is not fetched by default
-if "%~5"=="" exit /b 0
-git -C "%~1" config --get-all --fixed-value remote.origin.fetch "+refs/testing/*:refs/remotes/origin/testing/*" >nul || git -C "%~1" config --add remote.origin.fetch "+refs/testing/*:refs/remotes/origin/testing/*"
 exit /b 0
 
 :mirror

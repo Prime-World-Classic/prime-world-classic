@@ -7,7 +7,7 @@ set -e
 mkdir -p UpdateRepos
 cd UpdateRepos
 
-# repo <folder> <gitflic> <gitlab> <github> [testing]
+# repo <folder> <gitflic> <gitlab> <github>
 repo() {
   [ -d "$1/.git" ] || git clone "$2" "$1"
   local url
@@ -15,18 +15,11 @@ repo() {
     git -C "$1" config --get-all --fixed-value remote.origin.url "$url" >/dev/null ||
       git -C "$1" remote set-url --add origin "$url"
   done
-  # Hidden testers ref (refs/testing/test) is not fetched by default
-  if [ -n "$5" ]; then
-    git -C "$1" config --get-all --fixed-value remote.origin.fetch '+refs/testing/*:refs/remotes/origin/testing/*' >/dev/null ||
-      git -C "$1" config --add remote.origin.fetch '+refs/testing/*:refs/remotes/origin/testing/*'
-  fi
 }
 
-# production launcher (+ testers in refs/testing/test)
-repo content_pwc git@gitflic.ru:prime-world-classic/content_pwc.git git@gitlab.com:prime-world-classic/content.git git@github.com:Prime-World-Classic/content.git testing
-# test launcher (old scheme)
-repo content-test git@gitflic.ru:prime-world-classic/content-test.git git@gitlab.com:prime-world-classic/content-test.git git@github.com:Prime-World-Classic/content-test.git
-# production client (+ testers in refs/testing/test)
-repo pwc-gitupdates git@gitflic.ru:prime-world-classic/pwc-gitupdates.git git@gitlab.com:prime-world-classic/PWCGitUpdates.git git@github.com:Prime-World-Classic/PWCGitUpdates.git testing
-# test client (old scheme)
-repo pwc-gitupdates-test git@gitflic.ru:prime-world-classic/pwc-gitupdates-test.git git@gitlab.com:prime-world-classic/pwc-git-updates-test.git git@github.com:Prime-World-Classic/PWCGitUpdates-test.git
+# launcher content (main/test)
+repo launcher-pwc git@gitflic.ru:prime-world-classic/launcher-pwc.git git@gitlab.com:prime-world-classic/launcher-pwc.git git@github.com:Prime-World-Classic/launcher-pwc.git
+# game client updates (main/test)
+repo game-pwc git@gitflic.ru:prime-world-classic/game-pwc.git git@gitlab.com:prime-world-classic/game-pwc.git git@github.com:Prime-World-Classic/game-pwc.git
+# updater in Tools (main/test)
+repo updater git@gitflic.ru:prime-world-classic/updater.git git@gitlab.com:prime-world-classic/updater.git git@github.com:Prime-World-Classic/updater.git
