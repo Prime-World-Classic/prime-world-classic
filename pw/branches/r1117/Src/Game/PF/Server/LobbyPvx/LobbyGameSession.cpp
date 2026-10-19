@@ -368,6 +368,7 @@ void GameSession::SetupAuxGameServerData( Peered::SAuxData & gsAuxData )
   gsAuxData.customGame = socialGameDetails.customGame;
   gsAuxData.guildData = params.guildData;
   gsAuxData.sessiontype = params.sessiontype;
+  gsAuxData.sessionToken = sessionToken;
 
   if ( socialGameData.mapType != NDb::MAPTYPE_NONE )
   {
@@ -588,6 +589,7 @@ void GameSession::Start()
     chatChannelNames.push_back( gamechat::channels::Team2 );
     chatChannelNames.push_back( gamechat::channels::Team1_SmartChat );
     chatChannelNames.push_back( gamechat::channels::Team2_SmartChat );
+    chatChannelNames.push_back( gamechat::channels::Spectators );
 
     int rc = chatControl->OpenGameChat(gameId, chatChannelNames, this);
     if (rc < 0)
@@ -764,6 +766,10 @@ void GameSession::AddToChatControl( Transport::TClientId clientId, ETeam::Enum t
     chatControl->AddToChannel( gameId, gamechat::channels::Team2, clientId, isMuted );
     chatControl->AddToChannel( gameId, gamechat::channels::Team2_SmartChat, clientId, false );
   }
+
+  // a spectator (no team) also gets the spectators channel: its "team" chat
+  if ( team == ETeam::None )
+    chatControl->AddToChannel( gameId, gamechat::channels::Spectators, clientId, isMuted );
 }
 
 

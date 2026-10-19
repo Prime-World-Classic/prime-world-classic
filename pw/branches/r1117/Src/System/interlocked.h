@@ -38,7 +38,7 @@ namespace nival
 
   template< typename T, typename T2 > inline T* interlocked_exchange_pointer(T * volatile &value, T2 * new_value)
   {
-    return static_cast< T* >( InterlockedExchangePointer( &value, new_value ) );
+    return static_cast< T* >( InterlockedExchangePointer( (volatile PVOID*)&value, (PVOID)new_value ) );
   }
   
   template< typename T > inline T* interlocked_compare_exchange_pointer( T * volatile &destination, T* exchange, T* comparand )

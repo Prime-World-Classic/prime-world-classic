@@ -12,7 +12,18 @@ namespace flash
 
 TextContainerStyle::TextContainerStyle( TextContainer * _owner, IFontInstance * font ) :
 owner( _owner ),
-fontInstance( font )
+fontInstance( font ),
+hasColor( false )
+{
+}
+
+
+
+TextContainerStyle::TextContainerStyle( TextContainer * _owner, IFontInstance * font, const SWF_RGBA & _color ) :
+owner( _owner ),
+fontInstance( font ),
+hasColor( true ),
+color( _color )
 {
 }
 
@@ -76,7 +87,14 @@ void TextContainerStyle::RenderText( const NMarkup::SBounds & bounds, const NMar
   flash::SWF_MATRIX mtx;
   mtx.Concatenate( worldMatrix, offsMtx );
 
-  fontInstance->RenderText( text, length, mtx, owner->DefaultColor(), owner->GetCropRect());
+  if ( hasColor )
+  {
+    SWF_RGBA c = color;
+    c.a = owner->DefaultColor().a; // keep fades of the text field
+    fontInstance->RenderText( text, length, mtx, c, owner->GetCropRect());
+  }
+  else
+    fontInstance->RenderText( text, length, mtx, owner->DefaultColor(), owner->GetCropRect());
 }
 
 
@@ -103,6 +121,7 @@ void TextContainer::CreateDefaultFont( int height )
   Strong<IFontInstance> inst = fontRender->FindFont( 0, height, false, false, 0 );
   NI_ASSERT( inst, "" );
   defaultFont = new TextContainerStyle( this, inst );
+  colorStyles.clear();
 }
 
 
@@ -111,7 +130,10 @@ void TextContainer::SetDefaultFont( SwfFont * swfFont, int height )
 {
   Strong<IFontInstance> inst = swfFont->GetRenderable( fontRender, height );
   if ( inst )
+  {
     defaultFont = new TextContainerStyle( this, inst );
+    colorStyles.clear();
+  }
 }
 
 
@@ -147,6 +169,33 @@ NMarkup::IStyle * TextContainer::GetStyle( const NMarkup::TChar * style )
 
   if ( !style )
     return defaultFont;
+
+  // '#RRGGBB': default font in that color
+  if ( style[0] == L'#' )
+  {
+    unsigned rgb = 0;
+    int digits = 0;
+    for ( const NMarkup::TChar * p = style + 1; *p; ++p, ++digits )
+    {
+      unsigned d = 0;
+      if ( *p >= L'0' && *p <= L'9' )      d = (unsigned)( *p - L'0' );
+      else if ( *p >= L'a' && *p <= L'f' ) d = (unsigned)( *p - L'a' + 10 );
+      else if ( *p >= L'A' && *p <= L'F' ) d = (unsigned)( *p - L'A' + 10 );
+      else return defaultFont;
+      rgb = ( rgb << 4 ) | d;
+    }
+    if ( digits != 6 )
+      return defaultFont;
+
+    TColorStylesCache::iterator cit = colorStyles.find( rgb );
+    if ( cit != colorStyles.end() )
+      return cit->second;
+
+    const SWF_RGBA rgba( (UI8)( ( rgb >> 16 ) & 0xFF ), (UI8)( ( rgb >> 8 ) & 0xFF ), (UI8)( rgb & 0xFF ), 255 );
+    Strong<TextContainerStyle> & colorSlot = colorStyles[rgb];
+    colorSlot = new TextContainerStyle( this, defaultFont->Renderable(), rgba );
+    return colorSlot;
+  }
 
   SwfFont * swfFont = fontDictionary->GetFontByName( NStr::ToMBCS( style ).c_str() );
   if ( !swfFont )

@@ -12,6 +12,22 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Render
 {
+// NI_DB_LAYOUT_ASSERT -- variant of NI_STATIC_ASSERT used only here (the file is
+// generated; the generator is not in the tree, so keep this block when
+// regenerating). The "no gap between significant fields" check exists because
+// Render::Material::GetRSandSamplersRep lays the field values out as raw
+// memcpy chunks for the material CRC/sort id.
+// On x64 it does not hold: NDb::Sampler contains Ptr<> (8 bytes, alignment 8),
+// so after RenderState (16 bytes, alignment 4) the sampler is realigned and a
+// 4-byte gap appears -- in the struct AND in the CRC buffer. Material identity
+// therefore has to be revisited for x64 (batching only, no rendering break),
+// see PLAN_client_modern.md, stage 3 audit.
+#if defined(_M_X64) || defined(__x86_64__)
+#  define NI_DB_LAYOUT_ASSERT( expr, msg )
+#else
+#  define NI_DB_LAYOUT_ASSERT( expr, msg ) NI_STATIC_ASSERT( expr, msg )
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct RuntimePins
 {
@@ -289,10 +305,10 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( AOEMaterial, renderState ) + sizeof( renderState ) == offsetof( AOEMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( AOEMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( AOEMaterial, primaryColor ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( AOEMaterial, primaryColor ) + sizeof( primaryColor ) == offsetof( AOEMaterial, secondaryColor ), Found_gap_after_significant_field_primaryColor );
-	  NI_STATIC_ASSERT( offsetof( AOEMaterial, secondaryColor ) + sizeof( secondaryColor ) == offsetof( AOEMaterial, aspectRatio ), Found_gap_after_significant_field_secondaryColor );
+	  NI_DB_LAYOUT_ASSERT( offsetof( AOEMaterial, renderState ) + sizeof( renderState ) == offsetof( AOEMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( AOEMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( AOEMaterial, primaryColor ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( AOEMaterial, primaryColor ) + sizeof( primaryColor ) == offsetof( AOEMaterial, secondaryColor ), Found_gap_after_significant_field_primaryColor );
+	  NI_DB_LAYOUT_ASSERT( offsetof( AOEMaterial, secondaryColor ) + sizeof( secondaryColor ) == offsetof( AOEMaterial, aspectRatio ), Found_gap_after_significant_field_secondaryColor );
 	}
 
   static int samplersOffsets[1];
@@ -420,16 +436,16 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicFXMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( BasicFXMaterial, DiffuseMul ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( BasicFXMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( BasicFXMaterial, emissive ), Found_gap_after_significant_field_DiffuseAdd );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, emissive ) + sizeof( emissive ) == offsetof( BasicFXMaterial, distortion ), Found_gap_after_significant_field_emissive );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, distortion ) + sizeof( distortion ) == offsetof( BasicFXMaterial, masterOpacity ), Found_gap_after_significant_field_distortion );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, masterOpacity ) + sizeof( masterOpacity ) == offsetof( BasicFXMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_masterOpacity );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( BasicFXMaterial, opacity ), Found_gap_after_significant_field_isBlendModeOverrided );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicFXMaterial, uOffset ), Found_gap_after_significant_field_opacity );
-	  NI_STATIC_ASSERT( offsetof( BasicFXMaterial, uOffset ) + sizeof( uOffset ) == offsetof( BasicFXMaterial, vOffset ), Found_gap_after_significant_field_uOffset );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicFXMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( BasicFXMaterial, DiffuseMul ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( BasicFXMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( BasicFXMaterial, emissive ), Found_gap_after_significant_field_DiffuseAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, emissive ) + sizeof( emissive ) == offsetof( BasicFXMaterial, distortion ), Found_gap_after_significant_field_emissive );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, distortion ) + sizeof( distortion ) == offsetof( BasicFXMaterial, masterOpacity ), Found_gap_after_significant_field_distortion );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, masterOpacity ) + sizeof( masterOpacity ) == offsetof( BasicFXMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_masterOpacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( BasicFXMaterial, opacity ), Found_gap_after_significant_field_isBlendModeOverrided );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicFXMaterial, uOffset ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicFXMaterial, uOffset ) + sizeof( uOffset ) == offsetof( BasicFXMaterial, vOffset ), Found_gap_after_significant_field_uOffset );
 	}
 
   static int samplersOffsets[1];
@@ -577,10 +593,10 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( BasicMaskMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicMaskMaterial, Diffuse ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( BasicMaskMaterial, Diffuse ) + sizeof( Diffuse ) == offsetof( BasicMaskMaterial, Mask ), Found_gap_after_significant_field_Diffuse );
-	  NI_STATIC_ASSERT( offsetof( BasicMaskMaterial, Mask ) + sizeof( Mask ) == offsetof( BasicMaskMaterial, opacity ), Found_gap_after_significant_field_Mask );
-	  NI_STATIC_ASSERT( offsetof( BasicMaskMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicMaskMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaskMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicMaskMaterial, Diffuse ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaskMaterial, Diffuse ) + sizeof( Diffuse ) == offsetof( BasicMaskMaterial, Mask ), Found_gap_after_significant_field_Diffuse );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaskMaterial, Mask ) + sizeof( Mask ) == offsetof( BasicMaskMaterial, opacity ), Found_gap_after_significant_field_Mask );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaskMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicMaskMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_opacity );
 	}
 
   static int samplersOffsets[2];
@@ -714,20 +730,20 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( BasicMaterial, NormalMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, NormalMap ) + sizeof( NormalMap ) == offsetof( BasicMaterial, SpecularMap ), Found_gap_after_significant_field_NormalMap );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, SpecularMap ) + sizeof( SpecularMap ) == offsetof( BasicMaterial, ReflectionMap ), Found_gap_after_significant_field_SpecularMap );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, ReflectionMap ) + sizeof( ReflectionMap ) == offsetof( BasicMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_ReflectionMap );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( BasicMaterial, diffuseColor ), Found_gap_after_significant_field_isBlendModeOverrided );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, diffuseColor ) + sizeof( diffuseColor ) == offsetof( BasicMaterial, lightingIntencity ), Found_gap_after_significant_field_diffuseColor );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, lightingIntencity ) + sizeof( lightingIntencity ) == offsetof( BasicMaterial, outputMul ), Found_gap_after_significant_field_lightingIntencity );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, outputMul ) + sizeof( outputMul ) == offsetof( BasicMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( BasicMaterial, emissive ), Found_gap_after_significant_field_outputAdd );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, emissive ) + sizeof( emissive ) == offsetof( BasicMaterial, opacity ), Found_gap_after_significant_field_emissive );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicMaterial, reflectivity ), Found_gap_after_significant_field_opacity );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, reflectivity ) + sizeof( reflectivity ) == offsetof( BasicMaterial, specularPower ), Found_gap_after_significant_field_reflectivity );
-	  NI_STATIC_ASSERT( offsetof( BasicMaterial, specularPower ) + sizeof( specularPower ) == offsetof( BasicMaterial, specialTransparency ), Found_gap_after_significant_field_specularPower );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, renderState ) + sizeof( renderState ) == offsetof( BasicMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( BasicMaterial, NormalMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, NormalMap ) + sizeof( NormalMap ) == offsetof( BasicMaterial, SpecularMap ), Found_gap_after_significant_field_NormalMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, SpecularMap ) + sizeof( SpecularMap ) == offsetof( BasicMaterial, ReflectionMap ), Found_gap_after_significant_field_SpecularMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, ReflectionMap ) + sizeof( ReflectionMap ) == offsetof( BasicMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_ReflectionMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( BasicMaterial, diffuseColor ), Found_gap_after_significant_field_isBlendModeOverrided );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, diffuseColor ) + sizeof( diffuseColor ) == offsetof( BasicMaterial, lightingIntencity ), Found_gap_after_significant_field_diffuseColor );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, lightingIntencity ) + sizeof( lightingIntencity ) == offsetof( BasicMaterial, outputMul ), Found_gap_after_significant_field_lightingIntencity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, outputMul ) + sizeof( outputMul ) == offsetof( BasicMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( BasicMaterial, emissive ), Found_gap_after_significant_field_outputAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, emissive ) + sizeof( emissive ) == offsetof( BasicMaterial, opacity ), Found_gap_after_significant_field_emissive );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, opacity ) + sizeof( opacity ) == offsetof( BasicMaterial, reflectivity ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, reflectivity ) + sizeof( reflectivity ) == offsetof( BasicMaterial, specularPower ), Found_gap_after_significant_field_reflectivity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( BasicMaterial, specularPower ) + sizeof( specularPower ) == offsetof( BasicMaterial, specialTransparency ), Found_gap_after_significant_field_specularPower );
 	}
 
   static int samplersOffsets[4];
@@ -949,12 +965,12 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, renderState ) + sizeof( renderState ) == offsetof( DecalMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DecalMaterial, DiffuseMul ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( DecalMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( DecalMaterial, radius ), Found_gap_after_significant_field_DiffuseAdd );
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, radius ) + sizeof( radius ) == offsetof( DecalMaterial, distortion ), Found_gap_after_significant_field_radius );
-	  NI_STATIC_ASSERT( offsetof( DecalMaterial, distortion ) + sizeof( distortion ) == offsetof( DecalMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_distortion );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, renderState ) + sizeof( renderState ) == offsetof( DecalMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DecalMaterial, DiffuseMul ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( DecalMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( DecalMaterial, radius ), Found_gap_after_significant_field_DiffuseAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, radius ) + sizeof( radius ) == offsetof( DecalMaterial, distortion ), Found_gap_after_significant_field_radius );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalMaterial, distortion ) + sizeof( distortion ) == offsetof( DecalMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_distortion );
 	}
 
   static int samplersOffsets[1];
@@ -1112,13 +1128,13 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, renderState ) + sizeof( renderState ) == offsetof( DecalTerrainMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DecalTerrainMaterial, MaskMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, MaskMap ) + sizeof( MaskMap ) == offsetof( DecalTerrainMaterial, DiffuseMul ), Found_gap_after_significant_field_MaskMap );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( DecalTerrainMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( DecalTerrainMaterial, radius ), Found_gap_after_significant_field_DiffuseAdd );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, radius ) + sizeof( radius ) == offsetof( DecalTerrainMaterial, distortion ), Found_gap_after_significant_field_radius );
-	  NI_STATIC_ASSERT( offsetof( DecalTerrainMaterial, distortion ) + sizeof( distortion ) == offsetof( DecalTerrainMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_distortion );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, renderState ) + sizeof( renderState ) == offsetof( DecalTerrainMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DecalTerrainMaterial, MaskMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, MaskMap ) + sizeof( MaskMap ) == offsetof( DecalTerrainMaterial, DiffuseMul ), Found_gap_after_significant_field_MaskMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, DiffuseMul ) + sizeof( DiffuseMul ) == offsetof( DecalTerrainMaterial, DiffuseAdd ), Found_gap_after_significant_field_DiffuseMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, DiffuseAdd ) + sizeof( DiffuseAdd ) == offsetof( DecalTerrainMaterial, radius ), Found_gap_after_significant_field_DiffuseAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, radius ) + sizeof( radius ) == offsetof( DecalTerrainMaterial, distortion ), Found_gap_after_significant_field_radius );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DecalTerrainMaterial, distortion ) + sizeof( distortion ) == offsetof( DecalTerrainMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_distortion );
 	}
 
   static int samplersOffsets[2];
@@ -1316,31 +1332,31 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, renderState ) + sizeof( renderState ) == offsetof( DropMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DropMaterial, NormalMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, NormalMap ) + sizeof( NormalMap ) == offsetof( DropMaterial, SpecularMap ), Found_gap_after_significant_field_NormalMap );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, SpecularMap ) + sizeof( SpecularMap ) == offsetof( DropMaterial, ReflectionMap ), Found_gap_after_significant_field_SpecularMap );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, ReflectionMap ) + sizeof( ReflectionMap ) == offsetof( DropMaterial, diffuseColor ), Found_gap_after_significant_field_ReflectionMap );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, diffuseColor ) + sizeof( diffuseColor ) == offsetof( DropMaterial, lightingIntencity ), Found_gap_after_significant_field_diffuseColor );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, lightingIntencity ) + sizeof( lightingIntencity ) == offsetof( DropMaterial, ambientIntensity ), Found_gap_after_significant_field_lightingIntencity );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, ambientIntensity ) + sizeof( ambientIntensity ) == offsetof( DropMaterial, additionalAmbient ), Found_gap_after_significant_field_ambientIntensity );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, additionalAmbient ) + sizeof( additionalAmbient ) == offsetof( DropMaterial, reflectionMapColor0 ), Found_gap_after_significant_field_additionalAmbient );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectionMapColor0 ) + sizeof( reflectionMapColor0 ) == offsetof( DropMaterial, reflectionMapColor1 ), Found_gap_after_significant_field_reflectionMapColor0 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectionMapColor1 ) + sizeof( reflectionMapColor1 ) == offsetof( DropMaterial, reflectionMapColor2 ), Found_gap_after_significant_field_reflectionMapColor1 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectionMapColor2 ) + sizeof( reflectionMapColor2 ) == offsetof( DropMaterial, reflectionMapColor3 ), Found_gap_after_significant_field_reflectionMapColor2 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectionMapColor3 ) + sizeof( reflectionMapColor3 ) == offsetof( DropMaterial, outputMul ), Found_gap_after_significant_field_reflectionMapColor3 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, outputMul ) + sizeof( outputMul ) == offsetof( DropMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( DropMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_outputAdd );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( DropMaterial, emissive ), Found_gap_after_significant_field_isBlendModeOverrided );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, emissive ) + sizeof( emissive ) == offsetof( DropMaterial, opacity ), Found_gap_after_significant_field_emissive );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, opacity ) + sizeof( opacity ) == offsetof( DropMaterial, reflectivityLerp ), Found_gap_after_significant_field_opacity );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectivityLerp ) + sizeof( reflectivityLerp ) == offsetof( DropMaterial, reflectivityAdd ), Found_gap_after_significant_field_reflectivityLerp );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectivityAdd ) + sizeof( reflectivityAdd ) == offsetof( DropMaterial, reflectivityMul ), Found_gap_after_significant_field_reflectivityAdd );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, reflectivityMul ) + sizeof( reflectivityMul ) == offsetof( DropMaterial, specularPower ), Found_gap_after_significant_field_reflectivityMul );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, specularPower ) + sizeof( specularPower ) == offsetof( DropMaterial, uOffset1 ), Found_gap_after_significant_field_specularPower );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, uOffset1 ) + sizeof( uOffset1 ) == offsetof( DropMaterial, vOffset1 ), Found_gap_after_significant_field_uOffset1 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, vOffset1 ) + sizeof( vOffset1 ) == offsetof( DropMaterial, uOffset2 ), Found_gap_after_significant_field_vOffset1 );
-	  NI_STATIC_ASSERT( offsetof( DropMaterial, uOffset2 ) + sizeof( uOffset2 ) == offsetof( DropMaterial, vOffset2 ), Found_gap_after_significant_field_uOffset2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, renderState ) + sizeof( renderState ) == offsetof( DropMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( DropMaterial, NormalMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, NormalMap ) + sizeof( NormalMap ) == offsetof( DropMaterial, SpecularMap ), Found_gap_after_significant_field_NormalMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, SpecularMap ) + sizeof( SpecularMap ) == offsetof( DropMaterial, ReflectionMap ), Found_gap_after_significant_field_SpecularMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, ReflectionMap ) + sizeof( ReflectionMap ) == offsetof( DropMaterial, diffuseColor ), Found_gap_after_significant_field_ReflectionMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, diffuseColor ) + sizeof( diffuseColor ) == offsetof( DropMaterial, lightingIntencity ), Found_gap_after_significant_field_diffuseColor );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, lightingIntencity ) + sizeof( lightingIntencity ) == offsetof( DropMaterial, ambientIntensity ), Found_gap_after_significant_field_lightingIntencity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, ambientIntensity ) + sizeof( ambientIntensity ) == offsetof( DropMaterial, additionalAmbient ), Found_gap_after_significant_field_ambientIntensity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, additionalAmbient ) + sizeof( additionalAmbient ) == offsetof( DropMaterial, reflectionMapColor0 ), Found_gap_after_significant_field_additionalAmbient );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectionMapColor0 ) + sizeof( reflectionMapColor0 ) == offsetof( DropMaterial, reflectionMapColor1 ), Found_gap_after_significant_field_reflectionMapColor0 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectionMapColor1 ) + sizeof( reflectionMapColor1 ) == offsetof( DropMaterial, reflectionMapColor2 ), Found_gap_after_significant_field_reflectionMapColor1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectionMapColor2 ) + sizeof( reflectionMapColor2 ) == offsetof( DropMaterial, reflectionMapColor3 ), Found_gap_after_significant_field_reflectionMapColor2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectionMapColor3 ) + sizeof( reflectionMapColor3 ) == offsetof( DropMaterial, outputMul ), Found_gap_after_significant_field_reflectionMapColor3 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, outputMul ) + sizeof( outputMul ) == offsetof( DropMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( DropMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_outputAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( DropMaterial, emissive ), Found_gap_after_significant_field_isBlendModeOverrided );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, emissive ) + sizeof( emissive ) == offsetof( DropMaterial, opacity ), Found_gap_after_significant_field_emissive );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, opacity ) + sizeof( opacity ) == offsetof( DropMaterial, reflectivityLerp ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectivityLerp ) + sizeof( reflectivityLerp ) == offsetof( DropMaterial, reflectivityAdd ), Found_gap_after_significant_field_reflectivityLerp );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectivityAdd ) + sizeof( reflectivityAdd ) == offsetof( DropMaterial, reflectivityMul ), Found_gap_after_significant_field_reflectivityAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, reflectivityMul ) + sizeof( reflectivityMul ) == offsetof( DropMaterial, specularPower ), Found_gap_after_significant_field_reflectivityMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, specularPower ) + sizeof( specularPower ) == offsetof( DropMaterial, uOffset1 ), Found_gap_after_significant_field_specularPower );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, uOffset1 ) + sizeof( uOffset1 ) == offsetof( DropMaterial, vOffset1 ), Found_gap_after_significant_field_uOffset1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, vOffset1 ) + sizeof( vOffset1 ) == offsetof( DropMaterial, uOffset2 ), Found_gap_after_significant_field_vOffset1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( DropMaterial, uOffset2 ) + sizeof( uOffset2 ) == offsetof( DropMaterial, vOffset2 ), Found_gap_after_significant_field_uOffset2 );
 	}
 
   static int samplersOffsets[4];
@@ -1500,9 +1516,9 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( FullScreenMaterial, renderState ) + sizeof( renderState ) == offsetof( FullScreenMaterial, DepthMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( FullScreenMaterial, DepthMap ) + sizeof( DepthMap ) == offsetof( FullScreenMaterial, DiffuseMap ), Found_gap_after_significant_field_DepthMap );
-	  NI_STATIC_ASSERT( offsetof( FullScreenMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( FullScreenMaterial, BloomMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( FullScreenMaterial, renderState ) + sizeof( renderState ) == offsetof( FullScreenMaterial, DepthMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( FullScreenMaterial, DepthMap ) + sizeof( DepthMap ) == offsetof( FullScreenMaterial, DiffuseMap ), Found_gap_after_significant_field_DepthMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( FullScreenMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( FullScreenMaterial, BloomMap ), Found_gap_after_significant_field_DiffuseMap );
 	}
 
   static int samplersOffsets[3];
@@ -1621,11 +1637,11 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( GrassMaterial, renderState ) + sizeof( renderState ) == offsetof( GrassMaterial, FrozenDiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( GrassMaterial, FrozenDiffuseMap ) + sizeof( FrozenDiffuseMap ) == offsetof( GrassMaterial, NormalDiffuseMap ), Found_gap_after_significant_field_FrozenDiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( GrassMaterial, NormalDiffuseMap ) + sizeof( NormalDiffuseMap ) == offsetof( GrassMaterial, BurnedDiffuseMap ), Found_gap_after_significant_field_NormalDiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( GrassMaterial, BurnedDiffuseMap ) + sizeof( BurnedDiffuseMap ) == offsetof( GrassMaterial, bladeSize ), Found_gap_after_significant_field_BurnedDiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( GrassMaterial, bladeSize ) + sizeof( bladeSize ) == offsetof( GrassMaterial, elasticity ), Found_gap_after_significant_field_bladeSize );
+	  NI_DB_LAYOUT_ASSERT( offsetof( GrassMaterial, renderState ) + sizeof( renderState ) == offsetof( GrassMaterial, FrozenDiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( GrassMaterial, FrozenDiffuseMap ) + sizeof( FrozenDiffuseMap ) == offsetof( GrassMaterial, NormalDiffuseMap ), Found_gap_after_significant_field_FrozenDiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( GrassMaterial, NormalDiffuseMap ) + sizeof( NormalDiffuseMap ) == offsetof( GrassMaterial, BurnedDiffuseMap ), Found_gap_after_significant_field_NormalDiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( GrassMaterial, BurnedDiffuseMap ) + sizeof( BurnedDiffuseMap ) == offsetof( GrassMaterial, bladeSize ), Found_gap_after_significant_field_BurnedDiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( GrassMaterial, bladeSize ) + sizeof( bladeSize ) == offsetof( GrassMaterial, elasticity ), Found_gap_after_significant_field_bladeSize );
 	}
 
   static int samplersOffsets[3];
@@ -1736,16 +1752,16 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, renderState ) + sizeof( renderState ) == offsetof( HeightfogMaterial, noiseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, noiseMap ) + sizeof( noiseMap ) == offsetof( HeightfogMaterial, noiseR1 ), Found_gap_after_significant_field_noiseMap );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, noiseR1 ) + sizeof( noiseR1 ) == offsetof( HeightfogMaterial, noiseR2 ), Found_gap_after_significant_field_noiseR1 );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, noiseR2 ) + sizeof( noiseR2 ) == offsetof( HeightfogMaterial, noiseR3 ), Found_gap_after_significant_field_noiseR2 );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, noiseR3 ) + sizeof( noiseR3 ) == offsetof( HeightfogMaterial, speed ), Found_gap_after_significant_field_noiseR3 );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, speed ) + sizeof( speed ) == offsetof( HeightfogMaterial, tiling ), Found_gap_after_significant_field_speed );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, tiling ) + sizeof( tiling ) == offsetof( HeightfogMaterial, color1 ), Found_gap_after_significant_field_tiling );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, color1 ) + sizeof( color1 ) == offsetof( HeightfogMaterial, color2 ), Found_gap_after_significant_field_color1 );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, color2 ) + sizeof( color2 ) == offsetof( HeightfogMaterial, roughnessScale ), Found_gap_after_significant_field_color2 );
-	  NI_STATIC_ASSERT( offsetof( HeightfogMaterial, roughnessScale ) + sizeof( roughnessScale ) == offsetof( HeightfogMaterial, halfFadeDistance ), Found_gap_after_significant_field_roughnessScale );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, renderState ) + sizeof( renderState ) == offsetof( HeightfogMaterial, noiseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, noiseMap ) + sizeof( noiseMap ) == offsetof( HeightfogMaterial, noiseR1 ), Found_gap_after_significant_field_noiseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, noiseR1 ) + sizeof( noiseR1 ) == offsetof( HeightfogMaterial, noiseR2 ), Found_gap_after_significant_field_noiseR1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, noiseR2 ) + sizeof( noiseR2 ) == offsetof( HeightfogMaterial, noiseR3 ), Found_gap_after_significant_field_noiseR2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, noiseR3 ) + sizeof( noiseR3 ) == offsetof( HeightfogMaterial, speed ), Found_gap_after_significant_field_noiseR3 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, speed ) + sizeof( speed ) == offsetof( HeightfogMaterial, tiling ), Found_gap_after_significant_field_speed );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, tiling ) + sizeof( tiling ) == offsetof( HeightfogMaterial, color1 ), Found_gap_after_significant_field_tiling );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, color1 ) + sizeof( color1 ) == offsetof( HeightfogMaterial, color2 ), Found_gap_after_significant_field_color1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, color2 ) + sizeof( color2 ) == offsetof( HeightfogMaterial, roughnessScale ), Found_gap_after_significant_field_color2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( HeightfogMaterial, roughnessScale ) + sizeof( roughnessScale ) == offsetof( HeightfogMaterial, halfFadeDistance ), Found_gap_after_significant_field_roughnessScale );
 	}
 
   static int samplersOffsets[1];
@@ -1835,7 +1851,7 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( LightningMaterial, renderState ) + sizeof( renderState ) == offsetof( LightningMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( LightningMaterial, renderState ) + sizeof( renderState ) == offsetof( LightningMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
 	}
 
   static int samplersOffsets[1];
@@ -2021,13 +2037,13 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, renderState ) + sizeof( renderState ) == offsetof( PaintMaterial, Draft ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, Draft ) + sizeof( Draft ) == offsetof( PaintMaterial, Background ), Found_gap_after_significant_field_Draft );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, Background ) + sizeof( Background ) == offsetof( PaintMaterial, BaseBackground ), Found_gap_after_significant_field_Background );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, BaseBackground ) + sizeof( BaseBackground ) == offsetof( PaintMaterial, Complete ), Found_gap_after_significant_field_BaseBackground );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, Complete ) + sizeof( Complete ) == offsetof( PaintMaterial, Mask ), Found_gap_after_significant_field_Complete );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, Mask ) + sizeof( Mask ) == offsetof( PaintMaterial, opacity ), Found_gap_after_significant_field_Mask );
-	  NI_STATIC_ASSERT( offsetof( PaintMaterial, opacity ) + sizeof( opacity ) == offsetof( PaintMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, renderState ) + sizeof( renderState ) == offsetof( PaintMaterial, Draft ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, Draft ) + sizeof( Draft ) == offsetof( PaintMaterial, Background ), Found_gap_after_significant_field_Draft );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, Background ) + sizeof( Background ) == offsetof( PaintMaterial, BaseBackground ), Found_gap_after_significant_field_Background );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, BaseBackground ) + sizeof( BaseBackground ) == offsetof( PaintMaterial, Complete ), Found_gap_after_significant_field_BaseBackground );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, Complete ) + sizeof( Complete ) == offsetof( PaintMaterial, Mask ), Found_gap_after_significant_field_Complete );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, Mask ) + sizeof( Mask ) == offsetof( PaintMaterial, opacity ), Found_gap_after_significant_field_Mask );
+	  NI_DB_LAYOUT_ASSERT( offsetof( PaintMaterial, opacity ) + sizeof( opacity ) == offsetof( PaintMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_opacity );
 	}
 
   static int samplersOffsets[5];
@@ -2145,12 +2161,12 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, renderState ) + sizeof( renderState ) == offsetof( ParticleFXMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( ParticleFXMaterial, opacity ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, opacity ) + sizeof( opacity ) == offsetof( ParticleFXMaterial, distortion ), Found_gap_after_significant_field_opacity );
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, distortion ) + sizeof( distortion ) == offsetof( ParticleFXMaterial, uvSpeed ), Found_gap_after_significant_field_distortion );
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, uvSpeed ) + sizeof( uvSpeed ) == offsetof( ParticleFXMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_uvSpeed );
-	  NI_STATIC_ASSERT( offsetof( ParticleFXMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( ParticleFXMaterial, scale ), Found_gap_after_significant_field_isBlendModeOverrided );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, renderState ) + sizeof( renderState ) == offsetof( ParticleFXMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( ParticleFXMaterial, opacity ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, opacity ) + sizeof( opacity ) == offsetof( ParticleFXMaterial, distortion ), Found_gap_after_significant_field_opacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, distortion ) + sizeof( distortion ) == offsetof( ParticleFXMaterial, uvSpeed ), Found_gap_after_significant_field_distortion );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, uvSpeed ) + sizeof( uvSpeed ) == offsetof( ParticleFXMaterial, isBlendModeOverrided ), Found_gap_after_significant_field_uvSpeed );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ParticleFXMaterial, isBlendModeOverrided ) + sizeof( isBlendModeOverrided ) == offsetof( ParticleFXMaterial, scale ), Found_gap_after_significant_field_isBlendModeOverrided );
 	}
 
   static int samplersOffsets[1];
@@ -2252,8 +2268,8 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( RoadMaterial, renderState ) + sizeof( renderState ) == offsetof( RoadMaterial, RoadMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( RoadMaterial, RoadMap ) + sizeof( RoadMap ) == offsetof( RoadMaterial, BorderMap ), Found_gap_after_significant_field_RoadMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( RoadMaterial, renderState ) + sizeof( renderState ) == offsetof( RoadMaterial, RoadMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( RoadMaterial, RoadMap ) + sizeof( RoadMap ) == offsetof( RoadMaterial, BorderMap ), Found_gap_after_significant_field_RoadMap );
 	}
 
   static int samplersOffsets[2];
@@ -2354,7 +2370,7 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( ShadowMaterial, renderState ) + sizeof( renderState ) == offsetof( ShadowMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( ShadowMaterial, renderState ) + sizeof( renderState ) == offsetof( ShadowMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
 	}
 
   static int samplersOffsets[1];
@@ -2557,13 +2573,13 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, renderState ) + sizeof( renderState ) == offsetof( SkyMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( SkyMaterial, outputMul ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, outputMul ) + sizeof( outputMul ) == offsetof( SkyMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( SkyMaterial, uOffset1 ), Found_gap_after_significant_field_outputAdd );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, uOffset1 ) + sizeof( uOffset1 ) == offsetof( SkyMaterial, vOffset1 ), Found_gap_after_significant_field_uOffset1 );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, vOffset1 ) + sizeof( vOffset1 ) == offsetof( SkyMaterial, uOffset2 ), Found_gap_after_significant_field_vOffset1 );
-	  NI_STATIC_ASSERT( offsetof( SkyMaterial, uOffset2 ) + sizeof( uOffset2 ) == offsetof( SkyMaterial, vOffset2 ), Found_gap_after_significant_field_uOffset2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, renderState ) + sizeof( renderState ) == offsetof( SkyMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( SkyMaterial, outputMul ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, outputMul ) + sizeof( outputMul ) == offsetof( SkyMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, outputAdd ) + sizeof( outputAdd ) == offsetof( SkyMaterial, uOffset1 ), Found_gap_after_significant_field_outputAdd );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, uOffset1 ) + sizeof( uOffset1 ) == offsetof( SkyMaterial, vOffset1 ), Found_gap_after_significant_field_uOffset1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, vOffset1 ) + sizeof( vOffset1 ) == offsetof( SkyMaterial, uOffset2 ), Found_gap_after_significant_field_vOffset1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( SkyMaterial, uOffset2 ) + sizeof( uOffset2 ) == offsetof( SkyMaterial, vOffset2 ), Found_gap_after_significant_field_uOffset2 );
 	}
 
   static int samplersOffsets[1];
@@ -2700,9 +2716,9 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( TerrainAOEMaterial, renderState ) + sizeof( renderState ) == offsetof( TerrainAOEMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( TerrainAOEMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TerrainAOEMaterial, uvScale ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainAOEMaterial, uvScale ) + sizeof( uvScale ) == offsetof( TerrainAOEMaterial, uvOffset ), Found_gap_after_significant_field_uvScale );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainAOEMaterial, renderState ) + sizeof( renderState ) == offsetof( TerrainAOEMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainAOEMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TerrainAOEMaterial, uvScale ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainAOEMaterial, uvScale ) + sizeof( uvScale ) == offsetof( TerrainAOEMaterial, uvOffset ), Found_gap_after_significant_field_uvScale );
 	}
 
   static int samplersOffsets[1];
@@ -3078,16 +3094,16 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, A_DiffuseMap ) + sizeof( A_DiffuseMap ) == offsetof( TerrainMaterial, N_DiffuseMap ), Found_gap_after_significant_field_A_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, N_DiffuseMap ) + sizeof( N_DiffuseMap ) == offsetof( TerrainMaterial, B_DiffuseMap ), Found_gap_after_significant_field_N_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, B_DiffuseMap ) + sizeof( B_DiffuseMap ) == offsetof( TerrainMaterial, FrozenNormalMap ), Found_gap_after_significant_field_B_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, FrozenNormalMap ) + sizeof( FrozenNormalMap ) == offsetof( TerrainMaterial, NormalNormalMap ), Found_gap_after_significant_field_FrozenNormalMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, NormalNormalMap ) + sizeof( NormalNormalMap ) == offsetof( TerrainMaterial, BurnedNormalMap ), Found_gap_after_significant_field_NormalNormalMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, BurnedNormalMap ) + sizeof( BurnedNormalMap ) == offsetof( TerrainMaterial, FrozenSpecularMap ), Found_gap_after_significant_field_BurnedNormalMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, FrozenSpecularMap ) + sizeof( FrozenSpecularMap ) == offsetof( TerrainMaterial, NormalSpecularMap ), Found_gap_after_significant_field_FrozenSpecularMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, NormalSpecularMap ) + sizeof( NormalSpecularMap ) == offsetof( TerrainMaterial, BurnedSpecularMap ), Found_gap_after_significant_field_NormalSpecularMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, BurnedSpecularMap ) + sizeof( BurnedSpecularMap ) == offsetof( TerrainMaterial, DarkMap ), Found_gap_after_significant_field_BurnedSpecularMap );
-	  NI_STATIC_ASSERT( offsetof( TerrainMaterial, DarkMap ) + sizeof( DarkMap ) == offsetof( TerrainMaterial, grassRect ), Found_gap_after_significant_field_DarkMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, A_DiffuseMap ) + sizeof( A_DiffuseMap ) == offsetof( TerrainMaterial, N_DiffuseMap ), Found_gap_after_significant_field_A_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, N_DiffuseMap ) + sizeof( N_DiffuseMap ) == offsetof( TerrainMaterial, B_DiffuseMap ), Found_gap_after_significant_field_N_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, B_DiffuseMap ) + sizeof( B_DiffuseMap ) == offsetof( TerrainMaterial, FrozenNormalMap ), Found_gap_after_significant_field_B_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, FrozenNormalMap ) + sizeof( FrozenNormalMap ) == offsetof( TerrainMaterial, NormalNormalMap ), Found_gap_after_significant_field_FrozenNormalMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, NormalNormalMap ) + sizeof( NormalNormalMap ) == offsetof( TerrainMaterial, BurnedNormalMap ), Found_gap_after_significant_field_NormalNormalMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, BurnedNormalMap ) + sizeof( BurnedNormalMap ) == offsetof( TerrainMaterial, FrozenSpecularMap ), Found_gap_after_significant_field_BurnedNormalMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, FrozenSpecularMap ) + sizeof( FrozenSpecularMap ) == offsetof( TerrainMaterial, NormalSpecularMap ), Found_gap_after_significant_field_FrozenSpecularMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, NormalSpecularMap ) + sizeof( NormalSpecularMap ) == offsetof( TerrainMaterial, BurnedSpecularMap ), Found_gap_after_significant_field_NormalSpecularMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, BurnedSpecularMap ) + sizeof( BurnedSpecularMap ) == offsetof( TerrainMaterial, DarkMap ), Found_gap_after_significant_field_BurnedSpecularMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TerrainMaterial, DarkMap ) + sizeof( DarkMap ) == offsetof( TerrainMaterial, grassRect ), Found_gap_after_significant_field_DarkMap );
 	}
 
   static int samplersOffsets[10];
@@ -3208,9 +3224,9 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( TestTownMaterial, RenderState ) + sizeof( RenderState ) == offsetof( TestTownMaterial, DiffuseMap ), Found_gap_after_significant_field_RenderState );
-	  NI_STATIC_ASSERT( offsetof( TestTownMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TestTownMaterial, outputMul ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TestTownMaterial, outputMul ) + sizeof( outputMul ) == offsetof( TestTownMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TestTownMaterial, RenderState ) + sizeof( RenderState ) == offsetof( TestTownMaterial, DiffuseMap ), Found_gap_after_significant_field_RenderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TestTownMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TestTownMaterial, outputMul ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TestTownMaterial, outputMul ) + sizeof( outputMul ) == offsetof( TestTownMaterial, outputAdd ), Found_gap_after_significant_field_outputMul );
 	}
 
   static int samplersOffsets[1];
@@ -3318,11 +3334,11 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( TraceMaterial, renderState ) + sizeof( renderState ) == offsetof( TraceMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( TraceMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TraceMaterial, uScale ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( TraceMaterial, uScale ) + sizeof( uScale ) == offsetof( TraceMaterial, vScale ), Found_gap_after_significant_field_uScale );
-	  NI_STATIC_ASSERT( offsetof( TraceMaterial, vScale ) + sizeof( vScale ) == offsetof( TraceMaterial, uOffset ), Found_gap_after_significant_field_vScale );
-	  NI_STATIC_ASSERT( offsetof( TraceMaterial, uOffset ) + sizeof( uOffset ) == offsetof( TraceMaterial, vOffset ), Found_gap_after_significant_field_uOffset );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TraceMaterial, renderState ) + sizeof( renderState ) == offsetof( TraceMaterial, DiffuseMap ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TraceMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( TraceMaterial, uScale ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TraceMaterial, uScale ) + sizeof( uScale ) == offsetof( TraceMaterial, vScale ), Found_gap_after_significant_field_uScale );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TraceMaterial, vScale ) + sizeof( vScale ) == offsetof( TraceMaterial, uOffset ), Found_gap_after_significant_field_vScale );
+	  NI_DB_LAYOUT_ASSERT( offsetof( TraceMaterial, uOffset ) + sizeof( uOffset ) == offsetof( TraceMaterial, vOffset ), Found_gap_after_significant_field_uOffset );
 	}
 
   static int samplersOffsets[1];
@@ -3483,20 +3499,20 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIBaseMaterial, MaskMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, MaskMap ) + sizeof( MaskMap ) == offsetof( UIBaseMaterial, renderState ), Found_gap_after_significant_field_MaskMap );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, renderState ) + sizeof( renderState ) == offsetof( UIBaseMaterial, color1 ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, color1 ) + sizeof( color1 ) == offsetof( UIBaseMaterial, color2 ), Found_gap_after_significant_field_color1 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, color2 ) + sizeof( color2 ) == offsetof( UIBaseMaterial, coef1 ), Found_gap_after_significant_field_color2 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, coef1 ) + sizeof( coef1 ) == offsetof( UIBaseMaterial, coef2 ), Found_gap_after_significant_field_coef1 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, coef2 ) + sizeof( coef2 ) == offsetof( UIBaseMaterial, coef3 ), Found_gap_after_significant_field_coef2 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, coef3 ) + sizeof( coef3 ) == offsetof( UIBaseMaterial, coef4 ), Found_gap_after_significant_field_coef3 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, coef4 ) + sizeof( coef4 ) == offsetof( UIBaseMaterial, stripesStart ), Found_gap_after_significant_field_coef4 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, stripesStart ) + sizeof( stripesStart ) == offsetof( UIBaseMaterial, stripesStep1 ), Found_gap_after_significant_field_stripesStart );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, stripesStep1 ) + sizeof( stripesStep1 ) == offsetof( UIBaseMaterial, stripesStep2 ), Found_gap_after_significant_field_stripesStep1 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, stripesStep2 ) + sizeof( stripesStep2 ) == offsetof( UIBaseMaterial, stripesBlendFactor1 ), Found_gap_after_significant_field_stripesStep2 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, stripesBlendFactor1 ) + sizeof( stripesBlendFactor1 ) == offsetof( UIBaseMaterial, colorStripe100 ), Found_gap_after_significant_field_stripesBlendFactor1 );
-	  NI_STATIC_ASSERT( offsetof( UIBaseMaterial, colorStripe100 ) + sizeof( colorStripe100 ) == offsetof( UIBaseMaterial, colorStripe1000 ), Found_gap_after_significant_field_colorStripe100 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIBaseMaterial, MaskMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, MaskMap ) + sizeof( MaskMap ) == offsetof( UIBaseMaterial, renderState ), Found_gap_after_significant_field_MaskMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, renderState ) + sizeof( renderState ) == offsetof( UIBaseMaterial, color1 ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, color1 ) + sizeof( color1 ) == offsetof( UIBaseMaterial, color2 ), Found_gap_after_significant_field_color1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, color2 ) + sizeof( color2 ) == offsetof( UIBaseMaterial, coef1 ), Found_gap_after_significant_field_color2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, coef1 ) + sizeof( coef1 ) == offsetof( UIBaseMaterial, coef2 ), Found_gap_after_significant_field_coef1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, coef2 ) + sizeof( coef2 ) == offsetof( UIBaseMaterial, coef3 ), Found_gap_after_significant_field_coef2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, coef3 ) + sizeof( coef3 ) == offsetof( UIBaseMaterial, coef4 ), Found_gap_after_significant_field_coef3 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, coef4 ) + sizeof( coef4 ) == offsetof( UIBaseMaterial, stripesStart ), Found_gap_after_significant_field_coef4 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, stripesStart ) + sizeof( stripesStart ) == offsetof( UIBaseMaterial, stripesStep1 ), Found_gap_after_significant_field_stripesStart );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, stripesStep1 ) + sizeof( stripesStep1 ) == offsetof( UIBaseMaterial, stripesStep2 ), Found_gap_after_significant_field_stripesStep1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, stripesStep2 ) + sizeof( stripesStep2 ) == offsetof( UIBaseMaterial, stripesBlendFactor1 ), Found_gap_after_significant_field_stripesStep2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, stripesBlendFactor1 ) + sizeof( stripesBlendFactor1 ) == offsetof( UIBaseMaterial, colorStripe100 ), Found_gap_after_significant_field_stripesBlendFactor1 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIBaseMaterial, colorStripe100 ) + sizeof( colorStripe100 ) == offsetof( UIBaseMaterial, colorStripe1000 ), Found_gap_after_significant_field_colorStripe100 );
 	}
 
   static int samplersOffsets[2];
@@ -3630,14 +3646,14 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, BackgroundMap ) + sizeof( BackgroundMap ) == offsetof( UIButtonMaterial, DiffuseMap ), Found_gap_after_significant_field_BackgroundMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIButtonMaterial, WaitForActMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, WaitForActMap ) + sizeof( WaitForActMap ) == offsetof( UIButtonMaterial, LackOfManaMap ), Found_gap_after_significant_field_WaitForActMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, LackOfManaMap ) + sizeof( LackOfManaMap ) == offsetof( UIButtonMaterial, PressedMap ), Found_gap_after_significant_field_LackOfManaMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, PressedMap ) + sizeof( PressedMap ) == offsetof( UIButtonMaterial, HighlightMap ), Found_gap_after_significant_field_PressedMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, HighlightMap ) + sizeof( HighlightMap ) == offsetof( UIButtonMaterial, ScreenMap ), Found_gap_after_significant_field_HighlightMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, ScreenMap ) + sizeof( ScreenMap ) == offsetof( UIButtonMaterial, renderState ), Found_gap_after_significant_field_ScreenMap );
-	  NI_STATIC_ASSERT( offsetof( UIButtonMaterial, renderState ) + sizeof( renderState ) == offsetof( UIButtonMaterial, ScreenOpacity ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, BackgroundMap ) + sizeof( BackgroundMap ) == offsetof( UIButtonMaterial, DiffuseMap ), Found_gap_after_significant_field_BackgroundMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIButtonMaterial, WaitForActMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, WaitForActMap ) + sizeof( WaitForActMap ) == offsetof( UIButtonMaterial, LackOfManaMap ), Found_gap_after_significant_field_WaitForActMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, LackOfManaMap ) + sizeof( LackOfManaMap ) == offsetof( UIButtonMaterial, PressedMap ), Found_gap_after_significant_field_LackOfManaMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, PressedMap ) + sizeof( PressedMap ) == offsetof( UIButtonMaterial, HighlightMap ), Found_gap_after_significant_field_PressedMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, HighlightMap ) + sizeof( HighlightMap ) == offsetof( UIButtonMaterial, ScreenMap ), Found_gap_after_significant_field_HighlightMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, ScreenMap ) + sizeof( ScreenMap ) == offsetof( UIButtonMaterial, renderState ), Found_gap_after_significant_field_ScreenMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIButtonMaterial, renderState ) + sizeof( renderState ) == offsetof( UIButtonMaterial, ScreenOpacity ), Found_gap_after_significant_field_renderState );
 	}
 
   static int samplersOffsets[7];
@@ -3787,9 +3803,9 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( UIFlashMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIFlashMaterial, DiffuseMap2 ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( UIFlashMaterial, DiffuseMap2 ) + sizeof( DiffuseMap2 ) == offsetof( UIFlashMaterial, CXFormMul ), Found_gap_after_significant_field_DiffuseMap2 );
-	  NI_STATIC_ASSERT( offsetof( UIFlashMaterial, CXFormMul ) + sizeof( CXFormMul ) == offsetof( UIFlashMaterial, CXFormAdd ), Found_gap_after_significant_field_CXFormMul );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFlashMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIFlashMaterial, DiffuseMap2 ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFlashMaterial, DiffuseMap2 ) + sizeof( DiffuseMap2 ) == offsetof( UIFlashMaterial, CXFormMul ), Found_gap_after_significant_field_DiffuseMap2 );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFlashMaterial, CXFormMul ) + sizeof( CXFormMul ) == offsetof( UIFlashMaterial, CXFormAdd ), Found_gap_after_significant_field_CXFormMul );
 	}
 
   static int samplersOffsets[2];
@@ -3907,9 +3923,9 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( UIFontMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIFontMaterial, renderState ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( UIFontMaterial, renderState ) + sizeof( renderState ) == offsetof( UIFontMaterial, PrimaryColor ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( UIFontMaterial, PrimaryColor ) + sizeof( PrimaryColor ) == offsetof( UIFontMaterial, SecondaryColor ), Found_gap_after_significant_field_PrimaryColor );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFontMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIFontMaterial, renderState ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFontMaterial, renderState ) + sizeof( renderState ) == offsetof( UIFontMaterial, PrimaryColor ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIFontMaterial, PrimaryColor ) + sizeof( PrimaryColor ) == offsetof( UIFontMaterial, SecondaryColor ), Found_gap_after_significant_field_PrimaryColor );
 	}
 
   static int samplersOffsets[1];
@@ -4015,12 +4031,12 @@ private:
 	
 	void CheckTypesSizes() const
 	{
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, BackgroundMap ) + sizeof( BackgroundMap ) == offsetof( UIGlassMaterial, DiffuseMap ), Found_gap_after_significant_field_BackgroundMap );
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIGlassMaterial, OverlayMap ), Found_gap_after_significant_field_DiffuseMap );
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, OverlayMap ) + sizeof( OverlayMap ) == offsetof( UIGlassMaterial, ScreenMap ), Found_gap_after_significant_field_OverlayMap );
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, ScreenMap ) + sizeof( ScreenMap ) == offsetof( UIGlassMaterial, renderState ), Found_gap_after_significant_field_ScreenMap );
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, renderState ) + sizeof( renderState ) == offsetof( UIGlassMaterial, OverlayOpacity ), Found_gap_after_significant_field_renderState );
-	  NI_STATIC_ASSERT( offsetof( UIGlassMaterial, OverlayOpacity ) + sizeof( OverlayOpacity ) == offsetof( UIGlassMaterial, ScreenOpacity ), Found_gap_after_significant_field_OverlayOpacity );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, BackgroundMap ) + sizeof( BackgroundMap ) == offsetof( UIGlassMaterial, DiffuseMap ), Found_gap_after_significant_field_BackgroundMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, DiffuseMap ) + sizeof( DiffuseMap ) == offsetof( UIGlassMaterial, OverlayMap ), Found_gap_after_significant_field_DiffuseMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, OverlayMap ) + sizeof( OverlayMap ) == offsetof( UIGlassMaterial, ScreenMap ), Found_gap_after_significant_field_OverlayMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, ScreenMap ) + sizeof( ScreenMap ) == offsetof( UIGlassMaterial, renderState ), Found_gap_after_significant_field_ScreenMap );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, renderState ) + sizeof( renderState ) == offsetof( UIGlassMaterial, OverlayOpacity ), Found_gap_after_significant_field_renderState );
+	  NI_DB_LAYOUT_ASSERT( offsetof( UIGlassMaterial, OverlayOpacity ) + sizeof( OverlayOpacity ) == offsetof( UIGlassMaterial, ScreenOpacity ), Found_gap_after_significant_field_OverlayOpacity );
 	}
 
   static int samplersOffsets[4];

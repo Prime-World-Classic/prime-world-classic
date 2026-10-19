@@ -27,6 +27,8 @@
 #include "PFChest.h"
 #include "PFGlyph.h"
 #include "PFHero.h"
+#include "PFConsumable.h"
+#include "System/ConfigFiles.h"
 #include "PFTalent.h"
 #include "PFFlagpole.h"
 #include "PFLogicDebug.h"
@@ -63,6 +65,7 @@
 #include "DamageBloodMask.h"
 
 #include "Render/AOERenderer.h"
+#include "Sound/SoundScene.h"
 #include "PF_Core/SpectatorEffectsPool.h"
 
 //new flash interface
@@ -98,6 +101,8 @@
 #include "HeroScoreWrapper.h"
 #include "PFHeroStatistics.h"
 #include "DBStats.h"
+#include "DBSmartChat.h"
+#include "System/Texts.h"
 
 #include "TargetSelectorFormulaPars.h"
 
@@ -118,6 +123,7 @@
 #include "BadBehaviourComplaintCmd.hpp"
 #include "TargetSelectorHelper.hpp"
 #include "SessionData.h"
+#include "VoiceOverlayController.h"
 
 extern nstl::vector<std::pair<int, int>> playersKills;
 
@@ -157,6 +163,231 @@ struct DebugMouseDown
 static DebugMouseDown debugMousePick;
 
 static int updateMouseMode = 0;
+
+// "Move on hold" (Dota-like): while the action mouse button (RMB by default) is held over the ground,
+// the hero keeps receiving move orders to the point under the cursor.
+static bool  g_moveOnHold            = true;  // options -> Advanced (or 'move_on_hold 0' in console) to disable
+static float g_moveOnHoldInterval    = 0.1f;  // seconds between auto-repeated orders (min 0.1 = one game step, faster is useless)
+static float g_moveOnHoldMinDistance = 0.2f;  // do not resend if the cursor point moved less than this...
+static float g_moveOnHoldResendTime  = 0.3f;  // ...unless this many seconds passed since the last order
+static bool  g_moveOnHoldMarker      = true;  // show the green ground marker on every auto-repeated order
+
+// Double click (or double hotkey press) on an ability button casts it on own hero (abilities with the SELFCASTING flag).
+// Off = original behaviour: a second click on the same button at any time while targeting casts on self.
+static bool  g_dblClickSelfCast      = true;
+static float g_dblClickSelfCastTime  = 0.3f;  // max delay between the two activations, seconds
+// Alt + hotkey of an ability casts it on own hero (the 'self_cast_on' key)
+static bool  g_altSelfCast           = true;
+// Holding the hotkey of an ability casts it on own hero after this time (it is in the targeting mode meanwhile)
+static bool  g_holdSelfCast          = true;
+static float g_holdSelfCastTime      = 0.5f;  // seconds, 0.1 .. 1
+// Alt + mouse click on an ability button sends its state (ready / cooldown / not learned...) to the team chat
+static bool  g_altClickAbilityStatus = true;
+static float g_abilityStatusMinInterval = 1.0f; // anti-spam, seconds
+
+// Ping wheel: Alt + the mouse button that does not move the hero, held over the ground
+static bool  g_pingWheel             = true;
+static float g_pingWheelDelay        = 0.15f; // seconds the button must be held before the wheel appears
+static float g_pingWheelDeadZone     = 20.0f; // pixels around the wheel center that select nothing
+static float g_pingMarkerTime        = 3.0f;  // seconds a ping marker lives
+static float g_pingMinorTimeScale    = 0.75f; // the plain ping and "going here / to the forest" live 25% shorter
+static float g_pingWardTime          = 6.0f;  // "enemy ward" / "need a ward" live longer, seconds
+static bool  g_pingsDisabled         = false; // signals of the other players are not shown at all ("Communication" page)
+static bool  g_pingsMuted            = false; // no signal sounds at all (the new ones and the old minimap alert)
+static bool  g_pingAttackOnUnit      = true;  // a ping on an enemy: the "Attack" sound with its red marker
+static bool  g_pingMiddleMouse       = false; // pings / wheel on the middle mouse button instead of Alt + click
+static float g_pingWheelTransparency = 30.0f; // wheel background transparency, %
+static float g_pingWheelScale        = 100.0f; // wheel size, %
+static bool  g_pingGroundEffect      = true;  // Dota-like ring on the ground + light beam at the ping point
+static float g_pingGroundRadius      = 2.5f;  // ring radius, world units
+static float g_pingBeamHeight        = 4.0f;  // height of the icon above the ground, world units
+static bool  g_pingSound             = true;  // soft sound for every ping of the team (own type per wheel item)
+static float g_pingSoundVolume       = 70.0f; // %, multiplied by the game sound volume
+static float g_pingSoundMinInterval  = 0.12f; // seconds, several pings at once make one sound
+
+// Chat wheel: the quick chat key (cmd_smart_chat, V) opens a wheel of the quick chat messages at the cursor
+// instead of the menu with the digits. Hold the key, point at a message, release the key.
+static bool  g_chatWheel             = true;
+static float g_chatWheelTransparency = 30.0f; // wheel background transparency, %
+static float g_chatWheelScale        = 100.0f; // wheel size, %
+static float g_chatWheelDeadZone     = 40.0f; // pixels (at 100%) around the wheel center that select nothing
+static bool  g_chatWheelCentered     = false; // the wheel always in the center of the screen (otherwise at the cursor)
+static const float CHAT_WHEEL_RADIUS = 183.0f; // wheel radius on the screen at 100%, pixels (main.swf: 512 px texture, R 244, shown at 0.75)
+// slots of the wheels (settings pages "Chat wheel" / "Ping wheel", the editor in main.swf), clockwise from the top:
+// chat - indices of the quick chat messages (SmartChatConfiguration), ping - ping types (s_pingTypes)
+// chat: numbers of the quick chat commands (cmd_smart_chat_<N>, SmartChatConfiguration), ping: ping types
+static string g_chatWheelItems       = "1,2,3,4,5,6,7";
+static string g_pingWheelItems       = "0,1,2,3,4";
+static const int WHEEL_MIN_ITEMS     = 4;
+static const int WHEEL_MAX_ITEMS     = 8;   // main.swf has the wheel textures for 4..8 sectors
+
+// Auto attack of our hero (idle / attack back); off = the hero attacks only by orders (synchronized by CmdSetAutoAttack)
+static bool  g_autoAttack            = true;
+
+// Smart cast switches in the battle: checkboxes on the action bar buttons of targeted abilities.
+// Only the client decides about the smart cast, so the switches are local (the talent itself keeps its castle setting).
+// The option only shows the checkboxes; switches made with them keep working while the checkboxes are hidden.
+static bool  g_smartCastToggles      = false;
+// Smart cast of shop items (the checkbox on the action bar button of the item, the option above shows it):
+// "<item dbid>=<0|1>;..." - kept between the battles, an item without a switch uses its ability setting
+static string g_smartCastItems       = "";
+
+// Praise: Alt + click on a hero portrait of the top bar; free, gives nothing (only the notification for everybody)
+static bool  g_praise                = true;
+static float g_praiseCooldown        = 5.0f;  // seconds
+static float g_praiseShowTime        = 7.0f;  // seconds a notification stays on the screen
+static int   g_praiseMaxShown        = 6;     // also no more than fit above the minimap (Flash: PraiseRows)
+static bool  g_praiseSound           = true;  // short reward-like sound of a praise (Data/Audio/Ping/praise.wav)
+static const char * const PRAISE_SOUND_PATH = "/Audio/Ping/praise.wav";
+static float g_praisePanelTop        = 0.25f; // top of the first notification, part of the screen height
+// Praise chosen in the castle fair (written to user.cfg by the launcher): its number goes to everybody in CmdPraise,
+// every client shows its own text of that number from praises.txt (also written by the launcher); 0 - the standard praise
+static int   g_praiseId              = 0;
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+// ping types = the value sent with CmdTypedSignal; 0..4 - the first wheel, 5 - the ordinary ping, 6.. - added later.
+// Icons and beams: Data/UI/Styles/Icons/PingWheel/ping_icon<type>.dds, ping_beam<type>.dds (pw_art/UI/PingWheel).
+struct PingTypeDesc
+{
+  const wchar_t * label;
+  const wchar_t * labelEn;
+  int             color;
+  int             sound;   // Data/Audio/Ping/ping<sound>.wav
+};
+static const PingTypeDesc s_pingTypes[] =
+{
+  { L"\u0418\u0434\u0443 \u0441\u044e\u0434\u0430", L"Going here", 0x60B0FF, 0 }, // 0
+  { L"\u041d\u0430\u043f\u0430\u0434\u0430\u0435\u043c", L"Attack", 0xFFB040, 1 }, // 1
+  { L"\u041e\u0441\u0442\u043e\u0440\u043e\u0436\u043d\u043e", L"Careful", 0xFF5A3A, 2 }, // 2
+  { L"\u0412\u0440\u0430\u0436\u0435\u0441\u043a\u0438\u0439 \u0432\u0430\u0440\u0434", L"Enemy ward", 0xFF4090, 3 }, // 3
+  { L"\u041d\u0443\u0436\u0435\u043d \u0432\u0430\u0440\u0434", L"Need a ward", 0x70E070, 4 }, // 4
+  { L"", L"", 0x48C8FF, 5 }, // 5 ordinary ping
+  { L"\u041e\u0442\u0441\u0442\u0443\u043f\u0430\u0435\u043c", L"Retreat", 0xFFD040, 2 }, // 6
+  { L"\u041d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c", L"Need help", 0x60E0A0, 0 }, // 7
+  { L"\u0421\u043e\u0431\u0438\u0440\u0430\u0435\u043c\u0441\u044f \u0437\u0434\u0435\u0441\u044c", L"Gather here", 0x40D8FF, 0 }, // 8
+  { L"\u0417\u0430\u0449\u0438\u0449\u0430\u0435\u043c", L"Defend", 0x5A7CFF, 4 }, // 9
+  { L"\u0412\u0440\u0430\u0433 \u043f\u0440\u043e\u043f\u0430\u043b", L"Enemy missing", 0xFFE040, 3 }, // 10
+  { L"\u0426\u0435\u043b\u044c", L"Target", 0xFF3030, 1 }, // 11
+  { L"\u0417\u0430\u0441\u0430\u0434\u0430", L"Ambush", 0xC070FF, 3 }, // 12
+  { L"\u0417\u0430\u0445\u0432\u0430\u0442\u044b\u0432\u0430\u0435\u043c \u0444\u043b\u0430\u0433", L"Capture the flag", 0xFF9030, 1 }, // 13
+  { L"\u0418\u0434\u0443 \u0432 \u043b\u0435\u0441", L"Going to the forest", 0x80D050, 4 }, // 14
+};
+#pragma warning( pop )
+static const int PING_TYPE_COUNT  = sizeof( s_pingTypes ) / sizeof( s_pingTypes[0] );
+static const int PING_TYPE_PLAIN  = 5;  // ordinary ping: "!" icon, no text
+static const int PING_TYPE_ATTACK = 1;  // "Attack": its icon / sound for a ping on an enemy unit
+
+// seconds a marker of the type lives: unimportant ones shorter, wards longer
+static float PingMarkerLifeTime( int type )
+{
+  const float base = Max( g_pingMarkerTime, 0.5f );
+  if ( type == PING_TYPE_PLAIN || type == 0 || type == 14 ) // plain ping, "going here", "going to the forest"
+    return Max( base * Min( Max( g_pingMinorTimeScale, 0.1f ), 1.0f ), 0.5f );
+  if ( type == 3 || type == 4 ) // "enemy ward", "need a ward"
+    return Max( g_pingWardTime, base );
+  return base;
+}
+static const int PING_SOUND_COUNT = 6;  // ping0..5.wav
+static const char * const PING_SOUND_PATH = "/Audio/Ping/ping%d.wav";
+
+static bool IsWheelPingType( int type )
+{
+  return type >= 0 && type < PING_TYPE_COUNT && type != PING_TYPE_PLAIN;
+}
+
+static wstring PingTypeLabel( int type )
+{
+  if ( type < 0 || type >= PING_TYPE_COUNT )
+    return wstring();
+  return wstring( GetLanguageShortCode() == "en" ? s_pingTypes[type].labelEn : s_pingTypes[type].label );
+}
+
+// "a,b,c" -> slots of a wheel: ids of the catalog (valid), unique, WHEEL_MIN_ITEMS..WHEEL_MAX_ITEMS of them
+// (too few: completed with the first free ones of the catalog)
+static void ParseWheelItems( const string & text, const vector<int> & valid, vector<int> & items )
+{
+  items.clear();
+  int value = 0;
+  bool digits = false;
+  for ( int i = 0; i <= text.length(); ++i )
+  {
+    const char c = ( i < text.length() ) ? text[i] : ',';
+    if ( c >= '0' && c <= '9' )
+    {
+      value = value * 10 + ( c - '0' );
+      digits = true;
+      continue;
+    }
+    if ( digits && find( valid.begin(), valid.end(), value ) != valid.end() && find( items.begin(), items.end(), value ) == items.end() && items.size() < WHEEL_MAX_ITEMS )
+      items.push_back( value );
+    value = 0;
+    digits = false;
+  }
+  for ( int i = 0; i < valid.size() && items.size() < WHEEL_MIN_ITEMS; ++i )
+    if ( find( items.begin(), items.end(), valid[i] ) == items.end() )
+      items.push_back( valid[i] );
+}
+
+static void GetWheelPingTypes( vector<int> & types )
+{
+  types.clear();
+  for ( int t = 0; t < PING_TYPE_COUNT; ++t )
+    if ( IsWheelPingType( t ) )
+      types.push_back( t );
+}
+
+// "cmd_smart_chat_12" -> 12 (the id of a quick chat message in the wheel settings)
+static int SmartChatCommandNumber( const string & commandId )
+{
+  const int pos = commandId.rfind( '_' );
+  if ( pos < 0 )
+    return -1;
+  return NStr::ToInt( commandId.substr( pos + 1 ).c_str() );
+}
+
+static string JoinWheelItems( const vector<int> & items )
+{
+  string text;
+  for ( int i = 0; i < items.size(); ++i )
+    text += NStr::StrFmt( i ? ",%d" : "%d", items[i] );
+  return text;
+}
+
+static NSoundScene::SoundDescription PingSoundDesc( int sound )
+{
+  NSoundScene::SoundDescription desc; // 2d, not looped
+  desc.soundFilename = NStr::StrFmt( PING_SOUND_PATH, sound );
+  desc.category      = NSoundScene::SOUNDCATEGORY_INTERFACE;
+  desc.looped        = false;
+  return desc;
+}
+
+static NSoundScene::SoundDescription PraiseSoundDesc()
+{
+  NSoundScene::SoundDescription desc; // 2d, not looped
+  desc.soundFilename = PRAISE_SOUND_PATH;
+  desc.category      = NSoundScene::SOUNDCATEGORY_INTERFACE;
+  desc.looped        = false;
+  return desc;
+}
+
+// Dota-like chat in the center of the screen
+static bool  g_chatCentered          = false;
+static float g_chatCenterRaise       = 20.0f; // percent of the screen height above the default chat position
+
+// Size of the team portrait panels (allies top-left, enemies top-right), percent; "Advanced" settings page
+static float g_teamPortraitsScale    = 100.0f;
+
+// Own hero (or the mount it controls) under the cursor must not block move orders:
+// the action click goes "through" it to the ground, like in Dota.
+static bool IsOwnHeroPick( NWorld::PFBaseHero const * pHero, PF_Core::WorldObjectBase const * pObj )
+{
+  if ( !pHero || !pObj )
+    return false;
+  if ( pObj == pHero )
+    return true;
+  return pHero->ControlsMount() && pObj == pHero->GetMount().GetPtr();
+}
 
 // tmp, IgorKaa
 namespace
@@ -501,6 +732,48 @@ AdventureScreen::AdventureScreen()
 , bCtrlPressed(false)
 , mouse3Pressed(false)
 , m_updated(false)
+, moveOnHoldActive(false)
+, moveOnHoldSilent(false)
+, moveOnHoldButton(UI::EMButton::Right)
+, moveOnHoldTimer(0.0f)
+, moveOnHoldSinceSend(0.0f)
+, moveOnHoldLastTarget(VNULL2)
+, lastTalentActivationTime(0)
+, lastTalentActivationLevel(-1)
+, lastTalentActivationSlot(-1)
+, lastAbilityStatusTime(0)
+, lastAbilityStatusLevel(-1)
+, lastAbilityStatusSlot(-1)
+, lastAltStatusPressTime(0)
+, holdCastSlot(-1)
+, holdCastTimer(0.0f)
+, pingWheelPending(false)
+, pingWheelShown(false)
+, pingWheelMiddle(false)
+, pingWheelButton(UI::EMButton::Left)
+, pingWheelTimer(0.0f)
+, pingWheelWorldPos(VNULL3)
+, pingWheelCursor(VNULL2)
+, pingWheelSelected(-1)
+, chatWheelShown(false)
+, chatWheelTimer(0.0f)
+, chatWheelCenter(VNULL2)
+, chatWheelSelected(-1)
+, pingRingChannelsUsed(0)
+, lastPingSoundTime(0)
+, pingHudTimer(0.0f)
+, pingHudShown(-2)
+, replayHud(false)
+, praiseNextId(1)
+, lastPraiseTime(0)
+, praiseRowsFit(0)
+, autoAttackSent(-1)
+, smartCastRefreshTimer(0.0f)
+, flashMinimapAlertSent(-1)
+, flashChatCenteredSent(-1)
+, flashChatRaiseSent(-1.0f)
+, flashPortraitsScaleSent(-1.0f)
+, pingMarkerNextId(1)
 , isPlayingMinigame(false)
 , isSelectedOfSameFaction(false)
 , isPreselectedOfSameFaction(false)
@@ -598,6 +871,13 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
   eventsScene.AddSystemHandler( "win_mouse_move",             &AdventureScreen::MsgOnMouseMove );
 	eventsScene.AddSystemHandler( "win_left_button_down",       &AdventureScreen::MsgOnLMouseDown );
 	eventsScene.AddSystemHandler( "win_right_button_down",      &AdventureScreen::MsgOnRMouseDown );
+  // The game window has CS_DBLCLKS, so Windows turns every second quick click into a *_DBLCLK message
+  // instead of *_DOWN. Without these handlers every second fast click on the ground was ignored and
+  // the hero kept running to the previous point.
+  eventsScene.AddSystemHandler( "win_left_button_dblclk",     &AdventureScreen::MsgOnLMouseDown );
+  eventsScene.AddSystemHandler( "win_right_button_dblclk",    &AdventureScreen::MsgOnRMouseDown );
+  eventsScene.AddSystemHandler( "win_left_button_up",         &AdventureScreen::MsgOnLMouseUp );
+  eventsScene.AddSystemHandler( "win_right_button_up",        &AdventureScreen::MsgOnRMouseUp );
 	eventsScene.AddSystemHandler( "win_char",                   &AdventureScreen::MsgOnKeyDown );
 
   eventsUI.AddActivationHandler( "cs_show_healthbars",        &AdventureScreen::MsgShowHealthbars );
@@ -647,6 +927,10 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
   
   eventsUI.AddActivationHandler( "actionbar_lock_off",   &AdventureScreen::LockActionBar, 0);
   eventsUI.AddActivationHandler( "actionbar_lock_on",    &AdventureScreen::LockActionBar, 1);
+
+  VoiceOverlayController::EnsureDefaultUnlockBind();
+  eventsUI.AddActivationHandler( "voice_overlay_unlock_on",  &AdventureScreen::VoiceOverlayUnlock, 1);
+  eventsUI.AddActivationHandler( "voice_overlay_unlock_off", &AdventureScreen::VoiceOverlayUnlock, 0);
 
   if ( IsSpectator() )
   {
@@ -724,6 +1008,7 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
 
 AdventureScreen::~AdventureScreen()
 {
+  MessageTrace( "combat screen destroyed" );
   NMainFrame::SetCloseHandler( 0 );
 
   s_screenInstance = 0;
@@ -1332,7 +1617,8 @@ void AdventureScreen::ExecuteCommand(Command cmd, CVec3 const &worldPos, PF_Core
     }
     else
     {
-      PlayPickEffect(worldPos, true);
+      if ( !moveOnHoldSilent || g_moveOnHoldMarker ) // marker on auto-repeated orders is optional (move_on_hold_marker)
+        PlayPickEffect(worldPos, true);
 		  pCommand = NWorld::CreateCmdMoveHero(pHero, worldPos.AsVec2D(), bAddToQueue);
     }
 		break;
@@ -1650,6 +1936,11 @@ void AdventureScreen::OnMapLoaded( const NDb::AdvMapDescription * advMapDescript
 
     pCameraController->SetInitialParameters(&s_camera_rod, &pitch);
 
+    // A spectator (live match or replay) may move the camera twice as far
+    // away as a player in a battle
+    if ( IsSpectator() )
+      pCameraController->ExtendZoomOut( 2.f );
+
     const float farPplane = 500.f;
     camera->SetPerspectiveTransform( pCameraController->GetFOV(), renderMode.width,  renderMode.height, 0.5f, 
                                       farPplane, pCameraController->GetFovCorrectionAngle() );
@@ -1687,6 +1978,9 @@ void AdventureScreen::OnMapLoaded( const NDb::AdvMapDescription * advMapDescript
   if ( advMapDescription->map->postEffect )
     PF_Render::Interface::Get()->SetPostFXParams( advMapDescription->map->postEffect );
 
+  // ping wheel textures and the ground ring: load them now, loading files after the game start asserts
+  PreloadPingVisuals( advMapDescription );
+
   NDb::GetDbResourceCache().EnableAssertionLoadingFiles();
 }
 
@@ -1696,6 +1990,7 @@ void AdventureScreen::OnSessionStart( lobby::TGameId _sessionId, bool inReconnec
 {
   isSessionStarted = true;
   sessionId = _sessionId;
+  LoadSmartCastOverrides();
   bindsController->SetEnabled(BindsController::Lua,true);
   bindsController->SetEnabled(BindsController::Chat,true);
   
@@ -2067,6 +2362,24 @@ void AdventureScreen::Step( bool bAppActive )
   if (IsValid(pLogic) && GetWorld())
     pLogic->UpdateDayNightState(GetWorld()->GetDayNightController());
 
+  UpdatePingHud( NMainLoop::GetTimeDelta() );
+
+  if ( !unsentWardCounts.empty() )
+    if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    {
+      for ( nstl::map<int, int>::iterator it = unsentWardCounts.begin(); it != unsentWardCounts.end(); ++it )
+        flash->SetPlayerWards( it->first, it->second );
+      unsentWardCounts.clear();
+    }
+
+  if ( !unsentPingMutes.empty() )
+    if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    {
+      for ( nstl::map<int, bool>::iterator it = unsentPingMutes.begin(); it != unsentPingMutes.end(); ++it )
+        flash->SetPlayerPingMuted( it->first, it->second );
+      unsentPingMutes.clear();
+    }
+
   NGameX::AdventureScreenBase::Step( bAppActive );
 }
 
@@ -2243,6 +2556,43 @@ void AdventureScreen::CommonStep( bool bAppActive )
       UpdatePick();
   }
 
+  UpdateMoveOnHold( deltaTime );
+  UpdateHoldSelfCast( deltaTime );
+  UpdatePingWheel( deltaTime );
+  UpdateChatWheel( deltaTime );
+  UpdateAutoAttackOption();
+  UpdateSmartCastBoxes( deltaTime );
+
+  // the old minimap alert sound of Flash plays only while the new ping sounds are off
+  {
+    const int alertSound = ( !g_pingSound && !g_pingsMuted ) ? 1 : 0;
+    if ( flashMinimapAlertSent != alertSound && pLogic && pLogic->GetFlashInterface() )
+    {
+      pLogic->GetFlashInterface()->SetMinimapAlertSound( alertSound != 0 );
+      flashMinimapAlertSent = alertSound;
+    }
+  }
+
+  // push the chat layout option to Flash when it changes (settings page or console)
+  {
+    if ( flashChatCenteredSent != (int)g_chatCentered || flashChatRaiseSent != g_chatCenterRaise )
+    {
+      if ( pLogic && pLogic->GetFlashInterface() )
+      {
+        pLogic->GetFlashInterface()->SetChatCentered( g_chatCentered, Min( Max( g_chatCenterRaise, 0.0f ), 80.0f ) * 0.01f );
+        flashChatCenteredSent = (int)g_chatCentered;
+        flashChatRaiseSent    = g_chatCenterRaise;
+      }
+    }
+  }
+
+  // push the team portraits size to Flash when it changes (settings page or console)
+  if ( flashPortraitsScaleSent != g_teamPortraitsScale && pLogic && pLogic->GetFlashInterface() )
+  {
+    pLogic->GetFlashInterface()->SetTeamPortraitsScale( Min( Max( g_teamPortraitsScale, 50.0f ), 200.0f ) * 0.01f );
+    flashPortraitsScaleSent = g_teamPortraitsScale;
+  }
+
   // Update scene & scene objects in it
   {
     NI_PROFILE_BLOCK( "Scene" );
@@ -2275,6 +2625,10 @@ void AdventureScreen::CommonStep( bool bAppActive )
 
   if ( pScene )
     Render::DebugRenderer::ImplementationSet3DProjection( pScene->GetCamera()->GetProjectiveMatrix() * pScene->GetCamera()->GetViewMatrix() );
+
+  // ping markers are projected with the camera of this frame: the scene (and the camera) has just been updated above
+  UpdatePingMarkers( deltaTime );
+  UpdatePraises( deltaTime );
 
   // No more XP
   // hero_Exp.SetValue( GetHero() ? GetHero()->GetExperience() : 0 );
@@ -2583,7 +2937,12 @@ bool AdventureScreen::IsSelectionCmd( UI::EMButton::Enum action )
 
 bool AdventureScreen::IsMinimapSignalCmd( UI::EMButton::Enum action )
 {
-  return GetHero() != 0 && action == UI::EMButton::Left && ( minimapSignalKey || command == CMD_SIGNAL);
+  if ( GetHero() == 0 )
+    return false;
+  if ( command == CMD_SIGNAL ) // 'signal' button of the UI, then a click
+    return action == UI::EMButton::Left;
+  // Alt + the button that does NOT move the hero (left by default, right in the casual control style)
+  return minimapSignalKey && action == ( g_casualControlStyle ? UI::EMButton::Right : UI::EMButton::Left );
 }
 
 bool AdventureScreen::UseSmartChat()
@@ -2644,17 +3003,148 @@ bool AdventureScreen::MsgOnMouseDownImpl( const Input::SSysParams & sysParams, U
     
 
   
+  moveOnHoldActive = false; // any new click cancels the previous hold
+
   if( currentPick.GetPickedNormal() == VNULL3 )
     return false;
 
-  if( IsMinimapSignalCmd(action) )
-    ExecuteCommand( CMD_SIGNAL, currentPick.GetPickedPos(), currentPick.GetPickedPtr() );
+  // pings on the middle button: Alt + click on the ground is an ordinary click then (the minimap still pings with Alt)
+  const bool altPingDisabled = g_pingMiddleMouse && minimapSignalKey && command != CMD_SIGNAL;
+
+  if( IsMinimapSignalCmd(action) && !altPingDisabled )
+  {
+    if ( !( minimapSignalKey && command != CMD_SIGNAL && StartPing( false, action ) ) )
+      ExecuteCommand( CMD_SIGNAL, currentPick.GetPickedPos(), currentPick.GetPickedPtr() );
+  }
   else if( IsSelectionCmd(action) )
     OnSelectionButtonMouseClick( currentPick.GetPickedPos(), true );
   else if( IsActionCmd(action) )
-    OnActionButtonMouseClick( currentPick.GetPickedPos(), true );  
+  {
+    // remember before the click: it may change the state
+    const bool wasNormalState = ( m_state == STATE_NORMAL );
+    const bool groundClick    = !IsValid( currentPick.GetPickedPtr() ) || IsOwnHeroPick( GetHero(), currentPick.GetPickedPtr() );
+
+    OnActionButtonMouseClick( currentPick.GetPickedPos(), true );
+
+    if ( g_moveOnHold && wasNormalState && groundClick && m_state == STATE_NORMAL )
+    {
+      moveOnHoldActive     = true;
+      moveOnHoldButton     = action;
+      moveOnHoldTimer      = Max( g_moveOnHoldInterval, 0.1f );
+      moveOnHoldSinceSend  = 0.0f;
+      moveOnHoldLastTarget = currentPick.GetPickedPos().AsVec2D();
+    }
+  }
   
   return false;
+}
+
+bool AdventureScreen::MsgOnLMouseUp( const Input::SSysParams & /*sysParams*/ )
+{
+  if ( moveOnHoldActive && moveOnHoldButton == UI::EMButton::Left )
+    moveOnHoldActive = false;
+  return false;
+}
+
+bool AdventureScreen::MsgOnRMouseUp( const Input::SSysParams & /*sysParams*/ )
+{
+  if ( moveOnHoldActive && moveOnHoldButton == UI::EMButton::Right )
+    moveOnHoldActive = false;
+  return false;
+}
+
+// Physical state of a logical mouse button; protects from a lost "button up" message (released over UI, alt-tab, etc.)
+static bool IsLogicalMouseButtonDown( UI::EMButton::Enum button )
+{
+  const bool swapped = ( GetSystemMetrics( SM_SWAPBUTTON ) != 0 );
+  const bool right   = ( button == UI::EMButton::Right );
+  const int  vk      = ( right != swapped ) ? VK_RBUTTON : VK_LBUTTON; // GetAsyncKeyState checks physical buttons
+  return ( GetAsyncKeyState( vk ) & 0x8000 ) != 0;
+}
+
+void AdventureScreen::UpdateMoveOnHold( float deltaTime )
+{
+  if ( !moveOnHoldActive )
+    return;
+
+  if ( !g_moveOnHold || m_state != STATE_NORMAL || !bAdventureControlsEnabled || isPlayingMinigame
+       || !IsActionCmd( moveOnHoldButton ) || !IsLogicalMouseButtonDown( moveOnHoldButton ) )
+  {
+    moveOnHoldActive = false;
+    return;
+  }
+
+  moveOnHoldSinceSend += deltaTime;
+  moveOnHoldTimer     -= deltaTime;
+  if ( moveOnHoldTimer > 0.0f )
+    return;
+  moveOnHoldTimer = Max( g_moveOnHoldInterval, 0.1f );
+
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !IsValid( pHero ) || pHero->IsDead() )
+    return;
+
+  if ( vCursorPos.x == -1.f && vCursorPos.y == -1.f )
+    return;
+
+  // units and objects under the cursor do not stop the run: the order goes "through" them to the ground
+  // (like through own hero), only move orders are sent while the button is held
+  if ( pLogic && pLogic->IsMouseUnderWindow() )
+    return;
+
+  UpdateTerrainPick();
+  if ( currentPick.GetPickedNormal() == VNULL3 )
+    return;
+
+  const CVec2 target = currentPick.GetPickedPos().AsVec2D();
+  if ( fabs2( target - moveOnHoldLastTarget ) < g_moveOnHoldMinDistance * g_moveOnHoldMinDistance
+       && moveOnHoldSinceSend < g_moveOnHoldResendTime )
+    return;
+
+  moveOnHoldLastTarget = target;
+  moveOnHoldSinceSend  = 0.0f;
+
+  moveOnHoldSilent = true;
+  ExecuteCommand( CMD_MOVE, currentPick.GetPickedPos(), NULL );
+  moveOnHoldSilent = false;
+}
+
+// the hotkey of action bar slot `slot` is held now
+static bool IsActionBarKeyDown( int slot )
+{
+  Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
+  if ( !binds || slot < 0 )
+    return false;
+  Input::ICommandInstance * command = binds->FindCommand( NStr::StrFmt( "cmd_action_bar_slot%d", slot + 1 ) );
+  return command && command->IsActiveNow();
+}
+
+// the hotkey of an ability is still held after it went to the targeting mode: cast it on own hero
+void AdventureScreen::UpdateHoldSelfCast( float deltaTime )
+{
+  if ( holdCastSlot < 0 )
+    return;
+  if ( !g_holdSelfCast || !IsActionBarKeyDown( holdCastSlot ) )
+  {
+    holdCastSlot = -1;
+    return;
+  }
+  holdCastTimer += deltaTime;
+  if ( holdCastTimer < Min( Max( g_holdSelfCastTime, 0.1f ), 1.0f ) )
+    return;
+  holdCastSlot = -1;
+
+  if ( m_state != STATE_TARGET || command != CMD_TALENT_TALENT_PANEL || m_talentLevel < 0 || m_talentSlot < 0 )
+    return;
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  NWorld::PFTalent * pTalent = pMale ? pMale->GetTalent( m_talentLevel, m_talentSlot ) : 0;
+  if ( !pTalent || !CastCurrentTalentOnSelf( pTalent ) )
+    return;
+  lastTalentActivationLevel = -1; // the next press starts a new sequence
+  if ( pLogic && IsValid( pLogic->GetActionBarController() ) )
+    pLogic->GetActionBarController()->DropTarget();
+  TargetZoneReset();
+  SetState( STATE_NORMAL );
 }
 
 bool AdventureScreen::MsgOnLMouseDown( const Input::SSysParams & sysParams )
@@ -2670,6 +3160,43 @@ bool AdventureScreen::MsgOnRMouseDown( const Input::SSysParams & sysParams ) //!
 void AdventureScreen::MsgOnMouse3Down()
 {
   mouse3Pressed = true;
+
+  // pings on the middle mouse button
+  if ( !g_pingMiddleMouse || !bAdventureControlsEnabled || !GetHero() || m_state != STATE_NORMAL || isPlayingMinigame || pingWheelPending )
+    return;
+  if ( pLogic && pLogic->IsMouseUnderWindow() )
+    return;
+  if ( vCursorPos.x == -1.f && vCursorPos.y == -1.f )
+    return;
+  UpdateTerrainPick();
+  if ( currentPick.GetPickedNormal() == VNULL3 )
+    return;
+
+  if ( !StartPing( true, UI::EMButton::Left ) )
+    ExecuteCommand( CMD_SIGNAL, currentPick.GetPickedPos(), currentPick.GetPickedPtr() );
+}
+
+// remembers the ping point; UpdatePingWheel decides: released quickly -> ordinary ping, held -> ping wheel
+bool AdventureScreen::StartPing( bool middleButton, UI::EMButton::Enum button )
+{
+  if ( !g_pingWheel || m_state != STATE_NORMAL || isPlayingMinigame )
+    return false;
+
+  pingWheelPending  = true;
+  pingWheelShown    = false;
+  pingWheelMiddle   = middleButton;
+  pingWheelButton   = button;
+  pingWheelTimer    = 0.0f;
+  pingWheelWorldPos = currentPick.GetPickedPos();
+  pingWheelObject   = currentPick.GetPickedPtr();
+  pingWheelCursor   = vCursorPos;
+  pingWheelSelected = -1;
+  return true;
+}
+
+bool AdventureScreen::IsMiddleMousePingMode()
+{
+  return g_pingMiddleMouse;
 }
 
 
@@ -2916,7 +3443,185 @@ void AdventureScreen::MsgSmartChatOpen()
   if (!isHotkeysEnabled || ( blockedHotKeys & ( 1 << FlashWindowsType::SmartChat ) ))
     return;
 
+  // no smart chat controller (a local game without the chat): the wheel is shown, the messages are not sent
+  if ( g_chatWheel && ( !IsValid( smartChatController ) || smartChatController->IsWheelAvailable() ) )
+  {
+    if ( !chatWheelShown && !StartChatWheel() && IsValid( smartChatController ) )
+      pLogic->ActivateSmartChat();
+    return;
+  }
+
   pLogic->ActivateSmartChat();
+}
+
+bool AdventureScreen::IsChatWheelKeyDown() const
+{
+  Input::Binds * binds = Input::BindsManager::Instance()->GetBinds();
+  if ( !binds )
+    return false;
+  Input::ICommandInstance * command = binds->FindCommand( "cmd_smart_chat" );
+  return command && command->IsActiveNow();
+}
+
+// the quick chat messages (SmartChatConfiguration) in their order: texts in the client language and the command numbers;
+// index i is the index of the message for SmartChatController::SendWheelMessage
+void AdventureScreen::GetChatWheelCatalog( vector<wstring> & texts, vector<int> & ids ) const
+{
+  texts.clear();
+  ids.clear();
+  if ( !IsValid( pUIData ) || !IsValid( pUIData->smartChat ) )
+    return;
+  for ( int i = 0; i < pUIData->smartChat->messages.size(); ++i )
+  {
+    NDb::Ptr<NDb::SmartChatMessage> message = pUIData->smartChat->messages[i];
+    texts.push_back( IsValid( message ) ? wstring( message->text.GetText() ) : wstring() );
+    ids.push_back( IsValid( message ) ? SmartChatCommandNumber( message->commandId ) : -1 );
+  }
+}
+
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+// the data of the wheel editors in the settings window ("Chat wheel" / "Ping wheel" pages)
+void AdventureScreen::SendWheelEditors()
+{
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash )
+    return;
+  const bool en = ( GetLanguageShortCode() == "en" );
+  const wstring texts = en ? wstring( L"Wheel slots|Drag a command into a slot of the wheel or onto the list of the slots|Slots" )
+                           : wstring( L"\u0421\u043b\u043e\u0442\u044b \u043a\u043e\u043b\u0435\u0441\u0430|\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u0432 \u0441\u0435\u043a\u0442\u043e\u0440 \u043a\u043e\u043b\u0435\u0441\u0430 \u0438\u043b\u0438 \u0432 \u0441\u043f\u0438\u0441\u043e\u043a \u0441\u043b\u043e\u0442\u043e\u0432|\u0421\u043b\u043e\u0442\u043e\u0432" );
+
+  vector<wstring> chatTexts;
+  vector<int> chatIds;
+  GetChatWheelCatalog( chatTexts, chatIds );
+  wstring labels;
+  string ids;
+  for ( int i = 0; i < chatTexts.size(); ++i )
+  {
+    labels += ( i ? L"|" : L"" ) + chatTexts[i];
+    ids += NStr::StrFmt( i ? "|%d" : "%d", chatIds[i] );
+  }
+  vector<int> items;
+  ParseWheelItems( g_chatWheelItems, chatIds, items );
+  flash->SetWheelEditor( 0, "chat_wheel_commands", ids, labels, "", JoinWheelItems( items ), texts );
+
+  labels.clear();
+  ids.clear();
+  string icons;
+  for ( int t = 0; t < PING_TYPE_COUNT; ++t )
+  {
+    if ( !IsWheelPingType( t ) )
+      continue;
+    const bool first = ids.empty();
+    labels += ( first ? L"" : L"|" ) + PingTypeLabel( t );
+    ids += NStr::StrFmt( first ? "%d" : "|%d", t );
+    icons += NStr::StrFmt( first ? "ping_icon%d.dds" : "|ping_icon%d.dds", t );
+  }
+  vector<int> pingTypes;
+  GetWheelPingTypes( pingTypes );
+  ParseWheelItems( g_pingWheelItems, pingTypes, items );
+  flash->SetWheelEditor( 1, "ping_wheel_items", ids, labels, icons, JoinWheelItems( items ), texts );
+}
+#pragma warning( pop )
+
+bool AdventureScreen::StartChatWheel()
+{
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || isPlayingMinigame )
+    return false;
+
+  vector<wstring> texts;
+  vector<int> ids;
+  GetChatWheelCatalog( texts, ids );
+  if ( texts.size() < WHEEL_MIN_ITEMS )
+    return false;
+  vector<int> commands;
+  ParseWheelItems( g_chatWheelItems, ids, commands );
+
+  // slot -> index of the message
+  chatWheelSlots.clear();
+  wstring labels;
+  for ( int i = 0; i < commands.size(); ++i )
+  {
+    const int index = find( ids.begin(), ids.end(), commands[i] ) - ids.begin();
+    chatWheelSlots.push_back( index );
+    if ( i )
+      labels += L"|";
+    labels += texts[index];
+  }
+
+  const UI::Point & res = UI::GetScreenResolution();
+  const float scale  = Min( Max( g_chatWheelScale, 30.0f ), 300.0f ) * 0.01f;
+  const float radius = CHAT_WHEEL_RADIUS * scale;
+  CVec2 center = vCursorPos;
+  if ( g_chatWheelCentered || center.x < 0.0f || center.y < 0.0f )
+    center = CVec2( res.x * 0.5f, res.y * 0.5f );
+  // the whole wheel stays on the screen
+  center.x = Max( Min( center.x, res.x - radius ), Min( radius, res.x * 0.5f ) );
+  center.y = Max( Min( center.y, res.y - radius ), Min( radius, res.y * 0.5f ) );
+
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false );
+  const float opacity = 1.0f - Min( Max( g_chatWheelTransparency, 0.0f ), 100.0f ) * 0.01f;
+  flash->ShowChatWheel( center.x / Max( (float)res.x, 1.0f ), center.y / Max( (float)res.y, 1.0f ), labels, opacity, scale );
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+
+  chatWheelShown    = true;
+  chatWheelTimer    = 0.0f;
+  chatWheelCenter   = center;
+  chatWheelSelected = -1;
+  return true;
+}
+
+// the wheel is on the screen while the key is held; released with the cursor in the center = no message
+void AdventureScreen::UpdateChatWheel( float deltaTime )
+{
+  if ( !chatWheelShown )
+    return;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || !g_chatWheel || isPlayingMinigame || ( GetAsyncKeyState( VK_ESCAPE ) & 0x8000 ) )
+  {
+    CloseChatWheel( false );
+    return;
+  }
+
+  chatWheelTimer += deltaTime;
+
+  // the item in the direction of the cursor from the wheel center (item 0 is at the top, clockwise)
+  const int count = chatWheelSlots.size();
+  const float dx = vCursorPos.x - chatWheelCenter.x;
+  const float dy = vCursorPos.y - chatWheelCenter.y;
+  const float deadZone = g_chatWheelDeadZone * Min( Max( g_chatWheelScale, 30.0f ), 300.0f ) * 0.01f;
+  int selected = -1;
+  if ( count > 0 && dx * dx + dy * dy > deadZone * deadZone )
+  {
+    float angle = atan2f( dy, dx ) * 180.0f / 3.14159265f + 90.0f; // 0 = up, screen y goes down
+    while ( angle < 0.0f )
+      angle += 360.0f;
+    const float sector = 360.0f / count;
+    selected = static_cast<int>( ( angle + sector * 0.5f ) / sector ) % count;
+  }
+  if ( selected != chatWheelSelected )
+  {
+    chatWheelSelected = selected;
+    flash->HighlightChatWheel( selected );
+  }
+
+  if ( !IsChatWheelKeyDown() )
+    CloseChatWheel( true );
+}
+
+void AdventureScreen::CloseChatWheel( bool send )
+{
+  if ( !chatWheelShown )
+    return;
+
+  chatWheelShown = false;
+  if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    flash->HideChatWheel();
+  if ( send && chatWheelSelected >= 0 && chatWheelSelected < chatWheelSlots.size() && IsValid( smartChatController ) )
+    smartChatController->SendWheelMessage( chatWheelSlots[chatWheelSelected] );
+  chatWheelSelected = -1;
 }
 
 
@@ -4536,6 +5241,8 @@ bool AdventureScreen::OnUnitAvatarMouseDblClick(NWorld::PFBaseUnit *pUnit, int a
 void AdventureScreen::OnItemButtonClick(int item)
 {
   if ( IsGamePaused() ) { return; }
+  if ( IsAltStatusPressJustNow() ) // Alt + click: its state went to the chat (OnItemButtonPress)
+    return;
 
   NWorld::PFBaseHero const *pHero = GetHero();
   if (!pHero || pHero->IsDead())
@@ -4562,9 +5269,11 @@ void AdventureScreen::OnItemButtonClick(int item)
   {
     ExecuteCommand(AdventureScreen::CMD_ITEM, VNULL3, GetHero());
   }
-  else if ( pItem->GetAbility()->IsInstaCast() && isHotKeyDown )
+  else if ( IsItemSmartCast( pItem ) && isHotKeyDown )
   {
-    ExecuteCommand(AdventureScreen::CMD_ITEM, GetCurrentCursorPosOnTerrain(), GetCurrentPickedObject());
+    // like the smart cast of a talent: the target under the cursor must suit the item
+    if ( SetCommandTarget( GetCurrentCursorPosOnTerrain(), GetCurrentPickedObject(), false ) )
+      ExecuteCommand( AdventureScreen::CMD_ITEM, m_targetPosition, m_targetObject, false, m_altTarget );
   }
   else
   {
@@ -4609,9 +5318,1015 @@ bool AdventureScreen::OnShopButtonClick(int item)
 
 
 
+void AdventureScreen::UpdatePingWheel( float deltaTime )
+{
+  if ( !pingWheelPending )
+    return;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+
+  const bool held = pingWheelMiddle ? ( GetAsyncKeyState( VK_MBUTTON ) & 0x8000 ) != 0 : IsLogicalMouseButtonDown( pingWheelButton );
+  if ( !held || m_state != STATE_NORMAL || !GetHero() )
+  {
+    pingWheelPending = false;
+    if ( pingWheelShown )
+    {
+      pingWheelShown = false;
+      if ( flash )
+        flash->HidePingWheel();
+      if ( pingWheelSelected >= 0 && pingWheelSelected < pingWheelSlots.size() && GetHero() )
+        SendTypedSignal( pingWheelSlots[pingWheelSelected] );
+    }
+    else if ( GetHero() && m_state == STATE_NORMAL )
+    {
+      ExecuteCommand( CMD_SIGNAL, pingWheelWorldPos, pingWheelObject.GetPtr() ); // quick click: ordinary ping
+    }
+    pingWheelObject = 0;
+    return;
+  }
+
+  pingWheelTimer += deltaTime;
+
+  if ( !pingWheelShown )
+  {
+    if ( pingWheelTimer < Max( g_pingWheelDelay, 0.05f ) || !flash )
+      return;
+
+    vector<int> pingTypes;
+    GetWheelPingTypes( pingTypes );
+    ParseWheelItems( g_pingWheelItems, pingTypes, pingWheelSlots );
+    wstring labels, colors, types;
+    for ( int i = 0; i < pingWheelSlots.size(); ++i )
+    {
+      if ( i )
+      {
+        labels += L"|";
+        colors += L"|";
+        types  += L"|";
+      }
+      labels += PingTypeLabel( pingWheelSlots[i] );
+      colors += NStr::StrFmtW( L"%06X", s_pingTypes[pingWheelSlots[i]].color );
+      types  += NStr::StrFmtW( L"%d", pingWheelSlots[i] );
+    }
+    const UI::Point & res = UI::GetScreenResolution();
+    // textures are preloaded with the map; just in case don't assert if Flash still has to load something
+    const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false );
+    const float opacity = 1.0f - Min( Max( g_pingWheelTransparency, 0.0f ), 100.0f ) * 0.01f;
+    const float scale   = Min( Max( g_pingWheelScale, 30.0f ), 300.0f ) * 0.01f;
+    flash->ShowPingWheel( pingWheelCursor.x / Max( (float)res.x, 1.0f ), pingWheelCursor.y / Max( (float)res.y, 1.0f ), labels, colors, types, opacity, scale );
+    NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+    pingWheelShown    = true;
+    pingWheelSelected = -1;
+  }
+
+  // the item in the direction of the cursor from the wheel center (item 0 is at the top, clockwise)
+  const float dx = vCursorPos.x - pingWheelCursor.x;
+  const float dy = vCursorPos.y - pingWheelCursor.y;
+  int selected = -1;
+  const float deadZone = g_pingWheelDeadZone * Min( Max( g_pingWheelScale, 30.0f ), 300.0f ) * 0.01f;
+  if ( dx * dx + dy * dy > deadZone * deadZone )
+  {
+    float angle = atan2f( dy, dx ) * 180.0f / 3.14159265f + 90.0f; // 0 = up, screen y goes down
+    while ( angle < 0.0f )
+      angle += 360.0f;
+    const int count = Max( (int)pingWheelSlots.size(), 1 );
+    const float sector = 360.0f / count;
+    selected = static_cast<int>( ( angle + sector * 0.5f ) / sector ) % count;
+  }
+  if ( selected != pingWheelSelected )
+  {
+    pingWheelSelected = selected;
+    if ( flash )
+      flash->HighlightPingWheel( selected );
+  }
+}
+
+void AdventureScreen::SendTypedSignal( int type )
+{
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !pHero || !IsWheelPingType( type ) )
+    return;
+
+  if ( !pingAbuseController->Use() )
+  {
+    SingleValueNameMapT<float> valuesMap( ceil( pingAbuseController->GetCooldown() ) );
+    pLogic->SetErrorMessage( NDb::ERRORMESSAGETYPE_PINGRESTRICTED, true, &valuesMap );
+    return;
+  }
+
+  SendGameCommand( NWorld::CreateCmdTypedSignal( pHero, pingWheelWorldPos, type, pHero->GetFaction() ), true );
+}
+
+void AdventureScreen::SetPlayerPingsMuted( int playerId, bool muted, bool showInFlash )
+{
+  if ( muted )
+    mutedPingPlayers.insert( playerId );
+  else
+    mutedPingPlayers.erase( playerId );
+  if ( showInFlash )
+    unsentPingMutes[playerId] = muted;
+}
+
+void AdventureScreen::OnWardUsed( NWorld::PFBaseHero const * pHero )
+{
+  if ( !pHero || !pHero->GetPlayer() )
+    return;
+  const int playerId = pHero->GetPlayer()->GetPlayerID();
+  const int count = ++wardCounts[playerId];
+  if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
+    flash->SetPlayerWards( playerId, count );
+}
+
+// ping to the game server, small text under the minimap (like "40 ms" in LoL): the RPC ping of the game client
+// (LobbyGameClient.cpp, hybrid_ping_value: a request to the game server and back, measured every hybrid_ping_period s)
+void AdventureScreen::UpdatePingHud( float deltaTime )
+{
+  pingHudTimer -= deltaTime;
+  if ( pingHudTimer > 0.0f )
+    return;
+  pingHudTimer = 0.5f;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash )
+    return;
+
+  int ping = -1;
+  if ( !replayHud )
+    if ( NDebug::IDebugVar * var = NDebug::FindDebugVar( L"hybrid_ping_value" ) )
+      ping = static_cast<NDebug::DebugVar<int> *>( var )->GetValue();
+  if ( ping <= 0 ) // no game server (local game, replay) or no answer yet
+    ping = -1;
+  if ( ping == pingHudShown )
+    return;
+  pingHudShown = ping;
+
+  const bool en = ( GetLanguageShortCode() == "en" );
+  flash->SetPingText( ping < 0 ? wstring() : NStr::StrFmtW( en ? L"%d ms" : L"%d \x043c\x0441", ping ) );
+}
+
+void AdventureScreen::SetWardCounts( const nstl::map<int, int> & counts )
+{
+  wardCounts = counts;
+  unsentWardCounts = counts;
+}
+
+// minimap icon of a hero (the same picture as on the minimap and in the chat)
+static nstl::string GetHeroMinimapIconPath( NDb::BaseHero const * pDbHero, NDb::EFaction faction )
+{
+  if ( !pDbHero )
+    return nstl::string();
+  if ( faction == NDb::FACTION_BURN )
+    return pDbHero->minimapIconB ? pDbHero->minimapIconB->textureFileName : nstl::string();
+  return pDbHero->minimapIconA ? pDbHero->minimapIconA->textureFileName : nstl::string();
+}
+
+void AdventureScreen::OnTypedSignal( const CVec3 & pos, int type, NDb::EFaction faction, NWorld::PFBaseHero const * pSender )
+{
+  if ( type < 0 )
+    type = PING_TYPE_PLAIN;
+  if ( faction != GetPlayerFaction() || type >= PING_TYPE_COUNT ) // unknown type (a newer client)
+    return;
+  if ( !IsPingShown( pSender ) )
+    return;
+
+  PingMarker marker;
+  marker.id   = pingMarkerNextId++;
+  marker.type = type;
+  marker.pos  = pos;
+  marker.time = 0.0f;
+  marker.heroSent = false;
+  if ( pSender )
+    marker.heroIcon = GetHeroMinimapIconPath( pSender->GetDbHero(), faction );
+  pingMarkers.push_back( marker );
+
+  PlayPingSound( type );
+}
+
+bool AdventureScreen::OnUnitSignal( NWorld::PFBaseUnit const * pUnit, NDb::EFaction faction, NWorld::PFBaseHero const * pSender )
+{
+  if ( !IsValid( pUnit ) || faction != GetPlayerFaction() )
+    return true;
+  if ( !IsPingShown( pSender ) )
+    return false;
+  if ( g_pingAttackOnUnit && pUnit->GetFaction() != faction )
+    PlayPingSound( PING_TYPE_ATTACK );
+  return true;
+}
+
+// signals of this player are shown: own ones always, the others unless all are off or this player is muted
+bool AdventureScreen::IsPingShown( NWorld::PFBaseHero const * pSender )
+{
+  if ( pSender && pSender == GetHero() )
+    return true;
+  if ( g_pingsDisabled )
+    return false;
+  return !( pSender && pSender->GetPlayer() && mutedPingPlayers.find( pSender->GetPlayer()->GetPlayerID() ) != mutedPingPlayers.end() );
+}
+
+bool AdventureScreen::IsPingSoundEnabled()
+{
+  return g_pingSound;
+}
+
+void AdventureScreen::PlayPingSound( int type )
+{
+  if ( type < 0 )
+    type = PING_TYPE_PLAIN;
+  if ( !g_pingSound || g_pingsMuted || type >= PING_TYPE_COUNT )
+    return;
+
+  const unsigned long now = GetTickCount();
+  if ( lastPingSoundTime != 0 && now - lastPingSoundTime < (unsigned long)( Max( g_pingSoundMinInterval, 0.0f ) * 1000.0f ) )
+    return;
+
+  const float volume = Min( Max( g_pingSoundVolume, 0.0f ), 100.0f ) * 0.01f
+                     * NGlobal::GetVar( "sound_volume", 1.0f ).GetFloat() * NGlobal::GetVar( "common_volume", 1.0f ).GetFloat();
+  if ( volume <= 0.001f )
+    return;
+  lastPingSoundTime = now;
+
+  const NSoundScene::SoundDescription desc = PingSoundDesc( s_pingTypes[type].sound );
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // normally precached with the map
+  float length = 0.0f;
+  const int soundId = NSoundScene::PlaySound( desc, &length );
+  if ( soundId != NSoundScene::INVALID_SOUND_ID )
+    NSoundScene::SetSoundVolume( soundId, volume );
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+}
+
+static bool ProjectPingPoint( const SHMatrix & sceneToScreen, const CVec3 & pos, float & nx, float & ny )
+{
+  CVec4 projected( 0, 0, 0, 0 );
+  sceneToScreen.RotateHVector( &projected, CVec4( pos, 1.0f ) );
+  if ( projected.w <= 0.0f )
+    return false;
+  nx = ( projected.x / projected.w + 1.0f ) * 0.5f;
+  ny = 1.0f - ( projected.y / projected.w + 1.0f ) * 0.5f;
+  return true;
+}
+
+static Render::HDRColor PingRingColor( int color, float alpha, float intensity )
+{
+  Render::HDRColor c( 1.0f );
+  c.R = ( ( color >> 16 ) & 255 ) / 255.0f * intensity;
+  c.G = ( ( color >> 8 ) & 255 ) / 255.0f * intensity;
+  c.B = ( color & 255 ) / 255.0f * intensity;
+  c.A = alpha;
+  return c;
+}
+
+// called while the map is loading: files must not be loaded after the game start
+void AdventureScreen::PreloadPingVisuals( const NDb::AdvMapDescription * advMapDescription )
+{
+  memset( smartCastOverride, -1, sizeof( smartCastOverride ) );
+  memset( smartCastSentMode, -1, sizeof( smartCastSentMode ) );
+  memset( smartCastItemSentMode, -1, sizeof( smartCastItemSentMode ) );
+
+  if ( pLogic && pLogic->GetFlashInterface() )
+  {
+    pLogic->GetFlashInterface()->PreloadPingWheel();
+
+    // minimap icons of all heroes of the session: shown above the pings of their players
+    NDb::Ptr<NDb::HeroesDB> heroesDb = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
+    for ( int i = 0; i < playersStartInfo.size(); ++i )
+    {
+      const NDb::Hero * pDbHero = NWorld::FindHero( heroesDb, advMapDescription, playersStartInfo[i].playerInfo.heroId );
+      const NDb::EFaction faction = ( playersStartInfo[i].teamID == NCore::ETeam::Team2 ) ? NDb::FACTION_BURN : NDb::FACTION_FREEZE;
+      const nstl::string path = GetHeroMinimapIconPath( pDbHero, faction );
+      if ( !path.empty() )
+        pLogic->GetFlashInterface()->PreloadPingImage( path );
+    }
+  }
+
+  for ( int i = 0; i < PING_SOUND_COUNT; ++i )
+    NSoundScene::PrecacheSound( PingSoundDesc( i ) );
+  NSoundScene::PrecacheSound( PraiseSoundDesc() );
+
+  SendWheelEditors();
+
+  pingRingChannelsUsed = 0;
+  pingRingMaterial = NDb::Get<NDb::AOEMaterial>( NDb::DBID( "Effects/UI/Ping/PingRing.MTRL.xdb" ) );
+  NDb::Material const * pRingMaterial = pingRingMaterial;
+  Render::AOERenderer * pAOE = Render::GetAOERenderer();
+  if ( !pAOE )
+    return;
+  for ( int i = 0; i < Render::AOERenderer::CHANNEL_PING_COUNT; ++i )
+  {
+    const Render::AOERenderer::ChannelType channel = static_cast<Render::AOERenderer::ChannelType>( Render::AOERenderer::CHANNEL_PING_FIRST + i );
+    if ( pRingMaterial )
+      pAOE->SetAreaParams( channel, Render::AOERenderer::AREA_DISK, pRingMaterial, g_pingGroundRadius, 0.0f ); // creates the render material (loads the texture)
+    pAOE->ResetArea( channel );
+  }
+}
+
+void AdventureScreen::UpdatePingMarkers( float deltaTime )
+{
+  Render::AOERenderer * pAOE = Render::GetAOERenderer();
+
+  if ( pingMarkers.empty() )
+  {
+    if ( pingRingChannelsUsed > 0 && pAOE )
+      for ( int c = 0; c < pingRingChannelsUsed; ++c )
+        pAOE->ResetArea( static_cast<Render::AOERenderer::ChannelType>( Render::AOERenderer::CHANNEL_PING_FIRST + c ) );
+    pingRingChannelsUsed = 0;
+    return;
+  }
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || !pScene )
+    return;
+
+  const SHMatrix sceneToScreen = pScene->GetCamera()->GetProjectiveMatrix() * pScene->GetCamera()->GetViewMatrix();
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // marker textures (normally already cached)
+  NDb::Material const * pRingMaterial = pingRingMaterial;
+  const bool rings = g_pingGroundEffect && pAOE && pRingMaterial;
+  int channel = 0;
+
+  // newest first: they get the ring channels if there are too many pings at once
+  for ( int i = static_cast<int>( pingMarkers.size() ) - 1; i >= 0; --i )
+  {
+    PingMarker & m = pingMarkers[i];
+    m.time += deltaTime;
+    const float lifeTime = PingMarkerLifeTime( m.type );
+
+    if ( m.time >= lifeTime )
+    {
+      flash->SetPingMarker( m.id, m.type, wstring(), 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f ); // remove
+      pingMarkers.erase( pingMarkers.begin() + i );
+      continue;
+    }
+
+    const bool  plain = ( m.type == PING_TYPE_PLAIN );
+    const int   color = s_pingTypes[m.type].color;
+    const float alpha = Min( 1.0f, m.time / 0.12f ) * Min( 1.0f, ( lifeTime - m.time ) / 0.6f );
+
+    // ground: a steady ring (pops in) + a ring pulsing outwards every second
+    if ( rings && channel + 1 < Render::AOERenderer::CHANNEL_PING_COUNT )
+    {
+      const Render::AOERenderer::ChannelType ringChannel  = static_cast<Render::AOERenderer::ChannelType>( Render::AOERenderer::CHANNEL_PING_FIRST + channel );
+      const Render::AOERenderer::ChannelType pulseChannel = static_cast<Render::AOERenderer::ChannelType>( Render::AOERenderer::CHANNEL_PING_FIRST + channel + 1 );
+      channel += 2;
+
+      const float radius = Max( g_pingGroundRadius, 0.5f );
+      const float pop    = Max( 0.0f, 1.0f - m.time / 0.25f );
+      pAOE->SetAreaRadius( ringChannel, radius * ( 1.0f + 0.35f * pop ) );
+      pAOE->SetAreaPosition( ringChannel, m.pos, V3_AXIS_X, true );
+      pAOE->SetAreaColor( ringChannel, PingRingColor( color, alpha, 2.0f ) );
+
+      const float phase = fmodf( m.time, 1.0f );
+      pAOE->SetAreaRadius( pulseChannel, radius * ( 0.35f + 1.15f * phase ) );
+      pAOE->SetAreaPosition( pulseChannel, m.pos, V3_AXIS_X, true );
+      pAOE->SetAreaColor( pulseChannel, PingRingColor( color, alpha * ( 1.0f - phase ) * 0.85f, 2.0f ) );
+    }
+
+    // screen: icon (+ text) at the top of a light beam standing on the ping point
+    float gx = 0.0f, gy = 0.0f, tx = 0.0f, ty = 0.0f;
+    if ( !ProjectPingPoint( sceneToScreen, m.pos, gx, gy ) )
+      continue;
+    CVec3 top = m.pos;
+    top.z += Max( g_pingBeamHeight, 1.0f );
+    if ( !ProjectPingPoint( sceneToScreen, top, tx, ty ) )
+      continue;
+    if ( !g_pingGroundEffect ) // no beam: the icon only
+    {
+      gx = tx;
+      gy = ty;
+    }
+
+    if ( !m.heroSent )
+    {
+      m.heroSent = true;
+      flash->SetPingMarkerHero( m.id, m.heroIcon ); // before the marker is created by SetPingMarker
+    }
+    flash->SetPingMarker( m.id, m.type, plain ? wstring() : PingTypeLabel( m.type ), color, tx, ty, gx, gy, alpha );
+  }
+
+  if ( pAOE )
+  {
+    for ( int c = channel; c < pingRingChannelsUsed; ++c )
+      pAOE->ResetArea( static_cast<Render::AOERenderer::ChannelType>( Render::AOERenderer::CHANNEL_PING_FIRST + c ) );
+    pingRingChannelsUsed = channel;
+  }
+
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+}
+
+// texts are \u escapes (independent of the source codepage); C4428 just notes that
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+bool AdventureScreen::TryPraiseHero( NWorld::PFBaseHero * pTarget )
+{
+  if ( !g_praise || !IsAbilityStatusModifierDown() )
+    return false;
+
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !pHero || isSpectator || !IsValid( pTarget ) )
+    return false;
+  if ( pTarget == pHero || pTarget->IsClone() )
+    return true; // not ourselves, but swallow the click anyway
+
+  const unsigned long now = GetTickCount();
+  const unsigned long cooldownMs = (unsigned long)( Max( g_praiseCooldown, 0.0f ) * 1000.0f );
+  if ( lastPraiseTime != 0 && now - lastPraiseTime < cooldownMs )
+  {
+    const int left = (int)( ( cooldownMs - ( now - lastPraiseTime ) + 999 ) / 1000 );
+    if ( IsValid( chatController ) )
+      chatController->AddChatMessage( wstring( NStr::StrFmtW( L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430 \u0431\u0443\u0434\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0447\u0435\u0440\u0435\u0437 %d \u0441\u0435\u043a.", left ) ), NDb::CHATCHANNEL_SYSTEM );
+    return true;
+  }
+
+  SendGameCommand( NWorld::CreateCmdPraise( pHero, pTarget, Max( g_praiseId, 0 ) ), true ); // free: no prime is given; amount = praise number
+  lastPraiseTime = now;
+  return true;
+}
+#pragma warning( pop )
+
+
+// praise texts by number from praises.txt (My Games folder, written by the launcher): "<number>\t<text>" per line, UTF-8;
+// read once, the game is started anew for every battle. Unknown number - empty text (the standard praise).
+static wstring GetPraiseText( int id )
+{
+  static nstl::vector< std::pair<int, wstring> > s_texts;
+  static bool s_loaded = false;
+  if ( !s_loaded )
+  {
+    s_loaded = true;
+    FILE * file = 0;
+    if ( fopen_s( &file, NProfile::GetFullFilePath( "praises.txt", NProfile::FOLDER_USER ).c_str(), "rb" ) == 0 && file )
+    {
+      char buffer[1024];
+      bool first = true;
+      while ( fgets( buffer, sizeof( buffer ), file ) )
+      {
+        char * line = buffer;
+        if ( first && (unsigned char)line[0] == 0xEF && (unsigned char)line[1] == 0xBB && (unsigned char)line[2] == 0xBF )
+          line += 3;
+        first = false;
+        for ( char * end = line + strlen( line ); end > line && ( end[-1] == '\n' || end[-1] == '\r' ); --end )
+          end[-1] = 0;
+        char * tab = strchr( line, '\t' );
+        if ( !tab )
+          continue;
+        *tab = 0;
+        const int number = atoi( line );
+        if ( number <= 0 )
+          continue;
+        wstring text;
+        NStr::UTF8ToUnicode( &text, string( tab + 1 ) );
+        if ( text.size() > 64 )
+          text.resize( 64 );
+        s_texts.push_back( std::pair<int, wstring>( number, text ) );
+      }
+      fclose( file );
+    }
+  }
+  for ( int i = 0; i < s_texts.size(); ++i )
+    if ( s_texts[i].first == id )
+      return s_texts[i].second;
+  return wstring();
+}
+
+void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBaseHero const * pTarget, int amount )
+{
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash || !IsValid( pSender ) || !IsValid( pTarget ) )
+    return;
+
+  // name colors: us - gold, allies - green, enemies - red
+  NWorld::PFBaseHero const * pOur = GetHero();
+  const NDb::EFaction ourFaction = GetPlayerFaction();
+  const int senderColor = ( pSender == pOur ) ? 0xFFC864 : ( pSender->GetFaction() == ourFaction ? 0x9BE07A : 0xFF7A66 );
+  const int targetColor = ( pTarget == pOur ) ? 0xFFC864 : ( pTarget->GetFaction() == ourFaction ? 0x9BE07A : 0xFF7A66 );
+  const string senderIcon = pSender->GetUiAvatarImage() ? pSender->GetUiAvatarImage()->textureFileName : string();
+  const string targetIcon = pTarget->GetUiAvatarImage() ? pTarget->GetUiAvatarImage()->textureFileName : string();
+
+  // too many at once (or they would cover the minimap): the oldest one goes away
+  int maxShown = Max( g_praiseMaxShown, 1 );
+  if ( praiseRowsFit > 0 )
+    maxShown = Min( maxShown, praiseRowsFit );
+  while ( !praises.empty() && (int)praises.size() >= maxShown )
+  {
+    flash->SetPraisePanel( praises[0].id, 0.0f, 0.0f, 0.0f, 0.0f );
+    praises.erase( praises.begin() );
+  }
+
+  PraiseEntry entry;
+  entry.id   = praiseNextId++;
+  entry.time = 0.0f;
+  entry.row  = (float)praises.size();
+  praises.push_back( entry );
+
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // portraits are normally cached by the top bar
+  flash->ShowPraise( entry.id, senderIcon, pSender->GetPlayerName(), senderColor,
+                     targetIcon, pTarget->GetPlayerName(), targetColor, amount, GetPraiseText( amount ) );
+  flash->SetPraisePanel( entry.id, 1.0f, entry.row, 1.0f, g_praisePanelTop );
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+
+  PlayPraiseSound();
+}
+
+void AdventureScreen::PlayPraiseSound()
+{
+  if ( !g_praiseSound )
+    return;
+  const float volume = Min( Max( g_pingSoundVolume, 0.0f ), 100.0f ) * 0.01f
+                     * NGlobal::GetVar( "sound_volume", 1.0f ).GetFloat() * NGlobal::GetVar( "common_volume", 1.0f ).GetFloat();
+  if ( volume <= 0.001f )
+    return;
+  const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // precached with the map
+  float length = 0.0f;
+  const int soundId = NSoundScene::PlaySound( PraiseSoundDesc(), &length );
+  if ( soundId != NSoundScene::INVALID_SOUND_ID )
+    NSoundScene::SetSoundVolume( soundId, volume );
+  NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
+}
+
+// may come right from a SetPraisePanel call (FS command): only remembered, UpdatePraises removes the extra panels
+void AdventureScreen::SetPraiseRowsFit( int rows )
+{
+  praiseRowsFit = Max( rows, 1 );
+}
+
+// sends the auto attack option to the world when it differs from what the hero has (settings page or console)
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+// a targeted active ability: only these can be smart-cast
+static bool IsSmartCastableTalent( NWorld::PFTalent const * pTalent )
+{
+  if ( !pTalent || !pTalent->IsActive() || !pTalent->GetDBDesc() )
+    return false;
+  if ( pTalent->GetDBDesc()->flags & NDb::ABILITYFLAGS_USEATTACKTARGET )
+    return false;
+  return pTalent->GetTargetType() != 0;
+}
+
+bool AdventureScreen::IsTalentSmartCast( NWorld::PFTalent const * pTalent, int level, int slot ) const
+{
+  if ( !pTalent )
+    return false;
+  // the switch made on the panel stays in force even when the checkboxes are hidden in the settings
+  if ( level >= 0 && level < 8 && slot >= 0 && slot < 8 && smartCastOverride[level][slot] >= 0 )
+    return smartCastOverride[level][slot] == 1;
+  return pTalent->isInstaCast;
+}
+
+void AdventureScreen::OnTalentSmartCastToggle( int level, int slot )
+{
+  if ( !g_smartCastToggles || level < 0 || level >= Min( (int)NWorld::PFTalentsSet::LEVELS_COUNT, 8 ) || slot < 0 || slot >= Min( (int)NWorld::PFTalentsSet::SLOTS_COUNT, 8 ) )
+    return;
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  NWorld::PFTalent * pTalent = pMale ? pMale->GetTalent( level, slot ) : 0;
+  if ( !IsSmartCastableTalent( pTalent ) )
+    return;
+
+  smartCastOverride[level][slot] = IsTalentSmartCast( pTalent, level, slot ) ? 0 : 1;
+  smartCastRefreshTimer = 0.0f; // show it right now
+
+  SaveSmartCastOverrides();
+  if ( pLogic && pTalent->GetTalentDesc() )
+    pLogic->NotifySmartCast( pTalent->GetTalentDesc()->persistentId.c_str(), smartCastOverride[level][slot] == 1 );
+}
+
+// shop item with a targeted ability: only these can be smart-cast
+static bool IsSmartCastableItem( NWorld::PFConsumable const * pItem )
+{
+  if ( !pItem || !pItem->GetDBDesc() || !pItem->GetAbility() || !pItem->GetAbility()->GetDBDesc() )
+    return false;
+  if ( pItem->GetAbility()->GetDBDesc()->flags & NDb::ABILITYFLAGS_USEATTACKTARGET )
+    return false;
+  return pItem->GetAbility()->GetTargetType() != 0;
+}
+
+static string SmartCastItemKey( NWorld::PFConsumable const * pItem )
+{
+  string key = pItem->GetDBDesc()->GetDBID().GetFormatted();
+  for ( int i = 0; i < key.length(); ++i )
+    if ( key[i] == ';' || key[i] == '=' || key[i] == ' ' )
+      key[i] = '_';
+  return key;
+}
+
+// -1 = no switch, 0 = off, 1 = on
+static int GetSmartCastItemSwitch( const string & key )
+{
+  int pos = 0;
+  while ( pos < g_smartCastItems.length() )
+  {
+    int end = g_smartCastItems.find( ';', pos );
+    if ( end < 0 )
+      end = g_smartCastItems.length();
+    const string entry = g_smartCastItems.substr( pos, end - pos );
+    const int eq = entry.rfind( '=' );
+    if ( eq > 0 && entry.substr( 0, eq ) == key )
+      return ( entry.substr( eq + 1 ) == "1" ) ? 1 : 0;
+    pos = end + 1;
+  }
+  return -1;
+}
+
+static void SetSmartCastItemSwitch( const string & key, int value )
+{
+  string text;
+  int pos = 0;
+  while ( pos < g_smartCastItems.length() )
+  {
+    int end = g_smartCastItems.find( ';', pos );
+    if ( end < 0 )
+      end = g_smartCastItems.length();
+    const string entry = g_smartCastItems.substr( pos, end - pos );
+    const int eq = entry.rfind( '=' );
+    if ( eq > 0 && entry.substr( 0, eq ) != key )
+    {
+      if ( !text.empty() )
+        text += ";";
+      text += entry;
+    }
+    pos = end + 1;
+  }
+  if ( value >= 0 )
+  {
+    if ( !text.empty() )
+      text += ";";
+    text += key + ( value ? "=1" : "=0" );
+  }
+  g_smartCastItems = text;
+}
+
+bool AdventureScreen::IsItemSmartCast( NWorld::PFConsumable const * pItem ) const
+{
+  if ( !pItem || !pItem->GetAbility() )
+    return false;
+  if ( pItem->GetDBDesc() )
+  {
+    const int value = GetSmartCastItemSwitch( SmartCastItemKey( pItem ) );
+    if ( value >= 0 )
+      return value == 1;
+  }
+  return pItem->GetAbility()->IsInstaCast();
+}
+
+void AdventureScreen::OnItemSmartCastToggle( int slot )
+{
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !g_smartCastToggles || !pHero || isSpectator || slot < 0 || slot >= pHero->GetSlotCount() )
+    return;
+  NWorld::PFConsumable const * pItem = pHero->GetConsumable( slot );
+  if ( !IsSmartCastableItem( pItem ) )
+    return;
+
+  SetSmartCastItemSwitch( SmartCastItemKey( pItem ), IsItemSmartCast( pItem ) ? 0 : 1 );
+  smartCastRefreshTimer = 0.0f; // show it right now
+  NGlobal::SaveConfig( NProfile::GetFullFilePath( "user.cfg", NProfile::FOLDER_USER ), STORAGE_USER );
+}
+
+static string SmartCastSessionFile()
+{
+  return NProfile::GetFullFilePath( "smartcast_session.txt", NProfile::FOLDER_USER );
+}
+
+void AdventureScreen::SaveSmartCastOverrides() const
+{
+  if ( !sessionId )
+    return;
+  FILE * file = 0;
+  if ( fopen_s( &file, SmartCastSessionFile().c_str(), "w" ) != 0 || !file )
+    return;
+  fprintf( file, "session %llu\n", (unsigned long long)sessionId );
+  for ( int level = 0; level < 8; ++level )
+    for ( int slot = 0; slot < 8; ++slot )
+      if ( smartCastOverride[level][slot] >= 0 )
+        fprintf( file, "%d %d %d\n", level, slot, (int)smartCastOverride[level][slot] );
+  fclose( file );
+}
+
+void AdventureScreen::LoadSmartCastOverrides()
+{
+  if ( !sessionId )
+    return;
+  FILE * file = 0;
+  if ( fopen_s( &file, SmartCastSessionFile().c_str(), "r" ) != 0 || !file )
+    return;
+  unsigned long long savedSession = 0;
+  if ( fscanf_s( file, "session %llu", &savedSession ) == 1 && savedSession == (unsigned long long)sessionId )
+  {
+    int level = 0, slot = 0, value = 0;
+    while ( fscanf_s( file, "%d %d %d", &level, &slot, &value ) == 3 )
+      if ( level >= 0 && level < 8 && slot >= 0 && slot < 8 && ( value == 0 || value == 1 ) )
+        smartCastOverride[level][slot] = (signed char)value;
+    smartCastRefreshTimer = 0.0f;
+  }
+  fclose( file );
+}
+
+// checkbox modes for Flash: 0 none, 1 off, 2 on; the boxes follow the talents dragged between the action bar buttons
+void AdventureScreen::UpdateSmartCastBoxes( float deltaTime )
+{
+  smartCastRefreshTimer -= deltaTime;
+  if ( smartCastRefreshTimer > 0.0f )
+    return;
+  smartCastRefreshTimer = 0.25f;
+
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  if ( !flash || !pMale || isSpectator )
+    return;
+
+  bool any = false;
+  for ( int level = 0; level < Min( (int)NWorld::PFTalentsSet::LEVELS_COUNT, 8 ); ++level )
+    for ( int slot = 0; slot < Min( (int)NWorld::PFTalentsSet::SLOTS_COUNT, 8 ); ++slot )
+    {
+      NWorld::PFTalent * pTalent = pMale->GetTalent( level, slot );
+      int mode = 0;
+      if ( g_smartCastToggles && IsSmartCastableTalent( pTalent ) )
+        mode = IsTalentSmartCast( pTalent, level, slot ) ? 2 : 1;
+      if ( mode != 0 )
+        any = true;
+      if ( smartCastSentMode[level][slot] != mode && ( mode != 0 || smartCastSentMode[level][slot] > 0 ) )
+      {
+        flash->SetTalentSmartCast( slot, level, mode );
+        smartCastSentMode[level][slot] = (signed char)mode;
+      }
+    }
+
+  // shop items in the inventory slots (Flash puts the box on the action bar button that holds the item)
+  for ( int slot = 0; slot < Min( pMale->GetSlotCount(), 64 ); ++slot )
+  {
+    NWorld::PFConsumable const * pItem = pMale->GetConsumable( slot );
+    int mode = 0;
+    if ( g_smartCastToggles && IsSmartCastableItem( pItem ) )
+      mode = IsItemSmartCast( pItem ) ? 2 : 1;
+    if ( mode != 0 )
+      any = true;
+    if ( smartCastItemSentMode[slot] != mode && ( mode != 0 || smartCastItemSentMode[slot] > 0 ) )
+    {
+      flash->SetItemSmartCast( slot, mode );
+      smartCastItemSentMode[slot] = (signed char)mode;
+    }
+  }
+
+  static bool s_hadBoxes = false; // one more refresh after switching the option off hides the boxes
+  if ( any || s_hadBoxes )
+    flash->RefreshSmartCastBoxes();
+  s_hadBoxes = any;
+}
+
+void AdventureScreen::UpdateAutoAttackOption()
+{
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !pHero || isSpectator || !bAdventureControlsEnabled )
+    return;
+
+  const int wanted = g_autoAttack ? 1 : 0;
+  if ( autoAttackSent == wanted )
+    return;
+  if ( autoAttackSent == -1 && wanted == 1 )
+  {
+    autoAttackSent = 1; // the world default
+    return;
+  }
+
+  SendGameCommand( NWorld::CreateCmdSetAutoAttack( pHero, wanted == 1 ), true );
+  if ( autoAttackSent != -1 && IsValid( chatController ) ) // changed during the battle
+    chatController->AddChatMessage( wanted ? wstring( L"\u0410\u0432\u0442\u043e\u0430\u0442\u0430\u043a\u0430 \u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0430." )
+                                           : wstring( L"\u0410\u0432\u0442\u043e\u0430\u0442\u0430\u043a\u0430 \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d\u0430." ), NDb::CHATCHANNEL_SYSTEM );
+  autoAttackSent = wanted;
+}
+#pragma warning( pop )
+
+void AdventureScreen::UpdatePraises( float deltaTime )
+{
+  if ( praises.empty() )
+    return;
+  AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0;
+  if ( !flash )
+    return;
+
+  // the screen got smaller: the oldest panels go away at once (they would cover the minimap)
+  while ( praiseRowsFit > 0 && (int)praises.size() > praiseRowsFit )
+  {
+    const int id = praises[0].id;
+    praises.erase( praises.begin() );
+    flash->SetPraisePanel( id, 0.0f, 0.0f, 0.0f, 0.0f );
+  }
+
+  const float lifeTime = Max( g_praiseShowTime, 1.0f );
+  for ( int i = 0; i < (int)praises.size(); )
+  {
+    PraiseEntry & p = praises[i];
+    p.time += deltaTime;
+    if ( p.time >= lifeTime )
+    {
+      flash->SetPraisePanel( p.id, 0.0f, 0.0f, 0.0f, 0.0f ); // remove
+      praises.erase( praises.begin() + i );
+      continue;
+    }
+    ++i;
+  }
+
+  for ( int i = 0; i < (int)praises.size(); ++i )
+  {
+    PraiseEntry & p = praises[i];
+    // the panel below moves up when an upper one has gone
+    p.row += ( (float)i - p.row ) * Min( 1.0f, deltaTime * 10.0f );
+    if ( fabs( p.row - (float)i ) < 0.01f )
+      p.row = (float)i;
+    // slides in from the right edge, fades out at the end
+    const float in    = Min( 1.0f, p.time / 0.25f );
+    const float slide = ( 1.0f - in ) * ( 1.0f - in );
+    const float alpha = Min( 1.0f, ( lifeTime - p.time ) / 0.5f );
+    flash->SetPraisePanel( p.id, slide, p.row, Max( alpha, 0.01f ), g_praisePanelTop );
+  }
+}
+
+bool AdventureScreen::IsAbilityStatusModifierDown() const
+{
+  // 'self_cast_on' is bound to ALT by default; the physical key check covers a lost key event
+  return isSelfCastOn || ( GetAsyncKeyState( VK_MENU ) & 0x8000 ) != 0;
+}
+
+// texts are \u escapes (independent of the source codepage); C4428 just notes that
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+void AdventureScreen::SendTalentStatusToTeam( int level, int slot )
+{
+  if ( isSpectator || !IsValid( chatController ) )
+    return;
+
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  if ( !pMale )
+    return;
+  NWorld::PFTalent * pTalent = pMale->GetTalent( level, slot );
+  if ( !pTalent )
+    return;
+  // passive abilities: nothing to tell (no "passive" spam in the chat)
+  if ( pTalent->IsActivated() && !pTalent->IsActive() )
+    return;
+
+  const unsigned long nowMs = ::GetTickCount();
+  if ( lastAbilityStatusTime != 0 && nowMs - lastAbilityStatusTime < static_cast<unsigned long>( Max( g_abilityStatusMinInterval, 0.0f ) * 1000.0f ) )
+    return;
+
+  const wstring & name = pTalent->GetAbilityName();
+  wstring state;
+  if ( !pTalent->IsActivated() )
+    state = ( pMale->CanActivateTalent( level, slot ) == NWorld::ETalentActivation::Ok ) ? L"\u043c\u043e\u0436\u043d\u043e \u0438\u0437\u0443\u0447\u0438\u0442\u044c" : L"\u043d\u0435 \u0438\u0437\u0443\u0447\u0435\u043d\u0430";
+  else if ( pTalent->IsOn() )
+    state = L"\u0432\u043a\u043b\u044e\u0447\u0435\u043d\u0430";
+  else if ( !pTalent->IsReady() )
+    state = NStr::StrFmtW( L"\u043f\u0435\u0440\u0435\u0437\u0430\u0440\u044f\u0434\u043a\u0430: %.1f \u0441\u0435\u043a.", ceil( pTalent->GetCurrentCooldown() * 10.0f ) / 10.0f ); // 5.3
+  else if ( pTalent->IsForbidded() )
+    state = L"\u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u0430";
+  else if ( !pTalent->IsEnoughMana() )
+  {
+    const float have = pTalent->DoesSpendLifeInsteadEnergy() ? pMale->GetLife() : pMale->GetMana();
+    const int   need = static_cast<int>( ceil( pTalent->GetManaCost() - have ) );
+    state = NStr::StrFmtW( pTalent->DoesSpendLifeInsteadEnergy() ? L"\u043d\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 %d \u0437\u0434\u043e\u0440\u043e\u0432\u044c\u044f" : L"\u043d\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 %d \u044d\u043d\u0435\u0440\u0433\u0438\u0438", Max( need, 1 ) );
+  }
+  else
+    state = L"\u0433\u043e\u0442\u043e\u0432\u0430";
+
+  SendStatusMessageToTeam( level, slot, name, state );
+}
+
+// state of a ready-to-use ability (portal, shop item): cooldown / blocked / not enough energy / ready
+static wstring UsableAbilityState( NWorld::PFBaseMaleHero const * pMale, NWorld::PFAbilityData const * pAbility, bool feminine )
+{
+  if ( !pAbility->IsReady() )
+    return NStr::StrFmtW( L"\u043f\u0435\u0440\u0435\u0437\u0430\u0440\u044f\u0434\u043a\u0430: %.1f \u0441\u0435\u043a.", ceil( pAbility->GetCurrentCooldown() * 10.0f ) / 10.0f );
+  if ( pAbility->IsForbidded() )
+    return feminine ? L"\u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u0430" : L"\u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d";
+  if ( !pAbility->IsEnoughMana() )
+  {
+    const float have = pAbility->DoesSpendLifeInsteadEnergy() ? pMale->GetLife() : pMale->GetMana();
+    const int   need = static_cast<int>( ceil( pAbility->GetManaCost() - have ) );
+    return NStr::StrFmtW( pAbility->DoesSpendLifeInsteadEnergy() ? L"\u043d\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 %d \u0437\u0434\u043e\u0440\u043e\u0432\u044c\u044f" : L"\u043d\u0435 \u0445\u0432\u0430\u0442\u0430\u0435\u0442 %d \u044d\u043d\u0435\u0440\u0433\u0438\u0438", Max( need, 1 ) );
+  }
+  return feminine ? L"\u0433\u043e\u0442\u043e\u0432\u0430" : L"\u0433\u043e\u0442\u043e\u0432";
+}
+
+// one message to the team chat; the same message about the same thing again within 5 s is not sent (no chat spam)
+void AdventureScreen::SendStatusMessageToTeam( int level, int slot, const wstring & name, const wstring & state )
+{
+  const unsigned long nowMs = ::GetTickCount();
+  const bool sameAbility = ( lastAbilityStatusLevel == level && lastAbilityStatusSlot == slot );
+  if ( sameAbility && state == lastAbilityStatusText && nowMs - lastAbilityStatusTime < 5000 )
+    return;
+  lastAbilityStatusTime  = nowMs;
+  lastAbilityStatusLevel = level;
+  lastAbilityStatusSlot  = slot;
+  lastAbilityStatusText  = state;
+
+  // ability name in the color of the stat values of the hero window (CharStats #FFE5B7, made more saturated for the chat: #FFC864);
+  // clients without the colored-runs support just strip the tag
+  chatController->SendPlayerMessage( wstring( L"<style:#FFC864>\u00ab" ) + name + L"\u00bb</style>: " + state, NDb::CHATCHANNEL_MYTEAM );
+}
+
+bool AdventureScreen::CanSendStatusNow() const
+{
+  if ( isSpectator || !IsValid( chatController ) )
+    return false;
+  const unsigned long nowMs = ::GetTickCount();
+  return !( lastAbilityStatusTime != 0 && nowMs - lastAbilityStatusTime < static_cast<unsigned long>( Max( g_abilityStatusMinInterval, 0.0f ) * 1000.0f ) );
+}
+
+// raw press of the portal button (Flash, before its own checks)
+bool AdventureScreen::OnPortalButtonPress()
+{
+  if ( isHotKeyDown || !g_altClickAbilityStatus || !IsAbilityStatusModifierDown() )
+    return false;
+  lastAltStatusPressTime = ::GetTickCount(); // the PortalClick that may follow is not a use of the portal
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  NWorld::PFTalent * pPortal = pMale ? pMale->GetPortal() : 0;
+  if ( !pPortal || !CanSendStatusNow() )
+    return true;
+  SendStatusMessageToTeam( -2, 0, pPortal->GetAbilityName(), UsableAbilityState( pMale, pPortal, false ) );
+  return true;
+}
+
+// raw press of a shop item button (inventory slot; Flash, before its own checks)
+bool AdventureScreen::OnItemButtonPress( int slot )
+{
+  if ( isHotKeyDown || !g_altClickAbilityStatus || !IsAbilityStatusModifierDown() )
+    return false;
+  lastAltStatusPressTime = ::GetTickCount(); // the InventoryItemClick that may follow is not a use of the item
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  if ( !pMale || slot < 0 || slot >= pMale->GetSlotCount() || !CanSendStatusNow() )
+    return true;
+  NWorld::PFConsumable const * pItem = pMale->GetConsumable( slot );
+  if ( !pItem || !pItem->GetAbility() )
+    return true;
+  wstring state = UsableAbilityState( pMale, pItem->GetAbility(), false );
+  if ( pItem->GetQuantity() > 1 )
+    state = NStr::StrFmtW( L"%d \u0448\u0442., ", pItem->GetQuantity() ) + state;
+  SendStatusMessageToTeam( -3, slot, pItem->GetAbility()->GetAbilityName(), state );
+  return true;
+}
+
+bool AdventureScreen::IsAltStatusPressJustNow() const
+{
+  return lastAltStatusPressTime != 0 && ::GetTickCount() - lastAltStatusPressTime < 300;
+}
+#pragma warning( pop )
+
+bool AdventureScreen::OnTalentButtonPress( int level, int slot )
+{
+  // hotkeys: Alt + hotkey stays a self-cast, no message
+  if ( isHotKeyDown || !g_altClickAbilityStatus || !IsAbilityStatusModifierDown() )
+    return false;
+  SendTalentStatusToTeam( level, slot );
+  return true;
+}
+
+// Cast the talent prepared by SetCommand(CMD_TALENT_TALENT_PANEL) on own hero, if the talent allows it
+bool AdventureScreen::CastCurrentTalentOnSelf( NWorld::PFTalent * pTalent )
+{
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !pHero || !pTalent || command != CMD_TALENT_TALENT_PANEL )
+    return false;
+
+  if ( m_commandArguments[command] & NDb::SPELLTARGET_SELF )
+  {
+    // same path as a click on own hero (target type, cast limitations, alternative targets)
+    if ( SetCommandTarget( VNULL3, pHero, false ) )
+    {
+      ExecuteCommand( command, VNULL3, pHero, false, m_altTarget );
+      DebugTrace( "DblCast: cast on self" );
+      return true;
+    }
+    DebugTrace( "DblCast: own hero is not a valid target now" );
+    return false;
+  }
+
+  if ( pTalent->GetFlags() & NDb::ABILITYFLAGS_SELFCASTING )
+  {
+    ExecuteCommand( command, pHero->GetPosition(), pHero, false, m_altTarget );
+    DebugTrace( "DblCast: cast on self (SelfCasting flag)" );
+    return true;
+  }
+  DebugTrace( "DblCast: ability can't target own hero (target type %d)", m_commandArguments[command] );
+  return false;
+}
+
+
+
 bool AdventureScreen::OnTalentSetButtonClick(int level, int slot)
 {
   ActionBarController * actionBarController = pLogic->GetActionBarController();
+
+  // Alt + mouse click: tell allies the state of this ability instead of using it (Alt + hotkey is still self-cast)
+  // (the message itself is sent from OnTalentButtonPress, which Flash calls for every press, even an unavailable button)
+  if ( !isHotKeyDown && g_altClickAbilityStatus && IsAbilityStatusModifierDown() )
+    return true;
+
+  // Remember activations of ability buttons to detect a double click / double hotkey press
+  const unsigned long nowMs = ::GetTickCount();
+  const unsigned long dblMs = static_cast<unsigned long>( Max( g_dblClickSelfCastTime, 0.05f ) * 1000.0f );
+  const bool sameAsPrevActivation = ( level == lastTalentActivationLevel ) && ( slot == lastTalentActivationSlot );
+  const bool isDoubleActivation = sameAsPrevActivation && ( nowMs - lastTalentActivationTime <= dblMs );
+  lastTalentActivationTime  = nowMs;
+  lastTalentActivationLevel = level;
+  lastTalentActivationSlot  = slot;
+  DebugTrace( "DblCast: talent %d/%d hotkey=%d same=%d double=%d state=%d", level, slot, (int)isHotKeyDown, (int)sameAsPrevActivation, (int)isDoubleActivation, (int)m_state );
   
   if (NWorld::PFBaseMaleHero *pMale = dynamic_cast<NWorld::PFBaseMaleHero*>(GetHero()))
   {
@@ -4656,9 +6371,13 @@ bool AdventureScreen::OnTalentSetButtonClick(int level, int slot)
             ExecuteCommand(CMD_TALENT_TALENT_PANEL, VNULL3, GetHero());
           }
         }
-        else if ( pTalent->isInstaCast && isHotKeyDown )
+        else if ( IsTalentSmartCast( pTalent, level, slot ) && isHotKeyDown )
         {
-          if ( !isSelfCastOn ){
+          if ( !( g_altSelfCast && isSelfCastOn ) && g_dblClickSelfCast && isDoubleActivation && CastCurrentTalentOnSelf( pTalent ) )
+          {
+            lastTalentActivationLevel = -1; // quick cast: double tap of the hotkey casts on self
+          }
+          else if ( !( g_altSelfCast && isSelfCastOn ) ){
 
             CVec3 vPickPosFromMinimap;
             const bool fromMinimapCast = minimap->IsOver();
@@ -4676,19 +6395,27 @@ bool AdventureScreen::OnTalentSetButtonClick(int level, int slot)
         }
         else
         {
-          if ( m_state == STATE_TARGET && !isHotKeyDown )
+          // NB: ActionBarController::GetTargetingTalent() can't be used here: TargetZoneReset() below clears it right
+          // after TalentWaitingForTarget(), so it is always empty. The previous activation is remembered by us instead.
+          if ( m_state == STATE_TARGET && sameAsPrevActivation && ( !isHotKeyDown || g_dblClickSelfCast ) )
           {
-            if ( pTalent->GetFlags() & NDb::ABILITYFLAGS_SELFCASTING )
+            if ( !g_dblClickSelfCast )
             {
-              if( IsValid(actionBarController) )
-              {
-                SVector v = actionBarController->GetTargetingTalent();
-                if ( v.x == slot && v.y == level )
-                {
-                  ExecuteCommand( command, GetHero()->GetPosition(), GetHero(), false, m_altTarget );
-                }
-              }
+              // original behaviour: second click on the same button (any delay) casts on self
+              if ( pTalent->GetFlags() & NDb::ABILITYFLAGS_SELFCASTING )
+                ExecuteCommand( command, GetHero()->GetPosition(), GetHero(), false, m_altTarget );
             }
+            else if ( isDoubleActivation && CastCurrentTalentOnSelf( pTalent ) )
+            {
+              // Dota-like double click / double tap: cast on own hero and leave the targeting mode
+              lastTalentActivationLevel = -1; // the next click starts a new sequence
+              if ( IsValid( actionBarController ) )
+                actionBarController->DropTarget();
+              TargetZoneReset();
+              SetState( STATE_NORMAL );
+              return true;
+            }
+            // a slow second click just keeps the targeting mode (no accidental self-cast)
           }
 
           InventoryController * inventoryController = pLogic->GetInventoryController();
@@ -4713,6 +6440,8 @@ bool NGameX::AdventureScreen::OnPortalClick()
 {
   if (!isHotkeysEnabled || ( blockedHotKeys & ( 1 << FlashWindowsType::Portal ) ) )
     return false;
+  if ( IsAltStatusPressJustNow() ) // Alt + click: its state went to the chat (OnPortalButtonPress)
+    return true;
 
   ActionBarController * actionBarController = pLogic->GetActionBarController();
 
@@ -4964,6 +6693,10 @@ bool AdventureScreen::OnActionButtonMouseClick(CVec3 const &vPickPos, bool usePi
     }
 
     CPtr<PF_Core::WorldObjectBase> pickedObject = usePicking ? currentPick.GetPickedPtr() : NULL;
+
+    // Clicking on our own hero model = clicking on the ground behind it
+    if ( IsOwnHeroPick( GetHero(), pickedObject.GetPtr() ) )
+      pickedObject = 0;
 
     if (IsValid(pickedObject))
     {
@@ -5576,6 +7309,25 @@ bool AdventureScreen::LockActionBar(const int &lock)
   return true;
 }
 
+bool AdventureScreen::GetAccountRating( int playerId, float & rating ) const
+{
+  for ( int i = 0; i < playersStartInfo.size(); ++i )
+    if ( playersStartInfo[i].playerID == playerId )
+    {
+      rating = playersStartInfo[i].playerInfo.ratingAccCurrent;
+      return rating > 0.f;
+    }
+  return false;
+}
+
+bool AdventureScreen::VoiceOverlayUnlock(const int &unlock)
+{
+  if ( pLogic )
+    pLogic->SetVoiceOverlayUnlocked( unlock != 0 );
+
+  return true;
+}
+
 
 
 
@@ -5595,7 +7347,11 @@ bool AdventureScreen::CmdActionBarHotKey( const int & slotIndex )
   if (IsValid(actionBarController))
     actionBarController->UseSlot(slotIndex);
 
-  if ( isSelfCastOn && GetHero() && m_talentLevel != -1 && m_talentSlot != -1 )
+  // the hold self-cast watches this key (UpdateHoldSelfCast)
+  holdCastSlot  = slotIndex;
+  holdCastTimer = 0.0f;
+
+  if ( g_altSelfCast && isSelfCastOn && GetHero() && m_talentLevel != -1 && m_talentSlot != -1 )
   {
     if ( NWorld::PFTalent* pTalent = GetHero()->GetTalent( m_talentLevel, m_talentSlot ) )
     {
@@ -6211,6 +7967,13 @@ void AdventureScreen::ShowReplayPause()
 void AdventureScreen::HideReplayMsg()
 {
   pLogic->SetMessage( L"" );
+}
+
+void AdventureScreen::UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended )
+{
+  replayHud = true;
+  if ( pLogic )
+    pLogic->UpdateReplayControls( playedSteps, totalSteps, stepLengthMs, speed, paused, seekTargetStep, ended );
 }
 
 
@@ -7328,6 +9091,32 @@ NI_DEFINE_REFCOUNT( NGameX::AdventureScreen );
 
 
 REGISTER_CMD( add_ai, AddAI );
+
+// ability_range_scale [value]: the "ability range" stat of our hero (1 = normal, 1.5 = +50%); for tests.
+// A regular console command (cheats are compiled out of this build); goes to the world as a command, so it is synchronized.
+static bool AbilityRangeScaleCmd( const char *name, const vector<wstring> &params )
+{
+  NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance();
+  NWorld::PFBaseHero * pHero = pScreen ? pScreen->GetHero() : 0;
+  if ( !pHero )
+  {
+    systemLog( NLogg::LEVEL_MESSAGE ) << name << ": no hero (only in a battle)" << endl;
+    return true;
+  }
+  if ( params.empty() )
+  {
+    systemLog( NLogg::LEVEL_MESSAGE ) << "usage: " << name << " scale   (1 = normal, 1.5 = +50%, 0.7 = -30%)" << endl;
+    systemLog( NLogg::LEVEL_MESSAGE ) << "current: base " << pHero->GetAbilityRangeScale()
+      << ", AbilityRange bonus " << pHero->GetVariableValue( "AbilityRange" ) << "%"
+      << ", total x" << NWorld::PFBaseHero::GetAbilityRangeScale( pHero ) << endl;
+    return true;
+  }
+  const float scale = Min( Max( NGlobal::VariantValue( params[0] ).GetFloat(), 0.1f ), 10.0f );
+  pScreen->SendGameCommand( NWorld::CreateCmdSetAbilityRangeScale( pHero, scale ), true );
+  systemLog( NLogg::LEVEL_MESSAGE ) << name << " = " << scale << endl;
+  return true;
+}
+REGISTER_CMD( ability_range_scale, AbilityRangeScaleCmd );
 REGISTER_DEV_CMD( stop_ai, StopAI );
 
 #ifdef EXPOMODE
@@ -7368,3 +9157,53 @@ REGISTER_VAR( "ui_show_interface", gShowUserInterface, STORAGE_NONE );
 REGISTER_CMD( toggle_ui, ToggleUserInterfaceCmd );
 REGISTER_DEV_VAR( "debug_mouse_point", debugMousePick.enabled, STORAGE_NONE );
 REGISTER_DEV_VAR( "update_mouse_pos_mode", updateMouseMode, STORAGE_NONE );
+REGISTER_VAR( "move_on_hold", g_moveOnHold, STORAGE_USER );
+REGISTER_VAR( "move_on_hold_interval", g_moveOnHoldInterval, STORAGE_USER );
+REGISTER_VAR( "move_on_hold_min_distance", g_moveOnHoldMinDistance, STORAGE_NONE );
+REGISTER_VAR( "move_on_hold_resend_time", g_moveOnHoldResendTime, STORAGE_NONE );
+REGISTER_VAR( "move_on_hold_marker", g_moveOnHoldMarker, STORAGE_USER );
+REGISTER_VAR( "dbl_click_selfcast", g_dblClickSelfCast, STORAGE_USER );
+REGISTER_VAR( "dbl_click_selfcast_time", g_dblClickSelfCastTime, STORAGE_USER );
+REGISTER_VAR( "alt_selfcast", g_altSelfCast, STORAGE_USER );
+REGISTER_VAR( "hold_selfcast", g_holdSelfCast, STORAGE_USER );
+REGISTER_VAR( "hold_selfcast_time", g_holdSelfCastTime, STORAGE_USER );
+REGISTER_VAR( "alt_click_ability_status", g_altClickAbilityStatus, STORAGE_USER );
+REGISTER_VAR( "alt_click_ability_status_interval", g_abilityStatusMinInterval, STORAGE_NONE );
+REGISTER_VAR( "chat_centered", g_chatCentered, STORAGE_NONE );
+REGISTER_VAR( "ping_wheel", g_pingWheel, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_delay", g_pingWheelDelay, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_dead_zone", g_pingWheelDeadZone, STORAGE_NONE );
+REGISTER_VAR( "ping_marker_time", g_pingMarkerTime, STORAGE_NONE );
+REGISTER_VAR( "ping_minor_time_scale", g_pingMinorTimeScale, STORAGE_NONE );
+REGISTER_VAR( "ping_ward_time", g_pingWardTime, STORAGE_NONE );
+REGISTER_VAR( "ping_attack_on_unit", g_pingAttackOnUnit, STORAGE_USER );
+REGISTER_VAR( "pings_disabled", g_pingsDisabled, STORAGE_USER );
+REGISTER_VAR( "pings_muted", g_pingsMuted, STORAGE_USER );
+REGISTER_VAR( "ping_middle_mouse", g_pingMiddleMouse, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_transparency", g_pingWheelTransparency, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_scale", g_pingWheelScale, STORAGE_USER );
+REGISTER_VAR( "ping_ground_effect", g_pingGroundEffect, STORAGE_USER );
+REGISTER_VAR( "ping_ground_radius", g_pingGroundRadius, STORAGE_NONE );
+REGISTER_VAR( "ping_beam_height", g_pingBeamHeight, STORAGE_NONE );
+REGISTER_VAR( "ping_sound", g_pingSound, STORAGE_USER );
+REGISTER_VAR( "auto_attack", g_autoAttack, STORAGE_USER );
+REGISTER_VAR( "smart_cast_toggles", g_smartCastToggles, STORAGE_USER );
+REGISTER_VAR( "smart_cast_items", g_smartCastItems, STORAGE_USER );
+REGISTER_VAR( "praise", g_praise, STORAGE_USER );
+REGISTER_VAR( "praise_cooldown", g_praiseCooldown, STORAGE_NONE );
+REGISTER_VAR( "praise_show_time", g_praiseShowTime, STORAGE_NONE );
+REGISTER_VAR( "praise_panel_top", g_praisePanelTop, STORAGE_NONE );
+REGISTER_VAR( "praise_id", g_praiseId, STORAGE_USER );
+REGISTER_VAR( "praise_sound", g_praiseSound, STORAGE_USER );
+REGISTER_VAR( "praise_max_shown", g_praiseMaxShown, STORAGE_NONE );
+REGISTER_VAR( "ping_sound_volume", g_pingSoundVolume, STORAGE_USER );
+REGISTER_VAR( "ping_sound_min_interval", g_pingSoundMinInterval, STORAGE_NONE );
+REGISTER_VAR( "chat_center_raise", g_chatCenterRaise, STORAGE_NONE );
+REGISTER_VAR( "team_portraits_scale", g_teamPortraitsScale, STORAGE_USER );
+REGISTER_VAR( "chat_wheel", g_chatWheel, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_transparency", g_chatWheelTransparency, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_scale", g_chatWheelScale, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_dead_zone", g_chatWheelDeadZone, STORAGE_NONE );
+REGISTER_VAR( "chat_wheel_commands", g_chatWheelItems, STORAGE_USER );
+REGISTER_VAR( "chat_wheel_centered", g_chatWheelCentered, STORAGE_USER );
+REGISTER_VAR( "ping_wheel_items", g_pingWheelItems, STORAGE_USER );

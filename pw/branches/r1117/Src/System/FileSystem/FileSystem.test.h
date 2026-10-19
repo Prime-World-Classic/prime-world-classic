@@ -44,7 +44,7 @@ public:
     WriteFile( hnd, data, strlen( data ), &bytesWritten, 0 );
     CloseHandle( hnd );
 #elif defined( NV_LINUX_PLATFORM )
-    const int hnd = NFile::CreateFileWithDir( buf.c_str() );
+    const ptrdiff_t hnd = NFile::CreateFileWithDir( buf.c_str() );
     TS_ASSERT( hnd != -1 );
     const ssize_t bytesWritten = ::write( hnd, data, strlen( data ) );
     TS_ASSERT( bytesWritten == strlen( data ) );

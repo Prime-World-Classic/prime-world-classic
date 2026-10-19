@@ -29,7 +29,7 @@ class SceneObjectBase : public RenderableSceneObj
 public:
 	seDECLARE_RING( SceneObjectBase, part, Ring );
 
-  SceneObjectBase(IScene *pScene_ = 0) : pScene( pScene_ ) {}
+  SceneObjectBase(IScene *pScene_ = 0) : pScene( pScene_ ), sleepRequested( false ) {}
 
   virtual ~SceneObjectBase() 
   {
@@ -48,8 +48,13 @@ public:
 
 	bool IsInScene() const { return part.isLinked(); }
 
+  // Set by Update() when the object needs no per-frame work until something wakes it up;
+  // Scene moves such objects out of the update ring right after Update()
+  bool IsSleepRequested() const { return sleepRequested; }
+
 protected:
 	CPtr<IScene> pScene;
+	bool sleepRequested;
 };
 
 __declspec(align(16))
@@ -190,7 +195,13 @@ public:
   void CalculateLighting(Render::SceneConstants const &sceneConst);
   void CalculateLightingEx(Render::SceneConstants const &sceneConst, NDb::ELightEnvironment const selector);
   void UpdateSH();
-  void ResetTimeBeingInvisible() { timeBeingInvisible=0.0f; }
+  void ResetTimeBeingInvisible() { WakeUp(); timeBeingInvisible=0.0f; }
+
+  // Sleeping: an invisible object that is not moving is kept out of the scene update ring;
+  // the time it would have accumulated in timeBeingInvisible is added when it wakes up
+  bool IsSleeping() const { return isSleeping; }
+  void FallAsleep( int priority, double sceneSleepClock );
+  void WakeUp();
 
   void RegisterCollisionGeometry( const NDb::CollisionGeometry* colgeom );
   void UnregisterCollisionGeometry();
@@ -234,7 +245,7 @@ private:
 
 	friend class SceneObjectsPool;
 
-	DWORD     dwDBHash;
+	const void * dwDBHash;
 	Placement placement;
 	int       whenWasRendered;
 	int       freezeCount;
@@ -249,6 +260,10 @@ private:
   bool hasCollisionGeometry;
 
   unsigned rotationLockCounter;
+
+  bool      isSleeping;
+  int       sleepPriority;
+  double    sleepStartClock;
 };
 
 //////////////////////////////////////////////////////////////////////////

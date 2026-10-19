@@ -20,7 +20,9 @@
 #include "System/EditBoxDumper.h"
 #include "System/CrashRptWrapper.h"
 #include "System/BSUtil.h" //TODO: Remove this header (NUM_TASK)
+#if !defined(_M_X64) // см. System/expreport.cpp: ATL/WTL нет в тулчейне VS2022
 #include "System/expreport.h"
+#endif
 #include "System/meminfo.h"
 #include "Render/renderer.h"
 #include "System/TextFileDumper.h"
@@ -133,11 +135,55 @@ REGISTER_VAR( "debug_dump_info", g_DebugDumpInfo, STORAGE_GLOBAL );
 REGISTER_VAR( "boost_main_thread_priority", g_boostPriority, STORAGE_NONE );
 REGISTER_VAR( "boost_mtp_processor_number", g_preferredProcessor, STORAGE_NONE );
 REGISTER_VAR( "inactive_sleep", g_inactiveSleep, STORAGE_NONE );
+// Frame rate to the log every fps_log_period seconds (0 - off)
+static float  g_fpsLogPeriod = 0.0f;
+REGISTER_VAR( "fps_log_period", g_fpsLogPeriod, STORAGE_NONE );
 REGISTER_DEV_VAR( "video_FPS", g_VideoFPS, STORAGE_NONE);
+
+static void LogFrameRate()
+{
+  static NHPTimer::STime periodStart = 0;
+  static NHPTimer::STime frameStart = 0;
+  static int frames = 0;
+  static NHPTimer::FTime maxFrameTime = 0.0;
+
+  if ( g_fpsLogPeriod <= 0.0f )
+  {
+    periodStart = 0;
+    frames = 0;
+    maxFrameTime = 0.0;
+    return;
+  }
+
+  NHPTimer::STime now;
+  NHPTimer::GetTime( now );
+  if ( periodStart == 0 )
+  {
+    periodStart = frameStart = now;
+    return;
+  }
+
+  NHPTimer::STime frameTime = now - frameStart;
+  maxFrameTime = Max( maxFrameTime, NHPTimer::Time2Seconds( frameTime ) );
+  frameStart = now;
+  ++frames;
+
+  NHPTimer::STime periodTime = now - periodStart;
+  const NHPTimer::FTime period = NHPTimer::Time2Seconds( periodTime );
+  if ( period < g_fpsLogPeriod )
+    return;
+
+  MessageTrace( "fps: %.1f (%d frames in %.2f s, frame avg %.2f ms, max %.2f ms)",
+    frames / period, frames, period, period * 1000.0 / frames, maxFrameTime * 1000.0 );
+  periodStart = now;
+  frames = 0;
+  maxFrameTime = 0.0;
+}
 REGISTER_DEV_VAR( "video_recording_time", g_RecordingTime, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender", s_NullRender, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender_no_log_box", g_NullRenderNoLogBox, STORAGE_NONE);
-//REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
+// Local game without the launcher/server (lobby with bots). Dev builds only: REGISTER_DEV_VAR is a no-op in Shipping.
+REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesEnable", s_skipFrames, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesBarrier", s_skipFramesBarrier, STORAGE_NONE);
 
@@ -168,6 +214,8 @@ static NDebug::DebugVar<int> unfreeVirtualAllocs( "UnfreeVirtualAllocs", "", tru
 static NDebug::DebugVar<int> totalAllocsSize( "TotalAllocsSize", "", true );
 
 std::string g_protocolToken;
+// Spectator's own nickname from the launch token (ParseSpectatorNickname); empty when not given
+wstring g_spectatorNickname;
 extern bool g_localGameRun;
 
 //CRAP
@@ -176,6 +224,50 @@ extern "C" INTERMODULE_EXPORT void TooSmartLinker();
 
 namespace
 {
+// A spectator is in no lineup, so its nickname for the battle chat comes from
+// the back-end as a tail of the launch token (pw-api objects/spectator.model.js):
+//   <sessionToken 32><spectatorKey 64><user_id>.<hex of the UTF-8 nickname>
+// The tail is not part of the key: the client cuts it off before the login and
+// the lobby join, the server sees the usual token (Shared/WebSpectatorKey.h).
+// Returns the nickname (empty for a malformed tail).
+const int SpectatorNicknameMaxBytes = 64;
+
+wstring ParseSpectatorNickname( const char * hex )
+{
+  const int len = (int)strlen( hex );
+  if ( len == 0 || len % 2 != 0 || len > SpectatorNicknameMaxBytes * 2 )
+    return wstring();
+
+  string utf8;
+  for ( int i = 0; i < len; i += 2 )
+  {
+    int byte = 0;
+    for ( int j = 0; j < 2; ++j )
+    {
+      const char c = hex[i + j];
+      int digit;
+      if ( c >= '0' && c <= '9' )
+        digit = c - '0';
+      else if ( c >= 'a' && c <= 'f' )
+        digit = c - 'a' + 10;
+      else
+        return wstring();
+      byte = byte * 16 + digit;
+    }
+    if ( byte < 0x20 ) // no control characters in a nickname
+      return wstring();
+    utf8 += (char)byte;
+  }
+
+  const int wideLen = ::MultiByteToWideChar( CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), (int)utf8.size(), 0, 0 );
+  if ( wideLen <= 0 )
+    return wstring();
+  wstring nickname;
+  nickname.resize( wideLen );
+  ::MultiByteToWideChar( CP_UTF8, MB_ERR_INVALID_CHARS, utf8.c_str(), (int)utf8.size(), &nickname[0], wideLen );
+  return nickname;
+}
+
 // Language of the texts, last token of the launch protocol (allTokens[7]):
 // "en" or "en-US". Returns the short code ("en") or an empty string when the
 // token does not look like a language code.
@@ -268,7 +360,9 @@ void DumpLoadedModules()
     DebugTrace( NStr::StrFmt( "\n     base address   = 0x%08X", (DWORD) me32.modBaseAddr ) ); 
     DebugTrace( NStr::StrFmt( "\n     base size      = %d",             me32.modBaseSize ) ); */
 
-    const char* line = NStr::StrFmt( "%08X,%08X,%s\x0D\x0A", (DWORD)me32.modBaseAddr, me32.modBaseSize, me32.szExePath );
+    // module base must be printed pointer-sized: on x64 a DWORD truncates it and
+    // the module list can no longer be used to resolve crash RVAs
+    const char* line = NStr::StrFmt( "%016I64X,%08X,%s\x0D\x0A", (unsigned __int64)(uintptr_t)me32.modBaseAddr, me32.modBaseSize, me32.szExePath );
     pFile->WriteString( line );
 
   } while( Module32Next( hModuleSnap, &me32 ) ); 
@@ -827,19 +921,38 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   if (CmdLineLite::Instance().IsKeyDefined( EXIT_CODE_QUIT_CASTLE ))
     NMainFrame::SetExitCode( EXIT_CODE_QUIT_CASTLE );
 
-  // Check if we deal with a replay
+  // Check if we deal with a replay:
+  //   PW_Game.exe "<file>.pwrp"           (double click on a replay, see RegisterReplayFileExtentionAssociation)
+  //   PW_Game.exe -replay "<file>.pwrp"   (launcher, shortcuts)
+  // A replay runs locally: no launcher protocol, no server connection.
   bool isReplay = false;
+  bool replayNotFound = false;
   string replayFileName;
-  if ( CmdLineLite::Instance().ArgsCount() > 1 )
   {
-    replayFileName = CmdLineLite::Instance().Argument(1);
+    const char * replayKey = CmdLineLite::Instance().GetStringKey( "-replay", 0 );
+    if ( replayKey )
+      replayFileName = replayKey;
+    else if ( CmdLineLite::Instance().ArgsCount() > 1 )
+      replayFileName = CmdLineLite::Instance().Argument(1);
+
     if(!replayFileName.empty() && replayFileName.find('.') != string::npos && NFile::DoesFileExist(replayFileName))
     {
+      // The working directory is switched to the module folder below: keep a relative path valid
+      char fullPath[MAX_PATH * 2] = "";
+      const DWORD fullPathLen = GetFullPathNameA( replayFileName.c_str(), sizeof( fullPath ), fullPath, 0 );
+      if ( fullPathLen > 0 && fullPathLen < sizeof( fullPath ) )
+        replayFileName = fullPath;
+
       isSpectator = true;
       isReplay = true;
 
       if (!IsDebuggerPresent())
         NFile::SetModuleCurrentDir();
+    }
+    else if ( replayKey )
+    {
+      // Explicit -replay with a missing file: reported below, instead of the "start via launcher" error
+      replayNotFound = true;
     }
   }
 
@@ -992,7 +1105,10 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   }
 #endif // _SHIPPING
 
-  hWnd = (HWND)CmdLineLite::Instance().GetIntKey( "parentWindow" );
+  // HWND from the command line must not go through int: on x64 a handle does not
+  // fit in 32 bits (legacy embedded-mode key, unused by the current launcher)
+  { const char * cpParentWindow = CmdLineLite::Instance().GetStringKey( "parentWindow" );
+    hWnd = cpParentWindow ? (HWND)(uintptr_t)_strtoui64( cpParentWindow, NULL, 0 ) : NULL; }
   SPluginSettings parentSettings;
   Strong<NGameX::ISocialConnection> socialServer;
   Strong<NGameX::GuildEmblem> guildEmblem = new NGameX::GuildEmblem;
@@ -1257,7 +1373,16 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     protocolLineStr = CmdLineLite::Instance().GetStringKey( "protocol", "" );
   }
 
-  if(protocolLineStr.empty()) {
+  if ( ( s_localGame || isReplay ) && context ) {
+    // Local game (setvar local_game = 1 in game.cfg, dev builds only) or a replay: no launcher
+    // protocol needed, start the local lobby right away. For a replay the "replay" command
+    // below replaces the lobby screen with the replay runner.
+    context->Start();
+  } else if ( replayNotFound ) {
+    // "Replay file not found." in Russian and English
+    ShowLocalizedErrorMB( L"ReplayNotFound", L"\x0424\x0430\x0439\x043B \x0440\x0435\x043F\x043B\x0435\x044F \x043D\x0435 \x043D\x0430\x0439\x0434\x0435\x043D.\nReplay file not found." );
+    return 0;
+  } else if(protocolLineStr.empty()) {
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
   } else {
@@ -1379,9 +1504,20 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       return 0;
     }
 
-    if (protocolMethod != "runGame" && protocolMethod != "reconnect") {
+    if (protocolMethod != "runGame" && protocolMethod != "reconnect" && protocolMethod != "spectate") {
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol syntax" );
       return 0;
+    }
+
+    // "spectate" - live match viewing (admins / testers, the back-end decides):
+    // the token is <sessionToken 32><spectatorKey 64><user id>, see
+    // Shared/WebSpectatorKey.h. The spectator mode is chosen here, after the
+    // command line, so its key bindings go on top of the ones loaded above.
+    const bool protocolSpectator = (protocolMethod == "spectate");
+    if (protocolSpectator && !isSpectator) {
+      isSpectator = true;
+      MessageTrace("Starting in spectator mode (launcher protocol)");
+      NGlobal::ExecuteConfig( "spectator.cfg",	NProfile::FOLDER_GLOBAL );
     }
 
     // No pre-login HTTP to the synchronizer: the protocol token carries the
@@ -1389,13 +1525,28 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     // sha256(user_id+sessionToken+api_key)). The server authenticates by
     // playerKey and delivers the session data in the login reply
     // (LoginReply::webSession, applied in GameContext::Poll).
-    if (strlen(protocolToken) < 96) {
+    if (strlen(protocolToken) < (protocolSpectator ? 97u : 96u)) {
       systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid protocol token length: " << strlen(protocolToken) << endl;
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [bad token length]! Please start the game via the launcher." );
       return 0;
     }
+    // Spectator: the nickname tail goes to the chat only (see ParseSpectatorNickname)
+    if (protocolSpectator) {
+      const char * nicknameTail = strchr(protocolToken + 32 + 64, '.');
+      if (nicknameTail) {
+        g_spectatorNickname = ParseSpectatorNickname(nicknameTail + 1);
+        if (g_spectatorNickname.empty())
+          systemLog( NLogg::LEVEL_MESSAGE ) << "Ignored spectator nickname in protocol" << endl;
+        const nstl::string tokenWithoutNickname(protocolToken, nicknameTail - protocolToken);
+        allTokens[2] = tokenWithoutNickname;
+        protocolToken = allTokens[2].c_str();
+        g_protocolToken = protocolToken;
+      }
+    }
+
     g_sessionToken = string(protocolToken, 32);
-    g_playerToken = string(protocolToken + 32, 64);
+    // A spectator key keeps the user id after the 64 hex chars
+    g_playerToken = protocolSpectator ? string(protocolToken + 32) : string(protocolToken + 32, 64);
 
     // The web session always goes through the network path: the players
     // count is unknown before the login. A solo session becomes a 1-slot
@@ -1423,11 +1574,13 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     mainVars.logBox = new NLogg::EditBoxDumper( &GetSystemLog(), NMainFrame::GetWnd() );
   }
 
+#if !defined(_M_X64) // SystemReport построен на ATL/WTL Ч на x64 выключен
   if ( g_DebugDumpInfo )
   {
     NBSU::SystemReport sysRep;
     sysRep.dumpSystemInfo(true);
   }
+#endif
 
   Render::RenderMode renderMode;
   
@@ -1671,6 +1824,8 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       NMainLoop::VSyncController::MarkPresentFinished();
       mainPerf_Present.Stop();
     }
+
+    LogFrameRate();
     
     NMainLoop::SetTemporaryTimeDelta( commonTimeDelta );
 

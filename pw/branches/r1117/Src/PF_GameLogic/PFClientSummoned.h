@@ -30,7 +30,7 @@ public:
         vector<NDb::Ptr<NDb::CreepSkin>>::const_iterator it = unit.creepSkins.begin();
         for ( ; it != unit.creepSkins.end(); ++it )
         {
-          if ((*it)->heroPersistentId == skinId)
+          if ((*it).GetPtr() && (*it)->heroPersistentId == skinId)
           {
             return (*it)->sceneObject;  
           }

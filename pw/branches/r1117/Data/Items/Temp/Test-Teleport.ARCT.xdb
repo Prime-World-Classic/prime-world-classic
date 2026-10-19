@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Consumable>
+	<BackLink DBID="/Maps/Multiplayer/PFmap/Mod4/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Mod4/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Trening/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Test/BalanseTest/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Trening/_.ADMPDSCR" Count="2" />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators>
+		<Item href="/Items/Temp/Test-Teleport.ARCT" id="C665DB1B-106F-413C-885E-4D79F3DE4646">
+			<SpellApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>Телепорт</caption>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<spell href="/Items/Temp/Test-Teleport.ARCT" id="F9B0E9FA-5283-4AB1-88D4-9B2996FBC738">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Temp/Test-Teleport.ARCT" id="F9E51C87-E5E4-419B-88A9-17EAE9335D1F">
+								<TeleportApplicator>
+									<appearEffect href="/Effects/General/Blink/_PurpleSTD.EFFT" />
+									<applyTarget>AbilityOwner</applyTarget>
+									<caption>телепорт</caption>
+									<disappearEffect href="/Effects/General/Blink/_PurpleSTD.EFFT" />
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<maxDistance>
+										<compiledString></compiledString>
+										<returnType>float</returnType>
+										<sString>0.0f</sString>
+									</maxDistance>
+									<notifyInboundDispatches>true</notifyInboundDispatches>
+									<providerName></providerName>
+									<pushUnits>false</pushUnits>
+									<teleportTarget>ApplicatorTarget</teleportTarget>
+								</TeleportApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Temp/Test-Teleport.ARCT" id="535257EE-5C4D-4ACC-A308-CF82A09427AE">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<spellTarget>ApplicatorTarget</spellTarget>
+				<targetSelector href="/Items/Temp/Test-Teleport.ARCT" id="41DFDF48-D8CF-41C3-A8B6-CBEBC822954F">
+					<UnitPlaceCorrector>
+						<checkByRangeToRequester>false</checkByRangeToRequester>
+						<checkLineOfSight>false</checkLineOfSight>
+						<nativeTerrainOnly>false</nativeTerrainOnly>
+						<passabilityCheckMode>6</passabilityCheckMode>
+						<radius>14</radius>
+						<targetSelector href="/Items/Temp/Test-Teleport.ARCT" id="5051C28C-034F-43F2-9526-A9F72177A354">
+							<SelectApplicatorTarget>
+								<applicatorIndex>0</applicatorIndex>
+								<applicatorName></applicatorName>
+								<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+								<selectTarget>ApplicatorTarget</selectTarget>
+							</SelectApplicatorTarget>
+						</targetSelector>
+					</UnitPlaceCorrector>
+				</targetSelector>
+			</SpellApplicator>
+		</Item>
+	</applicators>
+	<autoTargetSelector href="" />
+	<caption></caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Temp/Test-Teleport.ARCT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<constants href="" />
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Temp/Test-Teleport.ARCT_description.txt" />
+	<dispatch href="/Items/Temp/Test-Teleport.ARCT" id="537FF57C-3940-43B3-8B1B-21601AB6B4EA">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>578</flags>
+	<gameObject href="" />
+	<image href="/UI/Styles/Icons/Talents/_291.ITEX" />
+	<imageSecondState href="" />
+	<isPotion>false</isPotion>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<maxQuantity>0</maxQuantity>
+	<microAI href="" />
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>0</naftaCost>
+	<name textref="/Items/Temp/Test-Teleport.ARCT_name.txt" />
+	<node></node>
+	<passiveApplicators />
+	<persistentId></persistentId>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="/Items/Temp/Test-Teleport.ARCT_shortDescription.txt" />
+	<targetType>16777216</targetType>
+	<type>Active</type>
+	<useRange>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAD6RA==</compiledString>
+		<returnType>float</returnType>
+		<sString>2000</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Consumable>

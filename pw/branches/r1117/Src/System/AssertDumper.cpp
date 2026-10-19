@@ -42,7 +42,13 @@ static int dummy = 0;
 static int CatchException( const struct tm &tim, EXCEPTION_POINTERS* pExceptionInfo )
 {
   CreateMiniDump( tim, pExceptionInfo, MINI_DUMP, EXCEPTION_ASSERT );
+  // x64: ‚ CONTEXT ÌÂÚ Eax ó ÚÓÚ ÊÂ ÔË∏Ï (ÔÂÂı‚‡ÚËÚ¸ ‚˚ÔÓÎÌÂÌËÂ Ì‡ dummy)
+  // ÔË¯ÂÚÒˇ ‚ Rax.
+#if defined(_M_X64) || defined(__x86_64__)
+  pExceptionInfo->ContextRecord->Rax = (DWORD64)&dummy;
+#else
   pExceptionInfo->ContextRecord->Eax = (DWORD)&dummy;
+#endif
   return EXCEPTION_CONTINUE_EXECUTION;
 }
 
@@ -50,11 +56,17 @@ static void GenerateException(const struct tm & tim)
 {
   __try
   {
+#if defined(_M_X64) || defined(__x86_64__)
+    // x64: MSVC –Ω–µ –∫–æ–º–ø–∏–ª–∏—Ä—É–µ—Ç __asm (C4235). –°–º—ã—Å–ª –±–ª–æ–∫–∞ ‚Äî —É—Å—Ç—Ä–æ–∏—Ç—å –¥–æ—Å—Ç—É–ø –ø–æ
+    // –Ω—É–ª–µ–≤–æ–º—É –∞–¥—Ä–µ—Å—É –≤–Ω—É—Ç—Ä–∏ __try, —á—Ç–æ–±—ã –ø–æ–π–º–∞—Ç—å –∏—Å–∫–ª—é—á–µ–Ω–∏–µ –≤ CatchException.
+    *(volatile int*)0 = 0;
+#else
     __asm
     {
       mov eax, 0
         mov dword ptr [eax], 0
     }
+#endif
   }
   __except( CatchException( tim, GetExceptionInformation() ) )
   {

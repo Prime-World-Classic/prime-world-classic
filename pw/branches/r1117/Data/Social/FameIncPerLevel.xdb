@@ -73,6 +73,7 @@
 	<BackLink DBID="/Maps/PvE/Series/Coop1/Heroes/WitchDoctor/_.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/rockman.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/witcher.HROB" Count="1" />
+	<BackLink DBID="/Heroes/Laguna/_.HROB" Count="1" />
 	<FameIncrement>
 		<Item>200</Item>
 		<Item>20</Item>

@@ -43,7 +43,11 @@ void MarkersController::AddMarker( CPtr<NWorld::PFBaseUnit> const& pUnit, NDb::E
   Strong<UnitMarker> marker = new UnitMarker( pUnit, pUIData->markerSettings.duration, pAttachEffect, minimapEffect, minimap );
   markers.push_back( marker );
 
-  NSoundScene::EventStart( pUIData->soundEvents.minimapSignal );
+  // ping on a unit: the new soft ping sound instead of the old FMOD event (if the ping sounds are on)
+  if ( AdventureScreen::IsPingSoundEnabled() && AdventureScreen::Instance() )
+    AdventureScreen::Instance()->PlayPingSound( -1 );
+  else
+    NSoundScene::EventStart( pUIData->soundEvents.minimapSignal );
 }
 
 void MarkersController::AddChatMarker(CPtr<NWorld::PFBaseUnit> const& pUnit)

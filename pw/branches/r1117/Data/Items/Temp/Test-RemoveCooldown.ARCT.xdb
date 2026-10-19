@@ -48,6 +48,50 @@
 				<useListAs>ListAsRule</useListAs>
 			</RefreshCooldownApplicator>
 		</Item>
+		<Item href="/Items/Temp/Test-RemoveCooldown.ARCT" id="CDCC2D53-E46A-4A18-BFB0-421DA848AAAA">
+			<HealApplicator>
+				<amount>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLQgz/0ItNDIsRi00MiwLdXfj/0Nxt+Nld9NlF9IvlXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>rMaxLife - rLife</sString>
+				</amount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>Восстановить здоровье</caption>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<healTarget>Health</healTarget>
+				<ignoreHealingMods>true</ignoreHealingMods>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<uiEvent href="" />
+			</HealApplicator>
+		</Item>
+		<Item href="/Items/Temp/Test-RemoveCooldown.ARCT" id="4D2EB57E-0CD8-4665-8201-5CA99AC60425">
+			<HealApplicator>
+				<amount>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLQhD/0ItNDIsRi00Mi0IE3V34/9DcbfjZXfTZRfSL5V3D</compiledString>
+					<returnType>float</returnType>
+					<sString>rMaxEnergy - rEnergy</sString>
+				</amount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>Восстановить энергию</caption>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<healTarget>Energy</healTarget>
+				<ignoreHealingMods>true</ignoreHealingMods>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<uiEvent href="" />
+			</HealApplicator>
+		</Item>
 	</applicators>
 	<autoTargetSelector href="" />
 	<caption></caption>

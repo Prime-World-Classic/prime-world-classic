@@ -165,12 +165,18 @@
 				<applyTarget>AbilityOwner</applyTarget>
 				<enabled>
 					<compiledString>FRAAAAACAAAAHQAAADAAAABIYXN0ZV9Db25kaXRpb24AVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B1MAAAA3+D2xER7BsZF/wHrBMZF/wCKRf+L5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>cHaste_Condition</sString>
 				</enabled>
 				<lifeTime>
 					<compiledString>FQ8AAAABAAAAGwAAAEhhc3RlX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>cHaste_Duration</sString>
 				</lifeTime>
 				<startCondition>
 					<compiledString>FRUAAAACAAAAIgAAADUAAABIYXN0ZV9TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHVEAAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>cHaste_StartCondition</sString>
 				</startCondition>
 			</StatusApplicator>
 		</Item>

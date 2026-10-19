@@ -818,6 +818,8 @@
 											<behaviorFlags>1</behaviorFlags>
 											<enabled>
 												<compiledString>FQAAAAAAAAAAVYvsaAAAAgCLRQyLEItNDItCaP/QXcM=</compiledString>
+												<returnType>bool</returnType>
+												<sString>rFlag(131072)</sString>
 											</enabled>
 											<lifeTime>
 												<compiledString></compiledString>

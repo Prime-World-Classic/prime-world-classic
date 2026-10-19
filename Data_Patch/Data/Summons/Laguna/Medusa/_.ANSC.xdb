@@ -1,0 +1,163 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBAnimatedSceneComponent>
+	<BackLink DBID="/Summons/Laguna/Medusa/_MedusaMove.PRXY" Count="3" />
+	<aabb>
+		<maxX>1</maxX>
+		<maxY>1</maxY>
+		<maxZ>1</maxZ>
+		<minX>-1</minX>
+		<minY>-1</minY>
+		<minZ>-1</minZ>
+	</aabb>
+	<additionalGraph href="" />
+	<animations>
+		<Item>
+			<animationFileName>/Summons/Laguna/Medusa/_.anim</animationFileName>
+			<animkeys />
+			<compression>0</compression>
+			<mayaFileName>/Summons/Laguna/Medusa/_.mayaAnim</mayaFileName>
+			<name></name>
+			<srcFileName crc="0">/Summons/Laguna/Medusa/_</srcFileName>
+		</Item>
+	</animations>
+	<animGraph href="" />
+	<anims />
+	<attached />
+	<caption></caption>
+	<faceFXAnims />
+	<groupFlags>0</groupFlags>
+	<keys />
+	<locatorList href="" />
+	<mayaFileName>/Summons/Laguna/Medusa/_.mayaSkel</mayaFileName>
+	<orientation>Default</orientation>
+	<selection></selection>
+	<skeletonFileName>/Summons/Laguna/Medusa/_.skel</skeletonFileName>
+	<skinOn />
+	<skins>
+		<Item>
+			<events href="" />
+			<geometryFileName>/Summons/Laguna/Medusa/_.skin</geometryFileName>
+			<jointsCountPerVertex>4</jointsCountPerVertex>
+			<materialsReferences>
+				<Item href="/Summons/Laguna/Medusa/_.ANSC" id="346AE92A-00B8-4AF9-8D54-3EDB0CDCDD40">
+					<BasicMaterial>
+						<caption></caption>
+						<diffuseColor>
+							<A>1</A>
+							<B>1</B>
+							<G>1</G>
+							<R>1</R>
+						</diffuseColor>
+						<DiffuseMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="/Summons/Laguna/Medusa/_.ANSC" id="3F0F72D8-9BEB-4B05-ADB5-BE836B01C79E">
+								<Texture>
+									<generatedFileName></generatedFileName>
+									<mipLevels>0</mipLevels>
+									<mipLevelUsage>AutoGenerate</mipLevelUsage>
+									<mipSharpenPasses></mipSharpenPasses>
+									<pixelFormat>DXT1</pixelFormat>
+									<size>
+										<height>0</height>
+										<width>0</width>
+									</size>
+									<srcFileName crc="0">/Summons/Laguna/Medusa/_</srcFileName>
+									<startMipLevel>0</startMipLevel>
+									<textureFileName>/Summons/Laguna/Medusa/_.dds</textureFileName>
+									<textureType>Color</textureType>
+								</Texture>
+							</texture>
+						</DiffuseMap>
+						<emissive>0</emissive>
+						<EmissivePinValue>EmissiveOff</EmissivePinValue>
+						<ignoreRenderState>false</ignoreRenderState>
+						<lightingIntencity>1</lightingIntencity>
+						<LightingPinValue>LightingSH</LightingPinValue>
+						<NormalMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</NormalMap>
+						<outputAdd>
+							<A>0</A>
+							<B>0</B>
+							<G>0</G>
+							<R>0</R>
+						</outputAdd>
+						<outputMul>
+							<A>1</A>
+							<B>1</B>
+							<G>1</G>
+							<R>1</R>
+						</outputMul>
+						<ReflectionMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</ReflectionMap>
+						<reflectivity>1</reflectivity>
+						<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+						<renderFlags>2</renderFlags>
+						<renderState>
+							<alphaTest>Off</alphaTest>
+							<alphaTestRef>127</alphaTestRef>
+							<blendMode>Off</blendMode>
+							<culling>On</culling>
+						</renderState>
+						<SpecularMap>
+							<Add>
+								<A>0</A>
+								<B>0</B>
+								<G>0</G>
+								<R>0</R>
+							</Add>
+							<Multiplier>
+								<A>1</A>
+								<B>1</B>
+								<G>1</G>
+								<R>1</R>
+							</Multiplier>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</SpecularMap>
+						<specularPower>0</specularPower>
+						<SubPriority>0</SubPriority>
+					</BasicMaterial>
+				</Item>
+			</materialsReferences>
+			<mayaFileName>/Summons/Laguna/Medusa/_.mayaSkin</mayaFileName>
+			<selection></selection>
+			<skinPartName></skinPartName>
+			<srcFileName crc="0">/Summons/Laguna/Medusa/_</srcFileName>
+			<uvSetCount>1</uvSetCount>
+		</Item>
+	</skins>
+	<splitBoneName></splitBoneName>
+	<srcFileName crc="0">/Summons/Laguna/Medusa/_</srcFileName>
+</DBAnimatedSceneComponent>

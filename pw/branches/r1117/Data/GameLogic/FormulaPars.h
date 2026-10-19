@@ -75,15 +75,17 @@ inline bool isinbounds( float x, float left, float right )
 	return left <= x && x <= right;
 }
 
-#ifndef round
-__forceinline float round( float fVal )
+// ni_round: раньше называлась round — в новых CRT (начиная с VS2015) round есть
+// в <cmath>, и оба определения дают C2382 внутри <cmath> в cl 14.44. Переименование
+// безопасно: в таблице символов формул (ExecutionMemoryManager::pLinkTable) round
+// нет, вызовов в коде два (PFAIHelper.h, PFNeutralCreepBehavior.cpp).
+__forceinline float ni_round( float fVal )
 {
   if (fVal >= 0.0f)
     return (floor(fVal + 0.5f));
   else
     return (ceil(fVal - 0.5f));
 };
-#endif
 
 inline float t(int index, float neutral, float a, float b)
 {
@@ -113,6 +115,15 @@ inline float SwitchByBool(bool bVal, float trueVal, float falseVal)
 	return bVal ? trueVal : falseVal;
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+// x64: MSVC не компилирует __asm (C4235), и на x64 SSE2 — базовый набор.
+// Все три варианта сводятся к одному действию: приведение float->int без округления
+// (truncate toward zero) — это тот же cvttss2si, который выбирал и первый вариант f2l
+// на x86 (после CPUID), и то же делают f2l_nosse (RC_TRUNCATE + fistp) и f2l_sse3 (fisttp).
+inline int f2l_nosse(float f) { return (int)f; }
+inline int f2l_sse3(float f)  { return (int)f; }
+inline int f2l(float f)       { return (int)f; }
+#else
 inline int f2l_nosse(float f)
 {
   unsigned short int cwOld;
@@ -160,6 +171,7 @@ noSSE:
     jmp f2l_nosse
   }
 }
+#endif
 
 enum EAbilityScaleMode
 {

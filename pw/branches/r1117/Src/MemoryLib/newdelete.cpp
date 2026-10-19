@@ -668,10 +668,13 @@ void ForcedDeleteHack( void *p )
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_WIN32)
+/* client-modern: the order of checks used to be reversed - _WIN32 is defined
+ * on x64 as well, so the "16" branch was unreachable and DebugHeader (the
+ * ALLOC_DATA_DEBUG_INIT path) shifted the user pointer by 8 instead of 16. */
+#if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
+  enum { MALLOC_STD_ALIGN = 16 };
+#elif defined(_WIN32)
   enum { MALLOC_STD_ALIGN = 8 };
-#elif defined(_WIN64)
-   enum { MALLOC_STD_ALIGN = 16 };
 #endif
 
 struct DebugHeader

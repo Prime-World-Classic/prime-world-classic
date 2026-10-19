@@ -87,18 +87,26 @@
 		<BaseAttack parent="/Creeps/Champions/Champion2/AttackAbility.ATCK">
 			<aoeSize>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</aoeSize>
 			<castAllowRange>
 				<compiledString></compiledString>
 			</castAllowRange>
 			<cooldownTime>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTime>
 			<manaCost>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</manaCost>
 			<useRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</useRange>
 		</BaseAttack>
 	</attackAbility>

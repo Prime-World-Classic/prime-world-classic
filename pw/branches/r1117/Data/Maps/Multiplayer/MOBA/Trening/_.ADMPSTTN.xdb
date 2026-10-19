@@ -33,6 +33,10 @@
 					<key>RemoveCooldown</key>
 					<resource href="/Items/Temp/Test-RemoveCooldown.ARCT" />
 				</Item>
+				<Item>
+					<key>TestTeleport</key>
+					<resource href="/Items/Temp/Test-Teleport.ARCT" />
+				</Item>
 			</resources>
 		</DictionaryPreloadingResources>
 	</dictionary>

@@ -113,6 +113,8 @@
 															<HealApplicator parent="/GameLogic/GeneralApplicators/Heal.APLR">
 																<amount>
 																	<compiledString>FQsAAAABAAAAFwAAAEhlYWxBbW91bnQAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																	<returnType>float</returnType>
+																	<sString>cHealAmount</sString>
 																</amount>
 																<enabled>
 																	<compiledString></compiledString>
@@ -123,6 +125,8 @@
 															<HealApplicator parent="/GameLogic/GeneralApplicators/Heal.APLR">
 																<amount>
 																	<compiledString>FQsAAAABAAAAFwAAAEhlYWxBbW91bnQAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																	<returnType>float</returnType>
+																	<sString>cHealAmount</sString>
 																</amount>
 																<enabled>
 																	<compiledString></compiledString>

@@ -9,6 +9,9 @@
 #include <map>
 class LoadingProgress;
 
+// background from the castle fair rotation (fair_loadscreen in user.cfg) for the current battle; empty - none chosen
+string FairLoadscreenBack();
+
 namespace NCore
 {
   namespace ETeam

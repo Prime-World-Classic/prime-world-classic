@@ -54,7 +54,9 @@ int ExecutableString::operator&(IXmlSaver &saver)
   }
 
   CDynamicCast<XmlChunkSaver> pChunkSaver(&saver);
-  if (pChunkSaver != NULL && !(pExecutor && ((DataExecutor *)pExecutor)->IsValid()) )
+  // IsValid() of FormulaExecutor itself: on x64 the formula lives in a FormulaVM,
+  // while DataExecutor::IsValid() (not virtual) is always false there
+  if (pChunkSaver != NULL && !(pExecutor && pExecutor->IsValid()) )
   {
     nstl::string sMsg = NStr::StrFmt("Formula \"%s\" is not compiled properly. In File \"%s\" with ID \"%s\",\n", sString.c_str(), pChunkSaver->GetSourceFileName().c_str(), pChunkSaver->GetSourceId().c_str());
     sMsg += "Current node path:\n";

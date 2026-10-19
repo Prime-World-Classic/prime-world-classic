@@ -1,3 +1,9 @@
+#include "stdafx.h"
+#if !defined(_M_X64)
+// ATL/WTL (atlbase.h) в тулчейне VS2022 BuildTools нет Ч компонент VC.ATL
+// не устанавливалс€. Ќа x64 эти TU пока выключены; x86-эталон (cl 15) не затронут.
+// NBSU::SystemReport (дамп + XML-отчЄт о сбое) на x64 недоступен Ч
+// единственное обращение (PW_Client/Game.cpp) закрыто тем же guard'ом.
 /*
  *  CVS Revision:$Id: expreport.cpp,v 1.15 2007/06/01 17:02:56 earnol Exp $
  *
@@ -19,7 +25,6 @@
 
 //#pragma warning (push)
 
-#include "stdafx.h"
 #pragma warning (disable : 4996 4201 4505)
 
 // standard
@@ -1608,3 +1613,5 @@ void SystemReport::FillModulesNode(TElem &pNode, CComPtr<IXMLDOMDocument> &pDoc)
 }
 //#pragma warning (pop)
 
+
+#endif // !_M_X64

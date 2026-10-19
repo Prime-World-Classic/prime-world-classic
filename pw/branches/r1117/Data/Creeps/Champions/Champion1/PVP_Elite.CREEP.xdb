@@ -89,18 +89,28 @@
 		<BaseAttack parent="/Creeps/Champions/Champion1/AttackAbility.ATCK">
 			<aoeSize>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</aoeSize>
 			<castAllowRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</castAllowRange>
 			<cooldownTime>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTime>
 			<cooldownTimeSecondState>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTimeSecondState>
 			<manaCost>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</manaCost>
 			<passiveApplicators>
 				<Item href="/Creeps/Champions/Champion1/PVP_Elite.CREEP" id="814A4AE3-CBEC-4871-AF4E-7524ADB6E32A">
@@ -266,6 +276,8 @@
 			</passiveApplicators>
 			<useRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</useRange>
 		</BaseAttack>
 	</attackAbility>

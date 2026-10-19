@@ -47,7 +47,7 @@ void WriteItem( const char * destDir, CacheItem & item )
     throw MyExcep( NI_STRFMT( "Could write-close not write to file '%s'!", fullfname ) );
 #elif defined( NV_LINUX_PLATFORM )
   // HACK
-  int handle = NFile::CreateFileWithDir( fullfname.c_str() );
+  ptrdiff_t handle = NFile::CreateFileWithDir( fullfname.c_str() );
   if ( handle == -1 )
   {
     throw MyExcep( NI_STRFMT( "Could not create file '%s'!", fullfname ) );

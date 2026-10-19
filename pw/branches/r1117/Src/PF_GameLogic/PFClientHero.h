@@ -13,6 +13,11 @@ namespace PF_Core
   class BasicEffectAttached;
 }
 
+namespace NScene
+{
+  class SceneObject;
+}
+
 namespace NGameX
 {
 class AdventureCameraController;
@@ -44,7 +49,7 @@ public:
         vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = unit.heroSkins.begin();
         for ( ; it != unit.heroSkins.end(); ++it )
         {
-          if ((*it)->persistentId == skinId)
+          if ((*it).GetPtr() && (*it)->persistentId == skinId)
           {
             return (*it)->sceneObject;  
           }
@@ -171,6 +176,11 @@ private:
   float timerBattleSound;
 
   float timerIdle;
+
+  // ability range scale already applied to the range-scaled FX components of the scene object below
+  float rangeScaleApplied;
+  const NScene::SceneObject * pRangeScaledSceneObject;
+  void UpdateRangeScaledComponents();
   // Functor
   struct UnitBattleFunctor : public NonCopyable
   {

@@ -1,0 +1,394 @@
+# Сборка клиента x64 (ShippingSingleExe) — Wine и нативный Windows
+
+Два скрипта собирают **один и тот же** `PW_Game.exe` (x64, конфигурация
+`ShippingSingleExe|Win32`):
+
+| Скрипт (корень репозитория) | Компилятор | Где | build-каталог |
+|---|---|---|---|
+| `build_client_x64_wine.sh` | cl 14.44 (`~/.wine-vs`) | Linux + Wine | `pw/branches/r1117/Tools/ClientCMake/build/x64-wine/` |
+| `build_client_x64_win.cmd` | cl 14.44 (VS2022 нативно) | Windows | `<репо>\build\x64-win` (gitignored; переопределяется `--build-dir PATH` / `PW_BUILD_DIR`) |
+
+Оба вызывают **один и тот же** граф: `Tools/WineClientBuild/parse_vcproj.py` →
+`model.json` → `Tools/ClientCMake/gen_cmake.py` → CMake/Ninja. Отличается только
+то, чем нативный тулчейн отличается от Wine.
+
+**Готовый `PW_Game.exe` оба скрипта кладут в `<корень репо>/build/`** (gitignored,
+туда же `.pdb`/`.map` при `PW_PDB=1` / `PW_EXTRA_LINK_OPTS=/MAP`) — одна точка
+выхода независимо от тулчейна и от того, где лежит дерево сборки. Ветка — `client-modern`
+(worktree `prime-world-classic-client-modern/`); x86/VS2008 остаётся эталонным
+регресс-чеком (`build_client_wine.sh`, см. `BUILD_CLIENT_WINE.md`).
+
+**Краткая инструкция для разработчика** (поставить тулчейн, собрать одной
+командой, типовые ошибки, сборка без установки VS) — `HOWTO_BUILD_CLIENT_WINDOWS.md`.
+Здесь — инварианты паритета, замеры и грабли.
+
+## Команды
+
+```bash
+# Linux + Wine
+./build_client_x64_wine.sh                    # configure + сборка
+./build_client_x64_wine.sh --gen-only         # только граф (компилятор не запускается)
+./build_client_x64_wine.sh --check            # только сверка готового артефакта
+./build_client_x64_wine.sh --clean | --keep-going | --prefix=PATH
+PW_BUILD_JOBS=4 ./build_client_x64_wine.sh
+```
+
+```bat
+REM Windows (из корня репозитория)
+build_client_x64_win.cmd                      REM configure + сборка
+build_client_x64_win.cmd --gen-only           REM только граф
+build_client_x64_win.cmd --check              REM только сверка артефакта
+build_client_x64_win.cmd --clean              REM удалить gen/ и build-каталог
+build_client_x64_win.cmd --build-dir D:\pwbuild\x64-win
+set PW_BUILD_JOBS=8 & build_client_x64_win.cmd
+```
+
+Требования нативного пути: Python 3 в PATH; VS2022 (BuildTools/Community) с
+компонентом «MSVC v143 — C++ x64/x86 build tools» + Windows 10/11 SDK
+(`vcvars64.bat` ищется в `C:\Program Files [x86]\Microsoft Visual Studio\2022\*`,
+перекрытие — `VCVARS64=`); CMake ≥ 3.15 и ninja в PATH (или `PW_CMAKE` /
+`PW_NINJA`). Без установленной VS — режим скопированного тулчейна
+(`PW_MSVC_DIR` + `PW_KITS_DIR`, см. ниже).
+
+**PCH включён по умолчанию** в обоих скриптах (`PW_PCH=all`): −43% времени TU,
+гейт пройден (E2E на tiny10 + золотые `unitstats` байт-в-байт). **Релизный
+артефакт собирается с `PW_PCH=off`** (байты обязаны совпадать с базой).
+Кэш объектов (`PW_CACHE_LAUNCHER`) намеренно остаётся явным: с PCH он бессилен
+(sccache: `/Fp`, `/Yc` → non-cacheable), а артефакт из тёплого кэша не байт-в-байт
+прямому прогону. При обоих включённых скрипт печатает предупреждение.
+
+## Правила паритета (правильный ответ на «одинаковый файл»)
+
+Генератор один, поэтому паритет держится только при **одинаковых опциях**:
+
+1. `PW_MACHINE=X64`, `PW_CFG=ShippingSingleExe|Win32` — в обоих скриптах жёстко.
+2. `PW_DEFAULT_OPTS=/WX- /MT`, `PW_DROP_LIBS=comsuppw comsuppwd`,
+   `PW_DROP_NODEFAULT=libcmt.lib` — одинаковые дефолты. `/MT` не опция вкуса:
+   весь x64-вендор в дереве собран `/MT` (в Wine-префиксе нет `msvcprt.lib`),
+   `/MD` с ними линковать нельзя.
+3. `PW_EXTRA_OPTS` **дополняет** дефолты, а не заменяет (иначе молча теряются
+   `/WX-` и `/MT`).
+4. `-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=` оставлен пустым в **обоих** скриптах.
+   Если PDB включит только одна из сборок, сравнение артефактов теряет смысл.
+   Отладочная сборка на Windows — `PW_PDB=1` (артефакт тогда не сравним).
+5. `PW_WIN_ROOT` — корень, под которым компилятор видит дерево: в Wine `Z:`
+   (unix-«/»), нативно — буква диска репозитория. Его читает `winpath()` в
+   `gen_cmake.py`; им отличаются **только** PCH-обёртки (`#include` внутри C++),
+   всё остальное в графе идентично.
+6. build-каталог нативной сборки — **внутри рабочей копии** (`<репо>\build\<tag>`,
+   gitignored): наружу от репозитория не пишется ничего, потому что запись в корень
+   `C:\` на управляемых машинах часто запрещена политиками Windows
+   (SRP/AppLocker/WDAC). Бюджет MAX_PATH (замер): объекты лежат как
+   `<build>\CMakeFiles\<Проект>.dir\<зеркало абсолютного пути источника>`, самый
+   длинный путь ≈ `2·len(репо)+110` (130 симв. при репо в `C:\pwbuild\pwc`) — до
+   `260` хватает на путь репо ~75 симв.; глубже — `--build-dir D:\pw\x64-win`.
+   CMake-кэш привязан к пути: при переносе или смене компилятора — `--clean`.
+7. **Расположение build-каталога меняет байты артефакта** (замер: один и тот же
+   PCH-билд в `C:\pwbuild\x64-win-pch` и в `<репо>\build\x64-win` — размер
+   одинаковый 15 150 592, различаются 594 байта в 87 диапазонах): это
+   `TimeDateStamp` в PE-заголовке и в отладочном описателе + хэши анонимных
+   пространств имён в именах типов (`?A0x48f2409c@@` ↔ `?A0x647eb65e@@`), которые
+   MSVC считает от идентичности TU. Путей сборки в экзешнике нет.
+   Поэтому байт-в-байт сравнение осмысленно только для **одного и того же**
+   build-пути; между путями/тулчейнами сравнивают размер, `check_exe.py`
+   (манифест/версия/импорты), E2E и золотые `unitstats`.
+
+Проверка паритета графа (без сборки):
+
+```bash
+./build_client_x64_wine.sh --gen-only
+PW_WIN_ROOT="C:" PW_MACHINE=X64 PW_EXTRA_OPTS="/WX- /MT" \
+  PW_DROP_LIBS="comsuppw comsuppwd" PW_DROP_NODEFAULT=libcmt.lib \
+  python3 pw/branches/r1117/Tools/ClientCMake/gen_cmake.py \
+    pw/branches/r1117/Src pw/branches/r1117/Tools/ClientCMake/model.json /tmp/gen-native
+diff -r pw/branches/r1117/Tools/ClientCMake/gen/x64-wine /tmp/gen-native   # только пути в pch/
+```
+
+Проверено: `CMakeLists.txt`, `wine_app.manifest`, `wine_manifest.rc` и все 25
+`projects/*.cmake` — побайтово идентичны; различаются только 1074 PCH-обёртки
+(`Z:/…` против `C:/…`).
+
+## Что делает x64-сборку x64 (в `gen_cmake.py`, не в скриптах)
+
+Под `PW_MACHINE=X64` генератор: добавляет `System/FormulaVM.cpp` (парсер DSL +
+байткод-машина: предкомпилированный x86-blob на x64 неисполним); подменяет
+вендорские имена/каталоги (`fmod*`→`fmod*64`, `steam_api`→`steam_api64`,
+`Lib/x86`→`Lib/x64`, `redistributable_bin`→`…/win64`, `<dir>/lib`→`<dir>/lib/x64`,
+если каталог есть); убирает `Vendor/Gl/lib` (x86-ный `GlU32.Lib`); снимает
+`sakijapi` (StarForce, x64-дистрибутива нет — вызовы `PSA_*` закрыты отсутствием
+`STARFORCE_PROTECTED`), `gtrtst32`, `cxxtest` (мертва), `crashrpt` (требует
+VC.ATL, код под `#if !defined(_M_X64)`); добавляет `/ALTERNATENAME` для
+легаси-имён CRT (`stricmp`, POSIX-имена для libcurl). Пересобранный вендор —
+`Tools/VendorX64/build_vendor_x64.sh`, артефакты в `Vendor/<вендор>/lib/x64/`.
+
+Манифест: rc-ресурс `1 24` из `Src/Application.manifest` с
+`processorArchitecture="amd64"` (базовый файл написан под X86 — без подмены
+манифест к x64-экзешнику не применяется) и **без** CRT-зависимости (`/MT`).
+Линкуется с `/MANIFEST:NO` в обоих скриптах — потому что так работает под Wine;
+менять только в одном = расхождение артефактов.
+
+## FP-детерминизм (FMA3, `/fp:strict`, `fp_smoke`)
+
+Авторитет состояния держится на **консенсусе клиентов**: каждый клиент считает
+CRC состояния мира на шаг и репортит его хибрид-серверу
+(`HybridServer/Peered.h::OnFinishStep(clientIndex, step, worldCrc)`,
+`PeeredImpl.cpp::CommandsScheduler`), право у большинства, меньшинство уходит в
+async-recovery и помечается **читером** (`Peered.test.cpp:
+«Client 0 and 2 have reported same crc and they are the majority (2 of 3)»`,
+`link->cheaters`). Значит расхождение в 1 ULP неточной FP-операции = игрок с
+«другим процессором» получает ярлык читера. Это не косметика.
+
+Два независимых рычага (оба обязательны, выключать нельзя):
+
+1. **рантайм**: `_set_FMA3_enable(0)` — x64 CRT (UCRT) выбирает реализацию
+   `sin/cos/tan/asin/acos/atan/atan2/pow/exp/log` по CPUID: на CPU с FMA3
+   (Intel Haswell+, AMD Excavator+) работает FMA-вариант. Ставится хуком в
+   `.CRT$XCT` (сортируется линкером раньше `.CRT$XCU`, т.е. до ctors C++) в
+   `Src/System/FpDeterminism.cpp`; `WinMain` дополнительно зовёт `PwFpInstall()`
+   и пишет в `<каталог exe>\fastfail.log` строку `fp: cpuFMA3=… hash=… ctrl=…`.
+   Ручной `_set_FMA3_enable` закрывает и вендорские `.lib` (их вызовы CRT
+   подчиняются переключателю независимо от того, с какими флагами их собирали).
+2. **кодогенерация**: `/fp:strict` для всех целей при `PW_MACHINE=X64`
+   (`gen_cmake.py`, `X64_FP_MODEL_DEFAULT`; дефолт cl — `/fp:precise`, он
+   реассоциацию и «безобидные» FP-преобразования не запрещает). Переопределение
+   для A/B: `PW_FP_MODEL=precise|fast|off` либо `PW_EXTRA_OPTS=/fp:…` (он идёт
+   позже и перебивает). `/arch:` не добавляем намеренно: базовый x64-кодоген
+   (SSE2) есть на любом x86-64, а FMA в кодген cl без `/fp:fast` не возникает.
+
+Замерено (MSVC 14.44, `/MT`, i7-7700 — FMA3 есть):
+
+```
+cos(1.0) = 0x3FE14A280FB5068C  FMA3 (состояние CRT по умолчанию)
+cos(1.0) = 0x3FE14A280FB5068B  после _set_FMA3_enable(0)
+FP-HASH  90E0C6759B58BCF8 (защита) vs 0EC7DC9EC5F68A2B (без защиты), 119 проб
+```
+
+Стенд: `Tools/ClientCMake/fp_smoke/` — `fp_smoke.cpp` (та же таблица проб, что и
+в клиентской самопроверке: `Src/System/FpDeterminismTable.h`),
+`run_fp_smoke.sh` (Wine) и `fp_smoke.cmd` (нативная Windows, режим `PW_MSVC_DIR`/
+`PW_KITS_DIR` работает и на tiny10). Каждый собирает три варианта —
+`strict-off` (как клиент), `strict-on` (CRT по умолчанию), `precise-off` — и
+сверяет хэши: `strict-off == precise-off` (`/fp:strict` биты таблицы не меняет)
+и `strict-off != strict-on` (FMA3-диспетч реально меняет → переключатель нужен).
+Эталон — `golden_x64.txt`, `--update` пересоздаёт.
+
+Цена `/fp:strict`: он запрещает реассоциацию и разрешает полагаться на
+побочный эффект math-функций (`errno`), поэтому в FP-насышенном коде (рендер,
+геометрия, `System/Geom*`, `FastMath`) он может быть медленнее `/fp:precise`.
+Политика выбрана глобальной намеренно — консенсус требует одинаковых битов во
+всём, что попадает в состояние мира; если замер покажет регресс в рендере,
+сужать надо **точечно** (отдельные TU через `PW_FP_MODEL=off` + `/fp:strict`
+локально), а не снимая политику с графа целиком.
+
+Что проверено на живой машине (2026-10-12): прогон на tiny10 (Windows 10 1809,
+`-cpu host` → FMA3 гостю виден, статический UCRT из того же тулчейна) даёт
+**тот же** `FP-HASH=90E0C6759B58BCF8`, что и прогон под Wine; без защиты — тоже
+тот же `0EC7DC9EC5F68A2B`. Т.е. Wine-эталон совместим с Windows-прогоном
+(обе сборки `/MT` = один и тот же статический UCRT из префикса).
+
+Чего детерминизм **не** покрывает (не приписывать себе лишнего):
+
+* на этой UCRT-версии из 119 проб с FMA3/без разошлась одна (`cos(1.0)`) —
+  набор шире, чем разошедшееся: другие версии CRT/функций могут расходиться
+  сильнее, поэтому смоук — регулярный, а не «один раз и зелёный»;
+* Linux-сервер (glibc) считает трансцендентные иначе, чем UCRT; если сервер
+  участвует в FP-споре, нужен отдельный эталон — здесь закрываем клиент↔клиент;
+* x86/прод-клиент 2.15.x (`msvcr90`, x87 `FSIN`) — `FpDeterminism.cpp`
+  компилируется только под `_M_X64`, x86-сборка его не видит;
+* **пересобранный вендор** (`Tools/VendorX64/build_vendor_x64.sh`) собирается без
+  `/fp:` (т.е. `/fp:precise`) — его вызовы CRT подпадают под
+  `_set_FMA3_enable(0)`, но собственная FP-арифметика внутри вендора живёт по
+  своим правилам. В CRC-путь этот вендор не попадает (см. «Что именно проверяется
+  консенсусом» ниже), поэтому `/fp:strict` на вендор не распространяли;
+  возвращаться к этому только если в состояние мира начнёт попадать FP из вендора;
+* GPU/D3D-путь (вершинные вычисления) — вне CPU-детерминизма.
+
+### Цена рычагов и A/B результатов (замеры, а не предположения)
+
+Один и тот же E2E-сценарий на tiny10 (`PwE2E64W`, локальный стенд, ~10 мин боя),
+кадровое время суммируется по `Frame time histo` из лога клиента:
+
+| сборка | кадр, среднее |
+|---|---|
+| no-PCH, `/fp:precise`, FMA3 как в CRT (контроль, `96eb72b6…`) | 22.21 мс |
+| no-PCH, `/fp:strict` + FMA3 выключен (текущая) | 22.47 мс |
+| PCH-сборка, без FP-правок (стояла на госте до этого) | 15.60 мс |
+
+Цена `/fp:strict` + `_set_FMA3_enable(0)` — **1.2%, в пределах шума**; разница
+PCH↔no-PCH (30+%) — раскладка кода (PCH-сборка эмитит функции из заголовков
+один раз, а не COMDAT-дублями), к FP-флагам отношения не имеет. Сужать
+`/fp:strict` по проектам ради скорости не нужно — и нельзя: симуляция зовёт
+трансцендентные именно в `PF_GameLogic` (`PFNeutralCreep.cpp:340` `atan2`,
+`PFDispatchStrike1.cpp:269` `acos`/`asin`, `PFImpulsiveEvents.cpp:550` `pow` —
+91 вызов мат.функций в проекте), т.е. именно в тех полях/решениях, что попадают
+в CRC.
+
+A/B `unitstats`/`unitdamage` (ключ `-dumpUnitStats`, старый экз на госте vs новый,
+бит-в-бит): **71 общий ключ `unitstats` — 0 расхождений**, урон — 4 общих
+`amount` → 0 расхождений `result` (остальные пары расходятся только составом
+спавна, это норма). Т.е. на этой машине расхождение **латентное**: текущий
+контент его не задевает, но защита обязана стоять до того, как заденет
+(в `fp_smoke` расхождение видно уже сейчас).
+
+## Что именно проверяется консенсусом (и почему Tamarin/Flash не при чём)
+
+CRC считается по **сериализованному состоянию мира**:
+`Core/Transceiver.cpp::CalcCRCImpl` → `IWorldBase::CalcCRC` →
+`PF_GameLogic/PFWorld.cpp:1082` (fast-режим — позиция героя, health/mana/nafta,
+все `EStat`, `PlayerBehaviourTracking::UpdateFastCRC`) и
+`PF_Core/World.cpp:115` (полный режим — все объекты мира через `IBinSaver`).
+Т.е. под проверкой — только поля объектов мира, порождаемые симуляцией.
+
+Tamarin (Flash/AS) в этот контур не дотягивается — проверено, а не «по ощущению»:
+
+* Tamarin компилируется **только в проект `UI`** (`gen/x64-wine/projects/UI.cmake`),
+  в `PF_GameLogic`/`PF_Core` его нет;
+* серверный `UniServerApp` (Linux) содержит код `PF_GameLogic` и **ноль**
+  Tamarin/avmplus/MMgc/`flash::` символов — состояние мира строится кодом, где
+  Tamarin физически отсутствует;
+* `Src/UI/**` не ссылается на мир (`GetWorld()`, `PFBaseHero`, `GetGameLogic` —
+  0 совпадений); все `float`-параметры `AdventureFlashInterface` — исходящие
+  (кулдауны, позиции на миникарте, полоски), входящих нет;
+* **единственный мост AS→игра — `fscommand` строками**
+  (`UI/Flash/GameSWFIntegration/FlashMovie.cpp::OnFSCommand(AvmString, AvmString)`
+  → `IFSCommandListner::OnFSCommand(wnd, listenerID, const char* args, const wchar_t*)`),
+  обработчики разбирают текст (`sscanf_s("%d")`, в `MinimapController.cpp` —
+  `"%d %f %f"`). Через границу идут **десятичные строки**, а не биты double:
+  форматирование и `sscanf` — UCRT, корректно округлённые и от CPU не зависят;
+* арифметика самого avmplus, из которой эти числа получаются, — `+ - * /`
+  (IEEE-точны на любом SSE2), а трансцендентные внутри Tamarin идут через CRT и
+  уже закрыты `_set_FMA3_enable(0)`;
+* переключение FP-состояния вокруг AS-вызовов (`UI/Flash/GameSWFIntegration/
+  FlashEnterFunction.cpp` → `SetProcessorState(UI_PROCESSOR_STATE, …)` =
+  `_control87`) на x64 безвредно: `_control87` трогает только слово управления
+  x87, а весь наш FP идёт через SSE2 (MXCSR не трогается); различие
+  `LOGIC_PROCESSOR_STATE`/`UI_PROCESSOR_STATE` — `_PC_24` vs `_PC_64`, что на x64
+  для SSE не имеет смысла (это отмечено в `System/SyncProcessorState.h`), режим
+  округления в обоих один — `_RC_NEAR`. На x86 (`_PC_24`) это реально меняет
+  точность — но это различие x86↔x64, а не CPU↔CPU.
+
+## Сверка артефакта
+
+`Tools/ClientCMake/check_exe.py` (общая для обоих путей, stdlib):
+
+```
+размер: 15802880 байт
+machine: x64  PE: PE32+  subsystem: 2 (WINDOWS)
+Characteristics: 0x0022
+ресурс манифеста RT_MANIFEST, id: ['1']
+FileVersion в exe: 2.16.1.0
+Version.h: 2.16.1 (ожидание FileVersion 2.16.1.0)
+ИТОГ: OK
+```
+
+Ловит: не-x64/machine, отсутствие ресурса манифеста (на Windows процесс падает
+сразу, `0xC0000135`, лог-папка не создаётся) и **протухание версии** —
+`FileVersion` из ресурса против `Src/Version.h` (баг `DEPENDS` у `.rc`,
+`PLAN_client_build_speedup.md` §3: экзешник с `Version.h 2.16.1` показывал
+`2.16.0.0`). Эталон этапа 3: 15 725 568 Б, machine `0x8664`, 0 незакрытых.
+
+`server_ip.h` (gitignored, per-deploy) генерируется одинаково: в Wine — `sed` по
+шаблону, нативно — `Tools/ClientCMake/gen_server_ip.py` с теми же дефолтами;
+источник значений — `Tools/WineClientBuild/server_ip.env` или
+`PW_SERVER_IP` / `PW_SERVER_PORT` / ….
+
+## Запуск результата на Windows
+
+Ставится **отдельный** каталог (`C:\pw64\Game\Bin`), `Game\Packs`, `Game\Data`,
+`Game\Profiles` — junction'ы (`mklink /J`) на существующую установку. Набор
+зависимостей x64 (в `.refs` его нет): `PW_Game.exe`, `ACE.dll`, `TProactor.dll`,
+`IOTerabit.dll`, `CensorDll.dll`, `zlib1.dll`, `fmodex64.dll`,
+`fmod_event64.dll`, `steam_api64.dll`, `d3dx9_43.dll` **x64** (в дереве только
+x86; берётся из `directx_Jun2010_redist.exe` → `Jun2010_d3dx9_43_x64.cab`).
+`msvcp140.dll` не нужен (`/MT`). Финальный гейт — E2E на tiny10 (`PwE2E64W`),
+а не линкер.
+
+## Грабли `.cmd` (наступили восемь)
+
+- **cmd разделяет аргументы по `=`**, поэтому `--build-dir=X:\y` приходит как два
+  аргумента. Формат — `--build-dir X:\y` (или `"--build-dir=X:\y"` в кавычках).
+- **`%CFG%` с `|`** (`ShippingSingleExe|Win32`) подставляется до разбора строки и
+  ломает команду как pipe → печатать через `!CFG!` (отложенное раскрытие).
+- **`if cond echo X & exit /b N` без скобок**: `&` — разделитель команд, `exit`
+  выполняется при любом условии. Скобки обязательны.
+- **`%VAR%` внутри составного блока `if ( ... )` раскрывается на этапе РАЗБОРА
+  всего блока** — значение, поставленное `for`'ом двумя строками выше, там всегда
+  пусто (`KVER` молча ломал выбор версии SDK). Внутри блоков — только `!VAR!`.
+- **`for /d %%d in ("C:\путь с пробелом\10.*")` маску не раскрывает** (кавычки
+  отключают глоб, итерация по буквальному шаблону) — каталоги перечислять через
+  `for /f "delims=" %%d in ('dir /ad /b "…\10.*" 2^>nul')`.
+- **подстрока из `%~1` недоступна** (`%~1:~0,12%` — синтаксическая ошибка, cmd
+  ругается, но продолжение работает) — аргумент сначала копируется в переменную.
+- **в файле `.cmd` счётчик `for` — `%%d`**; одиночный `%d` валиден только в
+  интерактивной строке (проверка «под Wine та же команда, что и в скрипте» на этом
+  ломалась и показывала ложный результат).
+- **`shift` в cmd сдвигает и `%0`** — после разбора аргументов `%~dp0` это уже не
+  путь к скрипту, а следующий аргумент, и `repo` молча разрешается в текущий
+  каталог (со `--check` скрипт искал дерево в CWD). `%~dp0` снимать в переменную
+  **до** цикла аргументов. Под Wine cmd `shift` `%0` не сдвигает — на проверке
+  «под Wine» этот баг не виден в принципе.
+- **Файл обязан быть ASCII и CRLF**: русские сообщения в консоли зависят от
+  кодовой страницы (cp437/cp866), а LF-only + `^`-продолжения строк cmd читает
+  нестабильно. Проверка: `file build_client_x64_win.cmd` →
+  `DOS batch file, ASCII text, with CRLF line terminators`. Вывод python-хелперов
+  (русский) в OEM-кодировке консоли — каша: `chcp 65001` + `PYTHONIOENCODING=utf-8`.
+
+Проверка без Windows: `wine cmd /c "Z:\…\build_client_x64_win.cmd --check"` —
+проходят разбор аргументов, вывод путей и `!CFG!`; дальше скрипт честно падает на
+«python not found» (в Wine-префиксе Python нет).
+
+## Нативный гейт на tiny10 (тулчейн скопирован, VS не установлена)
+
+На VM нет Visual Studio и нет права на установку — тулчейн **скопирован** с
+Wine-префикса (`VC\Tools\MSVC\14.44.35207` + `Windows Kits\10`, ~840 МБ) и
+скрипт вызывается в режиме `PW_MSVC_DIR` + `PW_KITS_DIR` (PATH/INCLUDE/LIB
+собираются вручную, `vcvars64.bat` не вызывается). Разложенное на VM:
+`C:\pwbuild\vs2022` (MSVC+Kits), `C:\pwbuild\wintools` (cmake/ninja),
+`C:\pwbuild\python` (embeddable), дерево — `C:\pwbuild\pwc`, сборка —
+`<репо>\build\x64-win` (дефолт скрипта; первые замеры снимались в
+`C:\pwbuild\x64-win`), лог — `C:\pwbuild\native_build.log`, запуск задачой
+`schtasks /tn PwNativeBuild`.
+
+Что всплыло именно на нативном прогоне:
+- **в переносимое дерево обязан попасть `pw/branches/r1117/Data/GameLogic/*.h`**
+  (всего 2 файла, 24 КБ: `Vec2_Base.h`, `FormulaPars.h`) — их включают
+  `Src/System/Geom.h` и формульный слой; без них `fatal error C1083` на первых же
+  TU. `Data/` целиком (7,2 ГБ) не нужен.
+- **Windows embeddable python держит `sys.path` в `pythonNN._pth` и каталог
+  скрипта не добавляет** → `import pch_rules` падал `ModuleNotFoundError`;
+  `gen_cmake.py` теперь сам вставляет свой каталог в `sys.path`.
+- Замеры на VM (4 ядра, `-j4`, тот же граф, что и в Wine-пути):
+
+  | прогон | wall | сумма TU | экзешник |
+  |---|---|---|---|
+  | нативный без PCH | 12m02s | 47m56s | 15 797 248 |
+  | нативный + `PW_PCH=all` | 6m54s | 27m27s | 15 150 592 |
+  | нативный без PCH + `sccache.exe`, холодный кэш | 16m01s | 63m50s | 15 797 248 |
+  | нативный без PCH + `sccache.exe`, тёплый кэш | **3m04s** | 12m08s | 15 797 248 |
+  | Wine, `-j4`, без PCH (для сравнения) | 64m06s | 337m23s | 15 802 880 |
+
+  Тот же cl 14.44 нативно примерно в 7 раз быстрее, чем под Wine; PCH даёт свои
+  −43% в обоих тулчейнах (размер экзешника −4,1% там и там). Сравнение wall между
+  разными `-j` и разными машинами некорректно — только сумма TU (`build_time.py`).
+- **Кэш и PCH несовместимы:** `sccache --show-stats` даёт
+  `Non-cacheable reasons: /Fp 2148, /Yc 68` — с `PW_PCH=all` кэш не даёт НИЧЕГО
+  (6m58s против 6m54s без кэша). Экзешник из тёплого кэша не байт-в-байт прямому
+  прогону (тот же размер, ~37 КБ отличающихся байт — sccache для MSVC работает в
+  preprocessor-режиме), поэтому **релизный артефакт собирается без кэша и без
+  PCH**, а кэш/PCH — инструменты разработки.
+
+## Хуки ускорения сборки (`PLAN_client_build_speedup.md`)
+
+| Хук | Wine | Native |
+|---|---|---|
+| `PW_PCH=<проекты\|all\|off>` | ✔, **по умолчанию `all`** (`off` — релизный режим) | ✔, **по умолчанию `all`** |
+| `PW_NINJA_STATS=1` (`ninja -d stats`) | ✔ | ✔ |
+| `PW_WINE_SYNC=fsync\|esync` | ✔ | — |
+| `PW_CACHE_LAUNCHER=<sccache>` → `-DCMAKE_CXX_COMPILER_LAUNCHER` | ✗ — `ninja.exe` (Windows) не может запустить linux-лаунчер; под Wine работает и `sccache.exe`, но весь Wine-путь медленнее нативного в ~7 раз | ✔ — `sccache.exe` (один бинарь, без установки); **с `PW_PCH` инертен** (`/Fp`/`Yc` → non-cacheable) |
+
+Плюс инвариант машины: **одна сборка за раз**, иначе делить `-j` (8+4, а не 8+8);
+фоновые сборки на Windows-машине — задачой `schtasks /create /tn <имя> /tr
+C:\tools\<обёртка>.cmd /sc once /st 00:00 /f` + `/run` и чтением лога (ssh-сессия
+с долгим `call` обрывается), на Linux — `setsid nohup … &`; иначе прерванный вызов
+инструмента снимает всю группу процессов и сборка обрывается посреди TU без
+сообщения об ошибке.

@@ -69,6 +69,7 @@ const char *RegistersToString( const EXCEPTION_POINTERS *pExPtrs )
 {
 #ifdef _WIN64
 	NI_ALWAYS_ASSERT( "x64 is not supported" );
+	return "registers are not dumped on x64";
 #else
 	// Check the parameter.
 	NI_VERIFY( IsBadReadPtr( pExPtrs, sizeof ( EXCEPTION_POINTERS ) ) == FALSE, "Invalid parameter", return "Cannot extract registers" );
@@ -93,8 +94,8 @@ const char *RegistersToString( const EXCEPTION_POINTERS *pExPtrs )
 		pExPtrs->ContextRecord->SegEs,
 		pExPtrs->ContextRecord->SegFs,
 		pExPtrs->ContextRecord->SegGs ) ;
-#endif
 	return buff;
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static BOOL CALLBACK ReportExceptionDlgProc( HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam );

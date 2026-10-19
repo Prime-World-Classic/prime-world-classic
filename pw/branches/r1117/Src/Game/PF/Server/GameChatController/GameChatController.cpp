@@ -62,6 +62,7 @@ namespace gamechat
     si.channels_.push_back(chat::ChannelInfo(gamechat::channels::Team2));
     si.channels_.push_back(chat::ChannelInfo(gamechat::channels::Team1_SmartChat, true));
     si.channels_.push_back(chat::ChannelInfo(gamechat::channels::Team2_SmartChat, true));
+    si.channels_.push_back(chat::ChannelInfo(gamechat::channels::Spectators));
 
     chatManagementIface_->iface()->OpenSession(si, ctx.Get());
 

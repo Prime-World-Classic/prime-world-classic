@@ -110,6 +110,8 @@ _interface IAdventureScreen : public IBaseInterfaceST
   virtual void ShowReplaySpeed(float speed) = 0;
   virtual void ShowReplayPause() = 0;
   virtual void HideReplayMsg() = 0;
+  // Replay panel: played / total world steps, speed (1 = normal), pause, seek target step (-1 - none), end reached
+  virtual void UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended ) = 0;
 
   virtual bool IsCustomSessionType() = 0;
 

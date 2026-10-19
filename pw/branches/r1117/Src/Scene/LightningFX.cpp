@@ -194,7 +194,13 @@ void LightningFX::Update(CVec3 const& a, CVec3 const& b, float dt)
 
 	// animate V coordinate in texture atlas
 	float increment = 0.0f;
+	// modf с float: современный UCRT не даЄт float-перегрузки modf (C2664), но даЄт
+	// modff; в CRT VS2008 наоборот Ч modff нет, есть float-перегрузка modf.
+#if defined(_MSC_VER) && (_MSC_VER >= 1900)
+	frameOffset = modff(frameOffset + params.animSpeed * dt, &increment);
+#else
 	frameOffset = modf(frameOffset + params.animSpeed * dt, &increment);
+#endif
   int animFrameCount = Max(0, params.animLastFrame - params.animFirstFrame) + 1;
 	switch (params.animType)
 	{
@@ -212,7 +218,11 @@ void LightningFX::Update(CVec3 const& a, CVec3 const& b, float dt)
 	}
 
 	// animate U coordinate
+#if defined(_MSC_VER) && (_MSC_VER >= 1900)
+	scrollOffset = modff(scrollOffset + params.scrollSpeed * dt / params.tiling, &increment);
+#else
 	scrollOffset = modf(scrollOffset + params.scrollSpeed * dt / params.tiling, &increment);
+#endif
 
 	// prepare UV scale and offset for shader
 	float animFrameCountInv = 1.0f / float(params.animAtlasSize);

@@ -6,6 +6,7 @@
 #include "System/nalgoritm.h"
 #include "System/niterator.h"
 #include "libdb/DbResourceCache.h"
+#include "System/Texts.h"
 
 namespace
 {
@@ -361,6 +362,170 @@ Strong<IPrefVar> createControl( FlashInterface *pFlash, const string &varId, con
   }
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// "Advanced" settings page (the "Advanced" button in the options window).
+// Client-side settings that have no description in Preferences data: each row is a console variable
+// (STORAGE_USER, saved to user.cfg), the value is applied immediately, no "Apply" button needed.
+// Rows whose variable is not registered in this build are skipped.
+// To add a setting: add one line to s_advancedVars.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+enum EAdvancedControl { ADV_CHECKBOX, ADV_SLIDER, ADV_HEADER, ADV_PAGE, ADV_KEY, ADV_SLOT, ADV_NOTE };
+// ADV_KEY: varName = bind command, the key is set in Flash; ADV_SLOT: varName = a control of the main settings tab moved
+// to this place by Flash (still driven by the data-defined preferences); ADV_NOTE: small text under the previous row
+
+struct AdvancedVarDesc
+{
+  const char *     varId;        // control name in Flash (unique)
+  const char *     varName;      // console variable
+  EAdvancedControl type;
+  float            minValue;     // slider: value at the left end
+  float            maxValue;     // slider: value at the right end
+  int              steps;        // slider: number of positions
+  const wchar_t *  format;       // slider: value text, printf-like
+  const char *     enabledFrom;  // varId of the checkbox that enables this row ("" = always enabled)
+  const wchar_t *  label;
+  const wchar_t *  labelEn;      // English label (client language "en"), ASCII
+};
+
+// Labels follow the client language like the _en.txt texts do (System/Texts.cpp).
+static wstring AdvancedLabel( const AdvancedVarDesc & desc )
+{
+  if ( GetLanguageShortCode() == "en" && desc.labelEn[0] != 0 )
+    return wstring( desc.labelEn );
+  return wstring( desc.label );
+}
+
+// labels are written as \u escapes (independent of the source file codepage); C4428 just notes that
+#pragma warning( push )
+#pragma warning( disable : 4428 )
+static const AdvancedVarDesc s_advancedVars[] =
+{
+  { "adv_page_advanced", "", ADV_PAGE, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_move", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0414\u0432\u0438\u0436\u0435\u043d\u0438\u0435 \u0438 \u0430\u0442\u0430\u043a\u0430", L"Movement and attack" },
+  { "adv_slot_left_click", "leftClick_tb", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_auto_attack", "auto_attack", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0410\u0432\u0442\u043e\u0430\u0442\u0430\u043a\u0430", L"Auto attack" },
+  { "adv_move_on_hold", "move_on_hold", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0411\u0435\u0433 \u043f\u0440\u0438 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u043a\u043d\u043e\u043f\u043a\u0435 \u043f\u0435\u0440\u0435\u0434\u0432\u0438\u0436\u0435\u043d\u0438\u044f", L"Move while holding the move button" },
+  { "adv_move_on_hold_marker", "move_on_hold_marker", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_move_on_hold", L"\u041c\u0430\u0440\u043a\u0435\u0440 \u043f\u0440\u0438 \u0431\u0435\u0433\u0435 \u0441 \u0437\u0430\u0436\u0430\u0442\u043e\u0439 \u043a\u043d\u043e\u043f\u043a\u043e\u0439", L"Marker when moving with the button held" },
+  { "adv_move_on_hold_interval", "move_on_hold_interval", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_move_on_hold", L"\u0418\u043d\u0442\u0435\u0440\u0432\u0430\u043b \u043f\u043e\u0432\u0442\u043e\u0440\u0430 \u043a\u043b\u0438\u043a\u043e\u0432, \u0441", L"Click repeat interval, s" },
+  { "adv_hdr_abilities", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438", L"Abilities" },
+  { "adv_smart_cast_toggles", "smart_cast_toggles", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043c\u0430\u0440\u0442\u043a\u0430\u0441\u0442: \u0433\u0430\u043b\u043e\u0447\u043a\u0438 \u043d\u0430 \u043f\u0430\u043d\u0435\u043b\u0438", L"Smart cast: checkboxes on the panel" },
+  { "adv_alt_selfcast", "alt_selfcast", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438 \u043d\u0430 \u0441\u0435\u0431\u044f \u0441 Alt", L"Cast on self with Alt + key" },
+  { "adv_dbl_click_selfcast", "dbl_click_selfcast", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438 \u043d\u0430 \u0441\u0435\u0431\u044f \u0434\u0432\u043e\u0439\u043d\u044b\u043c \u043d\u0430\u0436\u0430\u0442\u0438\u0435\u043c", L"Cast on self with a double press" },
+  { "adv_dbl_click_selfcast_time", "dbl_click_selfcast_time", ADV_SLIDER, 0.15f, 0.5f, 8, L"%.2f", "adv_dbl_click_selfcast", L"\u0412\u0440\u0435\u043c\u044f \u0434\u0432\u043e\u0439\u043d\u043e\u0433\u043e \u043d\u0430\u0436\u0430\u0442\u0438\u044f, \u0441", L"Double press time, s" },
+  { "adv_hold_selfcast", "hold_selfcast", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0435 \u043d\u0430 \u0441\u0435\u0431\u044f \u0443\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435\u043c", L"Cast on self by holding the key" },
+  { "adv_hold_selfcast_time", "hold_selfcast_time", ADV_SLIDER, 0.1f, 1.0f, 10, L"%.1f", "adv_hold_selfcast", L"\u0412\u0440\u0435\u043c\u044f \u0443\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u044f, \u0441", L"Hold time, s" },
+  { "adv_hdr_interface", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0418\u043d\u0442\u0435\u0440\u0444\u0435\u0439\u0441", L"Interface" },
+  { "adv_team_portraits_scale", "team_portraits_scale", ADV_SLIDER, 50.0f, 200.0f, 16, L"%.0f%%", "", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u043e\u0432 \u043a\u043e\u043c\u0430\u043d\u0434", L"Team portraits size" },
+  { "adv_cursor_scale", "cursor_scale", ADV_SLIDER, 50.0f, 300.0f, 26, L"%.0f%%", "", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u0443\u0440\u0441\u043e\u0440\u0430", L"Cursor size" },
+  { "adv_page_comm", "", ADV_PAGE, 1.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_ping_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b", L"Signals" },
+  { "adv_ping_middle_mouse", "ping_middle_mouse", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u0438\u0433\u043d\u0430\u043b\u044b \u043d\u0430 \u0441\u0440\u0435\u0434\u043d\u044e\u044e \u043a\u043d\u043e\u043f\u043a\u0443 \u043c\u044b\u0448\u0438", L"Signals on the middle mouse button" },
+  { "adv_pings_disabled", "pings_disabled", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041e\u0442\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0432\u0441\u0435 \u0441\u0438\u0433\u043d\u0430\u043b\u044b", L"Turn off all signals" },
+  { "adv_pings_muted", "pings_muted", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0417\u0430\u043c\u0443\u0442\u0438\u0442\u044c \u0432\u0441\u0435 \u0441\u0438\u0433\u043d\u0430\u043b\u044b", L"Mute all signals" },
+  { "adv_ping_sound", "ping_sound", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041d\u043e\u0432\u044b\u0435 \u0437\u0432\u0443\u043a\u0438 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"New signal sounds" },
+  { "adv_hdr_praise", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430", L"Praise" },
+  { "adv_praise", "praise", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041f\u043e\u0445\u0432\u0430\u043b\u0430 (Alt + \u043a\u043b\u0438\u043a \u043f\u043e \u043f\u043e\u0440\u0442\u0440\u0435\u0442\u0443)", L"Praise (Alt + click on a portrait)" },
+  { "adv_hdr_chat", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0427\u0430\u0442", L"Chat" },
+  { "adv_show_ability_status", "show_ability_status_messages", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u0421\u043e\u043e\u0431\u0449\u0438\u0442\u044c \u043e \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0438 \u0441\u043f\u043e\u0441\u043e\u0431\u043d\u043e\u0441\u0442\u0438 \u0441\u043e\u044e\u0437\u043d\u0438\u043a\u0430\u043c", L"Tell allies about an ability's state" },
+  { "adv_note_ability_status", "", ADV_NOTE, 0.0f, 0.0f, 0, L"", "", L"(Alt+\u041a\u043b\u0438\u043a \u043f\u043e \u0442\u0430\u043b\u0430\u043d\u0442\u0443)", L"(Alt + click on a talent)" },
+  { "adv_slot_bad_words", "useBadwordsFilter", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_slot_chat_off", "smartchat_cb", ADV_SLOT, 0.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_voice_chat", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u0413\u043e\u043b\u043e\u0441\u043e\u0432\u043e\u0439 \u0447\u0430\u0442", L"Voice chat" },
+  { "adv_key_voice_overlay", "voice_overlay_unlock_on", ADV_KEY, 0.0f, 0.0f, 0, L"", "", L"\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0432\u043e\u0439\u0441-\u043e\u0432\u0435\u0440\u043b\u0435\u0435\u043c (\u0437\u0430\u0436\u0430\u0442\u044c)", L"Voice overlay control (hold)" },
+  { "adv_page_chat_wheel", "", ADV_PAGE, 2.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_chat_wheel", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0431\u044b\u0441\u0442\u0440\u044b\u0445 \u043a\u043e\u043c\u0430\u043d\u0434", L"Quick commands wheel" },
+  { "adv_chat_wheel", "chat_wheel", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0432\u043c\u0435\u0441\u0442\u043e \u043c\u0435\u043d\u044e \u0441 \u0446\u0438\u0444\u0440\u0430\u043c\u0438", L"Wheel instead of the numbered menu" },
+  { "adv_chat_wheel_centered", "chat_wheel_centered", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "adv_chat_wheel", L"\u041a\u043e\u043b\u0435\u0441\u043e \u043f\u043e \u0446\u0435\u043d\u0442\u0440\u0443 \u044d\u043a\u0440\u0430\u043d\u0430", L"Wheel in the center of the screen" },
+  { "adv_key_smart_chat", "cmd_smart_chat", ADV_KEY, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043d\u043e\u043f\u043a\u0430 \u0431\u044b\u0441\u0442\u0440\u044b\u0445 \u043a\u043e\u043c\u0430\u043d\u0434", L"Quick commands key" },
+  { "adv_chat_wheel_transparency", "chat_wheel_transparency", ADV_SLIDER, 0.0f, 90.0f, 10, L"%.0f%%", "adv_chat_wheel", L"\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0444\u043e\u043d\u0430 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel background transparency" },
+  { "adv_chat_wheel_scale", "chat_wheel_scale", ADV_SLIDER, 60.0f, 160.0f, 11, L"%.0f%%", "adv_chat_wheel", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel size" },
+  { "adv_page_ping_wheel", "", ADV_PAGE, 3.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_hdr_ping_wheel_opts", "", ADV_HEADER, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal wheel" },
+  { "adv_ping_wheel", "ping_wheel", ADV_CHECKBOX, 0.0f, 0.0f, 0, L"", "", L"\u041a\u043e\u043b\u0435\u0441\u043e \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432 (\u0443\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435)", L"Signal wheel (hold)" },
+  { "adv_ping_wheel_delay", "ping_wheel_delay", ADV_SLIDER, 0.1f, 0.5f, 9, L"%.2f", "adv_ping_wheel", L"\u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430 \u043a\u043e\u043b\u0435\u0441\u0430 \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432, \u0441", L"Signal wheel delay, s" },
+  { "adv_ping_wheel_transparency", "ping_wheel_transparency", ADV_SLIDER, 0.0f, 90.0f, 10, L"%.0f%%", "adv_ping_wheel", L"\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0444\u043e\u043d\u0430 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel background transparency" },
+  { "adv_ping_wheel_scale", "ping_wheel_scale", ADV_SLIDER, 60.0f, 160.0f, 11, L"%.0f%%", "adv_ping_wheel", L"\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043e\u043b\u0435\u0441\u0430", L"Wheel size" },
+  { "adv_page_game_sound", "", ADV_PAGE, 4.0f, 0.0f, 0, L"", "", L"", L"" },
+  { "adv_ping_sound_volume", "ping_sound_volume", ADV_SLIDER, 0.0f, 100.0f, 11, L"%.0f%%", "adv_ping_sound", L"\u0413\u0440\u043e\u043c\u043a\u043e\u0441\u0442\u044c \u0441\u0438\u0433\u043d\u0430\u043b\u043e\u0432", L"Signal volume" }, // Flash puts it into the sound section (no value text)
+};
+#pragma warning( pop )
+
+static const int ADVANCED_VARS_COUNT = sizeof( s_advancedVars ) / sizeof( s_advancedVars[0] );
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class AdvancedCheckBoxControl: public StdVarBase
+{
+public:
+  AdvancedCheckBoxControl( FlashInterface *pFlash, const AdvancedVarDesc &desc ):
+    StdVarBase( pFlash, desc.varId, desc.varName )
+  {
+    pFlash->CallMethod( "AddAdvancedCheckBox", desc.varId, AdvancedLabel( desc ) );
+  }
+
+private:
+  virtual int convertValueToUI( const VariantValue &val ) const
+  {
+    return val.GetInt64() != 0 ? 1 : 0;
+  }
+
+  virtual const VariantValue convertValueFromUI( int val ) const
+  {
+    return VariantValue( val );
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class AdvancedSliderControl: public StdVarBase
+{
+public:
+  AdvancedSliderControl( FlashInterface *_pFlash, const AdvancedVarDesc &_desc ):
+    StdVarBase( _pFlash, _desc.varId, _desc.varName ), pFlash( _pFlash ), desc( _desc )
+  {
+    pFlash->CallMethod( "AddAdvancedSlider", desc.varId, AdvancedLabel( desc ), desc.steps );
+  }
+
+  virtual void UpdateCurValue( int newVal )
+  {
+    StdVarBase::UpdateCurValue( newVal );
+    UpdateValueText();
+  }
+
+  virtual void UpdateEnabledState( bool isEnabled )
+  {
+    StdVarBase::UpdateEnabledState( isEnabled );
+    UpdateValueText();
+  }
+
+private:
+  void UpdateValueText()
+  {
+    const float value = GetVar( desc.varName ).GetFloat();
+    pFlash->CallMethod( "SetAdvancedValueText", desc.varId, wstring( NStr::StrFmtW( desc.format, value ) ) ); // StrFmtW returns a pointer: pass wstring, not wchar_t*
+  }
+
+  virtual int convertValueToUI( const VariantValue &val ) const
+  {
+    const float range = desc.maxValue - desc.minValue;
+    if ( range <= 0.0f || desc.steps < 2 )
+      return 0;
+    const int pos = static_cast<int>( ( val.GetFloat() - desc.minValue ) / range * ( desc.steps - 1 ) + 0.5f );
+    return pos < 0 ? 0 : ( pos > desc.steps - 1 ? desc.steps - 1 : pos );
+  }
+
+  virtual const VariantValue convertValueFromUI( int val ) const
+  {
+    if ( desc.steps < 2 )
+      return VariantValue( desc.minValue );
+    return VariantValue( desc.minValue + ( desc.maxValue - desc.minValue ) * val / static_cast<float>( desc.steps - 1 ) );
+  }
+
+  FlashInterface * const pFlash;
+  const AdvancedVarDesc &desc;
+};
+
+// descriptions in the format of data-defined preferences (PreferencesProcessor keeps pointers to them)
+static NDb::PrefVariable s_advancedPrefVars[ADVANCED_VARS_COUNT];
+
 } //anonymous namespace
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static const char szUpdateFlashCommand[] = "PreferenceComponentSetValue";
@@ -369,9 +534,10 @@ static const char szCancelFlashCommand[] = "PreferenceComponentsCancel";
 static const char szLoadPresetFlashCommand[] = "PreferenceComponentsLoadPreset";
 static const char szShortcutRebindFlashCommand[] = "PreferenceShortcutRebind";
 static const char szShortcutsApplyFlashCommand[] = "PreferenceShortcutsApply";
+static const char szSetVarFlashCommand[] = "PreferenceSetVar"; // "name value": settings edited by Flash itself (wheel editors)
 
 PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, const char* className ):
-  FlashInterface(flashWnd, className), pPresets(0)
+  FlashInterface(flashWnd, className), pPresets(0), advancedPageEnabled(true)
 {
   flashWnd->AddFSListner( szUpdateFlashCommand, this );
   flashWnd->AddFSListner( szApplyFlashCommand, this );
@@ -379,6 +545,7 @@ PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, cons
   flashWnd->AddFSListner( szLoadPresetFlashCommand, this );
   flashWnd->AddFSListner( szShortcutRebindFlashCommand, this );
   flashWnd->AddFSListner( szShortcutsApplyFlashCommand, this );
+  flashWnd->AddFSListner( szSetVarFlashCommand, this );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -395,6 +562,59 @@ void PreferencesProcessor::Init( const NDb::Preferences &desc )
     val.defaultValue = -1;
     
     variables.insert( Variables::value_type( val.pDesc->varId, val ) );  
+  }
+
+  // "Advanced" page rows (see s_advancedVars)
+  for( int i = 0; advancedPageEnabled && i < ADVANCED_VARS_COUNT; ++i )
+  {
+    const AdvancedVarDesc &adv = s_advancedVars[i];
+
+    if( adv.type == ADV_PAGE )
+    {
+      CallMethod( "SetAdvancedTargetPage", static_cast<int>( adv.minValue ) ); // following rows go to this page (0 = Advanced, 1 = Communication, 2 = Chat wheel, 3 = Ping wheel, 4 = Game: under the sound)
+      continue;
+    }
+    if( adv.type == ADV_HEADER )
+    {
+      CallMethod( "AddAdvancedHeader", AdvancedLabel( adv ) ); // category title, no variable behind it
+      continue;
+    }
+    if( adv.type == ADV_SLOT )
+    {
+      CallMethod( "AddAdvancedSlot", adv.varId, adv.varName );
+      continue;
+    }
+    if( adv.type == ADV_NOTE )
+    {
+      CallMethod( "AddAdvancedNote", AdvancedLabel( adv ) );
+      continue;
+    }
+    if( adv.type == ADV_KEY )
+    {
+      CallMethod( "AddAdvancedKey", adv.varId, AdvancedLabel( adv ), adv.varName ); // key of a bind command, rebound by Flash
+      continue;
+    }
+    if( !NGlobal::IsCommandRegistred( adv.varName ) )
+      continue;                                   // variable is not present in this build
+    if( adv.enabledFrom[0] != '\0' && variables.find( adv.enabledFrom ) == variables.end() )
+      continue;                                   // parent checkbox was skipped
+
+    NDb::PrefVariable &pref = s_advancedPrefVars[i];
+    pref.varId                 = adv.varId;
+    pref.commandName           = adv.varName;
+    pref.controlVarType        = ( adv.type == ADV_CHECKBOX ) ? NDb::CONTROLVARTYPE_CHECKBOX : NDb::CONTROLVARTYPE_SLIDER;
+    pref.applyCommandName      = "";
+    pref.enabledFromOtherVarId = adv.enabledFrom;
+
+    VarData val;
+    val.pDesc = &pref;
+    if( adv.type == ADV_CHECKBOX )
+      val.pAbstract = new AdvancedCheckBoxControl( this, adv );
+    else
+      val.pAbstract = new AdvancedSliderControl( this, adv );
+    val.defaultValue = -1;
+
+    variables.insert( Variables::value_type( pref.varId, val ) );
   }
   
   for( Variables::const_iterator it = variables.begin(); it != variables.end(); ++it )
@@ -599,6 +819,20 @@ void PreferencesProcessor::OnFSCommand( UI::FlashContainer2* _wnd, const char* l
   else if( strcmp(listenerID, szShortcutsApplyFlashCommand) == 0 )
   {
     ApplyShortcuts();
+  }
+  else if( strcmp(listenerID, szSetVarFlashCommand) == 0 )
+  {
+    string name;
+    for( ; *args != '\0' && *args != ' '; ++args )
+      name += *args;
+    if( *args == ' ' )
+      ++args;
+    // only the variables of the wheel editors: Flash must not change anything else this way
+    if( name == "chat_wheel_commands" || name == "ping_wheel_items" )
+    {
+      SetVar( name, VariantValue( string( args ) ) );
+      SaveUserVars();
+    }
   }
   else if( strcmp(listenerID, szUpdateFlashCommand) == 0 )
   {

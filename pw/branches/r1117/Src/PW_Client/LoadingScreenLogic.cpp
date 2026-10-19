@@ -2,6 +2,7 @@
 #include "LoadingScreenLogic.h"
 
 #include "../System/RandomGen.h"
+#include "../System/FileSystem/FileSystem.h"
 #include "../UI/ImageLabel.h"
 #include "../UI/FlashContainer2.h"
 #include "PF_GameLogic/DBSessionRoots.h"
@@ -27,6 +28,66 @@
 #include "PF_GameLogic/AdventureScreen.h"
 #include "PF_GameLogic/SessionData.h"
 
+
+// Loading screens chosen in the castle fair (written to user.cfg by the launcher): a name or a comma list of backgrounds in
+// /UI/Styles/LoadingBack/Fair/<name>.dds; it is seen only by this player. Empty or missing file - the map background.
+static string g_fairLoadscreen;
+REGISTER_VAR( "fair_loadscreen", g_fairLoadscreen, STORAGE_USER );
+
+namespace
+{
+  // the background picked for the current battle: the lobby screen and the loading screen show the same one (reset in ~LoadingScreenLogic)
+  string g_fairPickedBack;
+  bool g_fairPicked = false;
+
+  bool IsFairLoadscreenName( const string & name )
+  {
+    if ( name.empty() || name.size() > 64 )
+      return false;
+    for ( int i = 0; i < name.size(); ++i )
+    {
+      const char c = name[i];
+      if ( !( ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) || c == '_' || c == '-' ) )
+        return false;
+    }
+    return true;
+  }
+
+  // fair_loadscreen is one name or a rotation "name1,name2,..." - a random existing one is shown each battle
+  string FairLoadingBack( const char * mapBack )
+  {
+    if ( !g_fairPicked )
+    {
+      g_fairPicked = true;
+      g_fairPickedBack.clear();
+      vector<string> paths;
+      string name;
+      for ( int i = 0; i <= g_fairLoadscreen.size() && paths.size() < 32; ++i )
+      {
+        if ( i < g_fairLoadscreen.size() && g_fairLoadscreen[i] != ',' )
+        {
+          name += g_fairLoadscreen[i];
+          continue;
+        }
+        if ( IsFairLoadscreenName( name ) )
+        {
+          const string path = string( "/UI/Styles/LoadingBack/Fair/" ) + name + ".dds";
+          if ( RootFileSystem::GetFileInfo( 0, path ) )
+            paths.push_back( path );
+        }
+        name.clear();
+      }
+      if ( !paths.empty() )
+        g_fairPickedBack = paths[GetTickCount() % paths.size()];
+    }
+    return g_fairPickedBack.empty() ? string( mapBack ) : g_fairPickedBack;
+  }
+}
+
+string FairLoadscreenBack()
+{
+  return FairLoadingBack( "" );
+}
 
 namespace 
 {
@@ -87,15 +148,16 @@ LoadingScreenLogic::LoadingScreenLogic( NGameX::LoadingStatusHandler * statusHan
 , isSpectator( _isSpectator )
 , isTutorial( _isTutorial )
 , leftTeamForce(0), rightTeamForce(0),
-isShowTeamForce(true),partyFlag(true),tamburFlag(true) 
+isShowTeamForce(true),partyFlag(true),tamburFlag(true)
 {
-
   levelToExp = NDb::SessionRoot::GetRoot()->logicRoot->aiLogic->levelToExperienceTable; 
 }
 
 
 LoadingScreenLogic::~LoadingScreenLogic()
 {
+  g_fairPicked = false; // the next battle - a new background from the fair rotation
+
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ModeDescriptionTooltip));
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ExitLoadingScreen));
 }
@@ -115,6 +177,7 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
   flashInterface = new LoadingFlashInterface( flashWnd, "LoaderWindowInterface" );
 
   preferencesProcessor = new UI::PreferencesProcessor( flashWnd, "PreferencesInterface" );
+  preferencesProcessor->SetAdvancedPageEnabled( false ); // pwl.swf has no "Advanced" page
   preferencesProcessor->Init( *UI::GetUIRoot()->preferences );
 
   if ( isSpectator )
@@ -195,6 +258,11 @@ void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerI
   NI_VERIFY(!!_chatController, "Invalid chat controller!", return);
 
   chatController = _chatController;
+
+  // a live match spectator may write already on the loading screen (spectators / everybody)
+  if ( isSpectator )
+    chatController->SetSpectatorMode();
+
   chatController->AddChatUI(flashWnd, flashInterface, muted, leaver, leaverParty);
 
   if (_ignoreListStorage)
@@ -220,7 +288,7 @@ void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerI
 void LoadingScreenLogic::SetTempMapBack( const char* back, const char* logo )
 {
   if (flashInterface)
-    flashInterface->SetMapBack(back, logo);
+    flashInterface->SetMapBack(FairLoadingBack(back).c_str(), logo);
 }
 
 void LoadingScreenLogic::SetMap( const NDb::AdvMapDescription * _advMapDescription, const NDb::AdvMapSettings * _advMapSettings )
@@ -243,7 +311,7 @@ void LoadingScreenLogic::SetMap( const NDb::AdvMapDescription * _advMapDescripti
   const char * back =  advMapDescription->loadingBackgroundImages.back? advMapDescription->loadingBackgroundImages.back->textureFileName.c_str() : "";
   const char * logo =  advMapDescription->loadingBackgroundImages.logo? advMapDescription->loadingBackgroundImages.logo->textureFileName.c_str() : "";
 
-  flashInterface->SetMapBack(back, logo);
+  flashInterface->SetMapBack(FairLoadingBack(back).c_str(), logo);
 
   if (advMapDescription->modeVisualDescription)
     AddModeVisual(advMapDescription->modeVisualDescription);

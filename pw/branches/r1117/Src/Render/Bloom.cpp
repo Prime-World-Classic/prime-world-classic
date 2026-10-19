@@ -72,8 +72,12 @@ bool Bloom::Prepare(Texture2DRef const& pTexture)
                              0.5f / pBuffer[0]->GetHeight() - 0.5f * texStepY,
                              texStepX, texStepY);
   renderer.SetPixelShaderConstantsVector4(PSHADER_LOCALCONST1, screenAndTextureStep);
-	GetImmRenderer()->RenderScreenQuad( s_bloomSimple ? ImmRenderer::Params("ApplyAlpha2", pTexture, &SamplerState::PRESET_CLAMP_POINT())
-                                                    : ImmRenderer::Params("ApplyAlpha4", pTexture, &SamplerState::PRESET_CLAMP_POINT()) );
+	// развилка вместо тернарного оператора: ImmRenderer::Params наследует NonCopyable,
+	// а результат ?: в C++17 инициализируется копированием одного из операндов (C2280)
+	if ( s_bloomSimple )
+		GetImmRenderer()->RenderScreenQuad( ImmRenderer::Params("ApplyAlpha2", pTexture, &SamplerState::PRESET_CLAMP_POINT()) );
+	else
+		GetImmRenderer()->RenderScreenQuad( ImmRenderer::Params("ApplyAlpha4", pTexture, &SamplerState::PRESET_CLAMP_POINT()) );
 
 	// Horizontal Gaussian blur
 	renderer.SetPixelShaderConstants(PSHADER_LOCALCONST1, ARRAY_SIZE(kernelH), kernelH);

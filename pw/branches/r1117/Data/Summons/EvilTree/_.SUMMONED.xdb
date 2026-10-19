@@ -620,6 +620,8 @@
 															<applyTarget>PrevApplicatorTarget</applyTarget>
 															<lifeTime>
 																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																<returnType>float</returnType>
+																<sString>-1</sString>
 															</lifeTime>
 														</StatModApplicator>
 													</applicator>

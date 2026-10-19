@@ -1,0 +1,277 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Trickster.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="/Effects/UI/AOESelection/CorridorNarrow.MTRL" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString>FQYAAAACAAAAEwAAACYAAABXaWR0aABVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDTQAAADZXfzZRfyL5V3DAAAAAAAA+D8=</compiledString>
+		<returnType>float</returnType>
+		<sString>cWidth*1.5</sString>
+	</aoeSize>
+	<aoeType>CorridorMax</aoeType>
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="C6040CC0-B147-4994-BCCF-D0FE27FD6F0B">
+			<SpellApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>выбратьточку на макс расстоянии</caption>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<spell href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="D8818D23-61DD-416F-A91F-CDA14ED93650">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="69575C94-39EA-47D8-98C1-13434729B243">
+								<WaitForSpellApplicator>
+									<applyTarget>AbilityOwner</applyTarget>
+									<behaviorFlags>153</behaviorFlags>
+									<behaviour>1</behaviour>
+									<caption>послать стрелу</caption>
+									<dispatchSource href="" />
+									<effect>
+										<Item href="" />
+										<Item href="" />
+									</effect>
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<firstTargetToHit href="" />
+									<formulaName></formulaName>
+									<lifeTime>
+										<compiledString></compiledString>
+										<returnType>float</returnType>
+										<sString>-1.0</sString>
+									</lifeTime>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+									<spell href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="AFE45571-711E-4854-B290-95AE0240F752">
+										<Spell>
+											<applicators />
+											<dispatch href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="90F19674-9056-4025-9360-C038FBD9A757">
+												<DispatchLinear>
+													<aiming>Straight</aiming>
+													<alwaysApply>true</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Motion</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="/Summons/Laguna/Medusa/_Move.EFFT" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<flyMode>Linear</flyMode>
+													<fromLocator>Body</fromLocator>
+													<height>2</height>
+													<killEffect>true</killEffect>
+													<locatorOrient>false</locatorOrient>
+													<maxDeviation>180</maxDeviation>
+													<maxDistance>-1</maxDistance>
+													<maxRise>1.5</maxRise>
+													<minRise>0</minRise>
+													<persistentApplicators />
+													<speed>5</speed>
+													<suspendTime>0</suspendTime>
+													<toLocator></toLocator>
+												</DispatchLinear>
+											</dispatch>
+										</Spell>
+									</spell>
+									<spellTarget>ApplicatorTarget</spellTarget>
+									<startCondition>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</startCondition>
+								</WaitForSpellApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="6FE6B787-C16F-4439-90B4-DE496EBB5F80">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<spellTarget>ApplicatorTarget</spellTarget>
+				<targetSelector href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="597F78F9-A7F2-4F52-90E7-819C2BF25424">
+					<PointTargetSelector>
+						<checkMinRange>true</checkMinRange>
+						<mode>RangeFromOwner</mode>
+						<offset>
+							<x>0</x>
+							<y>0.5</y>
+						</offset>
+						<paralleledTarget>false</paralleledTarget>
+						<range>
+							<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cRange</sString>
+						</range>
+						<targetSelector href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="E409963D-3C09-4AC5-9B55-10A2FCE2F2F8">
+							<SelectApplicatorTarget>
+								<applicatorIndex>0</applicatorIndex>
+								<applicatorName></applicatorName>
+								<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+								<selectTarget>ApplicatorTarget</selectTarget>
+							</SelectApplicatorTarget>
+						</targetSelector>
+						<traceMode>0</traceMode>
+					</PointTargetSelector>
+				</targetSelector>
+			</SpellApplicator>
+		</Item>
+	</applicators>
+	<askId>2</askId>
+	<autoTargetSelector href="" />
+	<budget>0</budget>
+	<caption>A1. Медуза</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Class/Laguna/Ability_A1.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="1313014A-F13D-48CE-90CA-12A13DACF5EE">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="DEFA38BD-CFDF-43E6-AB50-C9F129E18C71">
+					<UnitConstant>
+						<name>Width</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="30C58146-70A1-440C-9587-4F337CDFDA42">
+					<UnitConstant>
+						<name>Range</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>14.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Laguna/Ability_A1.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Laguna/Ability_A1.TALENT" id="AEFD95B2-3685-4F04-9418-3C69D16E7E81">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>67</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1.0f</sString>
+	</manaCost>
+	<marker>doCast1</marker>
+	<microAI href="" />
+	<minLevel>0</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>300</naftaCost>
+	<name textref="/Items/Talents/Class/Laguna/Ability_A1.TALENT_name.txt" />
+	<node>ability1</node>
+	<passiveApplicators />
+	<persistentId>Laguna_A1</persistentId>
+	<prerequisiteTalents />
+	<rarity>Class</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Laguna/Ability_A1.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>16777216</targetType>
+	<type>Active</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cRange</sString>
+	</useRange>
+	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

@@ -3,7 +3,16 @@
 #include "SwfStreamReader.h"
 #include "JPEGReader.h"
 
+#if defined(_M_X64)
+// Vendor/jpeglib/include — самодельный вариант jpeg (структуры не совпадают ни с
+// 6b, ни с 8.0), источников которого в дереве нет; под x64 используется стоковый
+// jpeg 8 из Vendor/CrashRpt/thirdparty/jpeg (он же идёт в jpeglib.lib x64).
+extern "C" {
+#include <Vendor/CrashRpt/thirdparty/jpeg/jpeglib.h>
+}
+#else
 #include <Vendor/jpeglib/include/jpeglib.h>
+#endif
 
 namespace jpegreader
 {

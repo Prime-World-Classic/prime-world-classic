@@ -120,6 +120,8 @@ private:
   StrongMT<lobby::GameClientPW>       gameClient;
   Strong<DebugVarsSender>             debugVarsSender;
   Weak<ReplayRunner>                  replayRunner;
+  string                              replayRestartFile;   // ReplayRunner::PollRestart
+  int                                 replayRestartWait;
 
   Weak<NGameX::ISocialConnection>     socialConnection;
   Weak<NGameX::GuildEmblem>           guildEmblem;

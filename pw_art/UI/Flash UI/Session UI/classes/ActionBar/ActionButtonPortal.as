@@ -119,8 +119,11 @@ package ActionBar
 			Press();
 		}
 		
-		private function Press():void 
+		private function Press():void
 		{
+			// raw press before the checks below: Alt + click sends the state of the portal to the team chat (C++ OnPortalButtonPress)
+			FSCommands.Send("PortalPress");
+
 			if (cooldown > 0)
 			{
 				dispatchEvent(new ErrorEvent(EErrorMessageType.ERRORMESSAGETYPE_ABILITYONCOOLDOWN));

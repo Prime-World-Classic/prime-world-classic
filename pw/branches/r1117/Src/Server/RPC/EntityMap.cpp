@@ -40,7 +40,7 @@ class FileDumper
       return false;
     SetFilePointer( hFile, 0, 0, FILE_END );
 #elif defined( NV_LINUX_PLATFORM )
-    hFile = NFile::OpenFileWithDir( finalName.c_str() );
+    hFile = (int)NFile::OpenFileWithDir( finalName.c_str() );
     if ( hFile == -1 )
       return false;
     lseek( hFile, 0, SEEK_END );

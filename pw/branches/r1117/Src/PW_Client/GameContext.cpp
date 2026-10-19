@@ -19,9 +19,11 @@
 #include "Network/StreamAllocator.h"
 #include "PW_Game/server_ip.h"
 #include <Shared/ServerIps.h>
+#include <Shared/WebSpectatorKey.h>
 
 extern string g_sessionToken;
 extern string g_playerToken;
+extern wstring g_spectatorNickname;
 
 
 #include "Client/ScreenCommands.h"
@@ -92,7 +94,8 @@ GameContext::GameContext( const char * _sessionKey, const char * _devLogin, cons
   socialConnection(_socialConnection),
   guildEmblem( _guildEmblem ),
   isSpectator( _isSpectator ),
-  isTutorial( _isTutorial )
+  isTutorial( _isTutorial ),
+  replayRestartWait( 0 )
 {
   /*
   if ( _sessionKey )
@@ -257,6 +260,9 @@ void GameContext::Start()
 int GameContext::Poll( float dt )
 {
   NI_PROFILE_FUNCTION;
+
+  if ( ReplayRunner::PollRestart( replayRunner, Maps(), replayRestartFile, replayRestartWait ) )
+    return -1;
 
   // Poll only replay events while loading a replay
   if(replayRunner)
@@ -675,9 +681,13 @@ void GameContext::ConnectToCluster( const string & login, const string & passwor
   // Web-session login: the player is identified by playerKey (launcher URL,
   // g_playerToken) instead of the nickname; the server delivers the session
   // data in the login reply. The same token/key pair is reused for fast
-  // reconnects (the session outlives a single login).
+  // reconnects (the session outlives a single login). A spectator key that
+  // does not fit the login field goes in the compact form
+  // (Shared/WebSpectatorKey.h).
   string token = sessionToken.empty() ? g_sessionToken : sessionToken;
   string playerKey = g_playerToken;
+  if ( WebSession::IsSpectatorPlayerKey( playerKey.c_str() ) )
+    playerKey = WebSession::SpectatorLoginKey( std::string( playerKey.c_str() ) ).c_str();
 
   clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, token, playerKey, _loginType );
   lastLogin = login;
@@ -920,7 +930,13 @@ void GameContext::StartGameClient()
 
   gameClient->SetDebugVarSender( debugVarsSender );
   
-  CreateChatClient(gameClient->GetNickname());
+  // A spectator is in no lineup (its GetNickname() is the first player's one):
+  // the chat nickname comes with the spectator launch token (Game.cpp), else a plain "Spectator"
+  if ( isSpectator )
+    CreateChatClient( !g_spectatorNickname.empty() ? g_spectatorNickname
+      : wstring( GetLanguageShortCode() == "en" ? L"Spectator" : L"\u0417\u0440\u0438\u0442\u0435\u043b\u044c" ) );
+  else
+    CreateChatClient(gameClient->GetNickname());
   gameClient->SetChatClient( chatClient );
 
   //If we tried, but could not get game statistics pointer, clean up resources

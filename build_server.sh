@@ -170,6 +170,15 @@ else
     #      (2.7x) для configure.ac 2009 г. выдаёт битый скрипт: незакрытый
     #      `for' → "syntax error: unexpected end of file from `for' command".
     #      touch делает configure новее всех зависимостей — make не тронет его.
+    #      ВАЖНО: трогать надо и зависимости configure (aclocal.m4, configure.ac,
+    #      m4/*.m4), иначе цепочка правил в Makefile сначала перегенерирует
+    #      aclocal.m4, и правило `configure: $(ACLOCAL_M4)` всё равно дёргает
+    #      autoconf прямо посреди make (проверено: configure портится уже после
+    #      запуска, ошибка на ~50306 строке). Порядок touch: зависимости, затем
+    #      Makefile.in, configure — самым последним.
+    touch "$ACE/configure.ac" "$ACE/aclocal.m4" 2>/dev/null
+    find "$ACE" -name '*.m4' -not -path "$ACE/build/*" -exec touch {} +
+    find "$ACE" -name 'Makefile.in' -not -path "$ACE/build/*" -exec touch {} +
     touch "$ACE/configure"
 
     # 2.5. configure + make. UniServerApp линкует только главную libACE,
@@ -189,7 +198,15 @@ else
     }
     trim_subdirs "$ACE/build/Makefile" ace
     trim_subdirs "$ACE/build/ace/Makefile" .
-    ( cd "$ACE/build" && make -j"$(nproc)" )
+    # Правила автогенерации в Makefile (config.status --recheck, aclocal, autoconf,
+    # automake) отключены: их переменные перезадаются из командной строки make
+    # (приоритет у аргументов). Без этого make может перегенерировать configure
+    # системным autoconf уже во время сборки — см. 2.4b.
+    if grep -q '^fidone$' "$ACE/configure"; then
+        warn "configure снова повреждён (регенерация) — чиним перед make"
+        sed -i 's/^fidone$/fi; done/' "$ACE/configure"
+    fi
+    ( cd "$ACE/build" && make -j"$(nproc)" ACLOCAL=: AUTOCONF=: AUTOMAKE=: AUTOHEADER=: AUTOUPDATE=: MAKEINFO=: )
 
     ACE_LIB="$ACE/build/ace/.libs/libACE-5.7.so"
     [ -f "$ACE_LIB" ] || ACE_LIB="$ACE/build/lib/libACE-5.7.so"

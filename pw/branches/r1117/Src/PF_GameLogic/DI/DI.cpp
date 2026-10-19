@@ -54,15 +54,17 @@ namespace DI
         return;
       }
 
-      ProviderMap::const_iterator it = providers.find(tag);
+      // провайдеров с одним тегом может быть несколько: уничтоженный CObjectBase тут же создается вновь
+      // (DestroyContents) и регистрирует свою "пустую" оболочку, а она живет, пока на нее есть CPtr
+      // (например, статические DI_WEAK). Новый экземпляр (следующий бой в том же процессе, переоткрытие
+      // реплея) не должен ею перекрываться - Get выбирает последний живой.
+      ProviderList& list = providers[tag];
 
-      if (it != providers.end())
-      {
-        NI_ASSERT(it->second == provider, "DI: provider with that tag is already registered!");
-        return;
-      }
+      for (int i = 0; i < list.size(); ++i)
+        if (list[i] == provider)
+          return;
 
-      providers[tag] = provider;
+      list.push_back(provider);
 
       DevTrace("DI: registered '%s'", tag.Get().name());
     }
@@ -79,12 +81,26 @@ namespace DI
       if (it == providers.end())
         return;
 
+      ProviderList& list = it->second;
+
       if (provider)
       {
-        NI_VERIFY(it->second == provider, "DI: trying to unregister foreign provider!", return);
+        int index = 0;
+
+        while (index < list.size() && list[index] != provider)
+          ++index;
+
+        NI_VERIFY(index < list.size(), "DI: trying to unregister foreign provider!", return);
+
+        list.erase(list.begin() + index);
+      }
+      else
+      {
+        list.clear();
       }
 
-      providers.erase(it);
+      if (list.empty())
+        providers.erase(it);
 
       DevTrace("DI: unregistered '%s'", tag.Get().name());
     }
@@ -96,10 +112,16 @@ namespace DI
 
       ProviderMap::const_iterator it = providers.find(tag);
 
-      if (it == providers.end())
+      if (it == providers.end() || it->second.empty())
         return NULL;
 
-      return it->second;
+      const ProviderList& list = it->second;
+
+      for (int i = list.size() - 1; i >= 0; --i)
+        if (list[i]->IsAlive())
+          return list[i];
+
+      return list.back();
     }
 
     ProviderManager& ProviderManager::Instance()

@@ -442,10 +442,14 @@
 			<aoeType>Disk</aoeType>
 			<cooldownTime>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTime>
 			<flags>5</flags>
 			<manaCost>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</manaCost>
 			<passiveApplicators>
 				<Item href="/Heroes/DefaultStatus/status_Ancient.APLR" />
@@ -453,6 +457,8 @@
 			</passiveApplicators>
 			<useRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</useRange>
 		</BaseAttack>
 	</attackAbility>

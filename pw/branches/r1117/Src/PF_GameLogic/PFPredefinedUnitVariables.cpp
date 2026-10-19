@@ -25,6 +25,8 @@ char const* szHealingBias       = "HealingBias";
 
 char const* szScrollDuplicationProc = "ScrollDuplicationProc";
 
+char const* szAbilityRange      = "AbilityRange";
+
 } //namespace UnitVariables
 
 } //namespace NWorld

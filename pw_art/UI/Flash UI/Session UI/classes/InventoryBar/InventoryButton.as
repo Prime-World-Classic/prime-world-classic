@@ -45,6 +45,9 @@
 
 		public function Press():void
 		{
+			// raw press before the checks below: Alt + click sends the state of the item to the team chat (C++ OnItemButtonPress)
+			FSCommands.Send("ItemPress", InventoryIndex.toString());
+
 			if (State == ActionBarSlotState.NOT_ENOUGHT_MANA)
 			{
 				dispatchEvent(new ErrorEvent(EErrorMessageType.ERRORMESSAGETYPE_NOTENOUGHMANAFORABILITY));

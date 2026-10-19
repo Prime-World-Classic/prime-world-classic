@@ -39,6 +39,8 @@
 #include "LuaScript.h"
 
 #include "PFClientVisibilityMap.h"
+#include "System/CmdLineLite.h"
+#include <set>
 
 
 #define GameLogicLogger ( NLogg::StreamBuffer( GetGameLogicLog(), NLogg::SEntryInfo( NLogg::LEVEL_MESSAGE, "", 1 ) ) )
@@ -506,6 +508,82 @@ void PFBaseUnit::InitBaseAttack()
 }
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Golden-diff hook (client-modern). Started by the command line key "dumpUnitStats":
+// prints the stats computed for the first unit of every DB type. The x86 build executes
+// precompiled x86 formulas, the x64 build runs FormulaVM, so identical lines in both logs
+// mean the formula/stat layer produced bit-identical stats on identical content. Values go
+// as raw float bits (and %g for reading): the two CRTs format floats differently, bits do
+// not lie.
+namespace
+{
+  bool GGoldenDumpEnabled()
+  {
+    static int nState = -1;
+    if ( nState < 0 )
+      nState = ( CmdLineLite::Instance().IsKeyDefined( "dumpUnitStats" )
+        || CmdLineLite::Instance().IsKeyDefined( "-dumpUnitStats" ) ) ? 1 : 0;
+    return nState == 1;
+  }
+
+  void GGoldenDumpUnitStats( PFBaseUnit * pUnit, NDb::Unit const * pUnitDesc )
+  {
+    if ( !GGoldenDumpEnabled() || !pUnit || !pUnitDesc )
+      return;
+
+    static set< string > s_dumped;
+    string dbId = NDb::GetFormattedDbId( pUnitDesc->GetDBID() );
+    if ( s_dumped.count( dbId ) != 0 )
+      return;
+    s_dumped.insert( dbId );
+
+    PFStatContainer const * pStats = pUnit->GetStatContainer();
+    if ( !pStats )
+      return;
+
+    string line = NStr::StrFmt( "unitstats: %s faction=%d", dbId.c_str(), (int)pUnit->GetFaction() );
+    for ( int i = 0; i <= NDb::STAT_TEAMNAFTAFORPRESENCE; ++i )
+    {
+      const NDb::EStat stat = (NDb::EStat)i;
+      const float core = pStats->GetCoreValue( stat );
+      const float val  = pStats->GetValue( stat );
+      if ( core == 0.0f && val == 0.0f )
+        continue;
+      unsigned nCoreBits, nValBits;
+      memcpy( &nCoreBits, &core, 4 );
+      memcpy( &nValBits, &val, 4 );
+      line += NStr::StrFmt( " %s=0x%08X/0x%08X(%.6g)", NDb::EnumToString( stat ), nCoreBits, nValBits, val );
+    }
+    DebugTrace( line.c_str() );
+  }
+
+  // Golden-diff hook: first damage application per (target <- sender / applicator) triple.
+  // Damage numbers come out of the formula layer, so this is the combat-side check that
+  // FormulaVM (x64) reproduces the precompiled x86 formulas.
+  void GGoldenDumpDamage( PFBaseUnit * pTarget, PFBaseUnit::DamageDesc const & desc, float result )
+  {
+    if ( !GGoldenDumpEnabled() || !pTarget || !pTarget->DbUnitDesc() )
+      return;
+
+    static set< string > s_dumpedDamage;
+    string key = NDb::GetFormattedDbId( pTarget->DbUnitDesc()->GetDBID() );
+    key += "<-";
+    key += ( desc.pSender && desc.pSender->DbUnitDesc() ) ? NDb::GetFormattedDbId( desc.pSender->DbUnitDesc()->GetDBID() ) : string( "nil" );
+    key += "/";
+    key += ( desc.pDealerApplicator && desc.pDealerApplicator->GetDBBase() ) ? NDb::GetFormattedDbId( desc.pDealerApplicator->GetDBBase()->GetDBID() ) : string( "nil" );
+    if ( s_dumpedDamage.count( key ) != 0 )
+      return;
+    s_dumpedDamage.insert( key );
+
+    unsigned nAmountBits, nResultBits;
+    memcpy( &nAmountBits, &desc.amount, 4 );
+    memcpy( &nResultBits, &result, 4 );
+    DebugTrace( NStr::StrFmt( "unitdamage: %s type=%d mode=%d amount=0x%08X result=0x%08X(%.6g)",
+      key.c_str(), desc.damageType, (int)desc.damageMode, nAmountBits, nResultBits, result ) );
+  }
+}
+
+
 void PFBaseUnit::Initialize(InitData const& data)
 {
   NI_PROFILE_FUNCTION
@@ -537,6 +615,8 @@ void PFBaseUnit::Initialize(InitData const& data)
   debugDescription = GetFormattedDbId(pUnitDesc->GetDBID());
   debugObject = CreateDebugObject();
 #endif
+
+  GGoldenDumpUnitStats( this, pUnitDesc );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2307,6 +2387,7 @@ float PFBaseUnit::OnDamage(const DamageDesc &desc)
 	}
 
 
+	GGoldenDumpDamage( this, desc, damage );
 	return damage;
 }
 

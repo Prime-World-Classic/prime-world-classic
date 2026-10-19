@@ -53,6 +53,17 @@ void DataExecutor::initClass(unsigned char expectedVersion, unsigned char const 
     Reset(memoryManager, new ExecutionMemoryManager(1024 * 1024, 512 * 1024));
   }
 
+#if defined(_M_X64) || defined(__x86_64__)
+  // x64: в контенте формулы лежат как уже скомпилированный x86-машинный код
+  // (FormulaBuilder генерирует x86, релокации патчатся 32-битными адресами,
+  // вызов идёт голым __asm с ручной копией аргументов в стек). Исполнить его в
+  // x64-процессе нельзя, поэтому отказ явный и ранний: pBinaryCode остаётся
+  // NULL -> IsValid()==false -> ExecutableString::operator() сообщит
+  // «String executor is not compiled». Нужен x64-бэкенд FormulaBuilder
+  // (или интерпретатор формул) — см. PLAN_client_modern.md, этап 3.
+  NI_VERIFY( false, "x64 build: precompiled x86 formula binaries cannot be executed (need an x64 formula backend)", return; );
+#endif
+
   FormulaHeader *pHeader    = (FormulaHeader *)dataBuffer;
   DWORD          nReqSize;
   int            nHeaderSize  = pHeader->GetSize();
@@ -106,6 +117,29 @@ DataExecutor::~DataExecutor()
   }
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// x64: машинерий ниже (naked-функции, __asm, вызов скомпилированного кода)
+// не компилируется MSVC для x64. Сюда приходить не должно: initClass на x64
+// отказывается загружать формулы, поэтому executor'ы невалидны. Оставляем
+// заглушки, чтобы ошибка была явной, а не вылетом на мусорном коде.
+bool DataExecutor::CheckFPUStack()
+{
+  return true;
+}
+
+void DataExecutor::Execute(char const retType, char const *argsType, ...) const
+{
+  nLastExecutionStatus = 2;
+  NI_ALWAYS_ASSERT("x64 build: DataExecutor::Execute is not available (no x64 formula backend)");
+}
+
+void DataExecutor::ExecuteV(char const retType, unsigned int const stackSize, ...) const
+{
+  nLastExecutionStatus = 2;
+  NI_ALWAYS_ASSERT("x64 build: DataExecutor::ExecuteV is not available (no x64 formula backend)");
+}
+#else
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static ThreadLocal<unsigned int> originalRetAddr(0);
 static void __declspec(naked) ExecuteFreeStackless_Epilogue()
@@ -317,3 +351,4 @@ retIMM:
 }
 #pragma warning(pop) 
 
+#endif

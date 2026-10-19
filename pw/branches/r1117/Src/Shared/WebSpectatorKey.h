@@ -13,6 +13,13 @@
 // so a playerKey longer than 64 chars marks a spectator. A player key is
 // exactly 64 chars (Shared/Sha256.h), the two never mix.
 //
+// The login field holds at most 67 chars (LoginHello::playerKey,
+// Server/NewLogin/NewLoginTypes.h) and is cut silently, so from user id 1000
+// on the full form does not fit. The client then sends the compact form
+//   s<user_id decimal>:<first 56 hex chars of spectatorKey>   (<= 67 chars)
+// It starts with a non-hex char, so it never looks like a player key. The
+// lobby still gets the full launch token (JoinWebGame), which has no limit.
+//
 // C++03 on purpose: this header is shared with the VS2008 server build.
 
 #include <cstdio>
@@ -25,22 +32,61 @@ namespace WebSession
 {
 
   const size_t SpectatorKeyHexLength = 64;
+  // LoginHello::playerKey capacity (fixed_string<char, 64> keeps 67 chars)
+  const size_t LoginPlayerKeyMaxLength = 67;
+  const size_t SpectatorCompactHexLength = 56;
+  const char SpectatorCompactPrefix = 's';
+  const char SpectatorCompactSeparator = ':';
 
   inline bool IsSpectatorPlayerKey( const char * playerKey )
   {
-    return playerKey && strlen( playerKey ) > SpectatorKeyHexLength;
+    return playerKey && ( strlen( playerKey ) > SpectatorKeyHexLength || playerKey[0] == SpectatorCompactPrefix );
   }
 
-  // playerKey: <spectatorKey 64><user_id decimal>. On success 'uid' is the
-  // spectator's web user id. An empty keyApi (server not configured) refuses.
+  // Login form of a full spectator key <spectatorKey 64><user_id>: as is while
+  // it fits the login field, the compact form otherwise.
+  inline std::string SpectatorLoginKey( const std::string & playerKey )
+  {
+    if ( playerKey.size() <= LoginPlayerKeyMaxLength )
+      return playerKey;
+    std::string compact( 1, SpectatorCompactPrefix );
+    compact += playerKey.substr( SpectatorKeyHexLength );
+    compact += SpectatorCompactSeparator;
+    compact += playerKey.substr( 0, SpectatorCompactHexLength );
+    return compact;
+  }
+
+  // playerKey: <spectatorKey 64><user_id decimal> or the compact form
+  // s<user_id decimal>:<spectatorKey 56>. On success 'uid' is the spectator's
+  // web user id. An empty keyApi (server not configured) refuses.
   inline bool VerifySpectatorKey( const std::string & sessionToken, const char * playerKey, const char * keyApi, int & uid )
   {
     uid = 0;
     if ( !keyApi || !*keyApi || sessionToken.size() != 32 || !IsSpectatorPlayerKey( playerKey ) )
       return false;
 
-    const char * uidText = playerKey + SpectatorKeyHexLength;
-    const size_t uidLength = strlen( uidText );
+    const char * uidText = 0;
+    size_t uidLength = 0;
+    const char * keyText = playerKey;
+    size_t keyLength = SpectatorKeyHexLength;
+    if ( playerKey[0] == SpectatorCompactPrefix )
+    {
+      uidText = playerKey + 1;
+      const char * separator = strchr( uidText, SpectatorCompactSeparator );
+      if ( !separator )
+        return false;
+      uidLength = separator - uidText;
+      keyText = separator + 1;
+      keyLength = SpectatorCompactHexLength;
+      if ( strlen( keyText ) != keyLength )
+        return false;
+    }
+    else
+    {
+      uidText = playerKey + SpectatorKeyHexLength;
+      uidLength = strlen( uidText );
+    }
+
     if ( uidLength < 1 || uidLength > 9 || uidText[0] == '0' )
       return false;
 
@@ -62,7 +108,7 @@ namespace WebSession
     char hexKey[65];
     WebSha256::ToHex( digestCalc.Final( digest ), hexKey );
 
-    if ( 0 != strncmp( hexKey, playerKey, SpectatorKeyHexLength ) )
+    if ( 0 != strncmp( hexKey, keyText, keyLength ) )
       return false;
 
     uid = parsedUid;

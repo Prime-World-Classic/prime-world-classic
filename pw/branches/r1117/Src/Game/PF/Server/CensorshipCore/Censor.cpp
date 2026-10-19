@@ -51,7 +51,10 @@ bool Censor::CheckInWhiteList( const std::wstring& word )
 
 bool Censor::CheckInWhiteList( const wchar_t* pWordStart,  wchar_t* const pWordEnd )
 {
-  std::wstring word(std::wstring(pWordStart, pWordEnd));
+  // Ђmost vexing parseї: std::wstring word(std::wstring(a, b)) объ€вл€ет ‘”Ќ ÷»ё
+  // word; cl 19 на этом падает (C2440). —мысл Ч диапазонный конструктор.
+  // оба итератора должны быть одного типа: pWordEnd объ€влен как wchar_t* const
+  std::wstring word(pWordStart, static_cast<const wchar_t *>(pWordEnd));
   boost::algorithm::to_lower(word);
 
   return CheckInWhiteList(word);

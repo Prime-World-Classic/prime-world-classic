@@ -246,13 +246,13 @@ static int OpenFileWithDirInt( const char* fileName, int createMode )
   return open( fullFileName.c_str(), createMode, 0644 );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int CreateFileWithDir( const char* fileName )
+ptrdiff_t CreateFileWithDir( const char* fileName )
 {
   // return OpenFileWithDirInt( fileName, CREATE_ALWAYS );
   return OpenFileWithDirInt( fileName, O_CREAT | O_WRONLY );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int OpenFileWithDir( const char* fileName )
+ptrdiff_t OpenFileWithDir( const char* fileName )
 {
   // return OpenFileWithDirInt( fileName, OPEN_ALWAYS );
   return OpenFileWithDirInt( fileName, O_CREAT | O_RDWR );

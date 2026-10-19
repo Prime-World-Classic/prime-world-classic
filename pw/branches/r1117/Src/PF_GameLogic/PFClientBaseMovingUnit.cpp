@@ -19,6 +19,19 @@ namespace
   DEV_VAR_STATIC float g_smoothTurnsThreshold = 25.0f;
   DEV_VAR_STATIC float g_smoothTurnsSpeedMul = 5.5f;
 
+  // Dota-like smooth turning (client visual only, does not affect game logic)
+  // user settings (options window -> Advanced page), saved to user.cfg
+  static bool  g_dotaTurnsEnabled  = true;
+  static float g_dotaTurnMaxSpeed  = 900.0f;  // max angular speed, degrees per second
+  static float g_dotaTurnMinSpeed  = 120.0f;  // min angular speed near the end of a turn, degrees per second
+  static float g_dotaTurnEase      = 15.0f;   // ease-out factor, 1/sec (bigger = sharper finish)
+
+  // Visual movement smoothing: the client walks to each new logic position in (step * lag) seconds instead of
+  // exactly one step. With lag > 1 the model is still moving when the next logic position arrives, so it does
+  // not stop-and-go when steps come a bit late or unevenly. Costs ~(lag-1)*step of visual delay (20 ms at 1.2).
+  // 1.0 = old behaviour.
+  static float g_moveSmoothLag     = 1.1f;
+
   class RotSpeedInitializer
   {
     float value;
@@ -51,6 +64,14 @@ namespace
 
 namespace NGameX
 {
+
+// Wrapper: in shipping builds dev vars are 'const static', and testing a constant directly
+// in a condition gives C4127 (warnings are errors in this project).
+static bool IsDotaTurnsEnabled()
+{
+  bool enabled = g_dotaTurnsEnabled;
+  return enabled;
+}
 
 float NormalizeAngle(float angle)
 {
@@ -87,6 +108,7 @@ PFClientBaseMovingUnit::PFClientBaseMovingUnit( const PF_Core::WorldObjectRef &p
   , curAngleZ( 0.0f )
   , dstAngleZ( 0.0f )
   , rotSpeed( 0.0f )
+  , rotateByTime( true )
   , rotSpeedZ( 0.0f )
   , destination( GetSceneObject()->GetPosition().pos )
   , dstHeight( NON_FLIGHT_HEIGHT )
@@ -184,8 +206,15 @@ void PFClientBaseMovingUnit::CalculateRotationParams( float angle, float time /*
   float rotDelta  = NormalizeAngle(dstAngle - curAngle);
 
   // compute rotation speed
+  rotateByTime = true;
   if ( time > EPS_VALUE )
     rotSpeed = fabs(rotDelta) / Max( time, pScene->GetStepLengthInSeconds() );
+  else if ( IsDotaTurnsEnabled() )
+  {
+    // speed is computed every frame in UpdateMovement()
+    rotateByTime = false;
+    rotSpeed = ToRadian( g_dotaTurnMaxSpeed );
+  }
   else
     //rotSpeed = Min( ToRadian(g_rotSpeed), fabs(rotDelta) / pScene->GetStepLengthInSeconds() );
   {
@@ -227,7 +256,8 @@ void PFClientBaseMovingUnit::OnMoveTo( const CVec2& newpos, bool animate )
   destination = CVec3( newpos, 0.0f );
   //TODO Проблема в задаче NUM_TASK
   //float rawSpeed = WorldObject() ? WorldObject()->GetUnitSpeed() : 10.0f;
-  float rawSpeed = 10.0f;
+  const float stepSeconds = Max( pScene->GetStepLengthInSeconds(), 0.01f );
+  float rawSpeed = 1.0f / ( stepSeconds * Max( g_moveSmoothLag, 1.0f ) ); // was 10 (= 1 / 0.1 s step)
   speed       = rawSpeed * fabs( dir );
 
   CalculateRotationParams( dir );
@@ -446,6 +476,17 @@ void PFClientBaseMovingUnit::UpdateMovement( const float timeDiff )
   if ( needRotate )
   {
     float toRotate  = rotSpeed * timeDiff;
+
+    if ( !rotateByTime )
+    {
+      // Dota-like turn: limited angular speed + ease-out, always along the shortest arc to the current target angle
+      const float absDelta = fabs( angleDelta );
+      const float maxStep  = ToRadian( g_dotaTurnMaxSpeed ) * timeDiff;
+      const float minStep  = ToRadian( g_dotaTurnMinSpeed ) * timeDiff;
+      const float easeStep = absDelta * Min( 1.0f, g_dotaTurnEase * timeDiff );
+      const float step     = Min( maxStep, Max( easeStep, minStep ) );
+      toRotate = ( angleDelta < 0.0f ) ? step : -step; // angleDelta = cur - dst
+    }
 
     if ( fabs( angleDelta ) > fabs( toRotate ) )
     {
@@ -712,3 +753,8 @@ void PFClientBaseMovingUnit::SetRotation( CQuat const &quat )
 REGISTER_DEV_VAR("use_smooth_turns", g_smoothTurnsEnabled,    STORAGE_NONE);
 REGISTER_DEV_VAR("smooth_turns_threshold", g_smoothTurnsThreshold,    STORAGE_NONE);
 REGISTER_DEV_VAR("smooth_turns_speedmul", g_smoothTurnsSpeedMul,    STORAGE_NONE);
+REGISTER_VAR("dota_turns", g_dotaTurnsEnabled,    STORAGE_NONE);
+REGISTER_VAR("dota_turn_max_speed", g_dotaTurnMaxSpeed,    STORAGE_NONE);
+REGISTER_VAR("dota_turn_min_speed", g_dotaTurnMinSpeed,    STORAGE_USER);
+REGISTER_VAR("dota_turn_ease", g_dotaTurnEase,    STORAGE_NONE);
+REGISTER_VAR("move_smooth_lag", g_moveSmoothLag,    STORAGE_NONE);

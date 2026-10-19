@@ -68,6 +68,7 @@ namespace NGameX
   AdventureCameraController::CameraSettings::CameraSettings( const NDb::AdventureCameraSettings * cameraSettings )
     : minRod( 20.0f ), maxRod( 40.f ), maxPitch( ToRadian( -20.f ) ), minPitch( ToRadian( -60.f ) ), minYaw( ToRadian( -80.f ) ), maxYaw( ToRadian( 80.f )  ), centerYaw( ToRadian( 0.f )  )
       , maxZoomFactor( 1.0f )
+      , pitchZoomLimit( 1.0f )
       , horRotPeriod( 0.5f ), vertRotPeriod( 2.0f )
       , zoomFactor( 1.f ), pannedFactor( 2.0f )
       , movementSpeed( 20.f )
@@ -156,6 +157,7 @@ namespace NGameX
 
       horFreezeTime = 0.05f;
       horFreezeTimeCur = 0.f;
+      pitchZoomLimit = maxZoomFactor;
     }
     
   float AdventureCameraController::CameraSettings::RodToZoom( float rod ) const
@@ -262,6 +264,12 @@ namespace NGameX
     float inpDeltaStrafe = 0.0f;
     float posDeltaFoward = 0.0f;
     float posDeltaStrafe = 0.0f;
+
+    if ( AdventureScreen::IsMiddleMousePingMode() ) // the middle mouse button pings instead of dragging the camera
+    {
+      inputModifier.mouse_fwd.ClearDelta();
+      inputModifier.mouse_strafe.ClearDelta();
+    }
 
     if (!locked && !forbidObserving )
     {
@@ -1202,7 +1210,8 @@ namespace NGameX
   float AdventureCameraController::CalcProjShift( float fRod ) const
   {
     //Значение зума в интервале [0, 1]
-    const float normZood = settings.RodToZoom(fRod) / settings.maxZoomFactor;
+    // battle range; farther (replay zoom-out) keeps the shift of the battle limit
+    const float normZood = Clamp( settings.RodToZoom(fRod) / settings.pitchZoomLimit, 0.f, 1.f );
     
     return Lerp( 
       settings.projCorretionShiftObservMaxZoom, 
@@ -1422,7 +1431,9 @@ namespace NGameX
   void AdventureCameraController::ApplyCameraZoom( NScene::SCameraPosition& position, float zoom ) const
   {
     NI_ASSERT(zoom >= 0.f && zoom <= settings.maxZoomFactor, "error");
-    position.fPitch = settings.minPitch + (settings.maxPitch - settings.minPitch) * (1.f - zoom);
+    // beyond pitchZoomLimit (replay zoom-out) the camera only moves away, the pitch stays
+    const float pitchZoom = zoom < settings.pitchZoomLimit ? zoom : settings.pitchZoomLimit;
+    position.fPitch = settings.minPitch + (settings.maxPitch - settings.minPitch) * (1.f - pitchZoom);
     position.fRod   = settings.ZoomToRod(zoom);
   }
   
@@ -1430,9 +1441,32 @@ namespace NGameX
   {
     const float zoomPitch = 1.f - (position.fPitch - settings.minPitch) / (settings.maxPitch - settings.minPitch);
     const float zoomRod = settings.RodToZoom( position.fRod );
+    if ( zoomRod > settings.pitchZoomLimit + EPS_VALUE )
+      return Clamp( zoomRod, 0.0f, settings.maxZoomFactor ); // the pitch is fixed there, see ApplyCameraZoom
     const float zoomAvg = (zoomPitch + zoomRod) / 2;
    
     return Clamp( zoomAvg, 0.0f, settings.maxZoomFactor );
+  }
+
+  void AdventureCameraController::ExtendZoomOut( float rodFactor )
+  {
+    if ( rodFactor <= 1.f || settings.maxRod <= settings.minRod )
+      return;
+
+    const float battleMaxRod = settings.ZoomToRod( settings.pitchZoomLimit );
+    const float zoom = settings.RodToZoom( battleMaxRod * rodFactor );
+    if ( zoom > settings.maxZoomFactor )
+      settings.maxZoomFactor = zoom;
+  }
+
+  float AdventureCameraController::GetOverlayScale() const
+  {
+    NScene::SCameraPosition position;
+    GetCameraPosition( &position );
+    const float battleMaxRod = settings.ZoomToRod( settings.pitchZoomLimit );
+    if ( battleMaxRod <= 0.f || position.fRod <= battleMaxRod )
+      return 1.f;
+    return battleMaxRod / position.fRod;
   }
 
   namespace

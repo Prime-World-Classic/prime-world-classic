@@ -36,7 +36,7 @@ void PFClientSummoned::PrepareExcludedResourcesList(const NDb::Summoned* pDBPtr,
     vector<NDb::Ptr<NDb::CreepSkin>>::const_iterator it = pDBPtr->creepSkins.begin();
     for ( ; it != pDBPtr->creepSkins.end(); ++it )
     {
-      if ((*it)->heroPersistentId == summonerSkinId)
+      if (!(*it).GetPtr() || (*it)->heroPersistentId == summonerSkinId)
       {
         continue;
       }

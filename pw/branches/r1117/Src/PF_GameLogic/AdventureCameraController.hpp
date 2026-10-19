@@ -54,6 +54,9 @@ namespace NGameX
 			float minRod, maxRod, minPitch, maxPitch, minYaw, maxYaw, centerYaw;
 
       float maxZoomFactor;
+      // zoom beyond this value only moves the camera farther, the pitch stays as at this value
+      // (equals maxZoomFactor in a battle; ExtendZoomOut raises maxZoomFactor above it)
+      float pitchZoomLimit;
 
       /** periods */
       float horRotPeriod, vertRotPeriod;
@@ -220,6 +223,12 @@ namespace NGameX
     static void SetBoolean( bool _predict );
 
     void EnableMouseZoom(bool enable) { mouseZoomEnabled = enable;}
+
+    // Lets the camera move away up to rodFactor times the battle limit (replay viewing)
+    void ExtendZoomOut( float rodFactor );
+    // Scale for UI over units: 1 within the battle zoom range, battle limit / distance farther
+    // (the bars and names do not grow relative to the units beyond the battle limit)
+    float GetOverlayScale() const;
 
     void GetCameraPosition(NScene::SCameraPosition * pos) const;
 

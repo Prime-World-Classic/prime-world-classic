@@ -8,6 +8,7 @@
 #include "System/InlineProfiler.h"
 #include "Server/LobbyPvx/RISessionHybridLink.auto.h"
 #include "AwardsRoll.h"
+#include "WebAwardsRoll.h"
 #include "PeeredStatistics.h"
 #include "HybridServerDumpers.h"
 #include "HybridServerMulticast.h"
@@ -241,7 +242,11 @@ void HybridServerDispencer::AcquireNewServer( const Peered::SAllocationParams & 
     log = GetReplayWriter(_params.sessionId, _params.gameParams.mapId);
     statisticsWrapper = GetStatisticsWriter();
     FillMapSettings(&data, _params);
-    if (!_params.auxData.mapDesc.empty())
+    // Web-session games get their awards from the web back-end (there is
+    // no roll service in the Classic cluster), see WebAwardsRoll.h.
+    if (!_params.auxData.sessionToken.empty())
+      awardsRequester = new Peered::WebAwardsRequester(logStream, _params.sessionId, _params.auxData.sessionToken);
+    else if (!_params.auxData.mapDesc.empty())
       awardsRequester = new Peered::AwardsRequester(rollBalancer, logStream, _params.sessionId, hybridServerSettings.rollRetryTimer);
     if (data.sessionSettings.multicastStepsEnabled)
       mcChannelWrapper = new McChannelsWrapper(transport, logStream, _params.sessionId);

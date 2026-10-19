@@ -19,14 +19,8 @@ FlashEnterFunction::~FlashEnterFunction()
 
 void FlashEnterFunction::SaveFloatState()
 {
-  WORD _nFPUStatus;
-
-  __asm 
-  {
-    fstcw _nFPUStatus
-    wait
-  }
-
+  // __asm { fstcw _nFPUStatus } писал в локальную переменную, которая дальше не
+  // читается (состояние берётся из GetProcessorState()) — на x64 убрано.
   nFPUStatus = GetProcessorState();
 
   SetProcessorState( UI_PROCESSOR_STATE, 0xffffffff );

@@ -51,6 +51,10 @@
 		public var HeroRankIcon:String;
 		public var HeroRankTooltip:String;
 		public var HeroRaiting:Number = 0;
+		// Рейтинг аккаунта (MainInterface.SetHeroAccountRank); пустая иконка — нет данных.
+		public var AccRaiting:Number = 0;
+		public var AccRankIcon:String = "";
+		public var AccRankName:String = "";
 		public var RaitingDelta:Number = 0;
 		public var IsPremium:Boolean;
 		public var Prime:int; // прайм, который есть сейчас в герое

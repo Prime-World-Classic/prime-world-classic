@@ -2299,6 +2299,10 @@
 			<captionText textref="/UI/UIRoot_substitutes_112_captionText.txt" />
 			<id>TTCastLimitLackBombs</id>
 		</Item>
+		<Item>
+			<captionText textref="/UI/UIRoot_substitutes_113_captionText.txt" />
+			<id>TTRedSetCastRange</id>
+		</Item>
 	</substitutes>
 	<votingForSurrender href="/UI/Content/VotingForSurrender" />
 </UIRoot>

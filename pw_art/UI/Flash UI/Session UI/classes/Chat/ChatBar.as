@@ -471,11 +471,28 @@
 			chatInput_mc.SetInputChannel(GetChannelByID(e.id));
 		}
 		
+		// Dota-like centered chat (option 'chat_centered'); static: the instance layout must stay as on the timeline
+		private static var centered:Boolean = false;
+		private static var centeredRaise:Number = 0.2;
+		
+		public function SetCentered(value:Boolean, raise:Number):void
+		{
+			centered = value;
+			centeredRaise = raise;
+			if (stage != null)
+				BaseBarObjectResize();
+		}
+		
 		override protected function BaseBarObjectResize(e:Event = null):void 
 		{
 			super.BaseBarObjectResize(e);
 			this.x = 0;
 			this.y = stage.stageHeight - (initialStage.y - startPozition.y) * scale;
+			if (centered)
+			{
+				this.x = Math.floor((stage.stageWidth - this.width) / 2);
+				this.y = Math.floor(this.y - stage.stageHeight * centeredRaise);
+			}
 		}
 		
 		public function SetPlayerHeroId(playerId:int, heroId:int, teamId:int):void

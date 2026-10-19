@@ -528,7 +528,7 @@ bool PFBaseSummonedUnit::SetSkin( const nstl::string& skinId )
     vector<NDb::Ptr<NDb::CreepSkin>>::const_iterator it = pDbSummoned->creepSkins.begin();
     for ( ; it != pDbSummoned->creepSkins.end(); ++it )
     {
-      if ((*it)->heroPersistentId == skinId)
+      if ((*it).GetPtr() && (*it)->heroPersistentId == skinId)
       {
         pCurrentSkin = *it;
         break;

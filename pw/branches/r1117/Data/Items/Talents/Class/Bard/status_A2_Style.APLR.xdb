@@ -26,6 +26,8 @@
 	<caption>статус 2го стиля</caption>
 	<customCounter>
 		<compiledString>FRIAAAABAAAAFgAAAEJhcmRDdXJyZW50U3RhY2tzAFWL7GgAAAAAi0UIixCLTQiLgogBAAD/0FHZHCToBQAAAIPEBF3DuAEAAAAPovfCAAAABHQH8w8sRCQEw+kAAAAAVYvsg+wM2UUI2X38D7dF/A0ADAAAiUX42W3421302W38i0X0i+Vdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>f2l(sender.vBardCurrentStacks)</sString>
 	</customCounter>
 	<description textref="/Items/Talents/Class/Bard/status_A2_Style.APLR_description.txt" />
 	<enabled>
@@ -35,6 +37,8 @@
 	<image href="/UI/Styles/Icons/Heroes/Bard/A2.ITEX" />
 	<lifeTime>
 		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAFDDRw==</compiledString>
+		<returnType>float</returnType>
+		<sString>100000</sString>
 	</lifeTime>
 	<startCondition>
 		<compiledString></compiledString>

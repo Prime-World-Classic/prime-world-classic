@@ -177,6 +177,7 @@ public:
   void SetFriendship(int heroID, bool areFriends, bool requestSent);
 
   void SetHeroChatMuted(int heroID, bool chatMuted);
+  void SetHeroAccountRank(int heroID, float rating, const char * rankIcon, const wstring & rankName);
   void SetHeroCustomEnergy(int heroID, const wstring& name, const unsigned color);
 
   //selection info
@@ -298,6 +299,34 @@ public:
   virtual void AddMessage(NDb::EChatChannel channel, const wstring & playerName, const wstring & message, const int playerId);
   virtual void SetDefaultChannel(NDb::EChatChannel channelID);
   virtual void SetChatVisible(bool visible);
+  void SetChatCentered( bool centered, float raise ); // Dota-like chat in the screen center; raise = part of the screen height
+  void SetTeamPortraitsScale( float scale ); // team portrait panels size, 1 = original
+  // ping wheel and floating ping texts (coordinates are 0..1 parts of the screen)
+  // labels, colors (RRGGBB) and ping types (icons) of the slots separated by '|', item 0 at the top, clockwise
+  void ShowPingWheel( float nx, float ny, const wstring & labels, const wstring & colors, const wstring & types, float bgAlpha, float scale );
+  void HighlightPingWheel( int index );
+  void HidePingWheel();
+  void PreloadPingWheel(); // loads the wheel textures (call before the game start)
+  // chat wheel (quick chat messages): labels separated by '|', item 0 at the top, clockwise
+  void ShowChatWheel( float nx, float ny, const wstring & labels, float bgAlpha, float scale );
+  void HighlightChatWheel( int index );
+  void HideChatWheel();
+  void SetPlayerWards( int playerId, int count ); // wards placed, statistics window
+  void SetPlayerPingMuted( int playerId, bool muted ); // button "!" of the statistics window
+  void SetItemSmartCast( int slot, int mode ); // smart-cast checkbox of a shop item: 0 none, 1 off, 2 on
+  void SetPingText( const wstring & text );       // ping under the minimap, empty - hidden
+  // wheel editor of the settings window: wheel 0 = chat, 1 = ping; catalog ids / labels / icons separated by '|',
+  // items = ids of the slots "a,b,c"; varName is set by Flash (PreferenceSetVar) when the slots change
+  void SetWheelEditor( int wheel, const string & varName, const string & ids, const wstring & labels, const string & icons, const string & items, const wstring & texts );
+  void SetMinimapAlertSound( bool enabled ); // the old Flash sound of minimap signals
+  void SetTalentSmartCast( int column, int raw, int mode ); // smart-cast checkbox of a talent: 0 none, 1 off, 2 on
+  void RefreshSmartCastBoxes();
+  void ShowPraise( int id, const string & senderIcon, const wstring & senderName, int senderColor,
+                   const string & targetIcon, const wstring & targetName, int targetColor, int praiseId, const wstring & text ); // text: empty - the standard praise
+  void SetPraisePanel( int id, float slide, float row, float alpha, float top ); // slide 0..1 (1 = hidden to the right), top: part of the screen height; alpha <= 0 removes
+  void PreloadPingImage( const string & path ); // loads a texture for ping markers now (before the game start)
+  void SetPingMarkerHero( int id, const string & iconPath ); // hero icon above the marker, call before its first SetPingMarker
+  void SetPingMarker( int id, int type, const wstring & text, int color, float nx, float ny, float gx, float gy, float alpha ); // icon at nx,ny, beam down to gx,gy; alpha <= 0 removes it
   virtual void SetChatOff(bool isChatOff);
   virtual void SetPlayerIcon(const int playerId, const string& path);
   virtual void SetPlayerHeroId(const int playerId, const int heroId, const int teamId);

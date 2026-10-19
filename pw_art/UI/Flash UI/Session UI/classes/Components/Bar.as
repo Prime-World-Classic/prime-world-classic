@@ -15,6 +15,8 @@
 	import flash.text.TextField;
 	import flash.text.TextFieldAutoSize;
 	import flash.display.Shape;
+	import flash.events.Event;
+	import BaseClasses.BaseResizableObject;
 
 	public class Bar extends MovieClip
 	{
@@ -36,7 +38,16 @@
 		private var originalBarHeight:Number = 16;
 		private var isNeedToShowText:Boolean = true;
 		private var showRegenerationText:Boolean = true;
-		
+
+		// Движок рисует торцы рамки (scale9Grid стекла) в экранных пикселях при любом масштабе, а полосы
+		// масштабируются: при увеличенной панели (SizeBoost) между торцом и полосой появлялся зазор.
+		// Отступы полосы делим на увеличение — она заходит под торцы так же, как при исходном размере.
+		private var lineInset:Number = 6;  // отступ полосы слева при исходном размере (из клипа)
+		private var backShift:Number = 0;  // сдвиг подложки относительно полосы (из клипа)
+		private var barW:Number = 0;
+		private var barH:Number = 0;
+		private var boost:Number = 1;
+
 		
 		public var showInActionBar:Boolean = true;
 		public var hideOnZeroMax:Boolean = true;
@@ -93,12 +104,38 @@
 			regeneration_txt.autoSize = TextFieldAutoSize.RIGHT;
 			
 			
+			lineInset = lineMain_mc.x;
+			backShift = back_sh.x - lineMain_mc.x;
+
 			var w:Number = super.width;
 			var h:Number = myScaleBitmap.height*this.height/originalBarHeight;
 			super.scaleX = super.scaleY = 1;
 			setSize(w, h);
-			
+
 			UpdateTextVisible()
+
+			addEventListener(Event.ENTER_FRAME, CheckBoost);
+		}
+
+		// Увеличение панелей-предков (размер портретов команд); меняется из настроек на лету
+		private function GetBoost():Number
+		{
+			var k:Number = 1;
+			for (var p:DisplayObject = parent; p != null; p = p.parent)
+				if (p is BaseResizableObject)
+					k *= BaseResizableObject(p).SizeBoost;
+			return k > 0 ? k : 1;
+		}
+
+		private function CheckBoost(e:Event):void
+		{
+			var k:Number = GetBoost();
+			if (Math.abs(k - boost) < 0.001 || barW <= 0)
+				return;
+			boost = k;
+			setSize(barW, barH);
+			if (currentValue >= 0)
+				SetWidthBars(false);
 		}
 		
 		public function get BarHeight():Number
@@ -109,19 +146,24 @@
 		public function setSize(_width:Number,_height:Number):void
 		{
 			regeneration_txt.x = 0;
-			
+			barW = _width;
+			barH = _height;
+
 			myScaleBitmap.setSize(_width,_height);
 
-			lineMain_mc.width = _width - 12;
+			// при boost == 1 — ровно как раньше: отступ из клипа, ширина _width - 12
+			lineMain_mc.x = lineInset / boost;
+			lineMain_mc.width = _width - 12 / boost;
 			lineMain_mc.height = _height - 1;
-						
+
 			lineBack_sh.x = lineMain_mc.x;
 			lineBack_sh.y = lineMain_mc.y = (myScaleBitmap.height - lineMain_mc.height) / 2;
 
 			lineBack_sh.width = lineMain_mc.width;
 			lineBack_sh.height = lineMain_mc.height;
-							
-			back_sh.width = lineMain_mc.width+10;
+
+			back_sh.x = lineMain_mc.x + backShift / boost;
+			back_sh.width = lineMain_mc.width + 10 / boost;
 			back_sh.height = lineMain_mc.height;
 
 			regeneration_txt.x = _width - regeneration_txt.width-10;

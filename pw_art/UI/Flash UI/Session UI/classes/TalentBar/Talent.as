@@ -260,6 +260,8 @@
 		
 		public function Press():void
 		{	
+			// always report the press first (before the cooldown/mana/prime checks): C++ uses it for Alt+click
+			FSCommands.Send("TalentPress", column.toString() + ' ' + raw.toString());
 			if (cooldown > 0)
 			{
 				dispatchEvent(new ErrorEvent(EErrorMessageType.ERRORMESSAGETYPE_ABILITYONCOOLDOWN));

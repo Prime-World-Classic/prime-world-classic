@@ -38,9 +38,6 @@ static WNDPROC s_OldWindowProc = 0;
 static ULONG s_prevScreenWidth = 0;
 static ULONG s_prevScreenHeight = 0;
 
-static DWORD wndCaptionSize = 0;
-static DWORD wndXBorderSize = 0;
-static DWORD wndBottomBorderSize = 0;
 
 static Weak<ICloseApplicationHandler> closeHandler;
 
@@ -316,10 +313,11 @@ static void SetClipCursorRect( HWND _hWnd )
     //NUM_TASK     -      
     if (s_clipCursorInWindowedMode && !cursorClipDisabled)
     {
-      r.top += wndCaptionSize;
-      r.left += wndXBorderSize;
-      r.right -= wndXBorderSize;
-      r.bottom -= wndBottomBorderSize;
+      // Client area: for exe with subsystem >= 6.0 (x64 build) GetWindowRect includes invisible DWM borders,
+      // so subtracting caption/border metrics left the cursor a few pixels outside the window and edge scrolling broke
+      if ( !GetClientRect( _hWnd, &r ) )
+        return;
+      MapWindowPoints( _hWnd, 0, (POINT*)&r, 2 );
     }
     else
     {
@@ -604,9 +602,6 @@ bool NMainFrame::InitApplication( HINSTANCE hInstance, const char *pszAppName, c
   }
 	NBSU::SetBSUWindow( GetWnd() );
 
-  wndCaptionSize = ::GetSystemMetrics( SM_CYCAPTION ) + ::GetSystemMetrics( SM_CYEDGE ) + ::GetSystemMetrics( SM_CYBORDER );
-  wndXBorderSize = (::GetSystemMetrics( SM_CXEDGE ) + ::GetSystemMetrics( SM_CXBORDER ));
-  wndBottomBorderSize = (::GetSystemMetrics( SM_CYEDGE ) + ::GetSystemMetrics( SM_CYBORDER ));
 
 
 	return true;
@@ -617,7 +612,7 @@ bool NMainFrame::InitApplication( HINSTANCE hInstance, const char *pszAppName, c
 void ShutdownApplication()
 {
   if ( hWnd && s_OldWindowProc )
-    SetWindowLong( hWnd, GWL_WNDPROC, (LONG)s_OldWindowProc );
+    SetWindowLongPtr( hWnd, GWLP_WNDPROC, (LONG_PTR)s_OldWindowProc );
 }
 
 

@@ -69,6 +69,10 @@ public:
   bool IsRunning() const { return state == S_RUNNING; }
 
   void StopAsyncMapLoadingJob();
+  // The loading job holds the world strongly (MapLoadingJob::world): let it go when the replay closes
+  void ReleaseLoadingJob();
+
+  ~ReplayRunnerLoader();
 
 private:
   EState state;
@@ -174,6 +178,13 @@ public:
   bool IsTransparent() const { return false; }
   bool IsLoading() const { return loader && loader->IsLoading(); }
   bool IsRunning() const { return loader && loader->IsRunning(); }
+  bool IsRestartRequested() const;
+
+  // A seek back reopens the replay (see NWorld::ReplayTransceiver). Called from the Poll of the
+  // context that runs replays; true while it is busy with that. The old combat screen must be
+  // destroyed before the new one is created: its destructor resets AdventureScreen::Instance()
+  // and the input section.
+  static bool PollRestart( Weak<ReplayRunner> & runner, NWorld::IMapCollection * maps, string & restartFile, int & waitFrames );
 
   int Poll(float dt) { return loader ? loader->Poll(dt) : -1; }
 
@@ -181,10 +192,12 @@ public:
 
   void StopAsyncMapLoadingJob();
 
+  // Leaves the replay: stops the map loading, pops the combat screen and the runner
+  void Close();
+
 private:
   NCore::MapStartInfo mapInfo;
   string replayFileName;
-  static const float rForcedStepTime;
   Weak<NGameX::AdventureScreen>  advScreeen;
   StrongMT<ReplayRunnerLoader> loader;
   Strong<NWorld::ReplayTransceiver> transceiver;
@@ -193,14 +206,12 @@ private:
 
   CObj<NWorld::PFResourcesCollection> resourceCollection;
 
-  float  rSkipTime; //in seconds
 
   int GetPlayer(int clientId);
   int PickAnyPlayer();
   bool StartReplay();
   void CreateAdvScreeen( int playerId, int _stepLength, const NCore::ClientSettings & clientSettings );
   void RunningState();
-  void ForcedStep( float rDt );
 
   ReplayRunner() : LoadingScreen( "", "", true, false ) {}
 };

@@ -1,0 +1,121 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Summons/Laguna/Medusa/_Move.EFFT" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Laguna/Medusa/_.ANSC" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>-1</x>
+					<y>1</y>
+					<z>0.3</z>
+				</pos>
+				<rot>
+					<w>0.9063078</w>
+					<x>0.4226183</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1.3</x>
+					<y>1.3</y>
+					<z>1.3</z>
+				</scale>
+			</placement>
+			<timeController href="/Summons/Laguna/Medusa/_MedusaMove.PRXY" id="6DE0AC30-FE9E-425B-9FB5-6454641C3F83">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0.2</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Laguna/Medusa/_.ANSC" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>1</y>
+					<z>1.2</z>
+				</pos>
+				<rot>
+					<w>0.9063078</w>
+					<x>0.4226183</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>2</x>
+					<y>2</y>
+					<z>2</z>
+				</scale>
+			</placement>
+			<timeController href="/Summons/Laguna/Medusa/_MedusaMove.PRXY" id="8FEAF49B-E1C7-42AA-8D7A-1DA78786B4AB">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Laguna/Medusa/_.ANSC" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0.5</x>
+					<y>2</y>
+					<z>0.5</z>
+				</pos>
+				<rot>
+					<w>0.9063078</w>
+					<x>0.4226183</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1.5</x>
+					<y>1.5</y>
+					<z>1.5</z>
+				</scale>
+			</placement>
+			<timeController href="/Summons/Laguna/Medusa/_MedusaMove.PRXY" id="FEE09DA6-45F5-4EE0-9821-C13FECE9670D">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0.5</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

@@ -312,6 +312,22 @@ void Assign( ADDRESS64 *pRes, DWORD /*dwSeg*/, DWORD64 dwOffset )
   pRes->Segment = 0;//dwSeg;
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+// x64: MSVC не компилирует __asm (C4235). “от же приЄм, что в
+// MemoryLib/SymAccess.cpp::QuickCollectCallStack Ч RtlCaptureStackBackTrace.
+// ћассив адресов здесь DWORD-ный (как в эталоне), старшие 32 бита тер€ютс€ Ч
+// учЄт DX-ресурсов отладочный (DX_RESOURCE_STACK).
+int QuickCollectCallStack( DWORD *pAddresses, int nMaxEntries )
+{
+  PVOID frames[MAX_STACK_SIZE];
+  if ( nMaxEntries > MAX_STACK_SIZE )
+    nMaxEntries = MAX_STACK_SIZE;
+  const int n = (int)RtlCaptureStackBackTrace( 2, (ULONG)nMaxEntries, frames, 0 );
+  for ( int i = 0; i < n; ++i )
+    pAddresses[i] = (DWORD)(DWORD_PTR)frames[i];
+  return n;
+}
+#else
 #pragma warning( disable : 4740 ) //warning C4740: flow in or out of inline asm code suppresses global optimization
 int QuickCollectCallStack( DWORD *pAddresses, int nMaxEntries )
 {
@@ -350,6 +366,7 @@ nxt:
   }
   return nEntry;
 }
+#endif // x64 / __asm
 
 bool DumpResourceMemory( const char *name, const vector<wstring>& params )
 {

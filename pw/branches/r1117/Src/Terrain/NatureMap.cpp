@@ -52,7 +52,10 @@ namespace
       addChecksum(crc, dbNatureMap.logicRoads[i]);
     crc.Add(dbNatureMap.baseA).Add(dbNatureMap.baseAOffset);
     crc.Add(dbNatureMap.baseB).Add(dbNatureMap.baseBOffset);
-    crc.Add(sizeof(NatureMapElementInfo));
+    // sizeof() yields size_t: 4 bytes on x86, 8 bytes on x64. The hash must be width-fixed,
+    // otherwise an x64 client rejects sidecars written by the x86 editor (CRC32 mismatch ->
+    // attackSpace not loaded -> AV in NatureAttackSpace::FindSegment during map load).
+    crc.Add(static_cast<unsigned>(sizeof(NatureMapElementInfo)));
     crc.Add(NatureMapElementInfo::VERSION);
     return crc.Get();
   }
@@ -186,6 +189,25 @@ bool NatureMap::OnLoad( Stream* pStream, int fraction, bool fromRecconect )
   if (checksum != storedCRC)
   {
     systemLog( NLogg::LEVEL_ASSERT ) << "Ignoring stored NatureAttackSpace binary data because of CRC32 mismatch." << endl;
+    // Diagnostic dump of the checksum inputs (x64-E2E, 2026-10-11): buildChecksum hashes
+    // sizeof(NatureMapElementInfo) as size_t -> 4 bytes on x86, 8 bytes on x64, so an x64
+    // client rejects sidecars written by an x86 editor. Printing the inputs tells this
+    // apart from real content drift (stale <natureMapFile> vs edited <natureMap>).
+    systemLog( NLogg::LEVEL_ASSERT ) << "NatureMap CRC inputs: stored=" << storedCRC
+      << " calc=" << checksum
+      << " world=(" << worldSize.x << "," << worldSize.y << ")"
+      << " gridStep=" << dbNatureMap.gridStep
+      << " segments=" << dbNatureMap.segmentCount
+      << " roads=" << dbNatureMap.attackSpaceRoads.size() << "/" << dbNatureMap.logicRoads.size()
+      << " baseA=(" << dbNatureMap.baseA.x << "," << dbNatureMap.baseA.y << ") aOff=" << dbNatureMap.baseAOffset
+      << " baseB=(" << dbNatureMap.baseB.x << "," << dbNatureMap.baseB.y << ") bOff=" << dbNatureMap.baseBOffset
+      << " sizeofElementInfo=" << sizeof(NatureMapElementInfo)
+      << " version=" << NatureMapElementInfo::VERSION << endl;
+    for (int i = 0, n = dbNatureMap.attackSpaceRoads.size(); i < n; ++i)
+      systemLog( NLogg::LEVEL_ASSERT ) << "NatureMap CRC road[" << i << "] w="
+        << dbNatureMap.attackSpaceRoads[i].leftWidth << "," << dbNatureMap.attackSpaceRoads[i].centerWidth
+        << "," << dbNatureMap.attackSpaceRoads[i].rightWidth
+        << " nodes=" << dbNatureMap.attackSpaceRoads[i].nodes.size() << endl;
     return false;
   }
 

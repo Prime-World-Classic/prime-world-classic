@@ -2,8 +2,15 @@
 
 namespace avmplus
 {
+  // Atom у Tamarin указателёразмерный (Vendor/Tamarin/source/core/atom.h):
+  // int32 на x86, int64 на x64 (AVMSYSTEM_64BIT). Предобъявление обязано совпадать,
+  // иначе C2371 в TU, которые видят оба заголовка.
+#if defined(_M_X64) || defined(__x86_64__)
+  typedef __int64	Atom;
+#else
   typedef __int32	int32_t;
   typedef int32_t Atom;
+#endif
 
   class ScriptObject;
   class AvmCore;

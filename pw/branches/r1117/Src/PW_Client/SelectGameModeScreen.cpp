@@ -3,6 +3,9 @@
 
 #include "Core/CoreFSM.h"
 #include "SelectGameModeLogic.h"
+#include "LoadingScreenLogic.h"
+#include "UI/ImageLabel.h"
+#include "Render/TextureManager.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "NewLobbyClientPW.h"
 
@@ -42,6 +45,12 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
   logic->SetUser( uiUser );
   logic->SetScreen( this );
   logic->LoadScreenLayout( "Lobby_SelectGameMode" );
+
+  // the fair loading screen replaces the lobby background too - the same pick as on the loading screen of this battle
+  const string fairBack = FairLoadscreenBack();
+  if ( !fairBack.empty() )
+    if ( UI::ImageLabel * back = logic->GetUIWindow<UI::ImageLabel>( "Background", false, false ) )
+      back->SetBackgroundTexture( Render::Load2DTextureFromFile( fairBack ) );
 
   {
     NI_PROFILE_BLOCK( "Maps" )

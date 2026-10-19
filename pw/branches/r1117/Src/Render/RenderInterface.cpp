@@ -27,7 +27,7 @@ Interface::Interface(HWND hwnd)
 	: pScene(0)
   , disableWarFog(false)
 {
-	unsigned int nWnd = (unsigned int)( hwnd ? hwnd : NMainFrame::GetWnd() );
+	HWND nWnd = hwnd ? hwnd : NMainFrame::GetWnd();   // HWND, not unsigned int: a handle must not be truncated on x64
 	Renderer::Init(nWnd);
 
 	s_pSelf = this;

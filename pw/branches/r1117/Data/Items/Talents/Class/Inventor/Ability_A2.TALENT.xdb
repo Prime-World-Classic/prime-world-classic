@@ -212,9 +212,9 @@
 					<UnitConstant>
 						<name>MaxDispenser</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<compiledString>FRQAAAABAAAAIAAAAEludmVudG9yX01heFN1bW1vbnMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>3</sString>
+							<sString>cInventor_MaxSummons</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -358,6 +358,8 @@
 			<FlagsApplicator parent="/Items/Talents/Class/Inventor/ForbidOnLowDetails.APLR">
 				<enabled>
 					<compiledString>FSAAAAACAAAAJwAAAEQAAABJbnZlbnRvcl9EZXRhaWxzAAAAAERldGFpbHNDb3N0AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBQAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vInventor_Details &lt; cDetailsCost</sString>
 				</enabled>
 				<startCondition>
 					<compiledString></compiledString>

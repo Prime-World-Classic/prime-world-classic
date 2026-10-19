@@ -13,6 +13,8 @@
 				</enabled>
 				<lifeTime>
 					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1</sString>
 				</lifeTime>
 			</FlagsApplicator>
 		</Item>

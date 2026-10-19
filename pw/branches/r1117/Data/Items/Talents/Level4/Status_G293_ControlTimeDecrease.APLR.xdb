@@ -13,6 +13,8 @@
 	<image href="/UI/Styles/Icons/Talents/_293.ITEX" />
 	<lifeTime>
 		<compiledString>FRUAAAABAAAAIQAAAFRpbWVDb250cm9sX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cTimeControl_Duration</sString>
 	</lifeTime>
 	<name textref="/Items/Talents/Level4/Status_G293_ControlTimeDecrease.APLR_name.txt" />
 	<startCondition>

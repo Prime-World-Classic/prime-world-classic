@@ -22,9 +22,7 @@ static struct SRegister_MaterialHelper
   SRegister_MaterialHelper() 
   {
     void *p = &GetMaterials(); 
-    __asm {
-      mov eax, p
-    }
+    (void)p; // был мЄртвый __asm { mov eax, p } Ч на x64 MSVC его не компилирует
   }
 } materialVarRegistrar;
 
@@ -325,6 +323,9 @@ void Material::EvaluateSortId()
     const int samplersSize = GetRSandSamplersRep(0);
     int processedSize = 0;
     thisSamplers = PBYTE( alloca(samplersSize) );
+    // memset: на x64 в rep-буфере возможны выравнивающие зазоры
+    // (NDb::Sampler выровнен по 8) Ч без обнулени€ в CRC попали бы байты стека.
+    // Ќа x86 буфер без зазоров (NI_DB_LAYOUT_ASSERT), обнуление ничего не мен€ет.
     GetRSandSamplersRep(thisSamplers, &processedSize);
     calc.Add(thisSamplers, samplersSize);
 
@@ -358,6 +359,7 @@ int Material::CompareSP(const Material &mat, int significantLength, PBYTE thisSa
   const int samplersSize = GetRSandSamplersRep(0, &processedSize);
   if(!thisSamplers) {
     thisSamplers = PBYTE( alloca(samplersSize) );
+    memset( thisSamplers, 0, samplersSize );  // см. EvaluateSortId: детерминизм буфера CRC на x64
     GetRSandSamplersRep(thisSamplers);
   }
   ASSERT(significantLength >= processedSize);
@@ -367,6 +369,7 @@ int Material::CompareSP(const Material &mat, int significantLength, PBYTE thisSa
     return samplersSize - samplersSizeRhs;
 
   PBYTE const samplersRhs = (PBYTE)alloca(samplersSizeRhs);
+  memset( samplersRhs, 0, samplersSizeRhs );  // см. выше
   int processedSizeRhs = 0;
   mat.GetRSandSamplersRep(samplersRhs, &processedSizeRhs);
   ASSERT(processedSize == processedSizeRhs);

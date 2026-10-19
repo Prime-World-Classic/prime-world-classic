@@ -20,6 +20,7 @@ class Image
   HCURSOR hCursor; // todo: rewrite cursor system completely instead of hacking [3/15/2011 paul.smirnov]
   HCURSOR hCursorPic;
   int width, height;
+  string fileName; // precompiled (animated) cursor file: reloaded at another size for the cursor scale
 public:
 	mutable int cacheRef;
 	const CArray2D<DWORD> & GetData() const { return data; }
@@ -33,6 +34,8 @@ public:
   ~Image();
 
 	bool Load( const NDb::UICursorBase *pCursor );
+	// copy of the cursor 'scale' times bigger (cursor_scale setting); false - cannot be scaled
+	bool MakeScaled( float scale, Image & dst ) const;
 	void Blit( int x, int y, Image & src, int sx, int sy, int sw=0, int sh=0 );
 };
 
@@ -63,6 +66,7 @@ bool IsRegistered( const string & cursorName );
 void Reset();
 void Release();
 void Select( const string & cursorName, int priority );
+const NCursor::Image * FindRegistered( const string & cursorName ); // 0 - not registered
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } //namespace NCursors

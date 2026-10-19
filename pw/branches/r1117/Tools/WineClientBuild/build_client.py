@@ -46,6 +46,8 @@ devenv.com и MSBuild в Wine-префиксе не работают (VS2008 т�
   PW_BUILD_JOBS      параллельность (default 8)
   PW_LINK_LIBS=1     линковать .lib-архивы вместо .obj (см. комментарий у линковки)
   PW_KEEP_GOING=1    не останавливаться на первой ошибке (полная картина ошибок)
+  PW_JOB_TIMEOUT     максимум секунд на один job cl/lib/rc/link (default 3600);
+                     при перегруженной машине cl по одному TU может идти дольше
 """
 import json, os, re, shutil, subprocess, sys, time
 from collections import OrderedDict
@@ -58,6 +60,7 @@ SDK = r"C:\Program Files\Microsoft SDKs\Windows\v6.0A"
 CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
 OUTDIR = os.path.join(SRC, "_" + CFG.split("|")[0])
 WORKERS = int(os.environ.get("PW_BUILD_JOBS", "8"))
+JOB_TIMEOUT = int(os.environ.get("PW_JOB_TIMEOUT", "3600"))
 LOGDIR = os.environ.get("PW_LOGDIR", os.path.dirname(os.path.abspath(__file__)))
 DRY = "--dryrun" in sys.argv
 ONLY = None
@@ -435,8 +438,16 @@ def run_jobs(all_jobs):
         cmd = " ".join(j["parts"])
         full = ["wine", "cmd", "/c", cmd]
         t0 = time.time()
-        r = subprocess.run(full, cwd=j["cwd"], env=j["env"], capture_output=True,
-                           text=True, errors="replace", timeout=1800)
+        try:
+            r = subprocess.run(full, cwd=j["cwd"], env=j["env"], capture_output=True,
+                               text=True, errors="replace", timeout=JOB_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            # иначе исключение убивает поток worker'а молча: job никогда не
+            # попадает в done, линковка не запускается, а драйвер печатает
+            # «ALL DONE» с отсутствующим exe (проверено 2026-10-08 при
+            # перегруженной машине — два cl-джоба Client не вышли за 1800 с)
+            return (j, False, "TIMEOUT: %s не завершился за %d с" % (cmd, JOB_TIMEOUT),
+                    time.time() - t0)
         dt = time.time() - t0
         out = (r.stdout or "") + (r.stderr or "")
         ok = r.returncode == 0
@@ -752,6 +763,11 @@ def main():
 
     run_jobs(all_jobs)
     exe = os.path.join(pwg.outdir, "PW_Game.exe")
+    if not os.path.exists(exe):
+        # линковка не состоялась (сорванный job) или провалилась — это ошибка
+        # сборки, а не «ALL DONE»: обёртка не должна печатать успех
+        print("\nFAILED: PW_Game.exe не собран (%s) — см. fail_*.log в LOGDIR" % exe)
+        sys.exit(1)
     print("\nALL DONE")
     print("PW_Game.exe:", exe, os.path.getsize(exe) if os.path.exists(exe) else "MISSING")
 

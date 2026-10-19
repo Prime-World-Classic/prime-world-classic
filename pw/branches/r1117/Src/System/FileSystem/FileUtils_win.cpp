@@ -158,7 +158,7 @@ void ExecuteFile( const string& szFileName )
   ShellExecute(NULL, "open", szFileName.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
 
-static int OpenFileWithDirInt( const char* fileName, int createMode )
+static ptrdiff_t OpenFileWithDirInt( const char* fileName, int createMode )
 {
   string fullFileName = GetFullName( fileName );
   NFile::CFilePath filePath = GetFilePath( fullFileName );
@@ -166,18 +166,18 @@ static int OpenFileWithDirInt( const char* fileName, int createMode )
   {
     CreatePath( filePath );
     if ( !DoesFolderExist( filePath ) )
-      return (int)INVALID_HANDLE_VALUE;
+      return (ptrdiff_t)INVALID_HANDLE_VALUE;
   }
 
-  return (int)CreateFileA( fullFileName.c_str(), FILE_GENERIC_WRITE, FILE_SHARE_READ, 0, createMode, FILE_ATTRIBUTE_NORMAL, 0 );
+  return (ptrdiff_t)CreateFileA( fullFileName.c_str(), FILE_GENERIC_WRITE, FILE_SHARE_READ, 0, createMode, FILE_ATTRIBUTE_NORMAL, 0 );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int CreateFileWithDir( const char* fileName )
+ptrdiff_t CreateFileWithDir( const char* fileName )
 {
   return OpenFileWithDirInt( fileName, CREATE_ALWAYS );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-int OpenFileWithDir( const char* fileName )
+ptrdiff_t OpenFileWithDir( const char* fileName )
 {
   return OpenFileWithDirInt( fileName, OPEN_ALWAYS );
 }

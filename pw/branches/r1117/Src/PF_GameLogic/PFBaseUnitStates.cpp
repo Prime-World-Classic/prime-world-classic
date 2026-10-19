@@ -250,6 +250,13 @@ namespace NWorld
 
 		if ( pOwner->IsPositionInRange( target, range ) && !shouldMoveToSee )
     {
+      // Hero walked a short way along the tile grid and stopped: finish facing the clicked point
+      // instead of the last grid direction (visual only).
+      if ( initiatedMove && pOwner->IsHero() && !pOwner->IsPositionInRange( target, 0.3f ) )
+      {
+        if ( NGameX::PFClientBaseMovingUnit* pClient = pOwner->ClientObject() )
+          pClient->LookTo( target );
+      }
       return true;
     }
         
@@ -396,7 +403,10 @@ namespace NWorld
 
   const CVec2& PFBaseUnitPathMovingState::GetNextWaypoint() const
   {
-    NI_VERIFY( !wayPoints.empty(), "Need to check waipoints exist before call GetNearestWaypoint!", return pOwner->GetPosition().AsVec2D() );
+// прежний return pOwner->GetPosition().AsVec2D() Ч ссылка на временный объект
+    // (UB; cl 15 давал C4172, cl 14.44 Ч ошибка)
+    static const CVec2 s_noWaypoint;
+    NI_VERIFY( !wayPoints.empty(), "Need to check waipoints exist before call GetNearestWaypoint!", return s_noWaypoint );
 
     const CVec2& vCurrentPosition = pOwner->GetPosition().AsVec2D();
     const float fWayPointRadius2 = fabs2(range);

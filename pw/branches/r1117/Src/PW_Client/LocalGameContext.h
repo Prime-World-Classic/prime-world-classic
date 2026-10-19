@@ -123,6 +123,8 @@ private:
   Strong<NGameX::AdventureScreen>   advScreeen;
   Strong<NCore::ITransceiver>       transceiver;
   Weak<ReplayRunner>                replayRunner;
+  string                            replayRestartFile;   // ReplayRunner::PollRestart
+  int                               replayRestartWait;
   StrongMT<NWorld::MapLoadingJob>   mapLoadingJob;
   StrongMT<threading::JobThread>    loadingThread;
 

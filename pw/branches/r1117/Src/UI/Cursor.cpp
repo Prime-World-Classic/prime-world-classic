@@ -29,6 +29,7 @@ struct SCursor
 	HCURSOR hCursor24; // 24-bit cursor (with mask)
 	HCURSOR hCursor16; // 16-bit cursor (with mask)
   HCURSOR hCursor;   // single precompiled cursor
+  HCURSOR hOwnedCursor; // precompiled cursor reloaded at the cursor scale (owned, hCursor points to it)
 	Render::Texture2DRef pTexture; // texture cursor
 	CTPoint<int> hotSpot;
 	int version;
@@ -38,6 +39,7 @@ struct SCursor
 		, hCursor24(0)
 		, hCursor16(0)
     , hCursor(0)
+    , hOwnedCursor(0)
 		, pTexture(0)
 		, hotSpot(0,0)
 		, version(0)
@@ -54,6 +56,7 @@ struct SCursor
 		if ( hCursor24 ) { DestroyIcon( hCursor24 ); hCursor24 = 0; }
 		if ( hCursor16 ) { DestroyIcon( hCursor16 ); hCursor16 = 0; }
     hCursor = 0; // do not destroy because you're not the owner
+    if ( hOwnedCursor ) { DestroyCursor( hOwnedCursor ); hOwnedCursor = 0; }
 	}
 };
 
@@ -67,6 +70,14 @@ static bool               g_cursorsInit = false;
 static vector<SCursor>    g_cursorsCache;
 static int                g_cursorsCacheHead = 1;
 static UI::Point          g_currentSize, g_currentHotspot;
+
+// cursor size, % (settings "Advanced": 50..300)
+static float              g_cursorScale = 100.0f;
+static float              g_lastCursorScale = 1.0f;
+static float CursorScale() { return Clamp( g_cursorScale, 50.0f, 300.0f ) * 0.01f; }
+
+static bool CreateCursorsScaled( SCursor *pCursor, const Image & image );
+static const Image *      g_currentImage = 0;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static int MakeCacheRef( int index, int version ) { return index | ((version << CACHE_SHIFT) & ~CACHE_MASK); }
@@ -318,10 +329,9 @@ static int CacheUp( const Image & image )
 	SCursor & cursor = g_cursorsCache[ newIndex ];
 
 	cursor.ReleaseResources();
-	cursor.hotSpot = image.GetHotSpot();
 	cursor.version = newVersion;
 
-	if ( !CreateCursors( &cursor, image ) )
+	if ( !CreateCursorsScaled( &cursor, image ) )
 		return 0;
 
 	image.cacheRef = MakeCacheRef( newIndex, newVersion );
@@ -362,8 +372,7 @@ void SetDefault( const Image *pCursorImage )
 	}
 
 	g_defaultCursorData.ReleaseResources();
-	CreateCursors( &g_defaultCursorData, *pCursorImage );
-	g_defaultCursorData.hotSpot = pCursorImage->GetHotSpot();
+	CreateCursorsScaled( &g_defaultCursorData, *pCursorImage );
 
 	g_needUpdate = g_currentCacheRef || g_useDefaultCursor;
 	g_useDefaultCursor = false;
@@ -374,6 +383,8 @@ void Set( const Image *pCursorImage )
 {
   if ( !g_cursorsInit )
     return;
+
+  g_currentImage = pCursorImage;
 
   if ( !pCursorImage )
   {
@@ -391,8 +402,9 @@ void Set( const Image *pCursorImage )
 
   if( pCursorImage )
   {
-    g_currentSize.Set( pCursorImage->GetWidth(), pCursorImage->GetHeight() );
-    g_currentHotspot = pCursorImage->GetHotSpot();
+    const float scale = CursorScale();
+    g_currentSize.Set( int( pCursorImage->GetWidth() * scale + 0.5f ), int( pCursorImage->GetHeight() * scale + 0.5f ) );
+    g_currentHotspot.Set( int( pCursorImage->GetHotSpot().x * scale + 0.5f ), int( pCursorImage->GetHotSpot().y * scale + 0.5f ) );
   }
   else
   {
@@ -466,6 +478,23 @@ void Update( DWORD time )
 			::SetCursorPos( g_freezePos.x, g_freezePos.y );
 			::ClipCursor( &g_freezeClip );
 		}
+	}
+
+	// cursor size changed in the settings: rebuild the cached cursors at the new size
+	if ( fabs( CursorScale() - g_lastCursorScale ) > 0.001f )
+	{
+		g_lastCursorScale = CursorScale();
+		for ( int i = 0; i < g_cursorsCache.size(); ++i )
+		{
+			g_cursorsCache[i].ReleaseResources();
+			g_cursorsCache[i].version = ( g_cursorsCache[i].version + 1 ) & ( ( 1 << ( 31 - CACHE_SHIFT ) ) - 1 );
+		}
+		const Image * current = g_currentImage;
+		if ( !g_useDefaultCursor )
+			SetDefault( NCursors::FindRegistered( "default" ) );
+		g_currentCacheRef = 0;
+		Set( current );
+		g_needUpdate = true;
 	}
 
 	HDC hdc = GetDC( NMainFrame::GetWnd() );
@@ -610,7 +639,7 @@ void Render()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static HCURSOR LoadPrecompiledCursor( const string& fileName )
+static HCURSOR LoadPrecompiledCursor( const string& fileName, int cx = 0, int cy = 0 )
 {
   CObj<Stream> pIStream = RootFileSystem::OpenFile( fileName, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
   NI_VERIFY( pIStream && pIStream->IsOk(), NStr::StrFmt( "Cannot open file to load precompiled cursor: \"%s\"", fileName.c_str() ), return 0; );
@@ -627,7 +656,7 @@ static HCURSOR LoadPrecompiledCursor( const string& fileName )
   pIStream = NULL;
 
   // load cursor from the temporary file
-  HCURSOR hCursor = reinterpret_cast<HCURSOR>(::LoadImage(NULL, tempName.c_str(), IMAGE_CURSOR, 0, 0, LR_LOADFROMFILE));
+  HCURSOR hCursor = reinterpret_cast<HCURSOR>(::LoadImage(NULL, tempName.c_str(), IMAGE_CURSOR, cx, cy, LR_LOADFROMFILE));
   DWORD lastError = ::GetLastError();
   NI_VERIFY(hCursor, NStr::StrFmt( "Cannot load precompiled cursor: \"%s\"\n"
     "LoadImage() failed! (0x%08x): %s", fileName.c_str(), lastError, FormatLastLastErrorMessage( lastError ) ), return 0);
@@ -678,6 +707,7 @@ bool Image::Load( const NDb::UICursorBase *pCursorBase )
     string const& fileName = pCursor->dstFileName;
     if ( fileName.empty() )
       return false;
+    this->fileName = fileName;
 
     hCursor = LoadPrecompiledCursor(fileName);
     if ( !hCursor )
@@ -742,6 +772,109 @@ bool Image::Load( const NDb::UICursorBase *pCursorBase )
   }
 
 	return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool Image::MakeScaled( float scale, Image & dst ) const
+{
+  const int w = Max( 1, int( width * scale + 0.5f ) );
+  const int h = Max( 1, int( height * scale + 0.5f ) );
+
+  dst.cacheRef = 0;
+  dst.width = w;
+  dst.height = h;
+  dst.hotSpot.Set( int( hotSpot.x * scale + 0.5f ), int( hotSpot.y * scale + 0.5f ) );
+
+  if ( hCursor )
+  {
+    // precompiled (animated) cursor: Windows scales every frame when it loads the file at the given size
+    if ( fileName.empty() )
+      return false;
+    dst.data.SetSizes( 0, 0 );
+    dst.hCursor = LoadPrecompiledCursor( fileName, w, h );
+    if ( !dst.hCursor )
+      return false;
+
+    ICONINFO ie;
+    ZeroMemory( &ie, sizeof( ie ) );
+    if ( !::GetIconInfo( dst.hCursor, &ie ) )
+      return false;
+    dst.hCursorPic = (HCURSOR)CreateIconIndirect( &ie );
+    dst.hotSpot.Set( ie.xHotspot, ie.yHotspot );
+    if ( ie.hbmMask )
+      DeleteObject( ie.hbmMask );
+    if ( ie.hbmColor )
+      DeleteObject( ie.hbmColor );
+    return dst.hCursorPic != 0;
+  }
+
+  const int srcW = data.GetSizeX();
+  const int srcH = data.GetSizeY();
+  if ( srcW <= 0 || srcH <= 0 )
+    return false;
+
+  // bilinear with premultiplied alpha: no dark fringe around the transparent edges
+  dst.data.SetSizes( w, h );
+  for ( int y = 0; y < h; ++y )
+  {
+    const float fy = Clamp( ( y + 0.5f ) * srcH / h - 0.5f, 0.0f, float( srcH - 1 ) );
+    const int y0 = int( fy );
+    const int y1 = Min( y0 + 1, srcH - 1 );
+    const float ty = fy - y0;
+    for ( int x = 0; x < w; ++x )
+    {
+      const float fx = Clamp( ( x + 0.5f ) * srcW / w - 0.5f, 0.0f, float( srcW - 1 ) );
+      const int x0 = int( fx );
+      const int x1 = Min( x0 + 1, srcW - 1 );
+      const float tx = fx - x0;
+
+      const unsigned char * p[4] = { (const unsigned char *)&data[y0][x0], (const unsigned char *)&data[y0][x1],
+                                     (const unsigned char *)&data[y1][x0], (const unsigned char *)&data[y1][x1] };
+      const float k[4] = { ( 1 - tx ) * ( 1 - ty ), tx * ( 1 - ty ), ( 1 - tx ) * ty, tx * ty };
+
+      float c[3] = { 0, 0, 0 };
+      float a = 0;
+      for ( int i = 0; i < 4; ++i )
+      {
+        const float pa = p[i][3] * k[i];
+        a += pa;
+        for ( int ch = 0; ch < 3; ++ch )
+          c[ch] += p[i][ch] * pa;
+      }
+
+      unsigned char * out = (unsigned char *)&dst.data[y][x];
+      for ( int ch = 0; ch < 3; ++ch )
+        out[ch] = a > 0 ? (unsigned char)Clamp( int( c[ch] / a + 0.5f ), 0, 255 ) : 0;
+      out[3] = (unsigned char)Clamp( int( a + 0.5f ), 0, 255 );
+    }
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cursors at the cursor_scale size; 100% - the image as is
+static bool CreateCursorsScaled( SCursor *pCursor, const Image & image )
+{
+  pCursor->hotSpot = image.GetHotSpot();
+
+  const float scale = CursorScale();
+  if ( fabs( scale - 1.0f ) < 0.001f )
+    return CreateCursors( pCursor, image );
+
+  Image scaled;
+  if ( !image.MakeScaled( scale, scaled ) )
+    return CreateCursors( pCursor, image );
+
+  if ( !CreateCursors( pCursor, scaled ) )
+    return false;
+
+  pCursor->hotSpot = scaled.GetHotSpot();
+  if ( scaled.GetHandle() )
+  {
+    pCursor->hOwnedCursor = scaled.GetHandle(); // CreateCursors only borrowed it
+    scaled.ResetHandle();
+  }
+  return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -838,6 +971,7 @@ const UI::Point & GetCurrentHotSpot()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 REGISTER_VAR( "cursor_hw", g_cursorHW, STORAGE_NONE );
 REGISTER_VAR( "cursor_smooth", g_cursorSmooth, STORAGE_NONE );
+REGISTER_VAR( "cursor_scale", g_cursorScale, STORAGE_USER );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 } //namespace NCursor
 
@@ -883,6 +1017,13 @@ void Reset()
 {
 	g_selected = -1;
 	NCursor::Set( 0 );
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const NCursor::Image * FindRegistered( const string & cursorName )
+{
+	TCursorsMap::const_iterator it = g_cursors.find( cursorName );
+	return it != g_cursors.end() ? &(it->second) : 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

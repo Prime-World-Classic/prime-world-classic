@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SpellSwitchApplicator>
 	<BackLink DBID="/Items/Talents/Class/Stalker/Ability_A2.TALENT" Count="4" />
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A1.TALENT" Count="4" />
 	<activeSpellIndex>
 		<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgsgAAAD/0ItNDIsRi00Mi4LMAAAA3V34/9DcXfjf4PbEQXoJx0X0AAAAAOsHx0X0AQAAAItF9IvlXcM=</compiledString>
 		<returnType>int</returnType>

@@ -389,7 +389,24 @@
 		}
 			
 		
-		public function SetIgnoreStatus(id:int, ignore:Boolean):void 
+		// wards placed by the player (C++ AdventureScreen::OnWardUsed)
+		public function SetWards(id:int, count:int):void
+		{
+			StatisticsBarPlayers.SetWardCount(id, count);
+			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
+			if (mateInfo != null)
+				mateInfo.UpdateWards();
+		}
+
+		public function SetPingMuted(id:int, muted:Boolean):void
+		{
+			StatisticsBarPlayers.SetPingMuted(id, muted);
+			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
+			if (mateInfo != null)
+				mateInfo.UpdatePingMuteView();
+		}
+
+		public function SetIgnoreStatus(id:int, ignore:Boolean):void
 		{
 			var mateInfo:StatisticsBarPlayers = GetMateInfoById(id);
 			

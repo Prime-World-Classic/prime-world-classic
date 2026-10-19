@@ -24,6 +24,7 @@
 #include "PF_GameLogic/ForceCalc.h"
 
 #include "PF_GameLogic/AsyncMapStartup.h"
+#include "System/SyncProcessorState.h"
 
 #include <functional>
 
@@ -34,14 +35,11 @@ REGISTER_DEV_VAR( "use_server_replay", g_useServerReplay, STORAGE_NONE );
 
 namespace Game
 {
-  const float ReplayRunner::rForcedStepTime = 0.025f;
-
   ReplayRunner::ReplayRunner( const string& _replayFileName, 
                               NWorld::IMapCollection * _mapCollection)
     : LoadingScreen( "", "", true, false )
     , replayFileName( _replayFileName )
     , mapCollection( _mapCollection )
-    , rSkipTime(0.0f)
   {
     NGlobal::RegisterContextCmd( "replay_skip_time", this, &ReplayRunner::SkipTime );
   }
@@ -50,6 +48,19 @@ namespace Game
 
   ReplayRunner::~ReplayRunner()
   {
+    MessageTrace( "replay: runner destroyed" );
+  }
+
+  ReplayRunnerLoader::~ReplayRunnerLoader()
+  {
+    MessageTrace( "replay: loader destroyed" );
+  }
+
+  void ReplayRunnerLoader::ReleaseLoadingJob()
+  {
+    StopAsyncMapLoadingJob();
+    loadingThread = 0;
+    mapLoadingJob = 0;
   }
 
   ReplayRunnerLoader::ReplayRunnerLoader( NWorld::ReplayTransceiver* _transceiver, 
@@ -109,6 +120,7 @@ namespace Game
 
     transceiver = new NWorld::ReplayTransceiver( pReplay, stepLength );
     transceiver->SetUseServerReplay(g_useServerReplay);
+    transceiver->SetReplayFile(replayFileName);
 
     mapInfo.replayName = replayFileName;
 
@@ -247,26 +259,9 @@ namespace Game
     return -1;
   }
 
-  void ReplayRunner::ForcedStep( float rDt )
-  {
-    transceiver->Step( rDt * 1000.f );
-  }
-
   void ReplayRunner::RunningState()
   {
-    float rTimeFotUpdate = NMainLoop::GetTimeDelta();
-
-    while( rSkipTime > rForcedStepTime )
-    {
-      ForcedStep( rForcedStepTime );
-      rSkipTime -= rForcedStepTime;
-    }
-
-    if ( rSkipTime >= 0 )
-    {
-      transceiver->Step( ( rSkipTime + rTimeFotUpdate ) * 1000.f );
-      rSkipTime = 0.0f;
-    }
+    transceiver->Step( NMainLoop::GetTimeDelta() * 1000.f );
   }
 
   void ReplayRunner::Step( bool bAppActive )
@@ -299,10 +294,12 @@ namespace Game
     }
   }
 
+  // replay_skip_time <seconds>: kept for old configs, the same as replay_seek
   bool ReplayRunner::SkipTime(const char *name, const vector<wstring> &args)
   {
     const string sSkip  = !args.empty() ? NStr::ToMBCS( args[0] ) : "0";
-    rSkipTime += NStr::ToFloat(sSkip);
+    if (transceiver)
+      transceiver->SeekBy( NStr::ToFloat(sSkip) );
     return true;
   }
 
@@ -310,6 +307,57 @@ namespace Game
   {
     if (loader)
       loader->StopAsyncMapLoadingJob();
+  }
+
+  bool ReplayRunner::IsRestartRequested() const
+  {
+    return transceiver && transceiver->IsRestartRequested();
+  }
+
+  void ReplayRunner::Close()
+  {
+    size_t virtualSize = 0;
+    utils::GetMemoryStatus( virtualSize );
+    MessageTrace( "replay: closing, virtual memory %u mb", (unsigned)( virtualSize / ( 1024 * 1024 ) ) );
+
+    if (transceiver)
+      transceiver->Detach();
+    NGlobal::UnregisterCmd( "replay_skip_time" );
+
+    StopAsyncMapLoadingJob();
+    if (loader)
+      loader->ReleaseLoadingJob();
+    mapDescription = 0;
+
+    if (advScreeen)
+      NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( advScreeen ) );
+    NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( this ) );
+  }
+
+  bool ReplayRunner::PollRestart( Weak<ReplayRunner> & runner, NWorld::IMapCollection * maps, string & restartFile, int & waitFrames )
+  {
+    if (restartFile.empty())
+    {
+      if (!runner || !runner->IsRestartRequested())
+        return false;
+
+      MessageTrace( "replay: closing the combat screen to reopen the replay" );
+      restartFile = runner->replayFileName;
+      runner->Close();
+      runner = 0;
+      waitFrames = 0;
+      return true;
+    }
+
+    // Wait (a few frames) for the old combat screen to be destroyed; give up waiting after ~10 s
+    if (NGameX::AdventureScreen::Instance() && ++waitFrames < 600)
+      return true;
+
+    Strong<ReplayRunner> reopened = new ReplayRunner( restartFile, maps );
+    restartFile.clear();
+    runner = reopened;
+    NScreenCommands::PushCommand( NScreenCommands::CreatePushScreenCommand( reopened ) );
+    return true;
   }
 
   void ReplayRunnerLoader::OnCombatScreenStarted( NCore::IWorldBase * world, const NGameX::ReplayInfo & _replayInfo )
@@ -321,7 +369,8 @@ namespace Game
     NI_VERIFY(mapDescription, "Invalid map description loader!", return);
     NI_VERIFY(mapDescription->IsSuccessfullyLoaded, "Map description wasn't loaded!", return);
 
-    mapLoadingJob = new NWorld::MapLoadingJob( world, mapInfo, mapDescription->Description, mapDescription->Settings, mapDescription->Map, false );
+    // A replay reopened at a world snapshot loads the map like a reconnect does
+    mapLoadingJob = new NWorld::MapLoadingJob( world, mapInfo, mapDescription->Description, mapDescription->Settings, mapDescription->Map, transceiver->HasStartSnapshot() );
 
     replayRunner->SetProgress( mapLoadingJob->GetProgress() );
 
@@ -385,11 +434,14 @@ namespace Game
   void ReplayRunnerLoader::LaunchReplay()
   {
     NI_ASSERT( IsValid( advScreen ), "" );
+    transceiver->ApplyStartSnapshot();
+    // the replay screen is a spectator one: OnMapLoaded extends the camera zoom-out
     advScreen->OnMapLoaded( mapLoadingJob->MapDescriptionResource(), mapLoadingJob->GetCameraSettings() );
     advScreen->ActivateSessionSoundScene();
     advScreen->OnSessionStart(0);
     advScreen->ShowUIBlock( "EscMenuRunToCastleButton", false );
     scheduler->StartGame();
+    transceiver->OnReplayLaunched();
 
     state = ReplayRunnerLoader::S_RUNNING;
   }

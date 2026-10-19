@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Mage.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_CastRange/Redset_CastRange.TALKIT" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Hunter.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Bard.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>0</budget>
+	<caption>G791: Призма мастерства</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Level6/G791_RangePotential.TALENT" id="630380BA-2697-4B91-8AFB-A12CCA95AE8A">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Level6/G791_RangePotential.TALENT" id="4939D444-96A6-4465-9274-8BBE6CB4DCFB">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczEQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>24.6</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset_CastRange/TECH_FormCapacity" />
+				<Item href="/Items/Talents/TalentKits/Redset_CastRange/const_Redset_CastRange_Bonus" />
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Level6/G791_RangePotential.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>1</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Talents/_791.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>5</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>-1</naftaCost>
+	<name textref="/Items/Talents/Level6/G791_RangePotential.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_Bonus.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_CastRange/appl_Redset_CastRange_FormCounter.APLR" />
+		<Item href="/Items/Talents/Level6/G791_RangePotential.TALENT" id="E797E574-1993-4EEC-8A0C-C8B7A75FF80B">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseStrength &gt;= sBaseIntellect</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level6/G791_RangePotential.TALENT" id="EA23D6F9-A6AA-4565-BE51-37DBE0BEC389">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseStrength &lt; sBaseIntellect</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>G791</persistentId>
+	<prerequisiteTalents />
+	<rarity>outstanding</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>136258047</targetType>
+	<type>Passive</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>
