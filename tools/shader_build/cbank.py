@@ -42,9 +42,12 @@ _R1117 = os.path.abspath(os.path.join(_HERE, "..", "..", "pw", "branches", "r111
 SH = os.path.join(_R1117, "Src", "Render", "Shaders")
 MASKS = os.path.join(_R1117, "Src", "Render", "GlobalMasks.h")
 
-# объявление константы: [const] ТИП имя[массив] : register( МАКРОС|cN ) ;
+# объявление константы: [const|uniform|static|extern] ТИП имя[массив] : register( МАКРОС|cN ) ;
+# `uniform` в альтернативе обязателен: без него объявления _commonUI.hlsl /
+# UIFlashMaterial.hlsl (20 шт.) терялись и материал терял членов банка
+# (замер 2026-10-18: «членов на пару макс 3» вместо 20, HUD не рисовался).
 DECL = re.compile(
-    r"^[ \t]*(?P<const>const\s+)?(?P<type>float4x4|float4x3|float4x2|float3x4|"
+    r"^[ \t]*(?P<const>const\s+|uniform\s+|static\s+|extern\s+)?(?P<type>float4x4|float4x3|float4x2|float3x4|"
     r"float3x3|float2x4|float2x2|matrix|float4|float3|float2|float|half4|half3|"
     r"half2|half|int4|int3|int2|int|bool4|bool3|bool2|bool|uint4|uint3|uint2|uint)"
     r"[ \t]+(?P<name>\w+)[ \t]*(?P<arr>\[[^]]*\])?[ \t]*:[ \t]*register[ \t]*"

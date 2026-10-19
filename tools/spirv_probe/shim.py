@@ -15,6 +15,8 @@
 #   : POSITION (выход VS)                       -> : SV_POSITION
 #   : COLOR    (выход PS)                       -> : SV_TARGET
 #   VPOS / VFACE                                -> SV_Position / SV_IsFrontFace
+#   register( МАКРОС )                          -> register( sN ) (GlobalMasks.h)
+import os
 import re
 
 HEADER = """
@@ -42,15 +44,57 @@ SamplerState g_smp : register(s0, space%d);
 """ % SPACE_SAMPLERS
 
 SAMPLER_DECL = re.compile(
-    r"\b(sampler2D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?"
+    r"\b(sampler1D|sampler2D|sampler3D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?"
     r"\s*(?::\s*register\s*\(([^)]*)\))?\s*;")
 REG_ANY = re.compile(r"\s*:\s*register\s*\(([^)]*)\)")
 
-# Объявление константы c-банка: [const] ТИП имя[массив] : register( МАКРОС|cN );
+# Макросы слотов ресурсов из GlobalMasks.h: `#define WARFOGSAMPLERINDEX s10`.
+# DXC макросов не знает, а `register( WARFOGSAMPLERINDEX )` без раскрытия тихо
+# превращается в binding 0: замер 2026-10-18 по vk_rec7.pwrd — у
+# FullScreenMaterial #113 %warFogSampler и %DepthMap получили один и тот же
+# (DescriptorSet 2, Binding 0), warFog читал R32F-буфер глубины вместо 205x205
+# карты, и полноэкранный композит (72% кадра, проба цвета по парам) давал чёрный.
+# Классы: t=текстура, s=сэмплер, b/u=буфер (cbank.py разбирает те же строки для
+# c-регистров; здесь — только ресурсы).
+SLOT_DEFINE = re.compile(r"^\s*#\s*define\s+([A-Z_][A-Z0-9_]*)\s+([tsub])\s*(\d+)"
+                         r"\s*(//.*)?$")
+
+
+def slot_macros():
+    """GlobalMasks.h -> {ИМЯ: 's10'}; пустой словарь, если файла нет."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "..", "pw", "branches", "r1117",
+                        "Src", "Render", "GlobalMasks.h")
+    out = {}
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                m = SLOT_DEFINE.match(line)
+                if m:
+                    out[m.group(1)] = m.group(2) + m.group(3)
+    except OSError:
+        pass
+    return out
+
+
+SLOT_MACROS = slot_macros()
+
+
+def expand_reg(reg):
+    """`WARFOGSAMPLERINDEX` -> `s10`; числовое или неизвестное — без изменений."""
+    return SLOT_MACROS.get((reg or "").strip(), (reg or "").strip())
+
+# Объявление константы c-банка: [const|uniform|static|extern] ТИП имя[массив] : register( МАКРОС|cN );
+# Префикс `uniform` обязан быть в альтернативе (замер 2026-10-18, прогон 98 —
+# отсутствующий HUD): 20 объявлений вида `uniform float4 color1 : register(
+# VSHADER_LOCALCONST0 );` в _commonUI.hlsl / UIFlashMaterial.hlsl без префикса
+# не матчились, член не попадал в канонический банк, DXC паковал их в свой
+# `$Globals` (Offset 0,16,...), а читался банк клиента (Offset = reg*16):
+# color1 (c20) читался из c0 — HUD выходил мусорным/прозрачным.
 # Один источник для прослойки (гасит их в режиме канонического банка) и для
 # tools/shader_build/cbank.py (строит из них банк).
 CDECL = re.compile(
-    r"^[ \t]*(?P<const>const\s+)?(?P<type>float4x4|float4x3|float4x2|float3x4|"
+    r"^[ \t]*(?P<const>const\s+|uniform\s+|static\s+|extern\s+)?(?P<type>float4x4|float4x3|float4x2|float3x4|"
     r"float3x3|float2x4|float2x2|matrix|float4|float3|float2|float|half4|half3|"
     r"half2|half|int4|int3|int2|int|bool4|bool3|bool2|bool|uint4|uint3|uint2|uint)"
     r"[ \t]+(?P<name>\w+)[ \t]*(?P<arr>\[[^]]*\])?[ \t]*:[ \t]*register[ \t]*"
@@ -74,6 +118,18 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
             cbank=False):
     notes = []
     _TEXCOORD_CTR[0] = 100   # счётчик — на файл, иначе семантика уезжает за лимит
+    # 0. макросы слотов ресурсов — ДО проходов register(...) и strip_cdecls,
+    #    иначе от аннотации остаётся пустота и DXC нумерует binding сам.
+    def macro_reg(m):
+        e = expand_reg(m.group(1))
+        if e == (m.group(1) or "").strip():
+            return m.group(0)
+        notes.append("макрос слота: register(%s) -> register(%s)"
+                     % (m.group(1).strip(), e))
+        return ": register(%s)" % e
+    src, n_mac = REG_ANY.subn(macro_reg, src)
+    if n_mac:
+        notes.append("раскрыто макросов слотов: %d" % n_mac)
     # 0. канонический банк: объявления c-констант снимаются совсем — имена
     #    приходят из сгенерированного `cbuffer pwCBankXX` (см. cbank.bank_block).
     #    Делается ДО прохода register(...), иначе от объявления останется голый
@@ -153,6 +209,11 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     # 3. выборки
     # operand may be an array element: tex2D( diffuseMapSampler[1], uv )
     src, n_t2 = re.subn(r"\btex2D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
+    # tex1D( t, u ) -> t.Sample(g_smp, float2(u, 0.5)) — seam создаёт 1D-текстуры
+    # как 2D (высота 1), отдельного измерения в наборе дескрипторов нет
+    # (замер: UpscaleH/UpscaleV `sampler1D weights : register(s1)` + tex1D).
+    src, n_t1 = re.subn(r"\btex1D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,\s*([^;()]*(?:\([^()]*\))?[^;()]*)\)",
+                        r"\1.Sample(g_smp, float2(\2, 0.5))", src)
     src, n_cube = re.subn(r"\btexCUBE\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
     # tex2Dlod( t, float4( uv2, 0, 0 ) ) -> t.SampleLevel(g_smp, uv2, 0)
     src, n_lod3 = re.subn(
@@ -171,8 +232,13 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     # tex2Dproj( t, float4 ) -> t.Sample(g_smp, c.xy / c.w)
     def proj_sub(m):
         t, c = m.group(1), m.group(2)
-        return "%s.Sample(g_smp, %s.xy / %s.w)" % (t, c, c)
-    src, n_proj = re.subn(r"\btex2Dproj\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)", proj_sub, src)
+        return "%s.Sample(g_smp, (%s).xy / (%s).w)" % (t, c, c)
+    # 2-й аргумент — выражение, а не только имя (замер: UberShadowPassDST.hlsl
+    # `tex2Dproj(shadowMap, PositionLS + texelShift.xxzz)` — из-за ограничителя
+    # `\w+` ShadowPassPCFDST4/4Add не собирались вообще)
+    src, n_proj = re.subn(
+        r"\btex2Dproj\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,\s*([^;()]*(?:\([^()]*\))?[^;()]*)\)",
+        proj_sub, src)
 
     # 4. семантики вывода.
     #    POSITION на выходе VS -> SV_POSITION;
@@ -283,7 +349,7 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
     src, n_frag = re.subn(r"\b(float2)\s+(\w+\s*:\s*SV_Position)", r"float4 \2", src)
     src, n_vface = re.subn(r"\bVFACE\b", "SV_IsFrontFace", src)
 
-    stats = dict(samplers=n_samp, regs=n_reg, tex2D=n_t2, texCUBE=n_cube,
+    stats = dict(samplers=n_samp, regs=n_reg, tex2D=n_t2, tex1D=n_t1, texCUBE=n_cube,
                  tex2Dlod=n_lod + n_lod_var + n_lod3, tex2Dproj=n_proj, position=n_pos,
                  color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface,
                  regs_auto=n_auto, out_position=n_outpos if stage == "vs" else 0)

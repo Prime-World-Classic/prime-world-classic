@@ -51,12 +51,15 @@
 #include <nvrhi/nvrhi.h>
 #include <nvrhi/vulkan.h>
 
+#include "stretch_shaders_spv.h"   // внутренний блит со скейлом (StretchRect)
+
 #include <algorithm>
 #include <thread>
 #include <mutex>                      // apiMutex: два потока клиента на одном командном списке
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -113,6 +116,12 @@ static const char* const kStubNames[] = {
 // номер при инстансном режиме, физический слот инстанса — отдельный).
 static const unsigned kNoRes = 0xffffffffu;
 static const unsigned kMaxVertexStreams = 8;
+// Шаг счётчика 0..N-1 для режима SetInstanceSource без буфера (int, не float:
+// раскладка читает младшие 16 бит — грабля InstancedMeshResource::Init).
+static const unsigned kInstCounterStride = 4;
+
+// см. определение ниже (нужно раньше: defSampler создаётся в Init)
+static bool SamplerLod0Forced();
 
 // вид ресурса из SPIR-V (SpvResScan) — тот же набор, что у сканера спайка
 enum EResKind { rkSampler = 0, rkTexture, rkUbo, rkSsbo, rkOther };
@@ -519,8 +528,8 @@ struct NvrhiBackendImpl
   // `register(tN, space2)`/`register(sN, space3)` именно по номеру из
   // исходника; замер корпуса: RoadMap s0 -> set 2 binding 0), поэтому
   // SetTexture(N, tex) кладёт текстуру прямо в binding N.
-  // dim — Dim из OpTypeImage (1=1D, 2=2D, 3=3D, 4=Cube), count — длина массива
-  // ресурсов (OpTypeArray). Нужны из-за строгой валидации Vulkan:
+  // dim — Dim из OpTypeImage (SPV: 0=1D, 1=2D, 2=3D, 3=Cube, 4=Rect, 5=Buffer,
+  // 6=SubpassData), count — длина массива ресурсов (OpTypeArray). Нужны из-за строгой валидации Vulkan:
   // VUID-vkCmdDrawIndexed-viewType-07752 (view 2D, а шейдер ждёт Cube) и
   // VUID-vkCmdDrawIndexed-None-08114 (элемент массива дескрипторов никогда не
   // заполнялся — layout объявлен с count=1, а SPIR-V просит массив).
@@ -630,6 +639,11 @@ struct NvrhiBackendImpl
     bool needUpload;   // зеркало уровня изменено чужим потоком
     unsigned upLevel, upFace, upRowBytes;   // параметры отложенной загрузки
     unsigned lockLevel, lockRows, lockRowBytes, lockFace;
+    // Диагностика (замер прогона 80): у ВСЕХ текстур с mipLevels>=2 GPU-содержимое
+    // чёрное, а CPU-снимка (TXDP) по ним нет. Счётчик отвечает на вопрос, была ли
+    // текстура загружена вообще: 0 = клиент её не заполнял (значит содержимое
+    // должно приходить другим путём — GPU-копией/UpdateTexture — или не приходит).
+    unsigned uploads = 0;
     // Шаг 13.4d: поверхность уровня (GetTextureSurface) — ОДИН объект на пару
     // (текстура, уровень), как GetSurfaceLevel в D3D9. Клиент кэширует сырой
     // указатель (SmartRenderer::pDefaultRT0, curColorSurface[]), поэтому новый
@@ -688,12 +702,69 @@ struct NvrhiBackendImpl
   unsigned ownerThread;
   unsigned threadSeen[6];
   unsigned threadSeenCount;
-  std::vector<unsigned> pendBuf, pendTex, pendSrf;
+  // Загрузка текстур с чужого потока (шаг 13.1/13.2). Прежняя отложенная
+  // очередь (pendTex: индекс текстуры + один слот уровня на текстуру) была
+  // одновременно и причиной чёрного кадра, и причиной того, что её нельзя было
+  // починить «в лоб»:
+  //   1) слот уровня ОДИН на текстуру, а DDS-загрузчик (ReadDDS.cpp
+  //      FaceHolder::Fill) блокирует уровни 0..mipCount-1 подряд — каждая
+  //      следующая блокировка затирала предыдущую, на GPU уходил только
+  //      ПОСЛЕДНИЙ (1x1) уровень, уровень 0 оставался пустым. Замер TXGP
+  //      прогона 80: 200/200 текстур с mipLevels>=2 на GPU нулевые при загруз=1.
+  //   2) попытка хранить в очереди байты каждого уровня (прогоны 83-88) встала:
+  //      поток загрузки опережает рендер-поток (который в это время ждёт
+  //      ресурсы и в seam не заходит), очередь выросла до 9,8 ГБ RSS, клиент
+  //      остановился на загрузке (лог обрывается, VkResflip не печатается).
+  // Поэтому чужой поток грузит САМ, своим командным списком: Vulkan позволяет
+  // писать разные command buffer из разных потоков (однопо́точный общий
+  // d.commandList — как раз причина прежней отложенной очереди), а пакет
+  // закрывается при переходе на следующую текстуру или по порогу байт.
+  struct ThreadUpload
+  {
+    nvrhi::CommandListHandle cl;
+    size_t bytes;
+    unsigned entries;
+    unsigned lastTex;
+    // список открыт ровно ОДИН раз на пакет: CommandList::open()
+    // (Vendor/NVRHI/src/vulkan/vulkan-commandlist.cpp) берёт ИЗ ПУЛА НОВЫЙ
+    // командный буфер и начинает запись в него, а предыдущий m_CurrentCmdBuf
+    // просто забывается — все уже записанные в пакет загрузки теряются
+    // (замер прогона 95: у #101 lvl0 дошёл до GPU только потому, что TexCheck
+    // принудительно закрыл пакет; у #102 дошёл лишь последний уровень).
+    bool open;
+    ThreadUpload() : bytes(0), entries(0), lastTex((unsigned)kNoRes), open(false) {}
+  };
+  std::map<unsigned, ThreadUpload> threadUpload;
+  std::vector<unsigned> pendBuf, pendSrf;
   nvrhi::SamplerHandle defSampler;    // состояние по умолчанию: слот, которого модель не касалась
+
+  // Внутренний блит со скейлом (StretchRect). Клиент зовёт StretchRect с другим
+  // размером приёмника: цепочка mip у текстур D3DUSAGE_AUTOGENMIPMAP
+  // (renderer.cpp:1042, d3d9backend.cpp:623-664), водяная карта
+  // (WaterManager.cpp:270), пост-эффекты (renderer.cpp:1102). У copyTexture
+  // скейла нет, поэтому блит рисуется квадом; шейдеры вшиты в бинарник
+  // (stretch_shaders_spv.h), чтобы путь не зависел от пайла и OnlineShaders.
+  nvrhi::ShaderHandle stretchVs, stretchPs;
+  nvrhi::InputLayoutHandle stretchIl;
+  nvrhi::BufferHandle stretchVb;
+  nvrhi::SamplerHandle stretchSmp[2];  // 0 = линейный, 1 = точка (bfPoint)
+  nvrhi::BindingLayoutHandle stretchLayTex, stretchLaySmp;
+  nvrhi::BindingSetHandle stretchBsTex, stretchBsSmp;
+  unsigned long long stretchBsKey = 0;
+  bool stretchFailed = false;          // инициализация не удалась — не повторять
+  unsigned stretchBlits = 0;
+  unsigned stretchScaleFail = 0;
+  std::vector<std::pair<unsigned long long, std::pair<nvrhi::FramebufferHandle,
+      nvrhi::GraphicsPipelineHandle> > > stretchPipes;
   nvrhi::TextureHandle dummyTex;      // в несвязанный слот кладётся 1x1
   nvrhi::TextureHandle dummyCubeTex;  // замена, когда шейдер ждёт cube
   nvrhi::BufferHandle dummyVb;        // замена пустого вершинного слота
   nvrhi::BufferHandle dummySsbo;      // заглушка набора 1 (SSBO)
+  nvrhi::BufferHandle instCounter;    // счётчик 0..N-1 (SetInstanceSource без буфера)
+  // Отладка 2026-10-17: дамп загружаемых текстур (см. TexDumpLevel0)
+  FILE* texDump = nullptr;
+  unsigned texDumpN = 0;
+  unsigned instCounterEntries = 0;    // записей в instCounter
   unsigned texBound[16];              // слот сэмплера D3D9 -> индекс текстуры
   unsigned setsCreated, texMissing, resMapsCreated;
   unsigned ssboSetsCreated;
@@ -716,6 +787,8 @@ struct NvrhiBackendImpl
   bool recOn;
   FILE* recFile;
   unsigned recMax;        // лимит выводов (env PW_VK_RECORD_MAX)
+  unsigned recSkip;       // сколько выводов пропустить в начале (env PW_VK_RECORD_SKIP)
+  unsigned recSeen;       // сколько выводов вообще увидели (счётчик пропуска)
   unsigned recDraws;      // сколько выводов записано
   unsigned recObjs;       // сколько ресурсов выгружено
   unsigned recRtW, recRtH;   // фильтр цели (env PW_VK_RECORD_RT=ШхВ), 0 = любой
@@ -788,6 +861,10 @@ struct NvrhiBackendImpl
   size_t uploadBytes;
   size_t uploadPending;   // байт с последней отправки списка
   unsigned uploadFlushes; // отправленных списков из-за порога байт
+  // Шаг 13.1: отправки пакетов загрузки чужого потока (свой командный список);
+  // без счётчика неотличимо «записали в список» от «дошло до GPU» (замер прогона
+  // 89: TexUp есть, загруз=319095, а TXGP всё равно нулевой)
+  unsigned uploadSubmits = 0;
   // Шаг 13.4e: NVRHI берёт на open() командный буфер из пула очереди, а пул
   // пополняется только после исполнения списка на GPU
   // (vulkan-queue.cpp: getOrCreateCommandBuffer / returnCommandBuffersToPool).
@@ -847,7 +924,7 @@ struct NvrhiBackendImpl
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
       ssboSetsCreated(0), texDimMismatch(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotProbe(0), drawDiag(0),
-      recOn(false), recFile(0), recMax(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
+      recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
       layoutsBuilt(0), ilPadHoles(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
@@ -1094,6 +1171,12 @@ void NvrhiBackendImpl::InvalidateRefsTo(unsigned kind, unsigned index)
   setCache.clear();
   smpSetCache.clear();
   ilCache.clear();
+  // поверхности (в т.ч. бэк-буферы) пересоздаются вместе с swapchain'ом —
+  // пайплайны и наборы внутреннего блита держат вьюхи этих картинок
+  stretchPipes.clear();
+  stretchBsTex = nvrhi::BindingSetHandle();
+  stretchBsSmp = nvrhi::BindingSetHandle();
+  stretchBsKey = 0;
   pipesCreated = 0;
   resMapsCreated = 0;
   setsCreated = 0;
@@ -1219,13 +1302,29 @@ static void NoteCallSite(int slot, const char* what, void* pRet, unsigned cap)
              (unsigned)((size_t)pRet - (size_t)GetModuleHandle(0)));
 }
 
+// Шаг 14 (перед коммитом): шумная диагностика выключена по умолчанию.
+// Счётчики продолжают считаться (они дёшевы), молчит только печать: прогон боя
+// (2026-10-18) давал 8912 строк лога, из них ~2100 — VkBeat/VkDiag/VkTexReq/
+// VkIlMap/VkFb и периодические сводки DumpStats("flip"). Включается одной
+// переменной окружения PW_VK_STATS=1 (её же читает renderer.cpp для сводок).
+static bool VkVerbose()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char b[8] = { 0 };
+    s_on = (GetEnvironmentVariableA("PW_VK_STATS", b, sizeof(b) - 1) > 0 && atoi(b)) ? 1 : 0;
+  }
+  return s_on != 0;
+}
+
 // Шаг 13.4c: хронологическая трассировка
 // первых seam-вызовов: в режиме переворота клиент встаёт в первом
 // кадре, и по последней строке видно, на чём именно заблокировался.
-// Бюджет трассы задаётся env PW_VK_TRACE (по умолчанию 1500): загрузка карты
-// съедает больше 1500 вызовов, и без настройки обрыв трассы неотличим от
-// «бэкенд больше не вызывали» (замер 2026-10-16).
-static unsigned g_traceBudget = 1500u;
+// Бюджет трассы задаётся env PW_VK_TRACE (по умолчанию 0 = трассы нет, кольцо
+// пишется всегда): загрузка карты съедает больше 1500 вызовов, и без настройки
+// обрыв трассы неотличим от «бэкенд больше не вызывали» (замер 2026-10-16).
+static unsigned g_traceBudget = 0u;
 static bool g_watchdogOn = true;
 static unsigned g_traceSeq = 0u;
 static bool     g_traceEnded = false;
@@ -1313,7 +1412,15 @@ NvrhiBackend::NvrhiBackend()
   memset(&m_scissor, 0, sizeof(m_scissor));
   memset(m_clipPlane, 0, sizeof(m_clipPlane));
   for (int i = 0; i < csConstStageCount; ++i)
+  {
     m_constShadow[i] = new float[SHADER_CONST_REGISTERS * 4];
+    // обязательно обнулять: клиент задаёт не все регистры, а D3D9-путь
+    // (через драйвер) видит незаданные нулями. Без обнуления в хвосте банка
+    // остаётся мусор аллокатора — в прогоне 2026.10.17 (vk_rec7.pwrd) в c216+
+    // лежали указатели Wine (0x0000776fe54bf5b0), и шейдер, читающий такой
+    // регистр, получает мусор вместо нуля
+    memset(m_constShadow[i], 0, sizeof(float) * (size_t)SHADER_CONST_REGISTERS * 4u);
+  }
 }
 
 NvrhiBackend::~NvrhiBackend()
@@ -1637,7 +1744,8 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                               .setAllFilters(true)
                                               .setAddressU(nvrhi::SamplerAddressMode::Wrap)
                                               .setAddressV(nvrhi::SamplerAddressMode::Wrap)
-                                              .setAddressW(nvrhi::SamplerAddressMode::Wrap));
+                                              .setAddressW(nvrhi::SamplerAddressMode::Wrap)
+                                              .setMipBias(SamplerLod0Forced() ? -1000.f : 0.f));
   // 1x1 чёрная: в слот, который шейдер объявляет, а клиент не привязал, обязан
   // лежать валидный дескриптор — иначе валидация рвёт кадр молча
   d.dummyTex = d.nvrhiDevice->createTexture(nvrhi::TextureDesc()
@@ -1666,6 +1774,13 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                           .setDebugName("seam dummy VB"));
   d.dummySsbo = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
                                             .setByteSize(4096)
+                                            // без этого NVRHI не ставит
+                                            // VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                            // (vulkan-buffer.cpp: structStride ||
+                                            // canHaveUAVs || canHaveRawViews) и
+                                            // валидатор рвёт
+                                            // VUID-VkWriteDescriptorSet-descriptorType-00331
+                                            .setCanHaveUAVs(true)
                                             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
                                             .setKeepInitialState(true)
                                             .setDebugName("seam dummy SSBO"));
@@ -1987,13 +2102,39 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
   // Штатная глубина бэк-буфера (см. комментарий к backDepthIdx).
   {
     HSurface hs;
-    if (SUCCEEDED(CreateSurface(ssDepthStencil, d.width, d.height, bfD24S8,
-                                BACKEND_POOL_DEFAULT, &hs)))
-      d.backDepthIdx = Hnd2Idx(hs.p);
-    else
+    bool made = false;
+    // Запись глубины бэк-буфера ПЕРЕИСПОЛЬЗУЕТСЯ (см. DestroySwapchain): ручка
+    // клиента обязана остаться валидной после пересоздания swapchain'а.
+    if (d.backDepthIdx != kNoRes && d.backDepthIdx < d.surfaces.size() &&
+        !d.surfaces[d.backDepthIdx].dead && !d.surfaces[d.backDepthIdx].tex)
     {
-      d.backDepthIdx = kNoRes;
-      VkNote("CreateSwapchain: глубина бэк-буфера не создана", false, 0);
+      SurfaceObj& ds = d.surfaces[d.backDepthIdx];
+      nvrhi::TextureDesc td;
+      td.setDimension(nvrhi::TextureDimension::Texture2D).setWidth(d.width).setHeight(d.height)
+        .setFormat(nvrhi::Format::D24S8).setIsRenderTarget(true)
+        .setInitialState(nvrhi::ResourceStates::DepthWrite).setKeepInitialState(true)
+        .setDebugName("PW back depth");
+      ds.tex = d.nvrhiDevice->createTexture(td);
+      if (ds.tex)
+      {
+        ds.w = d.width; ds.h = d.height;
+        ds.fmt = nvrhi::Format::D24S8;
+        ds.seamFormat = bfD24S8;
+        ds.usage = usageDepthStencil;
+        ds.depth = true;
+        made = true;
+      }
+    }
+    if (!made)
+    {
+      if (SUCCEEDED(CreateSurface(ssDepthStencil, d.width, d.height, bfD24S8,
+                                  BACKEND_POOL_DEFAULT, &hs)))
+        d.backDepthIdx = Hnd2Idx(hs.p);
+      else
+      {
+        d.backDepthIdx = kNoRes;
+        VkNote("CreateSwapchain: глубина бэк-буфера не создана", false, 0);
+      }
     }
   }
 
@@ -2028,8 +2169,19 @@ void NvrhiBackend::DestroySwapchain()
       d.surfaces[d.backSurfaceIdx[i]].tex = nullptr;
     }
   if (d.backDepthIdx != kNoRes && d.backDepthIdx < d.surfaces.size())
-    d.RetireHandle(hkSurface, d.backDepthIdx);
-  d.backDepthIdx = kNoRes;
+  {
+    // Запись глубины НЕ отпускается (RetireHandle), а только лишается картинки:
+    // клиент кэширует GetDepthStencilSurface() один раз и держит её кадрами, а
+    // пересоздание swapchain'а (800x600 -> 1024x768 на старте) оставляло ручку
+    // на mёртвой записи. Замер прогона 100 (2026-10-18): 4226 «GetSurfaceInfo:
+    // ручка не из этого бэкенда» + 4226 «BindRenderTargetDepth: GetSurfaceInfo
+    // не удалось», трасса VkSrf — raw=3, «запись dead». Каждый кадр глубина не
+    // привязывалась. Индекс и ручку сохраняем, картинку создаёт CreateSwapchain.
+    SurfaceObj& ds = d.surfaces[d.backDepthIdx];
+    ds.tex = nullptr;
+    ds.staging = nullptr;
+    FreeMirror(ds.mirror);
+  }
   d.backTextures.clear();
   // Кэш пайплайнов держит framebuffer'ы, построенные по RT/DS; после
   // пересоздания swapchain'а часть из них указывает на мёртвые картинки,
@@ -2164,6 +2316,9 @@ void NvrhiBackend::Shutdown()
     snprintf(det, sizeof(det), "обёрток с живыми ссылками: %u", orphans);
     VkNote("Shutdown: владение", true, det);
   }
+  // Шаг 14: периодические сводки выключены по умолчанию, поэтому итоговые
+  // счётчики снимаем здесь — до очистки контейнеров
+  DumpCompact();
   d.surfaces.clear();
   // порядок: ВСЕ nvrhi-ресурсы обязаны умереть раньше nvrhiDevice и VkDevice
   // (иначе деструкторы RefCountPtr работают с уже уничтоженным устройством)
@@ -2209,6 +2364,9 @@ void NvrhiBackend::DumpStats(const char* pTag) const
              pTag ? pTag : "", (unsigned)d.buffers.size(), (unsigned)d.shaderObjs.size(),
              (unsigned)d.layoutObjs.size(), d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
              d.draws, d.uploads, d.uploadWaits);
+  // DebugTrace: максимум 10 аргументов — отправки отдельной строкой
+  DebugTrace("VkUp%s: загруз=%u отправок=%u байт=%u", pTag ? pTag : "",
+             d.uploads, d.uploadSubmits, (unsigned)d.uploadBytes);
   {
     size_t mb = 0, mt = 0, ms = 0;
     unsigned nb = 0, nt = 0, ns = 0;
@@ -2270,6 +2428,20 @@ void NvrhiBackend::DumpStats(const char* pTag) const
   for (int i = 0; i < st_count; ++i)
     if (d.stubCalls[i])
       DebugTrace("VkStub: %s вызван %u раз", kStubNames[i], d.stubCalls[i]);
+}
+
+// Шаг 14: одна строка вместо 15. Именно по ней сверяют объём кэшей и число
+// выводов между прогонами (ср. §1.4: 206 ключей пайплайнов на бой); печатается
+// всегда, даже когда PW_VK_STATS=0. Формат — ровно 9 аргументов: DebugTrace
+// принимает не больше 10 всего.
+void NvrhiBackend::DumpCompact() const
+{
+  const NvrhiBackendImpl& d = *m_pImpl;
+  DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) загруз=%u "
+             "объектов B/T/S=%u/%u/%u",
+             d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
+             d.uploads, (unsigned)d.buffers.size(), (unsigned)d.textures.size(),
+             (unsigned)d.surfaces.size());
 }
 
 const char* NvrhiBackend::DeviceName() const { return m_pImpl->deviceName; }
@@ -2446,11 +2618,14 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
   if (d.shotAt && d.presents == d.shotAt)
   {
     VK_TRACE("Present: shot >");
+    TexGpuDump();
     if (d.shotProbe) ProbeFrameSurfaces();
-    if (d.shotProbe)
+    if (d.shotProbe && d.shotProbe != 7u)
     {
       // зонд: если снимок станет красным — readback и картинка в порядке,
       // значит чёрный кадр даёт сам вывод клиента
+      // (режим 7 — «сцена в кадр»: копию крупнейшей offscreen-поверхности
+      // красной заливкой затирать нельзя, иначе эксперимент бессмыслен)
       if (EnsureRecording())
       {
         d.commandList->clearTextureFloat(so.tex, nvrhi::TextureSubresourceSet(),
@@ -2666,7 +2841,7 @@ void NvrhiBackend::NoteUpload(size_t bytes)
   // загрузки карты Present не происходит вовсе (замер: 3 минуты тишины), и
   // прирост памяти неотличим от зависания. Раз в 2000 загрузок — счётчики
   // объектов и живых зеркал.
-  if ((d.uploads % 2000u) == 0u)
+  if (VkVerbose() && (d.uploads % 2000u) == 0u)
   {
     size_t mb = 0, mt = 0, ms = 0;
     unsigned nb = 0, nt = 0, ns = 0;
@@ -3132,7 +3307,13 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
 
     const unsigned logical = e.stream;
     const unsigned slot = SlotOfStream(d, logical);
-    const unsigned stride = (logical == kInstanceStream) ? d.instStride : d.vbStride[slot];
+    // Инстансный атрибут без клиентского буфера — это режим счётчика
+    // (BindInstanceCounter): шаг берём из встроенного счётчика, иначе
+    // CreateInputLayout падает и каждый инстансный вывод теряется.
+    const unsigned instStrideEff = d.instStride
+        ? d.instStride
+        : ((logical == kInstanceStream && d.instSrc == kNoRes) ? kInstCounterStride : 0u);
+    const unsigned stride = (logical == kInstanceStream) ? instStrideEff : d.vbStride[slot];
     if (!stride)
     {
       char det[128];
@@ -3147,7 +3328,7 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
        .setBufferIndex(slot).setIsInstanced(logical == kInstanceStream);
     attrs.push_back(a);
   }
-  if (d.ilDiag < 6u)
+  if (VkVerbose() && d.ilDiag < 6u)
   {
     ++d.ilDiag;
     char det[512];
@@ -3219,6 +3400,49 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
   return il;
 }
 
+// Нужен ли текущей раскладке поток данных экземпляра (атрибуты с logical
+// потоком kInstanceStream). Спрашивается на выводе: там решают, тянуть ли
+// встроенный счётчик.
+static bool LayoutWantsInstanceStream(const NvrhiBackendImpl& d)
+{
+  if (d.curLayout >= d.layoutObjs.size()) return false;
+  const std::vector<VertexElementDescriptor>& e = d.layoutObjs[d.curLayout].elems;
+  for (size_t i = 0; i < e.size(); ++i)
+    if (e[i].stream == kInstanceStream) return true;
+  return false;
+}
+
+// Встроенный счётчик экземпляров 0..N-1 (шаг 9 очереди): клиент зовёт
+// BindInstanceCounter() -> SetInstanceSource(пусто, 0, 0), инстансные атрибуты
+// раскладки при этом остаются (InstancedMeshResource). В D3D9 счётчик заводит
+// бэкенд (D3D9Backend::EnsureInstanceCounter); в seam'е его не было ->
+// CreateInputLayout падал («поток 4294967295 без шага») и каждый инстансный
+// вывод терялся (замер: 96894 отказа за бой, сцена без юнитов/башен).
+static bool EnsureInstCounter(NvrhiBackendImpl& d, unsigned count)
+{
+  const unsigned entries = count < 1024u ? 1024u : count;
+  if (d.instCounter && d.instCounterEntries >= entries) return true;
+  d.instCounter = nullptr;
+  d.instCounterEntries = 0;
+  d.instCounter = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                              .setByteSize((size_t)entries * kInstCounterStride)
+                                              .setIsVertexBuffer(true)
+                                              .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                                              .setKeepInitialState(true)
+                                              .setDebugName("seam instance counter"));
+  if (!d.instCounter)
+  {
+    VkNote("EnsureInstCounter: createBuffer", false, 0);
+    return false;
+  }
+  std::vector<int> v(entries);
+  for (unsigned n = 0; n < entries; ++n) v[n] = (int)n;
+  d.commandList->writeBuffer(d.instCounter, v.data(), (size_t)entries * kInstCounterStride);
+  d.instCounterEntries = entries;
+  VkNote("EnsureInstCounter: счётчик заведён", true, 0);
+  return true;
+}
+
 // Общий путь создания текстур seam'а (2D и cube). Формат берётся из
 // SurfaceFormat — тот же, что и для поверхностей (bfA8R8G8B8 -> BGRA8_UNORM).
 static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned height,
@@ -3240,7 +3464,7 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
   // CreateTexture2D без выхода) — без чисел не отличить абсурдный запрос
   // от заблокировки драйвера.
   static unsigned s_texReqLogged = 0u;
-  if (s_texReqLogged < 40u)
+  if (VkVerbose() && s_texReqLogged < 40u)
   {
     ++s_texReqLogged;
     char req[96];
@@ -3390,6 +3614,134 @@ static void LevelDims(unsigned w, unsigned h, unsigned level, unsigned* pW, unsi
 // по-прежнему не заполняются.
 static const char* kLockWhy[] = { "", "формат через seam не грузится", "грань куба не переведена",
                                   "уровень вне mip-цепочки" };
+
+// определение ниже (рядом с UnlockTexture2D); значения по умолчанию — там
+static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
+                          const NvrhiBackendImpl::TextureObj& to,
+                          unsigned level, unsigned rowBytes,
+                          const void* src, size_t srcSize);
+
+// Пакет загрузки чужого потока закрыт и отправлен. Вызывается с того же потока,
+// что и писал (список однопо́точный); executeCommandList — VkQueueSubmit,
+// VkQueue по спецификации потокобезопасен.
+static bool SubmitThreadUpload(NvrhiBackendImpl& d, unsigned tid, const char* why)
+{
+  std::map<unsigned, NvrhiBackendImpl::ThreadUpload>::iterator it = d.threadUpload.find(tid);
+  if (it == d.threadUpload.end() || !it->second.cl || !it->second.entries) return true;
+  NvrhiBackendImpl::ThreadUpload& ctx = it->second;
+  const size_t bytes = ctx.bytes;
+  const unsigned entries = ctx.entries;
+  if (!ctx.open) return true;
+  ctx.cl->close();
+  d.nvrhiDevice->executeCommandList(ctx.cl);
+  ctx.open = false;
+  ctx.bytes = 0; ctx.entries = 0; ctx.lastTex = (unsigned)kNoRes;
+  ++d.uploadSubmits;
+  if (d.uploadSubmits <= 5u)
+    DebugTrace("UpSubmit: #%u байт %u записей %u", d.uploadSubmits,
+               (unsigned)bytes, entries);
+  VK_TRACE("upload submit (%s) байт %zu записей %u", why, bytes, entries);
+  return true;
+}
+
+// Загрузка уровня текстуры с чужого потока: собственный командный список потока.
+static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
+                              unsigned face, unsigned level, unsigned rowBytes)
+{
+  static const size_t kBatchBytes = 8u * 1024u * 1024u;
+  NvrhiBackendImpl::ThreadUpload& ctx = d.threadUpload[tid];
+  if (!ctx.cl)
+  {
+    ctx.cl = d.nvrhiDevice->createCommandList(nvrhi::CommandListParameters()
+                                                .setEnableImmediateExecution(false));
+    if (!ctx.cl) { VkNote("UnlockTexture2D: createCommandList", false, 0); return false; }
+  }
+  if (ctx.entries && ctx.lastTex != t) SubmitThreadUpload(d, tid, "смена текстуры");
+  if (!ctx.open) { ctx.cl->open(); ctx.open = true; }   // open() НЕ повторять (см. ThreadUpload::open)
+  ctx.cl->writeTexture(d.textures[t].tex, face, level, &d.textures[t].mirror[0],
+                       (size_t)rowBytes);
+  ctx.bytes += d.textures[t].mirror.size();
+  ++ctx.entries; ctx.lastTex = t;
+  ++d.textures[t].uploads;
+  if (d.textures[t].uploads == 1u)
+    // DebugTrace — PrintfFormatter: %zu НЕ поддерживается (печатает «zu» и
+    // сдвигает остальные аргументы), размеры — (unsigned)
+    DebugTrace("TexUp: #%u lvl%u face%u шаг%u байт%u %ux%u fmt%d mips%u (поток загрузки)",
+               t, level, face, rowBytes, (unsigned)d.textures[t].mirror.size(),
+               d.textures[t].w, d.textures[t].h, (int)d.textures[t].seamFormat,
+               d.textures[t].mipLevels);
+  if (level == 0u) TexDumpLevel0(d, t, d.textures[t], level, rowBytes, 0, 0);
+  // счётчики как в NvrhiBackend::NoteUpload (метод класса, из статического
+  // хелпера недоступен; принудительный flush общего списка тут не нужен —
+  // пакет закрывается сам)
+  ++d.uploads;
+  d.uploadBytes += d.textures[t].mirror.size();
+  // PW_VK_TEXCHECK=<индекс шва>: сразу после отправки чтенияем обратно эту же
+  // текстуру. Разделяет «writeTexture не дошёл до VkImage» и «дошло, но потом
+  // затёрто» (замер прогона 92: у всех текстур с mipLevels>=2 CPU-зеркало
+  // заполнено, а GPU нулевой — при этом у mipLevels==1 CPU==GPU совпадают).
+  static unsigned checkIdx[4] = {0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};
+  static bool checkInit = false;
+  if (!checkInit)
+  {
+    checkInit = true;
+    char cn[64]; cn[0] = 0;
+    if (GetEnvironmentVariableA("PW_VK_TEXCHECK", cn, sizeof(cn) - 1) && cn[0])
+    {
+      unsigned k = 0;
+      for (char* s = strtok(cn, ","); s && k < 4u; s = strtok(0, ","), ++k)
+        checkIdx[k] = (unsigned)atoi(s);
+    }
+  }
+  bool checked = false;
+  for (unsigned k = 0; k < 4u; ++k) if (checkIdx[k] == t) checked = true;
+  if (checked && level == 0u)
+  {
+    SubmitThreadUpload(d, tid, "PW_VK_TEXCHECK");
+    d.nvrhiDevice->waitForIdle();
+    const nvrhi::TextureDesc td = d.textures[t].tex->getDesc();
+    nvrhi::StagingTextureHandle st = d.nvrhiDevice->createStagingTexture(
+        nvrhi::TextureDesc().setDimension(nvrhi::TextureDimension::Texture2D)
+                            .setWidth(td.width).setHeight(td.height).setFormat(td.format)
+                            .setMipLevels(1)
+                            .setInitialState(nvrhi::ResourceStates::CopyDest)
+                            .setKeepInitialState(true)
+                            .setDebugName("seam tex check"),
+        nvrhi::CpuAccessMode::Read);
+    if (st)
+    {
+      ctx.cl->open();
+      ctx.cl->copyTexture(st, nvrhi::TextureSlice(), d.textures[t].tex, nvrhi::TextureSlice());
+      ctx.cl->close();
+      ctx.open = false;
+      d.nvrhiDevice->executeCommandList(ctx.cl);
+      d.nvrhiDevice->waitForIdle();
+      size_t cpitch = 0;
+      void* cpx = d.nvrhiDevice->mapStagingTexture(st, nvrhi::TextureSlice(),
+                                                   nvrhi::CpuAccessMode::Read, &cpitch);
+      if (cpx)
+      {
+        const bool comp = (td.format >= nvrhi::Format::BC1_UNORM &&
+                           td.format <= nvrhi::Format::BC7_UNORM);
+        const unsigned rows = comp ? ((td.height + 3u) / 4u) : td.height;
+        const unsigned long bytes = (unsigned long)cpitch * rows;
+        unsigned nz = 0;
+        const unsigned char* p = (const unsigned char*)cpx;
+        for (unsigned long i = 0; i < bytes; ++i) nz += (p[i] != 0);
+        unsigned cnz = 0;
+        for (size_t i = 0; i < d.textures[t].mirror.size(); ++i)
+          cnz += (d.textures[t].mirror[i] != 0);
+        DebugTrace("TexCheck: #%u lvl0 GPU ненулевых %u из %u, CPU %u из %u (%ux%u fmt%u mips%u)",
+                   t, nz, bytes, cnz, (unsigned)d.textures[t].mirror.size(),
+                   td.width, td.height, (unsigned)td.format, d.textures[t].mipLevels);
+        d.nvrhiDevice->unmapStagingTexture(st);
+      } else DebugTrace("TexCheck: #%u map не удалось", t);
+    } else DebugTrace("TexCheck: #%u staging не создан", t);
+  }
+  if (ctx.bytes >= kBatchBytes) SubmitThreadUpload(d, tid, "порог пакета");
+  return true;
+}
+
 HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned face,
                                     const BackendRect* pRect,
                                     ERenderLockType mode, void** ppData, unsigned* pRowPitch)
@@ -3401,6 +3753,16 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
   *ppData = 0;
   const unsigned t = Hnd2Idx(texture.p);
   if (t == kNoRes || t >= d.textures.size() || !d.textures[t].tex) return D3DERR_INVALIDCALL;
+  // пакет загрузки чужого потока закрывается на смене текстуры: загрузчик
+  // (ReadDDS.cpp FaceHolder::Fill) идёт по уровням одной текстуры подряд,
+  // поэтому «другая текстура» = конец цепочки предыдущей
+  if (GetCurrentThreadId() != d.ownerThread)
+  {
+    std::map<unsigned, NvrhiBackendImpl::ThreadUpload>::iterator it =
+        d.threadUpload.find(GetCurrentThreadId());
+    if (it != d.threadUpload.end() && it->second.entries && it->second.lastTex != t)
+      SubmitThreadUpload(d, GetCurrentThreadId(), "смена текстуры");
+  }
   NvrhiBackendImpl::TextureObj& to = d.textures[t];
   const unsigned bpp = BppOf(to.fmt);
   const unsigned bpb = BytesPerBlockOf(to.fmt);
@@ -3420,6 +3782,17 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
     snprintf(det, sizeof(det), "%s: level=%u face=%u cube=%d формат=%d цепочка=%u",
              why, level, face, (int)to.cube, (int)to.seamFormat, to.mipLevels);
     VkNote("LockTexture2D: вне Vulkan-пути", false, det);
+    // VkNote подавляет повторы (32 слота), а именно отказ в блокировке и есть
+    // кандидат на «текстура создана, но пуста» — первые 40 случаев печатаем
+    // безусловно, с RVA вызывающего.
+    static unsigned s_lockFail = 0;
+    if (s_lockFail < 40u)
+    {
+      ++s_lockFail;
+      DebugTrace("LockTexture2D: ОТКАЗ #%u #%u %ux%u fmt%d mips%u %s RVA 0x%x",
+                 s_lockFail, t, to.w, to.h, (int)to.seamFormat, to.mipLevels, det,
+                 (unsigned)((size_t)_ReturnAddress() - (size_t)GetModuleHandle(0)));
+    }
     return E_FAIL;
   }
 
@@ -3473,6 +3846,69 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
   return S_OK;
 }
 
+// Отладка (2026-10-17): дамп того, что реально уходит в GPU по writeTexture.
+// Кадр выходил чёрным при корректных привязках и корректных константах — нужно
+// отличить «текстура на GPU чёрная» (битая загрузка/формат) от «привязка/UV не
+// те». env PW_VK_TEXDUMP=<файл>: дописывается уровень 0 каждой текстуры, не
+// более kTexDumpMax записей и не более kTexDumpCap байт на запись (иначе
+// 2048x2048 DXT-цепочка съедает диск).
+static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
+                          const NvrhiBackendImpl::TextureObj& to,
+                          unsigned level, unsigned rowBytes,
+                          const void* src = 0, size_t srcSize = 0)
+{
+  static const unsigned kTexDumpMax = 600u;
+  static const size_t   kTexDumpCap = 16u * 1024u * 1024u;
+  // src: дамп идёт из очереди отложенных загрузок, где байты уровня лежат
+  // отдельно (зеркало к этому моменту уже переиспользовано следующим Lock'ом).
+  const unsigned char* psrc = src ? static_cast<const unsigned char*>(src)
+                                  : (to.mirror.empty() ? 0 : &to.mirror[0]);
+  const size_t nbytes = src ? srcSize : to.mirror.size();
+  if (d.texDumpN >= kTexDumpMax || !psrc || !nbytes) return;
+  // PW_VK_TEXDUMP_MIN=<N>: только текстуры шире N пикселей. Первые 60 записей
+  // дампа (прогон 74) оказались мелкими иконками, а в дампе с min=512 (прогон
+  // 76) 242 записи из 400 съела одна и та же 205x205 карта (перезаливается каждый
+  // кадр) — поэтому фильтр применяется к КАЖДОЙ записи (раньше — только к
+  // первой, пока не открыт файл) и добавлена дедупликация по (idx,level,размер).
+  static unsigned s_minW = 0xFFFFFFFFu;
+  if (s_minW == 0xFFFFFFFFu)
+  {
+    char mn[MAX_PATH];
+    unsigned v = 0u;
+    if (GetEnvironmentVariableA("PW_VK_TEXDUMP_MIN", mn, sizeof(mn) - 1))
+      v = (unsigned)atoi(mn);
+    s_minW = v;
+  }
+  if (to.w < s_minW) return;
+  static std::set<unsigned long long> s_seen;
+  const unsigned long long key =
+      ((unsigned long long)idx << 40) | ((unsigned long long)level << 32)
+    | ((unsigned long long)to.w << 16) | to.h;
+  if (!s_seen.insert(key).second) return;
+  if (!d.texDump)
+  {
+    char path[MAX_PATH];
+    if (!GetEnvironmentVariableA("PW_VK_TEXDUMP", path, sizeof(path) - 1)) return;
+    d.texDump = fopen(path, "wb");
+    if (!d.texDump) return;
+    fwrite("TXDP", 1, 4, d.texDump);
+    const unsigned ver = 1u;
+    fwrite(&ver, 4, 1, d.texDump);
+  }
+  const size_t n = nbytes > kTexDumpCap ? kTexDumpCap : nbytes;
+  const unsigned rec[9] = { idx, to.w, to.h, to.mipLevels,
+                            (unsigned)to.seamFormat, to.cube ? 1u : 0u,
+                            rowBytes, level, (unsigned)n };
+  fwrite(rec, 4, 9, d.texDump);
+  fwrite(psrc, 1, n, d.texDump);
+  fflush(d.texDump);
+  ++d.texDumpN;
+  char det[80];
+  snprintf(det, sizeof(det), "#%u %ux%u lvl%u формат%u байт %u",
+           idx, to.w, to.h, level, (unsigned)to.seamFormat, (unsigned)n);
+  VkNote("TexDump", false, det);
+}
+
 HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned face)
 {
   VK_API_GUARD;
@@ -3508,15 +3944,27 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
   {
     VkNoteThread(d, "UnlockTexture2D");
     to.needUpload = true;
-    to.upLevel = level; to.upFace = to.lockFace; to.upRowBytes = to.lockRowBytes;
-    if (std::find(d.pendTex.begin(), d.pendTex.end(), t) == d.pendTex.end())
-      d.pendTex.push_back(t);
+    // загрузка своим списком этого потока (см. ThreadUpload в impl): очередь
+    // «до исполнения рендер-потоком» больше не используется
+    if (!UploadTextureHere(d, GetCurrentThreadId(), t, to.lockFace, level,
+                           to.lockRowBytes))
+      return E_FAIL;
     return S_OK;
   }
   if (!EnsureRecording()) return E_FAIL;
   VK_TRACE("writeTexture >");
   d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[0], to.lockRowBytes);
+  if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes);
   VK_TRACE("writeTexture <");
+  ++to.uploads;
+  // Замер прогона 81: у ВСЕХ текстур (в том числе чёрных на GPU) загруз=1, а
+  // CPU-снимка уровня 0 по ним нет — значит единственный writeTexture ушёл на
+  // ДРУГОЙ уровень. Печатаем первый уровень каждой текстуры + RVA вызывающего.
+  if (to.uploads == 1u)
+    DebugTrace("TexUp: #%u lvl%u face%u шаг%u зеркало%zu %ux%u fmt%d mips%u RVA 0x%x",
+               t, level, to.lockFace, to.lockRowBytes, to.mirror.size(), to.w, to.h,
+               (int)to.seamFormat, to.mipLevels,
+               (unsigned)((size_t)_ReturnAddress() - (size_t)GetModuleHandle(0)));
   NoteUpload(to.mirror.size());
   return S_OK;
 }
@@ -3846,6 +4294,27 @@ static nvrhi::RasterFillMode FillOf(NvrhiBackendImpl& d, unsigned d3dFill)
   return nvrhi::RasterFillMode::Solid;
 }
 
+// ОТЛАДКА (PW_VK_SAMPLER_LOD0=1): все сэмплеры принудительно берут mip 0.
+// Причина: клиент создаёт текстуры с D3DUSAGE_AUTOGENMIPMAP, а автогенерация
+// через seam не переведена (замер прогона 58: 144 заметки), т.е. у текстур с
+// mipLevels=8..11 заполнен только уровень 0, а производные UV (вид сверху на весь
+// мир ~13650x10240 юнитов в 1024x768 пикселей) выбирают глубокий mip —
+// неинициализированный (чёрный). В Vulkan итоговый LOD = bias + производная и
+// зажимается [minLod, maxLod] = [0, VK_LOD_CLAMP_NONE], поэтому -1000 даёт ровно
+// уровень 0. Только локальный стенд, в релиз не входит.
+static bool SamplerLod0Forced()
+{
+  static int v = -1;
+  if (v < 0)
+  {
+    char b[8];
+    b[0] = 0;
+    GetEnvironmentVariableA("PW_VK_SAMPLER_LOD0", b, sizeof(b) - 1);
+    v = (b[0] == '1') ? 1 : 0;
+  }
+  return v == 1;
+}
+
 static nvrhi::SamplerAddressMode AddressOf(NvrhiBackendImpl& d, unsigned d3dAddr)
 {
   switch (d3dAddr)
@@ -3913,6 +4382,7 @@ static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned sl
   // побитовая, а не «16.16 с дробной частью в младших битах»
   const float bias = FloatBits((unsigned)s.lodBias);
   if (bias != 0.f) sd.setMipBias(bias);
+  if (SamplerLod0Forced()) sd.setMipBias(-1000.f).setMipFilter(false);
 
   nvrhi::SamplerHandle sh = d.nvrhiDevice->createSampler(sd);
   if (!sh)
@@ -4105,7 +4575,7 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
       pTex = d.textures[tex].tex;
       // Тип view обязан совпадать с тем, что объявил шейдер (VUID-...-07752):
       // D3D9 терпит «sampler2D по cube-текстуре» и наоборот, Vulkan — нет.
-      const bool wantCube = (it.dim == 4u);
+      const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
       if (wantCube != d.textures[tex].cube)
       {
         if (d.texDimMismatch < 6u)
@@ -4190,7 +4660,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   // чтобы отличить native-обёртку swapchain-изображения от обычной поверхности.
   {
     static unsigned s_fbTrace = 0u;
-    if (s_fbTrace < 12u)
+    if (VkVerbose() && s_fbTrace < 12u)
     {
       ++s_fbTrace;
       DebugTrace("VkFb: rt=%u %ux%u back=%d ds=%u dsWH=%ux%u", d.curRt,
@@ -4257,7 +4727,7 @@ void NvrhiBackend::FlushPendingUploads()
   VK_TRACE("FlushPending");
   NvrhiBackendImpl& d = *m_pImpl;
   if (!d.nvrhiDevice) return;
-  if (d.pendBuf.empty() && d.pendTex.empty() && d.pendSrf.empty()) return;
+  if (d.pendBuf.empty() && d.pendSrf.empty()) return;
   for (size_t i = 0; i < d.pendBuf.size(); ++i)
   {
     const unsigned idx = d.pendBuf[i];
@@ -4268,18 +4738,6 @@ void NvrhiBackend::FlushPendingUploads()
     if (!EnsureRecording()) return;   // NoteUpload ниже мог закрыть список
     d.commandList->writeBuffer(bo.buf, bo.cpu.data(), bo.cpu.size(), bo.off);
     NoteUpload(bo.cpu.size());
-  }
-  for (size_t i = 0; i < d.pendTex.size(); ++i)
-  {
-    const unsigned idx = d.pendTex[i];
-    if (idx >= d.textures.size()) continue;
-    NvrhiBackendImpl::TextureObj& to = d.textures[idx];
-    if (!to.needUpload || to.dead || !to.tex || to.mirror.empty()) continue;
-    to.needUpload = false;
-    if (!EnsureRecording()) return;   // NoteUpload ниже мог закрыть список
-    d.commandList->writeTexture(to.tex, to.upFace, to.upLevel, &to.mirror[0],
-                                (size_t)to.upRowBytes);
-    NoteUpload(to.mirror.size());
   }
   for (size_t i = 0; i < d.pendSrf.size(); ++i)
   {
@@ -4295,7 +4753,6 @@ void NvrhiBackend::FlushPendingUploads()
     NoteUpload(so.mirror.size());
   }
   d.pendBuf.clear();
-  d.pendTex.clear();
   d.pendSrf.clear();
 }
 
@@ -4456,6 +4913,12 @@ void NvrhiBackend::RecOpen(NvrhiBackendImpl& d)
   char rr[32];
   if (GetEnvironmentVariableA("PW_VK_RECORD_RT", rr, sizeof(rr) - 1) > 0)
     sscanf(rr, "%ux%u", &d.recRtW, &d.recRtH);
+  // пропуск первых N выводов: лимит выводов выгорает на загрузке, а нужен бой
+  // (замер: 79 записанных выводов — все MainPass_VSMain/MainPass_PSMain из
+  // экрана загрузки, боевые в запись не попали)
+  char sk[16];
+  if (GetEnvironmentVariableA("PW_VK_RECORD_SKIP", sk, sizeof(sk) - 1) > 0)
+    d.recSkip = (unsigned)atoi(sk);
   fwrite("PWRD", 1, 4, d.recFile);
   // версия 2: в LAYOUT добавлен готовый массив nvrhi-атрибутов (lo.desc),
   // в DRAW — список ресурсов набора (set/binding/kind/dim/count)
@@ -4746,8 +5209,14 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   for (unsigned i = 0; i <= maxSlot && i < kMaxVertexStreams; ++i)
   {
     if (d.instSrc != kNoRes && d.instSlot == i) continue;   // ниже добавляется инстансный
-    if (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size())
-      gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.buffers[d.vb[i]].buf)
+    // Замер 2026-10-17 (прогон 58): VUID-vkCmdBindVertexBuffers-pBuffers-04001
+    // «pBuffers[1] is VK_NULL_HANDLE» — объект буфера у клиента есть, а
+    // nvrhi-буфер у него не создан (пустое CPU-зеркало /创建 без загрузки).
+    // Проверять надо НЕ только индекс слота, но и сам handle.
+    nvrhi::BufferHandle vbh;
+    if (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size()) vbh = d.buffers[d.vb[i]].buf;
+    if (vbh)
+      gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(vbh)
                          .setSlot(i).setOffset(d.buffers[d.vb[i]].off + d.vbOffset[i]));
     else if (d.dummyVb)
     {
@@ -4762,10 +5231,13 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
                          .setSlot(i).setOffset(0));
     }
   }
-  if (d.instSrc != kNoRes && d.instSrc < d.buffers.size())
+  if (d.instSrc != kNoRes && d.instSrc < d.buffers.size() && d.buffers[d.instSrc].buf)
     gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.buffers[d.instSrc].buf)
                        .setSlot(d.instSlot).setOffset(d.buffers[d.instSrc].off + d.instOffset));
-  if (d.curIb != kNoRes && d.curIb < d.buffers.size())
+  else if (m_instanceCount && LayoutWantsInstanceStream(d) && EnsureInstCounter(d, m_instanceCount))
+    gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.instCounter)
+                       .setSlot(d.instSlot).setOffset(0));
+  if (d.curIb != kNoRes && d.curIb < d.buffers.size() && d.buffers[d.curIb].buf)
     gs.setIndexBuffer(nvrhi::IndexBufferBinding().setBuffer(d.buffers[d.curIb].buf)
                       .setOffset(d.buffers[d.curIb].off)
                       .setFormat(d.buffers[d.curIb].index32 ? nvrhi::Format::R32_UINT
@@ -4845,7 +5317,7 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // оставляет пикселей — surf#11 1024x768, 28597 выводов, 0 ненулевых). Печать
   // только первых обращений: всё, что может «съесть» геометрию, — вьюпорт,
   // сциссор, отсечение, глубина, состав атрибутов.
-  if (d.drawDiag < 6u)
+  if (VkVerbose() && d.drawDiag < 6u)
   {
     ++d.drawDiag;
     const BackendPipelineState& ms = d.model;
@@ -4904,9 +5376,11 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // чтобы повторить этот вывод нативно и открыть его в RenderDoc.
   if (d.recOn && d.recDraws < d.recMax)
   {
-    const bool rtOk = (!d.recRtW && !d.recRtH) ||
-                      (d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w == d.recRtW &&
-                       d.surfaces[d.curRt].h == d.recRtH);
+    ++d.recSeen;
+    const bool rtOk = d.recSeen > d.recSkip &&
+                      ((!d.recRtW && !d.recRtH) ||
+                       (d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w == d.recRtW &&
+                        d.surfaces[d.curRt].h == d.recRtH));
     if (rtOk) RecDraw(d, type, indexed, startIndexLocation, startVertexLocation, primitiveCount, vtx);
   }
   VK_TRACE("setGfxState >");
@@ -5258,11 +5732,17 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
         if (w[i + 1] + 1u > arrayLenId.size()) arrayLenId.resize(w[i + 1] + 1u, 0xffffffffu);
         arrayLenId[w[i + 1]] = w[i + 3];
       }
-      // OpTypeImage (25): id, sampled, dim, depth, arrayed, ...  (dim = слово 3)
+      // OpTypeImage (25): id, sampled, dim, imageFormat, depth, arrayed, ms,
+      // depthArrayed — то есть Dim лежит в w[i+3] (enum SPV: 0=1D, 1=2D, 2=3D,
+      // 3=Cube, 4=Rect, 5=Buffer, 6=SubpassData). w[i+4] — ImageFormat
+      // (обычно 0=UNKNOWN), поэтому прежняя читка давала «dim=0» у всех
+      // текстур и подмена куба не срабатывала
+      // (VUID-vkCmdDrawIndexed-viewType-07752: sampled image Set2 Binding1
+      // "envMapSampler" VkImageViewType 2D, а OpTypeImage Dim=Cube).
       if (code == 25u && wc >= 5u)
       {
         if (w[i + 1] + 1u > imgDim.size()) imgDim.resize(w[i + 1] + 1u, 0u);
-        imgDim[w[i + 1]] = w[i + 4];
+        imgDim[w[i + 1]] = w[i + 3];
       }
       // OpTypeSampledImage (27): id, базовый OpTypeImage
       if (code == 27u && wc >= 3u)
@@ -5620,6 +6100,21 @@ HRESULT NvrhiBackend::GetSurfaceInfo(HSurface surface, BackendTextureInfo* pInfo
   s = ResolveSurfaceIdx(d, s);
   if (s == kNoRes || s >= d.surfaces.size() || !d.surfaces[s].tex)
   {
+    // Разбор 2026-10-18 (прогон 100): 4226 провала за прогон, все — из
+    // BindRenderTargetDepth. Без индекса непонятно, чего не хватает: ручки нет,
+    // индекс вне диапазона или запись есть, но tex пуст.
+    static unsigned s_srfFail = 0;
+    if (s_srfFail < 12u)
+    {
+      ++s_srfFail;
+      const unsigned raw = Hnd2Idx(surface.p);
+      const bool inr = (raw != kNoRes && raw < d.surfaces.size());
+      DebugTrace("VkSrf: GetSurfaceInfo провал #%u raw=%u idx=%u size=%u %s",
+                 s_srfFail, raw, s, (unsigned)d.surfaces.size(),
+                 !inr ? "вне диапазона"
+                      : (d.surfaces[raw].dead ? "запись dead"
+                                              : (d.surfaces[raw].tex ? "tex есть?!" : "tex пуст")));
+    }
     NoteForeign("GetSurfaceInfo: ручка не из этого бэкенда", surface.p, _ReturnAddress());
     return E_FAIL;
   }
@@ -5928,6 +6423,172 @@ HRESULT NvrhiBackend::ColorFill(HSurface surface, unsigned colorRGBA)
 // живом клиенте такого вызова нет (renderer.cpp:955 и rendersurface.cpp:129
 // зовут с пустыми прямоугольниками, цепочка mip переехала в
 // D3D9Backend::GenerateMipmaps), поэтому оставлен явный отказ с логом.
+// --- Внутренний блит со скейлом (StretchRect) --------------------------------
+// Квад по прямоугольнику приёмника: позиция идёт из VB уже в clip space (считает
+// CPU), PS делает одну выборку из источника по UV прямоугольника. Ориентация —
+// как у клиента (py=0 -> верхний край, y_clip = 1 - 2*py/H), вьюпорт — вся
+// поверхность приёмника, глубина/трафарет/отсечение выключены.
+static bool EnsureStretch(NvrhiBackendImpl& d)
+{
+  if (d.stretchVs && d.stretchPs && d.stretchIl && d.stretchVb
+      && d.stretchLayTex && d.stretchLaySmp
+      && d.stretchSmp[0] && d.stretchSmp[1]) return true;
+  if (d.stretchFailed || !d.nvrhiDevice) { d.stretchFailed = true; return false; }
+  d.stretchVs = d.nvrhiDevice->createShader(
+      nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Vertex).setEntryName("main"),
+      kStretchVsSpv, kStretchVsSpvSize);
+  d.stretchPs = d.nvrhiDevice->createShader(
+      nvrhi::ShaderDesc().setShaderType(nvrhi::ShaderType::Pixel).setEntryName("main"),
+      kStretchPsSpv, kStretchPsSpvSize);
+  // location NVRHI назначает по порядку массива (см. комментарий в
+  // BuildInputLayout) — порядок обязан совпасть с SPIR-V: POSITION0=0, TEXCOORD0=1
+  std::vector<nvrhi::VertexAttributeDesc> vads;
+  nvrhi::VertexAttributeDesc a;
+  a.setName("POSITION").setFormat(nvrhi::Format::RG32_FLOAT).setOffset(0u)
+   .setElementStride(16u).setBufferIndex(0u).setIsInstanced(false);
+  vads.push_back(a);
+  a.setName("TEXCOORD").setFormat(nvrhi::Format::RG32_FLOAT).setOffset(8u)
+   .setElementStride(16u).setBufferIndex(0u).setIsInstanced(false);
+  vads.push_back(a);
+  d.stretchIl = d.nvrhiDevice->createInputLayout(vads.data(), (uint32_t)vads.size(), d.stretchVs);
+  d.stretchVb = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+      .setByteSize(6u * 4u * sizeof(float)).setIsVertexBuffer(true)
+      .setInitialState(nvrhi::ResourceStates::VertexBuffer).setKeepInitialState(true)
+      .setDebugName("seam stretch vb"));
+  // mipmap-фильтр везде выключен: у поверхности-приёмника уровней может не быть,
+  // а линейный фильтр по уровням читал бы незагруженные mip
+  nvrhi::SamplerDesc sd;
+  sd.setAddressU(nvrhi::SamplerAddressMode::Clamp).setAddressV(nvrhi::SamplerAddressMode::Clamp)
+    .setAddressW(nvrhi::SamplerAddressMode::Clamp).setMipFilter(false);
+  d.stretchSmp[0] = d.nvrhiDevice->createSampler(nvrhi::SamplerDesc(sd).setMinFilter(true).setMagFilter(true));
+  d.stretchSmp[1] = d.nvrhiDevice->createSampler(nvrhi::SamplerDesc(sd).setMinFilter(false).setMagFilter(false));
+  {
+    const nvrhi::VulkanBindingOffsets bo = nvrhi::VulkanBindingOffsets()
+        .setShaderResourceOffset(0).setSamplerOffset(0)
+        .setConstantBufferOffset(0).setUnorderedAccessViewOffset(0);
+    nvrhi::BindingLayoutDesc ld;
+    ld.visibility = nvrhi::ShaderType::Pixel;
+    ld.setRegisterSpaceAndDescriptorSet(0);
+    ld.bindingOffsets = bo;
+    ld.bindings.push_back(nvrhi::BindingLayoutItem::Texture_SRV(0));
+    d.stretchLayTex = d.nvrhiDevice->createBindingLayout(ld);
+    nvrhi::BindingLayoutDesc ls;
+    ls.visibility = nvrhi::ShaderType::Pixel;
+    ls.setRegisterSpaceAndDescriptorSet(1);
+    ls.bindingOffsets = bo;
+    ls.bindings.push_back(nvrhi::BindingLayoutItem::Sampler(0));
+    d.stretchLaySmp = d.nvrhiDevice->createBindingLayout(ls);
+  }
+  if (!d.stretchVs || !d.stretchPs || !d.stretchIl || !d.stretchVb
+      || !d.stretchSmp[0] || !d.stretchSmp[1] || !d.stretchLayTex || !d.stretchLaySmp)
+  {
+    d.stretchFailed = true;
+    VkNote("Stretch: инициализация внутреннего блита", false, 0);
+    return false;
+  }
+  DebugTrace("VkStretch: внутренний блит заведён (vs %u Б, ps %u Б)",
+             kStretchVsSpvSize, kStretchPsSpvSize);
+  return true;
+}
+
+static std::pair<nvrhi::FramebufferHandle, nvrhi::GraphicsPipelineHandle>
+GetStretchPipe(NvrhiBackendImpl& d, unsigned dIdx, unsigned fidx)
+{
+  const unsigned long long key = ((unsigned long long)dIdx << 1) | fidx;
+  for (size_t i = 0; i < d.stretchPipes.size(); ++i)
+    if (d.stretchPipes[i].first == key) return d.stretchPipes[i].second;
+  if (d.stretchPipes.size() > 256u)
+  {
+    d.stretchPipes.clear();
+    VkNote("stretchPipes очищен (>256)", true, 0);
+  }
+  nvrhi::FramebufferDesc fbd;
+  fbd.addColorAttachment(d.surfaces[dIdx].tex);
+  nvrhi::FramebufferHandle fb = d.nvrhiDevice->createFramebuffer(fbd);
+  if (!fb)
+  {
+    VkNote("Stretch: createFramebuffer", false, 0);
+    return std::make_pair(nvrhi::FramebufferHandle(), nvrhi::GraphicsPipelineHandle());
+  }
+  nvrhi::GraphicsPipelineDesc pd;
+  pd.setPrimType(nvrhi::PrimitiveType::TriangleList).setInputLayout(d.stretchIl)
+    .setVertexShader(d.stretchVs).setPixelShader(d.stretchPs);
+  pd.renderState.rasterState.setFrontCounterClockwise(true)
+    .setCullMode(nvrhi::RasterCullMode::None).setScissorEnable(false);
+  pd.renderState.depthStencilState.setDepthTestEnable(false).setDepthWriteEnable(false)
+    .setStencilEnable(false);
+  // порядок addBindingLayout обязан совпадать с порядком addBindingSet в GraphicsState
+  pd.addBindingLayout(d.stretchLayTex);
+  pd.addBindingLayout(d.stretchLaySmp);
+  nvrhi::GraphicsPipelineHandle pipe = d.nvrhiDevice->createGraphicsPipeline(pd, fb->getFramebufferInfo());
+  if (!pipe)
+  {
+    VkNote("Stretch: createGraphicsPipeline", false, 0);
+    return std::make_pair(nvrhi::FramebufferHandle(), nvrhi::GraphicsPipelineHandle());
+  }
+  d.stretchPipes.push_back(std::make_pair(key, std::make_pair(fb, pipe)));
+  return d.stretchPipes.back().second;
+}
+
+static bool StretchBlit(NvrhiBackendImpl& d, unsigned sIdx, long sx, long sy, long sw, long sh,
+                        unsigned dIdx, long dx, long dy, long dw, long dh, unsigned fidx)
+{
+  if (!EnsureStretch(d)) return false;
+  const float W = (float)d.surfaces[dIdx].w, H = (float)d.surfaces[dIdx].h;
+  const float SW = (float)d.surfaces[sIdx].w, SH = (float)d.surfaces[sIdx].h;
+  if (W <= 0.f || H <= 0.f || SW <= 0.f || SH <= 0.f) return false;
+  const float x0 = 2.f * (float)dx / W - 1.f, x1 = 2.f * (float)(dx + dw) / W - 1.f;
+  const float y0 = 1.f - 2.f * (float)dy / H, y1 = 1.f - 2.f * (float)(dy + dh) / H;
+  const float u0 = (float)sx / SW, u1 = (float)(sx + sw) / SW;
+  const float v0 = (float)sy / SH, v1 = (float)(sy + sh) / SH;
+  const float verts[6][4] = {
+    { x0, y0, u0, v0 }, { x1, y0, u1, v0 }, { x1, y1, u1, v1 },
+    { x0, y0, u0, v0 }, { x1, y1, u1, v1 }, { x0, y1, u0, v1 }
+  };
+  const unsigned long long bkey = ((unsigned long long)sIdx << 24)
+                                | ((unsigned long long)dIdx << 8) | fidx;
+  if (d.stretchBsKey != bkey || !d.stretchBsTex || !d.stretchBsSmp)
+  {
+    nvrhi::BindingSetDesc bsd;
+    bsd.bindings.push_back(nvrhi::BindingSetItem::Texture_SRV(0, d.surfaces[sIdx].tex));
+    nvrhi::BindingSetHandle texSet = d.nvrhiDevice->createBindingSet(bsd, d.stretchLayTex);
+    nvrhi::BindingSetDesc bsd2;
+    bsd2.bindings.push_back(nvrhi::BindingSetItem::Sampler(0, d.stretchSmp[fidx]));
+    nvrhi::BindingSetHandle smpSet = d.nvrhiDevice->createBindingSet(bsd2, d.stretchLaySmp);
+    if (!texSet || !smpSet)
+    {
+      d.stretchBsKey = 0;
+      d.stretchBsTex = nvrhi::BindingSetHandle();
+      d.stretchBsSmp = nvrhi::BindingSetHandle();
+      VkNote("Stretch: createBindingSet", false, 0);
+      return false;
+    }
+    d.stretchBsTex = texSet;
+    d.stretchBsSmp = smpSet;
+    d.stretchBsKey = bkey;
+  }
+  std::pair<nvrhi::FramebufferHandle, nvrhi::GraphicsPipelineHandle> p =
+      GetStretchPipe(d, dIdx, fidx);
+  if (!p.second) return false;
+  d.commandList->writeBuffer(d.stretchVb, verts, sizeof(verts));
+  nvrhi::GraphicsState gs;
+  gs.setPipeline(p.second).setFramebuffer(p.first);
+  gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.stretchVb)
+                     .setSlot(0).setOffset(0));
+  gs.addBindingSet(d.stretchBsTex);
+  gs.addBindingSet(d.stretchBsSmp);
+  nvrhi::ViewportState vps;
+  vps.addViewportAndScissorRect(nvrhi::Viewport(0.f, W, 0.f, H, 0.f, 1.f));
+  gs.setViewport(vps);
+  d.commandList->setGraphicsState(gs);
+  d.commandList->draw(nvrhi::DrawArguments().setVertexCount(6));
+  ++d.stretchBlits;
+  if (d.stretchBlits <= 6u)
+    DebugTrace("VkStretch: #%u %ldx%ld -> %ldx%ld (src %u, dst %u, фильтр %u)",
+               d.stretchBlits, sw, sh, dw, dh, sIdx, dIdx, fidx);
+  return true;
+}
+
 HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSurface dst,
                                   const BackendRect* pDstRect, EBackendFilter filter)
 {
@@ -5948,9 +6609,19 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
                   dw = pDstRect->right - pDstRect->left; dh = pDstRect->bottom - pDstRect->top; }
   if (sw != dw || sh != dh)
   {
+    // copyTexture скейла не умеет — рисуется внутренний квад-блит (EnsureStretch).
+    // Отказ прежней версии (E_FAIL) ронял цепочку mip у AUTOGENMIPMAP, водяную
+    // карту и пост-эффекты (замер: 7566 провала за прогон).
+    if (!EnsureRecording()) return E_FAIL;
+    if (StretchBlit(d, sIdx, sx, sy, sw, sh, dIdx, dx, dy, dw, dh,
+                    (filter == IRenderBackend::bfPoint) ? 1u : 0u)) return S_OK;
     char det[96];
     snprintf(det, sizeof(det), "%ldx%ld -> %ldx%ld (фильтр %d)", sw, sh, dw, dh, (int)filter);
-    VkNote("StretchRect: скейл через seam не переведён", false, det);
+    if (d.stretchScaleFail < 8u)
+    {
+      ++d.stretchScaleFail;
+      VkNote("StretchRect: скейл не выполнен", false, det);
+    }
     return E_FAIL;
   }
   if (sw <= 0 || sh <= 0) return D3DERR_INVALIDCALL;
@@ -6684,6 +7355,123 @@ static void PutLE32(unsigned char* p, unsigned v)
 // Композит клиента — экран-квад, сэмплирующий главный RT сцены; если сцена
 // чёрная, чёрным будет и кадр, хотя сам композит исправен. Readback — прямой
 // (RawReadback), временные ручки не создаём, чтобы не трогать владение.
+//////////////////////////////////////////////////////////////////////////
+// Отладка 2026-10-18: GPU-снимок текстур. TexDumpLevel0 пишет то, что клиент
+// отдал в загрузку (CPU-зеркало), но это НЕ доказывает, что данные легли в
+// VkImage. env PW_VK_TEXGPU=<файл>: на кадре PW_VK_SHOT каждая текстура с
+// шириной >= PW_VK_TEXDUMP_MIN копируется в staging-текстуру, читается на CPU
+// и пишется в файл в том же формате, что TXDP, но с магией TXGP и ФАКТИЧЕСКИМ
+// шагом строки. Сравнение одной и той же (idx,w,h,fmt) в TXDP и TXGP отвечает
+// на вопрос «текстура на GPU чёрная» (загрузка битая) vs «выборка не та».
+void NvrhiBackend::TexGpuDump()
+{
+  VK_API_GUARD;
+  NvrhiBackendImpl& d = *m_pImpl;
+  // лимит и фильтр: по умолчанию читаем обратно ТОЛЬКО настоящие текстуры
+  // (mipLevels >= 2): поверхности/RT (mips=1) затопили бы дамп первыми 60
+  // записями и до боевых DXT-диффузов (индексы 2600+) дело не дошло (замер
+  // прогона 79). PW_VK_TEXGPU_ALL=1 — читать всё, PW_VK_TEXGPU_MAX=<N> — лимит.
+  char num[64];
+  num[0] = 0;
+  unsigned kMax = 200u;
+  if (GetEnvironmentVariableA("PW_VK_TEXGPU_MAX", num, sizeof(num) - 1) && num[0]) kMax = (unsigned)atoi(num);
+  char all[16];
+  all[0] = 0;
+  const bool allTex = GetEnvironmentVariableA("PW_VK_TEXGPU_ALL", all, sizeof(all) - 1) != 0;
+  // диапазон индексов шва: CPU-дамп (TXDP) покрывает текстуры 2300+, а обход
+  // с лимитом 200 записей останавливается на ~438 — сравнить нечего. Задав
+  // PW_VK_TEXGPU_FROM/TO, читаем обратно ровно те объекты, по которым есть
+  // CPU-снимок.
+  unsigned fromIdx = 0, toIdx = 0xFFFFFFFFu;
+  num[0] = 0;
+  if (GetEnvironmentVariableA("PW_VK_TEXGPU_FROM", num, sizeof(num) - 1) && num[0]) fromIdx = (unsigned)atoi(num);
+  num[0] = 0;
+  if (GetEnvironmentVariableA("PW_VK_TEXGPU_TO", num, sizeof(num) - 1) && num[0]) toIdx = (unsigned)atoi(num);
+  char path[512];
+  path[0] = 0;
+  if (!GetEnvironmentVariableA("PW_VK_TEXGPU", path, sizeof(path) - 1)) return;
+  if (!d.nvrhiDevice) return;
+  char mn[64];
+  mn[0] = 0;
+  unsigned minW = 0;
+  if (GetEnvironmentVariableA("PW_VK_TEXDUMP_MIN", mn, sizeof(mn) - 1)) minW = (unsigned)atoi(mn);
+  FILE* f = fopen(path, "wb");
+  if (!f) { DebugTrace("TexGpuDump: %s не открывается", path); return; }
+  fwrite("TXGP", 1, 4, f);
+  const unsigned ver = 1u;
+  fwrite(&ver, 4, 1, f);
+  unsigned n = 0;
+  for (unsigned i = 0; i < d.textures.size() && n < kMax; ++i)
+  {
+    NvrhiBackendImpl::TextureObj& to = d.textures[i];
+    if (!to.tex || to.dead || to.w < minW) continue;
+    if (i < fromIdx || i > toIdx) continue;
+    if (!allTex && to.mipLevels < 2u) continue;
+    const nvrhi::TextureDesc td = to.tex->getDesc();
+    nvrhi::StagingTextureHandle st = d.nvrhiDevice->createStagingTexture(
+        nvrhi::TextureDesc().setDimension(nvrhi::TextureDimension::Texture2D)
+                            .setWidth(td.width).setHeight(td.height).setFormat(td.format)
+                            .setMipLevels(1)
+                            .setInitialState(nvrhi::ResourceStates::CopyDest)
+                            .setKeepInitialState(true)
+                            .setDebugName("seam tex gpu readback"),
+        nvrhi::CpuAccessMode::Read);
+    if (!st) { DebugTrace("TexGpuDump: #%u staging не создан", i); continue; }
+    // PW_VK_TEXGPU_IMM=1 — читать обратно отдельным командным списком
+    // (как TexCheck), а не общим списком рендера. Замер прогона 94: TexCheck
+    // сразу после загрузки lvl0 даёт GPU==CPU (#101 mips8: 29817/31136), а
+    // снимок на кадре 2000 через d.commandList — нули. Разделяет «данные
+    // затёрты» и «снимок через список рендера нечитаем».
+    static bool immMode = false;
+    static bool immInit = false;
+    if (!immInit)
+    {
+      immInit = true;
+      char im[8]; im[0] = 0;
+      immMode = GetEnvironmentVariableA("PW_VK_TEXGPU_IMM", im, sizeof(im) - 1) != 0;
+    }
+    if (immMode)
+    {
+      FlushRecording();   // неотправленные команды рендера обязаны уйти раньше снимка
+      nvrhi::CommandListHandle cl = d.nvrhiDevice->createCommandList(
+          nvrhi::CommandListParameters().setEnableImmediateExecution(false));
+      if (!cl) { DebugTrace("TexGpuDump: #%u список не создан", i); continue; }
+      cl->open();
+      cl->copyTexture(st, nvrhi::TextureSlice(), to.tex, nvrhi::TextureSlice());
+      cl->close();
+      d.nvrhiDevice->executeCommandList(cl);
+      d.nvrhiDevice->waitForIdle();
+    }
+    else
+    {
+    if (!EnsureRecording()) { fclose(f); return; }
+    d.commandList->copyTexture(st, nvrhi::TextureSlice(), to.tex, nvrhi::TextureSlice());
+    FlushRecording();
+    d.nvrhiDevice->waitForIdle();
+    }
+    size_t pitch = 0;
+    void* px = d.nvrhiDevice->mapStagingTexture(st, nvrhi::TextureSlice(),
+                                                nvrhi::CpuAccessMode::Read, &pitch);
+    if (!px) { DebugTrace("TexGpuDump: #%u map не удалось", i); continue; }
+    const bool comp = (td.format >= nvrhi::Format::BC1_UNORM &&
+                       td.format <= nvrhi::Format::BC7_UNORM);
+    const unsigned rows = comp ? ((td.height + 3u) / 4u) : td.height;
+    const unsigned long bytes = (unsigned long)pitch * rows;
+    const unsigned hdr[9] = { i, td.width, td.height, to.mipLevels,
+                              (unsigned)to.seamFormat, to.cube ? 1u : 0u,
+                              (unsigned)pitch, 0u, bytes };
+    fwrite(hdr, 4, 9, f);
+    fwrite(px, 1, bytes, f);
+    d.nvrhiDevice->unmapStagingTexture(st);
+    ++n;
+    DebugTrace("TexGpuDump: #%u %ux%u fmt%u mips%u шаг %u байт %u загруз=%u",
+               i, td.width, td.height, (unsigned)to.seamFormat, to.mipLevels,
+               (unsigned)pitch, bytes, to.uploads);
+  }
+  fclose(f);
+  DebugTrace("TexGpuDump: записей %u (%s)", n, path);
+}
+
 void NvrhiBackend::ProbeFrameSurfaces()
 {
   VK_API_GUARD;
@@ -6727,7 +7515,7 @@ void NvrhiBackend::ProbeFrameSurfaces()
   // Проверка самого readback: заливаем крупнейшую offscreen-поверхность зелёным
   // и читаем обратно. Если зелёный виден — readback исправен и вывод действительно
   // не оставляет пикселей; если нет — врёт readback, а не вывод.
-  if ((d.shotProbe == 1u || d.shotProbe == 4u) && !byDraws.empty())
+  if ((d.shotProbe == 1u || d.shotProbe == 4u || d.shotProbe == 7u) && !byDraws.empty())
   {
     const unsigned i = byDraws[0].second;      // крупнейший получатель выводов
     SurfaceObj& so = d.surfaces[i];

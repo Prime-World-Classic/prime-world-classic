@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BR = os.path.abspath(os.path.join(HERE, "..", "..", "pw", "branches", "r1117"))
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..", "shader_build")))
 import dxcdrv  # noqa: E402
+import spirv_iface  # noqa: E402
 
 PORT = os.path.join(BR, "Data", "Shaders", "OnlineShaders", "port")
 OUT_DIR = os.path.join(BR, "Data", "Shaders", "OnlineShaders")
@@ -116,6 +117,19 @@ def main():
                 os.remove(tmp)
             continue
         data = open(tmp, "rb").read()
+        # DXC трактует mul(v,M)/mul(M,v) как транспонированную матрицу
+        # относительно DXBC (замеры — в spirv_iface.fix_matrix_mult); порт
+        # написан в строчной конвенции (dp4 r, r0, c4..c7), поэтому правим.
+        flipped, nflip = spirv_iface.fix_matrix_mult(data)
+        if nflip:
+            okv, verr = spirv_iface.validate(flipped)
+            if not okv:
+                print("!! %s: правка матричных умножений (%d) не прошла "
+                      "валидацию: %s" % (src, nflip, verr.strip()[:300]))
+                bad += 1
+                os.remove(tmp)
+                continue
+            data = flipped
         info = scan(data)
         if not info:
             print("!! %s: SPIR-V не разобран" % src)
@@ -129,8 +143,10 @@ def main():
                   % (src, "BuiltIn Position" if need_pos else "BuiltIn FragCoord"))
             bad += 1
         os.replace(tmp, out)
-        print("%-24s -> %-28s %6d Б  entry=%s  наборы=%s  builtins=%s"
-              % (src, blob + ".spv", len(data), ent, pairs, sorted(builtins)))
+        print("%-24s -> %-28s %6d Б  entry=%s  наборы=%s  builtins=%s  "
+              "матричных правок %d"
+              % (src, blob + ".spv", len(data), ent, pairs, sorted(builtins),
+                 nflip))
         if msg.strip():
             print("   сообщения DXC: %s" % msg.strip()[:300])
     print("итог: %d файлов, ошибок %d" % (len(JOBS), bad))

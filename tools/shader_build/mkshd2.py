@@ -63,10 +63,12 @@ import json
 import os
 import struct
 import sys
+import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import dxcdrv                                           # noqa: E402
+import spirv_iface                                      # noqa: E402
 
 TAG_SM3, TAG_DXBC_SM5, TAG_SPIRV = 0, 1, 2
 TAG_NAME = {TAG_SM3: "sm3", TAG_DXBC_SM5: "dxbc_sm5", TAG_SPIRV: "spirv"}
@@ -171,6 +173,14 @@ class TargetSection:
         return bytes(out)
 
 
+def hsv_rgb(h, s=1.0, v=1.0):
+    """HSV -> (r,g,b) 0..1 — палитра для пробы «цвет по паре»."""
+    i = int(h * 6.0) % 6
+    f = h * 6.0 - int(h * 6.0)
+    p, q, t = v * (1 - s), v * (1 - f * s), v * (1 - (1 - f) * s)
+    return [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)][i]
+
+
 def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
           log):
     raw = strip_trailer(open(path, "rb").read())
@@ -182,6 +192,8 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
     src = os.path.join(dxcdrv.SH, os.path.basename(path)[:-4] + ".hlsl")
 
     sections = {t: TargetSection(t) for t in targets if t != TAG_SM3}
+    compiled = []
+    name = os.path.basename(path)[:-4]
 
     stats = {}
     bank_stats = {}
@@ -189,8 +201,7 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
         decoded = dxcdrv.decode_index(index, pins)
         if decoded is None:
             log("  !! %s: индекс %d вне пространства пинов" % (path, index))
-            for sec in sections.values():
-                sec.add(index, None, None)
+            compiled.append((index, None, None))
             continue
         defines = ["%s=%d" % (n, v) for n, v in decoded] + [MODERN_DEFINE] + \
             extra_defines
@@ -210,9 +221,299 @@ def build(path, live_indices, pins, out_path, targets, tree, extra_defines,
             if tree is not None and getattr(tree, "bank_members", None):
                 bank_stats.setdefault(index, {})[stage] = len(tree.bank_members)
             blobs[stage] = open(spv, "rb").read()
-        for sec in sections.values():
-            sec.add(index, blobs.get("vs"), blobs.get("ps"))
+        compiled.append((index, blobs.get("vs"), blobs.get("ps")))
         stats[index] = [(len(blobs.get("vs") or b"")), (len(blobs.get("ps") or b""))]
+
+    # --- канонические location varying-ей (шаг 12.1) -----------------------
+    # DXC назначает location каждому шейдеру по порядку полей структуры, поэтому
+    # у пары VS/PS один семантик лежит на разных location (в валидаторе —
+    # VUID-RuntimeSpirv-OpEntryPoint-08743; у VS остаются дырки, которых нет в
+    # вершинной декларации — VUID-...-Input-07904). D3D9 связывает пару по ИМЕНИ
+    # семантики, Vulkan — по LOCATION, так что связку восстанавливаем здесь:
+    # одна карта на контейнер, применяется ко всем SPIR-V-блобам до записи.
+    # Клиент location не хардкодит (layout строится по SPIR-V), поэтому
+    # перестановка безопасна и для вершинных атрибутов.
+    if TAG_SPIRV in sections:
+        sem = set()
+        for _index, vs, ps in compiled:
+            for b in (vs, ps):
+                if b is None:
+                    continue
+                r, err = spirv_iface.interface_vars(b)
+                if r is None:
+                    log("  !! %s: SPIR-V не разобран: %s" % (name, err))
+                    continue
+                sem |= {v[1] for v in r[1] if not v[1].startswith("SV_")}
+        locmap = spirv_iface.build_loc_map(sem)
+        log("  канонические location (%d семантик): %s"
+            % (len(locmap), ",".join("%s=%d" % kv for kv in
+                                     sorted(locmap.items(),
+                                           key=lambda kv: kv[1]))))
+        cache = {}
+        moved = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            new = []
+            for b in (vs, ps):
+                if b is None:
+                    new.append(None)
+                    continue
+                if b not in cache:
+                    aligned, ch = spirv_iface.remap_locations(b, locmap)
+                    if aligned is None:
+                        log("  !! %s #%d: %s — блок без выравнивания"
+                            % (name, index, ch))
+                        cache[b] = b
+                    else:
+                        bad = spirv_iface.check_collisions(
+                            aligned, "%s #%d" % (name, index))
+                        ok, err = spirv_iface.validate(aligned)
+                        if bad or not ok:
+                            log("  !! %s #%d после выравнивания: %s %s"
+                                % (name, index, ";".join(bad), err))
+                            cache[b] = b
+                        else:
+                            if ch:
+                                moved += 1
+                            cache[b] = aligned
+                new.append(cache[b])
+            compiled[i] = (index, new[0], new[1])
+        log("  выровнено блоков: %d из %d" % (moved, len(cache)))
+
+    # --- порядок матричных умножений (шаг 12.1) -----------------------------
+    # DXC (-spirv -Zpr) трактует раскладку матриц в c-банке транспонированно
+    # к DXBC (проверено на паре a.hlsl/b.hlsl обоими компиляторами: fxc даёт
+    # dp4 o, v, c0..c3, DXC — OpMatrixTimesVector). Лечится перестановкой
+    # операндов во всех матричных умножениях (spirv_iface.fix_matrix_mult).
+    if TAG_SPIRV in sections:
+        mcache = {}
+        fixed = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            new = []
+            for b in (vs, ps):
+                if b is None:
+                    new.append(None)
+                    continue
+                if b not in mcache:
+                    patched, n = spirv_iface.fix_matrix_mult(b)
+                    if n:
+                        ok, err = spirv_iface.validate(patched)
+                        if not ok:
+                            log("  !! %s #%d: перестановка матриц не прошла "
+                                "spirv-val: %s — блок без правки" % (name, index, err))
+                            mcache[b] = b
+                        else:
+                            fixed += n
+                            mcache[b] = patched
+                    else:
+                        mcache[b] = b
+                new.append(mcache[b])
+            compiled[i] = (index, new[0], new[1])
+        if fixed:
+            log("  переставлено матричных умножений (VTM<->MTV): %d" % fixed)
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_COLOR=1): PS пишет константный цвет ------
+    # Разделяет «геометрия не доходит до растра» (кадр всё равно пустой) и
+    # «геометрия есть, но PS даёт чёрный» (кадр становится однотонным по форме
+    # сцены). Режим =2: цвет свой у каждой пары (контейнер+индекс) — снимок
+    # показывает, КАКОЙ МАТЕРИАЛ какие пиксели закрывает (при =1 все пары
+    # красные и это неразличимо). Только локальный стенд, в контент не коммитить.
+    # Фильтр проб: MKSHD2_PROBE_ONLY="FullScreenMaterial,UIFlash" — патчить PS
+    # только перечисленных контейнеров (по подстроке имени). Без него проба
+    # перекрывает собой весь кадр и вклад отдельных проходов неразличим.
+    def probe_sel(tag):
+        """Фильтр конкретной пробы: MKSHD2_PROBE_ONLY_<TAG>, иначе общий."""
+        pon = [s.strip() for s in
+               os.environ.get("MKSHD2_PROBE_ONLY_" + tag,
+                              os.environ.get("MKSHD2_PROBE_ONLY", "")).split(",")
+               if s.strip()]
+        inc = [s for s in pon if not s.startswith("!")]
+        exc = [s[1:] for s in pon if s.startswith("!")]
+        hit = (not inc) or any(s in name for s in inc)
+        return hit and not any(s in name for s in exc)
+    # MKSHD2_PROBE_WHICH=first|last — какую выборку показывать (у
+    # FullScreenMaterial первая = diffuseMap = сцена, последняя = warFog).
+    pwhich = os.environ.get("MKSHD2_PROBE_WHICH", "first")
+
+    fmode = os.environ.get("MKSHD2_FORCE_PS_COLOR", "0")
+    if TAG_SPIRV in sections and probe_sel("COLOR") and fmode in ("1", "2"):
+        fcache = {}
+        forced = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in fcache:
+                rgba = (1.0, 0.0, 0.0, 1.0)
+                if fmode == "2":
+                    # цвет по паре: контейнер задаёт тон, индекс пары — оттенок
+                    h = ((zlib.crc32(name.encode()) % 360) / 360.0 * 0.11
+                         + (index * 0.1145)) % 1.0
+                    rgba = tuple(hsv_rgb(h, 0.95, 0.95)) + (1.0,)
+                    lg = os.environ.get("MKSHD2_LEGEND",
+                                        os.path.join(os.environ.get("MKSHD2_OUT", "."),
+                                                     "legend.txt"))
+                    try:
+                        with open(lg, "a") as fh:
+                            fh.write("%s#%d %02x%02x%02x\n" % (
+                                name, index,
+                                int(rgba[0] * 255), int(rgba[1] * 255), int(rgba[2] * 255)))
+                    except OSError:
+                        pass
+                patched, n = spirv_iface.force_ps_color(ps, rgba)
+                if patched is None:
+                    log("  !! %s #%d: force_ps_color: %s" % (name, index, n))
+                    fcache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    if not ok:
+                        log("  !! %s #%d: force_ps_color не прошёл spirv-val: %s"
+                            % (name, index, err[:120]))
+                        fcache[ps] = ps
+                    else:
+                        forced += 1
+                        fcache[ps] = patched
+            compiled[i] = (index, vs, fcache[ps])
+        if forced:
+            log("  !! ОТЛАДКА: PS залит константным цветом в %d блоках" % forced)
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_SAMPLE=1): PS пишет цвет ПЕРВОЙ выборки ---
+    # Если кадр показывает текстуры — путь текстур рабочий, а чёрный даёт
+    # освещение/константы; если кадр чёрный — чёрные сами текстуры.
+    if TAG_SPIRV in sections and probe_sel("SAMPLE") and os.environ.get("MKSHD2_FORCE_PS_SAMPLE") == "1":
+        scache = {}
+        shown = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in scache:
+                patched, n = spirv_iface.force_ps_sample(ps, which=pwhich)
+                if patched is None:
+                    scache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    scache[ps] = patched if ok else ps
+                    if not ok:
+                        log("  !! %s #%d: force_ps_sample не прошёл spirv-val: %s"
+                            % (name, index, err[:100]))
+                    else:
+                        shown += 1
+            compiled[i] = (index, vs, scache[ps])
+        if shown:
+            log("  !! ОТЛАДКА: PS выводит выборку из текстуры в %d блоках" % shown)
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_VARYING=1): PS пишет первый varying ------
+    # Чёрный кадр => сломан интерфейс VS->PS; цветной => varying-ы в порядке.
+    if TAG_SPIRV in sections and probe_sel("VARYING") and os.environ.get("MKSHD2_FORCE_PS_VARYING") == "1":
+        vcache = {}
+        vshown = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in vcache:
+                patched, n = spirv_iface.force_ps_varying(
+                    ps, which=int(os.environ.get("MKSHD2_PROBE_VARYING_IDX", "0")))
+                if patched is None:
+                    vcache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    vcache[ps] = patched if ok else ps
+                    if ok:
+                        vshown += 1
+                    else:
+                        log("  !! %s #%d: force_ps_varying не прошёл spirv-val: %s"
+                            % (name, index, err[:100]))
+            compiled[i] = (index, vs, vcache[ps])
+        if vshown:
+            log("  !! ОТЛАДКА: PS выводит varying в %d блоках" % vshown)
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_BANK=1): PS пишет член c-банка ----------
+    # Последние три пробы (константа / varying / выборка текстуры) цветные, а
+    # полный PS даёт чёрный -> непроверенной осталась только доставка констант:
+    # если кадр с этой пробой цветной (для BasicMaterial первый float4-член банка
+    # PS = ambientColor 0,6 -> серый), UBO константов доходит до шейдера.
+    if TAG_SPIRV in sections and probe_sel("BANK") and os.environ.get("MKSHD2_FORCE_PS_BANK") == "1":
+        bcache = {}
+        bshown = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in bcache:
+                patched, info = spirv_iface.force_ps_bank(ps)
+                if patched is None:
+                    bcache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    bcache[ps] = patched if ok else ps
+                    if ok:
+                        bshown += 1
+                    else:
+                        log("  !! %s #%d: force_ps_bank не прошёл spirv-val: %s"
+                            % (name, index, err[:100]))
+            compiled[i] = (index, vs, bcache[ps])
+        if bshown:
+            log("  !! ОТЛАДКА: PS выводит член c-банка в %d блоках" % bshown)
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_SAMPLE_AT=<u>,<v>): PS пишет выборку из ----
+    # текстуры в ФИКСИРОВАННОЙ точке UV. Снимает с проверки координаты: чёрный
+    # и здесь -> чёрная сама текстура на GPU (загрузка/привязка), цветной ->
+    # сломан путь UV. Фильтр материалов: MKSHD2_PROBE_ONLY_SAMPLE_AT.
+    sat = os.environ.get("MKSHD2_FORCE_PS_SAMPLE_AT", "")
+    if TAG_SPIRV in sections and sat and probe_sel("SAMPLE_AT"):
+        uv = tuple(x.strip() for x in sat.split(","))[:2]
+        if len(uv) < 2:
+            uv = (uv[0] if uv else "0.5", "0.5")
+        acache = {}
+        ashown = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in acache:
+                patched, info = spirv_iface.force_ps_sample_at(ps, uv)
+                if patched is None:
+                    acache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    acache[ps] = patched if ok else ps
+                    if ok:
+                        ashown += 1
+                    else:
+                        log("  !! %s #%d: force_ps_sample_at не прошёл spirv-val: %s"
+                            % (name, index, err[:100]))
+            compiled[i] = (index, vs, acache[ps])
+        if ashown:
+            log("  !! ОТЛАДКА: PS выбирает в UV=(%s,%s) в %d блоках"
+                % (uv[0], uv[1], ashown))
+
+    # --- ОТЛАДКА (MKSHD2_FORCE_PS_ID=<класс:N|%id>): PS пишет выбранное -----
+    # значение из середины арифметики. Пробы выше показали: геометрия, UV,
+    # нормали, текстуры и константы в порядке, а полный PS даёт чёрный. Эта
+    # проба идёт по потоку данных PS снизу вверх (sample -> fadd -> fmul -> dot)
+    # и указывает, на какой операции значение становится нулём.
+    pid = os.environ.get("MKSHD2_FORCE_PS_ID", "")
+    if TAG_SPIRV in sections and pid and probe_sel("ID"):
+        icache = {}
+        ishown = 0
+        for i, (index, vs, ps) in enumerate(compiled):
+            if ps is None:
+                continue
+            if ps not in icache:
+                patched, info = spirv_iface.force_ps_id(ps, pid)
+                if patched is None:
+                    icache[ps] = ps
+                else:
+                    ok, err = spirv_iface.validate(patched)
+                    icache[ps] = patched if ok else ps
+                    if ok:
+                        ishown += 1
+                    else:
+                        log("  !! %s #%d: force_ps_id не прошёл spirv-val: %s"
+                            % (name, index, err[:100]))
+            compiled[i] = (index, vs, icache[ps])
+        if ishown:
+            log("  !! ОТЛАДКА: PS выводит значение %s в %d блоках" % (pid, ishown))
+
+    for index, vs, ps in compiled:
+        for sec in sections.values():
+            sec.add(index, vs, ps)
 
     if bank_stats:
         mx = max((max(v.values()) for v in bank_stats.values() if v), default=0)

@@ -197,6 +197,19 @@ case "${PW_PCH:-}" in
 esac
 export PW_PCH
 echo "== PCH: ${PW_PCH:-ВЫКЛЮЧЕН (релизный режим)}"
+# .pch под Wine нельзя класть в build-каталог: cl повторно открывает его по
+# НИЖНЕРЕГИСТРОВОМУ пути, а каталоги репо (PW/Tools/ClientCMake) — с верхним
+# регистром, Wine их так не находит -> C1083. Поэтому по умолчанию .pch уезжают
+# в ~/pwbuild/pch/<тег графа> (все компоненты в нижнем регистре). Подробности и
+# wine-трейс — в Tools/ClientCMake/pch_rules.py.
+if [ -n "$PW_PCH" ] && [ -z "${PW_PCH_DIR:-}" ]; then
+    PW_PCH_DIR="$HOME/pwbuild/pch/$TC_TAG"
+fi
+if [ -n "$PW_PCH_DIR" ]; then
+    mkdir -p "$PW_PCH_DIR" 2>/dev/null
+    export PW_PCH_DIR
+    echo "   .pch: $PW_PCH_DIR (нижний регистр — требование Wine)"
+fi
 if [ -n "$PW_PCH" ] && [ -n "${PW_CACHE_LAUNCHER:-}" ]; then
     echo "!! PCH + кэш: sccache помечает компиляции с /Fp и /Yc как non-cacheable"
     echo "   (sccache --show-stats: 'Non-cacheable reasons: /Fp, /Yc') — кэш не ускорит"

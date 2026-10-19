@@ -33,6 +33,25 @@ import re
 import sys
 
 PCH_DIR = "pch"
+# .pch ОБЯЗАН лежать в каталоге, где все компоненты пути в НИЖНЕМ регистре.
+# Причина (wine-трейс `WINEDEBUG=+file`, 2026-10-17): продюсер пишет .pch, а
+# затем сам же открывает его через CreateFileW с ПОЛНОСТЬЮ НИЖНЕРЕГИСТРОВЫМ
+# путём — L"z:\home\...\tools\clientcmake\build\x64-wine\pch\render_stdafx__*.pch"
+# -> NtCreateFile ... not found (c000003a) -> fatal error C1083 «Cannot open
+# compiler intermediate file» и у продюсера, и у всех консьюмеров. Wine на Z:
+# различает регистр КАТАЛОГОВ (регистр имени файла — не различает, проверено
+# `dir`), а репозиторий лежит в .../PW/.../Tools/ClientCMake/... — верхний
+# регистр в компонентах пути. Проверено: тот же cl с /FpZ:/tmp/pwbuild/pch/...
+# (всё в нижнем регистре) компилируется без ошибок. Отсюда PW_PCH_DIR —
+# абсолютный unix-путь в нижнем регистре под .pch (build-каталог не переименовать).
+PCH_DIR_ABS = os.environ.get("PW_PCH_DIR", "").strip().rstrip("/")
+
+
+def pch_root():
+    """Корень для .pch глазами CMake/cl (Z: в Wine = корень unix)."""
+    if not PCH_DIR_ABS:
+        return "${CMAKE_CURRENT_BINARY_DIR}/" + PCH_DIR
+    return ("Z:" + PCH_DIR_ABS) if PCH_DIR_ABS.startswith("/") else PCH_DIR_ABS
 
 
 def enabled(name, env=None):
@@ -56,7 +75,7 @@ def pair_tag(th_abs):
 def pch_cmake_path(proj_name, tag):
     """Путь .pch глазами CMake: раскроется в build-каталог (он и для Wine, и для
     native передан cmake как путь, понятный компилятору: Z:/... или C:/...)."""
-    return "${CMAKE_CURRENT_BINARY_DIR}/" + PCH_DIR + "/" + proj_name + "_" + tag + ".pch"
+    return pch_root() + "/" + proj_name + "_" + tag + ".pch"
 
 
 def wrapper_body(th_abs, orig_abs, winpath):
@@ -116,7 +135,7 @@ def cmake_lines(proj):
     обычный per_file-цикл генератора)."""
     if not getattr(proj, "pch_pairs", None):
         return []
-    L = ["file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/" + PCH_DIR + ")"]
+    L = ["file(MAKE_DIRECTORY " + pch_root() + ")"]
     for th_abs in sorted(proj.pch_pairs):
         p = proj.pch_pairs[th_abs]
         pch = pch_cmake_path(proj.name, p["tag"])

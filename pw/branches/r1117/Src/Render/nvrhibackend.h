@@ -53,6 +53,9 @@ public:
   unsigned UnsupportedCalls() const { return m_unsupported; }
   // Дамп счётчиков по каждому незакрытому методу (work-list шага 13).
   void DumpStats(const char* pTag) const;
+  // Одна строка ключевых счётчиков (шаг 14: периодические сводки DumpStats
+  // выключены по умолчанию, а мерить объём кэшей и вывод чем-то надо).
+  void DumpCompact() const;
   // Имя устройства и размеры swapchain'а — в отчёты/дампы.
   const char* DeviceName() const;
   unsigned SwapchainWidth() const;
@@ -201,6 +204,7 @@ private:
   void FlushRecording();
   void FlushPendingUploads();   // загрузки с чужого потока (см. ownerThread)
   void ProbeFrameSurfaces();   // диагностика offscreen-поверхностей (снимок)
+  void TexGpuDump();           // диагностика: GPU-снимок текстур (env PW_VK_TEXGPU)
   bool RawReadback(SurfaceObj& so, unsigned x0, unsigned y0,
                        unsigned x1, unsigned y1, void* pDst, unsigned dstPitch);
   // Шаг 13.4d: учёт загрузки бит в GPU (см. определение)

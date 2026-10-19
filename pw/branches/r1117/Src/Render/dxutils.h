@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Vendor/DirectX/Include/d3d9.h"
-#include "Vendor/DirectX/Include/d3dx9.h"
+#include "Vendor/DirectX/Include/d3dx9.h"  // D3DX* (ReadDDS/TextureManager/shadercompiler берут его транзитивно)
 
 #include "DxIntrusivePtr.h"
 #include "Reallocate.h"

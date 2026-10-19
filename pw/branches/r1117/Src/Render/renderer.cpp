@@ -913,6 +913,7 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
       NvrhiBackend* vk = static_cast<NvrhiBackend*>(pBackend);
       static unsigned s_vkFlipFrames = 0;
       static bool   s_vkFlipFlagsRead = false;
+      static bool   s_vkFlipStats = false;
       static unsigned s_vkFlipDipMask = 0;
       static unsigned s_vkShotAt = 0;
       ++s_vkFlipFrames;
@@ -920,10 +921,15 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
       {
         char dipFlag[8] = { 0 };
         char shotFlag[16] = { 0 };
+        char statsFlag[8] = { 0 };
         if (GetEnvironmentVariableA("PW_VK_DIP", dipFlag, sizeof(dipFlag) - 1) > 0)
           s_vkFlipDipMask = (unsigned)atoi(dipFlag);
         if (GetEnvironmentVariableA("PW_VK_SHOT", shotFlag, sizeof(shotFlag) - 1) > 0)
           s_vkShotAt = (unsigned)atoi(shotFlag);
+        // Сводки каждые 300 кадров — только по env (шаг 14: в прогоне боя это
+        // 13 блоков по ~15 строк, которые больше не за что цепляться)
+        if (GetEnvironmentVariableA("PW_VK_STATS", statsFlag, sizeof(statsFlag) - 1) > 0)
+          s_vkFlipStats = atoi(statsFlag) != 0;
         s_vkFlipFlagsRead = true;
       }
       if (s_vkFlipDipMask && s_vkFlipFrames == 30u)
@@ -941,7 +947,11 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
       // снимок кадра переехал в NvrhiBackend::Present: здесь он читал бы
       // картинку уже следующего acquire'а (acquire в Present — последний шаг)
       if ((s_vkFlipFrames % 300) == 0)
-        vk->DumpStats("flip");
+      {
+        vk->DumpCompact();
+        if (s_vkFlipStats)
+          vk->DumpStats("flip");
+      }
     }
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
