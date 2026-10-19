@@ -6,3 +6,4 @@ repo ..\..\..\Tools tools
 mirror https://gitflic.ru/project/prime-world-classic/updater.git
 mirror https://gitlab.com/prime-world-classic/updater.git
 mirror https://github.com/Prime-World-Classic/updater.git
+mirror https://gitverse.ru/prime_world_classic/updater.git
