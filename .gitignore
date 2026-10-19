@@ -195,3 +195,6 @@ pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto.bak-debug/
 
 # рабочая папка редактора (Tools/EditorBuild/build_editor.ps1): Bin + локальная копия Profiles
 pw/branches/r1117/_EditorRun/
+
+# PilePack: готовые контейнеры (см. PilePack/README.md); привязка — PilePack/gamedata_manifest.json
+Piles/
