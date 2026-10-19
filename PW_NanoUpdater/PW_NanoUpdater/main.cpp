@@ -54,6 +54,31 @@ struct RepoConfig
 
 static std::vector<RepoConfig> repos;
 static bool remoteUrlsRanked = false;
+static std::string repoConfigDir;
+
+static std::filesystem::path ExeDirectory()
+{
+   char buf[MAX_PATH] = { 0 };
+   DWORD n = GetModuleFileNameA(nullptr, buf, MAX_PATH);
+   if (n == 0 || n >= MAX_PATH) {
+      return {};
+   }
+   return std::filesystem::path(buf).parent_path();
+}
+
+static std::string ResolveRepoPath(const std::string& repoPath)
+{
+   std::filesystem::path p(repoPath);
+   if (p.is_absolute() || repoConfigDir.empty()) {
+      return repoPath;
+   }
+   try {
+      return (std::filesystem::path(repoConfigDir) / p).lexically_normal().string();
+   }
+   catch (...) {
+      return repoPath;
+   }
+}
 
 #if defined(TEST_HASHES) || defined(ENABLE_RELEASE_FILES)
 static const char* releaseFileUrls[] = {
@@ -333,6 +358,16 @@ static void LoadDefaultRepos()
 
    repos = {
       {
+         "..\\Launcher\\content\\updater",
+         "updater",
+         branch,
+         {
+            "https://gitflic.ru/project/prime-world-classic/updater.git",
+            "https://gitlab.com/prime-world-classic/updater.git",
+            "https://github.com/Prime-World-Classic/updater.git",
+         },
+      },
+      {
          "..\\Launcher\\content",
          "content",
          branch,
@@ -365,6 +400,13 @@ static bool LoadReposFromFile(const std::string& path)
    std::vector<RepoConfig> parsed;
    std::string line;
 
+   try {
+      repoConfigDir = std::filesystem::absolute(std::filesystem::path(path)).parent_path().string();
+   }
+   catch (...) {
+      repoConfigDir.clear();
+   }
+
    while (std::getline(file, line)) {
       line = Trim(line);
       if (line.empty() || line[0] == '#') {
@@ -379,6 +421,7 @@ static bool LoadReposFromFile(const std::string& path)
          RepoConfig repo;
          stream >> repo.path >> repo.label >> repo.branch;
          if (!repo.path.empty() && !repo.label.empty() && !repo.branch.empty()) {
+            repo.path = ResolveRepoPath(repo.path);
             parsed.push_back(repo);
          }
       }
@@ -407,14 +450,29 @@ static bool LoadReposFromFile(const std::string& path)
 
 static void LoadRepos()
 {
-   const char* paths[] = {
-      "updater_repos.txt",
-      "..\\Tools\\updater_repos.txt",
-      "Tools\\updater_repos.txt",
+   repoConfigDir.clear();
+
+   std::vector<std::string> paths;
+   auto addPath = [&](const std::filesystem::path& p) {
+      if (!p.empty()) {
+         paths.push_back(p.string());
+      }
    };
 
+   auto exeDir = ExeDirectory();
+   if (!exeDir.empty()) {
+      addPath(exeDir / "updater_repos.txt");
+   }
+   addPath("updater_repos.txt");
+   addPath("..\\Tools\\updater_repos.txt");
+   addPath("Tools\\updater_repos.txt");
+   if (!exeDir.empty()) {
+      addPath(exeDir / ".." / "Tools" / "updater_repos.txt");
+      addPath(exeDir / ".." / "Launcher" / "content" / "updater" / "updater_repos.txt");
+   }
+
    bool loaded = false;
-   for (const char* path : paths) {
+   for (const std::string& path : paths) {
       if (LoadReposFromFile(path)) {
          std::cerr << "Loaded repo config: " << path << std::endl;
          loaded = true;
@@ -803,13 +861,18 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
 
 void LaunchAdminNanoUpdater() {
    std::filesystem::path cwd = std::filesystem::current_path();
+   std::filesystem::path exeDir = ExeDirectory();
+   std::filesystem::path admPath = exeDir.empty()
+      ? std::filesystem::path("..\\Tools\\PW_NanoUpdaterAdm.exe")
+      : exeDir / "PW_NanoUpdaterAdm.exe";
+   std::string admPathString = admPath.string();
 
    SHELLEXECUTEINFO ShExecInfo = { 0 };
    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
    ShExecInfo.hwnd = NULL;
    ShExecInfo.lpVerb = "open";
-   ShExecInfo.lpFile = "..\\Tools\\PW_NanoUpdaterAdm.exe";
+   ShExecInfo.lpFile = admPathString.c_str();
    ShExecInfo.lpParameters = "";
    ShExecInfo.lpDirectory = cwd.string().c_str();
    ShExecInfo.nShow = SW_SHOW;
@@ -843,6 +906,23 @@ void LaunchAdminNanoUpdater() {
 
 
 bool IsAdminRequired() {
+   for (const auto& repo : repos) {
+      std::filesystem::path dir(repo.path);
+      std::error_code ec;
+      if (!std::filesystem::exists(dir, ec)) {
+         continue;
+      }
+
+      std::filesystem::path testPath = dir / "test";
+      std::ofstream srrr(testPath);
+      if (!srrr.fail()) {
+         srrr.close();
+         std::error_code removeEc;
+         std::filesystem::remove(testPath, removeEc);
+         return false;
+      }
+      return true;
+   }
 
    std::ofstream srrr("..\\Tools\\test");
    if (!srrr.fail()) {
@@ -966,6 +1046,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       });
 #endif
 
+   LoadRepos();
+
    isAdminRightsRequired = IsAdminRequired();
    std::ofstream errLogs;
    if (!isAdminRightsRequired) {
@@ -974,8 +1056,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
    } else {
       std::cerr.rdbuf(new null_streambuf);
    }
-
-   LoadRepos();
 
    // Initialize the library
    int _error = git_libgit2_init();

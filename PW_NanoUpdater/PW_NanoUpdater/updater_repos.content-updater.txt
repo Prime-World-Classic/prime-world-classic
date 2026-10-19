@@ -1,0 +1,7 @@
+# PW NanoUpdater configuration for the updater installed in Launcher\content\updater.
+# This updater updates the main updater in Tools. Paths are resolved relative to this config file.
+
+repo ..\..\..\Tools tools main
+mirror https://gitflic.ru/project/prime-world-classic/updater.git
+mirror https://gitlab.com/prime-world-classic/updater.git
+mirror https://github.com/Prime-World-Classic/updater.git

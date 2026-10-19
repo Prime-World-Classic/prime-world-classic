@@ -3,6 +3,13 @@
 # mirror <git-url>
 # The first mirror is used as origin after speed ranking.
 
+# Paths are resolved relative to this config file directory.
+
+repo ..\Launcher\content\updater updater main
+mirror https://gitflic.ru/project/prime-world-classic/updater.git
+mirror https://gitlab.com/prime-world-classic/updater.git
+mirror https://github.com/Prime-World-Classic/updater.git
+
 repo ..\Launcher\content content main
 mirror https://gitflic.ru/project/prime-world-classic/launcher-pwc.git
 mirror https://gitlab.com/prime-world-classic/launcher-pwc.git
