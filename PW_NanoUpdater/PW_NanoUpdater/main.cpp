@@ -55,6 +55,7 @@ struct RepoConfig
 static std::vector<RepoConfig> repos;
 static bool remoteUrlsRanked = false;
 static std::string repoConfigDir;
+static std::string updateBranch = "main";
 
 static std::filesystem::path ExeDirectory()
 {
@@ -380,8 +381,8 @@ static bool LoadReposFromFile(const std::string& path)
 
       if (key == "repo") {
          RepoConfig repo;
-         stream >> repo.path >> repo.label >> repo.branch;
-         if (!repo.path.empty() && !repo.label.empty() && !repo.branch.empty()) {
+         stream >> repo.path >> repo.label;
+         if (!repo.path.empty() && !repo.label.empty()) {
             repo.path = ResolveRepoPath(repo.path);
             parsed.push_back(repo);
          }
@@ -432,10 +433,14 @@ static bool LoadRepos()
    }
 
 #ifdef PW_TEST_UPDATER
-   for (auto& repo : repos) {
-      repo.branch = "test";
-   }
+   updateBranch = "test";
 #endif
+   if (updateBranch.empty()) {
+      updateBranch = "main";
+   }
+   for (auto& repo : repos) {
+      repo.branch = updateBranch;
+   }
 
    return true;
 }
@@ -814,6 +819,7 @@ void LaunchAdminNanoUpdater() {
       ? std::filesystem::path("..\\Tools\\PW_NanoUpdaterAdm.exe")
       : exeDir / "PW_NanoUpdaterAdm.exe";
    std::string admPathString = admPath.string();
+   std::string admParameters = "--branch " + (updateBranch.empty() ? std::string("main") : updateBranch);
 
    SHELLEXECUTEINFO ShExecInfo = { 0 };
    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
@@ -821,7 +827,7 @@ void LaunchAdminNanoUpdater() {
    ShExecInfo.hwnd = NULL;
    ShExecInfo.lpVerb = "open";
    ShExecInfo.lpFile = admPathString.c_str();
-   ShExecInfo.lpParameters = "";
+   ShExecInfo.lpParameters = admParameters.c_str();
    ShExecInfo.lpDirectory = cwd.string().c_str();
    ShExecInfo.nShow = SW_SHOW;
    ShExecInfo.hInstApp = NULL;
@@ -950,11 +956,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       }
       else if (arg == "inno") {
          if (a + 1 < argc) {
-            progressBarHandle = argv[a + 1];
+            progressBarHandle = argv[++a];
             HWND hwndProgressBar = (HWND)atoi(progressBarHandle);
             int result = PostMessage(hwndProgressBar, PBM_SETRANGE, 0, 100);
          }
-         break;
+      }
+      else if (arg.rfind("--branch=", 0) == 0) {
+         updateBranch = arg.substr(9);
+      }
+      else if (arg.rfind("branch=", 0) == 0) {
+         updateBranch = arg.substr(7);
+      }
+      else if ((arg == "--branch" || arg == "branch") && a + 1 < argc) {
+         updateBranch = argv[++a];
       }
    }
 

@@ -1,16 +1,17 @@
 # PW NanoUpdater repository configuration
-# repo <local-path> <label> <branch>
+# repo <local-path> <label>
 # mirror <git-url>
 # The first mirror is used as origin after speed ranking.
+# Branch is passed to the updater as a launch parameter (--branch main|test).
 
 # Paths are resolved relative to this config file directory.
 
-repo ..\Launcher\content content main
+repo ..\Launcher\content content
 mirror https://gitflic.ru/project/prime-world-classic/launcher-pwc.git
 mirror https://gitlab.com/prime-world-classic/launcher-pwc.git
 mirror https://github.com/Prime-World-Classic/launcher-pwc.git
 
-repo ..\Game game main
+repo ..\Game game
 mirror https://gitflic.ru/project/prime-world-classic/game-pwc.git
 mirror https://gitlab.com/prime-world-classic/game-pwc.git
 mirror https://github.com/Prime-World-Classic/game-pwc.git
