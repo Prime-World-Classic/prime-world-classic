@@ -3616,7 +3616,7 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
        .setBufferIndex(slot).setIsInstanced(logical == kInstanceStream);
     attrs.push_back(a);
   }
-  if (VkVerbose() && d.ilDiag < 6u)
+  if (VkVerbose() && d.ilDiag < 40u)
   {
     ++d.ilDiag;
     char det[512];
@@ -3645,6 +3645,16 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
   // Input-07904 «в pVertexInputState нет Location 3, а у VS есть вход на 3»).
   unsigned maxLoc = 0;
   for (size_t i = 0; i < attrs.size(); ++i) if (attrs[i].loc > maxLoc) maxLoc = attrs[i].loc;
+  // Хвост (вход VS выше последнего клиентского атрибута) закрывать дубликатом
+  // НЕЛЬЗЯ — замер 2026-10-20: VUID-VkGraphicsPipelineCreateInfo-Input-07904
+  // (x4 за прогон) исчезает, но мир режется чёрным клином (чёрного 40,64%
+  // вместо 0,14%): NVRHI нумерует location индексом в массиве
+  // (Vendor/NVRHI/src/vulkan/vulkan-shader.cpp:186), и добавленный на хвост
+  // атрибут-дубликат попадает на вход, который шейдер реально читает.
+  // Оставлено как открытое: чем закрывать — нужно значение по умолчанию D3D9
+  // (0,0,0,0) из отдельного обнулённого буфера, а не дубликат; вариант
+  // «свой VB-слот со значением (0,0,0,1)» тоже мерился и тоже ломал мир
+  // (0,14% -> 82,67%, см. секцию про незакрытые входы VS).
   if (attrs.size() != maxLoc + 1u)
   {
     std::vector<Attr> padded;
