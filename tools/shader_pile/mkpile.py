@@ -50,7 +50,24 @@ def crc32(data: bytes) -> int:
     return zlib.crc32(data) & 0xFFFFFFFF
 
 
-def build(root, out, mask=("*.shd",), comp_size=1, max_ratio=0.90):
+def is_shd2(path):
+    """Контейнер .shd v2: трэйлер 16 Б с меткой "SHD2" с обеих сторон (писатель —
+    tools/shader_build/mkshd2.py). У v1-контейнеров SPIR-V-слоя нет вовсе, и в
+    Vulkan-контуре они бесполезны: слой выбирает бэкенд
+    (IRenderBackend::GetShaderTargetTag -> stSpirv), а цели есть только у v2.
+    Замер 2026-10-20: в Data/Shaders/UberShaders 36 .shd, из них v2 — 16 (ровно
+    корпус из живого индекса), v1-only — 20 (ни один живым индексом не
+    запрашивается)."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(-16, os.SEEK_END)
+            t = f.read(16)
+    except (OSError, ValueError):
+        return False
+    return len(t) == 16 and t[:4] == b"SHD2" and t[12:16] == b"SHD2"
+
+
+def build(root, out, mask=("*.shd",), comp_size=1, max_ratio=0.90, only_v2=False):
     import fnmatch
     files = []
     for dirpath, _dirs, names in os.walk(root):
@@ -59,6 +76,10 @@ def build(root, out, mask=("*.shd",), comp_size=1, max_ratio=0.90):
             if any(fnmatch.fnmatch(n, m) for m in mask):
                 files.append(rel)
     files.sort()
+    if only_v2:
+        skipped = [r for r in files if r.lower().endswith(".shd") and not is_shd2(os.path.join(root, r))]
+        files = [r for r in files if r not in skipped]
+        print("только v2: убрано контейнеров v1: %d" % len(skipped))
     if not files:
         sys.exit(f"в {root} нет файлов по маске {mask}")
 
@@ -171,6 +192,8 @@ def main():
     # масок может быть несколько (напр. '*.shd' для контейнеров материалов и
     # '*.spv' для sidecar-слоя OnlineShaders — шаг 14)
     b.add_argument("--mask", action="append", default=[])
+    b.add_argument("--only-v2", action="store_true",
+                   help="из .shd брать только контейнеры v2 (со SPIR-V-слоем)")
     b.add_argument("--comp-size", type=int, default=1)
     b.add_argument("--max-ratio", type=float, default=0.90)
     l = sub.add_parser("list")
@@ -185,7 +208,7 @@ def main():
     x.add_argument("--grep")
     a = ap.parse_args()
     if a.cmd == "build":
-        build(a.root, a.out, a.mask or ["*.shd"], a.comp_size, a.max_ratio)
+        build(a.root, a.out, a.mask or ["*.shd"], a.comp_size, a.max_ratio, a.only_v2)
     elif a.cmd == "extract":
         extract_pile(a.pile, a.out_dir, a.grep)
     else:
