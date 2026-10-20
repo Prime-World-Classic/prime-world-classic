@@ -5579,3 +5579,35 @@ R=1 (далёкая глубина), G=B=0 -> ровно красный экра
 не мерить); `--root pw/branches/r1117/Data` тащит все 36 `.shd` (80 записей) —
 в pile кладутся только 16 корпусных + 44 sidecar; `offset` в записи pile —
 абсолютный от начала файла.
+
+### Визуальные дефекты: одноканальные форматы починены; атлас шрифта на GPU есть — текст HUD рисуется не им (2026-10-20)
+
+Найдена и закрыта реальная ошибка раскладки каналов: seam вёл `bfA8` и `bfL8`
+(`renderflagsconverter.cpp:227,249` из `FORMAT_A8`/`D3DFMT_A8`/`FORMAT_L8`/`D3DFMT_L8`)
+на `R8_UNORM` (`nvrhibackend.cpp:370-371`), а Vulkan при выборке даёт `(R,0,0,1)`.
+D3D9 даёт `L8 -> (L,L,L,1)`, `A8 -> (0,0,0,A)`. Правка в `CreateTextureCommon`:
+`td.setDefaultComponentMapping(...)` — L8/L16: R,R,R,One; A8: Zero,Zero,Zero,R.
+Патча вендора не потребовалось: форк NVRHI уже умеет — `TextureDesc::setDefaultComponentMapping`
+(`Vendor/NVRHI/include/nvrhi/nvrhi.h:540`) уходит в `VkImageViewCreateInfo::componentMapping`
+(`src/vulkan/vulkan-texture.cpp:334`), SRV берёт его же (`src/vulkan/vulkan-resource-bindings.cpp:405`).
+
+Проверка, что загрузка атласа в GPU работает (гипотеза «текста нет, потому что атлас пуст» — опровергнута):
+`PW_VK_SHOT_TIME=60 PW_VK_TEXGPU=/tmp/tex_l8.txgp PW_VK_TEXGPU_SIZE=2048x2048 PW_VK_TEXGPU_ALL=1`
+→ запись idx 18, 2048x2048, seamFormat 4 (L8), pitch 2048: ненулевых **29 989** из 4 194 304,
+максимум **255**, гистограмма покрывает весь диапазон (32..255), bbox **(1,1)-(2042,85)** —
+строка глифов, упакованных слева направо. То есть `LockTexture2D`/`UnlockTexture2D` + `writeTexture`
+для L8-атласа (`UI/FontRender.cpp:43`, `FORMAT_L8`, 2048x2048) работают.
+
+Грабли дампа: `TexGpuDump` по умолчанию читает обратно только `mipLevels >= 2`
+(`nvrhibackend.cpp:7828`), а атлас шрифта и миникарта — mips=1, поэтому без
+`PW_VK_TEXGPU_ALL=1` они в файл не попадают вообще (замер: 7 записей 2048x2048, все DXT1).
+
+Что осталось по тексту HUD: в кадре Vulkan (t=90 c, снимок с Xvfb) текста нет вообще —
+ни имени героя, ни цифр, ни обратного отсчёта, хотя у DXVK на том же стенде они есть.
+Атлас FreeType (`UIFontMaterial`, `return s0 * Input.Vertexcolor`) к этим надписям
+отношения не имеет: HUD рисует Flash UI, его текст идёт через кэш
+`Render/UITextureCache.cpp` / `Render/UITextureAtlasItem.cpp` (LockRect). По замеру
+прогона 125 (`b19`) читка 656x656 A8R8G8B8 дала 100% чёрного с альфа 0 и `загруз=0` —
+то есть записи клиента в этот кэш до VkImage не доходят. Следующий шаг —
+инструментировать `LockTexture2D`/`UnlockTexture2D` именно по этому объекту
+(размер/формат, был ли rect-замок, сколько байт в зеркале, сколько загрузок).

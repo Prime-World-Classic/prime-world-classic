@@ -3752,6 +3752,22 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
     td.setInitialState(nvrhi::ResourceStates::DepthWrite);
     if (d.texMissing < 8u) VkNote("CreateTexture: глубинный формат — добавлен DEPTH_STENCIL", true, 0);
   }
+  // Одноканальные форматы. D3D9 при выборке даёт L8/L16 -> (L,L,L,1), A8 ->
+  // (0,0,0,A) (msdn: D3DFMT_L8, D3DFMT_A8). Vulkan R8_UNORM/R16_UNORM даёт
+  // (R,0,0,1), т.е. и цвет, и альфа неверные. Раскладку задаём на уровне view:
+  // NVRHI TextureDesc::setDefaultComponentMapping уходит в
+  // VkImageViewCreateInfo::componentMapping (Vendor/NVRHI/src/vulkan/
+  // vulkan-texture.cpp:334, SRV берёт его же — vulkan-resource-bindings.cpp:405).
+  // Без этого атлас шрифта (UI/FontRender.cpp:43, FORMAT_L8 2048x2048) даёт
+  // красные глифы вместо белых, A8-маски — наоборот, теряют канал.
+  if (format == bfL8 || format == bfL16)
+    td.setDefaultComponentMapping(nvrhi::ComponentMapping()
+        .setR(nvrhi::ComponentSwizzle::R).setG(nvrhi::ComponentSwizzle::R)
+        .setB(nvrhi::ComponentSwizzle::R).setA(nvrhi::ComponentSwizzle::One));
+  else if (format == bfA8)
+    td.setDefaultComponentMapping(nvrhi::ComponentMapping()
+        .setR(nvrhi::ComponentSwizzle::Zero).setG(nvrhi::ComponentSwizzle::Zero)
+        .setB(nvrhi::ComponentSwizzle::Zero).setA(nvrhi::ComponentSwizzle::R));
   // keepInitialState обязателен: без него трекер состояний NVRHI не знает,
   // откуда стартовать, и рвёт командный список (замер спайка)
   td.setKeepInitialState(true).setDebugName(cube ? "seam texture cube" : "seam texture");
