@@ -32,7 +32,7 @@ struct VS_INPUT
     float2 Position		: POSITION;
     float2 Texcoord		: TEXCOORD0;
     float2 Texcoord2	: TEXCOORD1;
-    int4 Vertexcolor	: COLOR0;	
+    float4 Vertexcolor	: COLOR0;	
 };
 
 
