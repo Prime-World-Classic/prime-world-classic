@@ -28,6 +28,21 @@ REGISTER_VAR( "nodip", nullrender, STORAGE_NONE );
 static int s_autoScreenshotAt = 0;
 REGISTER_VAR( "auto_screenshot", s_autoScreenshotAt, STORAGE_NONE );
 
+// Период серии снимков (0 — только кадры at и at+100). Нужен для гейта
+// паритета Vulkan/DXVK: номер кадра != время игры (разная частота кадров у
+// бэкендов), поэтому сопоставить два прогона можно только по серии и
+// наилучшему совпадению (docs/PLAN_NVRHI.md, гейт паритета).
+static int s_autoScreenshotStep = 0;
+REGISTER_VAR( "auto_screenshot_step", s_autoScreenshotStep, STORAGE_NONE );
+
+// Снимки по ВРЕМЕНИ от первого кадра (секунды), а не по номеру кадра. Номер
+// кадра двух прогонов не сопоставим: частота у DXVK и Vulkan различается в разы
+// (замер 2026-10-20: DXVK ~5,5 к/с на этом стенде против ~40 у Vulkan), а мир
+// живёт по сетевым тикам, то есть по часам. Период — auto_screenshot_step
+// (секунды, по умолчанию 20).
+static int s_autoScreenshotTime = 0;
+REGISTER_VAR( "auto_screenshot_time", s_autoScreenshotTime, STORAGE_NONE );
+
 // Шаг 7 плана NVRHI (docs/PLAN_NVRHI.md §2.9): сверка тени констант с тем, что
 // реально стоит в устройстве. Без этого замера мы не знаем, можно ли на этапе
 // 3 делать тень единственным источником констант — на uniform-буферах
@@ -376,9 +391,24 @@ void OnFrameStart()
   {
     static int s_frameNo = 0;
     const int frame = ++s_frameNo;
-    if ( s_autoScreenshotAt > 0 &&
-         ( frame == s_autoScreenshotAt || frame == s_autoScreenshotAt + 100 ) )
+    const int shotStep = s_autoScreenshotStep > 0 ? s_autoScreenshotStep : 0;
+    const bool shotHit = s_autoScreenshotAt > 0 &&
+        ( frame == s_autoScreenshotAt || frame == s_autoScreenshotAt + 100 ||
+          ( shotStep > 0 && frame > s_autoScreenshotAt &&
+            ( ( frame - s_autoScreenshotAt ) % shotStep ) == 0 ) );
+    static unsigned s_shotTick = 0;
+    static int s_lastShotSec = -1;
+    if ( !s_shotTick ) s_shotTick = GetTickCount();
+    const int elSec = (int)((GetTickCount() - s_shotTick) / 1000u);
+    const int timeStep = shotStep > 0 ? shotStep : 20;
+    const bool timeHit = s_autoScreenshotTime > 0 && elSec >= s_autoScreenshotTime &&
+        ( ( elSec - s_autoScreenshotTime ) % timeStep ) == 0 && elSec != s_lastShotSec;
+    if ( shotHit || timeHit )
     {
+      if ( timeHit ) s_lastShotSec = elSec;
+      char tag[32];
+      if ( timeHit && !shotHit ) snprintf( tag, sizeof(tag), "t%d", elSec );
+      else                      snprintf( tag, sizeof(tag), "%d", frame );
       Renderer* pR = GetRenderer();
       if ( !pR || !pR->GetColorSurface() )
       {
@@ -388,10 +418,10 @@ void OnFrameStart()
       {
         char name[96];
         // 1) поверхность, в которую нарисован кадр, с альфой — путь DumpScreenshot
-        sprintf_s(name, "pw_auto_scene_%d.png", frame);
+        sprintf_s(name, "pw_auto_scene_%s.png", tag);
         DumpScreenshot(name, true);
         // 2) бэк-буфер целиком, альфа отбрасывается — путь SocialConnection
-        sprintf_s(name, "pw_auto_bb_%d.png", frame);
+        sprintf_s(name, "pw_auto_bb_%s.png", tag);
         const bool bb = pR->SaveScreenshotToFile(name, 0, 0, 0, 0, false);
         // 3) кроп, заведомо выходящий за кадр, — проверяется ограничение
         //    прямоугольника (иначе это молча отказ или чтение чужой памяти)
@@ -401,12 +431,12 @@ void OnFrameStart()
         // вызов по чужой vtable под другим бэкендом (шаг 13.4c).
         if ( SUCCEEDED( GetBackend()->GetSurfaceInfo(MakeBackendHandle<HSurface>(Get(pR->GetColorSurface())), &sd) ) )
         {
-          sprintf_s(name, "pw_auto_crop_%d.png", frame);
+          sprintf_s(name, "pw_auto_crop_%s.png", tag);
           crop = pR->SaveScreenshotToFile(name, (int)sd.width - 200,
                                           (int)sd.height - 200, 400, 400, true);
         }
-        DebugTrace( "AutoShot: frame=%d bb=%d crop=%d (bb/crop — бэк-буфер, scene — поверхность кадра)",
-                    frame, bb ? 1 : 0, crop ? 1 : 0 );
+        DebugTrace( "AutoShot: frame=%d tag=%s bb=%d crop=%d (bb/crop — бэк-буфер, scene — поверхность кадра)",
+                    frame, tag, bb ? 1 : 0, crop ? 1 : 0 );
       }
     }
   }

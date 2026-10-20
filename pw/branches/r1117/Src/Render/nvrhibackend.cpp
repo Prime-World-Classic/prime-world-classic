@@ -797,6 +797,9 @@ struct NvrhiBackendImpl
   unsigned dsNonDepth;       // в глубину привязана не-глубина
   unsigned readbackRaw;      // сколько чтений сделано прямой копией
   unsigned shotAt;           // env PW_VK_SHOT: кадр, на котором снимаем
+  unsigned shotStep;         // env PW_VK_SHOT_STEP: период серии (кадры или секунды)
+  unsigned shotTime;         // env PW_VK_SHOT_TIME: серия по секундам от 1-го present
+  unsigned shotLastSec;      // уже отснятая секунда (для режима по времени)
   unsigned shotProbe;        // env PW_VK_SHOT_PROBE: перед снимком залить картинку
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
@@ -947,7 +950,7 @@ struct NvrhiBackendImpl
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
-      ssboSetsCreated(0), texDimMismatch(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotProbe(0), drawDiag(0),
+      ssboSetsCreated(0), texDimMismatch(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0),
       recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
@@ -1500,6 +1503,18 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
     char sh[16];
     if (GetEnvironmentVariableA("PW_VK_SHOT", sh, sizeof(sh) - 1) > 0)
       d.shotAt = (unsigned)atoi(sh);
+    // серия снимков: PW_VK_SHOT_STEP=N -> кадры shotAt, shotAt+N, ...
+    // (гейт паритета: кадр != время игры, поэтому один кадр двух бэкендов
+    // не совпадает; серия даёт пару с наилучшим совпадением)
+    char st[16];
+    if (GetEnvironmentVariableA("PW_VK_SHOT_STEP", st, sizeof(st) - 1) > 0)
+      d.shotStep = (unsigned)atoi(st);
+    // PW_VK_SHOT_TIME=<секунды>: серия по ЧАСАМ от первого present'а. Номер
+    // кадра двух прогонов не сопоставим (у DXVK и Vulkan разная частота), а мир
+    // живёт по сетевым тикам — поэтому пару снимают на одинаковых секундах.
+    char stm[16];
+    if (GetEnvironmentVariableA("PW_VK_SHOT_TIME", stm, sizeof(stm) - 1) > 0)
+      d.shotTime = (unsigned)atoi(stm);
     char sp[8];
     if (GetEnvironmentVariableA("PW_VK_SHOT_PROBE", sp, sizeof(sp) - 1) > 0)
       d.shotProbe = (unsigned)atoi(sp);
@@ -2653,11 +2668,34 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
                       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
   VK_TRACE("present layout back <");
 
-  if (d.shotAt && d.presents == d.shotAt)
+  bool shotOne = d.shotAt != 0u && d.presents >= d.shotAt &&
+      (d.shotStep == 0u ? d.presents == d.shotAt
+                        : ((d.presents - d.shotAt) % d.shotStep) == 0u);
+  static unsigned long long shotT0 = 0;
+  if (d.shotTime && !shotT0) shotT0 = GetTickCount64();
+  char shotName[48];
+  if (d.shotTime)
+  {
+    const unsigned el = (unsigned)((GetTickCount64() - shotT0) / 1000ull);
+    const unsigned step = d.shotStep ? d.shotStep : 20u;
+    shotOne = el >= d.shotTime && ((el - d.shotTime) % step) == 0u && el != d.shotLastSec;
+    if (shotOne) d.shotLastSec = el;
+    snprintf(shotName, sizeof(shotName), "vk_shot_t%u.bmp", el);
+  }
+  else
+    snprintf(shotName, sizeof(shotName), "vk_shot.bmp");
+  if (shotOne)
   {
     VK_TRACE("Present: shot >");
-    TexGpuDump();
-    if (d.shotProbe) ProbeFrameSurfaces();
+    // тяжёлый разбор текстур — только на первом кадре серии
+    if (d.presents == d.shotAt || d.shotTime)
+    {
+      if (d.presents == d.shotAt || d.shotLastSec == d.shotTime)
+      {
+        TexGpuDump();
+        if (d.shotProbe) ProbeFrameSurfaces();
+      }
+    }
     if (d.shotProbe && d.shotProbe != 7u)
     {
       // зонд: если снимок станет красным — readback и картинка в порядке,
@@ -2673,8 +2711,8 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
         DebugTrace("VkShotProbe: картинка %u залита красным", d.imageIndex);
       }
     }
-    if (SaveBackBufferShot("vk_shot.bmp"))
-      DebugTrace("Renderer: PW_VK_SHOT OK vk_shot.bmp (кадр %u)", d.presents);
+    if (SaveBackBufferShot(shotName))
+      DebugTrace("Renderer: PW_VK_SHOT OK %s (кадр %u)", shotName, d.presents);
     else
       DebugTrace("Renderer: PW_VK_SHOT FAILED (кадр %u)", d.presents);
     VK_TRACE("Present: shot <");
