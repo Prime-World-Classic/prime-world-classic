@@ -27,7 +27,16 @@ struct VS_INPUT
   float4 UV                 : TEXCOORD0;
   float3 RotationAndSize    : TEXCOORD1;
   float4 Color              : COLOR0;
+#if PW_MODERN_ARRAYS
+  // Поток маски углов клиент объявляет как UBYTE4 (несжатые целые, значения
+  // 0/1 — замер по вершинным буферам). В D3D9 IA приводит UBYTE4 к float 0.0/1.0.
+  // В Vulkan числовой класс входа обязан совпадать с форматом атрибута
+  // (VUID-VkGraphicsPipelineCreateInfo-Input-08733), поэтому в SPIR-V-контуре
+  // вход целочисленный, а приведение к float явное (см. float4(Input.CornerMask)).
+  uint4 CornerMask          : TEXCOORD2;
+#else
   float4 CornerMask         : TEXCOORD2;
+#endif
 };
 
 struct VS_OUTPUT
@@ -54,7 +63,11 @@ struct VS_INPUT
   float4 UV                     : TEXCOORD0;
   float3 RotationAndSize        : TEXCOORD1;
   float4 Color                  : COLOR0;
+#if PW_MODERN_ARRAYS
+  uint4 CornerMask              : TEXCOORD2;  // см. комментарий выше
+#else
   float4 CornerMask             : TEXCOORD2;
+#endif
 };
 
 struct VS_OUTPUT
@@ -81,7 +94,7 @@ VS_OUTPUT MainPass_VSMain(VS_INPUT Input, out float4 PositionCS : POSITION)
   // displace corners
 #if(NewParticlesValue == TRUE)
   float  id = Input.PositionAndID.w; // Array of structures {constants, xPlaneAxis, yPlaneAxis}
-  float2 disp = (UnpackCorner(cornersScale, Input.CornerMask) - data[id].constants.zw) * Input.RotationAndSize.xy * data[id].constants.yy;
+  float2 disp = (UnpackCorner(cornersScale, float4(Input.CornerMask)) - data[id].constants.zw) * Input.RotationAndSize.xy * data[id].constants.yy;
 
   // rotate
   float sinz, cosz;
@@ -105,7 +118,7 @@ VS_OUTPUT MainPass_VSMain(VS_INPUT Input, out float4 PositionCS : POSITION)
 
   PositionCS = mul( Position, ViewProjection );
 
-  Output.UV.xy = UnpackCorner(Input.UV, Input.CornerMask) * float2(1.0, -1.0); // invert V-axis
+  Output.UV.xy = UnpackCorner(Input.UV, float4(Input.CornerMask)) * float2(1.0, -1.0); // invert V-axis
 
   float noMulNoAlpha = data[id].xPlaneAxis.w;
   float noAlpha = frac(noMulNoAlpha); // non-zero for textures with all-white alpha
@@ -121,7 +134,7 @@ VS_OUTPUT MainPass_VSMain(VS_INPUT Input, out float4 PositionCS : POSITION)
 
 #else // NewParticlesValue
 
-  float2 disp = (UnpackCorner(cornersScale, Input.CornerMask) - constants.zw) * Input.RotationAndSize.xy * constants.yy;
+  float2 disp = (UnpackCorner(cornersScale, float4(Input.CornerMask)) - constants.zw) * Input.RotationAndSize.xy * constants.yy;
 
   // rotate
   float sinz, cosz;
@@ -144,7 +157,7 @@ VS_OUTPUT MainPass_VSMain(VS_INPUT Input, out float4 PositionCS : POSITION)
 
   PositionCS = mul( Position, ViewProjection );
 
-  Output.UV = UnpackCorner(Input.UV, Input.CornerMask) * float2(1.0, -1.0); // invert V-axis
+  Output.UV = UnpackCorner(Input.UV, float4(Input.CornerMask)) * float2(1.0, -1.0); // invert V-axis
   Output.Color = Input.Color;
 #if OpacityModePinValue == ADDITIVEOPACITY
 	Output.Color.xyz *= xPlaneAxis.w;
