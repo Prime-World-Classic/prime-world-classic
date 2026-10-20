@@ -91,6 +91,10 @@ def main():
     ap.add_argument('--max', type=int, default=25)
     ap.add_argument('--near', action='store_true',
                     help='печатать ближайшие по площади прямоугольника к плашке, а не только покрытые')
+    ap.add_argument('--big', action='store_true',
+                    help='печатать N выводов с наибольшим прямоугольником вершин '
+                         '(прямоугольник --rect при этом игнорируется) — нужен, '
+                         'чтобы найти крупный UI-квад (круг миникарты, панель)')
     a = ap.parse_args()
     px0, py0, px1, py1 = [int(x) for x in a.rect.split(',')]
     hdr, sh, bufs, tex, lay, draws, off = P.parse(a.rec)
@@ -113,6 +117,16 @@ def main():
             sx0, sx1 = min(xs) * 0.75, max(xs) * 0.75
             sy0, sy1 = min(ys) * 0.75, max(ys) * 0.75
             space = 'px*0,75'
+        if a.big:
+            ids = [s[0] for s in dr['samplers']]
+            sizes = []
+            for i in ids:
+                tt = texById.get(i)
+                sizes.append('%dx%d' % (tt['w'], tt['h']) if tt else '?')
+            area = (sx1 - sx0) * (sy1 - sy0)
+            hits.append((-area, dr['n'], dr['vs'], dr['ps'], dr['prim'], dr['vtx'], space,
+                         sx0, sy0, sx1, sy1, sizes, dr['state']))
+            continue
         t = a.tol
         if not (sx1 > px0 - t and sx0 < px1 + t and sy1 > py0 - t and sy0 < py1 + t):
             continue
@@ -136,15 +150,17 @@ def main():
     print('выводов в 1024x768: %d, попаданий в (%d,%d)-(%d,%d): %d'
           % (sum(1 for d in draws if (d['rtW'], d['rtH']) == (1024, 768)),
              px0, py0, px1, py1, len(hits)))
-    hits.sort(key=lambda h: h[0] if a.near else 0)
+    hits.sort(key=lambda h: h[0] if (a.near or a.big) else 0)
     for h in hits[:a.max]:
-        if a.near:
-            print('#%d vs=%d ps=%d prim=%d vtx=%d %s экран(%.0f,%.0f)-(%.0f,%.0f) Δплощадь=%.2f tex=%s'
-                  % (h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10], h[0], ' '.join(h[11][:6])))
+        if a.near or a.big:
+            print('#%d vs=%d ps=%d prim=%d vtx=%d %s экран(%.0f,%.0f)-(%.0f,%.0f) %s=%.2f tex=%s'
+                  % (h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10],
+                     'площадь' if a.big else 'Δплощадь', -h[0] if a.big else h[0],
+                     ' '.join(h[11][:6])))
         else:
             print('#%d vs=%d ps=%d prim=%d vtx=%d %s экран(%.0f,%.0f)-(%.0f,%.0f) tex=%s'
                   % h[:11])
-        st = h[12] if a.near else h[11]
+        st = h[12] if (a.near or a.big) else h[11]
         print('    state: blend=%d alphaTest=%d/%d zWrite=%d cw=%X cull=%d' % (
             st['alphaBlendEnable'], st['alphaTestEnable'], st['alphaRef'],
             st['zWriteEnable'], st['colorWriteEnable'], st['cullMode']))

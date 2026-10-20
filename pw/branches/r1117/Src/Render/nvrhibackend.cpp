@@ -4207,11 +4207,41 @@ static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
     s_minW = v;
   }
   if (to.w < s_minW) return;
+  // PW_VK_TEXDUMP_SIZE="205x205,656x656": только эти размеры, и дедупликация
+  // снимается. Миникарта (205x205) перезаливается каждый кадр, и по ОДНОЙ
+  // первой заливке не отличить «клиент залил плоский цвет» от «загрузка не
+  // дошла до VkImage» — нужны несколько подряд, рядом с дампом GPU-содержимого.
+  static std::vector<std::pair<unsigned, unsigned> > s_sz;
+  static bool s_szRead = false;
+  if (!s_szRead)
+  {
+    char sz[MAX_PATH];
+    s_szRead = true;
+    if (GetEnvironmentVariableA("PW_VK_TEXDUMP_SIZE", sz, sizeof(sz) - 1))
+    {
+      for (char* tok = strtok(sz, ","); tok; tok = strtok(0, ","))
+      {
+        unsigned sw = 0u, sh = 0u;
+        if (sscanf(tok, "%ux%u", &sw, &sh) == 2 && sw && sh) s_sz.push_back(std::make_pair(sw, sh));
+      }
+    }
+  }
+  if (!s_sz.empty())
+  {
+    bool hit = false;
+    for (size_t i = 0; i < s_sz.size(); ++i)
+      if (s_sz[i].first == to.w && s_sz[i].second == to.h) { hit = true; break; }
+    if (!hit) return;
+    if (d.texDumpN >= 40u) return;
+  }
+  else
+  {
   static std::set<unsigned long long> s_seen;
   const unsigned long long key =
       ((unsigned long long)idx << 40) | ((unsigned long long)level << 32)
     | ((unsigned long long)to.w << 16) | to.h;
   if (!s_seen.insert(key).second) return;
+  }
   if (!d.texDump)
   {
     char path[MAX_PATH];
@@ -6004,13 +6034,40 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     }
   }
 
+  // D3D9 (и DXVK поверх Vulkan) ограничивают вьюпорт размером цели: при
+  // SetRenderTarget smaller-than-viewport геометрия масштабируется под цель.
+  // Vulkan вьюпорт не ограничивает — квад, спроецированный на 1024x768, в цель
+  // 205x205 отдаёт только верхний левый угол (UV 0..0,2 x 0..0,27). Замерено на
+  // композите тумана (PFClientVisibilityMap) и на миникарте: клиент рисует
+  // экранный квад, не меняя вьюпорт (SmartRenderer::FixViewport выходит раньше,
+  // чем что-либо пушит, см. smartrenderer.cpp:1074). Эксперимент — env
+  // PW_VK_VPCLAMP=0 выключает ограничение.
+  long vpX = m_viewport.x, vpY = m_viewport.y, vpW = m_viewport.width, vpH = m_viewport.height;
+  static int s_vpClamp = -1;
+  if (s_vpClamp < 0) { const char* pcE = getenv("PW_VK_VPCLAMP"); s_vpClamp = (pcE && *pcE) ? atoi(pcE) : 1; }
+  if (s_vpClamp && d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w && d.surfaces[d.curRt].h) {
+    const long rtW = (long)d.surfaces[d.curRt].w, rtH = (long)d.surfaces[d.curRt].h;
+    if (vpX < 0) { vpW += vpX; vpX = 0; }
+    if (vpY < 0) { vpH += vpY; vpY = 0; }
+    if (vpX + vpW > rtW) vpW = rtW - vpX;
+    if (vpY + vpH > rtH) vpH = rtH - vpY;
+    if (vpW < 1) vpW = 1;
+    if (vpH < 1) vpH = 1;
+  }
   nvrhi::ViewportState vps;
-  nvrhi::Viewport vport((float)m_viewport.x, (float)(m_viewport.x + m_viewport.width),
-                        (float)m_viewport.y, (float)(m_viewport.y + m_viewport.height),
+  nvrhi::Viewport vport((float)vpX, (float)(vpX + vpW),
+                        (float)vpY, (float)(vpY + vpH),
                         m_viewport.minZ, m_viewport.maxZ);
+  long scL = m_scissor.left, scR = m_scissor.right, scT = m_scissor.top, scB = m_scissor.bottom;
+  if (s_vpClamp && d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w && d.surfaces[d.curRt].h) {
+    const long rtW = (long)d.surfaces[d.curRt].w, rtH = (long)d.surfaces[d.curRt].h;
+    if (scR > rtW) scR = rtW;
+    if (scB > rtH) scB = rtH;
+    if (scL < 0) scL = 0;
+    if (scT < 0) scT = 0;
+  }
   if (m_scissorValid)
-    vps.addViewport(vport).addScissorRect(nvrhi::Rect((int)m_scissor.left, (int)m_scissor.right,
-                                                      (int)m_scissor.top, (int)m_scissor.bottom));
+    vps.addViewport(vport).addScissorRect(nvrhi::Rect((int)scL, (int)scR, (int)scT, (int)scB));
   else
     vps.addViewportAndScissorRect(vport);
   gs.setViewport(vps);
@@ -8167,6 +8224,11 @@ void NvrhiBackend::TexGpuDump()
   mn[0] = 0;
   unsigned minW = 0;
   if (GetEnvironmentVariableA("PW_VK_TEXDUMP_MIN", mn, sizeof(mn) - 1)) minW = (unsigned)atoi(mn);
+  // PW_VK_TEXGPU_MAXW=<N> — верхняя граница ширины: без неё «все крупные»
+  // означают ещё и атлас шрифта 2048x2048 (16 МБ на запись), дамп которого
+  // только забивает бюджет (замер 2026-10-20).
+  unsigned maxW = 0;
+  if (GetEnvironmentVariableA("PW_VK_TEXGPU_MAXW", mn, sizeof(mn) - 1)) maxW = (unsigned)atoi(mn);
   // фильтр по размеру: индексы шва текстур меняются от прогона к прогону
   // (замер: 205x205 миникарта — #0..#2 в одном прогоне и вне 0..60 в другом),
   // а читать обратно все 400 объектов с waitForIdle на каждый — минуты.
@@ -8198,6 +8260,7 @@ void NvrhiBackend::TexGpuDump()
   {
     NvrhiBackendImpl::TextureObj& to = d.textures[i];
     if (!to.tex || to.dead || to.w < minW) continue;
+    if (maxW && to.w > maxW) continue;
     if (i < fromIdx || i > toIdx) continue;
     if (!allTex && to.mipLevels < 2u) continue;
     if (nSz)
