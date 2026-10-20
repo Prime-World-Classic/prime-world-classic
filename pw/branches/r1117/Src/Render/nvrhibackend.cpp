@@ -1694,14 +1694,46 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   // Устройство. Три extensions обязательны: без dynamic_rendering NVRHI
   // ругается, без synchronization2 он не может делать переходы состояний
   // (замеры спаяка, §3.x).
+  // VK_EXT_vertex_attribute_robustness: у клиента бывают вершинные потоки без
+  // атрибута — замер 2026-10-20: VUID-VkGraphicsPipelineCreateInfo-Input-07904
+  // («у VS вход есть по Location 2, а атрибута нет»). Фичу включать НЕЛЬЗЯ:
+  // замер run133/134 (тот же стенд, кадр t40) — мир пропадает целиком, чёрных
+  // 81,7% вместо 2,15%: вход без атрибута начинает читаться как нули, геометрия
+  // схлопывается в точку. Правильное место правки — вершинный layout (объявить
+  // атрибут на каждый вход SPIR-V и привязать к dummyVb), а не эта фича.
+  // Оставлено за env PW_VK_VARBUST=1 для повторных замеров.
+  bool varRobust = false;
+  if (getenv("PW_VK_VARBUST"))
+  {
+    uint32_t nExt = 0;
+    if (VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumerateDeviceExtensionProperties(
+          d.physical, nullptr, &nExt, nullptr) == VK_SUCCESS && nExt)
+    {
+      std::vector<VkExtensionProperties> props(nExt);
+      if (VULKAN_HPP_DEFAULT_DISPATCHER.vkEnumerateDeviceExtensionProperties(
+            d.physical, nullptr, &nExt, props.data()) == VK_SUCCESS)
+        for (uint32_t i = 0; i < nExt; ++i)
+          if (strcmp(props[i].extensionName, VK_EXT_VERTEX_ATTRIBUTE_ROBUSTNESS_EXTENSION_NAME) == 0)
+          { varRobust = true; break; }
+    }
+  }
+
   const char* deviceExts[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,
                                VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-                               VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME };
+                               VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                               VK_EXT_VERTEX_ATTRIBUTE_ROBUSTNESS_EXTENSION_NAME };
+  const uint32_t nDeviceExtsBase = 3;
   VkPhysicalDeviceVulkan13Features feats13;
   memset(&feats13, 0, sizeof(feats13));
   feats13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
   feats13.synchronization2 = VK_TRUE;
   feats13.dynamicRendering = VK_TRUE;
+
+  VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT varFeat;
+  memset(&varFeat, 0, sizeof(varFeat));
+  varFeat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_ROBUSTNESS_FEATURES_EXT;
+  varFeat.vertexAttributeRobustness = VK_TRUE;
+  if (varRobust) feats13.pNext = &varFeat;
 
   VkPhysicalDeviceVulkan12Features feats12;
   memset(&feats12, 0, sizeof(feats12));
@@ -1724,8 +1756,10 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   dci.pNext = &feats12;
   dci.queueCreateInfoCount = 1;
   dci.pQueueCreateInfos = &qci;
-  dci.enabledExtensionCount = 3;
+  dci.enabledExtensionCount = varRobust ? nDeviceExtsBase + 1u : nDeviceExtsBase;
   dci.ppEnabledExtensionNames = deviceExts;
+  if (!varRobust)
+    VkNote("Device: vertexAttributeRobustness", true, "выключена (с включённой мир чёрный — см. комментарий)");
 
   r = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDevice(d.physical, &dci, 0, &d.device);
   if (r != VK_SUCCESS)
