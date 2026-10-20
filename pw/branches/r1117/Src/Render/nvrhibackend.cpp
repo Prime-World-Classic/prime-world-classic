@@ -1795,7 +1795,9 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   // используемого слота, пропущенный слот = VK_NULL_HANDLE
   // (VUID-vkCmdBindVertexBuffers-pBuffers-04001)
   d.dummyVb = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
-                                          .setByteSize(64)
+                                          // не 64 байта: stride из раскладки обязан
+                                          // влезать в привязанный буфер
+                                          .setByteSize(4096)
                                           .setIsVertexBuffer(true)
                                           .setInitialState(nvrhi::ResourceStates::VertexBuffer)
                                           .setKeepInitialState(true)
@@ -4608,13 +4610,17 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 2u || it.kind != rkTexture) continue;
     const unsigned tex = (it.binding < kMaxSamplerSlots) ? d.texBound[it.binding] : kNoRes;
-    nvrhi::ITexture* pTex = d.dummyTex;
+    const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
+    // и в несвязанный слот вьюха обязана подходить под объявленный шейдером
+    // образ: samplerCUBE + 2D-dummy = тот же VUID-...-07752
+    nvrhi::ITexture* pTex = (wantCube && d.dummyCubeTex)
+                                ? d.dummyCubeTex
+                                : (nvrhi::ITexture*)d.dummyTex;
     if (tex != kNoRes && tex < d.textures.size() && d.textures[tex].tex)
     {
       pTex = d.textures[tex].tex;
       // Тип view обязан совпадать с тем, что объявил шейдер (VUID-...-07752):
       // D3D9 терпит «sampler2D по cube-текстуре» и наоборот, Vulkan — нет.
-      const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
       if (wantCube != d.textures[tex].cube)
       {
         if (d.texDimMismatch < 6u)
@@ -5279,8 +5285,30 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   unsigned maxSlot = 0u;
   for (unsigned i = 0; i < kMaxVertexStreams; ++i)
     if (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size()) maxSlot = i;
-  if (d.instSrc != kNoRes && d.instSrc < d.buffers.size() && d.instSlot > maxSlot)
-    maxSlot = d.instSlot;
+  // Инстансный поток привязывается ПОСЛЕ цикла заполнения дыр (реальный буфер
+  // или счётчик экземпляров) — поэтому верхнюю границу задаёт и d.instSlot.
+  // Инстансный слот = kMaxVertexStreams (8), а NVRHI объявляет массив слотов до
+  // nvrhi::c_MaxVertexAttributes = 16 (nvrhi.h:76) и вяжет bind'ы до максимального
+  // занятого слота включительно, промежуточные заполняя мусором из стека
+  // (vulkan-graphics.cpp:621-638) — отсюда pBuffers[1..7] VK_NULL_HANDLE
+  // (VUID-vkCmdBindVertexBuffers-pBuffers-04001). Поэтому при инстансном слоте
+  // за пределами наших 8 закрываем dummy'ом все 0..7.
+  const bool wantInst =
+      (d.instSrc != kNoRes && d.instSrc < d.buffers.size() && d.buffers[d.instSrc].buf) ||
+      (m_instanceCount && LayoutWantsInstanceStream(d));
+  if (wantInst && d.instSlot > maxSlot)
+    maxSlot = (d.instSlot < kMaxVertexStreams) ? d.instSlot : kMaxVertexStreams - 1u;
+  // Верхняя граница — ещё и максимальный слот, который объявила раскладка
+  // (lo.desc — те атрибуты, что реально ушли в пайплайн). Иначе NVRHI
+  // довязывает отсутствующие слоты нулями
+  // (VUID-vkCmdBindVertexBuffers-pBuffers-04001: pBuffers[1..7] VK_NULL_HANDLE
+  // при привязанном одном потоке).
+  if (d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
+    for (size_t k = 0; k < d.layoutObjs[d.curLayout].desc.size(); ++k)
+    {
+      const unsigned s = (unsigned)d.layoutObjs[d.curLayout].desc[k].bufferIndex;
+      if (s < kMaxVertexStreams && s > maxSlot) maxSlot = s;
+    }
   for (unsigned i = 0; i <= maxSlot && i < kMaxVertexStreams; ++i)
   {
     if (d.instSrc != kNoRes && d.instSlot == i) continue;   // ниже добавляется инстансный
@@ -5304,6 +5332,14 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       }
       gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.dummyVb)
                          .setSlot(i).setOffset(0));
+    }
+    else if (d.vbHoles < 6u)
+    {
+      // дыра, а подставлять нечем — NVRHI кладёт в этот слот VK_NULL_HANDLE
+      char det[48];
+      snprintf(det, sizeof(det), "слот %u пуст, dummyVb НЕТ", i);
+      VkNote("Draw: вершинный слот", false, det);
+      ++d.vbHoles;
     }
   }
   if (d.instSrc != kNoRes && d.instSrc < d.buffers.size() && d.buffers[d.instSrc].buf)
