@@ -817,6 +817,10 @@ struct NvrhiBackendImpl
   // вообще не заполнялся — пикселы «undefined», в кадре белые/пурпурные плашки
   // (замер прогона 125: белые прямоугольники в кадре при целых 656x656-поверхностях)
   unsigned dummySubs;
+  // трассировка выводов конкретного пиксельного шейдера (env PW_VK_TRACEPS)
+  unsigned tracePsLogged;
+  unsigned traceDrawLogged;
+  unsigned traceConstLogged;
   unsigned vbHoles;          // пустые вершинные слоты (подменены dummy)
   unsigned dsNonDepth;       // в глубину привязана не-глубина
   unsigned readbackRaw;      // сколько чтений сделано прямой копией
@@ -826,6 +830,7 @@ struct NvrhiBackendImpl
   unsigned shotLastSec;      // уже отснятая секунда (для режима по времени)
   unsigned shotProbe;        // env PW_VK_SHOT_PROBE: перед снимком залить картинку
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
+  unsigned panelLogged;      // сколько раз напечатали VkPanel (охота за белой плашкой)
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
 
   // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>). Нужен потому, что
@@ -993,7 +998,7 @@ struct NvrhiBackendImpl
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
-      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0),
+      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0), panelLogged(0), tracePsLogged(0), traceDrawLogged(0), traceConstLogged(0),
       recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
@@ -1391,6 +1396,32 @@ static bool VkVerbose()
     s_on = (GetEnvironmentVariableA("PW_VK_STATS", b, sizeof(b) - 1) > 0 && atoi(b)) ? 1 : 0;
   }
   return s_on != 0;
+}
+
+// Охота за белой плашкой (2026-10-20): бисект по seam-индексам пиксельного
+// шейдера показал ps=8. PW_VK_TRACEPS=<индекс> — печатает, какие текстуры
+// уходят в набор для этого шейдера (без этого материал не опознать: у всех
+// контейнеров точка входа одна — MainPass_PSMain).
+static unsigned VkTracePsIdx()
+{
+  static int s_idx = -1;
+  if (s_idx < 0)
+  {
+    char b[16] = { 0 };
+    s_idx = (GetEnvironmentVariableA("PW_VK_TRACEPS", b, sizeof(b) - 1) > 0)
+              ? (unsigned)atoi(b) : 0xFFFFFFFFu;
+  }
+  return (unsigned)s_idx;
+}
+
+// Охота за белой плашкой 330x132 в (29,443)-(359,575) (2026-10-20). Она есть в
+// текстуре #3 (1024x768) и отсутствует в #2; ни один вывод записи, ни один
+// частичный блит/заливка/очистка её не покрывают. Интересуют только обращения
+// к поверхности/текстуре 1024x768 с прямоугольником в этой зоне.
+static bool PanelZone(unsigned w, unsigned h, long x0, long y0, long x1, long y1)
+{
+  if (w != 1024u || h != 768u) return false;
+  return x1 > 20 && x0 < 366 && y1 > 435 && y0 < 583;
 }
 
 // Шаг 13.4c: хронологическая трассировка
@@ -2920,6 +2951,13 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
   if (!EnsureRecording()) return E_FAIL;
   if (clearFlags & bcTarget)
   {
+    if (VkVerbose() && colorRGBA != 0u && d.panelLogged < 60u &&
+        PanelZone(d.surfaces[d.curRt].w, d.surfaces[d.curRt].h, 0, 0, 1024, 768))
+    {
+      ++d.panelLogged;
+      DebugTrace("VkPanel: Clear curRt#%u %ux%u цвет %08X флаги %u",
+                 d.curRt, d.surfaces[d.curRt].w, d.surfaces[d.curRt].h, colorRGBA, clearFlags);
+    }
     if (!d.surfaces[d.curRt].tex)
     {
       char det[64];
@@ -3823,6 +3861,13 @@ HRESULT NvrhiBackend::UpdateTexture(HTexture srcTexture, HTexture dstTexture)
   if (!EnsureRecording()) return E_FAIL;
   // копия целиком: seam не несёт подпрямоугольник/подмип (в D3D9-пути
   // UpdateTexture тоже вызывается на всю текстуру)
+  if (VkVerbose() && d.panelLogged < 60u &&
+      PanelZone(d.textures[t].w, d.textures[t].h, 0, 0, 1024, 768))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: UpdateTexture src#%u %ux%u -> dst#%u %ux%u",
+               s, d.textures[s].w, d.textures[s].h, t, d.textures[t].w, d.textures[t].h);
+  }
   d.commandList->copyTexture(d.textures[t].tex, nvrhi::TextureSlice(),
                              d.textures[s].tex, nvrhi::TextureSlice());
   ++d.uploads;
@@ -4094,6 +4139,12 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
     rowBytes = lw * bpp;
     rows     = lh;
   }
+  if (VkVerbose() && d.panelLogged < 60u && PanelZone(lw, lh, x0, y0, x1, y1))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: LockTexture2D tex#%u lvl%u %ux%u rect(%ld,%ld)-(%ld,%ld)",
+               t, level, lw, lh, x0, y0, x1, y1);
+  }
   to.mirror.resize((size_t)rowBytes * rows);
   to.locked = true;
   to.lockLevel = level; to.lockRows = rows; to.lockRowBytes = rowBytes;
@@ -4219,6 +4270,12 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
   }
   if (!EnsureRecording()) return E_FAIL;
   VK_TRACE("writeTexture >");
+  if (VkVerbose() && d.panelLogged < 60u && PanelZone(to.w, to.h, 0, 0, (long)to.w, (long)to.h))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: UnlockTexture2D tex#%u lvl%u %ux%u шаг%u зеркало%zu",
+               t, level, to.w, to.h, to.lockRowBytes, to.mirror.size());
+  }
   d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[0], to.lockRowBytes);
   if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes);
   VK_TRACE("writeTexture <");
@@ -4724,6 +4781,20 @@ static nvrhi::BindingSetHandle FindOrCreateSamplerSet(NvrhiBackendImpl& d, const
 static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& pd)
 {
   const BackendPipelineState& st = d.model;
+  // Диагностика белой плашки 330x132 (2026-10-20): PW_VK_STATE_MASK — биты
+  // 1 = выключить трафарет, 2 = выключить смешивание, 4 = выключить запись
+  // глубины, 8 = выключить тест глубины. Ни геометрия, ни блиты/заливки плашку
+  // не порождают (замеры ниже по тексту), поэтому проверяем компонент
+  // состояния: если с битом артефакт исчез — он порождён этим компонентом.
+  static unsigned s_stateMask = 0u;
+  static bool s_stateMaskRead = false;
+  if (!s_stateMaskRead)
+  {
+    s_stateMaskRead = true;
+    char bm[16];
+    if (GetEnvironmentVariableA("PW_VK_STATE_MASK", bm, sizeof(bm) - 1) > 0)
+      s_stateMask = (unsigned)strtoul(bm, 0, 0);
+  }
 
   nvrhi::RasterState& rs = pd.renderState.rasterState;
   // намотка: у NVRHI вьюпорт с отрицательной высотой, без frontCounterClockwise
@@ -4790,6 +4861,10 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
   // D3D9 по умолчанию пишет RGB без альфы (7), а не всё (0x0f)
   target.colorWriteMask = static_cast<nvrhi::ColorMask>(
       st.colorWriteEnable ? st.colorWriteEnable : 0x7u);
+  if (s_stateMask & 1u) ds.stencilEnable = false;
+  if (s_stateMask & 2u) target.blendEnable = false;
+  if (s_stateMask & 4u) ds.depthWriteEnable = false;
+  if (s_stateMask & 8u) ds.depthTestEnable = false;
   pd.renderState.blendState.setRenderTarget(0, target);
 
   // фиксированной альфа-смены ни в Vulkan, ни в D3D12 нет: ALPHATESTENABLE
@@ -4837,6 +4912,18 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 2u || it.kind != rkTexture) continue;
     const unsigned tex = (it.binding < kMaxSamplerSlots) ? d.texBound[it.binding] : kNoRes;
+    if (d.curPs == VkTracePsIdx() && d.tracePsLogged < 24u)
+    {
+      ++d.tracePsLogged;
+      char dt[160];
+      if (tex != kNoRes && tex < d.textures.size())
+        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u %ux%u fmt%d",
+                 d.curPs, it.binding, tex, d.textures[tex].w, d.textures[tex].h,
+                 (int)d.textures[tex].seamFormat);
+      else
+        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u (нет)", d.curPs, it.binding, tex);
+      VkNote("VkTracePs", true, dt);
+    }
     const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
     // и в несвязанный слот вьюха обязана подходить под объявленный шейдером
     // образ: samplerCUBE + 2D-dummy = тот же VUID-...-07752
@@ -5058,6 +5145,14 @@ void NvrhiBackend::FlushPendingUploads()
     so.needUpload = false;
     const unsigned bpp = BppOf(so.fmt);
     if (!bpp) continue;
+    if (VkVerbose() && d.panelLogged < 60u &&
+        PanelZone(so.w, so.h, (long)so.lockX, (long)so.lockY,
+                  (long)(so.lockX + so.lockW), (long)(so.lockY + so.lockH)))
+    {
+      ++d.panelLogged;
+      DebugTrace("VkPanel: Flush surf#%u %ux%u rect(%u,%u)+%ux%u",
+                 idx, so.w, so.h, so.lockX, so.lockY, so.lockW, so.lockH);
+    }
     if (!EnsureRecording()) return;   // NoteUpload ниже мог закрыть список
     d.commandList->writeTexture(so.tex, 0, 0, &so.mirror[0], (size_t)so.w * bpp);
     NoteUpload(so.mirror.size());
@@ -5489,6 +5584,150 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     else
       VkNote("Вывод: глубина не совпадает с RT и замена не создана", false, 0);
   }
+  // Бисект белой плашки 330x132 (2026-10-20): PW_VK_SKIPPS_FROM/TO — пропустить
+  // все выводы, у которых seam-индекс пиксельного шейдера попадает в диапазон.
+  // Индексы шейдеров между прогонами стабильны (порядок создания при загрузке),
+  // поэтому бисект по диапазону id работает; TO=0 означает «выключено».
+  static unsigned s_skipPsFrom = 0xFFFFFFFFu, s_skipPsTo = 0u, s_skipExcept = 0xFFFFFFFFu;
+  static bool s_skipRead = false;
+  if (!s_skipRead)
+  {
+    s_skipRead = true;
+    char bs[16];
+    if (GetEnvironmentVariableA("PW_VK_SKIPPS_FROM", bs, sizeof(bs) - 1) > 0)
+      s_skipPsFrom = (unsigned)atoi(bs);
+    if (GetEnvironmentVariableA("PW_VK_SKIPPS_TO", bs, sizeof(bs) - 1) > 0)
+      s_skipPsTo = (unsigned)atoi(bs);
+    if (GetEnvironmentVariableA("PW_VK_SKIPPS_EXCEPT", bs, sizeof(bs) - 1) > 0)
+      s_skipExcept = (unsigned)atoi(bs);
+  }
+  if (s_skipPsTo && d.curPs != kNoRes && d.curPs >= s_skipPsFrom && d.curPs <= s_skipPsTo
+      && d.curPs != s_skipExcept)
+  {
+    ++d.draws;
+    return S_OK;
+  }
+  // Разбор UIFlashMaterial (ps=15 — генератор белой плашки 330x132, см. бисект по
+  // порядку вывода): PW_VK_TRACECONST=<ps> — печатать банк констант этого вывода.
+  // В шейдере `color = color * color1 + color2` (UIFlashMaterial.hlsl:198), а
+  // color1/color2 = VSHADER_LOCALCONST0/1 (_commonUI.hlsl:9-10) и по GlobalMasks.h
+  // это c20/c21 (НЕ c0/c1 — первая версия трассировки печатала не те регистры).
+  // Плюс flashConstants = c27, colorAdd = c28, colorMatrix = c29..c32,
+  // screenScaleOffset = c10, textureMatrix1_1/1_2 = c30/c31 (перекрывают
+  // colorMatrix — в D3D9 алиасинг разрешён).
+  static unsigned s_traceConst = 0xFFFFFFFFu;
+  static bool s_traceConstRead = false;
+  if (!s_traceConstRead)
+  {
+    s_traceConstRead = true;
+    char bc[16];
+    if (GetEnvironmentVariableA("PW_VK_TRACECONST", bc, sizeof(bc) - 1) > 0)
+      s_traceConst = (unsigned)atoi(bc);
+  }
+  if (d.curPs == s_traceConst && d.traceConstLogged < 8u)
+  {
+    ++d.traceConstLogged;
+    const float* pc = m_constShadow[csPixel];
+    const float* pv = m_constShadow[csVertex];
+    char dc[400];
+    snprintf(dc, sizeof(dc),
+             "ps=%u PS c10=(%.4f,%.4f,%.4f,%.4f) c20=(%.4f,%.4f,%.4f,%.4f) "
+             "c21=(%.4f,%.4f,%.4f,%.4f) c27=(%.4f,%.4f,%.4f,%.4f)",
+             d.curPs, pc[40], pc[41], pc[42], pc[43],
+             pc[80], pc[81], pc[82], pc[83],
+             pc[84], pc[85], pc[86], pc[87],
+             pc[108], pc[109], pc[110], pc[111]);
+    DebugTrace("VkTraceC: %s", dc);
+    snprintf(dc, sizeof(dc),
+             "ps=%u PS c28=(%.4f,%.4f,%.4f,%.4f) c29=(%.4f,%.4f,%.4f,%.4f) "
+             "c30=(%.4f,%.4f,%.4f,%.4f) VS c20=(%.4f,%.4f,%.4f,%.4f) c21=(%.4f,%.4f,%.4f,%.4f)",
+             d.curPs, pc[112], pc[113], pc[114], pc[115],
+             pc[116], pc[117], pc[118], pc[119],
+             pc[120], pc[121], pc[122], pc[123],
+             pv[80], pv[81], pv[82], pv[83],
+             pv[84], pv[85], pv[86], pv[87]);
+    DebugTrace("VkTraceC: %s", dc);
+  }
+  // Бисект по ПОРЯДКУ вывода внутри кадра (2026-10-20): PW_VK_SKIPDRAW_FROM/TO.
+  // Порядок независим от идентичности шейдера и от UP-путей (вершинные данные
+  // которых рекордер не сохраняет), поэтому ловит и те выводы, которые не
+  // удалось найти ни по геометрии, ни по ps. Кадр завершает вывод в бэк-буфер
+  // (композиция ps=8) — после него счётчик обнуляется.
+  static unsigned s_skipDrawFrom = 0xFFFFFFFFu, s_skipDrawTo = 0u, s_frameDraw = 0u;
+  static bool s_skipDrawRead = false;
+  if (!s_skipDrawRead)
+  {
+    s_skipDrawRead = true;
+    char bd[16];
+    if (GetEnvironmentVariableA("PW_VK_SKIPDRAW_FROM", bd, sizeof(bd) - 1) > 0)
+      s_skipDrawFrom = (unsigned)atoi(bd);
+    if (GetEnvironmentVariableA("PW_VK_SKIPDRAW_TO", bd, sizeof(bd) - 1) > 0)
+      s_skipDrawTo = (unsigned)atoi(bd);
+  }
+  if (d.curRt < d.surfaces.size() && d.curRt == BackSurfaceIndex(d)) s_frameDraw = 0u;
+  const unsigned ordDraw = s_frameDraw++;
+  // Трассировка выводов в окне порядка (PW_VK_TRACEORD_FROM/TO): чем рисуется
+  // вывод — цель, примитив, состояние и привязанные текстуры.
+  static unsigned s_ordFrom = 0xFFFFFFFFu, s_ordTo = 0u;
+  static bool s_ordRead = false;
+  if (!s_ordRead)
+  {
+    s_ordRead = true;
+    char bo[16];
+    if (GetEnvironmentVariableA("PW_VK_TRACEORD_FROM", bo, sizeof(bo) - 1) > 0)
+      s_ordFrom = (unsigned)atoi(bo);
+    if (GetEnvironmentVariableA("PW_VK_TRACEORD_TO", bo, sizeof(bo) - 1) > 0)
+      s_ordTo = (unsigned)atoi(bo);
+  }
+  static unsigned s_ordLogged = 0u;
+  if (s_ordTo && ordDraw >= s_ordFrom && ordDraw <= s_ordTo && d.curRt < d.surfaces.size()
+      && s_ordLogged < 20u)
+  {
+    ++s_ordLogged;
+    char dt[320];
+    int n = snprintf(dt, sizeof(dt),
+             "порядок %u ps=%u vs=%u rt#%u %ux%u ds#%u vtx=%u prim=%u idx=%u lay=%u "
+             "blend=%u/%u/%u cw=%u z=%u/%u stencil=%u aTest=%u cull=%u fill=%u тек=",
+             ordDraw, d.curPs, d.curVs, d.curRt, d.surfaces[d.curRt].w, d.surfaces[d.curRt].h,
+             d.curDs, vtx, primitiveCount, indexed ? 1u : 0u, d.curLayout,
+             d.model.alphaBlendEnable ? 1u : 0u, d.model.srcBlend, d.model.destBlend,
+             d.model.colorWriteEnable, d.model.zEnable ? 1u : 0u,
+             d.model.zWriteEnable ? 1u : 0u, d.model.stencilEnable ? 1u : 0u,
+             d.model.alphaTestEnable ? 1u : 0u, d.model.cullMode, d.model.fillMode);
+    for (unsigned sl = 0; sl < 4u && n > 0 && n < (int)sizeof(dt) - 24; ++sl)
+    {
+      const unsigned tx = (sl < kMaxSamplerSlots) ? d.texBound[sl] : kNoRes;
+      if (tx != kNoRes && tx < d.textures.size())
+        n += snprintf(dt + n, sizeof(dt) - n, " #%u#%u:%ux%u f%d", sl, tx,
+                      d.textures[tx].w, d.textures[tx].h, (int)d.textures[tx].seamFormat);
+      else
+        n += snprintf(dt + n, sizeof(dt) - n, " #%u:—", sl);
+    }
+    DebugTrace("VkTraceOrd: %s", dt);
+  }
+  if (s_skipDrawTo && ordDraw >= s_skipDrawFrom && ordDraw <= s_skipDrawTo)
+  {
+    ++d.draws;
+    return S_OK;
+  }
+  // Трассировка выводов шейдера из PW_VK_TRACEPS: чем рисуется (цель, примитив,
+  // состояние). DebugTrace принимает не больше 10 аргументов — строка собирается
+  // snprintf.
+  if (d.curPs == VkTracePsIdx() && d.curRt < d.surfaces.size() && d.traceDrawLogged < 12u)
+  {
+    ++d.traceDrawLogged;
+    char dt[256];
+    snprintf(dt, sizeof(dt),
+             "ps=%u vs=%u rt#%u %ux%u ds#%u vtx=%u prim=%u idx=%u lay=%u "
+             "blend=%u/%u/%u cw=%u z=%u/%u stencil=%u aTest=%u cull=%u fill=%u",
+             d.curPs, d.curVs, d.curRt, d.surfaces[d.curRt].w, d.surfaces[d.curRt].h,
+             d.curDs, vtx, primitiveCount, indexed ? 1u : 0u, d.curLayout,
+             d.model.alphaBlendEnable ? 1u : 0u, d.model.srcBlend, d.model.destBlend,
+             d.model.colorWriteEnable, d.model.zEnable ? 1u : 0u,
+             d.model.zWriteEnable ? 1u : 0u, d.model.stencilEnable ? 1u : 0u,
+             d.model.alphaTestEnable ? 1u : 0u, d.model.cullMode, d.model.fillMode);
+    VkNote("VkTraceDraw", true, dt);
+  }
   if (d.curRt < 4096u)
   {
     if (d.rtDrawCount.size() <= d.curRt) d.rtDrawCount.resize(d.curRt + 1u, 0u);
@@ -5629,6 +5868,36 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   const int rmIdx = FindOrCreateResMap(d);
   VK_TRACE("resmap");
   if (rmIdx < 0) VK_TRACE("resmap ОТКАЗ");
+  // Диагностика для PW_VK_TRACEPS: есть ли у вывода вообще набор текстур (если
+  // resmap не построен или layoutTex пуст, набор 2 не привязывается и шейдер
+  // читает неопределённые дескрипторы — кандидат на «белую плашку»).
+  static unsigned s_rmLogged = 0u;
+  if (d.curPs == VkTracePsIdx() && s_rmLogged < 6u)
+  {
+    ++s_rmLogged;
+    char dr[80];
+    snprintf(dr, sizeof(dr), "ps=%u resmap=%d layoutTex=%d layoutSmp=%d",
+             d.curPs, rmIdx,
+             rmIdx >= 0 ? (d.resMaps[rmIdx].layoutTex ? 1 : 0) : -1,
+             rmIdx >= 0 ? (d.resMaps[rmIdx].layoutSmp ? 1 : 0) : -1);
+    VkNote("VkResMap", true, dr);
+    // Состав вершинной декларации вывода: у UIFlashMaterial #0 в SPIR-V нет ни
+    // одной текстуры (ресурсы = только c-банк), значит цвет берётся из
+    // Input.VertexColor. Если клиент объявил COLOR как UBYTE4, а SPIR-V ждёт
+    // float4 (это же VUID-VkGraphicsPipelineCreateInfo-Input-08733), вершина
+    // даёт (255,255,255,255) = непрозрачный белый — кандидат на плашку 330x132.
+    if (d.curLayout < d.layoutObjs.size())
+    {
+      const NvrhiBackendImpl::LayoutObj& lo = d.layoutObjs[d.curLayout];
+      char de[220];
+      int ne = snprintf(de, sizeof(de), "lay=%u elems:", d.curLayout);
+      for (unsigned e = 0; e < lo.elems.size() && e < 8u && ne < (int)sizeof(de) - 16; ++e)
+        ne += snprintf(de + ne, sizeof(de) - ne, " (s%u o%u t%u u%u i%u)",
+                       lo.elems[e].stream, lo.elems[e].offset, (unsigned)lo.elems[e].type,
+                       (unsigned)lo.elems[e].usage, lo.elems[e].usageIndex);
+      VkNote("VkResMap", true, de);
+    }
+  }
   if (rmIdx >= 0)
   {
     const NvrhiBackendImpl::ResMapObj& rm = d.resMaps[rmIdx];
@@ -6284,11 +6553,21 @@ HRESULT NvrhiBackend::CreateShaderImpl(const void* pCode, unsigned codeSize, boo
       if (d.nameLoc[e].first == inputs[k].first) found = true;
     if (!found) d.nameLoc.push_back(inputs[k]);
   }
-  if (d.shaderObjs.size() <= 4u || (d.shaderObjs.size() % 50u) == 0u)
+  if (d.shaderObjs.size() <= 24u || (d.shaderObjs.size() % 50u) == 0u)
   {
-    char det[160];
-    snprintf(det, sizeof(det), "входов %u, всего %u",
-             (unsigned)inputs.size(), (unsigned)d.shaderObjs.size());
+    char det[256];
+    std::string rs;
+    for (size_t k = 0; k < so.res.size() && k < 10u; ++k)
+    {
+      char rb[48];
+      snprintf(rb, sizeof(rb), "%s#%u:%u k%u d%u c%u", k ? " " : "",
+               so.res[k].set, so.res[k].binding, so.res[k].kind,
+               so.res[k].dim, so.res[k].count);
+      rs += rb;
+    }
+    snprintf(det, sizeof(det), "seam-индекс %u, входов %u, всего %u, ресурсы:%s",
+             (unsigned)(d.shaderObjs.size() - 1u),
+             (unsigned)inputs.size(), (unsigned)d.shaderObjs.size(), rs.c_str());
     VkNote((std::string("CreateShader: ") + entry).c_str(), true, det);
   }
   return S_OK;
@@ -6445,6 +6724,12 @@ HRESULT NvrhiBackend::LockSurface(HSurface surface, const BackendRect* pRect,
     if (x1 < x0) x1 = x0;
     if (y1 < y0) y1 = y0;
   }
+  if (VkVerbose() && d.panelLogged < 60u && PanelZone(so.w, so.h, x0, y0, x1, y1))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: LockSurface surf#%u %ux%u rect(%ld,%ld)-(%ld,%ld)",
+               s, so.w, so.h, x0, y0, x1, y1);
+  }
   so.mirror.resize((size_t)so.w * so.h * bpp);
   so.locked = true;
   so.lockX = x0; so.lockY = y0; so.lockW = x1 - x0; so.lockH = y1 - y0;
@@ -6478,6 +6763,14 @@ HRESULT NvrhiBackend::UnlockSurface(HSurface surface)
     return S_OK;
   }
   if (!EnsureRecording()) return E_FAIL;
+  if (VkVerbose() && d.panelLogged < 60u &&
+      PanelZone(so.w, so.h, (long)so.lockX, (long)so.lockY,
+                (long)(so.lockX + so.lockW), (long)(so.lockY + so.lockH)))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: UnlockSurface surf#%u %ux%u rect(%u,%u)+%ux%u",
+               s, so.w, so.h, so.lockX, so.lockY, so.lockW, so.lockH);
+  }
   VK_TRACE("writeTexture(surf) >");
   d.commandList->writeTexture(so.tex, 0, 0, &so.mirror[0], (size_t)so.w * bpp);
   VK_TRACE("writeTexture(surf) <");
@@ -6804,6 +7097,11 @@ HRESULT NvrhiBackend::ColorFill(HSurface surface, unsigned colorRGBA)
   SurfaceObj& so = d.surfaces[idx];
   if (so.depth) { VkNote("ColorFill: поверхность глубины", false, 0); return E_FAIL; }
   if (!EnsureRecording()) return E_FAIL;
+  if (VkVerbose() && d.panelLogged < 60u && PanelZone(so.w, so.h, 0, 0, (long)so.w, (long)so.h))
+  {
+    ++d.panelLogged;
+    DebugTrace("VkPanel: ColorFill surf#%u %ux%u цвет %08X", idx, so.w, so.h, colorRGBA);
+  }
   if (VkVerbose() && so.w > 16u && so.h > 16u && d.fillLogged < 40u)
   {
     ++d.fillLogged;
@@ -7007,6 +7305,16 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
   long dx = 0, dy = 0, dw = (long)t.w, dh = (long)t.h;
   if (pDstRect) { dx = pDstRect->left; dy = pDstRect->top;
                   dw = pDstRect->right - pDstRect->left; dh = pDstRect->bottom - pDstRect->top; }
+  if (VkVerbose() && d.panelLogged < 60u && PanelZone(t.w, t.h, dx, dy, dx + dw, dy + dh) &&
+      !(dx == 0 && dy == 0 && dw == (long)t.w && dh == (long)t.h &&
+        sx == 0 && sy == 0 && sw == (long)s.w && sh == (long)s.h))
+  {
+    ++d.panelLogged;
+    char det[160];
+    snprintf(det, sizeof(det), "ист#%u %ux%u rect(%ld,%ld)+%ldx%ld -> приёмник#%u %ux%u rect(%ld,%ld)+%ldx%ld",
+             sIdx, s.w, s.h, sx, sy, sw, sh, dIdx, t.w, t.h, dx, dy, dw, dh);
+    DebugTrace("VkPanel: StretchRect %s", det);
+  }
   // Пишем только частичные блиты (приёмник заполняется не целиком): полноэкранные
   // блиты PostFX съедают весь лимит трассировки, а ищется именно частичный
   // прямоугольник (белая панель 330x132 в (29,443)).
