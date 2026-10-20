@@ -2,12 +2,12 @@
 <DBAnimatedSceneComponent>
 	<BackLink DBID="/Summons/Laguna/Medusa/_MedusaMove.PRXY" Count="3" />
 	<aabb>
-		<maxX>1</maxX>
-		<maxY>1</maxY>
-		<maxZ>1</maxZ>
-		<minX>-1</minX>
-		<minY>-1</minY>
-		<minZ>-1</minZ>
+		<maxX>0.9</maxX>
+		<maxY>1.2</maxY>
+		<maxZ>3.5</maxZ>
+		<minX>-1.05</minX>
+		<minY>-0.9</minY>
+		<minZ>-0.1</minZ>
 	</aabb>
 	<additionalGraph href="" />
 	<animations>
@@ -63,7 +63,7 @@
 									<mipLevels>0</mipLevels>
 									<mipLevelUsage>AutoGenerate</mipLevelUsage>
 									<mipSharpenPasses></mipSharpenPasses>
-									<pixelFormat>DXT1</pixelFormat>
+									<pixelFormat>DXT5</pixelFormat>
 									<size>
 										<height>0</height>
 										<width>0</width>

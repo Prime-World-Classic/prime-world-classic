@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A0.TALENT" Count="1" />
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A0_TideMark.APLR" id="B86E1D62-CE09-4AEE-86BF-A8B532FED2F3">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: римская цифра 1</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/TideMark1.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/TideMark1.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FSAAAAACAAAAKwAAAEsAAABMYWd1bmFfVGlkZUZ4MQAATGFndW5hX1RpZGVNYXJrAFWL7FFqAotFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoCi00QUWgQAAAAi1UMiwKLTQyLkKABAAD/0oP4AXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>pSecond-&gt;FindApplicator("Laguna_TideFx1", pMisc, ABILITY) == pMisc &amp;&amp; pSecond-&gt;CountApplicators("Laguna_TideMark", pMisc, ABILITY) == 1</sString>
+				</enabled>
+				<formulaName>Laguna_TideFx1</formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A0_TideMark.APLR" id="185E5AF3-5F2E-4C84-A70B-6D5D1F3E6C99">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: римская цифра 2</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/TideMark2.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/TideMark2.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FSAAAAACAAAAKwAAAEsAAABMYWd1bmFfVGlkZUZ4MgAATGFndW5hX1RpZGVNYXJrAFWL7FFqAotFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoCi00QUWgQAAAAi1UMiwKLTQyLkKABAAD/0oP4AnUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>pSecond-&gt;FindApplicator("Laguna_TideFx2", pMisc, ABILITY) == pMisc &amp;&amp; pSecond-&gt;CountApplicators("Laguna_TideMark", pMisc, ABILITY) == 2</sString>
+				</enabled>
+				<formulaName>Laguna_TideFx2</formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A0_TideMark.APLR" id="3C7754B9-8955-471A-8D03-E7782AF4AC5E">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: римская цифра 3</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/TideMark3.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/TideMark3.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FSAAAAACAAAAKwAAAEsAAABMYWd1bmFfVGlkZUZ4MwAATGFndW5hX1RpZGVNYXJrAFWL7FFqAotFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoCi00QUWgQAAAAi1UMiwKLTQyLkKABAAD/0oP4A3UJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>pSecond-&gt;FindApplicator("Laguna_TideFx3", pMisc, ABILITY) == pMisc &amp;&amp; pSecond-&gt;CountApplicators("Laguna_TideMark", pMisc, ABILITY) == 3</sString>
+				</enabled>
+				<formulaName>Laguna_TideFx3</formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>17</behaviorFlags>
+	<caption>метка прилива (стак)</caption>
+	<customCounter>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A0_TideMark.APLR_description.txt" />
+	<dispellPriority>Medium</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FRAAAAACAAAAFQAAACsAAABMYWd1bmFUaWRlQ2xlYXIAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdTQAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.vLagunaTideClear == 0</sString>
+	</enabled>
+	<flags>3</flags>
+	<formulaName>Laguna_TideMark</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A0.ITEX" />
+	<lifeTime>
+		<compiledString>FRAAAAABAAAAHAAAAEEwX01hcmtEdXJhdGlvbgBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+		<returnType>float</returnType>
+		<sString>cA0_MarkDuration</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A0_TideMark.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>3</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

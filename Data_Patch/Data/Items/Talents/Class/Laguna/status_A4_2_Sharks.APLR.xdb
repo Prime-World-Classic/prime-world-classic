@@ -1,0 +1,481 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" Count="1" />
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="828E9B3B-D55E-471E-AF7D-55533D647280">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: путь меньше порога — акулы медленно, вода голубая</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Summons/Laguna/Shark/SharksCalm_Team.EFFT" />
+					<Item href="/Summons/Laguna/Shark/SharksCalm_Team.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FSEAAAACAAAAKAAAAEUAAABMYWd1bmFTaGFya0Rpc3QAQTRfMl9SZWREaXN0YW5jZQBVi+yD7AxoAAAAAItFDIsQi00Mi4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXfj/0Nxd+N/g9sRBdQnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vLagunaSharkDist &lt; cA4_2_RedDistance</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="68A5E2B4-E651-427F-A80D-E78E7F54B0E4">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: цель пробежала порог — акулы быстро, вода красная (до конца)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Summons/Laguna/Shark/SharksChase_Team.EFFT" />
+					<Item href="/Summons/Laguna/Shark/SharksChase_Team.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FSEAAAACAAAAKAAAAEUAAABMYWd1bmFTaGFya0Rpc3QAQTRfMl9SZWREaXN0YW5jZQBVi+yD7AxoAAAAAItFDIsQi00Mi4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXfj/0Nxd+N/g9sRBegnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vLagunaSharkDist &gt;= cA4_2_RedDistance</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="72FD0A81-60D0-48FB-90F3-1425D0E111B1">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>каждый тик: смещение цели, урон за путь, суммарный путь</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString>FQoAAAABAAAAFgAAAEE0XzJfVGljawBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+					<returnType>float</returnType>
+					<sString>cA4_2_Tick</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsCount</scaleMode>
+				<spell href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="B67856E6-C296-4CCD-A80A-A14BDDF18F81">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="141E0A5E-4801-4A5D-907D-A4267F085D2C">
+								<PermanentStatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>смещение цели за тик (не больше MaxStep — блинк не в счёт)</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FWAAAAAGAAEAcAAAAJwAAADMAAAA/wAAADABAABoAQAArwEAAEE0XzJfTWF4U3RlcAAAAABMYWd1bmFTaGFya1gAAAAATGFndW5hU2hhcmtYAAAAAExhZ3VuYVNoYXJrWQAAAABMYWd1bmFTaGFya1kAAAAATGFndW5hU2hhcmtTdGVwAFWL7IPsSFaLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0lHZHCSNRfhQi00MixGLTQyLgowBAAD/0IvwaBAAAACLTQyLEYtNDIuCiAEAAP/Q2C6NTfBRi1UMiwKLTQyLkIwBAADdXdj/0ovwaCAAAACLRQyLEItNDIuCiAEAAP/Q2C7cTdiNTehRi1UMiwKLTQyLkIwBAADdXdD/0ovwaDAAAACLRQyLEItNDIuCiAEAAP/Q2G4EjU3gUYtVDIsCi00Mi5CMAQAA3V3I/9KL8GhAAAAAi0UMixCLTQyLgogBAAD/0NhuBNxNyNxF0NldxNlFxFHZHCToMQAAANkcJOhcAAAAg8QIaFAAAACLTQyLEYtNDIuCiAEAAN1dvP/Q3G282V242UW4XovlXcNVi+xR2UUI2Rwk6AUAAACDxARdw1WL7FHZRQiD7AjdHCToKf7//4PECNld/NlF/IvlXcNVi+xR2UUI2UUM3tnf4PbEQXUI2UUI2V386wbZRQzZXfzZRfyL5V3D</compiledString>
+											<returnType>float</returnType>
+											<sString>min(sqrt((rPos.x - receiver.vLagunaSharkX) * (rPos.x - receiver.vLagunaSharkX) + (rPos.y - receiver.vLagunaSharkY) * (rPos.y - receiver.vLagunaSharkY)), cA4_2_MaxStep) - receiver.vLagunaSharkStep</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>LagunaSharkStep</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="34B58E8D-25F9-483F-9238-326BD257E9B6">
+								<PermanentStatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>урон за путь за тик</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FScAAAACAAAALgAAAEsAAABMYWd1bmFTaGFya1N0ZXAAQTRfMl9EYW1hZ2VQZXJEaXN0YW5jZQBVi+yD7AxoAAAAAItFDIsQi00Mi4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcM=</compiledString>
+											<returnType>float</returnType>
+											<sString>receiver.vLagunaSharkStep * cA4_2_DamagePerDistance</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>LagunaSharkDmg</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="E59719C6-CCF8-431A-A457-CB8FACD506DB">
+								<PermanentStatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>суммарный путь цели</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FRAAAAABAAAAFAAAAExhZ3VuYVNoYXJrU3RlcABVi+xoAAAAAItFDIsQi00Mi4KIAQAA/9Bdww==</compiledString>
+											<returnType>float</returnType>
+											<sString>receiver.vLagunaSharkStep</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>LagunaSharkDist</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="7904A424-8A37-4000-905E-9FD398C3F06D">
+								<PermanentStatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>запомнить X цели</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FQ0AAAABAAAAKwAAAExhZ3VuYVNoYXJrWABVi+yD7AxWjUX4UItNDIsRi00Mi4KMAQAA/9CL8GgAAAAAi00MixGLTQyLgogBAAD/0Ngu2V302UX0XovlXcM=</compiledString>
+											<returnType>float</returnType>
+											<sString>rPos.x - receiver.vLagunaSharkX</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>LagunaSharkX</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="0E890318-3471-4837-8E9F-3E74FE47A9B0">
+								<PermanentStatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>запомнить Y цели</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FQ0AAAABAAAAKwAAAExhZ3VuYVNoYXJrWQBVi+yD7AxWjUX4UItNDIsRi00Mi4KMAQAA/9CL8GgAAAAAi00MixGLTQyLgogBAAD/0NhuBNld9NlF9F6L5V3D</compiledString>
+											<returnType>float</returnType>
+											<sString>rPos.y - receiver.vLagunaSharkY</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>LagunaSharkY</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="76C60B57-4468-4367-9E5C-70BC1995CE9A">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>1</flags>
+								<instantApply>true</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString>FQoAAAABAAAAFgAAAEE0XzJfVGljawBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+					<returnType>float</returnType>
+					<sString>cA4_2_Tick</sString>
+				</startOffset>
+				<targetSelector href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="7E8E3C6B-2199-4FCF-9EBF-DEDD70F54C62">
+					<SelectApplicatorTarget>
+						<applicatorIndex>0</applicatorIndex>
+						<applicatorName></applicatorName>
+						<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+						<selectTarget>ApplicatorTarget</selectTarget>
+					</SelectApplicatorTarget>
+				</targetSelector>
+			</SpellPeriodicallyApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="92A166A6-B89D-4AA2-B64F-0491F1D3D2AA">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString>FQAAAAAAAAAAVYvsuAEAAABdww==</compiledString>
+					<returnType>int</returnType>
+					<sString>1</sString>
+				</actionsCount>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>8</behaviorFlags>
+				<caption>(A4_2u) смерть героя под эффектом: стак Лагуне</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="B7AF9CEB-D276-4115-B386-97B50D4AD173">
+					<EventProcessorOnDeath>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<castSpellDelay>
+							<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>0.0f</sString>
+						</castSpellDelay>
+						<checkSender>0</checkSender>
+						<objectFilter>2040319</objectFilter>
+						<senderMatchTarget>ApplicatorTarget</senderMatchTarget>
+						<spell href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="DA91FEF0-1D74-404F-ABDD-02D87B75D313">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="C502C0A2-7BA8-4793-A8ED-01EFB2F93473">
+										<PermanentStatModApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<caption>+1 стак (до максимума)</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FTYAAAAEAAAARQAAAFsAAABxAAAAiAAAAEE0XzJ1X01heFN0YWNrcwBMYWd1bmFTaGFya1N0YWNrcwAAAExhZ3VuYVNoYXJrU3RhY2tzAFWL7IPsEItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SUdkcJGgQAAAAi0UMixCLTQyLgogBAAD/0NwFrAAAANld/NlF/FHZHCToMAAAAIPECGgkAAAAi00MixGLTQyLgogBAADdXfT/0Nxt9Nld8NlF8IvlXcMAAAAAAADwP1WL7FHZRQjZRQze2d/g9sRBdQjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
+													<returnType>float</returnType>
+													<sString>min(receiver.vLagunaSharkStacks + 1.0f, cA4_2u_MaxStacks) - receiver.vLagunaSharkStacks</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>LagunaSharkStacks</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="1E6ED839-0EC1-4CEB-883C-B3CB1A820FAC">
+									<DispatchImmediate>
+										<alwaysApply>true</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>1</flags>
+										<instantApply>true</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+					</EventProcessorOnDeath>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FR0AAAACAAAAJAAAAD0AAABMYWd1bmFfQTRfMnUAAAAATGFndW5hX0E0XzJ1AFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdB2LVQyLAotNDItQVP/SD7bAhcB0CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("Laguna_A4_2u") &amp;&amp; rIsHero</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption>акулы кружат вокруг цели</caption>
+	<customCounter>
+		<compiledString>FQ8AAAABAAAAEwAAAExhZ3VuYVNoYXJrRG1nAFWL7GgAAAAAi0UMixCLTQyLgogBAAD/0FHZHCToBQAAAIPEBF3DuAEAAAAPovfCAAAABHQH8w8sRCQEw+kAAAAAVYvsg+wM2UUI2X38D7dF/A0ADAAAiUX42W3421302W38i0X0i+Vdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>f2l(receiver.vLagunaSharkDmg)</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="/Summons/Laguna/Shark/SharkSound_Team.EFFT" />
+		<Item href="/Summons/Laguna/Shark/SharkSound_Team.EFFT" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName>Laguna_A4_2_Sharks</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A4_2.ITEX" />
+	<lifeTime>
+		<compiledString>FQ4AAAABAAAAGgAAAEE0XzJfRHVyYXRpb24AVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+		<returnType>float</returnType>
+		<sString>cA4_2_Duration</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" id="B35C9EF5-44E4-4289-BE48-CDFC2FB84786">
+		<ApplicatorsList>
+			<applicatorLists />
+			<applicators>
+				<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" />
+			</applicators>
+		</ApplicatorsList>
+	</unstackableWith>
+</StatusApplicator>
