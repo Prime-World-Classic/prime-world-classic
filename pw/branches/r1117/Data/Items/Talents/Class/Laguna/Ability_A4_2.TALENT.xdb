@@ -1,0 +1,547 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Laguna.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="B7F30F4A-78D0-4159-A0E6-723BFF3D6163">
+		<PermanentStatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<caption>сбросить накопленный урон акул</caption>
+			<customApplyType>None</customApplyType>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQ8AAAABAAAAEwAAAExhZ3VuYVNoYXJrRG1nAFWL7GgAAAAAi0UMixCLTQyLgogBAAD/0NngXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>-receiver.vLagunaSharkDmg</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>Life</stat>
+				<topModifier>false</topModifier>
+				<variable>LagunaSharkDmg</variable>
+			</modifier>
+			<providerName></providerName>
+		</PermanentStatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="673F0363-3A41-45B3-8599-A3A3D80837CF">
+		<PermanentStatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<caption>сбросить путь</caption>
+			<customApplyType>None</customApplyType>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FRAAAAABAAAAFAAAAExhZ3VuYVNoYXJrRGlzdABVi+xoAAAAAItFDIsQi00Mi4KIAQAA/9DZ4F3D</compiledString>
+					<returnType>float</returnType>
+					<sString>-receiver.vLagunaSharkDist</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>Life</stat>
+				<topModifier>false</topModifier>
+				<variable>LagunaSharkDist</variable>
+			</modifier>
+			<providerName></providerName>
+		</PermanentStatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="98894A76-6F04-4F4A-9E9C-C9512E45B076">
+		<PermanentStatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<caption>сбросить смещение</caption>
+			<customApplyType>None</customApplyType>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FRAAAAABAAAAFAAAAExhZ3VuYVNoYXJrU3RlcABVi+xoAAAAAItFDIsQi00Mi4KIAQAA/9DZ4F3D</compiledString>
+					<returnType>float</returnType>
+					<sString>-receiver.vLagunaSharkStep</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>Life</stat>
+				<topModifier>false</topModifier>
+				<variable>LagunaSharkStep</variable>
+			</modifier>
+			<providerName></providerName>
+		</PermanentStatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="D5E40780-A7DB-4B85-992F-E882D3690567">
+		<PermanentStatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<caption>позиция цели на касте: X</caption>
+			<customApplyType>None</customApplyType>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQ0AAAABAAAAKwAAAExhZ3VuYVNoYXJrWABVi+yD7AxWjUX4UItNDIsRi00Mi4KMAQAA/9CL8GgAAAAAi00MixGLTQyLgogBAAD/0Ngu2V302UX0XovlXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>rPos.x - receiver.vLagunaSharkX</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>Life</stat>
+				<topModifier>false</topModifier>
+				<variable>LagunaSharkX</variable>
+			</modifier>
+			<providerName></providerName>
+		</PermanentStatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="9E3C826F-1A44-40B4-86E0-2101A8FAA4D1">
+		<PermanentStatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<caption>позиция цели на касте: Y</caption>
+			<customApplyType>None</customApplyType>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQ0AAAABAAAAKwAAAExhZ3VuYVNoYXJrWQBVi+yD7AxWjUX4UItNDIsRi00Mi4KMAQAA/9CL8GgAAAAAi00MixGLTQyLgogBAAD/0NhuBNld9NlF9F6L5V3D</compiledString>
+					<returnType>float</returnType>
+					<sString>rPos.y - receiver.vLagunaSharkY</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>Life</stat>
+				<topModifier>false</topModifier>
+				<variable>LagunaSharkY</variable>
+			</modifier>
+			<providerName></providerName>
+		</PermanentStatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="250137BF-BE38-4D86-BC09-75F9634B2231">
+		<SpellPeriodicallyApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<behaviorFlags>0</behaviorFlags>
+			<caption>в конце акулы кусают: фикс. урон + накопленный за бег (+30% при красной воде), ап — оглушение</caption>
+			<effect>
+				<Item href="" />
+				<Item href="" />
+			</effect>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<lifeTime>
+				<compiledString>FQ4AAAACAAAAGwAAAC4AAABBNF8yX0R1cmF0aW9uAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twFPAAAANld/NlF/IvlXcMAAAAAAADgPw==</compiledString>
+				<returnType>float</returnType>
+				<sString>cA4_2_Duration + 0.5f</sString>
+			</lifeTime>
+			<LoggingEvent>-1</LoggingEvent>
+			<period>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB6RA==</compiledString>
+				<returnType>float</returnType>
+				<sString>1000.0f</sString>
+			</period>
+			<providerName></providerName>
+			<scaleMode>ScaleIsCount</scaleMode>
+			<spell href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="65714869-EA3E-456A-AB1A-55DCEF5943EF">
+				<Spell>
+					<applicators>
+						<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="B2E3F6FD-B424-479E-A782-E1CA3BCF7F41">
+							<DamageApplicator parent="/GameLogic/GeneralApplicators/CommonDamage.APLR">
+								<caption>укус акул (физ.)</caption>
+								<damage>
+									<compiledString>FU4AAAAGAAAAVQAAAHIAAACZAAAArAAAAMcAAADZAAAAQTRfMl9EYW1hZ2UATGFndW5hU2hhcmtEbWcAAExhZ3VuYVNoYXJrRGlzdABBNF8yX1JlZERpc3RhbmNlAAAAAEE0XzJfUmVkQm9udXMAVYvsg+wcaBwAAACLRQyLEItNDIuCiAEAAP/Qi00MUYtVCFJoLAAAAItFEIsQi00Qi0JQ3V34/9DcXfjf4PbEQXopi00MUYtVCFJoQAAAAItFEIsQi00Qi0JQ/9DcNQgBAADZ6N7B3V3w6wXZ6N1d8ItNDFGLVQhSaAAAAACLRRCLEItNEItCUP/QaAwAAACLTQyLEYtNDIuCiAEAAN1d6P/Q3EXo3E3w2V3k2UXki+VdwwAAAAAAAPA/AAAAAAAAWUA=</compiledString>
+									<returnType>float</returnType>
+									<sString>(cA4_2_Damage + receiver.vLagunaSharkDmg) * (receiver.vLagunaSharkDist &gt;= cA4_2_RedDistance ? 1.0f + cA4_2_RedBonus / 100.0f : 1.0f)</sString>
+								</damage>
+								<damageType>Material</damageType>
+								<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+							</DamageApplicator>
+						</Item>
+						<Item href="/Heroes/DefaultStatus/_STUN_Status.APLR" />
+					</applicators>
+					<dispatch href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="28692689-B033-46C1-937C-D154DEBD3C43">
+						<DispatchImmediate>
+							<alwaysApply>false</alwaysApply>
+							<applyEffect>
+								<Item href="/Heroes/Laguna/Effects/Hit_A_Team.EFFT" />
+								<Item href="/Heroes/Laguna/Effects/Hit_A_Team.EFFT" />
+							</applyEffect>
+							<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+							<applyEffectOrientation>Default</applyEffectOrientation>
+							<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+							<dieAfterApply>true</dieAfterApply>
+							<dispatchEffect>
+								<Item href="" />
+								<Item href="" />
+							</dispatchEffect>
+							<flags>1</flags>
+							<instantApply>true</instantApply>
+						</DispatchImmediate>
+					</dispatch>
+				</Spell>
+			</spell>
+			<startCondition>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</startCondition>
+			<startOffset>
+				<compiledString>FQ4AAAABAAAAGgAAAEE0XzJfRHVyYXRpb24AVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+				<returnType>float</returnType>
+				<sString>cA4_2_Duration</sString>
+			</startOffset>
+			<targetSelector href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="87D2A36D-59C2-4000-A46E-2B42308633DB">
+				<SelectApplicatorTarget>
+					<applicatorIndex>0</applicatorIndex>
+					<applicatorName></applicatorName>
+					<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+					<selectTarget>ApplicatorTarget</selectTarget>
+				</SelectApplicatorTarget>
+			</targetSelector>
+		</SpellPeriodicallyApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/status_A4_2_Sharks.APLR" />
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="CA1A891B-869D-47A5-A457-7D6E8F5392E5">
+		<StatModApplicator>
+			<applyTarget>AbilityOwner</applyTarget>
+			<behaviorFlags>0</behaviorFlags>
+			<caption>реплика Лагуны: UltimateShark</caption>
+			<constraint>None</constraint>
+			<dontUpdate>false</dontUpdate>
+			<effect>
+				<Item href="/Summons/Laguna/Shark/Voice_Team.EFFT" />
+				<Item href="/Summons/Laguna/Shark/Voice_Team.EFFT" />
+			</effect>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<lifeTime>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+				<returnType>float</returnType>
+				<sString>3.0f</sString>
+			</lifeTime>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f</sString>
+				</multValue>
+				<stat>LifeRegenerationAbsolute</stat>
+				<topModifier>false</topModifier>
+				<variable></variable>
+			</modifier>
+			<providerName></providerName>
+			<startCondition>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</startCondition>
+			<statModName></statModName>
+		</StatModApplicator>
+	</Item>
+	</applicators>
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>A4_2. Акулы</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="7E6CF18F-2F4B-4A63-BB4D-40A2D92B0C1C">
+		<ConditionFormula>
+			<condition>
+				<compiledString>FR0AAAACAAAAJAAAAD0AAABMYWd1bmFfQTRfMnUAAAAATGFndW5hX0E0XzJ1AFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZF+/fYG8CDwAGL5V3D</compiledString>
+				<returnType>bool</returnType>
+				<sString>tal("Laguna_A4_2u") == false</sString>
+			</condition>
+			<name>Laguna_A4_2u</name>
+		</ConditionFormula>
+	</Item>
+</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="3F12BA4A-00DD-44D2-BA69-93CC835C6944">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="E5BDE7C2-94D6-4F4F-9C5D-ECF5DC2DD317">
+					<UnitConstant>
+						<name>Range</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACQQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>18.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="8B2A672F-7297-4062-8488-87398E4FC823">
+					<UnitConstant>
+						<name>A4_2_Duration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>5.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="E67C99D9-D121-4BFA-84AA-83CDFFBFF3A4">
+					<UnitConstant>
+						<name>A4_2_Tick</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>0.05f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="C03677CC-80A7-42D5-B330-32AD54325D3F">
+					<UnitConstant>
+						<name>A4_2_MaxStep</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="021E3497-D969-4CCD-A902-D35CCAF021EB">
+					<UnitConstant>
+						<name>A4_2_RedDistance</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>12.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="C67D8734-4A87-49D9-999E-FE20B68AAECB">
+					<UnitConstant>
+						<name>A4_2_RedBonus</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>30.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="45F13926-CC7E-4680-B979-C401DB72B94F">
+					<UnitConstant>
+						<name>A4_2_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAtEIAgCJEVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength), 90, 650)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="E357237E-B117-497E-A72C-2AE33F13D9C9">
+					<UnitConstant>
+						<name>A4_2_DamagePerDistance</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAgEAAAMhBVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength), 4, 25)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="7E5CC00F-7954-4DAD-9D65-7248B6FE8C37">
+					<UnitConstant>
+						<name>Stun_Duration</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="E0A61EB4-E156-4C5A-87A8-660EEFB0CDF4">
+					<UnitConstant>
+						<name>Stun_Condition</name>
+						<var>
+							<compiledString>FUEAAAAEAAAASAAAAGEAAACXAAAAtAAAAExhZ3VuYV9BNF8ydQAAAABMYWd1bmFfQTRfMnUAAAAATGFndW5hU2hhcmtEaXN0AEE0XzJfUmVkRGlzdGFuY2UAVYvsg+wUaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0Q2ggAAAAi1UMiwKLTQyLkIgBAAD/0otFDFCLTQhRaDAAAACLVRCLAotNEItQUN1d8P/S3F3w3+D2xEF6B9no2V3s6wXZ7tld7NlF7IvlXcMAAAAAAACAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>tal("Laguna_A4_2u") &amp;&amp; receiver.vLagunaSharkDist &gt;= cA4_2_RedDistance ? 1.0f : 0.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="479D9A65-2B77-4EFA-BD9A-802A3113498A">
+					<UnitConstant>
+						<name>A4_2u_StatPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="2832C917-4585-43BF-95A7-CEEDCA268E8D">
+					<UnitConstant>
+						<name>A4_2u_MaxStacks</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>10.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="152A8028-01A1-4001-AAA3-04D0491BF707">
+					<UnitConstant>
+						<name>UltimateConstant</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" id="AEFD95B2-3685-4F04-9418-3C69D16E7E81">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>67</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A4_2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>true</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQw==</compiledString>
+		<returnType>float</returnType>
+		<sString>300.0f</sString>
+	</manaCost>
+	<marker>doCast4</marker>
+	<microAI href="" />
+	<minLevel>2</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>540</naftaCost>
+	<name textref="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT_name.txt" />
+	<node>ability4</node>
+	<passiveApplicators />
+	<persistentId>Laguna_A4_2</persistentId>
+	<prerequisiteTalents />
+	<rarity>Class</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>2021654531</targetType>
+	<type>Active</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cRange</sString>
+	</useRange>
+	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

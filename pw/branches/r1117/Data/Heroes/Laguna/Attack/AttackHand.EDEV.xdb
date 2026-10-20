@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EnableDisableSCEvents>
+	<disableEvents />
+	<enableEvents>
+		<Item href="/Heroes/Laguna/Attack/AttackHand.EDEV" id="CECBF91B-5174-4C2C-BE3B-4EB5F8C99B20">
+			<AnimationSCEvent>
+				<animParam>0</animParam>
+				<name>attack1</name>
+				<probability>100</probability>
+				<type>NodeParam</type>
+			</AnimationSCEvent>
+		</Item>
+		<Item href="/Heroes/Laguna/Attack/AttackHand.EDEV" id="AACFFEA4-774D-41C8-B37C-662A999CDB78">
+			<AnimationSCEvent>
+				<animParam>0</animParam>
+				<name>attack2</name>
+				<probability>100</probability>
+				<type>NodeParam</type>
+			</AnimationSCEvent>
+		</Item>
+		<Item href="/Heroes/Laguna/Attack/AttackHand.EDEV" id="F8186FE5-16D4-4E3F-9406-BE538D2A5C1D">
+			<AnimationSCEvent>
+				<animParam>0</animParam>
+				<name>attack3</name>
+				<probability>100</probability>
+				<type>NodeParam</type>
+			</AnimationSCEvent>
+		</Item>
+	</enableEvents>
+	<order>EnableThenDisable</order>
+	<restartComponent>true</restartComponent>
+</EnableDisableSCEvents>

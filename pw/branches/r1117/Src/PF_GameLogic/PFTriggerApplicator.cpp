@@ -1015,7 +1015,8 @@ bool PFEventProcessorOutgoingDamage::ProcessEvent( const PFBaseUnitEvent *pEvent
   // designer's code, see NUM_TASK
   // TODO: fix PFBaseUnitEvent.h to be able to send spell to damage taker from editor
   // const CPtr<PFBaseUnit> &pEventSender = pOutgoingDamEvent->GetTaker();
-  DoSpell();
+  // applyTarget ApplicatorSelectedTarget sends the spell to the damage taker (no content used that mode before)
+  DoSpell( CPtr<PFBaseUnit>( const_cast<PFBaseUnit*>( pOutgoingDamEvent->pTaker ) ) );
 
   return true;
 }

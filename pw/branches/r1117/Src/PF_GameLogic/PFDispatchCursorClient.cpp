@@ -17,6 +17,9 @@
 #include "../Render/AOERenderer.h"
 
 #include "AdventureScreen.h"
+#include "../Scene/AnimatedSceneComponent.h"
+#include "../Scene/AnimGraphApplicator.hpp"
+#include "../Render/SkeletalMesh.h"
 #include "PFClientVisibilityMap.h"
 #include "PFHero.h"
 
@@ -52,6 +55,14 @@ PFDispatchCursorClient::PFDispatchCursorClient( PF_Core::WorldObjectRef pWO, NSc
 , updateCursorTime( 0.0f )
 , needSendCommandUpdateCursor( false )
 , aoeIsVisible(false)
+, clientDir( 0.0f, 1.0f )
+, clientDirInited( false )
+, lastLogicPos( VNULL2 )
+, lastLogicAge( 0.0f )
+, curYaw( 0.0f )
+, bend( 0.0f )
+, bendInited( false )
+, pBendSkeleton( 0 )
 {
   NGameX::AdventureScreen* advScreen = NGameX::AdventureScreen::Instance();
   if ( advScreen )
@@ -66,6 +77,12 @@ PFDispatchCursorClient::PFDispatchCursorClient( PF_Core::WorldObjectRef pWO, NSc
 
 void PFDispatchCursorClient::OnWorldObjectDie()
 {
+  if ( pBendSkeleton )
+  {
+    pBendSkeleton->ClearExtraYaw();   // the effect goes back to the pool
+    pBendSkeleton = 0;
+  }
+
   if (pEffect)
   {
     pEffect->Die();
@@ -105,6 +122,12 @@ void PFDispatchCursorClient::Update( float timeDelta )
   }
 
   RetrieveTargetCoords();
+
+  if ( WorldObject()->GetDB().turnRate > 0.0f )
+  {
+    UpdateSteered( timeDelta );
+    return;
+  }
 
   const float linkRange = WorldObject()->GetDB().linkRange;
 
@@ -179,6 +202,188 @@ void PFDispatchCursorClient::Update( float timeDelta )
       pAOE->ResetArea(Render::AOERenderer::CHANNEL_RANGE2);
     }
   }
+}
+
+namespace
+{
+  const float s_steeredBodyLength = 8.0f;   // the effect is turned along the path over this length (the whale body)
+  const float s_steeredYawSpeed = 4.0f;     // yaw smoothing, 1/s
+  const float s_steeredPathStep = 0.25f;
+
+  float SteeredYaw( const CVec2& dir )
+  {
+    float yaw = FP_PI2 + atan2( dir.y, dir.x );
+    if ( yaw > FP_PI )
+      yaw -= FP_2PI;
+    return yaw;
+  }
+}
+
+// Same motion as the logic (PFDispatchCursor::StepSteered) run every frame and pulled softly to the logic position
+// extrapolated between logic steps (the logic position itself lags and jumps by steps). The effect origin (the head)
+// goes along the path and the effect is turned from the path point one body length back to the head, so the body follows
+// the head's path instead of swinging around it.
+void PFDispatchCursorClient::UpdateSteered( float timeDelta )
+{
+  const NWorld::PFDispatchCursor* pWorldObject = WorldObject();
+  const float maxSpeed = pWorldObject->GetMaxSpeed();
+  if ( !clientDirInited )
+  {
+    clientDir = pWorldObject->GetHeading();
+    clientDirInited = true;
+    lastLogicPos = pWorldObject->GetCurPos();
+    lastLogicAge = 0.0f;
+    curYaw = SteeredYaw( clientDir );
+    path.clear();
+    path.push_back( currentPos.AsVec2D() );
+  }
+
+  CVec2 want = dest.AsVec2D() - currentPos.AsVec2D();
+  bool reachable = true;
+  {
+    float const omega = pWorldObject->GetDB().turnRate * ( FP_PI / 180.0f );
+    float const radius = maxSpeed / omega;
+    float const side = ( clientDir.x * want.y - clientDir.y * want.x ) >= 0.0f ? radius : -radius;
+    CVec2 const center = currentPos.AsVec2D() + CVec2( -clientDir.y, clientDir.x ) * side;
+    reachable = fabs2( dest.AsVec2D() - center ) >= radius * radius;
+  }
+  if ( reachable && fabs2( want ) > EPS_VALUE )
+  {
+    float const cur = atan2( clientDir.y, clientDir.x );
+    float diff = atan2( want.y, want.x ) - cur;
+    while ( diff > FP_PI ) diff -= FP_2PI;
+    while ( diff < -FP_PI ) diff += FP_2PI;
+    float const maxTurn = pWorldObject->GetDB().turnRate * ( FP_PI / 180.0f ) * timeDelta;
+    diff = Clamp( diff, -maxTurn, maxTurn );
+    clientDir = CVec2( cos( cur + diff ), sin( cur + diff ) );
+  }
+
+  CVec2 const logicPos = pWorldObject->GetCurPos();
+  if ( fabs2( logicPos - lastLogicPos ) > EPS_VALUE )
+  {
+    lastLogicPos = logicPos;
+    lastLogicAge = 0.0f;
+  }
+  else
+    lastLogicAge += timeDelta;
+  CVec2 const predicted = logicPos + pWorldObject->GetHeading() * ( maxSpeed * Min( lastLogicAge, 0.3f ) );
+
+  CVec2 newPos = currentPos.AsVec2D() + clientDir * ( maxSpeed * timeDelta );
+  newPos += ( predicted - newPos ) * Min( 1.0f, timeDelta * 1.5f );
+
+  currentPos = CVec3( newPos, 0.0f );
+  pScene->GetHeightsController().GetHeight( currentPos.x, currentPos.y, 1, &currentPos.z, 0 );
+  currentPos.z += pWorldObject->GetDB().height;
+
+  // remember the path and find the point one body length back along it
+  if ( path.empty() || fabs2( newPos - path.back() ) > s_steeredPathStep * s_steeredPathStep )
+  {
+    path.push_back( newPos );
+    if ( path.size() > 400 )
+      path.erase( path.begin() );
+  }
+  CVec2 tail = newPos;
+  float left = s_steeredBodyLength;
+  CVec2 prev = newPos;
+  for ( int i = path.size() - 1; i >= 0 && left > 0.0f; --i )
+  {
+    float const seg = fabs( path[i] - prev );
+    if ( seg >= left )
+    {
+      tail = prev + ( path[i] - prev ) * ( left / seg );
+      left = 0.0f;
+      break;
+    }
+    left -= seg;
+    prev = path[i];
+    tail = prev;
+  }
+  CVec2 bodyDir = newPos - tail;
+  if ( left > 0.0f || fabs2( bodyDir ) < 0.01f )
+    bodyDir = clientDir;   // path is still shorter than the body: just the movement direction
+
+  float diff = SteeredYaw( bodyDir ) - curYaw;
+  while ( diff > FP_PI ) diff -= FP_2PI;
+  while ( diff < -FP_PI ) diff += FP_2PI;
+  float const yawStep = diff * Min( 1.0f, timeDelta * s_steeredYawSpeed );
+  curYaw += yawStep;
+  if ( curYaw > FP_PI ) curYaw -= FP_2PI;
+  if ( curYaw < -FP_PI ) curYaw += FP_2PI;
+
+  ApplyBend( timeDelta, timeDelta > EPS_VALUE ? yawStep / timeDelta : 0.0f );
+
+  Placement placement;
+  placement.pos = currentPos;
+  placement.rot.FromEulerAngles( curYaw, 0.0f, 0.0f );
+  pEffect->SetPosition( placement );
+
+  UpdateVisibility( GetSceneObject(), this );
+}
+
+// Procedural bend of the whale body while turning: head and tail groups of bones are turned about the body centre
+// into the turn (the body lies along the arc of the path). Bend = half of the arc angle of the body: 0.5 * L * yawRate / v.
+void PFDispatchCursorClient::ApplyBend( float timeDelta, float yawRate )
+{
+  if ( !bendInited )
+  {
+    NScene::SceneObject* pSO = GetSceneObject();
+    if ( !pSO )
+      return;   // try again next frame
+    bendInited = true;
+    struct Finder : public NScene::FullTraverser
+    {
+      NScene::AnimatedSceneComponent* asc;
+      Finder() : asc( 0 ) {}
+      void operator()( NScene::SceneComponent *pSC )
+      {
+        if ( !asc )
+          asc = dynamic_cast<NScene::AnimatedSceneComponent*>( pSC );
+      }
+    } finder;
+    pSO->Traverse( finder );
+    if ( !finder.asc || !finder.asc->GetGraphApplicator() || !finder.asc->GetGraphApplicator()->GetModel() )
+      return;
+    Render::SkeletonWrapper* pSkel = finder.asc->GetGraphApplicator()->GetModel()->GetSkeletonWrapper();
+    if ( !pSkel )
+      return;
+    // weight: + head (turns into the turn), - tail (behind the pivot, so also into the turn). The bend is split over
+    // several pivots along the body (each bone group turns a little about several points) so the body makes a smooth arc
+    struct Part { const char* name; const char* pivot; float weight; };
+    const Part parts[] = {
+      { "Spine04_M", "Chest_M", 0.5f }, { "Spine05_M", "Spine04_M", 0.5f },
+      { "BackA_M", "Chest_M", -0.4f }, { "BackA_M", "BackB_M", -0.4f },
+      { "CTail00_R", "Chest_M", -0.4f }, { "CTail00_R", "BackB_M", -0.4f }, { "CTail00_R", "root", -0.4f },
+      { "CTail00_L", "Chest_M", -0.4f }, { "CTail00_L", "BackB_M", -0.4f }, { "CTail00_L", "root", -0.4f } };
+    for ( int i = 0; i < sizeof( parts ) / sizeof( parts[0] ); ++i )
+    {
+      unsigned int bone = 0, pivot = 0;
+      CVec3 pivotPos;
+      if ( !pSkel->GetJointIndexByName( parts[i].name, bone ) || !pSkel->GetJointIndexByName( parts[i].pivot, pivot ) ||
+           !pSkel->GetBindPosition( pivot, pivotPos ) )
+        continue;
+      Render::SkeletonWrapper::ExtraYaw e;
+      e.bone = bone;
+      e.angle = parts[i].weight;   // weight is kept here, angle = weight * bend is set every frame
+      e.pivot = pivotPos;
+      bendYaw.push_back( e );
+    }
+    if ( bendYaw.empty() )
+      return;   // not the whale skeleton: no bend
+    pBendSkeleton = pSkel;
+  }
+  if ( !pBendSkeleton )
+    return;
+
+  const float bodyLength = 7.0f;
+  const float maxBend = 0.15f;
+  float const speed = Max( WorldObject()->GetMaxSpeed(), 0.1f );
+  float const target = Clamp( 0.5f * bodyLength * yawRate / speed, -maxBend, maxBend );
+  bend += ( target - bend ) * Min( 1.0f, timeDelta * 3.0f );
+
+  nstl::vector<Render::SkeletonWrapper::ExtraYaw> yaw = bendYaw;
+  for ( int i = 0; i < yaw.size(); ++i )
+    yaw[i].angle = bendYaw[i].angle * bend;
+  pBendSkeleton->SetExtraYaw( yaw );
 }
 
 bool PFDispatchCursorClient::GetStartPos( CVec3& result, Matrix43& matrix ) const

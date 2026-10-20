@@ -1132,7 +1132,7 @@ public:
   virtual int   GetPresentTeamActiveMembers() const;
   virtual bool  IsSkinUsed(const char * skinId) const { return false; }
 
-	virtual float GetVariable(const char *name) const { return GetVariableValue(name); }
+	virtual float GetVariable(const char *name) const;
 
   virtual const IMiscFormulaPars* FindApplicator(   const char* name, const IMiscFormulaPars* pMisc, ApplicatorSearchType searchType ) const;
   virtual int                     CountApplicators( const char* name, const IMiscFormulaPars* pMisc, ApplicatorSearchType searchType ) const;

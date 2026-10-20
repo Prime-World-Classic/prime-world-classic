@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>А2у2. Тихий омут</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Laguna/Ability_A2u2.TALENT" id="FC824F9B-8685-466F-B210-9125E3B2C407">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A2u2.TALENT" id="880C5F34-6C1D-4D1B-AB72-E04CEAC8EA90">
+					<UnitConstant>
+						<name>A2u2_AreaBonus</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>20</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Laguna/Ability_A2u2.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>1</flags>
+	<forceBonus>9</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>4</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>290</naftaCost>
+	<name textref="/Items/Talents/Class/Laguna/Ability_A2u2.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators />
+	<persistentId>Laguna_A2u2</persistentId>
+	<prerequisiteTalents>
+		<Item href="/Items/Talents/Class/Laguna/Ability_A2.TALENT" />
+	</prerequisiteTalents>
+	<rarity>Class</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>136258047</targetType>
+	<type>Passive</type>
+	<upgradeLevel>1</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

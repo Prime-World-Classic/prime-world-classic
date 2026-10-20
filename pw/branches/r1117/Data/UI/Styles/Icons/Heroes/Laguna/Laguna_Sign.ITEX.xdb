@@ -10,8 +10,8 @@
 	<shapeAlphaThreshold>0</shapeAlphaThreshold>
 	<shapeFileName>/UI/Styles/Icons/Heroes/Laguna/Laguna_Sign.shp</shapeFileName>
 	<size>
-		<height>166</height>
-		<width>166</width>
+		<height>20</height>
+		<width>20</width>
 	</size>
 	<srcFileName crc="0">/UI/Styles/Icons/Heroes/Laguna/Laguna_Sign.png</srcFileName>
 	<startMipLevel>0</startMipLevel>
