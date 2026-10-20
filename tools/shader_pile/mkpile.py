@@ -107,7 +107,7 @@ def read_tail(path):
     return tail
 
 
-def list_pile(path, grep=None):
+def list_pile(path, grep=None, show_all=False):
     tag, ver, n, strings_off, strings_len, index_off = read_tail(path)
     with open(path, "rb") as f:
         f.seek(strings_off)
@@ -124,10 +124,42 @@ def list_pile(path, grep=None):
                 continue
             print(f"{name:60s} {src:>10} {'zlib' if flags & COMPRESSED else 'raw ':4} crc={crc:08x}")
             shown += 1
-            if shown >= 40:
+            if shown >= 40 and not show_all:
                 print(f"... ещё {n - shown} записей")
                 break
     print(f"всего записей: {n}")
+
+
+def extract_pile(path, out_dir, grep=None):
+    """Достаёт файлы из pile в out_dir с сохранением относительных имён.
+    Нужен для бисекта содержимого контейнера (сравнить старый и новый слой)."""
+    tag, ver, n, strings_off, strings_len, index_off = read_tail(path)
+    with open(path, "rb") as f:
+        f.seek(strings_off)
+        names = crypt(f.read(strings_len))
+        f.seek(index_off)
+        idx = crypt(f.read(n * struct.calcsize(ENTRY_FMT)))
+        data_start = 4
+        done = 0
+        for i in range(n):
+            size, src, off, flags, name_off, crc = struct.unpack_from(ENTRY_FMT, idx, i * 24)
+            end = names.index(b"\x00", name_off)
+            name = names[name_off:end].decode("utf-8", "replace")
+            if grep and grep not in name:
+                continue
+            # offset в записи — абсолютный от начала файла (писатель пишет
+            # e["offset"] = len(data), а data уже содержит 4-байтную метку)
+            f.seek(off)
+            raw = f.read(size)
+            body = zlib.decompress(raw) if flags & COMPRESSED else raw
+            if (zlib.crc32(body) & 0xFFFFFFFF) != crc:
+                print(f"{name}: crc не совпал ({zlib.crc32(body) & 0xFFFFFFFF:08x} != {crc:08x})")
+            dst = os.path.join(out_dir, name)
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            with open(dst, "wb") as g:
+                g.write(body)
+            done += 1
+    print(f"извлечено {done} из {n} в {out_dir}")
 
 
 def main():
@@ -144,11 +176,20 @@ def main():
     l = sub.add_parser("list")
     l.add_argument("pile")
     l.add_argument("--grep")
+    # лимит показа в 40 записей молча прячет содержимое: замеры «что лежит в pile»
+    # с ним дают неверный состав (на стенде 60 записей, видно 40)
+    l.add_argument("--all", action="store_true")
+    x = sub.add_parser("extract")
+    x.add_argument("pile")
+    x.add_argument("out_dir")
+    x.add_argument("--grep")
     a = ap.parse_args()
     if a.cmd == "build":
         build(a.root, a.out, a.mask or ["*.shd"], a.comp_size, a.max_ratio)
+    elif a.cmd == "extract":
+        extract_pile(a.pile, a.out_dir, a.grep)
     else:
-        list_pile(a.pile, a.grep)
+        list_pile(a.pile, a.grep, a.all)
 
 
 if __name__ == "__main__":
