@@ -143,6 +143,12 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
         kind, name = m.group(1), m.group(2)
         arr = m.group(3) or ""   # sampler NAME[4] : register(...) - массив ресурсов
         reg = m.group(4) or ""
+        # Макросы слотов (GlobalMasks.h) обязаны быть раскрыты ДО разбора: без
+        # этого `register( WARFOGSAMPLERINDEX )` не матчится ниже, keep пустой,
+        # и DXC сам назначает binding 0 — в один binding с DepthMap (замер
+        # 2026-10-20: регенерированный корпус FullScreenMaterial дал красный
+        # экран, warFog читал карту глубины как цвет).
+        reg = expand_reg(reg)
         # Номер D3D9-сэмплера обязан стать номером binding в наборе текстур:
         # клиент привязывает текстуру вызовом SetTexture(samplerIndex, ...) по
         # номеру слота D3D9 (GlobalMasks.h: WARFOGSAMPLERINDEX s10,
