@@ -445,6 +445,26 @@ static bool LoadRepos()
    return true;
 }
 
+// True if origin of the repo is one of the configured mirrors
+static bool IsOriginKnown(git_repository* repo, const char* const* knownUrls, int knownUrlsCount)
+{
+   git_remote* origin = nullptr;
+   if (git_remote_lookup(&origin, repo, "origin") < 0) {
+      return false;
+   }
+
+   const char* url = git_remote_url(origin);
+   bool isKnown = false;
+   for (int i = 0; url && i < knownUrlsCount; ++i) {
+      if (strcmp(url, knownUrls[i]) == 0) {
+         isKnown = true;
+         break;
+      }
+   }
+   git_remote_free(origin);
+   return isKnown;
+}
+
 static bool RepoNeedsUpdate(const RepoConfig& repo)
 {
    localRef = std::string("refs/heads/") + repo.branch;
@@ -455,8 +475,18 @@ static bool RepoNeedsUpdate(const RepoConfig& repo)
       return true;
    }
 
+   std::vector<const char*> knownPtrs;
+   for (const std::string& url : repo.mirrors) {
+      knownPtrs.push_back(url.c_str());
+   }
+
    bool needUpdate = true;
    try {
+      // Origin from an old channel (e.g. content.git, pwc-gitupdates): repo will be re-initialized
+      if (!IsOriginKnown(repoHandle, knownPtrs.data(), (int)knownPtrs.size())) {
+         git_repository_free(repoHandle);
+         return true;
+      }
       refName = "";
       needUpdate = NeedUpdate(repoHandle);
    }
@@ -762,8 +792,8 @@ void ResetRepo(git_repository* repo, const char* repoPath)
 }
 
 
-// Point origin to remoteRepoUrl if it is not one of the known urls (primary or mirrors)
-void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl, const char* const* knownUrls, int knownUrlsCount)
+// Point origin to remoteRepoUrl (the fastest mirror) if it is another known mirror
+void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl)
 {
    git_remote* origin = nullptr;
    if (git_remote_lookup(&origin, repo, "origin") < 0) {
@@ -771,16 +801,10 @@ void SyncRemoteUrl(git_repository* repo, const char* remoteRepoUrl, const char* 
    }
 
    const char* url = git_remote_url(origin);
-   bool isKnown = false;
-   for (int i = 0; url && i < knownUrlsCount; ++i) {
-      if (strcmp(url, knownUrls[i]) == 0) {
-         isKnown = true;
-         break;
-      }
-   }
+   bool isSame = url && strcmp(url, remoteRepoUrl) == 0;
    git_remote_free(origin);
 
-   if (!isKnown || (url && strcmp(url, remoteRepoUrl) != 0)) {
+   if (!isSame) {
       ThrowIfNotWithAdminRights();
       error = git_remote_set_url(repo, "origin", remoteRepoUrl);
       CheckError("Set remote url");
@@ -794,11 +818,21 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
 
    // Try to open the repository
    error = git_repository_open(&repo, repoPath);
+   if (error >= 0 && !IsOriginKnown(repo, knownUrls, knownUrlsCount)) {
+      // Origin is not in the mirror list (old channel): its history and FETCH_HEAD
+      // say nothing about the new repo, so start over as on the first run
+      git_repository_free(repo);
+      repo = nullptr;
+      ThrowIfNotWithAdminRights();
+      CleanRepo(repoPath);
+      error = -1;
+   }
+
    if (error < 0) {
       InitRepo(&repo, &remote, repoPath, remoteRepoUrl);
    }
    else {
-      SyncRemoteUrl(repo, remoteRepoUrl, knownUrls, knownUrlsCount);
+      SyncRemoteUrl(repo, remoteRepoUrl);
    }
 
    // Once the repository is cloned or opened, perform the rest of the
