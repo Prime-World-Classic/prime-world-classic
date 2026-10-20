@@ -778,6 +778,11 @@ struct NvrhiBackendImpl
   bool stretchFailed = false;          // инициализация не удалась — не повторять
   unsigned stretchBlits = 0;
   unsigned stretchScaleFail = 0;
+  // шаблон трассировки блитов/заливок (PW_VK_STATS=1): белый прямоугольник
+  // 330x132 в (29,443) кочует из прогона в прогон НЕ от вывода треугольников
+  // (в записи PWRD квада с таким bbox нет) — ищем его среди StretchRect/ColorFill/Clear
+  unsigned blitLogged = 0;
+  unsigned fillLogged = 0;
   std::vector<std::pair<unsigned long long, std::pair<nvrhi::FramebufferHandle,
       nvrhi::GraphicsPipelineHandle> > > stretchPipes;
   nvrhi::TextureHandle dummyTex;      // в несвязанный слот кладётся 1x1
@@ -793,6 +798,11 @@ struct NvrhiBackendImpl
   unsigned setsCreated, texMissing, resMapsCreated;
   unsigned ssboSetsCreated;
   unsigned texDimMismatch;   // шейдер ждёт cube/2D, привязано другое
+  // сколько раз в набор уходила 1x1-замена (слот не привязан или тип не совпал).
+  // D3D9 на несвязанном сэмплере отдаёт (0,0,0,0); у нас до 2026-10-20 dummy
+  // вообще не заполнялся — пикселы «undefined», в кадре белые/пурпурные плашки
+  // (замер прогона 125: белые прямоугольники в кадре при целых 656x656-поверхностях)
+  unsigned dummySubs;
   unsigned vbHoles;          // пустые вершинные слоты (подменены dummy)
   unsigned dsNonDepth;       // в глубину привязана не-глубина
   unsigned readbackRaw;      // сколько чтений сделано прямой копией
@@ -819,6 +829,13 @@ struct NvrhiBackendImpl
   unsigned recDraws;      // сколько выводов записано
   unsigned recObjs;       // сколько ресурсов выгружено
   unsigned recRtW, recRtH;   // фильтр цели (env PW_VK_RECORD_RT=ШхВ), 0 = любой
+  // env PW_VK_RECORD_AT=<сек>: запись начинается через N секунд после RecOpen.
+  // Нужен потому, что лимит выводов выгорает на экране загрузки: SKIP считает
+  // выводы (их тысячи на кадр), а нужен конкретный кадр боя (замер: при MAX=2500
+  // в файл попали только 2499 выводов заставки, кадр t40 — нет).
+  unsigned recAt;
+  bool recArmed;               // время наступило
+  unsigned long long recT0;    // GetTickCount64 на момент RecOpen
   // seam-индекс -> id записи в файле (ресурс выгружается один раз)
   std::vector<std::pair<unsigned, unsigned> > recShader, recBuffer, recTexture, recLayout;
 
@@ -950,8 +967,9 @@ struct NvrhiBackendImpl
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
-      ssboSetsCreated(0), texDimMismatch(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0),
+      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0),
       recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
+      recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
       layoutsBuilt(0), ilPadHoles(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
@@ -1806,6 +1824,27 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                                 .setInitialState(nvrhi::ResourceStates::ShaderResource)
                                                 .setKeepInitialState(true)
                                                 .setDebugName("seam dummy cube 1x1"));
+  // содержимое замен обязан задавать явно: NVRHI создаёт image без инициализации,
+  // и вьюха в несвязанный слот читает «undefined» — в снимках кадра белые
+  // (замер прогона 108: 43560 белых пикселей) и пурпурные плашки там, где D3D9
+  // отдал бы прозрачный чёрный. D3D9 на несвязанном сэмплере даёт ровно (0,0,0,0).
+  if (d.dummyTex && d.dummyCubeTex)
+  {
+    unsigned char blk[24];
+    for (int i = 0; i < 6; ++i) { blk[i * 4] = blk[i * 4 + 1] = blk[i * 4 + 2] = blk[i * 4 + 3] = 0; }
+    nvrhi::CommandListHandle cl = d.nvrhiDevice->createCommandList();
+    if (cl)
+    {
+      cl->open();
+      cl->writeTexture(d.dummyTex, 0, 0, blk, 4, 0);
+      cl->writeTexture(d.dummyCubeTex, 0, 0, blk, 4, 4);
+      cl->close();
+      d.nvrhiDevice->executeCommandList(cl);
+      d.nvrhiDevice->waitForIdle();
+    }
+    else
+      VkNote("Init: список для заполнения замен не создан", false, 0);
+  }
   // пустые вершинные слоты: NVRHI привязывает буферы до максимального
   // используемого слота, пропущенный слот = VK_NULL_HANDLE
   // (VUID-vkCmdBindVertexBuffers-pBuffers-04001)
@@ -2489,12 +2528,12 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u загруз=%u "
-             "объектов B/T/S=%u/%u/%u",
+  DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
+             "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
              (unsigned)d.fbObjs.size(),
-             d.uploads, (unsigned)d.buffers.size(), (unsigned)d.textures.size(),
-             (unsigned)d.surfaces.size());
+             (unsigned)d.buffers.size(), (unsigned)d.textures.size(),
+             (unsigned)d.surfaces.size(), d.dummySubs);
 }
 
 const char* NvrhiBackend::DeviceName() const { return m_pImpl->deviceName; }
@@ -2799,6 +2838,13 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
     }
     const unsigned a = (colorRGBA >> 24) & 0xffu, r = (colorRGBA >> 16) & 0xffu,
                    g = (colorRGBA >> 8) & 0xffu, b = colorRGBA & 0xffu;
+    if (VkVerbose() && colorRGBA && d.fillLogged < 40u)
+    {
+      ++d.fillLogged;
+      DebugTrace("VkClear: curRt#%u %ux%u цвет %08X флаги %u", d.curRt,
+                 d.surfaces[d.curRt].w, d.surfaces[d.curRt].h, colorRGBA,
+                 (unsigned)clearFlags);
+    }
     // цвет логический (r,g,b,a): VK_FORMAT_B8G8R8A8_UNORM сам раскладывает
     // каналы, байты в памяти получаются B,G,R,A — как у D3DFMT_A8R8G8B8
     d.commandList->clearTextureFloat(d.surfaces[d.curRt].tex, nvrhi::TextureSubresourceSet(),
@@ -4682,6 +4728,8 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     }
     // каждый элемент массива дескрипторов обязан быть записан
     // (VUID-vkCmdDrawIndexed-None-08114: «descriptor ... never been updated»)
+    if (pTex == (nvrhi::ITexture*)d.dummyTex || pTex == (nvrhi::ITexture*)d.dummyCubeTex)
+      ++d.dummySubs;
     const unsigned cnt = it.count ? it.count : 1u;
     for (unsigned e = 0; e < cnt; ++e)
     {
@@ -5038,6 +5086,14 @@ void NvrhiBackend::RecOpen(NvrhiBackendImpl& d)
   char sk[16];
   if (GetEnvironmentVariableA("PW_VK_RECORD_SKIP", sk, sizeof(sk) - 1) > 0)
     d.recSkip = (unsigned)atoi(sk);
+  // старт записи по часам (см. комментарий к recAt)
+  char at[16];
+  if (GetEnvironmentVariableA("PW_VK_RECORD_AT", at, sizeof(at) - 1) > 0)
+  {
+    d.recAt = (unsigned)atoi(at);
+    d.recArmed = false;
+    d.recT0 = GetTickCount64();
+  }
   fwrite("PWRD", 1, 4, d.recFile);
   // версия 2: в LAYOUT добавлен готовый массив nvrhi-атрибутов (lo.desc),
   // в DRAW — список ресурсов набора (set/binding/kind/dim/count)
@@ -5525,12 +5581,25 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // чтобы повторить этот вывод нативно и открыть его в RenderDoc.
   if (d.recOn && d.recDraws < d.recMax)
   {
-    ++d.recSeen;
-    const bool rtOk = d.recSeen > d.recSkip &&
-                      ((!d.recRtW && !d.recRtH) ||
-                       (d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w == d.recRtW &&
-                        d.surfaces[d.curRt].h == d.recRtH));
-    if (rtOk) RecDraw(d, type, indexed, startIndexLocation, startVertexLocation, primitiveCount, vtx);
+    if (d.recAt && !d.recArmed)
+    {
+      if ((GetTickCount64() - d.recT0) / 1000ull >= d.recAt)
+      {
+        d.recArmed = true;
+        d.recSeen = 0;   // SKIP считает выводы уже после старта записи
+        DebugTrace("VkRec: запись с %u c (выводов до старта: %u)",
+                   d.recAt, d.draws);
+      }
+    }
+    if (!d.recAt || d.recArmed)
+    {
+      ++d.recSeen;
+      const bool rtOk = d.recSeen > d.recSkip &&
+                        ((!d.recRtW && !d.recRtH) ||
+                         (d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w == d.recRtW &&
+                          d.surfaces[d.curRt].h == d.recRtH));
+      if (rtOk) RecDraw(d, type, indexed, startIndexLocation, startVertexLocation, primitiveCount, vtx);
+    }
   }
   VK_TRACE("setGfxState >");
   d.commandList->setGraphicsState(gs);
@@ -6558,6 +6627,11 @@ HRESULT NvrhiBackend::ColorFill(HSurface surface, unsigned colorRGBA)
   SurfaceObj& so = d.surfaces[idx];
   if (so.depth) { VkNote("ColorFill: поверхность глубины", false, 0); return E_FAIL; }
   if (!EnsureRecording()) return E_FAIL;
+  if (VkVerbose() && so.w > 16u && so.h > 16u && d.fillLogged < 40u)
+  {
+    ++d.fillLogged;
+    DebugTrace("VkFill: поверхность#%u %ux%u цвет %08X", idx, so.w, so.h, colorRGBA);
+  }
   const float a = (float)((colorRGBA >> 24) & 0xFFu) / 255.0f;
   const float r = (float)((colorRGBA >> 16) & 0xFFu) / 255.0f;
   const float g = (float)((colorRGBA >> 8) & 0xFFu) / 255.0f;
@@ -6756,6 +6830,20 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
   long dx = 0, dy = 0, dw = (long)t.w, dh = (long)t.h;
   if (pDstRect) { dx = pDstRect->left; dy = pDstRect->top;
                   dw = pDstRect->right - pDstRect->left; dh = pDstRect->bottom - pDstRect->top; }
+  // Пишем только частичные блиты (приёмник заполняется не целиком): полноэкранные
+  // блиты PostFX съедают весь лимит трассировки, а ищется именно частичный
+  // прямоугольник (белая панель 330x132 в (29,443)).
+  const bool partial = pDstRect && (dx != 0 || dy != 0 || dw != (long)t.w || dh != (long)t.h);
+  if (VkVerbose() && partial && d.blitLogged < 60u)
+  {
+    ++d.blitLogged;
+    char det[160];   // DebugTrace принимает не больше 10 аргументов — собираем строку сами
+    snprintf(det, sizeof(det), "ист#%u %ux%u rect(%ld,%ld)-(%ld,%ld) -> приёмник#%u %ux%u "
+             "rect(%ld,%ld)-(%ld,%ld) фильтр %d",
+             sIdx, s.w, s.h, sx, sy, sx + sw, sy + sh, dIdx, t.w, t.h,
+             dx, dy, dx + dw, dy + dh, (int)filter);
+    DebugTrace("VkBlit: %s", det);
+  }
   if (sw != dw || sh != dh)
   {
     // copyTexture скейла не умеет — рисуется внутренний квад-блит (EnsureStretch).
@@ -7544,6 +7632,27 @@ void NvrhiBackend::TexGpuDump()
   mn[0] = 0;
   unsigned minW = 0;
   if (GetEnvironmentVariableA("PW_VK_TEXDUMP_MIN", mn, sizeof(mn) - 1)) minW = (unsigned)atoi(mn);
+  // фильтр по размеру: индексы шва текстур меняются от прогона к прогону
+  // (замер: 205x205 миникарта — #0..#2 в одном прогоне и вне 0..60 в другом),
+  // а читать обратно все 400 объектов с waitForIdle на каждый — минуты.
+  // PW_VK_TEXGPU_SIZE="205x205,656x656" — только эти размеры.
+  char sz[256];
+  sz[0] = 0;
+  unsigned szW[8], szH[8];
+  unsigned nSz = 0;
+  if (GetEnvironmentVariableA("PW_VK_TEXGPU_SIZE", sz, sizeof(sz) - 1))
+  {
+    char* p = sz;
+    while (nSz < 8u)
+    {
+      unsigned w = 0, h = 0;
+      if (sscanf(p, "%ux%u", &w, &h) != 2 || !w) break;
+      szW[nSz] = w; szH[nSz] = h; ++nSz;
+      p = strchr(p, ',');
+      if (!p) break;
+      ++p;
+    }
+  }
   FILE* f = fopen(path, "wb");
   if (!f) { DebugTrace("TexGpuDump: %s не открывается", path); return; }
   fwrite("TXGP", 1, 4, f);
@@ -7556,6 +7665,13 @@ void NvrhiBackend::TexGpuDump()
     if (!to.tex || to.dead || to.w < minW) continue;
     if (i < fromIdx || i > toIdx) continue;
     if (!allTex && to.mipLevels < 2u) continue;
+    if (nSz)
+    {
+      bool ok = false;
+      for (unsigned k = 0; k < nSz; ++k)
+        if (to.w == szW[k] && to.h == szH[k]) { ok = true; break; }
+      if (!ok) continue;
+    }
     const nvrhi::TextureDesc td = to.tex->getDesc();
     nvrhi::StagingTextureHandle st = d.nvrhiDevice->createStagingTexture(
         nvrhi::TextureDesc().setDimension(nvrhi::TextureDimension::Texture2D)
