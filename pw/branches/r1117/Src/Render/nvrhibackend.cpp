@@ -443,6 +443,31 @@ public:
   }
 };
 
+// Шаг 12, §3.z п.2 (docs/PLAN_NVRHI.md:2561 «таблица диапазон c-регистров ->
+// SSBO»): клиент поставляет массивы в c-банк через SetVertexShaderConstants, а
+// PW_MODERN_ARRAYS-вариант того же шейдера читает их из StructuredBuffer (в
+// SPIR-V — OpVariable с классом Uniform/StorageBuffer и именем из OpName).
+// name — это OpName-имя; regBase — регистр DX9-варианта того же массива
+// (register(...) в .hlsl) по GlobalMasks.h: VSHADER_LOCALCONST1..11 = c21..c31,
+// BONES = c24 (MAX_BONES = 70), INSTANCE_DATA = c20 (MAX_INSTANCES_COUNT = 19);
+// stride — ArrayStride из SPIR-V (он же размер элемента DX9-массива).
+struct SsboBridgeDef { const char* name; unsigned regBase, regCount, stride, byteSize; };
+static const SsboBridgeDef kSsboBridges[] = {
+  // _commonSkinning.hlsl:8 `float4x3 BonesMatrices[MAX_BONES] : register(BONES)`
+  // -> c24..c233 (3 регистра на кость). Буфер КОРРЕКТНО брать по числу записей,
+  // а не по ширине регистраного диапазона: индекс в шейдере = 255 *
+  // BLENDINDICES (`_commonSkinning.hlsl`), т.е. нужно 256 записей по 48 Б.
+  // Замер 2026-10-20: буфер 232*16 = 3712 Б (77 записей) -> выход за буфер при
+  // индексе >76, клиент зависает в vkQueuePresentKHR (лог 2026.10.20-20.02.42:
+  // «VkHang: к бэкенду нет обращений 180 с … Present: present >»).
+  { "BonesMatrices", 24u, 232u, 48u, 256u * 48u },
+  // NatureMapMaterial.hlsl:24 `hexParams[NUM_HEXES_SUPPORTED * CONSTANTS_PER_HEX]
+  // : register(VSHADER_LOCALCONST2)` -> c22..c61; поставщик —
+  // Src/Terrain/NatureMapVisual.cpp:375 (перед каждым DrawIndexedPrimitive).
+  { "hexParams", 22u, 40u, 16u, 40u * 16u },
+};
+static const unsigned kSsboBridgeCount = sizeof(kSsboBridges) / sizeof(kSsboBridges[0]);
+
 struct NvrhiBackendImpl
 {
   // Vulkan-уровень
@@ -539,7 +564,11 @@ struct NvrhiBackendImpl
   {
     unsigned set, binding, kind;
     unsigned dim, count;
-    ResItem() : set(0), binding(0), kind(0), dim(0), count(1) {}
+    // SSBO: имя переменной (OpName) и ArrayStride из SPIR-V — по имени мост
+    // «c-банк -> SSBO» выбирает буфер (шаг 12, §3.z п.2)
+    char name[20];
+    unsigned stride;
+    ResItem() : set(0), binding(0), kind(0), dim(0), count(1), stride(0) { name[0] = 0; }
   };
   struct ShaderObj
   {
@@ -798,11 +827,21 @@ struct NvrhiBackendImpl
   // c24..c233 (3 регистра на кость). Seam перекладывает этот диапазон тени в
   // SSBO. Индекс в шейдере = `255 * idxs` (атрибут BLENDINDICES), поэтому буфер
   // держим на 256 костей: выход за currentBoneCount остаётся внутри буфера.
-  nvrhi::BufferHandle boneSsbo;
-  bool boneDirty;
-  unsigned boneFirst, boneLast;       // грязный диапазон в регистрах c-банка
-  unsigned boneUploads;
-  unsigned long long boneBytes;
+  struct SsboBridge
+  {
+    nvrhi::BufferHandle buf;
+    bool dirty;
+    unsigned first, last;             // грязный диапазон в регистрах c-банка
+    unsigned uploads;
+    unsigned long long bytes;
+    SsboBridge() : dirty(false), first(0xffffffffu), last(0), uploads(0), bytes(0) {}
+  };
+  // Мост c-банк -> SSBO: по одному буферу на строку kSsboBridges (шаг 12,
+  // §3.z п.2). Первый — кости: `Src/Render/SkeletalMesh.cpp:113`
+  // `SetVertexShaderConstantsMatrix43(BONES, currentBoneCount, matrixArray)`.
+  SsboBridge ssbo[kSsboBridgeCount];
+  unsigned ssboUploads;
+  unsigned long long ssboBytes;
   nvrhi::BufferHandle instCounter;    // счётчик 0..N-1 (SetInstanceSource без буфера)
   // Отладка 2026-10-17: дамп загружаемых текстур (см. TexDumpLevel0)
   FILE* texDump = nullptr;
@@ -831,6 +870,8 @@ struct NvrhiBackendImpl
   unsigned shotProbe;        // env PW_VK_SHOT_PROBE: перед снимком залить картинку
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
   unsigned panelLogged;      // трассировка «шейдер читает глубину» (00344)
+  unsigned rtSizeLogged;     // инвентарь нестандартных целей вывода
+  unsigned surfLogged;       // связка «поверхность <-> текстура» для офскрин-целей
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
 
   // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>). Нужен потому, что
@@ -982,9 +1023,7 @@ struct NvrhiBackendImpl
       uboDirty{ false, false },
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
-      boneSsbo(), boneDirty(false),
-      boneFirst((unsigned)SHADER_CONST_REGISTERS), boneLast(0),
-      boneUploads(0), boneBytes(0),
+      ssboUploads(0), ssboBytes(0),
       curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
       curIb(kNoRes), curRt(kNoRes), curDs(kNoRes),
       instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
@@ -998,7 +1037,7 @@ struct NvrhiBackendImpl
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
-      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0), panelLogged(0), tracePsLogged(0), traceDrawLogged(0), traceConstLogged(0),
+      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0), panelLogged(0), rtSizeLogged(0), surfLogged(0), tracePsLogged(0), traceDrawLogged(0), traceConstLogged(0),
       recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
@@ -1959,31 +1998,46 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
                                             .setKeepInitialState(true)
                                             .setDebugName("seam dummy SSBO"));
-  // SSBO костей: float4x3 = 3 регистра по 16 Б; 256 записей = 12 КБ
-  d.boneSsbo = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
-                                            .setByteSize(256u * 48u)
-                                            .setStructStride(48u)
-                                            .setCanHaveUAVs(true)
-                                            .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
-                                            .setKeepInitialState(true)
-                                            .setDebugName("seam bones SSBO"));
-  if (d.boneSsbo)
+  // По буферу на каждую строку таблицы (шаг 12, §3.z п.2). Размер — регистры
+  // источника x 16 Б; structStride нужен NVRHI для StructuredBuffer_SRV
+  // (ассерт в Vendor/NVRHI/src/vulkan/vulkan-resource-bindings.cpp:536).
+  for (unsigned b = 0; b < kSsboBridgeCount; ++b)
   {
-    // нули: D3D9 за пределами currentBoneCount читал бы мусор c-банка, тут
-    // хотя бы детерминированный ноль (кость = нулевая матрица). Отдельный
-    // список: d.commandList в Init ещё не открыт.
+    const SsboBridgeDef& def = kSsboBridges[b];
+    d.ssbo[b].buf = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                                .setByteSize(def.byteSize)
+                                                .setStructStride(def.stride)
+                                                .setCanHaveUAVs(true)
+                                                .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
+                                                .setKeepInitialState(true)
+                                                .setDebugName(def.name));
+    if (!d.ssbo[b].buf)
+    {
+      char det[96];
+      snprintf(det, sizeof(det), "%s, %u регистров", def.name, def.regCount);
+      VkNote("Init: SSBO-буфер не создан", false, det);
+    }
+  }
+  {
+    // нули: D3D9 за пределами записанного диапазона читал бы мусор c-банка, тут
+    // хотя бы детерминированный ноль. Отдельный список: d.commandList в Init
+    // ещё не открыт.
     nvrhi::CommandListHandle cl = d.nvrhiDevice->createCommandList();
     if (cl)
     {
-      static const unsigned char kZero[256u * 48u] = {};
       cl->open();
-      cl->writeBuffer(d.boneSsbo, kZero, sizeof(kZero));
+      for (unsigned b = 0; b < kSsboBridgeCount; ++b)
+      {
+        if (!d.ssbo[b].buf) continue;
+        std::vector<unsigned char> zero(kSsboBridges[b].byteSize, 0);
+        cl->writeBuffer(d.ssbo[b].buf, &zero[0], zero.size());
+      }
       cl->close();
       d.nvrhiDevice->executeCommandList(cl);
       d.nvrhiDevice->waitForIdle();
     }
     else
-      VkNote("Init: список для обнуления костей не создан", false, 0);
+      VkNote("Init: список для обнуления SSBO не создан", false, 0);
   }
   if (!d.defSampler || !d.dummyTex)
   {
@@ -2645,11 +2699,11 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк = %u KiB; кости: загрузок=%u байт=%u",
+  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк = %u KiB; SSBO-мосты: загрузок=%u байт=%u",
              d.uboUploads, (unsigned)(d.uboBytes / 1024ull),
              (unsigned)((unsigned long long)d.uboUploads * (unsigned long long)SHADER_CONST_REGISTERS *
                         16ull / 1024ull),
-             d.boneUploads, (unsigned)d.boneBytes);
+             d.ssboUploads, (unsigned)d.ssboBytes);
   DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
              "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
@@ -2999,7 +3053,7 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
 // шаг 13.5: регистр костей в c-банке (`GlobalMasks.h:88 BONES = c24`).
 // Число продублировано из GlobalMasks.h намеренно — seam не тянет этот заголовок
 // (так же, как WORLD=c8 на :7273).
-static const unsigned kBonesReg = 24u;
+static const unsigned kBonesReg = 24u;   // см. таблицу kSsboBridges (BonesMatrices)
 
 // шаг 13.5: грязный диапазон c-банка (регистры) + флаг. Диапазон — объединение
 // всех записей с прошлой загрузки; загрузка в UBO берёт ровно его.
@@ -3010,18 +3064,24 @@ static void MarkConstDirty(NvrhiBackendImpl& d, int stage, unsigned startRegiste
   if (startRegister < d.uboFirst[stage]) d.uboFirst[stage] = startRegister;
   if (startRegister + registerCount > d.uboLast[stage])
     d.uboLast[stage] = startRegister + registerCount;
-  // кости (шаг 13.5): только VS, диапазон c24..c255
-  if (stage == csVertex && startRegister + registerCount > kBonesReg
-      && startRegister < (unsigned)SHADER_CONST_REGISTERS)
+  // SSBO-мосты (шаг 12, §3.z п.2): только VS, пересечение записанного
+  // диапазона с диапазоном источника каждой строки таблицы
+  if (stage == csVertex)
   {
-    const unsigned f = startRegister > kBonesReg ? startRegister : kBonesReg;
-    const unsigned l = startRegister + registerCount < (unsigned)SHADER_CONST_REGISTERS
-                     ? startRegister + registerCount : (unsigned)SHADER_CONST_REGISTERS;
-    if (l > f)
+    for (unsigned b = 0; b < kSsboBridgeCount; ++b)
     {
-      d.boneDirty = true;
-      if (f < d.boneFirst) d.boneFirst = f;
-      if (l > d.boneLast) d.boneLast = l;
+      const SsboBridgeDef& def = kSsboBridges[b];
+      if (startRegister + registerCount <= def.regBase
+          || startRegister >= def.regBase + def.regCount) continue;
+      const unsigned f = startRegister > def.regBase ? startRegister : def.regBase;
+      const unsigned l = startRegister + registerCount < def.regBase + def.regCount
+                       ? startRegister + registerCount : def.regBase + def.regCount;
+      if (l > f)
+      {
+        d.ssbo[b].dirty = true;
+        if (f < d.ssbo[b].first) d.ssbo[b].first = f;
+        if (l > d.ssbo[b].last) d.ssbo[b].last = l;
+      }
     }
   }
 }
@@ -3315,6 +3375,29 @@ HRESULT NvrhiBackend::SetRenderTarget(unsigned index, HSurface surface)
   else
     ++d.rtSetOwn;
   idx = ResolveSurfaceIdx(d, idx);
+  // Инвентарь целей: клиент рисует в офскрин-цели (карта масок природы 656x656,
+  // 430x432, 256x192 …). Замер 2026-10-20: blendMask 656x656 в GPU неинициали-
+  // зирована (загруз=0, альфа 0 везде), а NatureMap.psh берёт из неё blendCoeff
+  // -> цвет местности обнуляется. По этому перечню видно, рисует ли клиент в
+  // такую цель вообще.
+  if (VkVerbose() && d.rtSizeLogged < 60u && idx != kNoRes && idx < d.surfaces.size())
+  {
+    const SurfaceObj& so = d.surfaces[idx];
+    // 512x512/256x256/512x256/… — генерация цепочки mipmap'ов (замер: 40 событий
+    // одним всплеском), они закрывают собой всё остальное. Печатаем по одному
+    // разу на РАЗМЕР.
+    static unsigned seenW[64], seenH[64];
+    static unsigned seenN = 0;
+    bool dup = false;
+    for (unsigned k = 0; k < seenN; ++k)
+      if (seenW[k] == so.w && seenH[k] == so.h) { dup = true; break; }
+    if (!dup && seenN < 64u) { seenW[seenN] = so.w; seenH[seenN] = so.h; ++seenN; }
+    if (!dup)
+    {
+      ++d.rtSizeLogged;
+      DebugTrace("VkRtSize: поверхность#%u %ux%u", idx, so.w, so.h);
+    }
+  }
   if (idx != kNoRes && idx >= d.surfaces.size()) return D3DERR_INVALIDCALL;
   m_pImpl->curRt = idx;
   // реестр «слот -> поверхность» нужен GetRenderTarget (шаг 13.3): у D3D9 RT
@@ -4516,7 +4599,7 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
   bool ssbo = false;
   for (size_t k = 0; k < rm.items.size(); ++k)
     if (rm.items[k].kind == rkSsbo) { ssbo = true; break; }
-  if (ssbo && !d.boneSsbo && d.resMapsCreated < 8u)
+  if (ssbo && !d.ssbo[0].buf && d.resMapsCreated < 8u)
     VkNote("ResMap: SSBO без буфера костей — подставлен dummy", false, 0);
 
   d.resMaps.push_back(rm);
@@ -5341,6 +5424,10 @@ static unsigned RecTextureId(NvrhiBackendImpl& d, unsigned idx)
   RecU32(d.recFile, (unsigned)to.seamFormat);
   RecBlob(d.recFile, to.mirror.empty() ? 0 : &to.mirror[0], to.mirror.size());
   ++d.recObjs;
+  // id в записи — сквозной по записи (recTexture), а не индекс шва: без этой
+  // строки сопоставить вывод из PWRD с дампом GPU (TexGpuDump печатает индекс
+  // шва) невозможно.
+  if (id < 24u) DebugTrace("VkRecTex: rec#%u = seam#%u %ux%u fmt%d mips%u", id, idx, to.w, to.h, (int)to.seamFormat, to.mipLevels);
   return id;
 }
 
@@ -5840,29 +5927,35 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   }
   VK_TRACE("ubo ok");
 
-  // шаг 13.5: кости. Клиент пишет их в c-банк (c24..), а современный шейдер
-  // читает из SSBO `BonesMatrices`. Перекладываем грязный диапазон тени в SSBO.
-  // Загрузка не зависит от того, есть у текущего шейдера SSBO: иначе между двумя
-  // скиндовыми выводами в SSBO останутся чужие значения c24/c25, которые
-  // нематериальные шейдеры используют под свои константы.
-  if (d.boneDirty && d.boneSsbo)
+  // Шаг 12, §3.z п.2: мост c-банк -> SSBO. Клиент пишет массив в c-банк, а
+  // PW_MODERN_ARRAYS-вариант читает его из SSBO — перекладываем грязный
+  // диапазон тени в буфер строки таблицы.
+  // Загрузка не зависит от того, есть у текущего шейдера такой SSBO: иначе между
+  // двумя выводами в буфере останутся чужие значения тех же регистров, которые
+  // нематериальные шейдеры используют под свои константы (c22 пишут
+  // TerrainElement.cpp:251, FullScreenFX.cpp:156, ParticleFX.cpp:1352,
+  // ShadowMap.cpp:275, uirenderer.cpp:746, WaterMesh.cpp:84).
+  for (unsigned b = 0; b < kSsboBridgeCount; ++b)
   {
-    unsigned f = d.boneFirst, l = d.boneLast;
-    d.boneDirty = false;
-    d.boneFirst = (unsigned)SHADER_CONST_REGISTERS;
-    d.boneLast = 0;
-    if (l > f && f >= kBonesReg)
+    if (!d.ssbo[b].dirty || !d.ssbo[b].buf) continue;
+    const SsboBridgeDef& def = kSsboBridges[b];
+    unsigned f = d.ssbo[b].first, l = d.ssbo[b].last;
+    d.ssbo[b].dirty = false;
+    d.ssbo[b].first = 0xffffffffu;
+    d.ssbo[b].last = 0;
+    if (l > f && f >= def.regBase)
     {
-      if (l > (unsigned)SHADER_CONST_REGISTERS) l = (unsigned)SHADER_CONST_REGISTERS;
-      const size_t bytes = (size_t)(l - f) * 16u;
-      d.commandList->writeBuffer(d.boneSsbo, m_constShadow[csVertex] + f * 4, bytes,
-                                 (uint64_t)(f - kBonesReg) * 16ull);
-      d.boneBytes += bytes;
-      ++d.boneUploads;
+      if (l > def.regBase + def.regCount) l = def.regBase + def.regCount;
+      size_t bytes = (size_t)(l - f) * 16u;
+      const uint64_t off = (uint64_t)(f - def.regBase) * 16ull;
+      if (off + bytes > (uint64_t)def.byteSize) bytes = (size_t)((uint64_t)def.byteSize - off);
+      d.commandList->writeBuffer(d.ssbo[b].buf, m_constShadow[csVertex] + f * 4, bytes, off);
+      d.ssboBytes += bytes;
+      ++d.ssboUploads;
       ++d.uploads;
     }
   }
-  VK_TRACE("bones ok");
+  VK_TRACE("ssbo ok");
 
   nvrhi::IFramebuffer* fbRaw = 0;
   nvrhi::GraphicsPipelineHandle pipe = FindOrCreatePipeline(d, type, &fbRaw);
@@ -6015,7 +6108,30 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
           const NvrhiBackendImpl::ResItem& it = rmw.items[k];
           if (it.set != 1u || it.kind != rkSsbo) continue;
           const unsigned cnt = it.count ? it.count : 1u;
-          nvrhi::BufferHandle buf = d.boneSsbo ? d.boneSsbo : d.dummySsbo;
+          // Буфер — по имени SSBO из SPIR-V (таблица kSsboBridges). Неизвестное
+          // имя получает dummy (нули): раньше все слоты набора 1 получали буфер
+          // костей, т.е. заведомо чужие байты.
+          nvrhi::BufferHandle buf = d.dummySsbo;
+          unsigned match = kSsboBridgeCount;
+          for (unsigned b = 0; b < kSsboBridgeCount; ++b)
+            if (d.ssbo[b].buf && strcmp(it.name, kSsboBridges[b].name) == 0)
+            { buf = d.ssbo[b].buf; match = b; break; }
+          // Живые имена SSBO (снимок по SPIR-V из записей PWRD): BonesMatrices,
+          // hexParams, instanceData, data. Последние два пока без моста —
+          // заметка нужна, чтобы это не потерялось.
+          static unsigned s_unlogged = 0;
+          if (match == kSsboBridgeCount && it.name[0] && s_unlogged < 8u)
+          {
+            ++s_unlogged;
+            VkNote("SSBO без моста — подставлен dummy", false, it.name);
+          }
+          static unsigned s_strMismatch = 0;
+          if (match < kSsboBridgeCount && it.stride && kSsboBridges[match].stride &&
+              it.stride != kSsboBridges[match].stride && s_strMismatch < 4u)
+          {
+            ++s_strMismatch;
+            VkNote("SSBO: ArrayStride не совпал с таблицей", false, it.name);
+          }
           for (unsigned e = 0; e < cnt; ++e)
           {
             nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::StructuredBuffer_SRV(it.binding,
@@ -6467,7 +6583,8 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
 
   std::vector<unsigned> opOfId, elemOfId, ptrBase, varType, decBind, decSet;
   std::vector<unsigned char> ptrStore, structBlock, structBufferBlock;
-  std::vector<unsigned> imgDim, smpImgBase, arrayLenId, constVal;
+  std::vector<unsigned> imgDim, smpImgBase, arrayLenId, constVal, arrStride;
+  std::vector<std::string> nameOfId;
   for (unsigned i = 5u; i < n; )
   {
     const unsigned op = w[i], wc = op >> 16;
@@ -6522,6 +6639,23 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
         smpImgBase[w[i + 1]] = w[i + 2];
       }
     }
+    else if (code == 5u && wc >= 3u)              // OpName: цель, строка словами
+    {
+      const unsigned tgt = w[i + 1];
+      std::string nm;
+      for (unsigned k = i + 2u; k < i + wc; ++k)
+      {
+        const unsigned v = w[k];
+        for (int bit = 0; bit < 4; ++bit)
+        {
+          const char c = char((v >> (8 * bit)) & 0xffu);
+          if (!c) break;
+          nm.push_back(c);
+        }
+      }
+      if (tgt + 1u > nameOfId.size()) nameOfId.resize(tgt + 1u);
+      nameOfId[tgt] = nm;
+    }
     else if (code == 43u && wc >= 4u)             // OpConstant: тип, id, значение
     {
       if (w[i + 2] + 1u > constVal.size()) constVal.resize(w[i + 2] + 1u, 0u);
@@ -6558,6 +6692,11 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
         if (tgt + 1u > structBufferBlock.size()) structBufferBlock.resize(tgt + 1u, 0);
         structBufferBlock[tgt] = 1;
       }
+      else if (dec == 7u)                         // ArrayStride — размер элемента
+      {
+        if (tgt + 1u > arrStride.size()) arrStride.resize(tgt + 1u, 0u);
+        arrStride[tgt] = val;
+      }
     }
     i += wc;
   }
@@ -6572,6 +6711,7 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
     if (st != 0u && st != 2u && st != 12u) continue;   // UniformConstant/Uniform/StorageBuffer
     unsigned base = ptrBase[pt];
     unsigned baseOp = (base < opOfId.size()) ? opOfId[base] : 0u;
+    const unsigned arrBase = base;   // у runtime-массива ArrayStride на самом массиве
     unsigned cnt = 1u;
     if (baseOp == 28u || baseOp == 29u)
     {
@@ -6609,6 +6749,16 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
     }
     else if (st == 12u) it.kind = rkSsbo;
     else if (st == 2u) it.kind = rkUbo;
+    if (it.kind == rkSsbo)
+    {
+      if (id < nameOfId.size())
+      {
+        strncpy(it.name, nameOfId[id].c_str(), sizeof(it.name) - 1u);
+        it.name[sizeof(it.name) - 1u] = 0;
+      }
+      if (arrBase < arrStride.size() && arrStride[arrBase]) it.stride = arrStride[arrBase];
+      else if (base < arrStride.size()) it.stride = arrStride[base];
+    }
     if (it.kind != rkOther) pOut->push_back(it);
   }
 }
@@ -6986,6 +7136,17 @@ HRESULT NvrhiBackend::GetTextureSurface(HTexture texture, unsigned level, HSurfa
   d.surfaces.push_back(so);
   sIdx = (unsigned)d.surfaces.size() - 1u;
   to.levelSurf[level] = sIdx;
+  // Какому текстурному индексу принадлежит офскрин-цель: нужно для связки
+  // «SetRenderTarget(#поверхность)» <-> «TexGpuDump #текстура». Замер
+  // 2026-10-20: цель 656x656 (поверхность#116) клиент ставит, а дамп показывает
+  // две живые 656x656 текстуры (#2423/#2424) с загруз=0 — т.е. рисуется в другую,
+  // уже освобождённую.
+  if (VkVerbose() && d.surfLogged < 40u && to.w == 656u && to.h == 656u)
+  {
+    ++d.surfLogged;
+    DebugTrace("VkSurf: поверхность#%u = текстура#%u %ux%u fmt%d usage%d", sIdx, (unsigned)t, to.w, to.h,
+               (int)to.seamFormat, (int)to.usage);
+  }
   void* h = NewHandle(&d, sIdx, hkSurface);
   if (h)
     static_cast<SeamHandle*>(h)->AddRef();   // внутренняя ссылка текстуры (см. TextureObj::levelSurf)
