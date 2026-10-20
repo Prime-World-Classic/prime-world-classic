@@ -789,6 +789,20 @@ struct NvrhiBackendImpl
   nvrhi::TextureHandle dummyCubeTex;  // замена, когда шейдер ждёт cube
   nvrhi::BufferHandle dummyVb;        // замена пустого вершинного слота
   nvrhi::BufferHandle dummySsbo;      // заглушка набора 1 (SSBO)
+  // шаг 13.5: настоящий SSBO костей. `Src/Render/Shaders/_commonSkinning.hlsl:6`
+  // при PW_MODERN_ARRAYS объявляет `StructuredBuffer<float4x3> BonesMatrices`
+  // (в uniform-буфере неконстантный расходящийся индекс в Vulkan запрещён), а
+  // клиент по-прежнему кладёт кости в c-банк: `Src/Render/SkeletalMesh.cpp:113`
+  // `SetVertexShaderConstantsMatrix43(BONES, currentBoneCount, matrixArray)`,
+  // `BONES = c24`, `MAX_BONES = 70` (`GlobalMasks.h:88-89`) -> регистры
+  // c24..c233 (3 регистра на кость). Seam перекладывает этот диапазон тени в
+  // SSBO. Индекс в шейдере = `255 * idxs` (атрибут BLENDINDICES), поэтому буфер
+  // держим на 256 костей: выход за currentBoneCount остаётся внутри буфера.
+  nvrhi::BufferHandle boneSsbo;
+  bool boneDirty;
+  unsigned boneFirst, boneLast;       // грязный диапазон в регистрах c-банка
+  unsigned boneUploads;
+  unsigned long long boneBytes;
   nvrhi::BufferHandle instCounter;    // счётчик 0..N-1 (SetInstanceSource без буфера)
   // Отладка 2026-10-17: дамп загружаемых текстур (см. TexDumpLevel0)
   FILE* texDump = nullptr;
@@ -963,6 +977,9 @@ struct NvrhiBackendImpl
       uboDirty{ false, false },
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
+      boneSsbo(), boneDirty(false),
+      boneFirst((unsigned)SHADER_CONST_REGISTERS), boneLast(0),
+      boneUploads(0), boneBytes(0),
       curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
       curIb(kNoRes), curRt(kNoRes), curDs(kNoRes),
       instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
@@ -1911,6 +1928,32 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                             .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
                                             .setKeepInitialState(true)
                                             .setDebugName("seam dummy SSBO"));
+  // SSBO костей: float4x3 = 3 регистра по 16 Б; 256 записей = 12 КБ
+  d.boneSsbo = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                            .setByteSize(256u * 48u)
+                                            .setStructStride(48u)
+                                            .setCanHaveUAVs(true)
+                                            .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
+                                            .setKeepInitialState(true)
+                                            .setDebugName("seam bones SSBO"));
+  if (d.boneSsbo)
+  {
+    // нули: D3D9 за пределами currentBoneCount читал бы мусор c-банка, тут
+    // хотя бы детерминированный ноль (кость = нулевая матрица). Отдельный
+    // список: d.commandList в Init ещё не открыт.
+    nvrhi::CommandListHandle cl = d.nvrhiDevice->createCommandList();
+    if (cl)
+    {
+      static const unsigned char kZero[256u * 48u] = {};
+      cl->open();
+      cl->writeBuffer(d.boneSsbo, kZero, sizeof(kZero));
+      cl->close();
+      d.nvrhiDevice->executeCommandList(cl);
+      d.nvrhiDevice->waitForIdle();
+    }
+    else
+      VkNote("Init: список для обнуления костей не создан", false, 0);
+  }
   if (!d.defSampler || !d.dummyTex)
   {
     VkNote("Init: сэмплер по умолчанию / dummy-текстура", false, 0);
@@ -2571,10 +2614,11 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк на тех же загрузках = %u KiB",
+  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк = %u KiB; кости: загрузок=%u байт=%u",
              d.uboUploads, (unsigned)(d.uboBytes / 1024ull),
              (unsigned)((unsigned long long)d.uboUploads * (unsigned long long)SHADER_CONST_REGISTERS *
-                        16ull / 1024ull));
+                        16ull / 1024ull),
+             d.boneUploads, (unsigned)d.boneBytes);
   DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
              "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
@@ -2914,6 +2958,11 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
 // тривиальна — она имеет смысл только для D3D9, где читается настоящее
 // состояние устройства.
 
+// шаг 13.5: регистр костей в c-банке (`GlobalMasks.h:88 BONES = c24`).
+// Число продублировано из GlobalMasks.h намеренно — seam не тянет этот заголовок
+// (так же, как WORLD=c8 на :7273).
+static const unsigned kBonesReg = 24u;
+
 // шаг 13.5: грязный диапазон c-банка (регистры) + флаг. Диапазон — объединение
 // всех записей с прошлой загрузки; загрузка в UBO берёт ровно его.
 static void MarkConstDirty(NvrhiBackendImpl& d, int stage, unsigned startRegister,
@@ -2923,6 +2972,20 @@ static void MarkConstDirty(NvrhiBackendImpl& d, int stage, unsigned startRegiste
   if (startRegister < d.uboFirst[stage]) d.uboFirst[stage] = startRegister;
   if (startRegister + registerCount > d.uboLast[stage])
     d.uboLast[stage] = startRegister + registerCount;
+  // кости (шаг 13.5): только VS, диапазон c24..c255
+  if (stage == csVertex && startRegister + registerCount > kBonesReg
+      && startRegister < (unsigned)SHADER_CONST_REGISTERS)
+  {
+    const unsigned f = startRegister > kBonesReg ? startRegister : kBonesReg;
+    const unsigned l = startRegister + registerCount < (unsigned)SHADER_CONST_REGISTERS
+                     ? startRegister + registerCount : (unsigned)SHADER_CONST_REGISTERS;
+    if (l > f)
+    {
+      d.boneDirty = true;
+      if (f < d.boneFirst) d.boneFirst = f;
+      if (l > d.boneLast) d.boneLast = l;
+    }
+  }
 }
 
 HRESULT NvrhiBackend::SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData)
@@ -4334,15 +4397,14 @@ static int FindOrCreateResMap(NvrhiBackendImpl& d)
   }
 
   // набор сэмплеров НЕ статичен: с шагом 13.4b состояния приходят через seam,
-  // поэтому набор строится по подписи состояний (FindOrCreateSamplerSet)
-  // SSBO (набор 1) пока нечем заполнять: seam передаёт per-instance данные через
-  // SetInstanceSource как вершинный буфер, а SPIR-V ждёт StructuredBuffer —
-  // это шаг 13.2 (там же ключ пайплайна из шага 8)
+  // поэтому набор строится по подписи состояний (FindOrCreateSamplerSet).
+  // SSBO (набор 1): с шагом 13.5 привязывается настоящий буфер костей
+  // (d.boneSsbo); dummy остаётся запасным, если костевой буфер не создан.
   bool ssbo = false;
   for (size_t k = 0; k < rm.items.size(); ++k)
     if (rm.items[k].kind == rkSsbo) { ssbo = true; break; }
-  if (ssbo && d.resMapsCreated < 8u)
-    VkNote("ResMap: SSBO в наборе 1 ещё не привязан (шаг 13.2)", false, 0);
+  if (ssbo && !d.boneSsbo && d.resMapsCreated < 8u)
+    VkNote("ResMap: SSBO без буфера костей — подставлен dummy", false, 0);
 
   d.resMaps.push_back(rm);
   d.resMapIdx.insert(std::make_pair(rk, (int)d.resMaps.size() - 1));
@@ -5443,6 +5505,30 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   }
   VK_TRACE("ubo ok");
 
+  // шаг 13.5: кости. Клиент пишет их в c-банк (c24..), а современный шейдер
+  // читает из SSBO `BonesMatrices`. Перекладываем грязный диапазон тени в SSBO.
+  // Загрузка не зависит от того, есть у текущего шейдера SSBO: иначе между двумя
+  // скиндовыми выводами в SSBO останутся чужие значения c24/c25, которые
+  // нематериальные шейдеры используют под свои константы.
+  if (d.boneDirty && d.boneSsbo)
+  {
+    unsigned f = d.boneFirst, l = d.boneLast;
+    d.boneDirty = false;
+    d.boneFirst = (unsigned)SHADER_CONST_REGISTERS;
+    d.boneLast = 0;
+    if (l > f && f >= kBonesReg)
+    {
+      if (l > (unsigned)SHADER_CONST_REGISTERS) l = (unsigned)SHADER_CONST_REGISTERS;
+      const size_t bytes = (size_t)(l - f) * 16u;
+      d.commandList->writeBuffer(d.boneSsbo, m_constShadow[csVertex] + f * 4, bytes,
+                                 (uint64_t)(f - kBonesReg) * 16ull);
+      d.boneBytes += bytes;
+      ++d.boneUploads;
+      ++d.uploads;
+    }
+  }
+  VK_TRACE("bones ok");
+
   nvrhi::IFramebuffer* fbRaw = 0;
   nvrhi::GraphicsPipelineHandle pipe = FindOrCreatePipeline(d, type, &fbRaw);
   if (!pipe) { VK_TRACE("pipe НЕ создан"); return E_FAIL; }
@@ -5564,10 +5650,11 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
           const NvrhiBackendImpl::ResItem& it = rmw.items[k];
           if (it.set != 1u || it.kind != rkSsbo) continue;
           const unsigned cnt = it.count ? it.count : 1u;
+          nvrhi::BufferHandle buf = d.boneSsbo ? d.boneSsbo : d.dummySsbo;
           for (unsigned e = 0; e < cnt; ++e)
           {
             nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::StructuredBuffer_SRV(it.binding,
-                                                                                   d.dummySsbo);
+                                                                                   buf);
             bi.arrayElement = e;
             bsd.bindings.push_back(bi);
           }

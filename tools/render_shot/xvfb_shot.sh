@@ -28,6 +28,7 @@ find_win() {
 case "${1:-}" in
   --series)
     out=$2; step=${3:-30}; n=${4:-4}
+    mkdir -p "$(dirname "$out")" 2>/dev/null
     for i in $(seq 0 $((n-1))); do
       w=$(find_win)
       [ -z "$w" ] && { echo "окно не найдено (пропуск t$((i*step)))" >&2; sleep $step; continue; }
@@ -46,6 +47,7 @@ case "${1:-}" in
       esac
     done
     out=$1
+    mkdir -p "$(dirname "$out")" 2>/dev/null
     w=$(find_win)
     [ -z "$w" ] && { echo "окно «$NAME» не найдено на $D" >&2; exit 1; }
     DISPLAY=$D import -window "$w" "$out" && echo "$out ($w)"
