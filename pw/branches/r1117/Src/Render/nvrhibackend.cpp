@@ -882,6 +882,12 @@ struct NvrhiBackendImpl
 
   nvrhi::BufferHandle ubo[2];         // канонический c-банк: VS -> b0, PS -> b1 (set 0)
   bool uboDirty[2];
+  // шаг 13.5: грязный диапазон банка в регистрах (загружаем его, а не 4 КБ
+  // целиком) + замер фактических байт. Первый вызов SetShaderConstants задаёт
+  // диапазон, загрузка его сбрасывает.
+  unsigned uboFirst[2], uboLast[2];
+  unsigned long long uboBytes;
+  unsigned uboUploads;
   nvrhi::BindingLayoutHandle set0Layout;
   nvrhi::BindingSetHandle set0Set;
 
@@ -954,7 +960,10 @@ struct NvrhiBackendImpl
       imageIndex(0), currentSurface(0), presents(0),
       backDepthIdx((unsigned)kNoRes), dsSubIdx((unsigned)kNoRes),
       swapRecreates(0), surfaceRecreates(0),
-      uboDirty{ false, false }, curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
+      uboDirty{ false, false },
+      uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
+      uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
+      curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
       curIb(kNoRes), curRt(kNoRes), curDs(kNoRes),
       instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
       recording(false), draws(0), pipesCreated(0), pipeHits(0), uploads(0),
@@ -2562,6 +2571,10 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
+  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк на тех же загрузках = %u KiB",
+             d.uboUploads, (unsigned)(d.uboBytes / 1024ull),
+             (unsigned)((unsigned long long)d.uboUploads * (unsigned long long)SHADER_CONST_REGISTERS *
+                        16ull / 1024ull));
   DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
              "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
@@ -2901,14 +2914,30 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
 // тривиальна — она имеет смысл только для D3D9, где читается настоящее
 // состояние устройства.
 
+// шаг 13.5: грязный диапазон c-банка (регистры) + флаг. Диапазон — объединение
+// всех записей с прошлой загрузки; загрузка в UBO берёт ровно его.
+static void MarkConstDirty(NvrhiBackendImpl& d, int stage, unsigned startRegister,
+                           unsigned registerCount)
+{
+  d.uboDirty[stage] = true;
+  if (startRegister < d.uboFirst[stage]) d.uboFirst[stage] = startRegister;
+  if (startRegister + registerCount > d.uboLast[stage])
+    d.uboLast[stage] = startRegister + registerCount;
+}
+
 HRESULT NvrhiBackend::SetVertexShaderConstants(unsigned startRegister, unsigned registerCount, const void* pData)
 {
   VK_API_GUARD;
   VK_TRACE("SetVertexShaderConstants");
   if (!pData || !registerCount || startRegister + registerCount > (unsigned)SHADER_CONST_REGISTERS)
     return D3DERR_INVALIDCALL;
+  // шаг 13.5: значения те же -> банк не грязный. Клиент переставляет один и тот
+  // же материал на каждый draw, поэтому без сверки грузили 4 КБ на стадию на
+  // каждый вывод (замер: VkUbo в DumpCompact).
+  if (memcmp(m_constShadow[csVertex] + startRegister * 4, pData, (size_t)registerCount * 16) == 0)
+    return S_OK;
   memcpy(m_constShadow[csVertex] + startRegister * 4, pData, (size_t)registerCount * 16);
-  m_pImpl->uboDirty[csVertex] = true;   // банк = образ тени, байт = 16*регистр
+  MarkConstDirty(*m_pImpl, csVertex, startRegister, registerCount);
   return S_OK;
 }
 
@@ -2918,10 +2947,12 @@ HRESULT NvrhiBackend::SetPixelShaderConstants(unsigned startRegister, unsigned r
   VK_TRACE("SetPixelShaderConstants");
   if (!pData || !registerCount || startRegister + registerCount > (unsigned)SHADER_CONST_REGISTERS)
     return D3DERR_INVALIDCALL;
+  if (memcmp(m_constShadow[csPixel] + startRegister * 4, pData, (size_t)registerCount * 16) == 0)
+    return S_OK;
   memcpy(m_constShadow[csPixel] + startRegister * 4, pData, (size_t)registerCount * 16);
+  MarkConstDirty(*m_pImpl, csPixel, startRegister, registerCount);
   // без флага PS-банк никогда не загружается: в прогоне 2026.10.15-20.01.25
   // тест с текстурой дал чёрный вывод именно поэтому (outputMul читался нулём)
-  m_pImpl->uboDirty[csPixel] = true;
   return S_OK;
 }
 
@@ -5395,9 +5426,18 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   {
     if (d.uboDirty[s] && d.ubo[s])
     {
-      d.commandList->writeBuffer(d.ubo[s], m_constShadow[s],
-                                 (size_t)SHADER_CONST_REGISTERS * 16u);
+      unsigned first = d.uboFirst[s], last = d.uboLast[s];
       d.uboDirty[s] = false;
+      d.uboFirst[s] = (unsigned)SHADER_CONST_REGISTERS;
+      d.uboLast[s] = 0;
+      if (last <= first || first >= (unsigned)SHADER_CONST_REGISTERS)
+        continue;   // флаг был, а диапазона нет (защита)
+      if (last > (unsigned)SHADER_CONST_REGISTERS) last = (unsigned)SHADER_CONST_REGISTERS;
+      const size_t bytes = (size_t)(last - first) * 16u;
+      d.commandList->writeBuffer(d.ubo[s], m_constShadow[s] + first * 4, bytes,
+                                 (uint64_t)first * 16ull);
+      d.uboBytes += bytes;
+      ++d.uboUploads;
       ++d.uploads;
     }
   }
