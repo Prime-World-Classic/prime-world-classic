@@ -830,7 +830,7 @@ struct NvrhiBackendImpl
   unsigned shotLastSec;      // уже отснятая секунда (для режима по времени)
   unsigned shotProbe;        // env PW_VK_SHOT_PROBE: перед снимком залить картинку
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
-  unsigned panelLogged;      // сколько раз напечатали VkPanel (охота за белой плашкой)
+  unsigned panelLogged;      // трассировка «шейдер читает глубину» (00344)
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
 
   // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>). Нужен потому, что
@@ -4833,7 +4833,13 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
 
   nvrhi::DepthStencilState& ds = pd.renderState.depthStencilState;
   ds.depthTestEnable = st.zEnable != 0;
-  ds.depthWriteEnable = st.zWriteEnable != 0;
+  // D3D9: D3DRS_ZWRITEENABLE действует ТОЛЬКО при включённом D3DRS_ZENABLE —
+  // при выключенном тесте глубины записи нет. В Vulkan при
+  // depthTestEnable=VK_FALSE сравнение считается пройденным, а запись
+  // определяется depthWriteEnable, то есть прямая передача дала бы запись там,
+  // где D3D9 не пишет (замер 2026-10-20: PostFX-проходы с z=0 zW=1 читали
+  // глубину как текстуру — VUID-...-00344, и одновременно портили Z).
+  ds.depthWriteEnable = (st.zEnable && st.zWriteEnable) != 0;
   ds.depthFunc = st.zFunc ? CmpOf(d, st.zFunc) : nvrhi::ComparisonFunc::Less;
   ds.stencilEnable = st.stencilEnable != 0;
   ds.stencilReadMask = (uint8_t)st.stencilReadMask;
@@ -4968,6 +4974,21 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     }
     // каждый элемент массива дескрипторов обязан быть записан
     // (VUID-vkCmdDrawIndexed-None-08114: «descriptor ... never been updated»)
+    // 00344: кто читает глубину как текстуру и тот же ли это образ, что
+    // приложен depth attachment'ом текущего вывода
+    if (VkVerbose() && d.panelLogged < 12u && tex != kNoRes && tex < d.textures.size()
+        && d.textures[tex].seamFormat == 17 /*bfD24S8*/)
+    {
+      ++d.panelLogged;
+      const bool same = (d.curDs < d.surfaces.size() && d.surfaces[d.curDs].tex
+                         && d.surfaces[d.curDs].tex == d.textures[tex].tex);
+      char det[160];
+      snprintf(det, sizeof(det), "binding %u текстура#%u %ux%u curDs#%u тот же=%d z=%u zW=%u st=%u",
+               it.binding, tex, d.textures[tex].w, d.textures[tex].h, d.curDs, (int)same,
+               (unsigned)d.model.zEnable, (unsigned)d.model.zWriteEnable,
+               (unsigned)d.model.stencilEnable);
+      VkNote("Draw: чтение глубины", true, det);
+    }
     if (pTex == (nvrhi::ITexture*)d.dummyTex || pTex == (nvrhi::ITexture*)d.dummyCubeTex)
       ++d.dummySubs;
     const unsigned cnt = it.count ? it.count : 1u;
@@ -5029,10 +5050,29 @@ static nvrhi::FramebufferHandle FindOrCreateFb(NvrhiBackendImpl& d, unsigned rt,
 nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderPrimitiveType type,
                                                    nvrhi::IFramebuffer** ppFb)
 {
+  // VUID-vkCmdDrawIndexed-imageLayout-00344 (x20 за прогон, 2026-10-20):
+  // PostFX читает глубину как текстуру (`ZMap`, Set2 Binding0), но в том же
+  // выводе та же картинка приложена как depth attachment. Vulkan не разрешает
+  // sampled-вьюху изображения, которое в текущем subpass'е является depth
+  // attachment: дескриптор требует READ_ONLY, attachment оставляет
+  // DEPTH_STENCIL_ATTACHMENT_OPTIMAL. Если состояние вывода глубину не
+  // тестирует и трафарет выключен, attachment не прикладывается вовсе —
+  // семантически это пусто, а картинка остаётся читаемой. Запись глубины в
+  // условие не входит: в D3D9 ZWRITEENABLE без ZENABLE не пишет (мерка — в
+  // FillPipelineState), а PostFX-проходы как раз z=0 zW=1.
+  // A/B: env `PW_VK_DS_KEEP=1` возвращает прежнее поведение (attachment всегда).
+  static unsigned s_dsKeep = 0xffffffffu;
+  if (s_dsKeep == 0xffffffffu)
+  {
+    char bm[16];
+    s_dsKeep = (GetEnvironmentVariableA("PW_VK_DS_KEEP", bm, sizeof(bm) - 1) > 0) ? 1u : 0u;
+  }
+  const unsigned effDs = (s_dsKeep || d.model.zEnable || d.model.stencilEnable)
+                             ? d.curDs : kNoRes;
   // подпись шагов потоков обязана входить в ключ: раскладка в Vulkan несёт шаг
   // потока, и без неё два VB с разными шагами получили бы один пайплайн
   const unsigned long long lsig = StrideSignature(d);
-  const unsigned long long rtKey = SurfKey(d, d.curRt), dsKey = SurfKey(d, d.curDs);
+  const unsigned long long rtKey = SurfKey(d, d.curRt), dsKey = SurfKey(d, effDs);
   const NvrhiBackendImpl::PipeKey pk = std::make_tuple(d.curVs, d.curPs, d.curLayout,
                                                        (unsigned)type, lsig, d.modelHash,
                                                        rtKey, dsKey);
@@ -5043,7 +5083,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
     const NvrhiBackendImpl::PipeObj& p = d.pipes[pi->second];
     if (ppFb)
     {
-      nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, d.curDs);
+      nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, effDs);
       if (!fb) return nvrhi::GraphicsPipelineHandle();
       *ppFb = fb;   // владеет кэш framebuffer'ов (RefCountPtr::operator& -> T**)
     }
@@ -5082,7 +5122,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
                  (d.curDs != kNoRes && d.curDs < d.surfaces.size()) ? d.surfaces[d.curDs].h : 0u);
     }
   }
-  nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, d.curDs);
+  nvrhi::FramebufferHandle fb = FindOrCreateFb(d, d.curRt, effDs);
   if (!fb) return nvrhi::GraphicsPipelineHandle();
 
   nvrhi::GraphicsPipelineDesc pd;
