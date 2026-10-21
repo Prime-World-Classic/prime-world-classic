@@ -517,7 +517,16 @@ struct NvrhiBackendImpl
   // без неё вывод в бэк-буфер с тестом глубины невозможен (замер 2026-10-16:
   // SetDepthStencil NULL=899, чужих=899, своих=0).
   unsigned backDepthIdx;
-  unsigned dsSubIdx;      // подменная глубина размера RT (см. DrawImpl)
+  // Подменная глубина размера RT (см. DrawImpl): кэш ПО РАЗМЕРУ, а не одна
+  // запись. Замер прогона 2026.10.21-01:19: клиент чередует RT 1024x768 и
+  // 200x201 (PostFX-проходы), и одиночная запись промахивалась на каждом
+  // переходе — это попытка createTexture на каждый вывод. dsSubFailed хранит
+  // размеры, где createTexture уже упал (в том же прогоне с 01:21:13 отказало
+  // 200x201, хотя в 01:19:06 тот же размер создался), dsSubFail считает выводы
+  // с приложенной глубиной, которым подмену создать не удалось.
+  std::map<unsigned long long, unsigned> dsSub;   // (w<<32|h) -> индекс поверхности
+  std::vector<unsigned long long> dsSubFailed;    // размеры, где создание уже падало
+  unsigned dsSubFail;
   std::vector<SurfaceObj> surfaces;                 // индекс + 1 = значение HSurface.p
   unsigned currentSurface;                          // поверхность текущего бэк-буфера
 
@@ -1031,7 +1040,7 @@ struct NvrhiBackendImpl
       swapSpace(VkColorSpaceKHR(0)), presentMode(VK_PRESENT_MODE_FIFO_KHR),
       width(0), height(0), acquired(0), fenceRot(0), ownerThread(0), threadSeenCount(0),
       imageIndex(0), currentSurface(0), presents(0),
-      backDepthIdx((unsigned)kNoRes), dsSubIdx((unsigned)kNoRes),
+      backDepthIdx((unsigned)kNoRes), dsSubFail(0),
       swapRecreates(0), surfaceRecreates(0),
       uboDirty{ false, false },
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
@@ -1367,18 +1376,28 @@ static void* NewHandle(NvrhiBackendImpl* impl, unsigned index, unsigned kind)
 // 16 860 строк на прогон — в этом потоке тонут все остальные сообщения. Счётчики
 // мест печатает DumpStats (строка VkNotes), поэтому молчаливое усечение лога
 // неотличимо от «так и надо».
+// Правка 2026-10-21 (план, очередь п.8): место опознаём по УКАЗАТЕЛЮ строки, а не
+// по тексту. Таблица хранила char[48] и сравнивала strcmp, но русские тексты в
+// UTF-8 длиннее 47 байт («Вывод: глубина не совпадает с RT и замена не создана» =
+// 51), strncpy их обрезал, strcmp после этого не совпадал никогда, и на каждом
+// вызове регистрировалось «новое» место: таблица из 32 слотов заполнялась за 32
+// вывода, после чего NoteGate возвращал true всем. Замер прогона 2026.10.21-01:21:
+// 43 439 строк одной заметки вместо обещанных 6 (и столько же строк о провале
+// createTexture). Все места зовут VkNote литералом, поэтому указатель —
+// устойчивый идентификатор; текст храним только для сводки VkNotes.
 static const unsigned kNotePrint = 6u;
 static const unsigned kNoteSites = 32u;
-struct NoteSite { char what[48]; unsigned hits; };
+struct NoteSite { const char* what; unsigned hits; };
 static NoteSite g_noteSites[kNoteSites];
 static unsigned g_noteSiteCount = 0;
 static unsigned g_noteSuppressed = 0;
+static unsigned g_noteUntracked = 0;
 
 // true — печатать; false — это повтор сверх лимита
 static bool NoteGate(const char* what)
 {
   for (unsigned i = 0; i < g_noteSiteCount; ++i)
-    if (!strcmp(g_noteSites[i].what, what))
+    if (g_noteSites[i].what == what)
     {
       ++g_noteSites[i].hits;
       if (g_noteSites[i].hits > kNotePrint) { ++g_noteSuppressed; return false; }
@@ -1386,11 +1405,12 @@ static bool NoteGate(const char* what)
     }
   if (g_noteSiteCount < kNoteSites)
   {
-    strncpy(g_noteSites[g_noteSiteCount].what, what, sizeof(g_noteSites[g_noteSiteCount].what) - 1);
-    g_noteSites[g_noteSiteCount].what[sizeof(g_noteSites[g_noteSiteCount].what) - 1] = 0;
+    g_noteSites[g_noteSiteCount].what = what;
     g_noteSites[g_noteSiteCount].hits = 1;
     ++g_noteSiteCount;
   }
+  else
+    ++g_noteUntracked;   // мест больше, чем таблица: печатаем, но считаем
   return true;
 }
 
@@ -1446,6 +1466,21 @@ static bool VkVerbose()
   {
     char b[8] = { 0 };
     s_on = (GetEnvironmentVariableA("PW_VK_STATS", b, sizeof(b) - 1) > 0 && atoi(b)) ? 1 : 0;
+  }
+  return s_on != 0;
+}
+
+// A/B: env `PW_VK_DS_KEEP` (любое значение) возвращает прежнее поведение — depth
+// attachment прикладывается всегда. Решение «прикладывать ли глубину в этом
+// выводе» обязано быть ОДНИМ: его же спрашивает подмена размера глубины в
+// DrawImpl (выводу без глубины подмена не нужна вовсе).
+static bool DsKeepRequested()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char bm[16];
+    s_on = (GetEnvironmentVariableA("PW_VK_DS_KEEP", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
   }
   return s_on != 0;
 }
@@ -2707,11 +2742,16 @@ void NvrhiBackend::DumpStats(const char* pTag) const
              d.handlesFreed[hkBuffer],
              d.handlesFreed[hkTexture], d.handlesFreed[hkSurface], d.handlesFreed[hkShader],
              d.handlesFreed[hkLayout]);
-  DebugTrace("VkNotes%s: мест=%u подавлено повторов=%u", pTag ? pTag : "",
-             g_noteSiteCount, g_noteSuppressed);
+  DebugTrace("VkNotes%s: мест=%u подавлено повторов=%u неучтённых мест=%u", pTag ? pTag : "",
+             g_noteSiteCount, g_noteSuppressed, g_noteUntracked);
   for (unsigned i = 0; i < g_noteSiteCount; ++i)
     if (g_noteSites[i].hits > kNotePrint)
       DebugTrace("VkNotes: %s — %u раз", g_noteSites[i].what, g_noteSites[i].hits);
+  // Подмена размера глубины (см. DrawImpl): без этой строки отказ создания
+  // подмены выглядит как «вывод просто пропал»
+  DebugTrace("VkDs%s: подмен по размеру=%u отказов подмены=%u размеров-отказов=%u",
+             pTag ? pTag : "", (unsigned)d.dsSub.size(), d.dsSubFail,
+             (unsigned)d.dsSubFailed.size());
   for (int i = 0; i < st_count; ++i)
     if (d.stubCalls[i])
       DebugTrace("VkStub: %s вызван %u раз", kStubNames[i], d.stubCalls[i]);
@@ -5133,9 +5173,19 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
     target.destBlendAlpha = target.destBlend;
     target.blendOpAlpha = target.blendOp;
   }
-  // D3D9 по умолчанию пишет RGB без альфы (7), а не всё (0x0f)
-  target.colorWriteMask = static_cast<nvrhi::ColorMask>(
-      st.colorWriteEnable ? st.colorWriteEnable : 0x7u);
+  // Маска записи цвета передаётся ДОСЛОВНО, включая 0. Клиент выключает её
+  // ЦЕЛИКОМ (D3DRS_COLORWRITEENABLE=0) в трафаретных проходах Flash-масок
+  // (FlashRenderer.cpp:1509 BeginSubmitMaskApply, :1518 BeginUnSubmitMaskApply;
+  // то же ShadowMap.cpp:234, batch.cpp:667). Прежний вариант `? : 0x7u`
+  // превращал такой проход в вывод непрозрачным белым: именно он рисовал белую
+  // плашку 330x132 в Vulkan (замер PW_VK_PJTRACE=29,443,359,575: ps=15 vs=14
+  // vtx=6 cw=0 stencil=1 z=0/0 proj=(28.5,442.5)-(360.1,576.0), PS c20=1 c21=0,
+  // т.е. выход = COLOR0=FFFFFFFF). Значение в модели состояний берётся из тени
+  // менеджера (renderstatesmanager.cpp:573 ShadowValue, а не «нули по
+  // умолчанию»), поэтому 0 здесь — воля клиента, а не незаданное состояние.
+  // Биты D3DCOLORWRITEENABLE_* совпадают с nvrhi::ColorMask (1/2/4/8, All=0xF,
+  // nvrhi.h:1042-1049), отдельного маппинга не нужно.
+  target.colorWriteMask = static_cast<nvrhi::ColorMask>(st.colorWriteEnable);
   if (s_stateMask & 1u) ds.stencilEnable = false;
   if (s_stateMask & 2u) target.blendEnable = false;
   if (s_stateMask & 4u) ds.depthWriteEnable = false;
@@ -5319,13 +5369,7 @@ nvrhi::GraphicsPipelineHandle FindOrCreatePipeline(NvrhiBackendImpl& d, ERenderP
   // условие не входит: в D3D9 ZWRITEENABLE без ZENABLE не пишет (мерка — в
   // FillPipelineState), а PostFX-проходы как раз z=0 zW=1.
   // A/B: env `PW_VK_DS_KEEP=1` возвращает прежнее поведение (attachment всегда).
-  static unsigned s_dsKeep = 0xffffffffu;
-  if (s_dsKeep == 0xffffffffu)
-  {
-    char bm[16];
-    s_dsKeep = (GetEnvironmentVariableA("PW_VK_DS_KEEP", bm, sizeof(bm) - 1) > 0) ? 1u : 0u;
-  }
-  const unsigned effDs = (s_dsKeep || d.model.zEnable || d.model.stencilEnable)
+  const unsigned effDs = (DsKeepRequested() || d.model.zEnable || d.model.stencilEnable)
                              ? d.curDs : kNoRes;
   // подпись шагов потоков обязана входить в ключ: раскладка в Vulkan несёт шаг
   // потока, и без неё два VB с разными шагами получили бы один пайплайн
@@ -5857,27 +5901,49 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // Замер (прогон 2026.10.16-21.00): после смены разрешения клиент продолжает
   // привязывать свою поверхность глубины 800x600 к RT 1024x768
   // (`VkFb: rt=14 1024x768 ds=3 dsWH=800x600`) — D3D9 это допускает, Vulkan
-  // нет. Подставляем внутреннюю глубину нужного размера (одна на размер).
-  if (d.curDs != kNoRes && d.curDs < d.surfaces.size() &&
+  // нет. Подставляем внутреннюю глубину нужного размера.
+  //
+  // Правка 2026-10-21 (план, очередь п.8). Два дефекта прежней подмены:
+  // 1) она применялась ко ВСЕМ выводам, а глубина в вывод попадает только когда
+  //    включены z или трафарет (FindOrCreatePipeline: иначе effDs = kNoRes).
+  //    Клиент держит привязанной большую глубину бэк-буфера, а PostFX-проходы
+  //    рисуют в свои RT 200x201 с z=0 — им подмена безразлична, но каждый такой
+  //    вывод стоил попытки createTexture и двух строк в логе (замер прогона
+  //    2026.10.21-01:21: 43 439 выводов, 86 878 строк).
+  // 2) кэш подмены был одиночный (dsSubIdx), а клиент чередует RT 1024x768 и
+  //    200x201 — каждый переход мимо единственной записи снова звал CreateSurface.
+  //    Кэш теперь по размеру, и размеры, где createTexture уже падал, больше не
+  //    дёргаются.
+  if ((DsKeepRequested() || d.model.zEnable || d.model.stencilEnable) &&
+      d.curDs != kNoRes && d.curDs < d.surfaces.size() &&
       (d.surfaces[d.curDs].w != d.surfaces[d.curRt].w ||
        d.surfaces[d.curDs].h != d.surfaces[d.curRt].h))
   {
     const unsigned rw = d.surfaces[d.curRt].w, rh = d.surfaces[d.curRt].h;
+    const unsigned long long sizeKey = (unsigned long long(rw) << 32) | rh;
     unsigned sub = kNoRes;
     if (d.backDepthIdx != kNoRes && d.backDepthIdx < d.surfaces.size() &&
         d.surfaces[d.backDepthIdx].w == rw && d.surfaces[d.backDepthIdx].h == rh)
       sub = d.backDepthIdx;
-    else if (d.dsSubIdx != kNoRes && d.dsSubIdx < d.surfaces.size() &&
-             d.surfaces[d.dsSubIdx].w == rw && d.surfaces[d.dsSubIdx].h == rh)
-      sub = d.dsSubIdx;
     else
     {
-      HSurface hs;
-      if (SUCCEEDED(CreateSurface(ssDepthStencil, rw, rh, bfD24S8,
-                                  BACKEND_POOL_DEFAULT, &hs)))
+      std::map<unsigned long long, unsigned>::const_iterator cached = d.dsSub.find(sizeKey);
+      if (cached != d.dsSub.end() && cached->second < d.surfaces.size() &&
+          !d.surfaces[cached->second].dead)
+        sub = cached->second;
+      else if (std::find(d.dsSubFailed.begin(), d.dsSubFailed.end(), sizeKey)
+               == d.dsSubFailed.end())
       {
-        d.dsSubIdx = Hnd2Idx(hs.p);
-        sub = d.dsSubIdx;
+        HSurface hs;
+        if (SUCCEEDED(CreateSurface(ssDepthStencil, rw, rh, bfD24S8,
+                                    BACKEND_POOL_DEFAULT, &hs)))
+        {
+          const unsigned idx = Hnd2Idx(hs.p);
+          d.dsSub[sizeKey] = idx;
+          sub = idx;
+        }
+        else
+          d.dsSubFailed.push_back(sizeKey);
       }
     }
     if (sub != kNoRes)
@@ -5893,7 +5959,21 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       d.curDs = sub;
     }
     else
+    {
+      ++d.dsSubFail;
+      // Размеры в самой заметке — иначе «замена не создана» неотличима для
+      // 1024x768 и для 200x201, а это разные дефекты (у 200x201 отказывает
+      // createTexture, см. VkDs в сводке)
+      static unsigned s_dsFailNote = 0u;
+      if (s_dsFailNote < 4u)
+      {
+        ++s_dsFailNote;
+        DebugTrace("VkDs: глубина %ux%u не совпадает с RT %ux%u — подмена %ux%u НЕ СОЗДАНА (z=%u stencil=%u)",
+                   d.surfaces[d.curDs].w, d.surfaces[d.curDs].h, rw, rh, rw, rh,
+                   (unsigned)d.model.zEnable, (unsigned)d.model.stencilEnable);
+      }
       VkNote("Вывод: глубина не совпадает с RT и замена не создана", false, 0);
+    }
   }
   // Бисект белой плашки 330x132 (2026-10-20): PW_VK_SKIPPS_FROM/TO — пропустить
   // все выводы, у которых seam-индекс пиксельного шейдера попадает в диапазон.
@@ -6221,7 +6301,28 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       if (i == 4) { s_skp[0] = v[0]; s_skp[1] = v[1]; s_skp[2] = v[2]; s_skp[3] = v[3]; }
     }
   }
-  if (s_skp[2] >= 0 && d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
+  // PW_VK_PJTRACE=x0,y0,x1,y1 — то же окно по проекции, но вывод НЕ пропускается,
+  // а печатается его полное состояние (бленд/сепаратный альфа/z/stencil/cull/
+  // vp/sc/цель) плюс z-диапазон вершин после проекции и PS c20/c21. Нужно для
+  // плашки: статика (DXBC VS/PS #0 против его же SPIR-V) дала паритет, а
+  // PW_VK_TRACEORD_PS ловит все выводы ps=15 (их десятки), а не только плашку.
+  static int s_pjt[4] = { 0x7FFFFFFF, 0x7FFFFFFF, -1, -1 };
+  static bool s_pjTraceRead = false;
+  static unsigned s_pjTraceLogged = 0u;
+  if (!s_pjTraceRead)
+  {
+    s_pjTraceRead = true;
+    char bp[64];
+    if (GetEnvironmentVariableA("PW_VK_PJTRACE", bp, sizeof(bp) - 1) > 0)
+    {
+      int v[4] = { 0, 0, 0, 0 };
+      char* p = bp;
+      int i = 0;
+      while (p && i < 4) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+      if (i == 4) { s_pjt[0] = v[0]; s_pjt[1] = v[1]; s_pjt[2] = v[2]; s_pjt[3] = v[3]; }
+    }
+  }
+  if ((s_skp[2] >= 0 || s_pjt[2] >= 0) && d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
   {
     const std::vector<nvrhi::VertexAttributeDesc>& desc = d.layoutObjs[d.curLayout].desc;
     const nvrhi::VertexAttributeDesc* pPos = 0;
@@ -6236,6 +6337,7 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
                         + (size_t)startVertexLocation * stride;
       const float* pv = m_constShadow[csVertex];
       double qx0 = 1e300, qx1 = -1e300, qy0 = 1e300, qy1 = -1e300;
+      double zn0 = 1e300, zn1 = -1e300, wn0 = 1e300, wn1 = -1e300;
       unsigned np = 0u;
       for (unsigned v = 0u; v < vtx; ++v)
       {
@@ -6256,6 +6358,11 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
         if (px > qx1) qx1 = px;
         if (py < qy0) qy0 = py;
         if (py > qy1) qy1 = py;
+        const double zz = (double)r[2] / r[3];
+        if (zz < zn0) zn0 = zz;
+        if (zz > zn1) zn1 = zz;
+        if (r[3] < wn0) wn0 = r[3];
+        if (r[3] > wn1) wn1 = r[3];
         ++np;
       }
       if (np && fabs(qx0 - (double)s_skp[0]) <= 25.0 && fabs(qy0 - (double)s_skp[1]) <= 25.0
@@ -6270,6 +6377,46 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
           VkNote("VkSkipPJ", true, dt);
         }
         return S_OK;
+      }
+      if (s_pjt[2] >= 0 && np
+          && fabs(qx0 - (double)s_pjt[0]) <= 25.0 && fabs(qy0 - (double)s_pjt[1]) <= 25.0
+          && fabs(qx1 - (double)s_pjt[2]) <= 25.0 && fabs(qy1 - (double)s_pjt[3]) <= 25.0
+          && s_pjTraceLogged < 8u)
+      {
+        ++s_pjTraceLogged;
+        const bool haveRt = d.curRt < d.surfaces.size();
+        char dt[560];
+        int n = snprintf(dt, sizeof(dt),
+                 "ps=%u vs=%u vtx=%u prim=%u idx=%u lay=%u rt#%u proj=(%.1f,%.1f)-(%.1f,%.1f) "
+                 "z=[%.4g,%.4g] w=[%.4g,%.4g]",
+                 d.curPs, d.curVs, vtx, primitiveCount, indexed ? 1u : 0u, d.curLayout,
+                 d.curRt, qx0, qy0, qx1, qy1, zn0, zn1, wn0, wn1);
+        n += snprintf(dt + n, sizeof(dt) - n,
+                 " blend=%u/%u/%u sep=%u srcA=%u dstA=%u opA=%u cw=%u z=%u/%u zF=%u stencil=%u "
+                 "aTest=%u cull=%u fill=%u",
+                 d.model.alphaBlendEnable ? 1u : 0u, d.model.srcBlend, d.model.destBlend,
+                 d.model.separateAlphaBlend ? 1u : 0u, d.model.srcBlendAlpha,
+                 d.model.destBlendAlpha, d.model.blendOpAlpha,
+                 d.model.colorWriteEnable, d.model.zEnable ? 1u : 0u,
+                 d.model.zWriteEnable ? 1u : 0u, d.model.zFunc,
+                 d.model.stencilEnable ? 1u : 0u,
+                 d.model.alphaTestEnable ? 1u : 0u, d.model.cullMode, d.model.fillMode);
+        n += snprintf(dt + n, sizeof(dt) - n,
+                 " vp=%ld,%ld %ldx%ld sc=%ld,%ld..%ld,%ld scTest=%u scValid=%u",
+                 (long)m_viewport.x, (long)m_viewport.y, (long)m_viewport.width, (long)m_viewport.height,
+                 (long)m_scissor.left, (long)m_scissor.top, (long)m_scissor.right, (long)m_scissor.bottom,
+                 d.model.scissorTestEnable ? 1u : 0u, m_scissorValid ? 1u : 0u);
+        if (haveRt)
+          n += snprintf(dt + n, sizeof(dt) - n, " rt=%ux%u bb=%u fmt=%u dep=%u back=%u",
+                        d.surfaces[d.curRt].w, d.surfaces[d.curRt].h,
+                        d.surfaces[d.curRt].backBuffer ? 1u : 0u,
+                        (unsigned)d.surfaces[d.curRt].seamFormat,
+                        d.surfaces[d.curRt].depth ? 1u : 0u,
+                        d.surfaces[d.curRt].backBuffer ? 1u : 0u);
+        const float* pc = m_constShadow[csPixel];
+        n += snprintf(dt + n, sizeof(dt) - n, " PS c20=(%.4f,%.4f,%.4f,%.4f) c21=(%.4f,%.4f,%.4f,%.4f)",
+                      pc[80], pc[81], pc[82], pc[83], pc[84], pc[85], pc[86], pc[87]);
+        DebugTrace("VkPjTrace: %s", dt);
       }
     }
   }

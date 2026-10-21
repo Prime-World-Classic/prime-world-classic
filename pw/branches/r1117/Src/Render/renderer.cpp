@@ -827,6 +827,52 @@ void Renderer::ClearDeviceResources()
   //SmartRenderer::NullThePointers();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// A/B производительности бэкендов (docs/PLAN_NVRHI.md, очередь после A/B
+// 2026-10-21, п.7): без счётчика кадров утверждение «Vulkan быстрее DXVK»
+// неподтверждаемо. Счётчик стоит здесь, а не в бэкенде: Renderer::Present —
+// общая точка обоих путей (pBackend либо D3D9/DXVK, либо Vulkan-бэкенд), поэтому
+// Δкадров/Δt сравнимо без правок бэкендов и одна сторона не может начать считать
+// не свой кадр. env PW_FPS_STATS=<интервал, сек>; не задан или 0 — выключено.
+static void LogPresentRate(bool vkBackend)
+{
+  static int s_intervalMs = -1;
+  static unsigned s_frames = 0;
+  static unsigned s_total = 0;
+  static unsigned long long s_lastTick = 0;
+
+  if (s_intervalMs < 0)
+  {
+    char flag[8] = { 0 };
+    const int sec = (GetEnvironmentVariableA("PW_FPS_STATS", flag, sizeof(flag) - 1) > 0)
+                        ? atoi(flag) : 0;
+    s_intervalMs = (sec > 0 && sec <= 3600) ? sec * 1000 : 0;
+  }
+  if (!s_intervalMs)
+    return;
+
+  const unsigned long long now = GetTickCount64();
+  if (!s_lastTick)
+  {
+    s_lastTick = now;   // первый кадр: интервал ещё не шёл
+    s_total = 1;
+    return;
+  }
+
+  ++s_frames;
+  ++s_total;
+  const unsigned long long elapsed = now - s_lastTick;
+  if (elapsed < unsigned long long(s_intervalMs))
+    return;
+
+  systemLog(NLogg::LEVEL_MESSAGE)
+    << "Renderer: fps " << NStr::StrFmt("%.2f", double(s_frames) * 1000.0 / double(elapsed))
+    << " backend=" << (vkBackend ? "vulkan" : "d3d9")
+    << " кадров=" << s_frames << " за " << elapsed << "мс"
+    << " всего=" << s_total << endl;
+  s_frames = 0;
+  s_lastTick = now;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rect* destRect_ )
 {
@@ -955,6 +1001,8 @@ void Renderer::Present( NativeWindow window_, const Rect* sourceRect_, const Rec
     }
     
     NI_DX_WARN( hr == D3D_OK || hr == D3DERR_DEVICELOST, "" );
+
+    LogPresentRate(bVkBackend);
   }
 
   if(hr == D3DERR_DEVICELOST || bResetDevice) {

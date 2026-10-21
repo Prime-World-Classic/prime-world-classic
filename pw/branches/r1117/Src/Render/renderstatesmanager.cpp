@@ -530,9 +530,9 @@ UINT64 RenderStatesManager::GetStencilShadowKey() const
 // Модель состояний конвейера (шаг 13.4b). Значения берутся из теней; то, что
 // менеджер ни разу не писал, один раз читается с устройства (ShadowValue /
 // SamplerShadowValue) — модель обязана отражать реальное состояние, а не «нули
-// по умолчанию»: D3D9 по умолчанию пишет COLORWRITEENABLE=RGB без альфы,
-// CULLMODE=CW и ZFUNC=LESS, и подстановка нуля вместо этого молча меняла бы
-// картинку на Vulkan.
+// по умолчанию»: незаданное состояние один раз читается с устройства, и для
+// D3D9 это COLORWRITEENABLE=0x0F (все каналы), CULLMODE=CW, ZFUNC=LESS —
+// подстановка нуля вместо этого молча меняла бы картинку на Vulkan.
 void RenderStatesManager::BuildPipelineState() const
 {
   BackendPipelineState& st = m_pipeState;
