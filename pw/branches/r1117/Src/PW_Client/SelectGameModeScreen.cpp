@@ -65,8 +65,10 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
 
     maps->InitCustomList(pMapList);
 
+    // Maps/Test is not packed into piles: the list still links those maps, but they don't load - skip them
     for ( int i = 0; i < pMapList->maps.size(); ++i )
-      logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
+      if ( IsValid( pMapList->maps[i] ) )
+        logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
   }
 /*
   if ( StrongMT<Game::IGameContextUiInterface> cl = gameCtx.Lock() )

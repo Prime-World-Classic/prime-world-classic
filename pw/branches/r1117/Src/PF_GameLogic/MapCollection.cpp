@@ -37,19 +37,19 @@ int PWMapCollection::MapsListSize() const
 
 const char * PWMapCollection::CustomDescId( int index ) const
 {
-  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size(), "", return "" );
+  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size() && IsValid(listCustom->maps[index]), "", return "" );
   return listCustom->maps[index]->GetDBID().GetFileName().c_str();
 }
 
 const wchar_t * PWMapCollection::CustomTitle( int index ) const
 {
-  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size(), "", return L"" );
+  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size() && IsValid(listCustom->maps[index]), "", return L"" );
   return listCustom->maps[index]->title.GetText().c_str();
 }
 
 const wchar_t * PWMapCollection::CustomDescription( int index ) const
 {
-  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size(), "", return L"" );
+  NI_VERIFY( IsValid(listCustom) && index >= 0 && index < listCustom->maps.size() && IsValid(listCustom->maps[index]), "", return L"" );
   return listCustom->maps[index]->description.GetText().c_str();
 }
 
