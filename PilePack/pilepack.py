@@ -70,6 +70,8 @@ DEFAULT_RATIO = 0.90          # max_comp_ratio: сжатие применяет�
 DEFAULT_MIN_CS = 1            # comp_size: файлы больше этого размера пробуют сжимать
 DEFAULT_EST_RATIO = 0.50      # оценка упакованного размера при первой раскладке
 DEFAULT_PREFIX = 'gamedata'
+NAME_DIGITS = 3               # минимум цифр в номере: ScanForPiles сравнивает имена как строки,
+                              # и gamedata100 при двух цифрах оказался бы «меньше» gamedata99
 
 # Оценка упакованного размера файла (для первой раскладки по target). Замерена на Data
 # (zlib level 6, выборка по расширениям): для мелких файлов сжатие почти не работает,
@@ -131,6 +133,7 @@ class Policy(object):
         self.ignore_dirs = set()
         self.exts = set()
         self.excludes = []        # [(снять_исключение, маска)] — в порядке файла, последнее совпадение важнее
+        self.referenced = []      # файлы из ignore_dir, взятые по ссылкам (заполняет walk)
         self.raw = ''
         self.load()
 
@@ -168,28 +171,107 @@ class Policy(object):
         import hashlib
         return hashlib.sha256(self.raw.encode('utf-8')).hexdigest()[:12]
 
+    def accepts(self, rel):
+        """ext + exclude для пути от Data ('/' как разделитель); ignore_dir здесь не проверяется."""
+        low = rel.rsplit('/', 1)[-1].lower()
+        if '.' not in low:
+            return False
+        if low.rsplit('.', 1)[1] not in self.exts:
+            return False
+        rel_low = rel.lower()
+        excluded = False
+        for negate, m in self.excludes:
+            # маска без '/' сравнивается с именем файла, с '/' — с полным относительным путём
+            if fnmatch.fnmatch(rel_low if '/' in m else low, m):
+                excluded = not negate
+        return not excluded
+
     def walk(self, data_dir):
-        """Относительные (от Data) пути файлов, попадающих в pile; '/' как разделитель."""
-        keys = []
+        """
+        Относительные (от Data) пути файлов, попадающих в pile; '/' как разделитель.
+        Файлы из ignore_dir тоже попадают, если на них ссылаются отобранные данные
+        (см. referenced_from_ignored): иначе ссылка в игре пустая и клиент падает.
+        """
+        keys, ignored = [], {}
         for dirpath, dirnames, filenames in os.walk(data_dir):
-            dirnames[:] = [d for d in dirnames if d.lower() not in self.ignore_dirs]
+            rel_dir = os.path.relpath(dirpath, data_dir).replace(os.sep, '/')
+            in_ignored = rel_dir != '.' and any(s.lower() in self.ignore_dirs for s in rel_dir.split('/'))
+            # служебные каталоги (.svn и т. п.) в игре никто не ссылается — их не обходим
+            dirnames[:] = [d for d in dirnames if not (d.startswith('.') and d.lower() in self.ignore_dirs)]
             for name in filenames:
-                low = name.lower()
-                if '.' not in low:
+                rel = name if rel_dir == '.' else rel_dir + '/' + name
+                if not self.accepts(rel):
                     continue
-                if low.rsplit('.', 1)[1] not in self.exts:
+                if in_ignored:
+                    ignored[rel.lower()] = rel
+                else:
+                    keys.append(rel)
+        self.referenced = referenced_from_ignored(data_dir, keys, ignored, self.ignore_dirs)
+        return keys + self.referenced
+
+
+# Ссылки в .xdb: href="/Glyphs/_.GLDB" (без расширения — это .xdb), textref="/x.txt"
+# и пути в тексте тегов (<geometryFileName>/x.stat</geometryFileName>).
+REF_HREF = re.compile(rb'href="([^"#]+)')
+REF_PATH = re.compile(rb'[>"]([^<>"\r\n]+\.[A-Za-z0-9_]+)[<"]')
+
+
+def xdb_refs(data, base_dir):
+    """Пути (lower, от Data), на которые ссылается .xdb из каталога base_dir."""
+    out = set()
+    found = [(m, True) for m in REF_HREF.findall(data)] + [(m, False) for m in REF_PATH.findall(data)]
+    for raw, is_href in found:
+        p = raw.decode('utf-8', 'replace').strip().replace('\\', '/')
+        if not p:
+            continue
+        if is_href and os.path.splitext(p)[1].lower() != '.xdb':
+            p += '.xdb'
+        p = p.lstrip('/') if p.startswith('/') else (base_dir + '/' + p if base_dir else p)
+        p = os.path.normpath(p).replace(os.sep, '/').lower()
+        if not p.startswith('..'):
+            out.add(p)
+    return out
+
+
+def referenced_from_ignored(data_dir, keys, ignored, ignore_dirs):
+    """
+    Файлы из ignore_dir (ignored: {lower: rel}, уже прошедшие ext/exclude), на которые
+    ссылаются отобранные .xdb — прямо или через другие такие файлы. Каталоги Test и т. п.
+    исключены целиком, но живые данные на них ссылаются (тестовый глиф в Glyphs/_.GLDB,
+    порталы на MOBA, эффекты свитков, Tech/Default/_.MAPLST): без файла ссылка пустая,
+    и клиент падает. К .txt добавляется и перевод <имя>_en.txt.
+    """
+    if not ignored:
+        return []
+    marks = [d.encode('utf-8') + b'/' for d in ignore_dirs]
+    queue = [k for k in keys if k.lower().endswith('.xdb')]
+    added = []
+    from_ignored = set()
+    while queue:
+        rel = queue.pop()
+        try:
+            with open(os.path.join(data_dir, rel.replace('/', os.sep)), 'rb') as f:
+                data = f.read()
+        except OSError:
+            continue
+        # в обычных .xdb ссылка на исключённый каталог содержит его имя — остальные не разбираем
+        # (у взятых из исключённого каталога относительные ссылки имени не содержат)
+        if rel not in from_ignored and not any(m in data.lower() for m in marks):
+            continue
+        base = rel.rsplit('/', 1)[0] if '/' in rel else ''
+        for ref in xdb_refs(data, base):
+            cands = [ref]
+            if ref.endswith('.txt'):
+                cands.append(ref[:-4] + '_en.txt')
+            for c in cands:
+                hit = ignored.pop(c, None)
+                if hit is None:
                     continue
-                rel = os.path.relpath(os.path.join(dirpath, name), data_dir).replace(os.sep, '/')
-                rel_low = rel.lower()
-                excluded = False
-                for negate, m in self.excludes:
-                    # маска без '/' сравнивается с именем файла, с '/' — с полным относительным путём
-                    if fnmatch.fnmatch(rel_low if '/' in m else low, m):
-                        excluded = not negate
-                if excluded:
-                    continue
-                keys.append(rel)
-        return keys
+                added.append(hit)
+                if c.endswith('.xdb'):
+                    from_ignored.add(hit)
+                    queue.append(hit)
+    return sorted(added)
 
 
 # --------------------------------------------------------------------------------------
@@ -496,15 +578,15 @@ def assign_names(piles, prefix):
     и после деления одного pile «менялись» все следующие — в git и в канале обновлений это
     десятки изменённых файлов без изменений данных. Новый pile получает номер после
     максимального (дыры не переиспользуются); ширина номера — как у существующих имён,
-    при первой раскладке — по числу pile, не меньше 2 цифр.
+    при первой раскладке — по числу pile, не меньше NAME_DIGITS цифр.
     """
     rx = re.compile(r'%s(\d+)\.pile$' % re.escape(prefix), re.I)
     nums = [rx.match(p.name) for p in piles if p.name]
     nums = [m.group(1) for m in nums if m]
     if nums:
-        width = max(2, max(len(n) for n in nums))
+        width = max(NAME_DIGITS, max(len(n) for n in nums))
     else:
-        width = max(2, len(str(len(piles))))
+        width = max(NAME_DIGITS, len(str(len(piles))))
     nxt = max([int(n) for n in nums] + [0]) + 1
     for p in piles:
         if not p.name:
@@ -612,7 +694,8 @@ def cmd_build(args):
 
     keys = policy.walk(data_dir)
     log('policy: %d расширений, %d игнорируемых каталогов; отобрано файлов: %d'
-        % (len(policy.exts), len(policy.ignore_dirs), len(keys)))
+        ' (из них %d из игнорируемых каталогов — на них ссылаются данные)'
+        % (len(policy.exts), len(policy.ignore_dirs), len(keys), len(policy.referenced)))
 
     # индекс внутри pile — case-insensitive hash_map: разные имена, отличающиеся регистром,
     # сливаются в один ключ (проигрывает последний). Не должно быть и в разных pile.

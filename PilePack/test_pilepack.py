@@ -200,7 +200,7 @@ def test_first_build_and_incremental(root):
     code, out = run(['build'] + a)
     check(code == 0, 'первый build завершился (%s)' % out.strip().splitlines()[-3:])
     names = pile_names(root)
-    check(names == ['gamedata%02d.pile' % i for i in range(1, len(names) + 1)] and len(names) >= 3,
+    check(names == ['gamedata%03d.pile' % i for i in range(1, len(names) + 1)] and len(names) >= 3,
           'имена gamedataNN.pile подряд: %s' % names)
     piles = load_manifest_piles(root)
     check(sum(len(p.files) for p in piles) == 12, 'все 12 файлов разложены')
@@ -303,7 +303,7 @@ def test_split_oversized(root):
     piles = load_manifest_piles(root)
     names = [p.name for p in piles]
     check(len(names) == len(before_names) + 1, 'появился ещё один pile: %s' % names)
-    new_name = 'gamedata%02d.pile' % (len(before_names) + 1)
+    new_name = 'gamedata%03d.pile' % (len(before_names) + 1)
     check(sorted(names) == sorted(before_names + [new_name]),
           'имена стабильны, новая часть — %s: %s' % (new_name, names))
     after = mtimes(root)
@@ -401,7 +401,7 @@ def test_line_endings(root):
     put(lf.replace(b'\n', b'\r\n'))
     code, out = run(['build'] + a)
     check(code == 0, 'build из CRLF-копии завершился')
-    with open(os.path.join(root, 'Piles', 'gamedata01.pile'), 'rb') as f:
+    with open(os.path.join(root, 'Piles', 'gamedata001.pile'), 'rb') as f:
         from_crlf = f.read()
     files = {f[0]: f[1] for p in load_manifest_piles(root) for f in p.files}
     check(files.get('x/a.txt') == len(lf), 'размер текста в манифесте — с LF (%s)' % files.get('x/a.txt'))
@@ -413,11 +413,48 @@ def test_line_endings(root):
     check('пересобираем 0' in out, 'та же Data с LF не вызывает пересборку (%s)'
           % [l for l in out.splitlines() if 'план:' in l])
     run(['build', '--force'] + a)
-    with open(os.path.join(root, 'Piles', 'gamedata01.pile'), 'rb') as f:
+    with open(os.path.join(root, 'Piles', 'gamedata001.pile'), 'rb') as f:
         check(f.read() == from_crlf, 'pile из LF-копии побайтно равен pile из CRLF-копии')
 
 
+def test_referenced_from_ignored(root):
+    print('ignore_dir: файлы, на которые ссылаются отобранные данные, всё равно берутся')
+    data = os.path.join(root, 'Data')
+    files = {
+        'Glyphs/_.GLDB.xdb': b'<a><glyph href="/Maps/Test/G/Rune.GLPH" /><glyph href="" /></a>',
+        'Maps/Test/G/Rune.GLPH.xdb': (b'<a><icon href="Icon/r.TXTR" />'
+                                      b'<geometryFileName>/Maps/Test/G/r.bin</geometryFileName>'
+                                      b'<name textref="/Maps/Test/G/Rune_name.txt" /></a>'),
+        'Maps/Test/G/Icon/r.TXTR.xdb': b'<a />',
+        'Maps/Test/G/r.bin': b'\x00\x01',
+        'Maps/Test/G/Rune_name.txt': b'name',
+        'Maps/Test/G/Rune_name_en.txt': b'name',
+        'Maps/Test/G/unused.xdb': b'<a />',
+        'Maps/Test/G/r.maya': b'src',
+    }
+    for rel, body in files.items():
+        path = os.path.join(data, rel.replace('/', os.sep))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'wb') as f:
+            f.write(body)
+    pol = pp.Policy(os.path.join(root, 'policy.txt'))
+    keys = set(pol.walk(data))
+    want = {'Maps/Test/G/Rune.GLPH.xdb', 'Maps/Test/G/Icon/r.TXTR.xdb', 'Maps/Test/G/r.bin',
+            'Maps/Test/G/Rune_name.txt', 'Maps/Test/G/Rune_name_en.txt'}
+    check(want <= keys, 'взяты прямая ссылка, относительная, путь в теге и текст с переводом: %s'
+          % sorted(want - keys))
+    check(set(pol.referenced) == want, 'referenced — ровно они: %s' % sorted(pol.referenced))
+    check('Maps/Test/G/unused.xdb' not in keys, 'файл без ссылок из исключённого каталога не берётся')
+    check('Maps/Test/G/r.maya' not in keys, 'расширение вне ext не берётся и по ссылке')
+
+
 def main():
+    with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
+        with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
+            f.write('ext: txt bin xdb\nignore_dir: Test\n')
+        print('== test_referenced_from_ignored')
+        test_referenced_from_ignored(root)
+
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
         with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
             f.write(POLICY)
