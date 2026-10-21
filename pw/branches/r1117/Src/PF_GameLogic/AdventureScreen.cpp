@@ -7036,6 +7036,10 @@ void AdventureScreen::PreloadEffectsInResourceTree( const NDb::DbResource * reso
 {
   NI_PROFILE_FUNCTION_MEM;
 
+  // A missing file (e.g. Maps/Test, not packed into piles) leaves a null link - nothing to preload
+  if ( !resource )
+    return;
+
   if ( !G_GetPrechacheSessionData() )
     return;
 
