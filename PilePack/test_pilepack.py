@@ -351,12 +351,52 @@ def test_policy_and_guards(root):
     os.remove(os.path.join(data, '0zero.txt'))
 
 
+def test_line_endings(root):
+    print('переводы строк: CRLF и LF в Data дают одинаковые pile, двоичные файлы не трогаются')
+    data = os.path.join(root, 'Data')
+    lf = b'<?xml version="1.0"?>\n<a>\n  <b>1</b>\n</a>\n' * 50
+    binary = b'\x00\r\n\x01\r\n' * 100
+    lone_cr = b'\xff\xfe\r\n\x80\r\x90' * 2000           # без NUL, но с одиночными CR (как layer_mask)
+    a = common_args(root)
+
+    def put(text):
+        for rel, body in (('x/a.txt', text), ('x/b.bin', binary), ('x/c.bin', lone_cr)):
+            path = os.path.join(data, rel.replace('/', os.sep))
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as f:
+                f.write(body)
+
+    put(lf.replace(b'\n', b'\r\n'))
+    code, out = run(['build'] + a)
+    check(code == 0, 'build из CRLF-копии завершился')
+    with open(os.path.join(root, 'Piles', 'gamedata01.pile'), 'rb') as f:
+        from_crlf = f.read()
+    files = {f[0]: f[1] for p in load_manifest_piles(root) for f in p.files}
+    check(files.get('x/a.txt') == len(lf), 'размер текста в манифесте — с LF (%s)' % files.get('x/a.txt'))
+    check(files.get('x/b.bin') == len(binary), 'двоичный файл с \\r\\n сохранён как есть')
+    check(files.get('x/c.bin') == len(lone_cr), 'файл без NUL, но с одиночными CR — двоичный, не тронут')
+
+    put(lf)
+    code, out = run(['build'] + a)
+    check('пересобираем 0' in out, 'та же Data с LF не вызывает пересборку (%s)'
+          % [l for l in out.splitlines() if 'план:' in l])
+    run(['build', '--force'] + a)
+    with open(os.path.join(root, 'Piles', 'gamedata01.pile'), 'rb') as f:
+        check(f.read() == from_crlf, 'pile из LF-копии побайтно равен pile из CRLF-копии')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
         with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
             f.write(POLICY)
         print('== формат')
         test_format_smoke(root)
+
+    with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
+        with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
+            f.write(POLICY)
+        print('== test_line_endings')
+        test_line_endings(root)
 
     # одна и та же установка: сборка -> инкрементальность -> новые/удалённые -> деление
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:

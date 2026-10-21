@@ -58,6 +58,9 @@ COMPILER_MAX_PILE_SIZE = 0x7FFFFFFF           # WriteBytes() оригинала 
 
 MB = 1024 * 1024
 MMAP_THRESHOLD = 4 * MB                       # файлы крупнее читаются через mmap
+TEXT_PROBE = 8000                             # NUL в первых 8000 байт — точно двоичный
+# управляющие байты, которые git считает непечатаемыми (convert.c, gather_stats)
+NONPRINTABLE = bytes(c for c in range(32) if c not in (8, 9, 10, 12, 13, 27)) + b'\x7f'
 
 DEFAULT_TARGET = 50 * MB      # целевой размер собранного pile
 DEFAULT_SPLIT = 60 * MB       # выше этого размера список файлов pile делится пополам
@@ -192,15 +195,47 @@ class Policy(object):
 # Скан файлов: {rel: (size, crc32)}
 # --------------------------------------------------------------------------------------
 
+def is_text(buf):
+    """Эвристика git (convert.c, convert_is_binary) по всему содержимому."""
+    if b'\x00' in buf:
+        return False
+    cr = buf.count(b'\r')
+    if cr != buf.count(b'\r\n'):                  # одиночный CR — двоичный (layer_mask и т. п.)
+        return False
+    nonprintable = len(buf) - len(buf.translate(None, NONPRINTABLE))
+    printable = len(buf) - nonprintable - cr - buf.count(b'\n')
+    return (printable >> 7) >= nonprintable
+
+
+def canon(data):
+    """
+    Текст — с LF, как его хранит git (i/lf): содержимое pile не зависит от core.autocrlf
+    клона, из которого собирали (иначе сборка из другого клона пересобирает почти все
+    pile из-за .xdb/.lua). Двоичные файлы по эвристике git не трогаем.
+    """
+    if data.find(b'\r\n') < 0:
+        return data
+    buf = bytes(data)
+    if not is_text(buf):
+        return data
+    return buf.replace(b'\r\n', b'\n')
+
+
 def file_crc(path, chunk=4 * 1024 * 1024):
-    crc = 0
+    """(size, crc32) содержимого после canon — того, что ляжет в pile."""
     with open(path, 'rb') as f:
+        head = f.read(TEXT_PROBE)
+        if b'\x00' not in head:
+            data = canon(head + f.read())
+            return len(data), zlib.crc32(data) & 0xFFFFFFFF
+        size, crc = len(head), zlib.crc32(head)
         while True:
             b = f.read(chunk)
             if not b:
                 break
+            size += len(b)
             crc = zlib.crc32(b, crc)
-    return crc & 0xFFFFFFFF
+    return size, crc & 0xFFFFFFFF
 
 
 def _stat_chunk(args):
@@ -219,11 +254,11 @@ def _stat_chunk(args):
             res.append((rel, -1, 0, 'stat: %s' % e))
             continue
         try:
-            crc = file_crc(p)
+            size, crc = file_crc(p)
         except OSError as e:
             res.append((rel, st.st_size, 0, 'read: %s' % e))
             continue
-        res.append((rel, st.st_size, crc, None))
+        res.append((rel, size, crc, None))
     return res
 
 
@@ -374,6 +409,7 @@ def build_pile(task):
                 if mm is not None:
                     mm.close()
                 return {'error': 'не удалось прочитать %s: %s' % (rel, e), 'name': out_path}
+            data = canon(data)
             src_size = len(data)
             crc = zlib.crc32(data) & 0xFFFFFFFF
             stored, flags = data, 0
