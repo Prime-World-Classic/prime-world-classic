@@ -7144,3 +7144,241 @@ PW_VK_RECORD_MAX=700`) → дамп SPIR-V VS/PS и раскладки `lay=11` 
 / `FLOAT` в потоке 8), и не подгоняет ли `FormatIntClass` (`:3766`) класс
 формата в другую сторону. Инструмент — дамп инстансных байтов (`buf1/buf2` уже
 выгружаются парсером) против DXBC того же варианта.
+
+## Седьмая серия A/B (`ab18`–`ab25`): три причины найдены — SSBO-мосты, `int`-вход BLENDINDICES, массив сэмплеров
+
+Дефекты п.1/п.2 очереди («модель героя сильно уменьшена», «часть геометрии не
+рисуется») закрыты **двумя** правками; дефект миникарты «окрашивается в один
+цвет» — **третьей**. Все три — про доставку данных в Vulkan, не про камеру:
+гипотеза пользователя «в константные буферы попадают не те значения» проверена
+выше и мертва (W/V/VP/кости доезжают побайтово).
+
+### 1. SSBO без моста и разъезд stride: `instanceData`, `data`, `BonesMatrices`
+
+- Инвентарь uniform-буферов по SPIR-V всех 116 шейдеров окна рекорда
+  (`rec_ab6.pwrd`, `parse_pwrd.parse` → `sh[id]['spv']` → `spirv-dis`): кроме
+  `pwCBankVS/PS` буферов ровно три — `data` (шейдер 0), `BonesMatrices`
+  (8 шейдеров), `instanceData` (шейдеры 59, 61). Моста у них не было —
+  бэкенд подставлял `d.dummySsbo` (нули): в логах прогонов было
+  `NvrhiBackend: SSBO без моста — подставлен dummy — instanceData`.
+  Нулевая матрица экземпляра = геометрия схлопнута в точку/полосу.
+- Второй дефект того же механизма: у `BonesMatrices` в SPIR-V **ArrayStride 64**
+  (`OpDecorate %_runtimearr_mat4v3float ArrayStride 64`, MatrixStride 16), а в
+  таблице шва стояло 48 — клиент кладёт в c-банк 3 регистра на матрицу
+  (`renderer.h:179 SetVertexShaderConstantsMatrix43` → `SetVertexShaderConstants(start, 3*n, p)`,
+  вызов `Src/Render/SkeletalMesh.cpp:113`), а шейдер читает элемент по `i*64`
+  → матрицы костей съезжают.
+- Правка: `struct SsboBridgeDef { name, regBase, regCount, stride, byteSize,
+  arrayStride, srcStride, matCols }` (arrayStride — ожидаемый ArrayStride из
+  SPIR-V, различает варианты с одним именем: у `instanceData` две раскладки —
+  `InstanceData{float4x3; float4 sh[7]}` c20 stride 176 и голый `float4x3`
+  c29 stride 64, `GlobalMasks.h:96 INSTANCE_DATA=c22`… `:96 INSTANCE_DATA=c20`,
+  `VSHADER_LOCALCONST9=c29`, `MAX_INSTANCES_COUNT=19`); добавлены мосты
+  `instanceData` (оба варианта) и `data` (`ParticleFXMaterial.hlsl:18-20`,
+  `INSTANCE_DATA` = 5 float4 = 80 Б, `register(VSHADER_LOCALCONST1)`=c21,
+  `PFX_MAX_INSTANCES=47` → c21..c255, поставщик `Src/Render/ParticleFX.cpp:756`).
+- **Между c-банком и SPIR-V — транспонирование 3x4 → 4x3.** Замер ab19
+  (`PW_D3D_TRACEDRAW` / `PW_VK_TRACEDRAW`, дамп c20..c31 одного вывода):
+  `c20=(-0.690549,-0.723285,0,68.0808) c21=(0.723285,-0.690549,0,181.441)
+  c22=(0,0,1,7.511)` — 4-я компонента каждой группы = координаты мира ⇒
+  группы в c-банке = **столбцы** матрицы 4x3 (перенос в последней строке,
+  `Matrix43` = 12 float подряд, `Src/System/matrix43.h:10`). Память
+  `mat4v3float` (MatrixStride 16) = 4 столбца по 3 float, где столбец r =
+  **строка** r HLSL-матрицы. Переупаковка: `d4[r*4+i] = s4[r + 4*i]`,
+  `d4[r*4+3]=0`; хвост элемента (SH-константы, 112 Б) переносится дословно в
+  `dst + matCols*16`. Прежний memcpy 12 подряд идущих байт давал
+  транспонированную матрицу → «размазанный шип» вместо модели.
+- Загрузка — по диапазону **элементов**, пересекающих грязный диапазон
+  регистров (`e0=(f-regBase)*16/srcE`, `e1=((l-regBase)*16+srcE-1)/srcE`);
+  первая версия (весь буфер на каждый вывод) дала 4,08 ГБ SSBO-загрузок за 30 с
+  и fps 26,20 (было 38-45), после ограничения диапазоном — 37,66.
+- Замер ab20 (переупаковка): Vulkan `model=6869…6902` px против DXVK
+  `6389…7160` (было 549-551), пурпур `233/192/217/161` против DXVK 0 (было
+  1096-1397), светимость 72,3-73,3 против DXVK 70,3-71,1 (было 59,7).
+
+### 2. `int4 Indices : BLENDINDICES0` — DXC делает int-вход и `OpIMul`
+
+- Герой рисуется **4-весовым скиннингом** (`lay=11`: POSITION/NORMAL/TANGENT/
+  BINORMAL/TEXCOORD0/BLENDWEIGHT FLOAT4@56/BLENDINDICES D3DCOLOR@72, stride 76),
+  материал — `DropMaterial` (SPIR-V побайтово совпал с v2-блобом
+  `Data/Shaders/UberShaders/DropMaterial.shd`, вариант 1890/1895).
+- Атрибут D3DCOLOR seam маппит в `nvrhi::Format::BGRA8_UNORM`
+  (`VtxFormat`, `nvrhibackend.cpp:289-307`) — нормализованный [0,1], поэтому
+  шейдер обязан получать **float** и восстанавливать байт множителем 255.
+- Старый SPIR-V: `%in_var_BLENDINDICES0 = OpVariable %_ptr_Input_v4int Input`,
+  `%62 = OpIMul %v4int %30 %61` — fetch приводит UNORM к целому, индекс
+  `255*23 = 5865` при `MAX_BONES = 70` (`GlobalMasks.h:88-89`) → чтение мусора
+  → модель «размазывает» на сотни пикселей, жёлтый контур `SilhouetteMaterial`
+  тянется за ней.
+- Источник — HLSL: `Src/Render/Shaders/_commonSkinning.hlsl:11`
+  `MakeSkinnedMatrix(float4 weights, int4 idxs) { int4 indices = 255 * idxs; }`
+  и `int4 Indices : BLENDINDICES0;` в `BasicMaterial.hlsl:59`,
+  `BasicFXMaterial.hlsl:29`, `BasicMaskMaterial.hlsl:18`, `DropMaterial.hlsl:24`,
+  `PaintMaterial.hlsl:15`, `ShadowMaterial.hlsl:26`, `SilhouetteMaterial.hlsl:12`.
+  FXC (SM3) кладёт вершинный вход в float-регистр и умножает в float — на D3D9
+  дефекта нет; DXC при int-объявлении генерирует int-вход.
+- Правка: вход `float4 Indices : BLENDINDICES0;`, в `_commonSkinning.hlsl`
+  параметр `float4 idxs` и `int4 indices = (int4)(255.0f * idxs);`. Не тронуты
+  `int InstanceId : BLENDINDICES0;` (инстансный индекс, атрибут SHORT2 → int
+  корректен) и `DebugMaterial.hlsl`, `AOEMaterial.hlsl` (не зовут MakeSkinnedMatrix).
+- Перегенерация: `python3 tools/shader_build/mkshd2.py --live
+  tools/shader_build/live_indices-2026-10-15-union.json --cbank --materials
+  BasicMaterial,BasicFXMaterial,BasicMaskMaterial,DropMaterial,PaintMaterial,ShadowMaterial,SilhouetteMaterial`
+  → **v1 (SM3 DXBC) слой побайтово идентичен** во всех контейнерах (D3D9-путь не
+  затронут); новый SPIR-V: `%59 = OpLoad %v4float %in_var_BLENDINDICES0`,
+  `%60 = OpVectorTimesScalar … %float_255`, `%61 = OpConvertFToS %v4int` ✓.
+- Пайк контента стенда: `python3 tools/shader_pile/mkpile.py build --root
+  pw/branches/r1117/Data --out /tmp/zzz_new.pile --mask '*.shd' --mask '*.spv'
+  --only-v2` → 60 записей (16 `.shd` с v2-слоем + 44 `.spv` OnlineShaders),
+  263 707 Б; `mkpile.py list` по умолчанию показывает 40 записей — нужен
+  `--all`.
+- Замер ab23: модель героя в Vulkan — та же поза, размер, контур (глазами);
+  `model=6383…6516` против DXVK `6402…6464`; металлическая основа бочек и
+  фиолетовая жидкость есть на обеих сторонах (дефект «пропавшая геометрия»
+  закрыт; метрика barrel теперь меряет насыщенность фиолетового, а не
+  отсутствие геометрии).
+
+### 3. Миникарта: seam биндил ОДНУ текстуру на все элементы массива сэмплеров
+
+- Слой фракций миникарты — **OnlineShader** `Src/Render/OnlineShaders/NatureMap.psh`
+  (в контенте `Data/Shaders/OnlineShaders/NatureMap.psb` + `.psb.spv`), а не
+  `Shaders/NatureMapMaterial.hlsl` (ложная зацепка: hexParams в c-банке этого
+  вывода никто не заполнял). Источник:
+  `sampler diffuseMap[3] : register(s0); sampler blendMask : register(s3);
+  sampler fogOfWarMask : register(s4);` →
+  `totalColor = colorA*blendCoeff.r + colorB*blendCoeff.b + colorN*blendCoeff.g`,
+  `FoWScale = saturate(1 - fogOfWar.a*alphaScale)` — ровно 3 текстуры слоёв
+  (две фракции + нейтралы), как и предполагал пользователь.
+- Клиент биндит 5 сэмплеров в `PF_GameLogic/Minimap.cpp:1318-1323`
+  (s0/s1/s2 = `m_natureTextureA/B/N`, s3 = наткарта, s4 = видимость), вызов —
+  `Minimap.cpp:1328 RenderScreenQuad(..., Params("NatureMap"))`.
+- Рекорд подтверждает: у вывода слоя (`vs=14 ps=49`, rt=200x201) resItems
+  `(set,binding,kind,dim,count)` = `(2,0,1,1,3)` — **массив из 3** на binding 0,
+  плюс `(2,3,1,1,1)`, `(2,4,1,1,1)`, сэмплер `(3,0,0,0,1)`; в `samplers[]`
+  (16 слотов) у этого вывода слоты 0/1/2 = текстуры **53/54/55** (разные!).
+- Дефект: `FindOrCreateTexSet`/`FindOrCreateSamplerSet` брали ресурс одного
+  слота (`d.texBound[it.binding]`) и писали его во **все** элементы массива
+  (`bi.arrayElement = e`), а подписи `TexSignature`/`SamplerSetSignature`
+  учитывали только `it.binding` — смена текстуры во втором слоте подпись не
+  меняла. Итог: `totalColor = texA*(r+b+g)` → один оттенок с передержкой.
+- Правка: элемент e массива = D3D9-слот `it.binding + e` (текстура, сэмплер и
+  обе подписи), разрешение текстуры/куба/заметки перенесены внутрь цикла по e.
+- Замер ab24 (`mmask` = зелёные px в кропе миникарты (810,555)-(1021,739)):
+  Vulkan **4302 → 198** (DXVK 25…202); глазами — синие/коричневые/тёмно-зелёные
+  участки совпали с DXVK (было: всё залито ярко-зелёным).
+- Что осталось в миникарте: **иконки** (башни, база, мини-игра, арсенал, герои;
+  виден только портал). Выводы иконок есть (`vs=19 ps=20 lay=7`,
+  `vtx=180 prim=60` и др., rt=200x201), слот 0 = текстура 37 (2048x2048,
+  seamFormat 1 = A8R8G8B8), состояние `alphaBlendEnable=1 separateAlphaBlend=1
+  srcBlend=5(SRCALPHA) destBlend=6(INVSRCALPHA) srcBlendAlpha=1 destBlendAlpha=2`
+  (нумерация D3DBLEND: ZERO=1, ONE=2, SRCCOLOR=3, INVSRCCOLOR=4, SRCALPHA=5,
+  INVSRCALPHA=6, DESTALPHA=7 — по ней это обычный альфа-бленд
+  `out = src*srcA + dst*(1-srcA)`, т.е. при `srcA≡0` иконка невидима).
+  Проверяется альфа атласа (GPU-readback цели 200x201 и атласа, `ab25`).
+
+### Производительность (замер ab24, тот же бинарь на обеих сторонах)
+
+DXVK 127,45…129,99 к/с; Vulkan 38,15…39,67 к/с (`VkStats: presents=3299
+recreates=1 (surface 0) unsupported=0 swap=1024x768 device=NVIDIA GeForce
+RTX 3060`). Просадка в 3,2…3,4× не закрыта — это главный риск ветки, профиль
+ещё не снимался (подтверждено и в ab26: 36,67…37,24).
+
+### Иконки миникарты: разбор атласов (ab26) — НЕ закрыто, механизм не найден
+
+Инструмент: рекордер выводов + GPU-readback в ОДНОМ прогоне
+(`tools/render_ab-2026-10-21/ab26/run_rec.sh`: `PW_VK_RECORD_AT=90
+PW_VK_RECORD_RT=200x201 PW_VK_RECORD_MAX=600` + `PW_VK_TEXGPU_ALL=1
+PW_VK_SHOT_TIME=90`; файлы пишутся в cwd клиента
+`/home/rekon/PW/wine-client/Game/Bin/`, а не в OUT скрипта). Итог:
+`rec_mm.pwrd` 32 145 408 Б (599 выводов, 6 шейдеров, 53 текстуры, 2
+раскладки), `rec_mm_texgpu.bin` — 200 записей (кап), fps 36,67…37,24.
+
+- Выводы иконок: `vs=4 ps=5 lay=1`, `vtx/prim = 30/10, 6/2, 180/60, 12/4`;
+  раскладка lay=1 = POSITION FLOAT2 + TEXCOORD FLOAT2 + COLOR D3DCOLOR,
+  стрид 20 (совпадает с `PF_GameLogic/Minimap.cpp:579-584`), все вершины
+  COLOR=FFFFFFFF. Слот 0 = атлас 2048x2048 A8R8G8B8, сэмплер
+  POINT/POINT, mip NONE, BORDER, maxMipLevel 0 — сэмплер корректен.
+- Сопоставление id рекорда с GPU-дампом — по SHA1 первых 8 МБ (запись
+  рекорда = CPU-зеркало seam'а): rec tex7 = dump#94, tex8 = dump#97,
+  tex9 = dump#96 ⇒ загрузка атласа на GPU побайтово верна (для первой
+  половины; данные текстур в рекорде усекаются 8 МБ из 16 МБ).
+- UV-прямоугольники иконок (брать из `startVtx`!): draw n=3 →
+  uv=(0.6226,0.9937)-(0.6284,0.9995) → атлас (1275,2035)-(1288,2048):
+  в привязанном tex7 контент ЕСТЬ (122/169 ненулевых, средний BGRA
+  (122,98,62,136)); draw n=5 (`vtx=180 prim=60` — основная пачка башен) →
+  uv=(0.8848,0.9927)-(0.8906,0.9985) → (1812,2033)-(1825,2046): в
+  привязанном tex7 ПУСТО (1/169), а в атласе dump#93 (тем же прогоном, тем
+  же кадром, но другими выводами НЕ привязан) там 124/169 со средним
+  (164,115,31,50) — оранжевый контент иконки.
+- Систематической потери нижней половины при загрузке НЕТ: по всем семи
+  атласам 2048x2048 нижняя половина заполнена сильнее верхней
+  (напр. #96: верх 470 788 / низ 1 129 487 ненулевых по альфе).
+- Клиент биндит атлас явно на каждый чанк иконок:
+  `Minimap.cpp:1288 renderMaterial.GetRenderMaterial()->GetDiffuseMap()
+  ->SetTexture( chunk.texture )`, а `chunk.texture` — результат
+  `cache->PlaceTextureToAtlas(...)` (`Minimap.cpp:744`, `:1226`). Значит
+  «не тот атлас» либо привязывает seam, либо упаковка атласа разошлась с UV.
+- Подозрение, не проверено: атлас правится с ЧУЖОГО потока — в логах
+  `VkThread: UnlockTexture2D — новый поток 0x00000170 (владелец 0x00000024)`,
+  при этом `UnlockTexture2D` делает `writeTexture` сразу
+  (`nvrhibackend.cpp:4628-4691`); счётчик кольца к концу прогона — 27,6 млн
+  событий, т.е. атласы переливаются постоянно. Гонок между записью атласа из
+  потока загрузки и его использованием в кадре — кандидат на потерю части
+  содержимого.
+- Следующий шаг (дешёвый → дорогой): (а) в seam логировать для выводов
+  миникарты клиентский указатель текстуры слота 0 и сопоставить с
+  указателями, выданными `PlaceTextureToAtlas`; (б) проверить, не приходит ли
+  `SetTexture` с тем же указателем, что и в предыдущем выводе (т.е. не
+  читается ли устаревший `d.texBound[0]`); (в) поднять кап записи текстур в
+  рекорде, чтобы видеть вторую половину атласа.
+
+### Гейты и коммиты пачки (2026-10-22)
+
+- `727b30396 fix(shaders): вход BLENDINDICES — float, а не int` (8 `.hlsl` +
+  4 `.shd`), `767ac0288 fix(render): seam — SSBO-мосты instanceData/data,
+  переупаковка матриц, массив сэмплеров по слотам` (`nvrhibackend.cpp`
+  +265/−41, `smartrenderer.cpp` +26/−3).
+- Нативная сборка на tiny10: `[3/3] Linking CXX executable PW_Game.exe`,
+  `C:\pwbuild\pwc\build\PW_Game.exe` 16 041 984 Б, check_exe OK (x64 PE32+,
+  Characteristics 0x0022, RT_MANIFEST id 1, FileVersion 2.16.1.0), RC=0.
+  Синк — zip С префиксом `pw/branches/r1117/` в `C:\pwbuild\pwc`, контроль
+  MD5 (nvrhibackend 149519c511e620b9dd8c8c1e9f20854a, smartrenderer
+c16c1d109a2e0fa463e91d0aa75b026a).
+- E2E на tiny10 (`PwE2E64W`, каталог логов `2026.10.21-20.56.34`): login
+  `code=Success(5), uid=131` → `Entered lobby` → `Starting game session
+  gamesvc` → юнитстатистика → бой (`Frame time histo: [2.0, 10.0]: 56`).
+  unitstats: 73 записи, **70 общих ключей с прежней сборкой, 0 расхождений
+  значений** (разница только по составу заспавнившихся юнитов).
+- Нативный эталон кадра (auto_screenshot, `pw_auto_bb_3000/3100.png`,
+  1920x1080, сняты в этом же прогоне; лежат в
+  `tools/render_ab-2026-10-21/native-e2e-2026-10-22/`): светимость 78,1/78,8,
+  RGB (77,82,76) — нейтральный. Wine-стороны темнее и синее: DXVK lum
+  70,2…71,0 RGB (67,77,86), Vulkan lum 71,6…72,7. Сравнение трёх кадров
+  (`/tmp/native_dx_vk.png`): геометрия (арена, портал с шестернями, бочки с
+  металлическим основанием, модель героя с аутлайном) в Vulkan-пути теперь
+  совпадает с DXVK; в нативном кадре открыт модал «Выход» — кадры не
+  сводятся по времени, вывод по цветовому балансу требует выравнивания
+  конфигов (ВМ 1920x1080 fullscreen + `gfx_skip_mip_levels=1`, Wine
+  1024x768 windowed).
+
+### Очередь (после ab26 и коммитов)
+
+1. Иконки миникарты — см. «Иконки миникарты: разбор атласов (ab26)»:
+   логировать клиентский указатель текстуры слота 0 на выводах миникарты;
+   проверить гонку `UnlockTexture2D` с чужого потока.
+2. Жёлтые горизонтальные полосы в мире (в Vulkan 12 строк против 1 у DXVK) и
+   зелёная диагональная полоса.
+3. Почему DXVK рисует иначе, чем нативный эталон tiny10 (дым светлым пятном,
+   затемнение) — выровнять конфиги: ВМ `gfx_resolution=1920x1080`,
+   `gfx_skip_mip_levels=1`, `gfx_fullscreen=1`; Wine 1024x768 windowed.
+4. Профиль Vulkan-пути (38 против 128 к/с).
+5. Перегенерация пайка шейдеров на ВМ (`tools/shader_pile/{gen_shaders.sh,
+   build_pile.sh}`) — в стенде хостa пайк перегенерирован
+   (`wine-client/Game/Packs/zzzresult.pile`, бэкап
+   `zzzresult.pile.bak-2026-10-22-pre-skinfix`); `.shd` BasicMask/Paint/Shadow
+   не пересобраны (их нет в снимке живых индексов) — при появлении этих
+   материалов в Vulkan-пути нужен их v2-слой.
+6. Метрика шага 13 (доля DIP'ов через новый путь): счётчик `unsupported=%u`
+   в `VkStats` + `VkStub`-строки.
+7. Пересъёмка эталонов `tools/render_shot/refs/` (частично закрыто свежими
+   нативными кадрами `native-e2e-2026-10-22/`).
