@@ -235,7 +235,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>295</x>
-					<y>0</y>
+					<y>352</y>
 				</location>
 				<name>PW_logo</name>
 				<needCrop>false</needCrop>
@@ -276,7 +276,7 @@
 				<textVAlign>Center</textVAlign>
 				<tooltipText textref="" />
 				<transparent>false</transparent>
-				<vAlign>Top</vAlign>
+				<vAlign>Center</vAlign>
 				<visible>true</visible>
 				<wordWrap>true</wordWrap>
 			</UIImageLabelLayout>
