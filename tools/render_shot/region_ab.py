@@ -135,4 +135,5 @@ def main():
                      ("тон-сигнал" if s["tone"] > 2 * n["tone"] else "в шуме")))
 
 
-main()
+if __name__ == '__main__':
+    main()
