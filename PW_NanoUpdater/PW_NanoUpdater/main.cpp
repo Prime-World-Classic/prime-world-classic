@@ -50,7 +50,23 @@ struct RepoConfig
    std::string label;
    std::string branch;
    std::vector<std::string> mirrors;
+   // Former mirrors: an origin pointing here is kept (switched to the best mirror), not re-cloned
+   std::vector<std::string> retired;
 };
+
+// Mirrors first, then retired urls: every origin the repo may legitimately have
+static std::vector<const char*> KnownUrls(const RepoConfig& repo)
+{
+   std::vector<const char*> urls;
+   urls.reserve(repo.mirrors.size() + repo.retired.size());
+   for (const std::string& url : repo.mirrors) {
+      urls.push_back(url.c_str());
+   }
+   for (const std::string& url : repo.retired) {
+      urls.push_back(url.c_str());
+   }
+   return urls;
+}
 
 static std::vector<RepoConfig> repos;
 static bool remoteUrlsRanked = false;
@@ -394,6 +410,13 @@ static bool LoadReposFromFile(const std::string& path)
             parsed.back().mirrors.push_back(url);
          }
       }
+      else if (key == "retired") {
+         std::string url;
+         stream >> url;
+         if (!parsed.empty() && !url.empty()) {
+            parsed.back().retired.push_back(url);
+         }
+      }
    }
 
    if (parsed.empty()) {
@@ -482,7 +505,8 @@ static bool RepoNeedsUpdate(const RepoConfig& repo)
 
    bool needUpdate = true;
    try {
-      // Origin from an old channel (e.g. content.git, pwc-gitupdates): repo will be re-initialized
+      // Origin from an old channel (e.g. content.git, pwc-gitupdates): repo will be re-initialized.
+      // Retired mirror: update right away to move origin to an active mirror
       if (!IsOriginKnown(repoHandle, knownPtrs.data(), (int)knownPtrs.size())) {
          git_repository_free(repoHandle);
          return true;
@@ -819,7 +843,7 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
    // Try to open the repository
    error = git_repository_open(&repo, repoPath);
    if (error >= 0 && !IsOriginKnown(repo, knownUrls, knownUrlsCount)) {
-      // Origin is not in the mirror list (old channel): its history and FETCH_HEAD
+      // Origin is neither a mirror nor a retired one (old channel): its history and FETCH_HEAD
       // say nothing about the new repo, so start over as on the first run
       git_repository_free(repo);
       repo = nullptr;
@@ -1092,18 +1116,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       break;
 #endif
       RepoConfig& repo = repos[i];
-      std::vector<const char*> knownPtrs;
-      knownPtrs.reserve(repo.mirrors.size());
-      for (const std::string& url : repo.mirrors) {
-         knownPtrs.push_back(url.c_str());
-      }
-
-      if (knownPtrs.empty()) {
+      if (repo.mirrors.empty()) {
          continue;
       }
 
+      // knownUrls[0..mirrorsCount) are active mirrors (ranked), the rest are retired ones
+      std::vector<const char*> knownPtrs = KnownUrls(repo);
       const char* const* knownUrls = knownPtrs.data();
       const int knownUrlsCount = (int)knownPtrs.size();
+      const int mirrorsCount = (int)repo.mirrors.size();
 
       localRef = std::string("refs/heads/") + repo.branch;
       remoteRef = localRef;
@@ -1136,7 +1157,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
       catch (unhandled_error) {
          // Primary failed: re-clone from the mirrors one by one
          bool updated = false;
-         for (int m = 1; m < knownUrlsCount && !updated; ++m) {
+         for (int m = 1; m < mirrorsCount && !updated; ++m) {
             try {
                CleanRepo(repo.path.c_str());
                refName = "";

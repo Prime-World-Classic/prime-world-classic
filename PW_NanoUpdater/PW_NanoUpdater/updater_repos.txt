@@ -1,7 +1,10 @@
 # PW NanoUpdater repository configuration
 # repo <local-path> <label>
 # mirror <git-url>
+# retired <git-url>
 # The first mirror is used as origin after speed ranking.
+# Retired urls take no part in the ranking: a repo whose origin is retired is
+# kept and switched to the best mirror (an unknown origin is re-cloned).
 # Branch is passed to the updater as a launch parameter (--branch main|test).
 
 # Paths are resolved relative to this config file directory.
@@ -13,7 +16,7 @@ mirror https://github.com/Prime-World-Classic/launcher-pwc.git
 mirror https://gitverse.ru/prime_world_classic/launcher-pwc.git
 
 repo ..\Game game
-mirror https://gitflic.ru/project/prime-world-classic/game-pwc.git
 mirror https://gitlab.com/prime-world-classic/game-pwc.git
 mirror https://github.com/Prime-World-Classic/game-pwc.git
 mirror https://gitverse.ru/prime_world_classic/game-pwc.git
+retired https://gitflic.ru/project/prime-world-classic/game-pwc.git
