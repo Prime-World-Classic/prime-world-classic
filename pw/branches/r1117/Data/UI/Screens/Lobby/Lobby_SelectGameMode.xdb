@@ -131,19 +131,169 @@
 				<wordWrap>true</wordWrap>
 			</UIImageLabelLayout>
 		</Item>
+		<Item href="/UI/Screens/Lobby/Lobby_SelectGameMode" id="7512BF95-D85C-4D3B-AFBC-011136D786FE">
+			<UIImageLabelLayout parent="/UI/Screens/Tooltips/Simple.IMGLBL">
+				<backgroundMaterial href="/UI/Styles/ASSETS_UI/tooltip/tooltip_base.MTRL" />
+				<captionOpacity>1</captionOpacity>
+				<captionText textref="/UI/Screens/Lobby/Lobby_SelectGameMode_7512bf95d85c4d3bafbc011136d786fe_captionText.txt" />
+				<cursors>
+					<disabled>ui_disabled</disabled>
+					<dragable>ui_dragable</dragable>
+					<dragging>ui_dragging</dragging>
+					<focused>ui_focused</focused>
+					<normal>ui_normal</normal>
+					<pushable>ui_pushable</pushable>
+					<pushing>ui_pushing</pushing>
+				</cursors>
+				<cursorTransparent>true</cursorTransparent>
+				<defaultEventsCatch>
+					<leftDoubleClick>true</leftDoubleClick>
+					<leftMouseDown>true</leftMouseDown>
+					<leftMouseUp>true</leftMouseUp>
+					<mouseMove>true</mouseMove>
+					<rightDoubleClick>true</rightDoubleClick>
+					<rightMouseDown>true</rightMouseDown>
+					<rightMouseUp>true</rightMouseUp>
+				</defaultEventsCatch>
+				<draggable>false</draggable>
+				<enabled>true</enabled>
+				<fontStyle>TT_Body</fontStyle>
+				<hAlign>Center</hAlign>
+				<keepAspectRatio>DontCare</keepAspectRatio>
+				<location>
+					<x>544</x>
+					<y>666</y>
+				</location>
+				<name>PW_status</name>
+				<needCrop>false</needCrop>
+				<rawTextMode>false</rawTextMode>
+				<scriptFile></scriptFile>
+				<shapeType>SimpleBox</shapeType>
+				<size>
+					<x>195</x>
+					<y>59</y>
+				</size>
+				<soundActivate>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundActivate>
+				<soundHide>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundHide>
+				<soundShow>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundShow>
+				<stretchText>false</stretchText>
+				<subclass></subclass>
+				<textHAlign>Center</textHAlign>
+				<textMargins>
+					<x1>0</x1>
+					<x2>0</x2>
+					<y1>0</y1>
+					<y2>0</y2>
+				</textMargins>
+				<textVAlign>Center</textVAlign>
+				<transparent>true</transparent>
+				<vAlign>Center</vAlign>
+				<visible>true</visible>
+				<wordWrap>true</wordWrap>
+			</UIImageLabelLayout>
+		</Item>
+		<Item href="/UI/Screens/Lobby/Lobby_SelectGameMode" id="7512BF95-D85C-4D3B-AFBC-011136D786FA">
+			<UIImageLabelLayout>
+				<backgroundMaterial href="/UI/Styles/Lobby/PW_logo.MTRL" />
+				<captionOpacity>1</captionOpacity>
+				<captionText textref="" />
+				<cursors>
+					<disabled>ui_disabled</disabled>
+					<dragable>ui_dragable</dragable>
+					<dragging>ui_dragging</dragging>
+					<focused>ui_focused</focused>
+					<normal>ui_normal</normal>
+					<pushable>ui_pushable</pushable>
+					<pushing>ui_pushing</pushing>
+				</cursors>
+				<cursorTransparent>false</cursorTransparent>
+				<defaultEventsCatch>
+					<leftDoubleClick>true</leftDoubleClick>
+					<leftMouseDown>true</leftMouseDown>
+					<leftMouseUp>true</leftMouseUp>
+					<mouseMove>true</mouseMove>
+					<rightDoubleClick>true</rightDoubleClick>
+					<rightMouseDown>true</rightMouseDown>
+					<rightMouseUp>true</rightMouseUp>
+				</defaultEventsCatch>
+				<draggable>false</draggable>
+				<enabled>true</enabled>
+				<fontStyle></fontStyle>
+				<hAlign>Center</hAlign>
+				<keepAspectRatio>DontCare</keepAspectRatio>
+				<location>
+					<x>295</x>
+					<y>0</y>
+				</location>
+				<name>PW_logo</name>
+				<needCrop>false</needCrop>
+				<rawTextMode>false</rawTextMode>
+				<relatedLayouts />
+				<relatedTexts />
+				<scriptFile></scriptFile>
+				<shapeType>FromShapeOrBackgroundStyle</shapeType>
+				<size>
+					<x>690</x>
+					<y>320</y>
+				</size>
+				<soundActivate>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundActivate>
+				<soundHide>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundHide>
+				<soundShow>
+					<eventName></eventName>
+					<groupName></groupName>
+					<projectName></projectName>
+				</soundShow>
+				<stretchText>false</stretchText>
+				<subclass></subclass>
+				<subLayouts />
+				<textHAlign>Center</textHAlign>
+				<textMargins>
+					<x1>0</x1>
+					<x2>0</x2>
+					<y1>0</y1>
+					<y2>0</y2>
+				</textMargins>
+				<textVAlign>Center</textVAlign>
+				<tooltipText textref="" />
+				<transparent>false</transparent>
+				<vAlign>Top</vAlign>
+				<visible>true</visible>
+				<wordWrap>true</wordWrap>
+			</UIImageLabelLayout>
+		</Item>
 		<Item href="/UI/Screens/Lobby/Lobby_SelectGameMode" id="B12E7CF0-6963-4405-937C-54B5CBCEC346">
 			<UIButtonLayout parent="/UI/Screens/Common_layouts/BTN_Menu.BTN">
 				<captionText textref="/UI/Screens/Lobby/Lobby_SelectGameMode_b12e7cf069634405937c54b5cbcec346_captionText.txt" />
 				<hAlign>Center</hAlign>
 				<location>
 					<x>186</x>
-					<y>935</y>
+					<y>50935</y>
 				</location>
 				<name>Btn_StartSession</name>
 				<scriptFile></scriptFile>
 				<size>
 					<x>309</x>
-					<y>59</y>
+					<y>5059</y>
 				</size>
 				<subclass>LobbyGameMode_StartSingleBtn</subclass>
 				<vAlign>Center</vAlign>
@@ -155,13 +305,13 @@
 				<hAlign>Center</hAlign>
 				<location>
 					<x>418</x>
-					<y>849</y>
+					<y>50849</y>
 				</location>
 				<name>Btn_StartServer</name>
 				<scriptFile></scriptFile>
 				<size>
 					<x>192</x>
-					<y>59</y>
+					<y>5059</y>
 				</size>
 				<subclass>LobbyGameMode_CreateBtn</subclass>
 				<vAlign>Center</vAlign>
@@ -173,13 +323,13 @@
 				<hAlign>Center</hAlign>
 				<location>
 					<x>807</x>
-					<y>935</y>
+					<y>50935</y>
 				</location>
 				<name>BtnRefresh</name>
 				<scriptFile></scriptFile>
 				<size>
 					<x>324</x>
-					<y>59</y>
+					<y>5059</y>
 				</size>
 				<subclass>LobbyGameModeRefreshButton</subclass>
 				<vAlign>Center</vAlign>
@@ -230,7 +380,7 @@
 				<leverSize>32</leverSize>
 				<location>
 					<x>69</x>
-					<y>883</y>
+					<y>50883</y>
 				</location>
 				<name>PlayerCount</name>
 				<needCrop>false</needCrop>
@@ -247,7 +397,7 @@
 				<secondButtonSize>24</secondButtonSize>
 				<size>
 					<x>247</x>
-					<y>32</y>
+					<y>5032</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -304,7 +454,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>331</x>
-					<y>878</y>
+					<y>50878</y>
 				</location>
 				<name>PlayerNum</name>
 				<needCrop>false</needCrop>
@@ -315,7 +465,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>68</x>
-					<y>40</y>
+					<y>5040</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -381,7 +531,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>68</x>
-					<y>844</y>
+					<y>50844</y>
 				</location>
 				<name>Static_PlayersCount</name>
 				<needCrop>false</needCrop>
@@ -392,7 +542,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>331</x>
-					<y>30</y>
+					<y>5030</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -458,7 +608,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>697</x>
-					<y>905</y>
+					<y>50905</y>
 				</location>
 				<name>JoinResult</name>
 				<needCrop>false</needCrop>
@@ -469,7 +619,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>526</x>
-					<y>31</y>
+					<y>5031</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -535,7 +685,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>689</x>
-					<y>454</y>
+					<y>50454</y>
 				</location>
 				<name>GamesPanel</name>
 				<needCrop>false</needCrop>
@@ -546,7 +696,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>546</x>
-					<y>449</y>
+					<y>50449</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -593,7 +743,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>0</x>
-								<y>0</y>
+								<y>500</y>
 							</location>
 							<name>Games</name>
 							<needCrop>false</needCrop>
@@ -604,7 +754,7 @@
 							<scrollBar href="/UI/Screens/Lobby/GameModeGamesScrollBar" />
 							<size>
 								<x>546</x>
-								<y>449</y>
+								<y>50449</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -679,7 +829,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>65</x>
-					<y>455</y>
+					<y>50455</y>
 				</location>
 				<name>MapsPanel</name>
 				<needCrop>false</needCrop>
@@ -690,7 +840,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>546</x>
-					<y>368</y>
+					<y>50368</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -737,7 +887,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>0</x>
-								<y>0</y>
+								<y>500</y>
 							</location>
 							<name>Maps</name>
 							<needCrop>false</needCrop>
@@ -748,7 +898,7 @@
 							<scrollBar href="/UI/Screens/Lobby/GameModeGamesScrollBar" />
 							<size>
 								<x>546</x>
-								<y>368</y>
+								<y>50368</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -823,7 +973,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>71</x>
-					<y>344</y>
+					<y>50344</y>
 				</location>
 				<name>Static_CreateGame</name>
 				<needCrop>false</needCrop>
@@ -834,7 +984,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>535</x>
-					<y>60</y>
+					<y>5060</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -900,7 +1050,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>694</x>
-					<y>342</y>
+					<y>50342</y>
 				</location>
 				<name>Static_JoinGame</name>
 				<needCrop>false</needCrop>
@@ -911,7 +1061,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>535</x>
-					<y>60</y>
+					<y>5060</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -977,7 +1127,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>109</x>
-					<y>428</y>
+					<y>50428</y>
 				</location>
 				<name>Static_MapsList</name>
 				<needCrop>false</needCrop>
@@ -988,7 +1138,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>455</x>
-					<y>23</y>
+					<y>5023</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -1054,7 +1204,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>975</x>
-					<y>14</y>
+					<y>5014</y>
 				</location>
 				<name>DeveloperSex</name>
 				<needCrop>false</needCrop>
@@ -1065,7 +1215,7 @@
 				<shapeType>FromShapeOrBackgroundStyle</shapeType>
 				<size>
 					<x>289</x>
-					<y>53</y>
+					<y>5053</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -1116,7 +1266,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>2</x>
-								<y>2</y>
+								<y>502</y>
 							</location>
 							<name>Male</name>
 							<needCrop>false</needCrop>
@@ -1127,7 +1277,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>285</x>
-								<y>49</y>
+								<y>5049</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -1193,7 +1343,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>2</x>
-								<y>2</y>
+								<y>502</y>
 							</location>
 							<name>Female</name>
 							<needCrop>false</needCrop>
@@ -1204,7 +1354,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>285</x>
-								<y>49</y>
+								<y>5049</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -1282,7 +1432,7 @@
 				<keepAspectRatio>DontCare</keepAspectRatio>
 				<location>
 					<x>679</x>
-					<y>399</y>
+					<y>50399</y>
 				</location>
 				<name>JoinModeFrame</name>
 				<needCrop>false</needCrop>
@@ -1291,7 +1441,7 @@
 				<scriptFile></scriptFile>
 				<size>
 					<x>561</x>
-					<y>57</y>
+					<y>5057</y>
 				</size>
 				<soundActivate>
 					<eventName></eventName>
@@ -1341,7 +1491,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>11</x>
-								<y>11</y>
+								<y>5011</y>
 							</location>
 							<name>Panel</name>
 							<needCrop>false</needCrop>
@@ -1352,7 +1502,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>520</x>
-								<y>39</y>
+								<y>5039</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -1409,7 +1559,7 @@
 										<keepAspectRatio>DontCare</keepAspectRatio>
 										<location>
 											<x>26</x>
-											<y>2</y>
+											<y>502</y>
 										</location>
 										<mouseActions>Left</mouseActions>
 										<name>JoinModeNormal</name>
@@ -1422,7 +1572,7 @@
 										<shapeType>FromShapeOrBackgroundStyle</shapeType>
 										<size>
 											<x>32</x>
-											<y>32</y>
+											<y>5032</y>
 										</size>
 										<soundActivate>
 											<eventName></eventName>
@@ -1499,7 +1649,7 @@
 										<keepAspectRatio>DontCare</keepAspectRatio>
 										<location>
 											<x>209</x>
-											<y>2</y>
+											<y>502</y>
 										</location>
 										<mouseActions>Left</mouseActions>
 										<name>JoinModeReconnect</name>
@@ -1512,7 +1662,7 @@
 										<shapeType>FromShapeOrBackgroundStyle</shapeType>
 										<size>
 											<x>32</x>
-											<y>32</y>
+											<y>5032</y>
 										</size>
 										<soundActivate>
 											<eventName></eventName>
@@ -1589,7 +1739,7 @@
 										<keepAspectRatio>DontCare</keepAspectRatio>
 										<location>
 											<x>395</x>
-											<y>2</y>
+											<y>502</y>
 										</location>
 										<mouseActions>Left</mouseActions>
 										<name>JoinModeSpectate</name>
@@ -1602,7 +1752,7 @@
 										<shapeType>FromShapeOrBackgroundStyle</shapeType>
 										<size>
 											<x>32</x>
-											<y>32</y>
+											<y>5032</y>
 										</size>
 										<soundActivate>
 											<eventName></eventName>
@@ -1689,7 +1839,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>74</x>
-								<y>16</y>
+								<y>5016</y>
 							</location>
 							<name>Text1</name>
 							<needCrop>false</needCrop>
@@ -1700,7 +1850,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>110</x>
-								<y>29</y>
+								<y>5029</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -1766,7 +1916,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>256</x>
-								<y>16</y>
+								<y>5016</y>
 							</location>
 							<name>Text2</name>
 							<needCrop>false</needCrop>
@@ -1777,7 +1927,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>110</x>
-								<y>29</y>
+								<y>5029</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
@@ -1843,7 +1993,7 @@
 							<keepAspectRatio>DontCare</keepAspectRatio>
 							<location>
 								<x>443</x>
-								<y>16</y>
+								<y>5016</y>
 							</location>
 							<name>Text3</name>
 							<needCrop>false</needCrop>
@@ -1854,7 +2004,7 @@
 							<shapeType>FromShapeOrBackgroundStyle</shapeType>
 							<size>
 								<x>110</x>
-								<y>29</y>
+								<y>5029</y>
 							</size>
 							<soundActivate>
 								<eventName></eventName>
