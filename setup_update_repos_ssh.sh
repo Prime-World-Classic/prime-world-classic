@@ -1,30 +1,25 @@
 #!/usr/bin/env bash
-# Clones of the update repos in UpdateRepos: origin fetches from gitflic and
+# Clones of the update repos in UpdateRepos: origin fetches from gitverse and
 # pushes to gitflic + gitlab + github + gitverse at once. Safe to re-run: existing
-# clones are kept, only missing mirrors and fetch rules are added (no duplicates).
+# clones are kept, missing push mirrors are added (no duplicates) and fetch is
+# moved to gitverse.
 set -e
 
 mkdir -p UpdateRepos
 cd UpdateRepos
 
-# repo <folder> <gitflic> <gitlab> <github> [gitverse]
-# Clones that use explicit pushurl entries (git pushes only to pushurl when they
-# exist) get the mirror added as pushurl too.
+# repo <folder> <gitflic> <gitlab> <github> <gitverse>
+# All four go to remote.origin.pushurl (git then pushes only there), fetch url
+# is gitverse. Push urls are added before the fetch url is replaced, so a clone
+# never loses a mirror on the way.
 repo() {
-  [ -d "$1/.git" ] || git clone "$2" "$1"
-  local url has_pushurl=0
-  if git -C "$1" config --get-all remote.origin.pushurl >/dev/null 2>&1; then
-    has_pushurl=1
-  fi
-  for url in "$3" "$4" "$5"; do
-    [ -n "$url" ] || continue
-    git -C "$1" config --get-all --fixed-value remote.origin.url "$url" >/dev/null ||
-      git -C "$1" remote set-url --add origin "$url"
-    if [ "$has_pushurl" = 1 ]; then
-      git -C "$1" config --get-all --fixed-value remote.origin.pushurl "$url" >/dev/null ||
-        git -C "$1" remote set-url --add --push origin "$url"
-    fi
+  [ -d "$1/.git" ] || git clone "$5" "$1"
+  local url
+  for url in "$2" "$3" "$4" "$5"; do
+    git -C "$1" config --get-all --fixed-value remote.origin.pushurl "$url" >/dev/null ||
+      git -C "$1" remote set-url --add --push origin "$url"
   done
+  git -C "$1" config --replace-all remote.origin.url "$5"
 }
 
 # launcher content (main/test)

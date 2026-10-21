@@ -1,7 +1,8 @@
 @echo off
-rem Clones of the update repos in UpdateRepos: origin fetches from gitflic and
+rem Clones of the update repos in UpdateRepos: origin fetches from gitverse and
 rem pushes to gitflic + gitlab + github + gitverse at once. Safe to re-run: existing
-rem clones are kept, only missing mirrors and fetch rules are added (no duplicates).
+rem clones are kept, missing push mirrors are added (no duplicates) and fetch is
+rem moved to gitverse.
 setlocal
 
 if not exist UpdateRepos mkdir UpdateRepos
@@ -17,19 +18,19 @@ call :repo updater https://gitflic.ru/project/prime-world-classic/updater.git ht
 endlocal
 exit /b 0
 
-rem :repo <folder> <gitflic> <gitlab> <github> [gitverse]
+rem :repo <folder> <gitflic> <gitlab> <github> <gitverse>
+rem All four go to remote.origin.pushurl (git then pushes only there), fetch url
+rem is gitverse. Push urls are added before the fetch url is replaced, so a clone
+rem never loses a mirror on the way.
 :repo
-if not exist "%~1\.git" git clone "%~2" "%~1"
-call :mirror "%~1" "%~3"
-call :mirror "%~1" "%~4"
-call :mirror "%~1" "%~5"
+if not exist "%~1\.git" git clone "%~5" "%~1"
+call :pushurl "%~1" "%~2"
+call :pushurl "%~1" "%~3"
+call :pushurl "%~1" "%~4"
+call :pushurl "%~1" "%~5"
+git -C "%~1" config --replace-all remote.origin.url "%~5"
 exit /b 0
 
-:mirror
-if "%~2"=="" exit /b 0
-git -C "%~1" config --get-all --fixed-value remote.origin.url "%~2" >nul || git -C "%~1" remote set-url --add origin "%~2"
-rem Clones with explicit pushurl entries push only to pushurl, so the mirror is
-rem added as pushurl too when the clone has any.
-git -C "%~1" config --get-all remote.origin.pushurl >nul 2>nul || exit /b 0
+:pushurl
 git -C "%~1" config --get-all --fixed-value remote.origin.pushurl "%~2" >nul || git -C "%~1" remote set-url --add --push origin "%~2"
 exit /b 0
