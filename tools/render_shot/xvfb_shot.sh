@@ -32,8 +32,8 @@ case "${1:-}" in
     for i in $(seq 0 $((n-1))); do
       w=$(find_win)
       [ -z "$w" ] && { echo "окно не найдено (пропуск t$((i*step)))" >&2; sleep $step; continue; }
-      DISPLAY=$D import -window "$w" "$out_t$((i*step)).png" 2>/dev/null \
-        && echo "$out_t$((i*step)).png"
+      DISPLAY=$D import -window "$w" "${out}_t$((i*step)).png" 2>/dev/null \
+        && echo "${out}_t$((i*step)).png"
       [ $i -lt $((n-1)) ] && sleep $step
     done
     ;;
