@@ -6167,10 +6167,10 @@ prim.hexConstants)` прямо перед `DrawIndexedPrimitive`, то есть 
 `WINEDLLOVERRIDES="d3d9=n,b" PW_VK_BACKEND=0`, та же карта
 `Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb`, тот же аккаунт, снимки только
 `xvfb_shot.sh --series`): DXVK 25 кадров t0..t480 (шаг 20 с), Vulkan 15 кадров
-t0..t280. Артефакты: `/tmp/ab26/{dxvk,vk}_shot_t*.png`, `ab_full.png` (целые
-кадры DXVK t60 / Vulkan t80), `ab_regions.png` (кропы minimap / ability_bar /
-plate_area / right_units), `region_ab.py` (метрики по регионам, переиспользует
-`shot_stats.load`).
+t0..t280. Артефакты сохранены в `tools/render_ab-2026-10-21/` (вне репо): `{dxvk,vk}_shot_t*.png`
+(по 4 representative), `ab_full.png`, `ab_regions.png`, `wide_ab.png`,
+`stripes_ab.png`, `run_ab.sh`, `region_ab.py`, логи обеих сторон. Рабочий каталог
+прогона — `/tmp/ab26`.
 
 Починка инструмента: `tools/render_shot/xvfb_shot.sh:35` в режиме `--series`
 обращался к `$out_t` (`"$out_t$((i*step)).png"` вместо `"${out}_t…"`) — при
