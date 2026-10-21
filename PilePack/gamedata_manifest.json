@@ -80508,8 +80508,8 @@
     {
       "id": 224,
       "name": "gamedata082.pile",
-      "packed_size": 22942291,
-      "source_size": 36866381,
+      "packed_size": 22942299,
+      "source_size": 36866386,
       "files": [
         ["UI/Screens/Loading/Flash/pwl.swf", 9552800, 3511653579],
         ["UI/Screens/Loading/LoadingScreen.xdb", 8148, 2023108415],
@@ -80598,7 +80598,7 @@
         ["UI/Screens/Lobby/Lobby_Main_e97a17bbb2ee4c14aa50366788d31ae3_captionText.txt", 4, 4214322368],
         ["UI/Screens/Lobby/Lobby_Main_f278aef2d6e74cdcb60aa0416105ac97_captionText.txt", 4, 3794421121],
         ["UI/Screens/Lobby/Lobby_SelectGameMode.lua", 9356, 763607336],
-        ["UI/Screens/Lobby/Lobby_SelectGameMode.xdb", 65817, 1170588660],
+        ["UI/Screens/Lobby/Lobby_SelectGameMode.xdb", 65822, 1680476712],
         ["UI/Screens/Lobby/Lobby_SelectGameMode_3686ba5d12084a48ac244c043819157b_captionText.txt", 24, 2456322973],
         ["UI/Screens/Lobby/Lobby_SelectGameMode_55b5f3d370aa42bdb0193d0182834c7d_captionText.txt", 18, 4290864357],
         ["UI/Screens/Lobby/Lobby_SelectGameMode_7512bf95d85c4d3bafbc011136d786fe_captionText.txt", 40, 191230240],
