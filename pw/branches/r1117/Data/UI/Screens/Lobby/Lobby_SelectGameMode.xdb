@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UIBaseLayout>
+	<BackLink DBID="/UI/Screens/Lobby/Lobby_Main" Count="2" />
 	<BackLink DBID="/UI/UIRoot" Count="1" />
 	<cursors>
 		<disabled>ui_disabled</disabled>

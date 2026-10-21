@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UIButtonMaterial>
-	<BackLink DBID="/UI/Screens/Lobby/Lobby_Main" Count="138" />
+	<BackLink DBID="/UI/Screens/Lobby/Lobby_Main" Count="132" />
 	<BackLink DBID="/UI/Screens/Matchmaking/HeroButton.IMGLBL" Count="1" />
 	<BackLink DBID="/UI/Screens/Matchmaking/Matchmaking" Count="20" />
 	<BackLink DBID="/UI/Screens/Minigames/EaselResults/EaselResultsScreen" Count="20" />
