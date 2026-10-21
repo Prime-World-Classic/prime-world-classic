@@ -15,7 +15,7 @@ struct VS_IN
 
 #if SkeletalMeshPinValue == 1
 	float4 Weights : BLENDWEIGHT0;
-	int4   Indices : BLENDINDICES0;
+	float4 Indices : BLENDINDICES0;  // float — см. _commonSkinning.hlsl
 #endif
 };
 

@@ -12,7 +12,7 @@ struct VS_IN
 	float2 UV       : TEXCOORD0;
 #if paintMode != INWORK
   float4 Weights : BLENDWEIGHT0;
-  int4 Indices   : BLENDINDICES0;
+  float4 Indices : BLENDINDICES0;  // float — см. _commonSkinning.hlsl
 #endif
 };
 
