@@ -709,6 +709,108 @@ static unsigned ScanTarget(IDirect3DDevice9* dev, IDirect3DSurface9* rt, const c
 
 static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
 {
+  // PW_D3D_TRACEDRAW=мин,макс[,задержка_сек] — дамп WORLD (c0..c3) и VIEW
+  // (c4..c7) для Dip'ов, у которых ЧИСЛО ВЕРШИН ИЛИ ЧИСЛО ПРИМИТИВОВ попало в
+  // диапазон. Диапазон по обоим полям потому, что число вершин двух сторон не
+  // сопоставимо: D3D9 печатает _descr.numVertices, а seam — свой vtx (замер
+  // ab14: один и тот же вывод — dx (nv=1559,prim=570), vk (nv=1710,prim=570);
+  // совпали и W, и V дословно). Примитивы — надёжный ключ сопоставления.
+  // Задержка — секунды от первого Dip'а процесса: без неё лимит трассы
+  // съедался за 0,6 с загрузки карты и до героя очередь не доходила.
+  // Пара на стороне seam'а — PW_VK_TRACEDRAW (nvrhibackend.cpp, DrawImpl).
+  {
+    static int s_lo = -1, s_hi = -1, s_delay = 0;
+    static unsigned s_nd = 0u;
+    static unsigned long long s_t0 = 0ull;
+    if (s_lo < 0)
+    {
+      s_lo = 0; s_hi = -1;
+      char b[48];
+      if (GetEnvironmentVariableA( "PW_D3D_TRACEDRAW", b, sizeof(b) - 1 ) > 0)
+      {
+        int v[3] = { 0, 0, 0 };
+        char* p = b;
+        int i = 0;
+        while (p && i < 3) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+        if (i >= 2) { s_lo = v[0]; s_hi = v[1]; }
+        if (i == 3) { s_delay = v[2]; }
+      }
+    }
+    if (!s_t0) s_t0 = GetTickCount64();
+    if (s_hi >= s_lo && s_nd < 4000u
+        && GetTickCount64() - s_t0 >= (unsigned long long)s_delay * 1000ull
+        && ((_descr.numVertices >= (unsigned)s_lo && _descr.numVertices <= (unsigned)s_hi)
+            || (_descr.primitiveCount >= (unsigned)s_lo && _descr.primitiveCount <= (unsigned)s_hi)))
+    {
+      IDirect3DDevice9* dev0 = GetDevice();
+      // 104 float = c0..c25: c0..c3 WORLD, c4..c7 VIEW, c24..c25 — первые две
+      // кости (BONES=c24, GlobalMasks.h:88) — сравнить с b24/b25 стороны seam'а
+      float vc[1024] = { 0.f };
+      if (dev0)
+        (void)dev0->GetVertexShaderConstantF( 0, vc, 256 );
+      // Дедуп по (nv,prim,W,V): в диапазоне 1600..1700 terrain-чанки BasicMaterial
+      // дают 4000 одинаковых выводов за 18 с (замер ab13) и лимит трассы
+      // съедают, не дойдя до героя. Печатаем каждый уникальный набор матриц
+      // один раз.
+      static unsigned long long s_seen[1024];
+      static unsigned s_seenN = 0u;
+      unsigned long long hv = 1469598103934665603ull;
+      unsigned vals[2] = { _descr.numVertices, _descr.primitiveCount };
+      const unsigned char* hb = (const unsigned char*)vals;
+      for (unsigned k = 0u; k < sizeof(vals); ++k) { hv ^= hb[k]; hv *= 1099511628211ull; }
+      hb = (const unsigned char*)vc;
+      for (unsigned k = 0u; k < sizeof(vc); ++k) { hv ^= hb[k]; hv *= 1099511628211ull; }
+      ++s_nd;   // лимит считается по ВСЕМ оттрассированным выводам: у
+                // скелетных выводов кости меняются на каждом выводе, дедуп по
+                // c-банку их не схлопывает (замер ab16: 100 тыс. строк, лог 97 МБ)
+      bool fresh = true;
+      for (unsigned k = 0u; k < s_seenN; ++k) if (s_seen[k] == hv) { fresh = false; break; }
+      if (fresh && s_seenN < 1024u) s_seen[s_seenN++] = hv;
+      if (fresh)
+      {
+      const char* mm = ::GetLastDipMaterial();
+      // DebugTrace — это PrintfFormatter с маленьким лимитом аргументов
+      // (17 не принимает), поэтому строка собирается snprintf'ом (тот же
+      // приём, что у D3dProj/D3dC ниже)
+      char dd[900];
+      int dn = snprintf(dd, sizeof(dd), "D3dDraw: nv=%u prim=%u idx=%u mat=%s "
+                  "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                  "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                  _descr.numVertices, _descr.primitiveCount, _descr.startIndex,
+                  mm ? mm : "-",
+                  vc[0], vc[1], vc[2], vc[3], vc[4], vc[5], vc[6], vc[7],
+                  vc[8], vc[9], vc[10], vc[11], vc[12], vc[13], vc[14], vc[15]);
+      // snprintf возвращает ДЛИНУ ТОГО, ЧТО БЫЛО БЫ НАПИСАНО (не факт),
+      // поэтому после каждого шага — зажим: иначе dd+dn вылезет за буфер.
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      dn += snprintf(dd + dn, sizeof(dd) - dn, " V=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                  "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                  vc[16], vc[17], vc[18], vc[19], vc[20], vc[21], vc[22], vc[23],
+                  vc[24], vc[25], vc[26], vc[27], vc[28], vc[29], vc[30], vc[31]);
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      // VP = c8..c11 (VIEWPROJECTION, GlobalMasks.h:66) — именно её использует
+      // BasicMaterial.hlsl:164 `mul(float4(WPos,1.0), ViewProjection)`, а НЕ
+      // View (c4..c7): в ab15 совпали W и V, но размер модели от них не
+      // зависит — масштаб задаёт VP, и её в трассе не было.
+      dn += snprintf(dd + dn, sizeof(dd) - dn, " VP=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                  "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                  vc[32], vc[33], vc[34], vc[35], vc[36], vc[37], vc[38], vc[39],
+                  vc[40], vc[41], vc[42], vc[43], vc[44], vc[45], vc[46], vc[47]);
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      // bnz — сколько регистров c24..c255 ненулевые; симметрично bnz у VkDraw
+      unsigned bnz = 0u;
+      for (int r = 24; r < 256; ++r)
+      {
+        bool nz = false;
+        for (int k = 0; k < 4; ++k) if (vc[r * 4 + k] != 0.f) { nz = true; break; }
+        if (nz) ++bnz;
+      }
+      snprintf(dd + dn, sizeof(dd) - dn, " bnz=%u b24=(%.6g,%.6g,%.6g,%.6g) b25=(%.6g,%.6g,%.6g,%.6g)",
+                  bnz, vc[96], vc[97], vc[98], vc[99], vc[100], vc[101], vc[102], vc[103]);
+      DebugTrace("%s", dd);
+      }
+    }
+  }
   static int s_on = -1;
   if (s_on < 0)
   {

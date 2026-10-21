@@ -1485,6 +1485,22 @@ static bool DsKeepRequested()
   return s_on != 0;
 }
 
+// PW_VK_SSBO_FULL — грузить в SSBO моста весь диапазон строки таблицы, а не
+// грязный диапазон тени. Эксперимент по дефекту «анимированная геометрия
+// рисуется уменьшенной»: если кости доезжают в тень (bnz в VkDraw), но
+// грязный диапазон их не накрывает, буфер остаётся с чужими/нулевыми
+// значениями и скиннинг схлопывает модель.
+static bool SsboFullRequested()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char bm[16];
+    s_on = (GetEnvironmentVariableA("PW_VK_SSBO_FULL", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
+  }
+  return s_on != 0;
+}
+
 // Охота за белой плашкой (2026-10-20): бисект по seam-индексам пиксельного
 // шейдера показал ps=8. PW_VK_TRACEPS=<индекс> — печатает, какие текстуры
 // уходят в набор для этого шейдера (без этого материал не опознать: у всех
@@ -6736,11 +6752,102 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // нематериальные шейдеры используют под свои константы (c22 пишут
   // TerrainElement.cpp:251, FullScreenFX.cpp:156, ParticleFX.cpp:1352,
   // ShadowMap.cpp:275, uirenderer.cpp:746, WaterMesh.cpp:84).
+  // PW_VK_TRACEDRAW=nvMin,nvMax — WORLD (c0..c3) и VIEW (c4..c7) для выводов с
+  // числом вершин в диапазоне. Пара на D3D9-стороне — PW_D3D_TRACEDRAW
+  // (smartrenderer.cpp, NoteDipTrace); сопоставление сторон по паре (nv,prim):
+  // материал на стороне seam'а не опознаётся (у всех точка входа MainPass), а
+  // (nv,prim) у одного Dip'а совпадают. Существующие трассы (PJTRACE/TRACEPROJ)
+  // скелетную геометрию не ловят: проекция там считается по POSITION как по
+  // float2, а для 3D-геометрии это бессмысленно.
+  // bnz — сколько регистров c24..c255 ненулевые (кости, kBonesReg=24),
+  // bsD — помечен ли мост BonesMatrices грязным на ЭТОМ выводе.
+  {
+    static int s_lo = -1, s_hi = -1, s_delay = 0;
+    static unsigned s_nd = 0u;
+    static unsigned long long s_t0 = 0ull;
+    if (s_lo < 0)
+    {
+      s_lo = 0; s_hi = -1;
+      char btr[48];
+      if (GetEnvironmentVariableA("PW_VK_TRACEDRAW", btr, sizeof(btr) - 1) > 0)
+      {
+        int v[3] = { 0, 0, 0 };
+        char* p = btr;
+        int i = 0;
+        while (p && i < 3) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+        if (i >= 2) { s_lo = v[0]; s_hi = v[1]; }
+        if (i == 3) { s_delay = v[2]; }
+      }
+    }
+    if (!s_t0) s_t0 = GetTickCount64();
+    if (s_hi >= s_lo && s_nd < 4000u
+        && GetTickCount64() - s_t0 >= (unsigned long long)s_delay * 1000ull
+        && ((vtx >= (unsigned)s_lo && vtx <= (unsigned)s_hi)
+            || (primitiveCount >= (unsigned)s_lo && primitiveCount <= (unsigned)s_hi)))
+    {
+      ++s_nd;
+      const float* pv = m_constShadow[csVertex];
+      // Дедуп по (vtx,prim,W,V) — как на D3D9-стороне: terrain-чанки в том же
+      // диапазоне вершин дают тысячи одинаковых выводов и съедают лимит трассы.
+      static unsigned long long s_seen[1024];
+      static unsigned s_seenN = 0u;
+      unsigned long long hv = 1469598103934665603ull;
+      unsigned vals[2] = { vtx, primitiveCount };
+      const unsigned char* hb = (const unsigned char*)vals;
+      for (unsigned k = 0u; k < sizeof(vals); ++k) { hv ^= hb[k]; hv *= 1099511628211ull; }
+      hb = (const unsigned char*)pv;
+      for (unsigned k = 0u; k < 32u * 4u; ++k) { hv ^= hb[k]; hv *= 1099511628211ull; }
+      bool fresh = true;
+      for (unsigned k = 0u; k < s_seenN; ++k) if (s_seen[k] == hv) { fresh = false; break; }
+      if (fresh && s_seenN < 1024u) s_seen[s_seenN++] = hv;
+      if (fresh)
+      {
+      unsigned bnz = 0u;
+      for (unsigned r = 24u; r < 256u; ++r)
+      {
+        bool nz = false;
+        for (int k = 0; k < 4; ++k) if (pv[r * 4u + k] != 0.f) { nz = true; break; }
+        if (nz) ++bnz;
+      }
+      // DebugTrace — PrintfFormatter с маленьким лимитом аргументов, строка
+      // собирается snprintf'ом
+      char dd[900];
+      int dn = snprintf(dd, sizeof(dd),
+                 "VkDraw: nv=%u prim=%u idx=%u lay=%u bnz=%u bsD=%u "
+                 "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                 "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                 vtx, primitiveCount, indexed ? 1u : 0u, d.curLayout, bnz,
+                 (kSsboBridgeCount && d.ssbo[0].dirty) ? 1u : 0u,
+                 pv[0], pv[1], pv[2], pv[3], pv[4], pv[5], pv[6], pv[7],
+                 pv[8], pv[9], pv[10], pv[11], pv[12], pv[13], pv[14], pv[15]);
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      dn += snprintf(dd + dn, sizeof(dd) - dn,
+                 " V=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                 "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                 pv[16], pv[17], pv[18], pv[19], pv[20], pv[21], pv[22], pv[23],
+                 pv[24], pv[25], pv[26], pv[27], pv[28], pv[29], pv[30], pv[31]);
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      // VP = c8..c11 (VIEWPROJECTION) — масштаб модели задаёт именно она
+      dn += snprintf(dd + dn, sizeof(dd) - dn,
+                 " VP=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                 "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                 pv[32], pv[33], pv[34], pv[35], pv[36], pv[37], pv[38], pv[39],
+                 pv[40], pv[41], pv[42], pv[43], pv[44], pv[45], pv[46], pv[47]);
+      if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
+      snprintf(dd + dn, sizeof(dd) - dn,
+                 " b24=(%.6g,%.6g,%.6g,%.6g) b25=(%.6g,%.6g,%.6g,%.6g)",
+                 pv[96], pv[97], pv[98], pv[99], pv[100], pv[101], pv[102], pv[103]);
+      DebugTrace("%s", dd);
+      }
+    }
+  }
+
   for (unsigned b = 0; b < kSsboBridgeCount; ++b)
   {
     if (!d.ssbo[b].dirty || !d.ssbo[b].buf) continue;
     const SsboBridgeDef& def = kSsboBridges[b];
     unsigned f = d.ssbo[b].first, l = d.ssbo[b].last;
+    if (SsboFullRequested()) { f = def.regBase; l = def.regBase + def.regCount; }
     d.ssbo[b].dirty = false;
     d.ssbo[b].first = 0xffffffffu;
     d.ssbo[b].last = 0;
