@@ -297,13 +297,19 @@ def test_split_oversized(root):
     # раздуваем один файл из первого pile так, чтобы pile перевалил за split
     big = target.files[0][0]
     mkfile(os.path.join(data, big.replace('/', os.sep)), 32000, 'rand', seed=7)
+    before = mtimes(root)
     code, out = run(['build'] + a)
     check('делим списки по исходным байтам' in out, 'деление запущено')
     piles = load_manifest_piles(root)
     names = [p.name for p in piles]
     check(len(names) == len(before_names) + 1, 'появился ещё один pile: %s' % names)
-    check(names == ['gamedata%02d.pile' % i for i in range(1, len(names) + 1)],
-          'имена пересчитаны подряд: %s' % names)
+    new_name = 'gamedata%02d.pile' % (len(before_names) + 1)
+    check(sorted(names) == sorted(before_names + [new_name]),
+          'имена стабильны, новая часть — %s: %s' % (new_name, names))
+    after = mtimes(root)
+    untouched = [n for n in before_names if n != target.name]
+    check(all(after[n] == before[n] for n in untouched),
+          'остальные pile не переименованы и не пересобраны')
     check(all(p.packed_size <= 40000 for p in piles),
           'все pile ниже порога: %s' % [p.packed_size for p in piles])
     src_sizes = [p.source_size() for p in piles if big in [f[0] for f in p.files]]
@@ -314,6 +320,28 @@ def test_split_oversized(root):
     total = sum(len(p.files) for p in piles)
     check(total == len(pp.Policy(os.path.join(root, 'policy.txt')).walk(data)),
           'все файлы Data разложены (%d)' % total)
+
+
+def test_relayout_on_target_change(root):
+    print('смена цели: файлы раскладываются заново, а не делятся пополам')
+    data = os.path.join(root, 'Data')
+    spec = {'r/f%03d.bin' % i: (3000, 'rand') for i in range(40)}
+    tree(data, spec)
+    code, out = run(['build'] + common_args(root) + ['--target', '60000'])
+    check(code == 0, 'первая сборка по 60000')
+    before = len(pile_names(root))
+    code, out = run(['build'] + common_args(root) + ['--target', '15000'])
+    check('раскладка заново' in out, 'смена цели запускает раскладку заново')
+    piles = load_manifest_piles(root)
+    check(len(piles) > before * 2, 'pile стало больше: %d -> %d' % (before, len(piles)))
+    check(all(p.packed_size <= 15000 + pp.SPLIT_MARGIN for p in piles),
+          'все pile в пределах новой цели: %s' % [p.packed_size for p in piles])
+    check(pile_names(root) == sorted(p.name for p in piles), 'старых pile в выходной папке не осталось')
+    check(sum(len(p.files) for p in piles) == 40, 'все 40 файлов разложены')
+    check(pp.cmd_verify(verify_args(root)) == 0, 'verify после раскладки заново: чисто')
+    code, out = run(['build'] + common_args(root) + ['--target', '15000'])
+    check('пересобираем 0' in out and 'раскладка заново' not in out,
+          'повторный прогон с той же целью ничего не трогает')
 
 
 def test_policy_and_guards(root):
@@ -339,11 +367,15 @@ def test_policy_and_guards(root):
 
     mkfile(os.path.join(data, 'Zz.txt'), 10, 'text')
     mkfile(os.path.join(data, 'zz.txt'), 10, 'text')
-    code, out = run(['plan'] + common_args(root))
-    check(code != 0 or 'конфликт имён без учёта регистра' in out,
-          'конфликт имён без учёта регистра не пропускается')
-    os.remove(os.path.join(data, 'Zz.txt'))
-    os.remove(os.path.join(data, 'zz.txt'))
+    if len([n for n in os.listdir(data) if n.lower() == 'zz.txt']) < 2:
+        print('  skip конфликт регистра: ФС без учёта регистра (Windows), два имени — один файл')
+        os.remove(os.path.join(data, 'zz.txt'))
+    else:
+        code, out = run(['plan'] + common_args(root))
+        check(code != 0 or 'конфликт имён без учёта регистра' in out,
+              'конфликт имён без учёта регистра не пропускается')
+        os.remove(os.path.join(data, 'Zz.txt'))
+        os.remove(os.path.join(data, 'zz.txt'))
 
     mkfile(os.path.join(data, '0zero.txt'), 10, 'text')
     code, out = run(['plan'] + common_args(root))
@@ -397,6 +429,12 @@ def main():
             f.write(POLICY)
         print('== test_line_endings')
         test_line_endings(root)
+
+    with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
+        with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
+            f.write(POLICY)
+        print('== test_relayout_on_target_change')
+        test_relayout_on_target_change(root)
 
     # одна и та же установка: сборка -> инкрементальность -> новые/удалённые -> деление
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:

@@ -62,15 +62,16 @@ TEXT_PROBE = 8000                             # NUL в первых 8000 бай�
 # управляющие байты, которые git считает непечатаемыми (convert.c, gather_stats)
 NONPRINTABLE = bytes(c for c in range(32) if c not in (8, 9, 10, 12, 13, 27)) + b'\x7f'
 
-DEFAULT_TARGET = 50 * MB      # целевой размер собранного pile
-DEFAULT_SPLIT = 60 * MB       # выше этого размера список файлов pile делится пополам
+DEFAULT_TARGET = 20 * MB      # целевой размер собранного pile: правка файла переписывает
+                              # в канале обновлений весь его pile, мелкие pile дешевле
+SPLIT_MARGIN = 10 * MB        # порог деления по умолчанию = target + SPLIT_MARGIN
 DEFAULT_LEVEL = 6             # zlib level (оригинал — 9; см. README «Скорость»)
 DEFAULT_RATIO = 0.90          # max_comp_ratio: сжатие применяется, если ratio <= значения
 DEFAULT_MIN_CS = 1            # comp_size: файлы больше этого размера пробуют сжимать
 DEFAULT_EST_RATIO = 0.50      # оценка упакованного размера при первой раскладке
 DEFAULT_PREFIX = 'gamedata'
 
-# Оценка упакованного размера файла (для первой раскладки по 50 МБ). Замерена на Data
+# Оценка упакованного размера файла (для первой раскладки по target). Замерена на Data
 # (zlib level 6, выборка по расширениям): для мелких файлов сжатие почти не работает,
 # плюс на каждый файл приходится ~70 байт индекса и имени.
 EST_RATIO_BY_EXT = {
@@ -463,7 +464,7 @@ def build_pile(task):
 
 def rebuild(piles, ids, data_dir, out_dir, args):
     """Пересобирает pile с id в `ids`; возвращает число собранных контейнеров."""
-    renumber(piles, args.prefix)
+    assign_names(piles, args.prefix)
     tasks = [(os.path.join(out_dir, p.name), data_dir, [f[0] for f in p.files],
               args.level, args.min_cs, args.ratio) for p in piles if p.id in ids]
     if not tasks:
@@ -489,14 +490,26 @@ def rebuild(piles, ids, data_dir, out_dir, args):
 # Раскладка: имена, деление переполненных списков
 # --------------------------------------------------------------------------------------
 
-def name_for(idx, prefix):
-    width = max(2, len(str(max(1, idx))))
-    return '%s%0*d.pile' % (prefix, width, idx)
-
-
-def renumber(piles, prefix):
-    for i, p in enumerate(piles, 1):
-        p.name = name_for(i, prefix)
+def assign_names(piles, prefix):
+    """
+    Имена стабильны: pile с именем его не меняет. Раньше имена пересчитывались по порядку,
+    и после деления одного pile «менялись» все следующие — в git и в канале обновлений это
+    десятки изменённых файлов без изменений данных. Новый pile получает номер после
+    максимального (дыры не переиспользуются); ширина номера — как у существующих имён,
+    при первой раскладке — по числу pile, не меньше 2 цифр.
+    """
+    rx = re.compile(r'%s(\d+)\.pile$' % re.escape(prefix), re.I)
+    nums = [rx.match(p.name) for p in piles if p.name]
+    nums = [m.group(1) for m in nums if m]
+    if nums:
+        width = max(2, max(len(n) for n in nums))
+    else:
+        width = max(2, len(str(len(piles))))
+    nxt = max([int(n) for n in nums] + [0]) + 1
+    for p in piles:
+        if not p.name:
+            p.name = '%s%0*d.pile' % (prefix, width, nxt)
+            nxt += 1
 
 
 def split_oversized(piles, man, split_bytes):
@@ -523,7 +536,7 @@ def split_oversized(piles, man, split_bytes):
                 cut = max(1, min(cut, len(p.files) - 1))
                 a_src = sum(f[1] for f in p.files[:cut])
                 a_pack = int(p.packed_size * a_src / src) if src else p.packed_size // 2
-                a = Pile(p.id, None, p.files[:cut], a_pack)
+                a = Pile(p.id, p.name, p.files[:cut], a_pack)        # первая часть — под старым именем
                 b = Pile(man.next_id, None, p.files[cut:], p.packed_size - a_pack)
                 man.next_id += 1
                 need.update([a.id, b.id])
@@ -537,13 +550,12 @@ def split_oversized(piles, man, split_bytes):
 
 def sync_names(piles, disk_names, out_dir, prefix):
     """
-    Пересчитывает имена gamedataNN.pile и перекладывает уже готовые файлы на новые имена.
-    Вызывается ДО пересборки: после деления pile сдвигаются вправо, и если сразу писать
-    новую часть в освободившееся имя, оно затрёт содержимое соседнего pile. Сначала —
-    перенос (через временное имя, чтобы цепочка a->b не перетирала b), потом сборка.
+    Даёт имена новым pile и перекладывает готовые файлы, если имя pile на диске другое
+    (имена стабильны, так что это бывает только с файлами старых сборок). Вызывается ДО
+    пересборки; перенос — через временное имя, чтобы цепочка a->b не перетирала b.
     disk_names: {id: имя файла на диске}, обновляется на месте.
     """
-    renumber(piles, prefix)
+    assign_names(piles, prefix)
     staged = []
     for p in piles:
         old = disk_names.get(p.id)
@@ -618,6 +630,8 @@ def cmd_build(args):
     man.load()
     man_piles = list(man.piles)
 
+    if args.split is None:
+        args.split = args.target + SPLIT_MARGIN
     params = {
         'target_bytes': args.target, 'split_bytes': args.split, 'level': args.level,
         'max_ratio': args.ratio, 'min_compress_size': args.min_cs, 'prefix': args.prefix,
@@ -625,8 +639,17 @@ def cmd_build(args):
     }
     full = args.force or not man.exists
     if man.exists and man.params and man.params != params:
-        log('параметры сборки/policy изменились (%s -> %s): пересобираем всё'
-            % (man.params.get('policy_fingerprint'), params['policy_fingerprint']))
+        changed = sorted(k for k in set(man.params) | set(params) if man.params.get(k) != params.get(k))
+        log('параметры сборки/policy изменились (%s): пересобираем всё'
+            % ', '.join('%s %s -> %s' % (k, man.params.get(k), params.get(k)) for k in changed))
+        full = True
+    # Другая цель — раскладка с нуля: деление старых pile пополам дало бы не target, а
+    # половинки (50 МБ -> по 25), и мелкая цель не сработала бы.
+    old_target = man.params.get('target_bytes') if man.exists else None
+    if args.relayout or (old_target is not None and old_target != args.target):
+        log('раскладка заново по %s (было %s): все файлы — по новым pile'
+            % (human(args.target), human(old_target) if old_target else '—'))
+        man.piles = []
         full = True
 
     # --- текущее состояние файлов: сначала только stat, crc — для изменённых ---
@@ -687,7 +710,7 @@ def cmd_build(args):
         log('новых файлов: %d' % len(new_keys))
 
     piles = [p for p in piles if p.files]
-    renumber(piles, args.prefix)
+    assign_names(piles, args.prefix)
 
     # --- проверки лимитов загрузчика и целостности привязок ---
     owner = {}
@@ -1032,9 +1055,10 @@ def main(argv=None):
     def common(p):
         paths(p)
         p.add_argument('--target', type=parse_size, default=DEFAULT_TARGET,
-                       help='целевой размер pile (по умолчанию 50MB)')
-        p.add_argument('--split', type=parse_size, default=DEFAULT_SPLIT,
-                       help='порог деления pile (по умолчанию 60MB)')
+                       help='целевой размер pile (по умолчанию 20MB); смена цели раскладывает '
+                            'файлы по pile заново')
+        p.add_argument('--split', type=parse_size, default=None,
+                       help='порог деления pile (по умолчанию target + 10MB)')
         p.add_argument('--level', type=int, default=DEFAULT_LEVEL, help='zlib level (по умолчанию 6)')
         p.add_argument('--ratio', type=float, default=DEFAULT_RATIO,
                        help='макс. ratio для применения сжатия (по умолчанию 0.90)')
@@ -1047,6 +1071,8 @@ def main(argv=None):
                        default=max(1, min(4, (os.cpu_count() or 2) - 1)),
                        help='параллельные воркеры (по умолчанию %(default)s)')
         p.add_argument('--force', action='store_true', help='пересобрать все pile')
+        p.add_argument('--relayout', action='store_true',
+                       help='разложить все файлы по pile заново (имена — с 01)')
         p.add_argument('--keep-stale', action='store_true',
                        help='не удалять pile, которых нет в манифесте')
 
