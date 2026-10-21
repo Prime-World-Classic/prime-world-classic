@@ -12,6 +12,19 @@
 
 Использование:
   shot_stats.py КАДР.bmp [ЭТАЛОН.png]
+  shot_stats.py --tone КАДР.bmp [КАДР2.bmp ...]
+     метрика ОТТЕНКА (не светимости): гистограмма тона (12 бинов + «серый»),
+     средняя насыщенность, среднее B-R. При двух кадрах — L1-расхождение
+     гистограмм (0 = распределения совпали, 200 = не пересекаются).
+     Зачем: «тёмная бочка с пурпурной крышкой» против «сплошной пурпурный
+     цилиндр» дают почти равную среднюю светимость (|Δ| по средней 4,1 —
+     гейт её не замечает), а по тону это разные распределения.
+  shot_stats.py --lines КАДР.bmp [КАДР2.bmp ...]
+     детектор тонких горизонтальных ЛИНИЙ (дефект Vulkan-кадра 2026-10-21):
+     профиль средней светимости по строкам внутри узких вертикальных полос
+     (по 192 px) минус скользящая медиана по 15 строкам. Глобальный профиль
+     по всему кадру эти линии не видит (полупрозрачные, тонкие — см. раздел
+     «A/B двух бэкендов» в плане), локальный — видит.
   shot_stats.py --defects КАДР.bmp [КАДР2.bmp ...]
      метрики дефектов, НЕ требующие сопоставленного кадра: сколько пикселей
      чисто белых / пурпурных (признаки подстановки несвязанной текстуры) и
@@ -74,6 +87,109 @@ def stats(img, tag):
     return lum
 
 
+TONE_BINS = 12          # тон, 30° на бин; +1 бин «серый» (насыщенность ~0)
+
+
+def tone_hist(img):
+    """Гистограмма тона (H,W,3) uint8 -> (TONE_BINS+1,) float, сумма = 1.
+
+    Бин TONE_BINS — «серый» (max-min < 12): ахроматические пиксели не имеют
+    тона и в тон-сравнении не участвуют, но терять их нельзя (чёрный фон,
+    белый текст — иначе гистограмма врёт о доле цвета).
+    """
+    f = img.reshape(-1, 3).astype(np.int16)
+    mx = f.max(axis=1).astype(np.float32)
+    mn = f.min(axis=1).astype(np.float32)
+    d = mx - mn
+    grey = d < 12.0
+    dd = np.where(d == 0, 1.0, d)
+    # стандартная формула hue в градусах (0..360)
+    r, g, b = f[:, 0].astype(np.float32), f[:, 1].astype(np.float32), f[:, 2].astype(np.float32)
+    h = np.where(mx == r, 60.0 * (((g - b) / dd) % 6.0),
+        np.where(mx == g, 60.0 * ((b - r) / dd + 2.0), 60.0 * ((r - g) / dd + 4.0)))
+    h = np.where(h < 0, h + 360.0, h)
+    binid = np.minimum((h / (360.0 / TONE_BINS)).astype(np.int32), TONE_BINS - 1)
+    binid = np.where(grey, TONE_BINS, binid)
+    hist = np.bincount(binid, minlength=TONE_BINS + 1).astype(np.float32)
+    return hist / max(1.0, hist.sum())
+
+
+def tone_metrics(img, tag):
+    """Печатает тон-метрики кадра и возвращает (гистограмма, среднее B-R, средняя насыщенность)."""
+    f = img.reshape(-1, 3).astype(np.int16)
+    mx = f.max(axis=1).astype(np.float32)
+    mn = f.min(axis=1).astype(np.float32)
+    sat = np.where(mx > 0, (mx - mn) / np.where(mx == 0, 1.0, mx), 0.0)
+    br = float((f[:, 2] - f[:, 0]).mean())        # B-R: пурпур/маджента > 0
+    hist = tone_hist(img)
+    top = np.argsort(-hist)[:3]
+    print('%s: B-R %+.1f  насыщенность %.3f  серых %.1f%%  тон: %s'
+          % (tag, br, float(sat.mean()), 100.0 * hist[TONE_BINS],
+             ' '.join('%s=%.1f%%' % (('%d°' % (i * 30)) if i < TONE_BINS else 'grey',
+                                     100.0 * hist[i]) for i in top)))
+    return hist, br, float(sat.mean())
+
+
+def tone_compare(a, b, tag_a, tag_b):
+    ha, bra, sa = tone_metrics(a, tag_a)
+    hb, brb, sb = tone_metrics(b, tag_b)
+    l1 = float(np.abs(ha - hb).sum()) * 100.0
+    print('тон-расхождение %s <-> %s: L1 %.1f  (B-R %+.1f vs %+.1f, насыщенность %.3f vs %.3f)'
+          % (tag_a, tag_b, l1, bra, brb, sa, sb))
+    return l1
+
+
+# Полосы, в которых ищем линии: только мир. В HUD-полосах построчный профиль
+# шумит из-за текста и иконок, там метрика бессмысленна.
+LINE_BANDS = [(300, 200, 700, 450), (0, 300, 1021, 600), (60, 150, 960, 300)]
+
+
+def line_defects(img, tag, thr=5.0, half=7, bands=None):
+    """Тонкие горизонтальные линии в МИРЕ (дефект Vulkan-кадра 2026-10-21).
+
+    Метрика: по каждой полосе считается профиль «жёлтости» строки —
+    средней величины max(R,G) - B — и берётся отклонение строки от медиан
+    соседей (строки y-half..y-1 и y+2..y+half). Строки-соседи слева и справа
+    должны совпадать (иначе это край яркого блока, а не линия). Порог 5 по
+    «жёлтости» отсекает обычный шум мира: замер 2026-10-21 на паре ab3 t50 —
+    DXVK mean|dev| 0,29 и максимум 10,3 (одна строка), Vulkan 0,45 и шесть
+    строк |dev|>5 (25,3 / 20,9 / 10,4 / 9,4 / 7,9 / 7,1).
+
+    Прежние попытки (2026-10-21) не сработали: глобальный профиль светимости
+    по всему кадру (7 групп против 4) и глобальный счётчик жёлтых пикселей
+    (Vulkan 7419 против DXVK 10146 — даже в пользу DXVK) линии не видят,
+    потому что они тонкие и полупрозрачные.
+    """
+    f = img.astype(np.float32)
+    r, g, b = f[:, :, 0], f[:, :, 1], f[:, :, 2]
+    yel = np.maximum(r, g) - b
+    h, w = yel.shape
+    hits, worst = [], 0.0
+    for (x0, y0, x1, y1) in (bands or LINE_BANDS):
+        x1, y1 = min(w, x1), min(h, y1)
+        row = yel[y0:y1, x0:x1].mean(axis=1)
+        n = len(row)
+        dev = np.zeros(n, dtype=np.float32)
+        for y in range(n):
+            la, lb = max(0, y - half), max(0, y - 1)
+            ra, rb = min(n, y + 2), min(n, y + half + 1)
+            L = np.median(row[la:lb]) if lb > la else row[y]
+            R = np.median(row[ra:rb]) if rb > ra else row[y]
+            if abs(L - R) > 2.0:
+                continue
+            dev[y] = row[y] - 0.5 * (L + R)
+        for y in range(n):
+            if abs(dev[y]) > thr:
+                hits.append(((x0, y0, x1, y1), y0 + y, float(dev[y])))
+        worst = max(worst, float(np.abs(dev).max()))
+    hits.sort(key=lambda t: -abs(t[2]))
+    print('%s: строк с отклонением жёлтости >%.1f: %d  (макс |dev| %.1f)'
+          % (tag, thr, len(hits), worst))
+    for (bd, y, d) in hits[:6]:
+        print('    полоса %s строка %d сдвиг %+.1f' % (bd, y, d))
+    return len(hits)
+
+
 def largest_rect(mask):
     """Площадь крупнейшего сплошного прямоугольника в булевой маске (H,W)
     и его координаты. Классика «largest rectangle in histogram»."""
@@ -120,6 +236,18 @@ def main():
     if sys.argv[1] == '--defects':
         for p in sys.argv[2:]:
             defects(load(p), p)
+        return
+    if sys.argv[1] == '--lines':
+        for p in sys.argv[2:]:
+            line_defects(load(p), p)
+        return
+    if sys.argv[1] == '--tone':
+        ps = sys.argv[2:]
+        if len(ps) == 2:
+            tone_compare(load(ps[0]), load(ps[1]), ps[0], ps[1])
+        else:
+            for p in ps:
+                tone_metrics(load(p), p)
         return
     img = load(sys.argv[1])
     lum = stats(img, 'КАДР ' + sys.argv[1])
