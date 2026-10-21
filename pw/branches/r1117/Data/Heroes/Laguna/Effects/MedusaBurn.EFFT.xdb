@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectAttached>
+	<BackLink DBID="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" Count="1" />
+	<attachFlags>1</attachFlags>
+	<attachType>Ground</attachType>
+	<component href="/Heroes/Laguna/Effects/Burn/MedusaBurn.PRXY" />
+	<deathType>Manual</deathType>
+	<enableCondition href="" />
+	<fadeIn>0.3</fadeIn>
+	<fadeOut>0.6</fadeOut>
+	<groupFlags>0</groupFlags>
+	<lifeTime>0</lifeTime>
+</BasicEffectAttached>

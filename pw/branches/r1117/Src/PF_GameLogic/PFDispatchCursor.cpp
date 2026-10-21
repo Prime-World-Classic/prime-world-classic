@@ -18,6 +18,12 @@ PFDispatchCursor::PFDispatchCursor( CreateParams const &cp )
   speed = RetrieveParam( GetDB().speed );
   maxSpeed = RetrieveParam( GetDB().maxSpeed );
   m_startTime = GetWorld()->GetTimeElapsed();
+
+  heading = lastTargetPos - curPos;
+  if ( fabs2( heading ) > EPS_VALUE )
+    Normalize( &heading );
+  else
+    heading = CVec2( 0.0f, 1.0f );
 }
 
 void PFDispatchCursor::Reset()
@@ -86,8 +92,19 @@ bool PFDispatchCursor::Step(float dtInSeconds)
 
     if (time2Die)
     {
+      // steered dispatch (whale) finishes where it is now, not at the cursor
+      if ( GetDB().turnRate > 0.0f )
+        target.SetPosition( CVec3( curPos.x, curPos.y, 0.0f ) );
       Apply();
       return true;
+    }
+
+    if ( GetDB().turnRate > 0.0f )
+    {
+      StepSteered( dtInSeconds );
+      UpdatePersistentApplicatorsPosition();
+      Base::Step( dtInSeconds );
+      return false;
     }
 
     float const linkRange = GetDB().linkRange;
@@ -147,6 +164,67 @@ bool PFDispatchCursor::Step(float dtInSeconds)
     return false;
 
   return false;
+}
+
+// Always moves forward with maxSpeed and turns to the cursor no faster than DB turnRate (degrees per second).
+// Only + - * / and sqrt here: the rotation by the max step angle a is done with t = tan(a/2) ~ a/2
+// (cos = (1-t^2)/(1+t^2), sin = 2t/(1+t^2)), so the logic stays the same on every client.
+void PFDispatchCursor::StepSteered( float dtInSeconds )
+{
+  CVec2 const receiverPos = target.AcquirePosition().AsVec2D();
+  lastTargetPos = receiverPos;
+
+  CVec2 want = receiverPos - curPos;
+  float const omega = GetDB().turnRate * ( FP_PI / 180.0f );
+  // the cursor inside the turning circle on its side can't be reached by turning: swim straight until it can
+  bool reachable = true;
+  if ( omega > 0.0f )
+  {
+    float const radius = maxSpeed / omega;
+    float const side = ( heading.x * want.y - heading.y * want.x ) >= 0.0f ? radius : -radius;
+    CVec2 const center = curPos + CVec2( -heading.y, heading.x ) * side;
+    reachable = fabs2( receiverPos - center ) >= radius * radius;
+  }
+  if ( reachable && fabs2( want ) > EPS_VALUE )
+  {
+    Normalize( &want );
+
+    float const maxAngle = omega * dtInSeconds;
+    float const t = 0.5f * maxAngle;
+    float const cosMax = ( 1.0f - t * t ) / ( 1.0f + t * t );
+    float const sinMax = 2.0f * t / ( 1.0f + t * t );
+
+    float const dot = heading.x * want.x + heading.y * want.y;
+    float const cross = heading.x * want.y - heading.y * want.x;
+    if ( dot >= cosMax )
+    {
+      heading = want;
+    }
+    else
+    {
+      float const s = ( cross >= 0.0f ) ? sinMax : -sinMax;   // turn left (ccw) or right
+      heading = CVec2( heading.x * cosMax - heading.y * s, heading.x * s + heading.y * cosMax );
+      Normalize( &heading );
+    }
+  }
+
+  CVec2 newPos = curPos + heading * ( maxSpeed * dtInSeconds );
+  NI_ASSERT( newPos.IsFinite(), "Bad curpos" );
+
+  TileMap* pMap = GetWorld()->GetTileMap();
+  SVector tile = pMap->GetTile( newPos );
+  if ( !pMap->IsPointOutsideMap( tile.x, tile.y ) )
+  {
+    float const linkRange = GetDB().linkRange;
+    CVec2 const senderPos = source.AcquirePosition().AsVec2D();
+    CVec2 dirFromSender = newPos - senderPos;
+    if ( linkRange > EPS_VALUE && fabs2( dirFromSender ) > fabs2( linkRange ) )
+    {
+      Normalize( &dirFromSender );
+      newPos = dirFromSender * linkRange + senderPos;
+    }
+    curPos = newPos;
+  }
 }
 
 void PFDispatchCursor::UpdateCursorPos( CVec2 pos )

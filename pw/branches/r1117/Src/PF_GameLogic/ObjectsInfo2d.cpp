@@ -20,6 +20,7 @@
 #include "System/InlineProfiler.h"
 
 #include "ObjectInfoMapper.hpp"
+#include "UnitInfoNew.h"
 
 
 namespace NGameX
@@ -1289,7 +1290,7 @@ void ObjectsInfo2dLogic::UpdateOvertip( const ObjectInfo& info, SOvertip & overt
   //Channeling
   
   if ( !!baseUnit && baseUnit->IsInChannelling() )
-    overtip.channelingPercent = baseUnit->GetChannellingProgress();
+    overtip.channelingPercent = GetSmoothChannelingProgress( baseUnit );
   else if ( !!baseHero && baseHero->HasScriptControlledProgressValue() )
     overtip.channelingPercent = baseHero->GetScriptControlledProgressValue();
   else

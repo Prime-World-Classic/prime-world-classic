@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Laguna/Shark/_Voice_Red.PRXY" id="D726EA9D-6B57-427D-B193-9D2EB57A1BDF">
+				<DBSoundSceneComponent>
+					<attached />
+					<caption>voice</caption>
+					<desc>
+						<eventName>UltimateShark</eventName>
+						<groupName>Heroes/Laguna/Asks/Human</groupName>
+						<projectName>PF</projectName>
+					</desc>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<orientation>Default</orientation>
+					<timeInterval>0</timeInterval>
+				</DBSoundSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<caption>voice</caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

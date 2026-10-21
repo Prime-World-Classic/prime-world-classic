@@ -7037,6 +7037,7 @@ DispatchCursor::DispatchCursor() :
 	, cursorUpdateFrequency( 5 )
 	, linkRange( 0.0f )
 	, size( 0.0f )
+	, turnRate( 0.0f )
 {
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -7053,6 +7054,7 @@ int DispatchCursor::operator&( IBinSaver &saver )
 	saver.Add( 9, &linkEffect );
 	saver.Add( 10, &maxRangeMaterial );
 	saver.Add( 11, &size );
+	saver.Add( 12, &turnRate );
 
 	return 0;
 }
@@ -7087,6 +7089,7 @@ void DispatchCursor::SerializeSelf( IXmlSaver &saver )
 	saver.Add( "linkEffect", &linkEffect );
 	saver.Add( "maxRangeMaterial", &maxRangeMaterial );
 	saver.Add( "size", &size );
+	saver.Add( "turnRate", &turnRate );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DispatchCursor::Assign( const DispatchCursor& _dispatchCursor )
@@ -7101,6 +7104,7 @@ void DispatchCursor::Assign( const DispatchCursor& _dispatchCursor )
 	linkEffect = _dispatchCursor.linkEffect;
 	maxRangeMaterial = _dispatchCursor.maxRangeMaterial;
 	size = _dispatchCursor.size;
+	turnRate = _dispatchCursor.turnRate;
 	persistentApplicators = _dispatchCursor.persistentApplicators;
 	dispatchEffect = _dispatchCursor.dispatchEffect;
 	applyEffect = _dispatchCursor.applyEffect;

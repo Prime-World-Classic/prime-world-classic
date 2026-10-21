@@ -6,6 +6,7 @@
 #include "PF_Core/World.hpp"
 #include "PF_Core/WorldObject.h"
 #include "Scene/Scene.h"
+#include "Scene/BitMap.h"
 #include "System/BitData.h"
 #include "System/Singleton.h"
 #include "Render/debugrenderer.h"
@@ -249,6 +250,11 @@ public:
   void SetMapSize(CVec2 const &_mapSize) { mapSize = _mapSize; }
   CVec2 const& GetMapSize() const { return mapSize; }
 
+  // Logic copy of the map water mask (AdvMap::waterMapFileName, the same mask that drives the water trace FX):
+  // abilities read it through the unit variable "InWater". Static map data, not serialized.
+  void LoadWaterMap( nstl::string const& fileName );
+  bool IsPosInWater( CVec2 const& pos ) const;
+
   NScene::IScene *GetScene() const { return pScene; }
   float GetTimeElapsed() const {return timeElapsed;}
 
@@ -317,6 +323,9 @@ private:
   friend WorldChecker;
 
   STARFORCE_EXPORT void ProtectionCheck();
+
+  NScene::BitMap waterMap;
+  bool hasWaterMap;
 };
   
 } //namespace NWorld

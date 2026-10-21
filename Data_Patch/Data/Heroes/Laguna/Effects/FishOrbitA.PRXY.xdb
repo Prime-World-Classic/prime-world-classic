@@ -1,0 +1,388 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="F39FBCF6-6379-4A0C-AC00-F09B181C0A99">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>3.5</maxX>
+						<maxY>3.5</maxY>
+						<maxZ>1.5</maxZ>
+						<minX>-3.5</minX>
+						<minY>-3.5</minY>
+						<minZ>-1.5</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Laguna/Effects/FishOrbit.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName></mayaFileName>
+							<name>orbit</name>
+							<srcFileName crc="0"></srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="436F9FB1-B5F0-40AB-AF0A-FD942E1165C5">
+						<AnimGraphCreator>
+							<defaultNode>idle</defaultNode>
+							<macroNodes>
+								<Item>
+									<markers />
+									<nextNode>idle</nextNode>
+									<nodeName>idle</nodeName>
+									<nodeType>Normal</nodeType>
+									<posX>136</posX>
+									<posY>219</posY>
+									<sequenceName>orbit</sequenceName>
+									<simpleTransactions />
+									<speed>
+										<coeffs />
+										<value>1</value>
+									</speed>
+									<startPar>
+										<coeffs />
+										<value>0</value>
+									</startPar>
+									<stopPar>
+										<coeffs />
+										<value>1</value>
+									</stopPar>
+									<surfSpeedX>0</surfSpeedX>
+									<surfSpeedY>0</surfSpeedY>
+								</Item>
+							</macroNodes>
+						</AnimGraphCreator>
+					</animGraph>
+					<anims />
+					<attached>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="70CEC321-3EA2-47A2-95D8-FA22165B84AB">
+								<DBParticleSceneComponent>
+									<aabb>
+										<maxX>-666</maxX>
+										<maxY>-666</maxY>
+										<maxZ>-666</maxZ>
+										<minX>666</minX>
+										<minY>666</minY>
+										<minZ>666</minZ>
+									</aabb>
+									<attached />
+									<camoffset>0</camoffset>
+									<caption>Fish_Glow</caption>
+									<compression>2</compression>
+									<deathFadeOutTime>0.2</deathFadeOutTime>
+									<fxFileName>/Heroes/Laguna/Effects/FishOrbitA_Glow.part</fxFileName>
+									<groupFlags>0</groupFlags>
+									<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+									<locatorList href="" />
+									<material href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="83C39F64-1CEB-47FD-A799-FE02F6FBE021">
+										<ParticleFXMaterial>
+											<caption></caption>
+											<DiffuseMap>
+												<Add>
+													<A>0</A>
+													<B>0</B>
+													<G>0</G>
+													<R>0</R>
+												</Add>
+												<Multiplier>
+													<A>1</A>
+													<B>0.7</B>
+													<G>0.95</G>
+													<R>0.15</R>
+												</Multiplier>
+												<samplerState>
+													<addressU>Wrap</addressU>
+													<addressV>Wrap</addressV>
+													<addressW>Wrap</addressW>
+													<magFilter>Linear</magFilter>
+													<minFilter>Linear</minFilter>
+													<mipFilter>Linear</mipFilter>
+												</samplerState>
+												<texture href="/GFX_Textures/Glow04White.TXTR" />
+											</DiffuseMap>
+											<distortion>1</distortion>
+											<DistortionPinValue>None</DistortionPinValue>
+											<ignoreRenderState>false</ignoreRenderState>
+											<opacity>1</opacity>
+											<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+											<renderState>
+												<alphaTest>Off</alphaTest>
+												<alphaTestRef>127</alphaTestRef>
+												<blendMode>AddColorMulAlpha</blendMode>
+												<culling>On</culling>
+											</renderState>
+											<scale>0</scale>
+											<SubPriority>0</SubPriority>
+											<uvSpeed>
+												<x>0</x>
+												<y>0</y>
+											</uvSpeed>
+										</ParticleFXMaterial>
+									</material>
+									<mayaFileName>/Heroes/Laguna/Effects/FishOrbitA_Glow.mayaPart</mayaFileName>
+									<normaltextures />
+									<orient>None</orient>
+									<orientation>Default</orientation>
+									<pivot>
+										<x>0</x>
+										<y>0</y>
+									</pivot>
+									<selection>_Glow</selection>
+									<speculartextures />
+									<srcFileName crc="0">/Heroes/Laguna/Effects/FishOrbitA</srcFileName>
+									<textures>
+										<Item crc="0">/GFX_Textures/Glow04White.tga</Item>
+									</textures>
+									<uvPairs>
+										<Item>
+											<uvBottomRight>
+												<x>1</x>
+												<y>1</y>
+											</uvBottomRight>
+											<uvTopLeft>
+												<x>0</x>
+												<y>0</y>
+											</uvTopLeft>
+										</Item>
+									</uvPairs>
+								</DBParticleSceneComponent>
+							</component>
+							<events href="" />
+							<id></id>
+							<locatorName>FishBody</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="9B43ED2A-D72C-4FB2-BB9F-0C4AF975D4C7">
+								<TimeController>
+									<cycleCount>0</cycleCount>
+									<cycleLength>0</cycleLength>
+									<fadein>0</fadein>
+									<fadeout>0</fadeout>
+									<firstCycleOffset>0</firstCycleOffset>
+									<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+									<speed>1</speed>
+									<startDelay>0</startDelay>
+								</TimeController>
+							</timeController>
+						</Item>
+					</attached>
+					<caption>FishA</caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="E1D31CDB-CAD8-49A2-90B6-959F122909C7">
+						<LocatorList>
+							<locators>
+								<Item>
+									<flags>7</flags>
+									<jointName>_02_joint17</jointName>
+									<name>FishBody</name>
+									<offset2>
+										<rotationX>0</rotationX>
+										<rotationY>0</rotationY>
+										<rotationZ>0</rotationZ>
+										<scaleX>1</scaleX>
+										<scaleY>1</scaleY>
+										<scaleZ>1</scaleZ>
+										<translateX>0</translateX>
+										<translateY>0</translateY>
+										<translateZ>0</translateZ>
+									</offset2>
+								</Item>
+							</locators>
+						</LocatorList>
+					</locatorList>
+					<mayaFileName>/Terrain/Water/Fish2_02_root.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>_02_root</selection>
+					<skeletonFileName>/Terrain/Water/Fish2_02_root.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Terrain/Water/Fish2_02.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="34F29457-824B-47BB-B1E3-E85F1C135A11">
+									<BasicMaterial>
+										<caption></caption>
+										<diffuseColor>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</diffuseColor>
+										<DiffuseMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="3FFE97B7-7814-4A24-9193-D0EBB7AD70EB">
+												<Texture>
+													<generatedFileName></generatedFileName>
+													<mipLevels>0</mipLevels>
+													<mipLevelUsage>AutoGenerate</mipLevelUsage>
+													<mipSharpenPasses></mipSharpenPasses>
+													<pixelFormat>DXT5</pixelFormat>
+													<size>
+														<height>64</height>
+														<width>64</width>
+													</size>
+													<srcFileName crc="0"></srcFileName>
+													<startMipLevel>0</startMipLevel>
+													<textureFileName>/Heroes/Laguna/Effects/FishOrbitA.dds</textureFileName>
+													<textureType>Color</textureType>
+												</Texture>
+											</texture>
+										</DiffuseMap>
+										<emissive>0</emissive>
+										<EmissivePinValue>EmissiveOff</EmissivePinValue>
+										<ignoreRenderState>false</ignoreRenderState>
+										<lightingIntencity>1</lightingIntencity>
+										<LightingPinValue>LightingSH</LightingPinValue>
+										<NormalMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</NormalMap>
+										<outputAdd>
+											<A>0</A>
+											<B>0</B>
+											<G>0</G>
+											<R>0</R>
+										</outputAdd>
+										<outputMul>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</outputMul>
+										<ReflectionMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</ReflectionMap>
+										<reflectivity>1</reflectivity>
+										<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+										<renderFlags>3</renderFlags>
+										<renderState>
+											<alphaTest>On</alphaTest>
+											<alphaTestRef>127</alphaTestRef>
+											<blendMode>Off</blendMode>
+											<culling>On</culling>
+										</renderState>
+										<SpecularMap>
+											<Add>
+												<A>0</A>
+												<B>1</B>
+												<G>1</G>
+												<R>1</R>
+											</Add>
+											<Multiplier>
+												<A>1</A>
+												<B>0.5</B>
+												<G>0.5</G>
+												<R>0.5</R>
+											</Multiplier>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</SpecularMap>
+										<specularPower>10</specularPower>
+										<SubPriority>0</SubPriority>
+									</BasicMaterial>
+								</Item>
+							</materialsReferences>
+							<mayaFileName>/Terrain/Water/Fish2_02.mayaSkin</mayaFileName>
+							<selection>_02</selection>
+							<skinPartName>_02</skinPartName>
+							<srcFileName crc="0">/Terrain/Water/Fish2.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Terrain/Water/Fish2.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>0.55</x>
+					<y>0.55</y>
+					<z>0.55</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Effects/FishOrbitA.PRXY" id="DCACBB4C-8160-4F78-9ED2-2552FD5B8231">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption>FishOrbitA</caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

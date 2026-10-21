@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectStandalone>
+	<component href="/Summons/Laguna/Dolphin/Effects/_PuddleWater_Red_Big.PRXY" />
+	<deathType>Manual</deathType>
+	<enableCondition href="" />
+	<fadeIn>0</fadeIn>
+	<fadeOut>0</fadeOut>
+	<isVisibleUnderWarfog>false</isVisibleUnderWarfog>
+	<lifeTime>1</lifeTime>
+	<parentFlags>0</parentFlags>
+	<parentType>Ground</parentType>
+	<visibilityLimited>false</visibilityLimited>
+	<visibleTime>0</visibleTime>
+</BasicEffectStandalone>

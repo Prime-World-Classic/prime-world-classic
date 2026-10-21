@@ -12,6 +12,8 @@
 ext: ani anim baked_terrain codes codes2 coll dds fev fsb heightmap hlsl layer_mask
 ext: lua md5 naturemap objectheight part psb road shd shd2 shgrid skel skin stat
 ext: swf tcv_data ttf vsb vtxcolor watermap xdb txt
+# wav — звуки пингов и похвалы (Audio/Ping/*.wav, читаются клиентом по пути из pile)
+ext: wav
 
 # --- каталоги-исключения (в старой конвейере их не было в списках каталогов) ---
 ignore_dir: .svn

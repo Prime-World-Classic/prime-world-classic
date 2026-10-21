@@ -60,9 +60,41 @@ namespace Render
 
 		SEEMatrixMultiply( &pBoneWorldMatrix[0], &worldMatrix, &pSampledMatrix[0] );
 
+    // Extra yaw: world' = World * (T(pivot) * Rz * T(-pivot)) * World^-1 * world, children inherit it through the parent
+    const int maxExtraYaw = 16;
+    __declspec(align(16)) Matrix43 extraYawMatrices[maxExtraYaw];
+    const int extraYawCount = Min( (int)extraYaw.size(), maxExtraYaw );
+    if ( extraYawCount > 0 )
+    {
+      __declspec(align(16)) Matrix43 worldInv( worldMatrix.GetInversed() );
+      for ( int k = 0; k < extraYawCount; ++k )
+      {
+        const ExtraYaw& e = extraYaw[k];
+        if ( e.bone >= bonesCount || e.angle == 0.0f )
+          continue;
+        __declspec(align(16)) Matrix43 rot( CQuat( e.angle, CVec3( 0.0f, 0.0f, 1.0f ) ), VNULL3 );
+        const CVec3& p = e.pivot;
+        rot._14 = p.x - ( rot._11 * p.x + rot._12 * p.y + rot._13 * p.z );
+        rot._24 = p.y - ( rot._21 * p.x + rot._22 * p.y + rot._23 * p.z );
+        rot._34 = p.z - ( rot._31 * p.x + rot._32 * p.y + rot._33 * p.z );
+        __declspec(align(16)) Matrix43 k1, k2;
+        SEEMatrixMultiply( &k1, &rot, &worldInv );
+        SEEMatrixMultiply( &k2, &worldMatrix, &k1 );
+        extraYawMatrices[k] = k2;
+      }
+    }
+
     // Hierarchical bone placements
 		for	( unsigned int i = 1; i < bonesCount; ++i )
+    {
   		SEEMatrixMultiply( &pBoneWorldMatrix[i], &pBoneWorldMatrix[ pParentIndicies[i] ], &pSampledMatrix[i] );
+      for ( int k = 0; k < extraYawCount; ++k )
+        if ( extraYaw[k].bone == i && extraYaw[k].angle != 0.0f )
+        {
+          __declspec(align(16)) Matrix43 tmp( pBoneWorldMatrix[i] );
+          SEEMatrixMultiply( &pBoneWorldMatrix[i], &extraYawMatrices[k], &tmp );
+        }
+    }
 
     // Absolute bone placements
     //for	( unsigned int i = 1; i < bonesCount; ++i )
@@ -71,6 +103,15 @@ namespace Render
 		for	( unsigned int i = 0; i < activeBonesCount; ++i ) 
       SEEMatrixMultiply( &pSkinWorldMatrix[i], &pBoneWorldMatrix[ matrixReindex[i] ], &pBindMatricies[ matrixReindex[i] ] );
 	}
+
+  bool SkeletonWrapper::GetBindPosition( unsigned int index, CVec3& pos ) const
+  {
+    if ( index >= pSkeletonData->GetData()->jointsCount )
+      return false;
+    const Matrix43 bind = pSkeletonData->GetData()->invertedBindPoseBones.at(0)[index].GetInversed();
+    pos = CVec3( bind._14, bind._24, bind._34 );
+    return true;
+  }
 
 	bool SkeletonWrapper::GetJointIndexByName( const char* name, unsigned int& index ) const
 	{

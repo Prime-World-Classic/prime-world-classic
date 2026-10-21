@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <HeroSkin>
 	<BackLink DBID="/Heroes/Katana/_.HROB" Count="1" />
-	<BackLink DBID="/Heroes/Laguna/_1.HROB" Count="1" />
 	<antagonistSkinId></antagonistSkinId>
 	<askList href="/Heroes/Katana/S1/_.HEROSKIN" id="213138B4-CB5D-4614-9857-3C1F3B901C3E">
 		<AskSoundsRef>

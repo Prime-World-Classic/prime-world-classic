@@ -76,6 +76,7 @@ bool MapLoadingJob::InitializeEnvironment()
   if ( !advMap->waterMapFileName.empty() )
   {
     pScene->LoadWaterMap( advMap->waterMapFileName );
+    world->LoadWaterMap( advMap->waterMapFileName );
   }
 
   pScene->LoadObjectLayer( 1, advMap->ObjectsLayerFileName );

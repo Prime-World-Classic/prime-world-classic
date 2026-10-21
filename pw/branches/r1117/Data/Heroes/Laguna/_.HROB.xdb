@@ -15,39 +15,39 @@
 			<settings>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>12</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>12</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
@@ -71,16 +71,156 @@
 				</Item>
 			</settings>
 			<sounds>
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
+				<Item href="/Heroes/Laguna/_.HROB" id="B5344EA0-7FA8-4BFF-BAF8-994E4805F1F0">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Move</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="635BC892-791C-4421-8583-3EE4B4658D8A">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability1</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="C7D1C76B-3DF3-4658-9A8F-48A0E5E7E3C3">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability2</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="5CEC5807-4782-4DFC-AF5A-E3647739043A">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability3</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="B5EDC4F4-038B-4681-A839-D71F53A12D9A">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>UltimateAbility</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="1D6F402F-7225-42ED-A970-2B201A683FA9">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Attack</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="F2A57E76-5EF5-46C5-A69B-FF473BBFE8DD">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Death</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="A3AC6E5C-0B46-435F-A8D5-CA6D9A5CA266">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Revive</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="A50EB50B-092A-443E-8969-290BB41ADAFF">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Deathenemyhero</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="D20F8219-E29A-4A23-8907-9EBB483F0D31">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Iddle</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
 				<Item href="" />
 				<Item href="" />
 				<Item href="" />
@@ -107,39 +247,39 @@
 			<settings>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>12</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>12</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>3</minInterval>
+					<minInterval>6</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
@@ -163,16 +303,156 @@
 				</Item>
 			</settings>
 			<sounds>
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
-				<Item href="" />
+				<Item href="/Heroes/Laguna/_.HROB" id="E0103884-AAFF-4C07-8F25-178E9F81092A">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Move</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="3942F8A0-6F8D-4476-B7B0-316B15F43BFA">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability1</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="60EEA553-BBA0-4032-9052-C11B418EC9BB">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability2</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="C3FC3CB5-354A-44C9-8171-FF40930A3CE3">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Ability3</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="087BCDCC-4C95-4D4A-9A84-E542AF8CE3E9">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>UltimateAbility</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="1EC6EA1F-025E-4E47-8B8C-A009E187A97E">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Attack</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="95920E6C-B0EE-49FD-BB2E-5E215EC90C1A">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Death</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="4B68FC0C-6937-467B-94D5-4A49459EA6C4">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Revive</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="57534E7B-6B4D-4781-B5DB-6EB4A7CC8360">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Deathenemyhero</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
+				<Item href="/Heroes/Laguna/_.HROB" id="B6E40B1E-0CB0-4291-B43D-08269F70EB24">
+					<DBSoundSceneComponent>
+						<attached />
+						<caption>sound</caption>
+						<desc>
+							<eventName>Iddle</eventName>
+							<groupName>Heroes/Laguna/Asks/Human</groupName>
+							<projectName>PF</projectName>
+						</desc>
+						<groupFlags>0</groupFlags>
+						<locatorList href="" />
+						<orientation>Default</orientation>
+						<timeInterval>0</timeInterval>
+					</DBSoundSceneComponent>
+				</Item>
 				<Item href="" />
 				<Item href="" />
 				<Item href="" />
@@ -402,7 +682,6 @@
 			</aoeSize>
 			<aoeType>None</aoeType>
 			<applicators>
-				<Item href="/Effects/Shots/HitsApplicators/Fairy.APLR" />
 				<Item href="/GameLogic/GeneralApplicators/BaseAttackDmg_Hero_material.APLR" />
 			</applicators>
 			<autoTargetSelector href="" />
@@ -434,7 +713,7 @@
 					<aiming>Straight</aiming>
 					<alwaysApply>false</alwaysApply>
 					<applyEffect>
-						<Item href="" />
+						<Item href="/Heroes/Laguna/Effects/Hit.EFFT" />
 						<Item href="" />
 					</applyEffect>
 					<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
@@ -442,7 +721,7 @@
 					<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
 					<dieAfterApply>true</dieAfterApply>
 					<dispatchEffect>
-						<Item href="/Effects/Shots/Fairy/_.EFFT" />
+						<Item href="/Heroes/Laguna/Attack/FishShot.EFFT" />
 						<Item href="" />
 					</dispatchEffect>
 					<flags>7</flags>
@@ -519,8 +798,8 @@
 	</collision>
 	<deathParameters href="/GameLogic/HeroFemale.UNDP" />
 	<defaultTalentsSets>
-		<Item href="/Items/Talents/Katana.TALENTSET" />
-		<Item href="/Items/Talents/Katana_Alternative.TALENTSET" />
+		<Item href="/Items/Talents/Laguna.TALENTSET" />
+		<Item href="/Items/Talents/Laguna.TALENTSET" />
 	</defaultTalentsSets>
 	<description textref="" />
 	<gender>Female</gender>

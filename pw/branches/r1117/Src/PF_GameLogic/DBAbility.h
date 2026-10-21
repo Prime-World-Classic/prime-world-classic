@@ -3643,6 +3643,7 @@ public:
 	Ptr< LightningEffect > linkEffect;
 	Ptr< AOEMaterial > maxRangeMaterial;
 	float size;
+	float turnRate;
 
 	DispatchCursor();
 
