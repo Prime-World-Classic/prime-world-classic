@@ -14,6 +14,11 @@
 #include "DXWarnSignal.h"
 #include <vector>
 
+// 2026-10-21 (PLAN_NVRHI, «белая плашка»): мост к последнему затребованному
+// материалу — определяется в multishader.cpp, см. NoteDipTrace ниже.
+extern const char *GetLastDipMaterial();
+extern unsigned int GetLastDipIndex();
+
 static DXWarnSignal s_DXWarnLevel;
 
 static bool nullrender = false;
@@ -621,6 +626,208 @@ inline void NotePipelineState()
     GetBackend()->SetPipelineState(sm->GetPipelineState(), sm->GetPipelineStateHash());
 }
 
+// 2026-10-21 (PLAN_NVRHI, «белая плашка»): трасса Dip'ов клиента.
+// Вывод-плашка (UIFlashMaterial #0, 6 вершин, 2 примитива, вершинный цвет
+// непрозрачный белый) есть в кадре Vulkan и отсутствует в кадре D3D9/DXVK при
+// тех же константах и состоянии. Чтобы отличить «клиент не выпускает Dip» от
+// «бэкенд его теряет», нужен список Dip'ов самого клиента — он одинаков для
+// обоих бэкендов. Включается env PW_DRAW_TRACE=1; печатаются только мелкие
+// Dip'ы (prim<=8), иначе лог разрастается текстом HUD.
+static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char b[16];
+    s_on = (GetEnvironmentVariableA("PW_DRAW_TRACE", b, sizeof(b) - 1) > 0) ? atoi(b) : 0;
+  }
+  if (!s_on)
+    return;
+  static unsigned s_n = 0u, s_logged = 0u;
+  ++s_n;
+  // Печатаем только семейство UIFlash* — интересующий нас вывод-плашка
+  // (prim=2, 6 вершин) тонет в тысячах текстовых Dip'ов HUD.
+  const char *m = ::GetLastDipMaterial();
+  if (_descr.primitiveCount > 8u || !m || !strstr(m, "Flash") || s_logged >= 8000u)
+    return;
+  ++s_logged;
+  // Сравнение с трассой Vulkan-бэкенда (VkTraceOrd): вывод-плашка
+  // (UIFlashMaterial #0, prim=2, 6 вершин) выпускается клиентом в ОБОИХ
+  // бэкендах, но белым прямоугольником появляется только в Vulkan. Значит
+  // расходится либо состояние устройства, либо геометрия. Печатаем состояние
+  // D3D9-устройства в тот же момент (в Vulkan-пути устройства нет — блок
+  // пропускается).
+  IDirect3DDevice9* dev = GetDevice();
+  if (dev)
+  {
+    IDirect3DSurface9* rt = 0;
+    D3DVIEWPORT9 vp = {0u, 0u, 0u, 0u, 0.f, 1.f};
+    RECT sr = {0, 0, 0, 0};
+    DWORD ab = 0, sb = 0, db = 0, ze = 0, zw = 0, zf = 0, st = 0, sc = 0, cu = 0, cw = 0, at = 0, sa = 0;
+    IDirect3DVertexShader9* vs = 0;
+    IDirect3DPixelShader9* ps = 0;
+    IDirect3DVertexDeclaration9* dc = 0;
+    IDirect3DVertexBuffer9* vb = 0;
+    UINT voff = 0, vstr = 0;
+    dev->GetRenderTarget(0, &rt);
+    dev->GetViewport(&vp);
+    dev->GetScissorRect(&sr);
+    dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &ab);
+    dev->GetRenderState(D3DRS_SRCBLEND, &sb);
+    dev->GetRenderState(D3DRS_DESTBLEND, &db);
+    dev->GetRenderState(D3DRS_ZENABLE, &ze);
+    dev->GetRenderState(D3DRS_ZWRITEENABLE, &zw);
+    dev->GetRenderState(D3DRS_ZFUNC, &zf);
+    dev->GetRenderState(D3DRS_STENCILENABLE, &st);
+    dev->GetRenderState(D3DRS_SCISSORTESTENABLE, &sc);
+    dev->GetRenderState(D3DRS_CULLMODE, &cu);
+    dev->GetRenderState(D3DRS_COLORWRITEENABLE, &cw);
+    dev->GetRenderState(D3DRS_ALPHATESTENABLE, &at);
+    dev->GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, &sa);
+    dev->GetVertexShader(&vs);
+    dev->GetPixelShader(&ps);
+    dev->GetVertexDeclaration(&dc);
+    dev->GetStreamSource(0, &vb, &voff, &vstr);
+    // DebugTrace (PrintfFormatter) принимает не больше 10 аргументов —
+    // собираем строку сами.
+    char dt[512];
+    snprintf( dt, sizeof(dt), "rt=%p vp=%u,%u %ux%u z[%g..%g] sc=%d,%d..%d,%d scTest=%u ab=%u sb=%u db=%u",
+      (void*)rt, vp.X, vp.Y, vp.Width, vp.Height, (double)vp.MinZ, (double)vp.MaxZ,
+      sr.left, sr.top, sr.right, sr.bottom, sc, ab, sb, db );
+    DebugTrace( "D3dDip: %s", dt );
+    snprintf( dt, sizeof(dt), "z=%u/%u f=%u stencil=%u cull=%u cw=%u aTest=%u sep=%u",
+      ze, zw, zf, st, cu, cw, at, sa );
+    DebugTrace( "D3dDip2: %s", dt );
+    snprintf( dt, sizeof(dt), "vs=%p ps=%p decl=%p vb=%p+%u str=%u",
+      (void*)vs, (void*)ps, (void*)dc, (void*)vb, voff, vstr );
+    DebugTrace( "D3dDip3: %s", dt );
+    // цель — бэкбуфер или off-screen слой? в Vulkan-трассе (VkTraceOrd) те же
+    // Dip'ы идут в bb=0 (off-screen поверхность #128), т.е. в UI-слой.
+    IDirect3DSurface9* bb = 0;
+    if (SUCCEEDED(dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &bb)))
+    {
+      snprintf( dt, sizeof(dt), "back=%p rtIsBack=%u", (void*)bb, rt && bb && rt == bb ? 1u : 0u );
+      DebugTrace( "D3dDip4: %s", dt );
+    }
+    if (bb) bb->Release();
+
+    // bbox первых вершин потока 0 (float2, шаг 16): вывод-плашка опознаётся по
+    // x[60..8900] y[60..3620] — ровно такие же координаты печатает трасса
+    // Vulkan-бэкенда (VkTraceVtx) для белых выводов.
+    float bx0 = 1e30f, by0 = 1e30f, bx1 = -1e30f, by1 = -1e30f;
+    if (vb && vstr == 16u && !_indexed)
+    {
+      void* vp = 0;
+      if (SUCCEEDED(vb->Lock(voff, 0, &vp, 0)) && vp)
+      {
+        const float* f = (const float*)vp;
+        for (unsigned k = 0u; k < 6u; ++k)
+        {
+          const float x = f[(voff / 16u + _descr.startIndex + k) * 4u + 0u];
+          const float y = f[(voff / 16u + _descr.startIndex + k) * 4u + 1u];
+          if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+          if (y < by0) by0 = y; if (y > by1) by1 = y;
+        }
+        vb->Unlock();
+      }
+    }
+    // размер потока: D3D9 обрезает Dip'ы, выходящие за конец буфера потока
+    // (вершины за концом = примитивы не рисуются), Vulkan-бэкенд такой проверки
+    // не делает
+    {
+      D3DVERTEXBUFFER_DESC vbd;
+      if (vb && SUCCEEDED(vb->GetDesc(&vbd)))
+        DebugTrace( "D3dVb2: vbSize=%u need=%u (off %u + (%u+%u)*%u)",
+                    (unsigned)vbd.Size, (unsigned)(voff + (_descr.startIndex + _descr.numVertices) * vstr),
+                    voff, _descr.startIndex, _descr.numVertices, vstr );
+    }
+    DebugTrace( "D3dVb: x[%.1f..%.1f] y[%.1f..%.1f]", bx0, bx1, by0, by1 );
+
+    // readback цели ПРЯМО ПОСЛЕ вывода-плашки: белым ли лёг квад в D3D9-слое
+    static IDirect3DSurface9* stg = 0;
+    static unsigned stgW = 0, stgH = 0, stgFmt = 0, s_rbLogged = 0u;
+    if (rt && cw == 15u && bx1 > 8000.f && by1 > 3000.f && s_rbLogged < 6u)
+    {
+      ++s_rbLogged;
+      D3DSURFACE_DESC rd;
+      if (SUCCEEDED(rt->GetDesc(&rd)))
+      {
+        if (!stg || stgW != rd.Width || stgH != rd.Height || stgFmt != (unsigned)rd.Format)
+        {
+          if (stg) stg->Release();
+          stg = 0; stgW = stgH = stgFmt = 0;
+          if (SUCCEEDED(dev->CreateOffscreenPlainSurface(rd.Width, rd.Height, rd.Format,
+                                                         D3DPOOL_SYSTEMMEM, &stg, 0)))
+          { stgW = rd.Width; stgH = rd.Height; stgFmt = (unsigned)rd.Format; }
+        }
+        HRESULT hrRb = stg ? dev->GetRenderTargetData(rt, stg) : (HRESULT)0;
+        if (stg && SUCCEEDED(hrRb))
+        {
+          D3DLOCKED_RECT lr;
+          if (SUCCEEDED(stg->LockRect(&lr, 0, D3DLOCK_READONLY)))
+          {
+            const unsigned char* base = (const unsigned char*)lr.pBits;
+            const unsigned px[4][2] = {{170u,500u},{60u,450u},{300u,560u},{600u,300u}};
+            unsigned v[4];
+            for (int k = 0; k < 4; ++k)
+            {
+              const unsigned char* q = base + (size_t)px[k][1] * (size_t)lr.Pitch
+                                     + (size_t)px[k][0] * 4u;
+              v[k] = (unsigned)q[0] | ((unsigned)q[1] << 8) | ((unsigned)q[2] << 16)
+                   | ((unsigned)q[3] << 24);
+            }
+            unsigned white = 0u, opaque = 0u;
+            unsigned gx0 = 0xFFFFFFFFu, gy0 = 0xFFFFFFFFu, gx1 = 0u, gy1 = 0u, green = 0u;
+            for (unsigned y = 0u; y < rd.Height; ++y)
+            {
+              const unsigned char* row = base + (size_t)y * (size_t)lr.Pitch;
+              for (unsigned x = 0u; x + 4u <= rd.Width * 4u; x += 4u)
+              {
+                if (row[x+3u] == 0xFFu)
+                {
+                  ++opaque;
+                  if (row[x] > 0xF0u && row[x+1u] > 0xF0u && row[x+2u] > 0xF0u)
+                    ++white;
+                }
+                // BGRA: зелёный пиксель = 00 FF 00 (любая альфа)
+                if (row[x] < 0x40u && row[x+1u] > 0xC0u && row[x+2u] < 0x40u)
+                {
+                  ++green;
+                  const unsigned px = x >> 2;
+                  if (px < gx0) gx0 = px;
+                  if (px > gx1) gx1 = px;
+                  if (y < gy0) gy0 = y;
+                  if (y > gy1) gy1 = y;
+                }
+              }
+            }
+            snprintf( dt, sizeof(dt), "%ux%u fmt=%u белых=%u непрозр=%u зелёных=%u "
+                      "зелёный bbox=(%u,%u)-(%u,%u) (170,500)=%08X (300,560)=%08X",
+                      rd.Width, rd.Height, (unsigned)rd.Format, white, opaque, green,
+                      gx0, gy0, gx1, gy1, v[0], v[2] );
+            DebugTrace( "D3dRb: %s", dt );
+            stg->UnlockRect();
+          }
+        }
+        else
+          DebugTrace( "D3dRb: нет readback hr=%08X", (unsigned)hrRb );
+      }
+    }
+    if (rt) rt->Release();
+    if (vs) vs->Release();
+    if (ps) ps->Release();
+    if (dc) dc->Release();
+    if (vb) vb->Release();
+  }
+  DebugTrace( "DipTrace: n=%u %s mat=%s #%u prim=%u type=%u nv=%u startIdx=%u",
+    s_n, _indexed ? "idx" : "vtx",
+    m ? m : "?",
+    ::GetLastDipIndex(), _descr.primitiveCount, (unsigned)_descr.primitiveType,
+    _descr.numVertices, _descr.startIndex );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void DrawIndexedPrimitive(const DipDescriptor& _descr)
 {
   if(nullrender)
@@ -639,6 +846,8 @@ void DrawIndexedPrimitive(const DipDescriptor& _descr)
   NotePipelineState();
   HRESULT hr = GetBackend()->DrawIndexed( _descr.primitiveType,
     _descr.baseVertexIndex, _descr.minIndex, _descr.numVertices, _descr.startIndex, _descr.primitiveCount );
+  // трасса ПОСЛЕ Dip'а: readback цели должен показывать результат вывода
+  NoteDipTrace(_descr, true);
 
   //NI_ASSERT(hr == D3D_OK, NStr::StrFmt("DrawIndexedPrimitive() failed! code: 0x%08X, error: %s description: %s", hr, DXGetErrorStringA(hr), DXGetErrorDescriptionA(hr)) );
   if(s_DXWarnLevel)
@@ -709,8 +918,87 @@ void DrawPrimitive(const DipDescriptor& _descr)
   NotePipeline(_descr.primitiveType);
 #endif
   NotePipelineState();
+  // Эксперимент 2026-10-21: вывод-плашка (UIFlashMaterial #0, 6 вершин,
+  // x[60..8900] y[60..3620]) клиент выпускает и в D3D9, и в Vulkan, состояние
+  // и вершины одинаковы, но белым он становится только в Vulkan. Если выключить
+  // смешивание (квад пишется начисто) и квад появится в readback слоя — значит
+  // геометрия в D3D9 на месте, а PS даёт альфу 0 (SRCALPHA => невидим).
+  IDirect3DDevice9* devFO = 0;
+  bool forced = false;
+  static int s_fo = -1;
+  if (s_fo < 0)
+  {
+    char fb[16];
+    s_fo = (GetEnvironmentVariableA("PW_D3D_FORCEOPAQUE", fb, sizeof(fb) - 1) > 0) ? atoi(fb) : 0;
+  }
+  if (s_fo && _descr.primitiveCount == 2u && _descr.numVertices == 6u)
+  {
+    const char* dm = ::GetLastDipMaterial();
+    if (dm && strstr(dm, "lash") && ::GetLastDipIndex() == 0u)
+    {
+      IDirect3DDevice9* dev2 = GetDevice();
+      IDirect3DVertexBuffer9* vb2 = 0;
+      UINT off2 = 0u, str2 = 0u;
+      if (dev2 && SUCCEEDED(dev2->GetStreamSource(0, &vb2, &off2, &str2)) && vb2 && str2 == 16u)
+      {
+        void* vp2 = 0;
+        if (SUCCEEDED(vb2->Lock(off2, 0, &vp2, 0)) && vp2)
+        {
+          const float* f2 = (const float*)vp2;
+          float x1 = -1e30f, y1 = -1e30f;
+          // дамп записей вершин (шаг 16): POSITION float2 в 0..7, дальше
+          // 8..15 — то, что клиент кладёт следом (цвет / uv)
+          DebugTrace( "D3dVtx: %08X %08X %08X %08X | %08X %08X %08X %08X",
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 0u) * 4u + 0u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 0u) * 4u + 1u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 0u) * 4u + 2u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 0u) * 4u + 3u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 1u) * 4u + 0u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 1u) * 4u + 1u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 1u) * 4u + 2u],
+            ((const unsigned*)vp2)[(off2 / 16u + _descr.startIndex + 1u) * 4u + 3u] );
+          for (unsigned k = 0u; k < 6u; ++k)
+          {
+            const float x = f2[(off2 / 16u + _descr.startIndex + k) * 4u + 0u];
+            const float y = f2[(off2 / 16u + _descr.startIndex + k) * 4u + 1u];
+            if (x > x1) x1 = x;
+            if (y > y1) y1 = y;
+          }
+          vb2->Unlock();
+          // PW_D3D_FORCEOPAQUE=3 — положительный контроль: перекрашиваем ВСЕ
+          // Dip'ы UIFlashMaterial #0 (не только плашку): если зелёный появится
+          // в readback, значит и запись в VB, и readback работают
+          if (s_fo == 3 || (x1 > 8000.f && y1 > 3000.f))
+          {
+            // состояние восстанавливаем сразу после Dip'а: клиент кэширует
+            // D3DRS_* и сам бы его не вернул
+            devFO = dev2;
+            devFO->SetRenderState(D3DRS_ALPHABLENDENABLE, 0u);
+            forced = true;
+            // PW_D3D_FORCEOPAQUE=2: перекрашиваем вершины в чистый зелёный
+            // (COLOR0 = 0xFF00FF00 в смещении 8) — по нему readback ищет
+            // прямоугольник, который D3D9 реально растеризовал из этого Dip'а
+            if (s_fo >= 2)
+            {
+              for (unsigned k = 0u; k < 6u; ++k)
+              {
+                unsigned char* pc = (unsigned char*)vp2
+                  + (off2 / 16u + _descr.startIndex + k) * 16u + 8u;
+                pc[0] = 0x00; pc[1] = 0xFF; pc[2] = 0x00; pc[3] = 0xFF;
+              }
+            }
+            DebugTrace( "D3dForce: ALPHABLENDENABLE=0 для плашки x1=%.1f y1=%.1f", x1, y1 );
+          }
+        }
+      }
+      if (vb2) vb2->Release();
+    }
+  }
   HRESULT hr = GetBackend()->Draw( _descr.primitiveType,
     _descr.startIndex, _descr.primitiveCount );
+  if (forced)
+    devFO->SetRenderState(D3DRS_ALPHABLENDENABLE, 1u);
+  NoteDipTrace(_descr, false);
 
   if(s_DXWarnLevel)
     NI_DX_WARN(hr, "DrawPrimitive");

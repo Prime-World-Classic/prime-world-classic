@@ -144,9 +144,17 @@ namespace Render
 			return Shd2Lookup( pBase, imageSize, *sec, index, vsOffset, vsSize, psOffset, psSize );
 		}
 
+		// 2026-10-21 (PLAN_NVRHI, «белая плашка»): какой материал и какая
+		// комбинация пинов стоит в момент ближайшего Dip'а. Читается
+		// трассой NoteDipTrace в smartrenderer.cpp.
+		const char *g_lastDipMaterial = 0;
+		unsigned int g_lastDipIndex = 0xFFFFFFFF;
+
 		ShaderPair& MultiShader::GetShaderPairByIndex(unsigned int index)
 		{
 			NI_VERIFY(pInfo, "pInfo is invalid!", return defaultShaderPair; );
+			g_lastDipMaterial = fileName.c_str();
+			g_lastDipIndex = index;
 			if ( !(0 <= index && (int)index < pairs.size()) )
 				return defaultShaderPair;
 			if ( s_dumpShaderIndex )
@@ -266,3 +274,7 @@ namespace Render
 	};
 };
 
+// 2026-10-21 (PLAN_NVRHI, «белая плашка»): мост для трассы Dip'ов —
+// smartrenderer.cpp не разворачивает namespace Render::Materials.
+const char *GetLastDipMaterial() { return Render::Materials::g_lastDipMaterial; }
+unsigned int GetLastDipIndex() { return Render::Materials::g_lastDipIndex; }
