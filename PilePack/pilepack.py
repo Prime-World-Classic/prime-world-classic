@@ -97,6 +97,12 @@ DEFAULT_MANIFEST = os.path.join(HERE, 'gamedata_manifest.json')
 
 MANIFEST_FORMAT = 2
 
+SCAN_CACHE_NAME = '.scan_cache.json'    # в выходной папке (Piles/ в .gitignore), не в манифесте
+SCAN_CACHE_FORMAT = 1
+RACY_NS = 2 * 10 ** 9         # файлам, тронутым за 2 с до прошлого скана, кэш не верит (как racy git)
+SCAN_CHUNK_BYTES = 16 * MB    # порция файлов на одну задачу воркера скана
+SCAN_CHUNK_FILES = 2000
+
 
 def log(msg):
     sys.stderr.write(msg.rstrip('\n') + '\n')
@@ -186,28 +192,47 @@ class Policy(object):
                 excluded = not negate
         return not excluded
 
-    def walk(self, data_dir):
+    def walk(self, data_dir, cache=None):
         """
         Относительные (от Data) пути файлов, попадающих в pile; '/' как разделитель.
         Файлы из ignore_dir тоже попадают, если на них ссылаются отобранные данные
         (см. referenced_from_ignored): иначе ссылка в игре пустая и клиент падает.
+        Попутно self.stats = {rel: (размер на диске, mtime_ns)} — из scandir, без
+        отдельного stat на файл (ключ кэша скана).
         """
-        keys, ignored = [], {}
-        for dirpath, dirnames, filenames in os.walk(data_dir):
-            rel_dir = os.path.relpath(dirpath, data_dir).replace(os.sep, '/')
-            in_ignored = rel_dir != '.' and any(s.lower() in self.ignore_dirs for s in rel_dir.split('/'))
-            # служебные каталоги (.svn и т. п.) в игре никто не ссылается — их не обходим
-            dirnames[:] = [d for d in dirnames if not (d.startswith('.') and d.lower() in self.ignore_dirs)]
-            for name in filenames:
-                rel = name if rel_dir == '.' else rel_dir + '/' + name
-                if not self.accepts(rel):
-                    continue
-                if in_ignored:
-                    ignored[rel.lower()] = rel
-                else:
-                    keys.append(rel)
-        self.referenced = referenced_from_ignored(data_dir, keys, ignored, self.ignore_dirs)
+        keys, ignored, self.stats = [], {}, {}
+
+        def visit(rel_dir, in_ignored):
+            subdirs = []
+            with os.scandir(os.path.join(data_dir, rel_dir.replace('/', os.sep))) as it:
+                for e in it:
+                    rel = e.name if not rel_dir else rel_dir + '/' + e.name
+                    if e.is_dir() and not e.is_symlink():
+                        # служебные каталоги (.svn и т. п.) в игре никто не ссылается — их не обходим
+                        if not (e.name.startswith('.') and e.name.lower() in self.ignore_dirs):
+                            subdirs.append((rel, in_ignored or e.name.lower() in self.ignore_dirs))
+                        continue
+                    if not self.accepts(rel):
+                        continue
+                    try:
+                        st = e.stat()
+                        self.stats[rel] = (st.st_size, st.st_mtime_ns)
+                    except OSError:
+                        pass                      # скан повторит stat и сообщит ошибку
+                    if in_ignored:
+                        ignored[rel.lower()] = rel
+                    else:
+                        keys.append(rel)
+            for rel, ign in subdirs:
+                visit(rel, ign)
+
+        visit('', False)
+        self.referenced = referenced_from_ignored(data_dir, keys, ignored, self.ignore_dirs,
+                                                  self.stats, cache)
         return keys + self.referenced
+
+    def marks_key(self):
+        return ' '.join(sorted(self.ignore_dirs))
 
 
 # Ссылки в .xdb: href="/Glyphs/_.GLDB" (без расширения — это .xdb), textref="/x.txt"
@@ -233,13 +258,15 @@ def xdb_refs(data, base_dir):
     return out
 
 
-def referenced_from_ignored(data_dir, keys, ignored, ignore_dirs):
+def referenced_from_ignored(data_dir, keys, ignored, ignore_dirs, stats=None, cache=None):
     """
     Файлы из ignore_dir (ignored: {lower: rel}, уже прошедшие ext/exclude), на которые
     ссылаются отобранные .xdb — прямо или через другие такие файлы. Каталоги Test и т. п.
     исключены целиком, но живые данные на них ссылаются (тестовый глиф в Glyphs/_.GLDB,
     порталы на MOBA, эффекты свитков, Tech/Default/_.MAPLST): без файла ссылка пустая,
     и клиент падает. К .txt добавляется и перевод <имя>_en.txt.
+    С cache (ScanCache) неизменённые .xdb не читаются: берутся признак «есть имя
+    исключённого каталога» и список ссылок с прошлого прогона.
     """
     if not ignored:
         return []
@@ -247,19 +274,34 @@ def referenced_from_ignored(data_dir, keys, ignored, ignore_dirs):
     queue = [k for k in keys if k.lower().endswith('.xdb')]
     added = []
     from_ignored = set()
+    stats = stats or {}
     while queue:
         rel = queue.pop()
-        try:
-            with open(os.path.join(data_dir, rel.replace('/', os.sep)), 'rb') as f:
-                data = f.read()
-        except OSError:
+        st = stats.get(rel)
+        ent = cache.get_refs(rel, st) if cache is not None else None
+        need = rel in from_ignored
+        if ent is not None and (ent[0] or need) and ent[1] is None:
+            ent = None                           # признак есть, а ссылки не разбирали — читаем
+        if ent is None:
+            try:
+                with open(os.path.join(data_dir, rel.replace('/', os.sep)), 'rb') as f:
+                    data = f.read()
+            except OSError:
+                continue
+            # в обычных .xdb ссылка на исключённый каталог содержит его имя — остальные не разбираем
+            # (у взятых из исключённого каталога относительные ссылки имени не содержат)
+            has_marks = any(m in data.lower() for m in marks)
+            refs = None
+            if has_marks or need:
+                base = rel.rsplit('/', 1)[0] if '/' in rel else ''
+                refs = sorted(xdb_refs(data, base))
+            ent = (has_marks, refs)
+            del data
+        if cache is not None and st is not None:
+            cache.put_refs(rel, st, ent[0], ent[1])
+        if not ent[0] and not need:
             continue
-        # в обычных .xdb ссылка на исключённый каталог содержит его имя — остальные не разбираем
-        # (у взятых из исключённого каталога относительные ссылки имени не содержат)
-        if rel not in from_ignored and not any(m in data.lower() for m in marks):
-            continue
-        base = rel.rsplit('/', 1)[0] if '/' in rel else ''
-        for ref in xdb_refs(data, base):
+        for ref in ent[1]:
             cands = [ref]
             if ref.endswith('.txt'):
                 cands.append(ref[:-4] + '_en.txt')
@@ -321,11 +363,84 @@ def file_crc(path, chunk=4 * 1024 * 1024):
     return size, crc & 0xFFFFFFFF
 
 
+class ScanCache(object):
+    """
+    Кэш скана Data: Piles/.scan_cache.json (рядом с pile, не коммитится). По файлу хранит
+    размер на диске и mtime_ns, а к ним — (size, crc) после canon и, для .xdb, признак
+    «есть имя исключённого каталога» со списком ссылок (referenced_from_ignored).
+    Совпали размер и mtime — файл не читается. Без кэша скан читает всю Data (4,4 ГБ):
+    на горячем кэше ОС это секунды, с холодного диска (OneDrive) — около 100 с.
+
+    Чего кэш не видит: правку, после которой у файла те же размер и mtime (копирование
+    с сохранением времени, откат mtime руками). Для этого --rescan: читать всё заново.
+    Файлам с mtime позже начала прошлого скана минус RACY_NS кэш не верит: их могли
+    изменить в тот же тик, когда скан их уже прочитал.
+    """
+
+    def __init__(self, path, data_dir, marks_key, use=True):
+        self.path = path
+        self.data_dir = os.path.normcase(os.path.abspath(data_dir))
+        self.marks_key = marks_key
+        self.started_ns = time.time_ns()
+        self.saved_ns = 0
+        self.crc, self.refs = {}, {}
+        self.new_crc, self.new_refs = {}, {}
+        self.hits = 0
+        if use:
+            self.load()
+
+    def load(self):
+        try:
+            with open(self.path, 'rb') as f:
+                data = json.loads(f.read().decode('utf-8'))
+        except (OSError, ValueError):
+            return
+        if data.get('format') != SCAN_CACHE_FORMAT or data.get('data') != self.data_dir:
+            return
+        self.saved_ns = int(data.get('saved_ns', 0))
+        self.crc = data.get('files', {})
+        if data.get('marks') == self.marks_key:
+            self.refs = data.get('refs', {})
+
+    def _fresh(self, ent, st):
+        return (ent is not None and st is not None and ent[0] == st[0] and ent[1] == st[1]
+                and st[1] < self.saved_ns - RACY_NS)
+
+    def get_crc(self, rel, st):
+        ent = self.crc.get(rel)
+        if not self._fresh(ent, st):
+            return None
+        self.hits += 1
+        return ent[2], ent[3]
+
+    def put_crc(self, rel, st, size, crc):
+        self.new_crc[rel] = [st[0], st[1], size, crc]
+
+    def get_refs(self, rel, st):
+        ent = self.refs.get(rel)
+        return (ent[2], ent[3]) if self._fresh(ent, st) else None
+
+    def put_refs(self, rel, st, has_marks, refs):
+        self.new_refs[rel] = [st[0], st[1], has_marks, refs]
+
+    def save(self):
+        """Только файлы этого прогона (удалённые из Data выпадают); атомарно через .tmp."""
+        body = {'format': SCAN_CACHE_FORMAT, 'data': self.data_dir, 'marks': self.marks_key,
+                'saved_ns': self.started_ns, 'files': self.new_crc, 'refs': self.new_refs}
+        tmp = self.path + '.tmp'
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            with open(tmp, 'wb') as f:
+                f.write(json.dumps(body, separators=(',', ':'), sort_keys=True).encode('utf-8'))
+            os.replace(tmp, self.path)
+        except OSError as e:
+            log('кэш скана не записан (%s): следующий прогон прочитает Data целиком' % e)
+
+
 def _stat_chunk(args):
     """
-    crc считаем у всех файлов каждого прогона: на всю Data это 4,6 с (crc32 ~1,9 ГБ/с),
-    а время правки файлу доверять нельзя — правка «тот же размер, другие байты» по
-    размеру и mtime не видна, а её обязан ловить именно скан.
+    (rel, size, crc, ошибка, (размер на диске, mtime_ns)). stat — до чтения: если файл
+    поменяют во время чтения, в кэш попадёт старый mtime, и следующий скан его перечитает.
     """
     data_dir, chunk = args
     res = []
@@ -334,14 +449,14 @@ def _stat_chunk(args):
         try:
             st = os.stat(p)
         except OSError as e:
-            res.append((rel, -1, 0, 'stat: %s' % e))
+            res.append((rel, -1, 0, 'stat: %s' % e, None))
             continue
         try:
             size, crc = file_crc(p)
         except OSError as e:
-            res.append((rel, st.st_size, 0, 'read: %s' % e))
+            res.append((rel, st.st_size, 0, 'read: %s' % e, None))
             continue
-        res.append((rel, size, crc, None))
+        res.append((rel, size, crc, None, (st.st_size, st.st_mtime_ns)))
     return res
 
 
@@ -356,35 +471,47 @@ def _map(fn, arglist, jobs):
         pool.join()
 
 
-def scan(data_dir, keys, jobs):
-    """{rel: (size, crc32)}. Крупные файлы первыми: они задают длину хвоста параллельной части."""
-    sized = []
-    for k in keys:
-        try:
-            sized.append((os.path.getsize(os.path.join(data_dir, k.replace('/', os.sep))), k))
-        except OSError:
-            sized.append((0, k))
-    sized.sort(key=lambda t: (-t[0], t[1]))
-
+def scan(data_dir, keys, jobs, stats=None, cache=None):
+    """
+    {rel: (size, crc32)}. С cache файлы с прежними размером и mtime не читаются; остальные
+    читают воркеры порциями, крупные файлы первыми: они задают длину хвоста параллельной части.
+    """
+    stats = stats or {}
     out = {}
-    chunks, chunk_bytes = [], 0
-    for size, k in sized:
-        chunks.append(k)
+    todo = []
+    for k in keys:
+        st = stats.get(k)
+        if st is None:
+            try:
+                s = os.stat(os.path.join(data_dir, k.replace('/', os.sep)))
+                st = (s.st_size, s.st_mtime_ns)
+            except OSError:
+                st = (0, 0)                      # ошибку сообщит _stat_chunk
+        hit = cache.get_crc(k, st) if cache is not None else None
+        if hit is not None:
+            out[k] = hit
+            cache.put_crc(k, st, hit[0], hit[1])
+        else:
+            todo.append((st[0], k))
+    todo.sort(key=lambda t: (-t[0], t[1]))
+
+    chunks, chunk, chunk_bytes = [], [], 0
+    for size, k in todo:
+        chunk.append(k)
         chunk_bytes += size
-        if chunk_bytes >= 16 * MB:
-            _merge_scan(out, _map(_stat_chunk, [(data_dir, chunks)], jobs))
-            chunks, chunk_bytes = [], 0
-    if chunks:
-        _merge_scan(out, _map(_stat_chunk, [(data_dir, chunks)], jobs))
-    return out
-
-
-def _merge_scan(out, results):
-    for rows in results:
-        for rel, size, crc, err in rows:
+        if chunk_bytes >= SCAN_CHUNK_BYTES or len(chunk) >= SCAN_CHUNK_FILES:
+            chunks.append((data_dir, chunk))
+            chunk, chunk_bytes = [], 0
+    if chunk:
+        chunks.append((data_dir, chunk))
+    for rows in _map(_stat_chunk, chunks, jobs):
+        for rel, size, crc, err, st in rows:
             if err:
                 raise SystemExit('скан %s: %s' % (rel, err))
             out[rel] = (size, crc)
+            if cache is not None:
+                cache.put_crc(rel, st, size, crc)
+    return out
 
 
 # --------------------------------------------------------------------------------------
@@ -430,7 +557,7 @@ class Manifest(object):
         self.params = data.get('params', {})
         self.piles = []
         for p in data.get('piles', []):
-            # v1 хранил ещё mtime_ns 4-м полем — он больше не нужен, crc считается у всех
+            # v1 хранил ещё mtime_ns 4-м полем — теперь mtime только в локальном кэше скана
             files = [[e[0], e[1], e[2]] for e in p.get('files', [])]
             self.piles.append(Pile(p['id'], p.get('name'), files, p.get('packed_size', 0)))
         self.next_id = max([p.id for p in self.piles] + [0]) + 1
@@ -692,10 +819,14 @@ def cmd_build(args):
         raise SystemExit('Data не найдена: %s' % data_dir)
     os.makedirs(out_dir, exist_ok=True)
 
-    keys = policy.walk(data_dir)
+    cache = ScanCache(os.path.join(out_dir, SCAN_CACHE_NAME), data_dir, policy.marks_key(),
+                      use=not args.rescan)
+    t = time.time()
+    keys = policy.walk(data_dir, cache)
     log('policy: %d расширений, %d игнорируемых каталогов; отобрано файлов: %d'
-        ' (из них %d из игнорируемых каталогов — на них ссылаются данные)'
-        % (len(policy.exts), len(policy.ignore_dirs), len(keys), len(policy.referenced)))
+        ' (из них %d из игнорируемых каталогов — на них ссылаются данные), %.1f с'
+        % (len(policy.exts), len(policy.ignore_dirs), len(keys), len(policy.referenced),
+           time.time() - t))
 
     # индекс внутри pile — case-insensitive hash_map: разные имена, отличающиеся регистром,
     # сливаются в один ключ (проигрывает последний). Не должно быть и в разных pile.
@@ -735,11 +866,13 @@ def cmd_build(args):
         man.piles = []
         full = True
 
-    # --- текущее состояние файлов: сначала только stat, crc — для изменённых ---
+    # --- текущее состояние файлов: crc из кэша скана по размеру и mtime, прочие — читаем ---
     t = time.time()
-    cur = scan(data_dir, keys, args.jobs)
-    log('скан Data: %d файлов, %s исходников, %.1f с (crc всех)'
-        % (len(cur), human(sum(v[0] for v in cur.values())), time.time() - t))
+    cur = scan(data_dir, keys, args.jobs, policy.stats, cache)
+    cache.save()
+    log('скан Data: %d файлов, %s исходников, %.1f с (прочитано %d, из кэша %d%s)'
+        % (len(cur), human(sum(v[0] for v in cur.values())), time.time() - t,
+           len(cur) - cache.hits, cache.hits, '; --rescan: кэш не использован' if args.rescan else ''))
 
     # --- применяем манифест: снимаем привязки удалённых, помечаем изменённые pile ---
     piles = man.piles
@@ -824,7 +957,7 @@ def cmd_build(args):
                human(p.source_size()), human(p.packed_size)))
     if args.dry_run:
         log('')
-        log('--dry-run: ничего не записано (манифест тоже не тронут)')
+        log('--dry-run: pile и манифест не тронуты (обновлён только кэш скана)')
         return 0
 
     # --- сборка помеченных pile, затем деление переполненных и пересборка частей ---
@@ -1158,6 +1291,9 @@ def main(argv=None):
                        help='разложить все файлы по pile заново (имена — с 01)')
         p.add_argument('--keep-stale', action='store_true',
                        help='не удалять pile, которых нет в манифесте')
+        p.add_argument('--rescan', action='store_true',
+                       help='не верить кэшу скана (%s): прочитать всю Data и посчитать crc '
+                            'заново — ловит правки с прежними размером и mtime' % SCAN_CACHE_NAME)
 
     p_build = sub.add_parser('build', help='собрать/дообновить pile')
     common(p_build)

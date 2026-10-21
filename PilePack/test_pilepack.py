@@ -448,12 +448,86 @@ def test_referenced_from_ignored(root):
     check('Maps/Test/G/r.maya' not in keys, 'расширение вне ext не берётся и по ссылке')
 
 
+def test_scan_cache(root):
+    print('кэш скана: размер+mtime вместо чтения, правка с новым mtime ловится, --rescan читает всё')
+    data = os.path.join(root, 'Data')
+    old = 1000000000                                   # mtime далеко до начала скана: кэшу можно верить
+    spec = {'d/f%02d.bin' % i: (5000, 'rand') for i in range(6)}
+    spec['ref/a.xdb'] = (0, 'text')
+    tree(data, spec)
+    with open(os.path.join(data, 'ref', 'a.xdb'), 'wb') as f:
+        f.write(b'<a><b href="/Test/t.bin" /></a>')
+    mkfile(os.path.join(data, 'Test', 't.bin'), 3000, 'rand', seed=7)
+    for dirpath, _, names in os.walk(data):
+        for n in names:
+            os.utime(os.path.join(dirpath, n), (old, old))
+    a = common_args(root)
+    cache_path = os.path.join(root, 'Piles', pp.SCAN_CACHE_NAME)
+
+    def stat_line(out):
+        return [l for l in out.splitlines() if 'скан Data' in l]
+
+    code, out = run(['build'] + a)
+    check(code == 0 and os.path.isfile(cache_path), 'первый build записал кэш скана')
+    check('прочитано 8, из кэша 0' in out, 'первый прогон читает все файлы (%s)' % stat_line(out))
+    check('Test/t.bin' in [f[0] for p in load_manifest_piles(root) for f in p.files],
+          'файл из ignore_dir взят по ссылке')
+
+    code, out = run(['plan'] + a)
+    # «пересобираем 0» значит и то, что Test/t.bin по-прежнему найден: ссылку взяли из кэша
+    check('прочитано 0, из кэша 8' in out and 'пересобираем 0' in out
+          and 'привязку снимаем' not in out,
+          'повторный прогон берёт всё из кэша, ссылка из .xdb жива (%s)' % stat_line(out))
+
+    # правка с новым mtime ловится без --rescan
+    rel = 'd/f03.bin'
+    p = os.path.join(data, rel.replace('/', os.sep))
+    mkfile(p, 5000, 'rand', seed=42)
+    code, out = run(['build'] + a)
+    check('прочитано 1, из кэша 7' in out and 'пересобираем 1' in out,
+          'изменённый файл (новый mtime) перечитан, его pile пересобран (%s)' % stat_line(out))
+
+    # та же правка, но mtime вернули назад: кэш её не видит, --rescan видит
+    os.utime(p, (old, old))
+    run(['build'] + a)                                 # кэш запоминает old для нового содержимого
+    with open(p, 'rb') as f:
+        body = f.read()
+    with open(p, 'wb') as f:
+        f.write(bytes([body[0] ^ 0xFF]) + body[1:])
+    os.utime(p, (old, old))
+    code, out = run(['plan'] + a)
+    check('пересобираем 0' in out, 'правка с прежними размером и mtime кэшу не видна (ожидаемо)')
+    code, out = run(['build', '--rescan'] + a)
+    check('прочитано 8, из кэша 0' in out and 'пересобираем 1' in out,
+          '--rescan читает всё и ловит такую правку (%s)' % stat_line(out))
+    check(pp.cmd_verify(verify_args(root)) == 0, 'verify после --rescan чист')
+
+    # недавно тронутому файлу кэш не верит (racy): mtime в окне RACY_NS до скана
+    os.utime(p, None)
+    run(['build'] + a)
+    code, out = run(['plan'] + a)
+    check('прочитано 1, из кэша 7' in out, 'файл, тронутый прямо перед сканом, перечитан (%s)'
+          % stat_line(out))
+
+    # битый кэш не ломает сборку
+    with open(cache_path, 'wb') as f:
+        f.write(b'{not json')
+    code, out = run(['plan'] + a)
+    check(code == 0 and 'прочитано 8, из кэша 0' in out, 'битый кэш игнорируется')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
         with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
             f.write('ext: txt bin xdb\nignore_dir: Test\n')
         print('== test_referenced_from_ignored')
         test_referenced_from_ignored(root)
+
+    with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
+        with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
+            f.write('ext: txt bin xdb\nignore_dir: Test\n')
+        print('== test_scan_cache')
+        test_scan_cache(root)
 
     with tempfile.TemporaryDirectory(prefix='pilepack-test-') as root:
         with open(os.path.join(root, 'policy.txt'), 'w', encoding='utf-8') as f:
