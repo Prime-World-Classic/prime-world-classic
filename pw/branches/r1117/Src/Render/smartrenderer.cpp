@@ -1058,6 +1058,8 @@ void DrawPrimitive(const DipDescriptor& _descr)
   // геометрия в D3D9 на месте, а PS даёт альфу 0 (SRCALPHA => невидим).
   IDirect3DDevice9* devFO = 0;
   bool forced = false;
+  bool transposed = false;
+  float savedM[32];
   static int s_fo = -1;
   if (s_fo < 0)
   {
@@ -1120,6 +1122,32 @@ void DrawPrimitive(const DipDescriptor& _descr)
                 pc[0] = 0x00; pc[1] = 0xFF; pc[2] = 0x00; pc[3] = 0xFF;
               }
             }
+            // PW_D3D_FORCEOPAQUE=4: та же подмена + транспонирование c0..c7
+            // (WORLD/VIEW). Клиент кладёт перенос в ПОСЛЕДНЮЮ СТРОКУ, т.е.
+            // матрицы под строковые векторы (v*M), а HLSL пишет mul(M, v) —
+            // столбцовое умножение, для таких матриц w ~ 3e7 и квад схлопывается.
+            // Если после транспонирования зелёный квад появится в readback —
+            // расхождение конвенций подтверждено, правку искать в мосте
+            // c-банк->SSBO, а не в шейдере.
+            if (s_fo == 4)
+            {
+              float m[32];
+              if (SUCCEEDED(dev2->GetVertexShaderConstantF(0, m, 8)))
+              {
+                float t[32];
+                for (int r = 0; r < 4; ++r)
+                  for (int c = 0; c < 4; ++c)
+                  {
+                    t[0 * 16 + c * 4 + r] = m[0 * 16 + r * 4 + c];
+                    t[1 * 16 + c * 4 + r] = m[1 * 16 + r * 4 + c];
+                  }
+                if (SUCCEEDED(dev2->SetVertexShaderConstantF(0, t, 8)))
+                {
+                  memcpy(savedM, m, sizeof(savedM));
+                  transposed = true;
+                }
+              }
+            }
             DebugTrace( "D3dForce: ALPHABLENDENABLE=0 для плашки x1=%.1f y1=%.1f", x1, y1 );
           }
         }
@@ -1131,6 +1159,8 @@ void DrawPrimitive(const DipDescriptor& _descr)
     _descr.startIndex, _descr.primitiveCount );
   if (forced)
     devFO->SetRenderState(D3DRS_ALPHABLENDENABLE, 1u);
+  if (transposed)
+    devFO->SetVertexShaderConstantF(0, savedM, 8);
   NoteDipTrace(_descr, false);
 
   if(s_DXWarnLevel)
