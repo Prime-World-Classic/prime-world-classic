@@ -772,7 +772,7 @@ static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
       // DebugTrace — это PrintfFormatter с маленьким лимитом аргументов
       // (17 не принимает), поэтому строка собирается snprintf'ом (тот же
       // приём, что у D3dProj/D3dC ниже)
-      char dd[900];
+      char dd[1400];
       int dn = snprintf(dd, sizeof(dd), "D3dDraw: nv=%u prim=%u idx=%u mat=%s "
                   "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
                   "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
@@ -805,8 +805,31 @@ static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
         for (int k = 0; k < 4; ++k) if (vc[r * 4 + k] != 0.f) { nz = true; break; }
         if (nz) ++bnz;
       }
-      snprintf(dd + dn, sizeof(dd) - dn, " bnz=%u b24=(%.6g,%.6g,%.6g,%.6g) b25=(%.6g,%.6g,%.6g,%.6g)",
-                  bnz, vc[96], vc[97], vc[98], vc[99], vc[100], vc[101], vc[102], vc[103]);
+      // b20/b21 = c20/c21 (INSTANCE_DATA = c20, GlobalMasks.h:96) — матрица
+      // первого экземпляра; inz — сколько регистров c20..c29 ненулевые
+      unsigned inz = 0u;
+      for (int r = 20; r < 30; ++r)
+      {
+        bool nz = false;
+        for (int k = 0; k < 4; ++k) if (vc[r * 4 + k] != 0.f) { nz = true; break; }
+        if (nz) ++inz;
+      }
+      // c20..c31 дословно — по ним восстанавливается раскладка элемента
+      // instanceData (матрица + SH-константы) в c-банке
+      {
+        char tail[600];
+        int tn = snprintf(tail, sizeof(tail), " bnz=%u inz=%u", bnz, inz);
+        if (tn < 0 || tn >= (int)sizeof(tail)) tn = (int)sizeof(tail) - 1;
+        for (int r = 20; r < 32 && tn < (int)sizeof(tail) - 70; ++r)
+        {
+          const int q = snprintf(tail + tn, sizeof(tail) - tn,
+                                 " c%d=(%.6g,%.6g,%.6g,%.6g)", r,
+                                 vc[r * 4], vc[r * 4 + 1], vc[r * 4 + 2], vc[r * 4 + 3]);
+          if (q < 0 || q >= (int)(sizeof(tail) - tn)) break;
+          tn += q;
+        }
+        snprintf(dd + dn, sizeof(dd) - dn, "%s", tail);
+      }
       DebugTrace("%s", dd);
       }
     }

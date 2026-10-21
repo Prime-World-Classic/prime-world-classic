@@ -455,7 +455,15 @@ public:
 // (register(...) в .hlsl) по GlobalMasks.h: VSHADER_LOCALCONST1..11 = c21..c31,
 // BONES = c24 (MAX_BONES = 70), INSTANCE_DATA = c20 (MAX_INSTANCES_COUNT = 19);
 // stride — ArrayStride из SPIR-V (он же размер элемента DX9-массива).
-struct SsboBridgeDef { const char* name; unsigned regBase, regCount, stride, byteSize; };
+struct SsboBridgeDef { const char* name; unsigned regBase, regCount, stride, byteSize;
+  // arrayStride — ArrayStride, который обязан выдать SPIR-V (0 = не проверять).
+  // Нужен, когда у одного имени SSBO несколько вариантов шейдера с разными
+  // базами c-банка (instanceData: LIGHTINGINSTANCEDSH -> c20, NewInstancing -> c29).
+  // srcStride — размер элемента В c-банке (0 = равен stride, перенос дословный).
+  // Если он меньше stride, запись идёт с переупаковкой: matCols первых float'ов
+  // элемента раскладываются по столбцам матрицы (16 Б на столбец: 12 Б данных +
+  // 4 Б паддинга), хвост элемента переносится дословно сразу за матрицей.
+  unsigned arrayStride, srcStride, matCols; };
 static const SsboBridgeDef kSsboBridges[] = {
   // _commonSkinning.hlsl:8 `float4x3 BonesMatrices[MAX_BONES] : register(BONES)`
   // -> c24..c233 (3 регистра на кость). Буфер КОРРЕКТНО брать по числу записей,
@@ -464,11 +472,49 @@ static const SsboBridgeDef kSsboBridges[] = {
   // Замер 2026-10-20: буфер 232*16 = 3712 Б (77 записей) -> выход за буфер при
   // индексе >76, клиент зависает в vkQueuePresentKHR (лог 2026.10.20-20.02.42:
   // «VkHang: к бэкенду нет обращений 180 с … Present: present >»).
-  { "BonesMatrices", 24u, 232u, 48u, 256u * 48u },
+  // Замер 2026-10-21 (SPIR-V рантайм-шейдеров из записи PWRD, shader 55):
+  // `OpDecorate %_runtimearr_mat4v3float ArrayStride 64` при MatrixStride 16
+  // ColMajor, т.е. DXC пакует float4x3 в 4 столбца по 16 Б = 64 Б на кость, а
+  // клиент кладёт в c-банк 3 регистра плотно (48 Б, renderer.h:179
+  // SetVertexShaderConstantsMatrix43 -> 3*matrixCount). Прежний дословный перенос
+  // читал кость i по смещению i*64 в буфере, где элементы лежат по 48 Б: для
+  // i>=1 матрица целиком мусор, даже для i=0 столбцы сдвинуты на float. Отсюда
+  // «сильно уменьшенная модель героя» и пропавшая анимированная геометрия
+  // (A/B ab10, разбор с пользователем m01357) -> stride 64, srcStride 48,
+  // matCols 4; записей 256 (индекс = 255 * BLENDINDICES), хвост за 77
+  // написанными костями обнуляется.
+  { "BonesMatrices", 24u, 232u, 64u, 256u * 64u, 64u, 48u, 4u },
   // NatureMapMaterial.hlsl:24 `hexParams[NUM_HEXES_SUPPORTED * CONSTANTS_PER_HEX]
   // : register(VSHADER_LOCALCONST2)` -> c22..c61; поставщик —
   // Src/Terrain/NatureMapVisual.cpp:375 (перед каждым DrawIndexedPrimitive).
-  { "hexParams", 22u, 40u, 16u, 40u * 16u },
+  { "hexParams", 22u, 40u, 16u, 40u * 16u, 0u, 0u, 0u },
+  // BasicMaterial.hlsl:120-132 (LIGHTINGINSTANCEDSH): `struct InstanceData
+  // { float4x3 worldMatrix; float4 shConstants[7]; }` +
+  // `StructuredBuffer<InstanceData> instanceData`; D3D9-вариант того же массива —
+  // `instanceData[MAX_INSTANCES_COUNT] : register(INSTANCE_DATA)`, INSTANCE_DATA =
+  // c20, MAX_INSTANCES_COUNT = 19 (GlobalMasks.h:96,:101) -> в c-банке 3 + 7 = 10
+  // регистров на экземпляр (160 Б), в SPIR-V элемент 176 Б (матрица 4x16 + 7
+  // float4, ArrayStride 176 — замер по shader 59 записи PWRD). До этого моста
+  // набор 1 получал dummy (нули) — в логах дословно «SSBO без моста — подставлен
+  // dummy — instanceData», а шейдер брал worldMatrix экземпляра из нулевого
+  // буфера -> инстансная геометрия схлопнута (те же п.1/п.2 очереди A/B).
+  { "instanceData", 20u, 190u, 176u, 64u * 176u, 176u, 160u, 4u },
+  // BasicMaterial.hlsl:140 (NewInstancing): `float4x3
+  // instanceData[MAX_INSTANCES_COUNT] : register(VSHADER_LOCALCONST9)` -> c29,
+  // 3 регистра на экземпляр; SPIR-V — голый StructuredBuffer<float4x3>,
+  // ArrayStride 64. То же имя, другой базовый регистр -> различие по arrayStride
+  // (64 против 176).
+  { "instanceData", 29u, 57u, 64u, 64u * 64u, 64u, 48u, 4u },
+  // ParticleFXMaterial.hlsl:18-20 (NewParticles): `struct INSTANCE_DATA { float4
+  // constants; float4 xPlaneAxis; float4 yPlaneAxis; float4 dmMultiply; float4
+  // dmAdd; }` + `StructuredBuffer<INSTANCE_DATA> data`; D3D9-вариант —
+  // `data[PFX_MAX_INSTANCES] : register(VSHADER_LOCALCONST1)` -> c21, 5
+  // регистров (80 Б) на экземпляр, PFX_MAX_INSTANCES = 47 (GlobalMasks.h:106) ->
+  // c21..c255; поставщик — ParticleFX.cpp:756 (SetVertexShaderConstants
+  // VSHADER_LOCALCONST0, ...). Матрицы в элементе нет -> переупаковка не нужна
+  // (ArrayStride 80 = 5 регистров, замер по shader 0 записи PWRD: `OpDecorate
+  // %_runtimearr_c20 ArrayStride 80`).
+  { "data", 21u, 235u, 80u, 47u * 80u, 80u, 0u, 0u },
 };
 static const unsigned kSsboBridgeCount = sizeof(kSsboBridges) / sizeof(kSsboBridges[0]);
 
@@ -1497,6 +1543,21 @@ static bool SsboFullRequested()
   {
     char bm[16];
     s_on = (GetEnvironmentVariableA("PW_VK_SSBO_FULL", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
+  }
+  return s_on != 0;
+}
+
+// PW_VK_SSBO_DUMP — печатает, ЧТО именно уходит в SSBO (байты скретча) рядом с
+// источником из c-банка. Нужен для проверки переупаковки float4x3: readBuffer в
+// этом nvrhi нет, но writeBuffer идёт дословно, поэтому скретч = то, что увидит
+// шейдер.
+static bool SsboDumpRequested()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char bm[16];
+    s_on = (GetEnvironmentVariableA("PW_VK_SSBO_DUMP", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
   }
   return s_on != 0;
 }
@@ -3770,9 +3831,21 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
 
     const unsigned logical = e.stream;
     const unsigned slot = SlotOfStream(d, logical);
+    // Инстансный атрибут обязан идти с ШАГОМ 0. D3D9 продвигает инстансный
+    // поток РАЗ НА ИНСТАНС (d3d9backend.cpp:1024 привязывает счётчик/буфер, а
+    // шаг идёт на каждый инстанс), а вершинный атрибут Vulkan — раз на
+    // ВЕРШИНУ. Прежний шаг 4 (встроенный счётчик) давал каждой ВЕРШИНЕ свой
+    // элемент: герой из 1656 вершин читал instanceData[0..1655] при 19
+    // валидных записях — модель размазывает по экрану (A/B ab20, 2026-10-22).
+    // Продвижение по инстансам делает DrawImpl (instAdv/instBase).
     // Инстансный атрибут без клиентского буфера — это режим счётчика
     // (BindInstanceCounter): шаг берём из встроенного счётчика, иначе
     // CreateInputLayout падает и каждый инстансный вывод теряется.
+    // (Проверено 2026-10-22: NVRHI сам переводит isInstanced в
+    // VkVertexInputRate::eInstance — Vendor/NVRHI/src/vulkan/vulkan-shader.cpp:158-163,
+    // т.е. продвижение «раз на инстанс» обеспечивает сам layout; попытка
+    // сделать шаг 0 и двигать привязку вручную картинки НЕ меняла, а для
+    // многоинстансных выводов ломала чтение (A/B ab22).)
     const unsigned instStrideEff = d.instStride
         ? d.instStride
         : ((logical == kInstanceStream && d.instSrc == kNoRes) ? kInstCounterStride : 0u);
@@ -5052,12 +5125,22 @@ static unsigned long long SamplerSetSignature(NvrhiBackendImpl& d, const NvrhiBa
   {
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 3u || it.kind != rkSampler) continue;
-    unsigned long long sk = 0;
-    if (it.binding < kMaxSamplerSlots) sk = SamplerKeyOf(d.model.sampler[it.binding]);
-    h ^= sk;
-    h *= 1099511628211ull;
-    h ^= it.binding;
-    h *= 1099511628211ull;
+    // массив сэмплеров (`sampler diffuseMap[3] : register(s0)` в
+    // Src/Render/OnlineShaders/NatureMap.psh) в D3D9 занимает НЕСКОЛЬКО слотов
+    // — s0,s1,s2 — а в SPIR-V это массив дескрипторов (count=3) на binding 0..2.
+    // Значит элемент e = слот binding+e, а не «всем элементам — состояние
+    // слота binding».
+    const unsigned cnt = it.count ? it.count : 1u;
+    for (unsigned e = 0; e < cnt; ++e)
+    {
+      const unsigned slot = it.binding + e;
+      unsigned long long sk = 0;
+      if (slot < kMaxSamplerSlots) sk = SamplerKeyOf(d.model.sampler[slot]);
+      h ^= sk;
+      h *= 1099511628211ull;
+      h ^= slot;
+      h *= 1099511628211ull;
+    }
   }
   return h ? h : 1ull;
 }
@@ -5077,12 +5160,14 @@ static nvrhi::BindingSetHandle FindOrCreateSamplerSet(NvrhiBackendImpl& d, const
   {
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 3u || it.kind != rkSampler) continue;
-    nvrhi::SamplerHandle sh = (it.binding < kMaxSamplerSlots) ? FindOrCreateSampler(d, it.binding)
-                                                              : d.defSampler;
-    if (!sh) sh = d.defSampler;
     const unsigned cnt = it.count ? it.count : 1u;
     for (unsigned e = 0; e < cnt; ++e)
     {
+      // элемент e массива = слот сэмплера binding+e (см. SamplerSetSignature)
+      const unsigned slot = it.binding + e;
+      nvrhi::SamplerHandle sh = (slot < kMaxSamplerSlots) ? FindOrCreateSampler(d, slot)
+                                                          : d.defSampler;
+      if (!sh) sh = d.defSampler;
       nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::Sampler(it.binding, sh);
       bi.arrayElement = e;
       bsd.bindings.push_back(bi);
@@ -5224,11 +5309,18 @@ static unsigned long long TexSignature(NvrhiBackendImpl& d, const NvrhiBackendIm
   {
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 2u || it.kind != rkTexture) continue;
-    const unsigned tex = (it.binding < kMaxSamplerSlots) ? d.texBound[it.binding] : kNoRes;
-    const unsigned long long part = ((unsigned long long)it.binding << 32)
-                                    | (unsigned long long)tex;
-    h ^= part;
-    h *= 1099511628211ull;
+    // массив текстур = несколько слотов D3D9 (binding+e), см. комментарий в
+    // SamplerSetSignature
+    const unsigned cnt = it.count ? it.count : 1u;
+    for (unsigned e = 0; e < cnt; ++e)
+    {
+      const unsigned slot = it.binding + e;
+      const unsigned tex = (slot < kMaxSamplerSlots) ? d.texBound[slot] : kNoRes;
+      const unsigned long long part = ((unsigned long long)slot << 32)
+                                      | (unsigned long long)tex;
+      h ^= part;
+      h *= 1099511628211ull;
+    }
   }
   return h;
 }
@@ -5252,17 +5344,29 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
   {
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
     if (it.set != 2u || it.kind != rkTexture) continue;
-    const unsigned tex = (it.binding < kMaxSamplerSlots) ? d.texBound[it.binding] : kNoRes;
+    // каждый элемент массива дескрипторов обязан быть записан
+    // (VUID-vkCmdDrawIndexed-None-08114: «descriptor ... never been updated»),
+    // и элемент e читается из D3D9-слота binding+e: `sampler diffuseMap[3] :
+    // register(s0)` (Src/Render/OnlineShaders/NatureMap.psh — слой фракций
+    // миникарты, Minimap.cpp:1318-1323 биндит s0/s1/s2 = m_natureTextureA/B/N)
+    // занимает s0..s2; прежний вариант отдавал всем трём текстуру s0 -> все три
+    // слоя одним цветом (замер: миникарта залита зелёным, mmask 4302 px против
+    // 25-185 у DXVK, нет синего и коричневого слоёв)
+    const unsigned cnt = it.count ? it.count : 1u;
+    for (unsigned e = 0; e < cnt; ++e)
+    {
+    const unsigned slot = it.binding + e;
+    const unsigned tex = (slot < kMaxSamplerSlots) ? d.texBound[slot] : kNoRes;
     if (d.curPs == VkTracePsIdx() && d.tracePsLogged < 24u)
     {
       ++d.tracePsLogged;
       char dt[160];
       if (tex != kNoRes && tex < d.textures.size())
         snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u %ux%u fmt%d",
-                 d.curPs, it.binding, tex, d.textures[tex].w, d.textures[tex].h,
+                 d.curPs, slot, tex, d.textures[tex].w, d.textures[tex].h,
                  (int)d.textures[tex].seamFormat);
       else
-        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u (нет)", d.curPs, it.binding, tex);
+        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u (нет)", d.curPs, slot, tex);
       VkNote("VkTracePs", true, dt);
     }
     const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
@@ -5281,7 +5385,7 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
         if (d.texDimMismatch < 6u)
         {
           char det[80];
-          snprintf(det, sizeof(det), "слот %u: шейдер %s, привязана %s", it.binding,
+          snprintf(det, sizeof(det), "слот %u: шейдер %s, привязана %s", slot,
                    wantCube ? "cube" : "2D", d.textures[tex].cube ? "cube" : "2D");
           VkNote("Draw: тип текстуры не совпал с шейдером", false, det);
           ++d.texDimMismatch;
@@ -5293,7 +5397,7 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     else if (d.texMissing < 8u)
     {
       char det[64];
-      snprintf(det, sizeof(det), "слот %u не привязан", it.binding);
+      snprintf(det, sizeof(det), "слот %u не привязан", slot);
       VkNote("Draw: текстура в набор", false, det);
       ++d.texMissing;
     }
@@ -5307,20 +5411,17 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
       const bool same = (d.curDs < d.surfaces.size() && d.surfaces[d.curDs].tex
                          && d.surfaces[d.curDs].tex == d.textures[tex].tex);
       char det[160];
-      snprintf(det, sizeof(det), "binding %u текстура#%u %ux%u curDs#%u тот же=%d z=%u zW=%u st=%u",
-               it.binding, tex, d.textures[tex].w, d.textures[tex].h, d.curDs, (int)same,
+      snprintf(det, sizeof(det), "binding %u слот %u текстура#%u %ux%u curDs#%u тот же=%d z=%u zW=%u st=%u",
+               it.binding, slot, tex, d.textures[tex].w, d.textures[tex].h, d.curDs, (int)same,
                (unsigned)d.model.zEnable, (unsigned)d.model.zWriteEnable,
                (unsigned)d.model.stencilEnable);
       VkNote("Draw: чтение глубины", true, det);
     }
     if (pTex == (nvrhi::ITexture*)d.dummyTex || pTex == (nvrhi::ITexture*)d.dummyCubeTex)
       ++d.dummySubs;
-    const unsigned cnt = it.count ? it.count : 1u;
-    for (unsigned e = 0; e < cnt; ++e)
-    {
-      nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::Texture_SRV(it.binding, pTex);
-      bi.arrayElement = e;
-      bsd.bindings.push_back(bi);
+    nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::Texture_SRV(it.binding, pTex);
+    bi.arrayElement = e;
+    bsd.bindings.push_back(bi);
     }
   }
   nvrhi::BindingSetHandle bs = d.nvrhiDevice->createBindingSet(bsd, rm.layoutTex);
@@ -6811,7 +6912,7 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       }
       // DebugTrace — PrintfFormatter с маленьким лимитом аргументов, строка
       // собирается snprintf'ом
-      char dd[900];
+      char dd[1400];
       int dn = snprintf(dd, sizeof(dd),
                  "VkDraw: nv=%u prim=%u idx=%u lay=%u bnz=%u bsD=%u "
                  "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
@@ -6834,9 +6935,31 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
                  pv[32], pv[33], pv[34], pv[35], pv[36], pv[37], pv[38], pv[39],
                  pv[40], pv[41], pv[42], pv[43], pv[44], pv[45], pv[46], pv[47]);
       if (dn < 0 || dn >= (int)sizeof(dd)) dn = (int)sizeof(dd) - 1;
-      snprintf(dd + dn, sizeof(dd) - dn,
-                 " b24=(%.6g,%.6g,%.6g,%.6g) b25=(%.6g,%.6g,%.6g,%.6g)",
-                 pv[96], pv[97], pv[98], pv[99], pv[100], pv[101], pv[102], pv[103]);
+      // b20/b21 = c20/c21 (INSTANCE_DATA = c20, GlobalMasks.h:96) — матрица
+      // первого экземпляра; inz — сколько регистров c20..c29 ненулевые
+      unsigned inz = 0u;
+      for (int r = 20; r < 30; ++r)
+      {
+        bool nz = false;
+        for (int k = 0; k < 4; ++k) if (pv[r * 4 + k] != 0.f) { nz = true; break; }
+        if (nz) ++inz;
+      }
+      // c20..c31 дословно — по ним восстанавливается раскладка элемента
+      // instanceData (матрица + SH-константы) в c-банке
+      {
+        char tail[600];
+        int tn = snprintf(tail, sizeof(tail), " inz=%u", inz);
+        if (tn < 0 || tn >= (int)sizeof(tail)) tn = (int)sizeof(tail) - 1;
+        for (int r = 20; r < 32 && tn < (int)sizeof(tail) - 70; ++r)
+        {
+          const int q = snprintf(tail + tn, sizeof(tail) - tn,
+                                 " c%d=(%.6g,%.6g,%.6g,%.6g)", r,
+                                 pv[r * 4], pv[r * 4 + 1], pv[r * 4 + 2], pv[r * 4 + 3]);
+          if (q < 0 || q >= (int)(sizeof(tail) - tn)) break;
+          tn += q;
+        }
+        snprintf(dd + dn, sizeof(dd) - dn, "%s", tail);
+      }
       DebugTrace("%s", dd);
       }
     }
@@ -6857,8 +6980,85 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       size_t bytes = (size_t)(l - f) * 16u;
       const uint64_t off = (uint64_t)(f - def.regBase) * 16ull;
       if (off + bytes > (uint64_t)def.byteSize) bytes = (size_t)((uint64_t)def.byteSize - off);
-      d.commandList->writeBuffer(d.ssbo[b].buf, m_constShadow[csVertex] + f * 4, bytes, off);
-      d.ssboBytes += bytes;
+      if (!def.srcStride || def.srcStride == def.stride)
+      {
+        d.commandList->writeBuffer(d.ssbo[b].buf, m_constShadow[csVertex] + f * 4, bytes, off);
+        d.ssboBytes += bytes;
+      }
+      else
+      {
+        // Переупаковка элемента srcStride -> stride (см. комментарий таблицы
+        // мостов). Грязный диапазон игнорируется, буфер собирается целиком:
+        // элемент не кратен регистру (48/160 Б), поэтому границы диапазона с
+        // границами элементов не совпадают, а буферы маленькие (16 КБ / 11 КБ /
+        // 4 КБ) — цена полной пересборки пренебрежима. Записи, для которых в
+        // c-банке нет источника, остаются нулями (как в dummy).
+        static std::vector<unsigned char> s_scratch;
+        const size_t srcE = def.srcStride, dstE = def.stride;
+        const size_t nSrc = (size_t)def.regCount * 16u / srcE;
+        // границы грязного диапазона регистров -> границы ЭЛЕМЕНТОВ источника
+        // (элемент не кратен регистру: 48 и 160 Б), с запасом по краям
+        size_t e0 = ((size_t)(f - def.regBase) * 16u) / srcE;
+        size_t e1 = ((size_t)(l - def.regBase) * 16u + srcE - 1u) / srcE;
+        if (e0 >= nSrc) continue;
+        if (e1 > nSrc) e1 = nSrc;
+        const size_t nBytes = (e1 - e0) * dstE;
+        s_scratch.assign(nBytes, 0);
+        const unsigned char* src = (const unsigned char*)m_constShadow[csVertex]
+                                 + (size_t)def.regBase * 16u;
+        for (size_t e = e0; e < e1; ++e)
+        {
+          unsigned char* dstp = &s_scratch[(e - e0) * dstE];
+          // float4x3: в c-банке клиента Matrix43 (System/matrix43.h — 12 float
+          // подряд) лежит как 3 ГРУППЫ по 4 float; замеры PW_D3D_TRACEDRAW
+          // (ab19): c20=(-0.534787,-1.04163,0,14.3978) c21=(1.04163,-0.534787,0,
+          // 184.309) — 4-я компонента каждой группы различна и по величине
+          // похожа на координату мира, т.е. группы = СТОЛБЦЫ матрицы 4x3, а
+          // перенос сидит в последней (4-й) строке. SPIR-V же ждёт
+          // mat4v3float (4 столбца по 3 float, MatrixStride 16), у которого
+          // столбец r = СТРОКА r HLSL-матрицы (иначе mul(float4(pos,1), M) в
+          // BasicMaterial.hlsl:160 считает не то). Значит между этими
+          // раскладками — ТРАНСПОЗИЦИЯ 3x4 -> 4x3:
+          // dst[16*r + 4*i] = src[4*r + 16*i], r=0..3, i=0..2, 4-й float
+          // столбца — паддинг 0. Прежний вариант (копировать 12 подряд идущих
+          // байт на столбец) давал матрицу-транспоненту: модель схлопывалась.
+          const float* s4 = (const float*)(src + e * srcE);
+          float*       d4 = (float*)dstp;
+          for (unsigned r = 0; r < def.matCols; ++r)
+          {
+            d4[r * 4u + 3u] = 0.f;
+            for (unsigned i = 0; i + 1u < def.matCols; ++i)
+              d4[r * 4u + i] = s4[r + 4u * i];
+          }
+          const size_t tail = srcE - (size_t)def.matCols * 12u;
+          if (tail) memcpy(dstp + (size_t)def.matCols * 16u,
+                           src + e * srcE + (size_t)def.matCols * 12u, tail);
+        }
+        d.commandList->writeBuffer(d.ssbo[b].buf, &s_scratch[0], nBytes,
+                                   (uint64_t)e0 * dstE);
+        if (SsboDumpRequested())
+        {
+          static unsigned s_dumped = 0;
+          if (s_dumped < 16)
+          {
+            const float* sf = (const float*)(src + e0 * srcE);
+            const float* df = (const float*)&s_scratch[0];
+            char dd[700];
+            snprintf(dd, sizeof(dd),
+                     "VkSsboDump %s e0=%zu n=%zu src=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)"
+                     "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) dst=(%.6g,%.6g,%.6g,%.6g)"
+                     "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                     def.name, e0, e1 - e0,
+                     sf[0], sf[1], sf[2], sf[3], sf[4], sf[5], sf[6], sf[7],
+                     sf[8], sf[9], sf[10], sf[11], sf[12], sf[13], sf[14], sf[15],
+                     df[0], df[1], df[2], df[3], df[4], df[5], df[6], df[7],
+                     df[8], df[9], df[10], df[11], df[12], df[13], df[14], df[15]);
+            DebugTrace("%s", dd);
+            ++s_dumped;
+          }
+        }
+        d.ssboBytes += nBytes;
+      }
       ++d.ssboUploads;
       ++d.uploads;
     }
@@ -6959,11 +7159,15 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     }
   }
   if (d.instSrc != kNoRes && d.instSrc < d.buffers.size() && d.buffers[d.instSrc].buf)
+  {
     gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.buffers[d.instSrc].buf)
                        .setSlot(d.instSlot).setOffset(d.buffers[d.instSrc].off + d.instOffset));
+  }
   else if (m_instanceCount && LayoutWantsInstanceStream(d) && EnsureInstCounter(d, m_instanceCount))
+  {
     gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.instCounter)
                        .setSlot(d.instSlot).setOffset(0));
+  }
   if (d.curIb != kNoRes && d.curIb < d.buffers.size() && d.buffers[d.curIb].buf)
     gs.setIndexBuffer(nvrhi::IndexBufferBinding().setBuffer(d.buffers[d.curIb].buf)
                       .setOffset(d.buffers[d.curIb].off)
@@ -7048,10 +7252,17 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
           nvrhi::BufferHandle buf = d.dummySsbo;
           unsigned match = kSsboBridgeCount;
           for (unsigned b = 0; b < kSsboBridgeCount; ++b)
-            if (d.ssbo[b].buf && strcmp(it.name, kSsboBridges[b].name) == 0)
-            { buf = d.ssbo[b].buf; match = b; break; }
+          {
+            const SsboBridgeDef& bd = kSsboBridges[b];
+            if (!d.ssbo[b].buf || strcmp(it.name, bd.name) != 0) continue;
+            // у instanceData два варианта с одним именем и разными базами
+            // c-банка -> различие по ArrayStride из SPIR-V (176 = struct
+            // InstanceData, 64 = голый float4x3)
+            if (bd.arrayStride && it.stride && it.stride != bd.arrayStride) continue;
+            buf = d.ssbo[b].buf; match = b; break;
+          }
           // Живые имена SSBO (снимок по SPIR-V из записей PWRD): BonesMatrices,
-          // hexParams, instanceData, data. Последние два пока без моста —
+          // hexParams, instanceData, data. У `data` моста нет до сих пор —
           // заметка нужна, чтобы это не потерялось.
           static unsigned s_unlogged = 0;
           if (match == kSsboBridgeCount && it.name[0] && s_unlogged < 8u)
@@ -7517,7 +7728,7 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
 
   std::vector<unsigned> opOfId, elemOfId, ptrBase, varType, decBind, decSet;
   std::vector<unsigned char> ptrStore, structBlock, structBufferBlock;
-  std::vector<unsigned> imgDim, smpImgBase, arrayLenId, constVal, arrStride;
+  std::vector<unsigned> imgDim, smpImgBase, arrayLenId, constVal, arrStride, structMember0;
   std::vector<std::string> nameOfId;
   for (unsigned i = 5u; i < n; )
   {
@@ -7553,6 +7764,16 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
       {
         if (w[i + 1] + 1u > arrayLenId.size()) arrayLenId.resize(w[i + 1] + 1u, 0xffffffffu);
         arrayLenId[w[i + 1]] = w[i + 3];
+      }
+      // OpTypeStruct (30): id, типы членов. Первый член SSBO-обёртки — сам
+      // runtime-массив, и ArrayStride висит на нём, а не на структуре (замер:
+      // %type_StructuredBuffer_InstanceData -> %_runtimearr_InstanceData
+      // ArrayStride 176). Без этого it.stride оставался 0 и сверка stride из
+      // таблицы мостов молча не работала.
+      if (code == 30u && wc >= 3u)
+      {
+        if (w[i + 1] + 1u > structMember0.size()) structMember0.resize(w[i + 1] + 1u, 0xffffffffu);
+        structMember0[w[i + 1]] = w[i + 2];
       }
       // OpTypeImage (25): id, sampled, dim, imageFormat, depth, arrayed, ms,
       // depthArrayed — то есть Dim лежит в w[i+3] (enum SPV: 0=1D, 1=2D, 2=3D,
@@ -7691,7 +7912,10 @@ static void SpvResScan(const void* pCode, unsigned codeSize,
         it.name[sizeof(it.name) - 1u] = 0;
       }
       if (arrBase < arrStride.size() && arrStride[arrBase]) it.stride = arrStride[arrBase];
-      else if (base < arrStride.size()) it.stride = arrStride[base];
+      else if (base < arrStride.size() && arrStride[base]) it.stride = arrStride[base];
+      else if (base < structMember0.size() && structMember0[base] != 0xffffffffu
+               && structMember0[base] < arrStride.size())
+        it.stride = arrStride[structMember0[base]];
     }
     if (it.kind != rkOther) pOut->push_back(it);
   }
