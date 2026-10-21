@@ -5983,6 +5983,165 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       }
     }
   }
+  // PW_VK_TRACEPROJ=x0,y0,x1,y1 — спроецировать вершины вывода, чей bbox
+  // POSITION совпадает с окном (та же точная мода, что у PW_VK_SKIPBB), матрицами
+  // клиента (WORLD=c0..c3, VIEW=c4..c7 — GlobalMasks.h:62,65) и напечатать
+  // прямоугольник в пикселях вьюпорта в ДВУХ конвенциях: col = M*v (как пишет
+  // HLSL mul(matrix, vector)) и row = v*M (раскладка D3D9/D3DX: перевод в
+  // последнем регистре). Разбор записи PWRD (tools/render_replay/plate_geom.py)
+  // показал: для UI-выводов осмысленные экранные координаты даёт именно row,
+  // а col даёт w ~ 1e7 и коллапс в центр вьюпорта.
+  static int s_pj[4] = { 0x7FFFFFFF, 0x7FFFFFFF, -1, -1 };
+  static int s_pjp[4] = { 0x7FFFFFFF, 0x7FFFFFFF, -1, -1 };  // окно по ПРОЕКЦИИ
+  static unsigned s_pjPs = 0xFFFFFFFFu;   // PW_VK_TRACEPROJ_PS=<seam-индекс PS+1>
+  static bool s_traceProjRead = false;
+  static unsigned s_projLogged = 0u;
+  if (!s_traceProjRead)
+  {
+    s_traceProjRead = true;
+    char bp[64];
+    if (GetEnvironmentVariableA("PW_VK_TRACEPROJ_PS", bp, sizeof(bp) - 1) > 0)
+      s_pjPs = (unsigned)atoi(bp) - 1u;
+    if (GetEnvironmentVariableA("PW_VK_TRACEPROJP", bp, sizeof(bp) - 1) > 0)
+    {
+      int v[4] = { 0, 0, 0, 0 };
+      char* p = bp;
+      int i = 0;
+      while (p && i < 4) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+      if (i == 4) { s_pjp[0] = v[0]; s_pjp[1] = v[1]; s_pjp[2] = v[2]; s_pjp[3] = v[3]; }
+    }
+    if (GetEnvironmentVariableA("PW_VK_TRACEPROJ", bp, sizeof(bp) - 1) > 0)
+    {
+      int v[4] = { 0, 0, 0, 0 };
+      char* p = bp;
+      int i = 0;
+      while (p && i < 4) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+      if (i == 4) { s_pj[0] = v[0]; s_pj[1] = v[1]; s_pj[2] = v[2]; s_pj[3] = v[3]; }
+    }
+  }
+  if (s_pj[2] >= 0 && s_projLogged < 40000u && d.model.colorWriteEnable
+      && (s_pjPs == 0xFFFFFFFFu || d.curPs == s_pjPs)
+      && d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
+  {
+    const std::vector<nvrhi::VertexAttributeDesc>& desc = d.layoutObjs[d.curLayout].desc;
+    const nvrhi::VertexAttributeDesc* pPos = 0;
+    for (size_t k = 0; k < desc.size(); ++k)
+      if (desc[k].name.compare(0, 8, "POSITION") == 0) { pPos = &desc[k]; break; }
+    if (pPos && pPos->bufferIndex < kMaxVertexStreams && d.vb[pPos->bufferIndex] != kNoRes
+        && d.vb[pPos->bufferIndex] < d.buffers.size())
+    {
+      const std::vector<unsigned char>& cpu = d.buffers[d.vb[pPos->bufferIndex]].cpu;
+      const size_t stride = pPos->elementStride ? pPos->elementStride : 1u;
+      const size_t base = (size_t)d.vbOffset[pPos->bufferIndex]
+                        + (size_t)startVertexLocation * stride;
+      static float vx[64], vy[64];
+      unsigned nv = 0u;
+      const nvrhi::VertexAttributeDesc* pCol = 0;
+      for (size_t k = 0; k < desc.size(); ++k)
+        if (desc[k].name.compare(0, 5, "COLOR") == 0) { pCol = &desc[k]; break; }
+      unsigned col0 = 0u, colFmt = 0u, colSlot = 0xFFFFFFFFu;
+      if (pCol)
+      {
+        colFmt = (unsigned)pCol->format;
+        colSlot = pCol->bufferIndex;
+        if (colSlot < kMaxVertexStreams && d.vb[colSlot] != kNoRes && d.vb[colSlot] < d.buffers.size())
+        {
+          const std::vector<unsigned char>& c2 = d.buffers[d.vb[colSlot]].cpu;
+          const size_t st2 = pCol->elementStride ? pCol->elementStride : 1u;
+          const size_t p2 = (size_t)d.vbOffset[colSlot] + (size_t)startVertexLocation * st2 + pCol->offset;
+          if (p2 + 4 <= c2.size()) memcpy(&col0, &c2[p2], 4);
+        }
+      }
+      float mx0 = 1e30f, mx1 = -1e30f, my0 = 1e30f, my1 = -1e30f;
+      for (unsigned v = 0u; v < vtx; ++v)
+      {
+        const size_t p = base + (size_t)v * stride;
+        if (p + pPos->offset + 8 > cpu.size()) break;
+        float x, y;
+        memcpy(&x, &cpu[p + pPos->offset], 4);
+        memcpy(&y, &cpu[p + pPos->offset + 4], 4);
+        if (x < mx0) mx0 = x;
+        if (x > mx1) mx1 = x;
+        if (y < my0) my0 = y;
+        if (y > my1) my1 = y;
+        if (nv < 64u) { vx[nv] = x; vy[nv] = y; ++nv; }
+      }
+      const float* pv = m_constShadow[csVertex];
+      // проекция в пиксели строки вьюпорта по конвенции row (v*M): разбор PWRD
+      // и зелёный контроль (перекраска вершинного цвета в D3D9-путе) показали,
+      // что именно она совпадает с тем, где квад реально рисуется; col (M*v,
+      // как записано в HLSL) даёт w ~ 1e7 и коллапс в центр вьюпорта.
+      // PW_VK_TRACEPROJ задаёт окно ИМЕННО по проекции (пиксели), а не по
+      // вершинному bbox: один и тот же Flash-квад масштабируется анимацией, и
+      // по вершинному bbox плашка неотличима от полос опыта.
+      double qx0 = 1e300, qx1 = -1e300, qy0 = 1e300, qy1 = -1e300, wmax = 0.0;
+      for (unsigned v = 0u; v < nv; ++v)
+      {
+        float v4[4] = { vx[v], vy[v], 0.f, 1.f }, q[4], r[4];
+        for (int i = 0; i < 4; ++i)
+          q[i] = pv[0*4+i]*v4[0] + pv[1*4+i]*v4[1] + pv[2*4+i]*v4[2] + pv[3*4+i]*v4[3];
+        for (int i = 0; i < 4; ++i)
+          r[i] = pv[16+0*4+i]*q[0] + pv[16+1*4+i]*q[1] + pv[16+2*4+i]*q[2] + pv[16+3*4+i]*q[3];
+        if (r[3] == 0.f) continue;
+        if ((double)fabs(r[3]) > wmax) wmax = r[3];
+        double px = (r[0] / r[3] + 1.0) * 0.5 * m_viewport.width + m_viewport.x;
+        double py = (1.0 - r[1] / r[3]) * 0.5 * m_viewport.height + m_viewport.y;
+        if (px < qx0) qx0 = px;
+        if (px > qx1) qx1 = px;
+        if (py < qy0) qy0 = py;
+        if (py > qy1) qy1 = py;
+      }
+      // окно задаётся по ВЕРШИННОМУ bbox: один и тот же Flash-квад
+      // (0,0)-(3240,520) используется и полосами опыта, и плашкой — различить
+      // их можно только по проекции, поэтому печатаем проекцию для всех
+      // выводов этого bbox и сравниваем наборы сторон офлайн
+      const bool bbHit = nv && s_pj[2] >= 0
+        && fabs((double)mx0 - (double)s_pj[0]) <= 40.0 && fabs((double)my0 - (double)s_pj[1]) <= 40.0
+        && fabs((double)mx1 - (double)s_pj[2]) <= 40.0 && fabs((double)my1 - (double)s_pj[3]) <= 40.0;
+      // окно по проекции нужно, чтобы ловить выводы, чей ВЕРШИННЫЙ bbox в
+      // Vulkan-пути отличается от D3D9-ного при том же результате на экране
+      const bool pjHit = nv && s_pjp[2] >= 0
+        && fabs(qx0 - (double)s_pjp[0]) <= 25.0 && fabs(qy0 - (double)s_pjp[1]) <= 25.0
+        && fabs(qx1 - (double)s_pjp[2]) <= 25.0 && fabs(qy1 - (double)s_pjp[3]) <= 25.0;
+      if (bbHit || pjHit)
+      {
+        ++s_projLogged;
+        char dp[400];
+        const NvrhiBackendImpl::ShaderObj* pVs = (d.curVs < d.shaderObjs.size()) ? &d.shaderObjs[d.curVs] : 0;
+        const NvrhiBackendImpl::ShaderObj* pPs = (d.curPs < d.shaderObjs.size()) ? &d.shaderObjs[d.curPs] : 0;
+        snprintf(dp, sizeof(dp), "ps=%u vtx=%u lay=%u rt#%u vp=%u,%u %ux%u bb=(%.0f,%.0f)-(%.0f,%.0f) proj=(%.1f,%.1f)-(%.1f,%.1f) wmax=%.4g col0=%08X fmt=%u cslot=%u",
+                  d.curPs, vtx, d.curLayout, d.curRt,
+                  (unsigned)m_viewport.x, (unsigned)m_viewport.y,
+                  (unsigned)m_viewport.width, (unsigned)m_viewport.height,
+                  (double)mx0, (double)my0, (double)mx1, (double)my1,
+                  qx0, qy0, qx1, qy1, wmax, col0, colFmt, colSlot);
+        {
+          int n2 = (int)strlen(dp);
+          for (int k = 0; k < 2 && n2 > 0 && n2 < (int)sizeof(dp) - 40; ++k)
+          {
+            const NvrhiBackendImpl::ShaderObj* p = k ? pPs : pVs;
+            unsigned long long hv = 1469598103934665603ull;
+            if (p) for (size_t b = 0; b < p->spv.size(); ++b)
+            { hv ^= (unsigned long long)p->spv[b]; hv *= 1099511628211ull; }
+            n2 += snprintf(dp + n2, sizeof(dp) - n2, " spv%s=%zu:%016llx", k ? "Ps" : "Vs",
+                           p ? p->spv.size() : 0u, hv);
+          }
+        }
+        DebugTrace("VkProj: %s", dp);
+        // те же WORLD/VIEW, что печатает D3dC в D3D9-путе (GlobalMasks.h:62,65)
+        snprintf(dp, sizeof(dp), "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+                 "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                 pv[0], pv[1], pv[2], pv[3], pv[4], pv[5], pv[6], pv[7],
+                 pv[8], pv[9], pv[10], pv[11], pv[12], pv[13], pv[14], pv[15]);
+        DebugTrace("VkProj: %s", dp);
+        snprintf(dp, sizeof(dp), "V=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+                 "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                 pv[16], pv[17], pv[18], pv[19], pv[20], pv[21], pv[22], pv[23],
+                 pv[24], pv[25], pv[26], pv[27], pv[28], pv[29], pv[30], pv[31]);
+        DebugTrace("VkProj: %s", dp);
+      }
+    }
+  }
   // Разбор UIFlashMaterial (ps=15 — генератор белой плашки 330x132, см. бисект по
   // порядку вывода): PW_VK_TRACECONST=<ps> — печатать банк констант этого вывода.
   // В шейдере `color = color * color1 + color2` (UIFlashMaterial.hlsl:198), а
@@ -6024,7 +6183,97 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
              pv[80], pv[81], pv[82], pv[83],
              pv[84], pv[85], pv[86], pv[87]);
     DebugTrace("VkTraceC: %s", dc);
+    // WORLD = c0..c3, VIEW = c4..c7 (GlobalMasks.h:62,65) — те же регистры,
+    // что печатает D3dC на стороне D3D9 (smartrenderer.cpp). Позиция квада
+    // = mul(VIEW, mul(WORLD, (x,y,0,1))), так что по ним видно, совпадает ли
+    // геометрия в двух путях.
+    snprintf(dc, sizeof(dc),
+             "ps=%u VS W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+             "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+             d.curPs, pv[0], pv[1], pv[2], pv[3], pv[4], pv[5], pv[6], pv[7],
+             pv[8], pv[9], pv[10], pv[11], pv[12], pv[13], pv[14], pv[15]);
+    DebugTrace("VkTraceC: %s", dc);
+    snprintf(dc, sizeof(dc),
+             "ps=%u VS V=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+             "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+             d.curPs, pv[16], pv[17], pv[18], pv[19], pv[20], pv[21], pv[22], pv[23],
+             pv[24], pv[25], pv[26], pv[27], pv[28], pv[29], pv[30], pv[31]);
+    DebugTrace("VkTraceC: %s", dc);
   }
+  // PW_VK_SKIPPJ=x0,y0,x1,y1 — пропустить вывод, прямоугольник которого ПОСЛЕ
+  // проекции матрицами клиента (row = v*M) совпадает с окном. Это причинная
+  // проверка: PW_VK_SKIPBB работает по вершинному bbox и снимает вместе с
+  // плашкой полосы опыта (тот же quad), а окно по проекции отличает плашку
+  // 330x132 в (29,443)-(359,575) от всех остальных выводов того же bbox.
+  static int s_skp[4] = { 0x7FFFFFFF, 0x7FFFFFFF, -1, -1 };
+  static bool s_skipPjRead = false;
+  static unsigned s_skipPjLogged = 0u;
+  if (!s_skipPjRead)
+  {
+    s_skipPjRead = true;
+    char bp[64];
+    if (GetEnvironmentVariableA("PW_VK_SKIPPJ", bp, sizeof(bp) - 1) > 0)
+    {
+      int v[4] = { 0, 0, 0, 0 };
+      char* p = bp;
+      int i = 0;
+      while (p && i < 4) { v[i++] = atoi(p); p = strchr(p, ','); if (p) ++p; }
+      if (i == 4) { s_skp[0] = v[0]; s_skp[1] = v[1]; s_skp[2] = v[2]; s_skp[3] = v[3]; }
+    }
+  }
+  if (s_skp[2] >= 0 && d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
+  {
+    const std::vector<nvrhi::VertexAttributeDesc>& desc = d.layoutObjs[d.curLayout].desc;
+    const nvrhi::VertexAttributeDesc* pPos = 0;
+    for (size_t k = 0; k < desc.size(); ++k)
+      if (desc[k].name.compare(0, 8, "POSITION") == 0) { pPos = &desc[k]; break; }
+    if (pPos && pPos->bufferIndex < kMaxVertexStreams && d.vb[pPos->bufferIndex] != kNoRes
+        && d.vb[pPos->bufferIndex] < d.buffers.size())
+    {
+      const std::vector<unsigned char>& cpu = d.buffers[d.vb[pPos->bufferIndex]].cpu;
+      const size_t stride = pPos->elementStride ? pPos->elementStride : 1u;
+      const size_t base = (size_t)d.vbOffset[pPos->bufferIndex]
+                        + (size_t)startVertexLocation * stride;
+      const float* pv = m_constShadow[csVertex];
+      double qx0 = 1e300, qx1 = -1e300, qy0 = 1e300, qy1 = -1e300;
+      unsigned np = 0u;
+      for (unsigned v = 0u; v < vtx; ++v)
+      {
+        const size_t p = base + (size_t)v * stride + pPos->offset;
+        if (p + 8 > cpu.size()) break;
+        float x, y;
+        memcpy(&x, &cpu[p], 4);
+        memcpy(&y, &cpu[p + 4], 4);
+        float v4[4] = { x, y, 0.f, 1.f }, q[4], r[4];
+        for (int i = 0; i < 4; ++i)
+          q[i] = pv[0*4+i]*v4[0] + pv[1*4+i]*v4[1] + pv[2*4+i]*v4[2] + pv[3*4+i]*v4[3];
+        for (int i = 0; i < 4; ++i)
+          r[i] = pv[16+0*4+i]*q[0] + pv[16+1*4+i]*q[1] + pv[16+2*4+i]*q[2] + pv[16+3*4+i]*q[3];
+        if (r[3] == 0.f) continue;
+        double px = (r[0] / r[3] + 1.0) * 0.5 * m_viewport.width + m_viewport.x;
+        double py = (1.0 - r[1] / r[3]) * 0.5 * m_viewport.height + m_viewport.y;
+        if (px < qx0) qx0 = px;
+        if (px > qx1) qx1 = px;
+        if (py < qy0) qy0 = py;
+        if (py > qy1) qy1 = py;
+        ++np;
+      }
+      if (np && fabs(qx0 - (double)s_skp[0]) <= 25.0 && fabs(qy0 - (double)s_skp[1]) <= 25.0
+          && fabs(qx1 - (double)s_skp[2]) <= 25.0 && fabs(qy1 - (double)s_skp[3]) <= 25.0)
+      {
+        if (s_skipPjLogged < 6u)
+        {
+          ++s_skipPjLogged;
+          char dt[200];
+          snprintf(dt, sizeof(dt), "ps=%u vtx=%u lay=%u rt#%u proj=(%.1f,%.1f)-(%.1f,%.1f)",
+                    d.curPs, vtx, d.curLayout, d.curRt, qx0, qy0, qx1, qy1);
+          VkNote("VkSkipPJ", true, dt);
+        }
+        return S_OK;
+      }
+    }
+  }
+
   // Бисект по ПОРЯДКУ вывода внутри кадра (2026-10-20): PW_VK_SKIPDRAW_FROM/TO.
   // Порядок независим от идентичности шейдера и от UP-путей (вершинные данные
   // которых рекордер не сохраняет), поэтому ловит и те выводы, которые не

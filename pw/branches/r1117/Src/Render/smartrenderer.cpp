@@ -633,6 +633,80 @@ inline void NotePipelineState()
 // «бэкенд его теряет», нужен список Dip'ов самого клиента — он одинаков для
 // обоих бэкендов. Включается env PW_DRAW_TRACE=1; печатаются только мелкие
 // Dip'ы (prim<=8), иначе лог разрастается текстом HUD.
+// Вывод-плашка опознаётся bbox'ом вершин ДО матриц: в бою это x[0..3240]
+// y[0..520] (замер VkSkipBB в Vulkan-трассе: пропуск ровно этого bbox снимает
+// белых с 43 560 до 2). Прежний гейт x1>8000 && y1>3000 ловил квады ЭКРАНА
+// ЗАГРУЗКИ (x[60..8900] y[60..3620]) — вывод «в D3D9 плашка не растеризуется»
+// был получен на них, а не на выводах боевого кадра.
+static bool IsPlateBbox(float x1, float y1)
+{
+  return x1 >= 3230.f && x1 <= 3250.f && y1 >= 510.f && y1 <= 530.f;
+}
+
+// readback цели и скан: белые/непрозрачные пиксели и bbox зелёных (зелёный =
+// метка, которую ставит PW_D3D_FORCEOPAQUE=2/3). Вызывается и сразу после
+// вывода-плашки, и с задержкой в несколько десятков Dip'ов — иначе не отличить
+// «квад не растеризуется» от «квад нарисован, но его закрыли позже в кадре».
+static unsigned ScanTarget(IDirect3DDevice9* dev, IDirect3DSurface9* rt, const char* tag)
+{
+  static IDirect3DSurface9* stg = 0;
+  static unsigned stgW = 0, stgH = 0, stgFmt = 0;
+  if (!dev || !rt)
+    return 0u;
+  D3DSURFACE_DESC rd;
+  if (FAILED(rt->GetDesc(&rd)))
+    return 0u;
+  if (!stg || stgW != rd.Width || stgH != rd.Height || stgFmt != (unsigned)rd.Format)
+  {
+    if (stg) stg->Release();
+    stg = 0; stgW = stgH = stgFmt = 0;
+    if (SUCCEEDED(dev->CreateOffscreenPlainSurface(rd.Width, rd.Height, rd.Format,
+                                                   D3DPOOL_SYSTEMMEM, &stg, 0)))
+    { stgW = rd.Width; stgH = rd.Height; stgFmt = (unsigned)rd.Format; }
+  }
+  HRESULT hrRb = stg ? dev->GetRenderTargetData(rt, stg) : (HRESULT)0;
+  if (!stg || FAILED(hrRb))
+  {
+    DebugTrace( "D3dRb%s: нет readback hr=%08X", tag, (unsigned)hrRb );
+    return 0u;
+  }
+  D3DLOCKED_RECT lr;
+  if (FAILED(stg->LockRect(&lr, 0, D3DLOCK_READONLY)))
+    return 0u;
+  const unsigned char* base = (const unsigned char*)lr.pBits;
+  unsigned white = 0u, opaque = 0u;
+  unsigned gx0 = 0xFFFFFFFFu, gy0 = 0xFFFFFFFFu, gx1 = 0u, gy1 = 0u, green = 0u;
+  for (unsigned y = 0u; y < rd.Height; ++y)
+  {
+    const unsigned char* row = base + (size_t)y * (size_t)lr.Pitch;
+    for (unsigned x = 0u; x + 4u <= rd.Width * 4u; x += 4u)
+    {
+      if (row[x+3u] == 0xFFu)
+      {
+        ++opaque;
+        if (row[x] > 0xF0u && row[x+1u] > 0xF0u && row[x+2u] > 0xF0u)
+          ++white;
+      }
+      // BGRA: зелёный пиксель = 00 FF 00 (любая альфа)
+      if (row[x] < 0x40u && row[x+1u] > 0xC0u && row[x+2u] < 0x40u)
+      {
+        ++green;
+        const unsigned px = x >> 2;
+        if (px < gx0) gx0 = px;
+        if (px > gx1) gx1 = px;
+        if (y < gy0) gy0 = y;
+        if (y > gy1) gy1 = y;
+      }
+    }
+  }
+  stg->UnlockRect();
+  DebugTrace( "D3dRb%s: rt=%p %ux%u fmt=%u белых=%u непрозр=%u зелёных=%u",
+              tag, (void*)rt, rd.Width, rd.Height,
+              (unsigned)rd.Format, white, opaque, green );
+  DebugTrace( "D3dRb%s: зелёный bbox=(%u,%u)-(%u,%u)", tag, gx0, gy0, gx1, gy1 );
+  return green;
+}
+
 static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
 {
   static int s_on = -1;
@@ -743,74 +817,133 @@ static void NoteDipTrace(const DipDescriptor& _descr, bool _indexed)
     }
     DebugTrace( "D3dVb: x[%.1f..%.1f] y[%.1f..%.1f]", bx0, bx1, by0, by1 );
 
-    // readback цели ПРЯМО ПОСЛЕ вывода-плашки: белым ли лёг квад в D3D9-слое
-    static IDirect3DSurface9* stg = 0;
-    static unsigned stgW = 0, stgH = 0, stgFmt = 0, s_rbLogged = 0u;
-    if (rt && cw == 15u && bx1 > 8000.f && by1 > 3000.f && s_rbLogged < 6u)
+    // Банк констант того же Dip'а в D3D9: WORLD = c0..c3, VIEW = c4..c7
+    // (GlobalMasks.h:62,65), LOCALCONST0/1 = c20/c21. Сравниваем с VkTraceC/VkProj
+    // на стороне seam'а. PW_D3D_TRACEPJ=x0,y0,x1,y1 — окно по ПРОЕКЦИИ в пиксели
+    // вьюпортной строки (конвенция row = v*M), а не по вершинному bbox: один и
+    // тот же Flash-квад масштабируется анимацией, и по вершинному bbox
+    // плашка неотличима от полос опыта (прежний гейт x1>3000 && 400<y1<600
+    // ловил именно полосы).
+    static unsigned s_cLogged = 0u;
+    static int s_pj[4] = { 0x7FFFFFFF, 0x7FFFFFFF, -1, -1 };
+    static bool s_pjRead = false;
+    if (!s_pjRead)
     {
-      ++s_rbLogged;
-      D3DSURFACE_DESC rd;
-      if (SUCCEEDED(rt->GetDesc(&rd)))
+      s_pjRead = true;
+      char bp[64];
+      if (GetEnvironmentVariableA( "PW_D3D_TRACEPJ", bp, sizeof(bp) - 1 ) > 0)
       {
-        if (!stg || stgW != rd.Width || stgH != rd.Height || stgFmt != (unsigned)rd.Format)
+        int v[4] = { 0, 0, 0, 0 };
+        char* pch = bp;
+        int i = 0;
+        while (pch && i < 4) { v[i++] = atoi(pch); pch = strchr(pch, ','); if (pch) ++pch; }
+        if (i == 4) { s_pj[0] = v[0]; s_pj[1] = v[1]; s_pj[2] = v[2]; s_pj[3] = v[3]; }
+      }
+    }
+    double qx0 = 1e300, qx1 = -1e300, qy0 = 1e300, qy1 = -1e300, wmax = 0.0;
+    unsigned np = 0u;
+    float vc[32] = {0}, lc[8] = {0};
+    dev->GetVertexShaderConstantF( 0, vc, 8 );
+    dev->GetVertexShaderConstantF( 20, lc, 2 );
+    {
+      void* vpx = 0;
+      if (vb && vstr == 16u && SUCCEEDED(vb->Lock(voff, 0, &vpx, 0)) && vpx)
+      {
+        const float* f = (const float*)vpx;
+        for (unsigned k = 0u; k < _descr.numVertices && k < 64u; ++k)
         {
-          if (stg) stg->Release();
-          stg = 0; stgW = stgH = stgFmt = 0;
-          if (SUCCEEDED(dev->CreateOffscreenPlainSurface(rd.Width, rd.Height, rd.Format,
-                                                         D3DPOOL_SYSTEMMEM, &stg, 0)))
-          { stgW = rd.Width; stgH = rd.Height; stgFmt = (unsigned)rd.Format; }
+          const float* src = f + (voff / 16u + _descr.startIndex + k) * 4u;
+          float v4[4] = { src[0], src[1], 0.f, 1.f }, q[4], r[4];
+          for (int i = 0; i < 4; ++i)
+            q[i] = vc[0*4+i]*v4[0] + vc[1*4+i]*v4[1] + vc[2*4+i]*v4[2] + vc[3*4+i]*v4[3];
+          for (int i = 0; i < 4; ++i)
+            r[i] = vc[16+0*4+i]*q[0] + vc[16+1*4+i]*q[1] + vc[16+2*4+i]*q[2] + vc[16+3*4+i]*q[3];
+          if (r[3] == 0.f) continue;
+          if ((double)fabs(r[3]) > wmax) wmax = r[3];
+          double px = (r[0] / r[3] + 1.0) * 0.5 * vp.Width + vp.X;
+          double py = (1.0 - r[1] / r[3]) * 0.5 * vp.Height + vp.Y;
+          if (px < qx0) qx0 = px;
+          if (px > qx1) qx1 = px;
+          if (py < qy0) qy0 = py;
+          if (py > qy1) qy1 = py;
+          ++np;
         }
-        HRESULT hrRb = stg ? dev->GetRenderTargetData(rt, stg) : (HRESULT)0;
-        if (stg && SUCCEEDED(hrRb))
+        vb->Unlock();
+      }
+    }
+    // окно PW_D3D_TRACEPJ задаётся по ВЕРШИННОМУ bbox (тот же гейт, что у
+    // PW_VK_TRACEPROJ на стороне seam'а): один и тот же Flash-квад
+    // (0,0)-(3240,520) используется и полосами опыта, и плашкой, поэтому
+    // печатаем проекцию для всех выводов этого bbox и сравниваем стороны офлайн
+    const bool bbHit = s_pj[2] >= 0 && np
+      && fabs((double)bx0 - (double)s_pj[0]) <= 40.0 && fabs((double)by0 - (double)s_pj[1]) <= 40.0
+      && fabs((double)bx1 - (double)s_pj[2]) <= 40.0 && fabs((double)by1 - (double)s_pj[3]) <= 40.0;
+    if ((bbHit || (s_pj[2] < 0 && IsPlateBbox(bx1, by1))) && s_cLogged < 4000u)
+    {
+      ++s_cLogged;
+      unsigned raw8 = 0, raw12 = 0;
+      {
+        void* vp2 = 0;
+        if (vb && vstr == 16u && SUCCEEDED(vb->Lock(voff, 0, &vp2, 0)) && vp2)
         {
-          D3DLOCKED_RECT lr;
-          if (SUCCEEDED(stg->LockRect(&lr, 0, D3DLOCK_READONLY)))
-          {
-            const unsigned char* base = (const unsigned char*)lr.pBits;
-            const unsigned px[4][2] = {{170u,500u},{60u,450u},{300u,560u},{600u,300u}};
-            unsigned v[4];
-            for (int k = 0; k < 4; ++k)
-            {
-              const unsigned char* q = base + (size_t)px[k][1] * (size_t)lr.Pitch
-                                     + (size_t)px[k][0] * 4u;
-              v[k] = (unsigned)q[0] | ((unsigned)q[1] << 8) | ((unsigned)q[2] << 16)
-                   | ((unsigned)q[3] << 24);
-            }
-            unsigned white = 0u, opaque = 0u;
-            unsigned gx0 = 0xFFFFFFFFu, gy0 = 0xFFFFFFFFu, gx1 = 0u, gy1 = 0u, green = 0u;
-            for (unsigned y = 0u; y < rd.Height; ++y)
-            {
-              const unsigned char* row = base + (size_t)y * (size_t)lr.Pitch;
-              for (unsigned x = 0u; x + 4u <= rd.Width * 4u; x += 4u)
-              {
-                if (row[x+3u] == 0xFFu)
-                {
-                  ++opaque;
-                  if (row[x] > 0xF0u && row[x+1u] > 0xF0u && row[x+2u] > 0xF0u)
-                    ++white;
-                }
-                // BGRA: зелёный пиксель = 00 FF 00 (любая альфа)
-                if (row[x] < 0x40u && row[x+1u] > 0xC0u && row[x+2u] < 0x40u)
-                {
-                  ++green;
-                  const unsigned px = x >> 2;
-                  if (px < gx0) gx0 = px;
-                  if (px > gx1) gx1 = px;
-                  if (y < gy0) gy0 = y;
-                  if (y > gy1) gy1 = y;
-                }
-              }
-            }
-            snprintf( dt, sizeof(dt), "%ux%u fmt=%u белых=%u непрозр=%u зелёных=%u "
-                      "зелёный bbox=(%u,%u)-(%u,%u) (170,500)=%08X (300,560)=%08X",
-                      rd.Width, rd.Height, (unsigned)rd.Format, white, opaque, green,
-                      gx0, gy0, gx1, gy1, v[0], v[2] );
-            DebugTrace( "D3dRb: %s", dt );
-            stg->UnlockRect();
-          }
+          const unsigned char* b = (const unsigned char*)vp2
+            + (size_t)(voff / 16u + _descr.startIndex) * 16u;
+          memcpy( &raw8, b + 8, 4 );
+          memcpy( &raw12, b + 12, 4 );
+          vb->Unlock();
         }
-        else
-          DebugTrace( "D3dRb: нет readback hr=%08X", (unsigned)hrRb );
+      }
+      // декларация потока не запрошена: в этом билде d3d9-заголовок клиента не
+      // объявляет D3DVERTEXDECLARATION9/GetVertexShaderDeclaration (проверено
+      // сборкой), а desc layout'а seam'а уже печатает VkIlMap
+      snprintf( dt, sizeof(dt), "vp=%u,%u %ux%u nv=%u bb=(%.0f,%.0f)-(%.0f,%.0f) proj=(%.1f,%.1f)-(%.1f,%.1f) wmax=%.4g raw8=%08X raw12=%08X",
+                vp.X, vp.Y, vp.Width, vp.Height, np,
+                bx0, by0, bx1, by1, qx0, qy0, qx1, qy1, wmax, raw8, raw12 );
+      DebugTrace( "D3dProj: %s", dt );
+      snprintf( dt, sizeof(dt), "W=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+                "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g)",
+                vc[0], vc[1], vc[2], vc[3], vc[4], vc[5], vc[6], vc[7],
+                vc[8], vc[9], vc[10], vc[11], vc[12], vc[13], vc[14], vc[15] );
+      DebugTrace( "D3dC: %s", dt );
+      snprintf( dt, sizeof(dt), "V=(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) "
+                "(%.6g,%.6g,%.6g,%.6g)(%.6g,%.6g,%.6g,%.6g) c20=(%.6g,%.6g,%.6g,%.6g) "
+                "c21=(%.6g,%.6g,%.6g,%.6g)",
+                vc[16], vc[17], vc[18], vc[19], vc[20], vc[21], vc[22], vc[23],
+                vc[24], vc[25], vc[26], vc[27], vc[28], vc[29], vc[30], vc[31],
+                lc[0], lc[1], lc[2], lc[3], lc[4], lc[5], lc[6], lc[7] );
+      DebugTrace( "D3dC: %s", dt );
+    }
+    // readback цели ПРЯМО ПОСЛЕ вывода-плашки: белым ли лёг квад в D3D9-слое.
+    // Тот же квад перекрашивается в зелёный (PW_D3D_FORCEOPAQUE=2/3), поэтому
+    // ищем зелёный. Отдельно читаем ту же поверхность через несколько десятков
+    // Dip'ов: если квад рисуется, но его затирают позже в кадре, зелёный
+    // появится только с задержкой.
+    static unsigned s_rbLogged = 0u;
+    static IDirect3DSurface9* s_pendRt = 0;
+    static int s_pendN = -1;
+    if (rt && cw == 15u && IsPlateBbox(bx1, by1))
+    {
+      if (s_rbLogged < 4u)
+      {
+        ++s_rbLogged;
+        ScanTarget( dev, rt, "" );
+      }
+      if (!s_pendRt)
+      {
+        s_pendRt = rt;
+        s_pendRt->AddRef();
+        s_pendN = 400;
+      }
+    }
+    else if (s_pendRt && s_pendN > 0)
+    {
+      s_pendN -= 20;
+      if (s_pendN <= 0)
+      {
+        ScanTarget( dev, s_pendRt, "later" );
+        s_pendRt->Release();
+        s_pendRt = 0;
+        s_pendN = -1;
       }
     }
     if (rt) rt->Release();
@@ -968,7 +1101,7 @@ void DrawPrimitive(const DipDescriptor& _descr)
           // PW_D3D_FORCEOPAQUE=3 — положительный контроль: перекрашиваем ВСЕ
           // Dip'ы UIFlashMaterial #0 (не только плашку): если зелёный появится
           // в readback, значит и запись в VB, и readback работают
-          if (s_fo == 3 || (x1 > 8000.f && y1 > 3000.f))
+          if (s_fo == 3 || IsPlateBbox(x1, y1))
           {
             // состояние восстанавливаем сразу после Dip'а: клиент кэширует
             // D3DRS_* и сам бы его не вернул

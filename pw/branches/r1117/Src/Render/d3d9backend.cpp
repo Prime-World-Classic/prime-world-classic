@@ -238,16 +238,39 @@ HRESULT D3D9Backend::SetViewport(const BackendViewport& vp) {
   return pDevice->SetViewport(&d3dvp);
 }
 
+// PW_D3D_DRAWERR=1 — печатать HRESULT всех выводов, вернувших не D3D_OK.
+// Нужен, чтобы отличить «D3D9-путь не рисует вывод» от «рисует, но пиксели
+// другие»: по трассам (smartrenderer.cpp NoteDipTrace) клиент выпускает
+// вывод-плашку в обоих путях с одинаковыми вершинами, матрицами и состоянием,
+// при этом в Vulkan он красит белый прямоугольник 330x132, а в D3D9/DXVK — нет.
+static unsigned NoteDrawResult(HRESULT hr, const char* what, unsigned a, unsigned b, unsigned c)
+{
+  static int s_on = -1;
+  static unsigned s_logged = 0u;
+  if (s_on < 0)
+  {
+    char bd[16];
+    s_on = (GetEnvironmentVariableA("PW_D3D_DRAWERR", bd, sizeof(bd) - 1) > 0) ? 1 : 0;
+  }
+  if (hr == D3D_OK || !s_on || s_logged >= 60u)
+    return hr;
+  ++s_logged;
+  DebugTrace("D3dDrawErr: %s hr=%08X a=%u b=%u c=%u", what, (unsigned)hr, a, b, c);
+  return hr;
+}
+
 HRESULT D3D9Backend::DrawIndexed(ERenderPrimitiveType type, unsigned baseVertexIndex, unsigned minIndex,
                                  unsigned indexedVertexCount, unsigned startIndex, unsigned primitiveCount) {
   ApplyInstanceState();
-  return pDevice->DrawIndexedPrimitive(ConvertPrimitiveType(type), baseVertexIndex, minIndex,
-                                       indexedVertexCount, startIndex, primitiveCount);
+  return NoteDrawResult(pDevice->DrawIndexedPrimitive(ConvertPrimitiveType(type), baseVertexIndex, minIndex,
+                                                      indexedVertexCount, startIndex, primitiveCount),
+                        "DrawIndexed", (unsigned)type, startIndex, primitiveCount);
 }
 
 HRESULT D3D9Backend::Draw(ERenderPrimitiveType type, unsigned startVertex, unsigned primitiveCount) {
   ApplyInstanceState();
-  return pDevice->DrawPrimitive(ConvertPrimitiveType(type), startVertex, primitiveCount);
+  return NoteDrawResult(pDevice->DrawPrimitive(ConvertPrimitiveType(type), startVertex, primitiveCount),
+                        "Draw", (unsigned)type, startVertex, primitiveCount);
 }
 
 HRESULT D3D9Backend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndexValue, unsigned indexCount,
