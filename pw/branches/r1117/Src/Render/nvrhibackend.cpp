@@ -6378,10 +6378,32 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
         }
         return S_OK;
       }
-      if (s_pjt[2] >= 0 && np
-          && fabs(qx0 - (double)s_pjt[0]) <= 25.0 && fabs(qy0 - (double)s_pjt[1]) <= 25.0
-          && fabs(qx1 - (double)s_pjt[2]) <= 25.0 && fabs(qy1 - (double)s_pjt[3]) <= 25.0
-          && s_pjTraceLogged < 8u)
+      // Для PJTRACE прямоугольник — ЭКРАННАЯ ОБЛАСТЬ интереса, а не точный
+      // прямоугольник вывода: у 3D-геометрии (бочки, юниты) спроецированный
+      // bbox никогда не совпадёт с ним угол в угол. Порог — доля ПЕРЕСЕЧЕНИЯ
+      // bbox'а вывода с областью: >=30 % площади самого вывода (т.е. вывод
+      // сидит внутри области, а не накрывает весь экран) ИЛИ >=50 % площади
+      // области (крупный объект, закрывающий её). Без этого фильтр ловил
+      // только полноэкранные блиты (ps=11 proj=(-208,-21)-(1231,788)), которые
+      // съедали весь лимит строк (замер прогона bbl_vk). SKIPPJ остаётся
+      // строгим (совпадение углов) — иначе под пропуск попадут чужие выводы.
+      bool pjtHit = false;
+      if (s_pjt[2] >= 0 && np)
+      {
+        const double ix0 = qx0 > (double)s_pjt[0] ? qx0 : (double)s_pjt[0];
+        const double ix1 = qx1 < (double)s_pjt[2] ? qx1 : (double)s_pjt[2];
+        const double iy0 = qy0 > (double)s_pjt[1] ? qy0 : (double)s_pjt[1];
+        const double iy1 = qy1 < (double)s_pjt[3] ? qy1 : (double)s_pjt[3];
+        if (ix1 > ix0 && iy1 > iy0)
+        {
+          const double inter = (ix1 - ix0) * (iy1 - iy0);
+          const double selfArea = (qx1 - qx0) * (qy1 - qy0);
+          const double regArea = (double)(s_pjt[2] - s_pjt[0]) * (double)(s_pjt[3] - s_pjt[1]);
+          pjtHit = (selfArea > 0.0 && inter >= 0.30 * selfArea)
+                || (inter >= 0.50 * regArea && selfArea <= 4.0 * regArea);
+        }
+      }
+      if (pjtHit && s_pjTraceLogged < 24u)
       {
         ++s_pjTraceLogged;
         const bool haveRt = d.curRt < d.surfaces.size();
