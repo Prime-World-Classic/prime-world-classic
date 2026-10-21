@@ -118,6 +118,10 @@ static const char* const kStubNames[] = {
 // номер при инстансном режиме, физический слот инстанса — отдельный).
 static const unsigned kNoRes = 0xffffffffu;
 static const unsigned kMaxVertexStreams = 8;
+// Собственный слот обнулённого вершинного буфера: им закрываются входы VS, у
+// которых нет клиентского потока (слот 8 занят инстансным, см. BuildInputLayout).
+static const unsigned kNullVtxSlot = kMaxVertexStreams + 1;
+static const unsigned kNullVtxStride = 16;
 // Шаг счётчика 0..N-1 для режима SetInstanceSource без буфера (int, не float:
 // раскладка читает младшие 16 бит — грабля InstancedMeshResource::Init).
 static const unsigned kInstCounterStride = 4;
@@ -817,6 +821,7 @@ struct NvrhiBackendImpl
   nvrhi::TextureHandle dummyTex;      // в несвязанный слот кладётся 1x1
   nvrhi::TextureHandle dummyCubeTex;  // замена, когда шейдер ждёт cube
   nvrhi::BufferHandle dummyVb;        // замена пустого вершинного слота
+  nvrhi::BufferHandle nullVb;         // обнулённый VB для входов VS без потока
   nvrhi::BufferHandle dummySsbo;      // заглушка набора 1 (SSBO)
   // шаг 13.5: настоящий SSBO костей. `Src/Render/Shaders/_commonSkinning.hlsl:6`
   // при PW_MODERN_ARRAYS объявляет `StructuredBuffer<float4x3> BonesMatrices`
@@ -928,6 +933,7 @@ struct NvrhiBackendImpl
   std::vector<IlEntry> ilCache;
   unsigned layoutsBuilt;
   unsigned ilPadHoles;                // сколько location пришлось заполнить дубликатами
+  unsigned ilNullPad;                 // сколько location закрыто обнулённым VB (PW_VK_ILPAD=2)
   unsigned ilDropped;                 // сколько атрибутов закрыл НЕ этот VS (см. BuildInputLayout)
   unsigned ilDiag;
 
@@ -1042,7 +1048,7 @@ struct NvrhiBackendImpl
       recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
-      layoutsBuilt(0), ilPadHoles(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
+      layoutsBuilt(0), ilPadHoles(0), ilNullPad(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
   {
     deviceName[0] = 0;
     clearOnPresent = true;
@@ -2669,8 +2675,8 @@ void NvrhiBackend::DumpStats(const char* pTag) const
   DebugTrace("VkUp%s: UP-вывод=%u колец-сбросов=%u раскладок построено=%u (кэш %u)",
              pTag ? pTag : "", d.upDraws, d.upFlushes, d.layoutsBuilt,
              (unsigned)d.ilCache.size());
-  DebugTrace("VkIl%s: заполнителей location=%u закрыто атрибутов=%u", pTag ? pTag : "",
-             d.ilPadHoles, d.ilDropped);
+  DebugTrace("VkIl%s: заполнителей location=%u обнулённых входов=%u закрыто атрибутов=%u",
+             pTag ? pTag : "", d.ilPadHoles, d.ilNullPad, d.ilDropped);
   DebugTrace("VkState%s: смен состояний=%u сэмплеров=%u наборов сэмплеров=%u потерь=%u",
              pTag ? pTag : "", d.stateSets, d.samplersCreated, d.smpSetsCreated,
              d.stateUnsupported);
@@ -3728,29 +3734,106 @@ static nvrhi::InputLayoutHandle BuildInputLayout(NvrhiBackendImpl& d, unsigned l
   // Input-07904 «в pVertexInputState нет Location 3, а у VS есть вход на 3»).
   unsigned maxLoc = 0;
   for (size_t i = 0; i < attrs.size(); ++i) if (attrs[i].loc > maxLoc) maxLoc = attrs[i].loc;
-  // Хвост (вход VS выше последнего клиентского атрибута) закрывать дубликатом
+  // Хвост (вход VS выше последнего клиентского атрибута) дубликатом закрывать
   // НЕЛЬЗЯ — замер 2026-10-20: VUID-VkGraphicsPipelineCreateInfo-Input-07904
   // (x4 за прогон) исчезает, но мир режется чёрным клином (чёрного 40,64%
   // вместо 0,14%): NVRHI нумерует location индексом в массиве
   // (Vendor/NVRHI/src/vulkan/vulkan-shader.cpp:186), и добавленный на хвост
   // атрибут-дубликат попадает на вход, который шейдер реально читает.
-  // Оставлено как открытое: чем закрывать — нужно значение по умолчанию D3D9
-  // (0,0,0,0) из отдельного обнулённого буфера, а не дубликат; вариант
-  // «свой VB-слот со значением (0,0,0,1)» тоже мерился и тоже ломал мир
-  // (0,14% -> 82,67%, см. секцию про незакрытые входы VS).
-  if (attrs.size() != maxLoc + 1u)
+  // Закрывать надо значением по умолчанию D3D9 из ОТДЕЛЬНОГО обнулённого буфера
+  // на собственном слоте: у заполнителя свой bufferIndex, поэтому ни один
+  // читаемый вход не меняет источник.
+  // PW_VK_ILPAD: 0 = не закрывать (дефект 07904), 1 = дубликат только в дырках
+  // (прежнее поведение, хвост открыт), 2 = обнулённый VB и в дырках, и на хвосте,
+  // 3 = дырки дубликатом + хвост обнулённым VB.
+  // Замер 2026-10-21 (Wine-стенд, t80/t140/t180, тот же токен/карта): режим 1 —
+  // белых 43 567 (5,77%), чёрных 944 (0,13%) = прежнее состояние; режимы 2 и 3
+  // (NULLW=0 и NULLW=1) — чёрных 604 566…627 073 (80,13…83,11%), мир не рисуется
+  // целиком, плашка при этом НЕ исчезает. Значение w роли не играет. Дефолт — 1.
+  static int s_ilPad = -1;
+  if (s_ilPad < 0) { const char* ipE = getenv("PW_VK_ILPAD"); s_ilPad = (ipE && *ipE) ? atoi(ipE) : 1; }
+  // Граница — не последний клиентский атрибут, а последний ВХОД этого VS:
+  // хвостовые входы (клиент их не объявляет) тоже обязаны быть в pVertexInputState.
+  unsigned vsMaxLoc = maxLoc;
+  if (pVs)
+    for (size_t k = 0; k < pVs->inputs.size(); ++k)
+      if (pVs->inputs[k].second > vsMaxLoc) vsMaxLoc = pVs->inputs[k].second;
+  // Диагноз открытых хвостов (именно они дают VUID-07904): чем клиентский decl
+  // НЕ покрывает входы этого VS — печатается в любом режиме PW_VK_ILPAD.
+  if (pVs && d.ilDiag < 80u)
+  {
+    bool tailOpen = false;
+    for (size_t k = 0; k < pVs->inputs.size(); ++k)
+      if (pVs->inputs[k].second > maxLoc) { tailOpen = true; break; }
+    if (tailOpen)
+    {
+      ++d.ilDiag;
+      char det[512];
+      int o = snprintf(det, sizeof(det), "layout %u vs %u (%s) входы VS: ",
+                       layoutIdx, vsIdx, pVs->entry.c_str());
+      for (size_t k = 0; k < pVs->inputs.size() && k < 8u && o < 300; ++k)
+        o += snprintf(det + o, sizeof(det) - o, "%s@%u ", pVs->inputs[k].first.c_str(),
+                      pVs->inputs[k].second);
+      DebugTrace("VkIlTail: %s", det);
+      o = snprintf(det, sizeof(det), "атр: ");
+      for (size_t k = 0; k < attrs.size() && k < 8u && o < 300; ++k)
+        o += snprintf(det + o, sizeof(det) - o, "%s@%u(fmt %d,off %u,slot %u,str %u) ",
+                      attrs[k].vd.name.c_str(), attrs[k].loc, (int)attrs[k].vd.format,
+                      (unsigned)attrs[k].vd.offset, (unsigned)attrs[k].vd.bufferIndex,
+                      (unsigned)attrs[k].vd.elementStride);
+      DebugTrace("VkIlTail: %s", det);
+    }
+  }
+  // maxVertexInputAttributes = 16: вход с location >= 16 закрыть нечем,
+  // пэддинг сделал бы раскладку нелегальной (createInputLayout -> мусор).
+  if (s_ilPad && attrs.size() != vsMaxLoc + 1u && vsMaxLoc < 16u)
   {
     std::vector<Attr> padded;
-    for (unsigned l = 0; l <= maxLoc; ++l)
+    for (unsigned l = 0; l <= vsMaxLoc; ++l)
     {
       bool found = false;
       for (size_t i = 0; i < attrs.size(); ++i)
         if (attrs[i].loc == l) { padded.push_back(attrs[i]); found = true; break; }
-      if (!found && !padded.empty())
+      if (found) continue;
+      const bool hole = (l < maxLoc);
+      if (hole && s_ilPad != 2 && !padded.empty())
       {
         padded.push_back(padded.back());   // дубликат: этот location шейдер не читает
         ++d.ilPadHoles;
+        continue;
       }
+      if (!hole && s_ilPad == 1) continue;  // прежнее поведение: хвост не закрывать
+      // Класс входа (float/sint/uint) берём из SPIR-V этого VS — формат
+      // заполнителя обязан совпадать с типом переменной входа.
+      unsigned kind = 0u;
+      std::string nm = "null";
+      if (pVs)
+        for (size_t k = 0; k < pVs->inputs.size(); ++k)
+          if (pVs->inputs[k].second == l)
+          {
+            kind = (k < pVs->inputKinds.size()) ? pVs->inputKinds[k] : 0u;
+            nm = pVs->inputs[k].first;
+            break;
+          }
+      Attr a;
+      a.loc = l;
+      a.vd.setName(nm)
+           .setFormat(kind == 1u ? nvrhi::Format::RGBA32_SINT
+                                 : (kind == 2u ? nvrhi::Format::RGBA32_UINT
+                                               : nvrhi::Format::RGBA32_FLOAT))
+           .setOffset(0)
+           .setElementStride(kNullVtxStride)
+           .setBufferIndex(kNullVtxSlot)
+           .setIsInstanced(false);
+      padded.push_back(a);
+      ++d.ilNullPad;
+      // Итоговый счётчик в DumpStats при pkill не печатается (статические
+      // деструкторы не отрабатывают), поэтому кто именно закрыт — видно
+      // прямо здесь.
+      if (d.ilNullPad <= 12u)
+        DebugTrace("VkIlPad: layout %u vs %u (%s) location %u вход %s -> обнулённый VB (slot %u, kind %u)",
+                   layoutIdx, vsIdx, pVs ? pVs->entry.c_str() : "-", l, nm.c_str(),
+                   kNullVtxSlot, kind);
     }
     attrs.swap(padded);
   }
@@ -3821,6 +3904,34 @@ static bool EnsureInstCounter(NvrhiBackendImpl& d, unsigned count)
   d.commandList->writeBuffer(d.instCounter, v.data(), (size_t)entries * kInstCounterStride);
   d.instCounterEntries = entries;
   VkNote("EnsureInstCounter: счётчик заведён", true, 0);
+  return true;
+}
+
+// Обнулённый вершинный буфер для входов VS без клиентского потока
+// (BuildInputLayout, PW_VK_ILPAD=2). D3D9 (Shader Model 3) при отсутствии
+// потока подставляет в вход (0,0,0,1) — PW_VK_NULLW задаёт компонент w,
+// 0 проверяет вариант (0,0,0,0): для входов, уходящих в делитель или маску,
+// разница принципиальна.
+static bool EnsureNullVb(NvrhiBackendImpl& d)
+{
+  if (d.nullVb) return true;
+  d.nullVb = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
+                                         .setByteSize(4 * kNullVtxStride)
+                                         .setIsVertexBuffer(true)
+                                         .setInitialState(nvrhi::ResourceStates::VertexBuffer)
+                                         .setKeepInitialState(true)
+                                         .setDebugName("seam null VB"));
+  if (!d.nullVb)
+  {
+    VkNote("EnsureNullVb: createBuffer", false, 0);
+    return false;
+  }
+  const char* nwE = getenv("PW_VK_NULLW");
+  const float w = (nwE && *nwE) ? (float)atoi(nwE) : 1.0f;
+  float v[16];
+  for (int i = 0; i < 16; i += 4) { v[i] = 0.0f; v[i + 1] = 0.0f; v[i + 2] = 0.0f; v[i + 3] = w; }
+  d.commandList->writeBuffer(d.nullVb, v, sizeof(v));
+  VkNote("EnsureNullVb: обнулённый VB заведён", true, 0);
   return true;
 }
 
@@ -5985,21 +6096,34 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // довязывает отсутствующие слоты нулями
   // (VUID-vkCmdBindVertexBuffers-pBuffers-04001: pBuffers[1..7] VK_NULL_HANDLE
   // при привязанном одном потоке).
+  // Раскладка может требовать и обнулённый слот (kNullVtxSlot) — это входы VS
+  // без клиентского потока (BuildInputLayout, PW_VK_ILPAD=2).
+  bool needNull = false;
   if (d.curLayout != kNoRes && d.curLayout < d.layoutObjs.size())
     for (size_t k = 0; k < d.layoutObjs[d.curLayout].desc.size(); ++k)
     {
       const unsigned s = (unsigned)d.layoutObjs[d.curLayout].desc[k].bufferIndex;
-      if (s < kMaxVertexStreams && s > maxSlot) maxSlot = s;
+      if (s == kNullVtxSlot) needNull = true;
+      else if (s < kMaxVertexStreams && s > maxSlot) maxSlot = s;
     }
-  for (unsigned i = 0; i <= maxSlot && i < kMaxVertexStreams; ++i)
+  if (needNull && EnsureNullVb(d)) maxSlot = kNullVtxSlot;
+  for (unsigned i = 0; i <= maxSlot && i <= kNullVtxSlot; ++i)
   {
     if (d.instSrc != kNoRes && d.instSlot == i) continue;   // ниже добавляется инстансный
+    if (i == kNullVtxSlot)
+    {
+      if (d.nullVb)
+        gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(d.nullVb)
+                           .setSlot(i).setOffset(0));
+      continue;
+    }
     // Замер 2026-10-17 (прогон 58): VUID-vkCmdBindVertexBuffers-pBuffers-04001
     // «pBuffers[1] is VK_NULL_HANDLE» — объект буфера у клиента есть, а
     // nvrhi-буфер у него не создан (пустое CPU-зеркало /创建 без загрузки).
     // Проверять надо НЕ только индекс слота, но и сам handle.
     nvrhi::BufferHandle vbh;
-    if (d.vb[i] != kNoRes && d.vb[i] < d.buffers.size()) vbh = d.buffers[d.vb[i]].buf;
+    if (i < kMaxVertexStreams && d.vb[i] != kNoRes && d.vb[i] < d.buffers.size())
+      vbh = d.buffers[d.vb[i]].buf;
     if (vbh)
       gs.addVertexBuffer(nvrhi::VertexBufferBinding().setBuffer(vbh)
                          .setSlot(i).setOffset(d.buffers[d.vb[i]].off + d.vbOffset[i]));
