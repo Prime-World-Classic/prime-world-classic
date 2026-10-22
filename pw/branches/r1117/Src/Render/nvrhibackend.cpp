@@ -1562,6 +1562,132 @@ static bool SsboDumpRequested()
   return s_on != 0;
 }
 
+// PW_VK_TEXLOCK="2048x2048[,…]" — слежка за зеркалом текстуры по размеру.
+// Иконки миникарты (ab27): атлас 2048x2048 в момент вывода ЗАПОЛНЕН почти под
+// завязку (реконструкция freeSpace по зеркалу: mean 2025…2034 из 2048), но
+// прямоугольники части иконок (y≈2033, x≥1786) пустые, хотя UV выданы.
+// Значит либо клиент залил в атлас нули (пустой источник), либо содержимое
+// потерялось между размещениями. Печатаем на каждом Lock/Unlock число
+// ненулевых пикселей и хэш зеркала — по дельте видно, долетают ли пиксели.
+static std::vector<std::pair<unsigned, unsigned> > g_texLockSz;
+static unsigned long long g_texLockT0 = 0;
+static unsigned g_texLockDelay = 0;
+
+static bool TexLockRequested(unsigned w, unsigned h)
+{
+  static bool s_read = false;
+  if (!s_read)
+  {
+    s_read = true;
+    char v[256];
+    if (GetEnvironmentVariableA("PW_VK_TEXLOCK", v, sizeof(v) - 1))
+    {
+      // формат: "WxH[,WxH…][,задержка_сек]" — задержка нужна, потому что
+      // размещения UI-иконок идут пачкой на загрузке карты, а интересуют
+      // поздние (иконки миникарты, ~90 с прогона)
+      for (char* tok = strtok(v, ","); tok; tok = strtok(0, ","))
+      {
+        unsigned a = 0u, b = 0u;
+        if (sscanf(tok, "%ux%u", &a, &b) == 2 && a && b) g_texLockSz.push_back(std::make_pair(a, b));
+        else if (a) g_texLockDelay = a;
+      }
+    }
+  }
+  for (size_t i = 0; i < g_texLockSz.size(); ++i)
+    if (g_texLockSz[i].first == w && g_texLockSz[i].second == h)
+    {
+      if (!g_texLockT0) g_texLockT0 = GetTickCount64();
+      return true;
+    }
+  return false;
+}
+
+static void TexLockTrace(unsigned t, const char* what, const std::vector<unsigned char>& m,
+                         unsigned w, unsigned h, const char* det)
+{
+  if (g_texLockDelay && (GetTickCount64() - g_texLockT0) < (unsigned long long)g_texLockDelay * 1000ull)
+    return;
+  static unsigned s_n = 0;
+  if (s_n >= 4000u) return;
+  ++s_n;
+  // PrintfFormatter НЕ понимает %zu/%llu (печатает «zu» и сдвигает остальные
+  // аргументы — замер 2026-10-22), поэтому всё через %u, а 64-битный хэш
+  // печатается двумя половинками.
+  // PW_VK_TEXLOCKTILES=1 — локализация ЗАПИСЕЙ: на каждом Unlock печатаются
+  // тайлы 32x32 пикселя, содержимое которых изменилось с прошлого Unlock этой
+  // же текстуры. Это прямое доказательство, КУДА именно клиент залил иконку:
+  // прямоугольник UV из рекорда переводится в тайлы (x/32, y/32) и сверяется
+  // со списком изменений. Если тайлов UV среди изменений нет — запись ушла в
+  // другое место (или её не было), т.е. потеря иконок — не в загрузке на GPU.
+  // Сравнение — memcmp по строкам тайла против КОПИИ прошлого зеркала: хэш
+  // (FNV) всего зеркала на каждый Unlock стоил ~32 МБ процессора на вызов и
+  // при пачке из ~1600 блокировок загрузки UI вешал клиент (замер ab31 —
+  // клиент не дошёл даже до лобби), memcmp идёт в разы быстрее.
+  static bool s_tilesOn = false;
+  static bool s_tilesRead = false;
+  const unsigned TS = 32u;
+  if (!s_tilesRead) { s_tilesRead = true; char b[8]; s_tilesOn = GetEnvironmentVariableA("PW_VK_TEXLOCKTILES", b, sizeof(b)) > 0; }
+  if (s_tilesOn)
+  {
+    if (strcmp(what, "unlock") == 0 && w && h && w >= TS && h >= TS)
+    {
+      static std::map<unsigned, std::vector<unsigned char> > s_prevM;
+      std::vector<unsigned char>& prev = s_prevM[t];
+      const bool first = (prev.size() != m.size());
+      const unsigned tw = w / TS, th = h / TS;
+      char buf[420];
+      int n = snprintf(buf, sizeof(buf), "VkTexLockTiles: #%u %ux%u", t, w, h);
+      if (n < 0 || n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
+      unsigned changed = 0u, shown = 0u;
+      if (first) n += snprintf(buf + n, sizeof(buf) - n, " первое");
+      else
+        for (unsigned ty = 0; ty < th; ++ty)
+          for (unsigned tx = 0; tx < tw; ++tx)
+          {
+            bool diff = false;
+            for (unsigned j = 0; j < TS && !diff; ++j)
+            {
+              const size_t o = ((size_t)(ty * TS + j) * w + (size_t)tx * TS) * 4;
+              if (o + TS * 4 > m.size()) break;
+              if (memcmp(&prev[o], &m[o], TS * 4) != 0) diff = true;
+            }
+            if (!diff) continue;
+            ++changed;
+            if (shown < 10u && n < (int)sizeof(buf) - 24)
+            {
+              n += snprintf(buf + n, sizeof(buf) - n, " %u,%u", tx, ty);
+              ++shown;
+            }
+            if (n < 0 || n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
+          }
+      if (n < 0 || n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;
+      snprintf(buf + n, sizeof(buf) - n, " изменено тайлов=%u", changed);
+      DebugTrace("%s", buf);
+      prev = m;
+    }
+    return;
+  }
+
+  unsigned nz = 0, nzlow = 0;
+  unsigned long long hsh = 146959810393466560ull;
+  const size_t px = m.size() / 4;
+  const size_t lowStart = (size_t)(w * (h > 64u ? h - 64u : 0u));   // нижние 64 строки
+  for (size_t i = 0; i < px; ++i)
+  {
+    const size_t o = i * 4;
+    if (m[o] | m[o + 1] | m[o + 2] | m[o + 3])
+    {
+      ++nz;
+      if (i >= lowStart) ++nzlow;
+    }
+    hsh = (hsh ^ m[o]) * 1099511628211ull;
+    hsh = (hsh ^ m[o + 3]) * 1099511628211ull;
+  }
+  DebugTrace("VkTexLock: %s #%u %ux%u nz=%u nz64=%u hash=%u%08u",
+             what, t, w, h, nz, nzlow,
+             (unsigned)(hsh >> 32), (unsigned)(hsh & 0xFFFFFFFFull));
+}
+
 // Охота за белой плашкой (2026-10-20): бисект по seam-индексам пиксельного
 // шейдера показал ps=8. PW_VK_TRACEPS=<индекс> — печатает, какие текстуры
 // уходят в набор для этого шейдера (без этого материал не опознать: у всех
@@ -4519,6 +4645,12 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
   to.lockLevel = level; to.lockRows = rows; to.lockRowBytes = rowBytes;
   to.lockFace = to.cube ? face : 0u;
   to.lockX = x0; to.lockY = y0; to.lockW = x1 - x0; to.lockH = y1 - y0;
+  if (TexLockRequested(to.w, to.h))
+  {
+    char det[96];
+    snprintf(det, sizeof(det), "rect=(%ld,%ld)-(%ld,%ld) lvl=%u шаг=%u", x0, y0, x1, y1, level, rowBytes);
+    TexLockTrace(t, "lock", to.mirror, to.w, to.h, det);
+  }
   const unsigned unit = bpb ? bpb : bpp;
   const unsigned unitPerRow = bpb ? 1u : (unsigned)lw;   // блоков в строке уже учтено в rowBytes
   const size_t off = bpb ? ((size_t)(y0 / 4) * rowBytes + (size_t)(x0 / 4) * unit)
@@ -4673,6 +4805,13 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
   {
     DebugTrace("VkPanel: UnlockTexture2D tex#%u lvl%u %ux%u шаг%u зеркало%zu",
                t, level, to.w, to.h, to.lockRowBytes, to.mirror.size());
+  }
+  if (TexLockRequested(to.w, to.h))
+  {
+    char det[64];
+    snprintf(det, sizeof(det), "lvl=%u RVA=0x%x", level,
+             (unsigned)((size_t)_ReturnAddress() - (size_t)GetModuleHandle(0)));
+    TexLockTrace(t, "unlock", to.mirror, to.w, to.h, det);
   }
   d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[0], to.lockRowBytes);
   if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes);
@@ -5661,12 +5800,34 @@ enum {
 // отсутствующим байтам подставляет dummy и говорит об этом.
 static const size_t kRecBlobCap = 8u * 1024u * 1024u;
 
+// PW_VK_RECBLOBMAX=<МБ> — поднять потолок блоба. Нужно для атласов UI
+// (2048x2048 A8R8G8B8 = 16 МБ): при потолке 8 МБ в рекорд попадает ровно
+// ВЕРХНЯЯ половина, а иконки миникарты упакованы в нижних строках
+// (UV y≈0,99) — проверить «есть ли иконка в атласе в момент вывода» по
+// такому рекорду невозможно (замер ab26: rect (1812,2033) недоступен).
+static size_t RecBlobCap()
+{
+  static size_t s_cap = 0;
+  if (!s_cap)
+  {
+    s_cap = kRecBlobCap;
+    char v[32];
+    if (GetEnvironmentVariableA("PW_VK_RECBLOBMAX", v, sizeof(v) - 1))
+    {
+      const unsigned mb = (unsigned)atoi(v);
+      if (mb >= 8u) s_cap = (size_t)mb * 1024u * 1024u;
+    }
+  }
+  return s_cap;
+}
+
 static void RecU32(FILE* f, unsigned v) { fwrite(&v, 4, 1, f); }
 static void RecF32(FILE* f, float v) { fwrite(&v, 4, 1, f); }
 static void RecBlob(FILE* f, const void* p, size_t n)
 {
+  const size_t cap = RecBlobCap();
   size_t w = n;
-  if (w > kRecBlobCap) w = kRecBlobCap;
+  if (w > cap) w = cap;
   RecU32(f, (unsigned)n);
   RecU32(f, (unsigned)w);
   if (w && p) fwrite(p, 1, w, f);
@@ -5732,7 +5893,7 @@ static unsigned RecTextureId(NvrhiBackendImpl& d, unsigned idx)
   // id в записи — сквозной по записи (recTexture), а не индекс шва: без этой
   // строки сопоставить вывод из PWRD с дампом GPU (TexGpuDump печатает индекс
   // шва) невозможно.
-  if (id < 24u) DebugTrace("VkRecTex: rec#%u = seam#%u %ux%u fmt%d mips%u", id, idx, to.w, to.h, (int)to.seamFormat, to.mipLevels);
+  if (id < 64u) DebugTrace("VkRecTex: rec#%u = seam#%u %ux%u fmt%d mips%u", id, idx, to.w, to.h, (int)to.seamFormat, to.mipLevels);
   return id;
 }
 
