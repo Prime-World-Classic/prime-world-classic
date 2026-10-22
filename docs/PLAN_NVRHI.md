@@ -4869,6 +4869,11 @@ Xvfb и управляется XTEST (`/tmp/xui.py`: click/type/key/ctrl/schord;
 приложением, максимум 8) — слой подтверждается в логе клиента, захвата всё равно
 нет: под winevulkan хуки RenderDoc обходятся загрузчиком winevulkan.
 
+**2026-10-22: вывод «тупиковая» отменён** — захват под Wine получен; ошибка была
+в способе включения (хуки функций вместо слоя) и в отсутствии внешнего триггера.
+Рабочий контур — ниже, раздел «RenderDoc под Wine: капча кадра на заданной
+секунде матча (2026-10-22)».
+
 
 ### Сделано (шаг 14 срез A + нативный RenderDoc-стенд + рекордер вывода — 2026-10-17, WIP; продолжение в новой сессии)
 
@@ -7472,3 +7477,71 @@ v2 = 2047/2048 = 0,99951 (прежний «rect y1=2048» — off-by-one в мо
    в `VkStats` + `VkStub`-строки.
 7. Пересъёмка эталонов `tools/render_shot/refs/` (частично закрыто свежими
    нативными кадрами `native-e2e-2026-10-22/`).
+
+### RenderDoc под Wine: капча кадра на заданной секунде матча (2026-10-22)
+
+Захват `.rdc` кадра клиента под Wine **получен и воспроизводим**. Ключевое
+отличие от попытки 2026-10-17: слой включает **хостовый Vulkan-загрузчик**
+(`VK_ADD_IMPLICIT_LAYER_PATH` + `ENABLE_VULKAN_RENDERDOC_CAPTURE=1`), а не
+хуки функций внутри процесса. При загрузке слоя отрабатывает
+`library_loaded()` (`renderdoc/os/posix/posix_libentry.cpp`) — поднимает
+target-control-сервер (порты 38920–38927) и читает `RENDERDOC_CAPFILE`, поэтому
+`LD_PRELOAD` и вызов `RENDERDOC_GetAPI` из гостя не нужны вовсе.
+
+Замер (стенд `wine-client/rdcap_match.sh`, RTX 3060, 1024x768):
+маркер клиента `PWRDCAP 1 seq=1 cur=1855 frame=1945 sec=90 api=0` →
+`rdwatch.py` шлёт `QueueCapture(1945)` → `Finished capture, Frame 1945` →
+`pw_frame1945.rdc` 178 679 558 Б («Captured Vulkan frame with 418.6 MB capture
+section in 3.42 с»); `renderdoccmd thumb` даёт живой кадр (база, герой,
+миникарта). Счётчик кадров слоя **равен** счётчику present'ов клиента
+(`VkSum: presents=N` ↔ `Finished capture, Frame N`), т.е. кадр берётся точно.
+Под слоем прогон идёт на ~20–22 к/с.
+
+Что добавлено в клиент (`Src/Render/nvrhibackend.cpp`, всё env-гейчено,
+по умолчанию выключено):
+
+- `Vendor/renderdoc/renderdoc_app.h` (MIT, v1.x, 36 480 Б) — `#include` без
+  правки графа (`${R1117}` уже в include-путях, `gen_cmake.py:130/144`).
+- env `PW_VK_RDCAP=<кадр>`, `PW_VK_RDCAP_TIME=<сек от 1-го present>`,
+  `PW_VK_RDCAP_STEP`, `PW_VK_RDCAP_LEAD` (дефолт 60 кадров), `PW_VK_RDCAP_FILE`
+  (маркер `rdcap.marker`, cwd = `Game/Bin`, имя **без `/`** — Wine портит пути).
+  В `Present` — сессионные часы (от первого present; отдельного таймера матча в
+  клиенте нет) и запись маркера `PWRDCAP 1 seq= cur= frame= sec= api=`.
+- `RdApi()` — путь к `renderdoc.dll` (`GetModuleHandleA`, `LoadLibraryA` только
+  при `PW_VK_RDC_DLL=1`): нужен для нативного Windows-контура, под Wine всегда
+  `api=0` (гостевой PE не видит символов хостового `.so`) и не участвует в съёмке.
+- `PW_VK_DBGNAME=1` — третий instance-ext `VK_EXT_debug_utils`; `VkSetName()`
+  подписывает `VkImage` сам (backbuffer, back depth, `PW surf WxH[ depth]`,
+  `PW tex WxH[ cube]`): NVRHI этой версии именует из `debugName` только хипы
+  (`Vendor/NVRHI/src/vulkan/vulkan-device.cpp:817`), без этого в GUI RenderDoc
+  все текстуры безымянные.
+
+Инструменты хоста — в ветке `tools/rdcap/` (README там же; на машине рабочие
+копии — симлинки `~/PW/tools/rd/`, ими пользуется `wine-client/rdcap_match.sh`):
+`rdctl.py` (ports/trigger/queue/watch — протокол target-control),
+`rdwatch.py` (маркер → `QueueCapture` → ожидание `NewCapture` ровно этого кадра),
+`xkey.c` (XTEST-клавиша на `:97`, хоткей слоя F12),
+`implicit_layer.d/renderdoc_capture.json` (манифест с абсолютным `library_path`),
+RenderDoc 1.46 в `~/PW/tools/renderdoc_1.46/`. Процедура целиком и грабли —
+скил `pw-render`, `references/renderdoc.md`.
+
+Грабли, из-за которых попытка 2026-10-17 не сработала:
+
+- `PW_VK_LAYERS` (явный instance-ext слоя) **вместе** с implicit-env — двойная
+  регистрация и access violation клиента сразу после `Слой инстанса — OK`.
+  Только один способ.
+- Слой грузят два процесса Wine: `explorer.exe` (38920) и `PW_Game.exe` (38921);
+  стрелять надо в порт `PW_Game.exe`, он появляется только после `vkCreateInstance`.
+- Протокол target-control: чанки **дополняются до 64 байт** (`ChunkAlignment`,
+  `serialiser.h:1536`) — без этого сервер молча не отвечает; первым обязан слать
+  чанк `ePacket_Handshake` клиент (`version=9`, имя, `kick`);
+  `QueueCapture` работает только на будущий кадр; сервер переигрывает все прежние
+  `NewCapture` новому подключению.
+- `RENDERDOC_DEBUG_LOG_FILE` — общий файл на оба процесса, второй усечёт лог
+  первого.
+- Проверенные тупики (не повторять): `renderdoccmd capture` (нет авто-захвата при
+  выходе), `RENDERDOC_CAPOPTS` (диапазона кадров нет), `qrenderdoc --python`
+  (в tarball нет python-модуля), crash-capture (`delayforcrash` отсутствует),
+  `LD_PRELOAD`-инъекция в `wine` (`Loading into …/wine/wine`, `Registering Vulkan
+  hooks` есть, `.rdc` нет).
+
