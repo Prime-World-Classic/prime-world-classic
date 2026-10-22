@@ -7545,3 +7545,31 @@ RenderDoc 1.46 в `~/PW/tools/renderdoc_1.46/`. Процедура целико�
   `LD_PRELOAD`-инъекция в `wine` (`Loading into …/wine/wine`, `Registering Vulkan
   hooks` есть, `.rdc` нет).
 
+
+### A/B: та же капча на DXVK-контуре (2026-10-22)
+
+Слой снимает и DXVK: он сам говорит с Vulkan, поэтому контур съёмки не меняется —
+отличаются только запуск (`WINEDLLOVERRIDES="d3d9=n,b"`, `PW_VK_BACKEND=0`) и
+`RENDERDOC_CAPFILE`. Замер на одном стенде (прогон `wine-client/rdcap_dxvk.sh`):
+
+| | Vulkan-срез | DXVK 3.1.1 |
+|---|---|---|
+| капча | `pw_frame1901.rdc` 178 МБ | `dx_frame10798.rdc` 1,25 ГБ (×7) |
+| к/с под слоем | ~20 (1811 кадров за 90 с) | ~97 (10798 кадров за 111 с) |
+| имена объектов | `PW backbuffer` / `PW tex` / `PW surf` | нет (в `.rdc` только `Swapchain blit`) |
+
+Имен нет, потому что DXVK включает `VK_EXT_debug_utils` сам
+(`warn: Debug Utils are enabled`) и не подписывает ресурсы; `Skipping: Device
+does not support Vulkan 1.3` в его логе — про `llvmpipe`, выбран `RTX 3060`.
+Маркера клиента в DXVK-контуре нет (`PW_VK_RDCAP*` в `NvrhiBackend::Present`),
+клиентский лог без счётчика кадров → капчу берут вслепую: `rdctl.py trigger 1`
+по wall-clock, `queue` — по номеру из уже готовой капчи. Точка вставки маркера,
+если понадобится: `Src/Render/d3d9backend.cpp:92` `D3D9Backend::Present`.
+
+Решение (2026-10-22): точная привязка к секунде матча и якорь по анонсу старта
+боя **не делаются** — сцена на разных секундах матча отличается мало (главное
+различие — анимация персонажей), для A/B хватает текущих пар капч; отдельные
+скрипты сведения (`rdcap_ab.sh`) не заводятся. Разбор пары: `renderdoccmd thumb`
++ метрика `tools/render_shot/`, структурный дифф — `renderdoccmd convert -c xml`
+(на 1,25 ГБ капче XML огромный, резать в GUI). Процедура — скил `pw-render`,
+`references/renderdoc.md`, раздел «A/B: Vulkan-срез против DXVK».
