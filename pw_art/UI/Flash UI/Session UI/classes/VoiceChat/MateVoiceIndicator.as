@@ -24,7 +24,8 @@
 	//   соединение ещё не установлено — кнопка мерцает; союзник вне войса — бледные наушники;
 	//   вокруг кнопки союзника золотая дуга — его громкость (10..100%, заглушён — бледная);
 	// - кнопка нажимается только с зажатой клавишей voice_overlay_unlock (иначе клики проходят
-	//   к портрету): у союзника — заглушить/включить, у себя — микрофон. Пока клавиша зажата,
+	//   к портрету; с ней кнопки крупнее и ярче): у союзника — заглушить/включить, у себя —
+	//   микрофон. Пока клавиша зажата,
 	//   под кнопкой союзника видна громкость, колесо над портретом её меняет.
 	// Уровень и полоски важнее: свечение кладётся в слой под ними.
 	//
@@ -59,6 +60,8 @@
 		// Кнопка — 34% портрета и выступает за его край на 6%, как в тамбуре.
 		private static const BUTTON_FRACTION:Number = 0.34;
 		private static const BUTTON_OUTSET:Number = 0.06;
+		// Насколько кнопка крупнее с зажатой voice_overlay_unlock.
+		private static const UNLOCK_SCALE:Number = 1.2;
 		// Дуга громкости союзника (vol_010..vol_100, 64x64): её внешний радиус — 23.2/17 радиуса
 		// кнопки и 31 px из 32 в текстуре.
 		private static const ARC_FRACTION:Number = 23.2 / 17 * 32 / 31;
@@ -406,7 +409,7 @@
 			SetIconImage(plateIcon, !isMe && inCall && (flags & 4) != 0 ? "plate_red" : "plate_gold");
 			SetIconImage(buttonIcon, icon);
 
-			var size:Number = buttonSize / PLATE_FRACTION;
+			var size:Number = ShownButtonSize() / PLATE_FRACTION;
 			button.scaleX = button.scaleY = 1;
 			for each (var layer:Sprite in [plateIcon, buttonIcon])
 			{
@@ -420,7 +423,7 @@
 			{
 				var percent:int = 5 * Math.max(2, Math.min(20, Math.round(volume / 5)));
 				SetIconImage(arcIcon, "vol_" + (percent < 100 ? "0" : "") + percent);
-				var arcSize:Number = buttonSize * ARC_FRACTION;
+				var arcSize:Number = ShownButtonSize() * ARC_FRACTION;
 				arcIcon.scaleX = arcIcon.scaleY = arcSize / ICON_TEX;
 				arcIcon.x = arcIcon.y = (size - arcSize) / 2;
 				arcIcon.alpha = (flags & 2) != 0 ? 0.35 : 1;
@@ -448,7 +451,7 @@
 
 			label.x = Math.round(buttonCenterX - width / 2);
 			// ниже дуги громкости
-			label.y = Math.round(buttonCenterY + buttonSize / 2 * 23.2 / 17 + 2);
+			label.y = Math.round(buttonCenterY + ShownButtonSize() / 2 * 23.2 / 17 + 2);
 
 			var g:* = labelShape.graphics;
 			g.clear();
@@ -480,9 +483,15 @@
 			button.useHandCursor = active;
 		}
 
+		// С зажатой клавишей кнопки подрастают и светлеют — видно, что их можно нажать.
+		private function ShownButtonSize():Number
+		{
+			return interactive && inCall ? Math.round(buttonSize * UNLOCK_SCALE) : buttonSize;
+		}
+
 		private function ApplyHover():void
 		{
-			var k:Number = hovered && interactive && inCall ? 1.2 : 1;
+			var k:Number = !interactive || !inCall ? 1 : (hovered ? 1.4 : 1.15);
 			button.transform.colorTransform = new ColorTransform(k, k, k, 1, 0, 0, 0, 0);
 		}
 
