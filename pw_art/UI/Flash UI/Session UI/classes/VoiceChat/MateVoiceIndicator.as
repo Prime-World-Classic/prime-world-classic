@@ -8,78 +8,98 @@
 	import flash.display.Sprite;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.geom.ColorTransform;
+	import flash.geom.Point;
 	import flash.text.TextField;
 	import flash.text.TextFieldAutoSize;
 	import flash.text.TextFormat;
 	import flash.utils.getTimer;
 
-	// Войс на портрете союзника (панель teamInfoFrendly_mc), как в Discord:
-	// - пока игрок говорит, вокруг портрета моргает зелёное кольцо;
-	// - значок в правом верхнем углу портрета (слева сверху — уровень): игрока нет
-	//   в войсе, у него нет микрофона или он выключен, он заглушён мной;
-	// - с зажатой клавишей voice_overlay_unlock под полосками здоровья/энергии
-	//   появляется кнопка: у союзника — заглушить/включить (и громкость в %),
-	//   у себя — микрофон; колесо над портретом меняет громкость союзника.
-	// Уровень и полоски важнее: кольцо кладётся в слой под ними.
+	// Войс на портрете союзника (панель teamInfoFrendly_mc) — как в тамбуре лаунчера
+	// (pw-launcher main.css .mm-voice-btn, Voice.decorateLobbyPlayer):
+	// - пока игрок говорит, вокруг портрета мягкое зелёное свечение;
+	// - в правом верхнем углу портрета круглая кнопка: золотая рамка, бирюзовый фон, значок.
+	//   У себя — микрофон, у союзника — звук (заглушён мной — красный), его выключенный или
+	//   отсутствующий микрофон — серый микрофон; союзник заглушил меня — красная рамка;
+	//   соединение ещё не установлено — кнопка мерцает; союзник вне войса — бледные наушники;
+	//   вокруг кнопки союзника золотая дуга — его громкость (10..100%, заглушён — бледная);
+	// - кнопка нажимается только с зажатой клавишей voice_overlay_unlock (иначе клики проходят
+	//   к портрету): у союзника — заглушить/включить, у себя — микрофон. Пока клавиша зажата,
+	//   под кнопкой союзника видна громкость, колесо над портретом её меняет.
+	// Уровень и полоски важнее: свечение кладётся в слой под ними.
 	//
 	// Размеры текста не берём у движка: у созданных кодом TextField он держит
 	// рамку по умолчанию и считает textWidth лениво; NaN в координатах фигуры
 	// вешает его тесселятор — все числа для рисования проверяем.
 	public class MateVoiceIndicator
 	{
-		private static const SPEAKING_COLOR:uint = 0x43B581;
-		private static const MUTED_COLOR:uint = 0xED4245;
-		private static const BUTTON_COLOR:uint = 0x1E1F22;
-		private static const OFF_COLOR:uint = 0x949BA4;
-		private static const MIC_COLOR:uint = 0xC9CDD4;
+		private static const LABEL_COLOR:uint = 0x0E1F21;
+		private static const LABEL_TEXT_COLOR:uint = 0xF3ECD9;
 		private static const TEXT_SIZE:int = 11;
 		// Движок рисует текст у верха поля: поправка ~0.35 кегля вниз (замер в игре).
 		private static const TEXT_DROP:Number = 0.35;
-		private static const BLINK_PERIOD_MS:Number = 700;
+		// Мерцание кнопки, пока соединение не установлено (voice-wait в лаунчере).
+		private static const CONNECTING_PERIOD_MS:Number = 1600;
 
-		// Элементы портрета, которые должны быть поверх кольца.
-		// Рамку кладём выше слоёв портрета (roundFrame, свечения, полоска ульты закрывали её),
-		// но под уровнем и ником; полоски — ниже портрета, рамка их не перекрывает.
+		// Элементы портрета, которые должны быть поверх свечения.
+		// Свечение кладём выше слоёв портрета (roundFrame, свечения, полоска ульты закрывали его),
+		// но под уровнем и ником; полоски — ниже портрета, свечение их не перекрывает.
 		private static const PRIORITY_CHILDREN:Array = ["levelRoundFrame", "level_txt", "levelHighLight", "nameText"];
+
+		// Текстуры, как у штатного интерфейса и колеса пингов: свою векторную графику движок
+		// растеризует грубо (круги ломаными, без сглаживания, контуры и многоугольники не рисует
+		// вовсе). Генератор: pw_art/UI/Voice/gen_voice_icons.py.
+		private static const ICON_PATH:String = "/UI/Styles/Icons/Voice/";
+		// Кнопка (plate_*) и значок (v_*) — 64x64, круг кнопки занимает 168/200 текстуры.
+		private static const ICON_TEX:Number = 64;
+		private static const PLATE_FRACTION:Number = 0.84;
+		// Свечение — 128x128, радиус текстуры = GLOW_EXTENT радиусов портрета.
+		private static const GLOW_TEX:Number = 128;
+		private static const GLOW_EXTENT:Number = 1.9;
+		// Кнопка — 34% портрета и выступает за его край на 6%, как в тамбуре.
+		private static const BUTTON_FRACTION:Number = 0.34;
+		private static const BUTTON_OUTSET:Number = 0.06;
+		// Дуга громкости союзника (vol_010..vol_100, 64x64): её внешний радиус — 23.2/17 радиуса
+		// кнопки и 31 px из 32 в текстуре.
+		private static const ARC_FRACTION:Number = 23.2 / 17 * 32 / 31;
 
 		public var mate:MateInfoBase;
 		public var peerId:int;
 		public var isMe:Boolean;
 
-		private var ring:Shape;
-		private var badge:Shape;
-		// Значок в углу: круг радиусом BADGE_BASE (в своих единицах), масштабируется под портрет.
-		private static const BADGE_BASE:Number = 100;
-		private static const ICON_BOX:Number = 200;
+		private var glow:Sprite;
 		private var button:Sprite;
-		// Движок не рисует graphics самого Sprite (видны только дети) — фон и значок
-		// кнопки рисуются в дочерний Shape.
-		private var buttonShape:Shape;
-		// Значки — текстуры, как у штатного интерфейса и колеса пингов: свою векторную графику
-		// движок растеризует грубо (круги ломаными, без сглаживания, контуры и многоугольники
-		// не рисует вовсе). Генератор: pw_art/UI/Voice/gen_voice_icons.py (64x64 DDS).
-		private static const ICON_PATH:String = "/UI/Styles/Icons/Voice/";
-		private static const ICON_TEX:Number = 64;
-		// Кнопка под полосками крупнее базового размера. Увеличиваются сами размеры и кегль,
-		// а не scaleX/scaleY слоя: масштабированный TextField движок обрезает по рамке.
-		private static const BUTTON_SCALE:Number = 1.6;
-		private var buttonTextSize:int = 0;
+		private var arcIcon:Sprite;
+		private var plateIcon:Sprite;
 		private var buttonIcon:Sprite;
-		private var badgeIcon:Sprite;
-		private var buttonText:TextField;
+		// Громкость под кнопкой. Движок не рисует graphics самого Sprite (видны только дети) —
+		// подложка рисуется в дочерний Shape.
+		private var label:Sprite;
+		private var labelShape:Shape;
+		private var labelText:TextField;
+		private var labelTextSize:int = 0;
 
 		private var speaking:Boolean = false;
 		private var inCall:Boolean = false;
 		private var notInVoice:Boolean = false;
 		private var interactive:Boolean = false;
+		private var hovered:Boolean = false;
 		private var flags:int = 0;
 		private var volume:int = 50;
 		private var micState:int = 0;
 
+		// Свечение плавно разгорается и гаснет; анимация крутится, пока оно видно или кнопка мерцает.
+		private var glowLevel:Number = 0;
+		private var lastFrameTime:int = 0;
+		private var animating:Boolean = false;
+		private var buttonAlpha:Number = 1;
+
 		private var frameX:Number = 0;
 		private var frameY:Number = 0;
 		private var frameSize:Number = 60;
-		private var statsBottom:Number = 80;
+		private var buttonSize:Number = 20;
+		private var buttonCenterX:Number = 0;
+		private var buttonCenterY:Number = 0;
 
 		public function MateVoiceIndicator(_mate:MateInfoBase, _isMe:Boolean)
 		{
@@ -87,36 +107,43 @@
 			isMe = _isMe;
 			Measure();
 
-			ring = new Shape();
-			ring.visible = false;
-			mate.addChildAt(ring, RingIndex());
-			// Полоски ХП и МП тоже над рамкой (они под портретом, рамку портрета не перекрывают).
+			glow = CreateIcon();
+			glow.visible = false;
+			SetIconImage(glow, "glow");
+			mate.addChildAt(glow, RingIndex());
+			// Полоски ХП и МП тоже над свечением (они под портретом, рамку портрета не перекрывают).
 			RaiseAboveRing("manaBar_mc");
 			RaiseAboveRing("healthBar_mc");
 
-			badge = new Shape();
-			badge.visible = false;
-			mate.addChild(badge);
-			badgeIcon = CreateIcon();
-			badgeIcon.visible = false;
-			mate.addChild(badgeIcon);
-
 			button = new Sprite();
 			button.visible = false;
-			button.buttonMode = true;
 			button.mouseChildren = false;
-			buttonShape = new Shape();
-			button.addChild(buttonShape);
+			arcIcon = CreateIcon();
+			arcIcon.visible = false;
+			button.addChild(arcIcon);
+			plateIcon = CreateIcon();
+			button.addChild(plateIcon);
 			buttonIcon = CreateIcon();
 			button.addChild(buttonIcon);
-			buttonText = CreateText(TEXT_SIZE, 0xFFFFFF, 80);
-			button.addChild(buttonText);
 			mate.addChild(button);
 
+			label = new Sprite();
+			label.visible = false;
+			label.mouseEnabled = false;
+			label.mouseChildren = false;
+			labelShape = new Shape();
+			label.addChild(labelShape);
+			labelText = CreateText(TEXT_SIZE, LABEL_TEXT_COLOR, 80);
+			label.addChild(labelText);
+			mate.addChild(label);
+
+			SetButtonMouse();
 			button.addEventListener(MouseEvent.MOUSE_DOWN, OnButtonDown);
 			button.addEventListener(MouseEvent.MOUSE_UP, StopEvent);
 			button.addEventListener(MouseEvent.CLICK, StopEvent);
 			button.addEventListener(MouseEvent.DOUBLE_CLICK, StopEvent);
+			button.addEventListener(MouseEvent.MOUSE_OVER, OnButtonOver);
+			button.addEventListener(MouseEvent.MOUSE_OUT, OnButtonOut);
 
 			// Колесо приходит самому верхнему объекту под курсором: у портрета это
 			// mouseCatcher, если он есть, иначе сам портрет.
@@ -128,21 +155,19 @@
 
 		public function Dispose():void
 		{
-			mate.removeEventListener(Event.ENTER_FRAME, OnBlink);
+			StopAnimation();
 			mate.removeEventListener(MouseEvent.MOUSE_WHEEL, OnWheel);
 			if (mate.mouseCatcher != null)
 				mate.mouseCatcher.removeEventListener(MouseEvent.MOUSE_WHEEL, OnWheel);
-			if (ring.parent != null)
-				ring.parent.removeChild(ring);
-			if (badge.parent != null)
-				badge.parent.removeChild(badge);
-			if (badgeIcon.parent != null)
-				badgeIcon.parent.removeChild(badgeIcon);
-			if (button.parent != null)
-				button.parent.removeChild(button);
+			for each (var child:DisplayObject in [glow, button, label])
+			{
+				if (child.parent != null)
+					child.parent.removeChild(child);
+			}
 		}
 
-		// flags (союзник): 1 говорит, 2 заглушён мной, 4 заглушил меня, 8 нет соединения.
+		// flags (союзник): 1 говорит, 2 заглушён мной, 4 заглушил меня, 8 нет соединения,
+		// 16 микрофон выключен, 32 микрофона нет.
 		public function SetPeer(_peerId:int, _flags:int, _volume:int):void
 		{
 			var changed:Boolean = !inCall || _flags != flags || _volume != volume || _peerId != peerId;
@@ -153,10 +178,7 @@
 			notInVoice = false;
 			SetSpeaking((flags & 1) != 0 && (flags & 2) == 0);
 			if (changed)
-			{
-				DrawButton();
-				DrawBadge();
-			}
+				Redraw();
 		}
 
 		// Союзник в бою, но не в нашем звонке.
@@ -166,9 +188,9 @@
 				return;
 			notInVoice = true;
 			inCall = false;
+			flags = 0;
 			SetSpeaking(false);
-			DrawButton();
-			DrawBadge();
+			Redraw();
 		}
 
 		// micState: 0 микрофона нет, 1 включён, 2 выключен.
@@ -180,10 +202,7 @@
 			notInVoice = false;
 			SetSpeaking(_speaking);
 			if (changed)
-			{
-				DrawButton();
-				DrawBadge();
-			}
+				Redraw();
 		}
 
 		public function SetInteractive(value:Boolean):void
@@ -191,7 +210,17 @@
 			if (interactive == value)
 				return;
 			interactive = value;
+			if (!interactive)
+				hovered = false;
+			Redraw();
+		}
+
+		private function Redraw():void
+		{
 			DrawButton();
+			DrawLabel();
+			SetButtonMouse();
+			UpdateAnimation();
 		}
 
 		private function SetSpeaking(value:Boolean):void
@@ -199,27 +228,85 @@
 			if (speaking == value)
 				return;
 			speaking = value;
-			ring.visible = speaking;
-			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg speaking " + (isMe ? "me" : "peer " + peerId) + " " + speaking + " ringIndex " + (ring.parent != null ? mate.getChildIndex(ring) + "/" + mate.numChildren : "-"));
 			if (speaking)
-			{
 				Measure();
-				DrawRing();
-				mate.addEventListener(Event.ENTER_FRAME, OnBlink);
+			UpdateAnimation();
+		}
+
+		private function UpdateAnimation():void
+		{
+			var need:Boolean = speaking || glowLevel > 0 || IsConnecting();
+			if (need && !animating)
+			{
+				animating = true;
+				lastFrameTime = getTimer();
+				mate.addEventListener(Event.ENTER_FRAME, OnFrame);
+				OnFrame(null);
+			}
+			else if (!need)
+			{
+				StopAnimation();
+				button.alpha = buttonAlpha;
+			}
+		}
+
+		private function StopAnimation():void
+		{
+			if (!animating)
+				return;
+			animating = false;
+			mate.removeEventListener(Event.ENTER_FRAME, OnFrame);
+		}
+
+		private function IsConnecting():Boolean
+		{
+			return inCall && !isMe && (flags & 8) != 0;
+		}
+
+		private function OnFrame(e:Event):void
+		{
+			var now:int = getTimer();
+			var dt:Number = Math.min(0.1, Math.max(0, (now - lastFrameTime) / 1000));
+			lastFrameTime = now;
+
+			// Уровня голоса клиент не шлёт — говорящему свечение «дышит», как от голоса:
+			// разгорается за ~0.1 с, гаснет за ~0.25 с.
+			var target:Number = 0;
+			if (speaking)
+				target = 0.78 + 0.22 * (0.5 * Math.sin(now * 0.017) + 0.3 * Math.sin(now * 0.041 + 1.3) + 0.2 * Math.sin(now * 0.007));
+			var rate:Number = target > glowLevel ? 10 : 4;
+			glowLevel += (target - glowLevel) * Math.min(1, rate * dt * 2);
+			if (!speaking && glowLevel < 0.02)
+				glowLevel = 0;
+			DrawGlow();
+
+			if (IsConnecting())
+			{
+				var phase:Number = (now % CONNECTING_PERIOD_MS) / CONNECTING_PERIOD_MS;
+				button.alpha = buttonAlpha * (0.7 + 0.3 * Math.cos(phase * Math.PI * 2));
 			}
 			else
-			{
-				mate.removeEventListener(Event.ENTER_FRAME, OnBlink);
-			}
+				button.alpha = buttonAlpha;
+
+			if (!speaking && glowLevel == 0 && !IsConnecting())
+				StopAnimation();
 		}
 
-		private function OnBlink(e:Event):void
+		// Свечение растёт вместе с уровнем, как box-shadow в тамбуре.
+		private function DrawGlow():void
 		{
-			var phase:Number = (getTimer() % BLINK_PERIOD_MS) / BLINK_PERIOD_MS;
-			ring.alpha = 0.45 + 0.55 * (0.5 + 0.5 * Math.cos(phase * Math.PI * 2));
+			glow.visible = glowLevel > 0;
+			if (!glow.visible)
+				return;
+			var radius:Number = frameSize / 2 * (0.9 + 0.1 * glowLevel);
+			var size:Number = radius * GLOW_EXTENT * 2;
+			glow.alpha = Math.min(1, glowLevel);
+			glow.scaleX = glow.scaleY = size / GLOW_TEX;
+			glow.x = Math.round(frameX + frameSize / 2 - size / 2);
+			glow.y = Math.round(frameY + frameSize / 2 - size / 2);
 		}
 
-		// Габариты портрета и низ полосок — в координатах портрета.
+		// Габариты портрета и кнопки — в координатах портрета.
 		private function Measure():void
 		{
 			var frame:DisplayObject = mate.roundFrame;
@@ -231,30 +318,24 @@
 				if (frameSize < 10)
 					frameSize = 60;
 			}
-			statsBottom = frameY + frameSize;
-			for each (var name:String in ["healthBar_mc", "manaBar_mc"])
-			{
-				var bar:DisplayObject = Child(name);
-				if (bar != null && bar.visible)
-					statsBottom = Math.max(statsBottom, Finite(bar.y + BarHeight(bar), statsBottom));
-			}
-		}
+			buttonSize = Math.round(Math.max(20, frameSize * BUTTON_FRACTION));
+			buttonCenterX = frameX + frameSize * (1 + BUTTON_OUTSET) - buttonSize / 2;
+			buttonCenterY = frameY - frameSize * BUTTON_OUTSET + buttonSize / 2;
 
-		// Высота полоски без её текстов: у Components.Bar внутри TextField'ы, и движок
-		// раздувает bar.height до их рамки по умолчанию (~100) — кнопка уезжала вниз.
-		private function BarHeight(bar:DisplayObject):Number
-		{
-			var limit:Number = Math.max(4, frameSize * 0.25);
-			var value:Number = NaN;
+			// Портреты стоят у верхнего края экрана — кнопка не уходит за него.
 			try
 			{
-				value = Number(Object(bar).BarHeight) * Finite(bar.scaleY, 1);
+				var top:Point = mate.localToGlobal(new Point(buttonCenterX, buttonCenterY - buttonSize / 2));
+				var origin:Point = mate.localToGlobal(new Point(0, 0));
+				var unit:Point = mate.localToGlobal(new Point(0, 1));
+				var scale:Number = Finite(unit.y - origin.y, 1);
+				var topY:Number = Finite(top.y, 0);
+				if (topY < 0 && scale > 0)
+					buttonCenterY += -topY / scale;
 			}
 			catch (e:Error)
 			{
 			}
-			value = Finite(value, limit);
-			return value > 0 && value < limit ? value : limit;
 		}
 
 		private function RingIndex():int
@@ -274,7 +355,7 @@
 			var child:DisplayObject = Child(name);
 			if (child == null || child.parent != mate)
 				return;
-			var ringIndex:int = mate.getChildIndex(ring);
+			var ringIndex:int = mate.getChildIndex(glow);
 			if (mate.getChildIndex(child) < ringIndex)
 				mate.setChildIndex(child, ringIndex);
 		}
@@ -291,113 +372,133 @@
 			return null;
 		}
 
-		private function DrawRing():void
-		{
-			var thickness:Number = Math.max(2, frameSize * 0.05);
-			ring.graphics.clear();
-			ring.graphics.lineStyle(thickness, SPEAKING_COLOR, 1);
-			ring.graphics.drawCircle(frameX + frameSize / 2, frameY + frameSize / 2, frameSize / 2 + thickness / 2 + 1);
-		}
-
 		private function DrawButton():void
 		{
-			var show:Boolean = interactive && inCall;
+			var show:Boolean = inCall || notInVoice;
 			button.visible = show;
 			if (!show)
 				return;
 
 			Measure();
 
-			var k:Number = BUTTON_SCALE;
-			var textSize:int = Math.round(TEXT_SIZE * k);
-			var height:Number = Math.round(Math.max(18, frameSize * 0.28) * k);
-			var pad:Number = Math.round(2 * k);
-			var iconSize:Number = height - 2 * pad;
-			var iconWidth:Number = iconSize + pad;
-			var label:String = isMe ? "" : volume + "%";
-			var textWidth:Number = label.length > 0 ? EstimateTextWidth(label, textSize) + 2 * pad : 0;
-			var width:Number = Math.max(height + 3 * pad, 3 * pad + iconWidth + textWidth + 2 * pad);
-			var corner:Number = Math.round(8 * k);
+			var icon:String;
+			buttonAlpha = 1;
+			if (notInVoice)
+			{
+				icon = "v_headset_off";
+				buttonAlpha = 0.6;
+			}
+			else if (isMe)
+			{
+				icon = micState == 1 ? "v_mic" : (micState == 2 ? "v_mic_off" : "v_mic_none");
+				if (micState == 0)
+					buttonAlpha = 0.75;
+			}
+			else if ((flags & 2) != 0)
+				icon = "v_spk_off";
+			else if ((flags & 16) != 0)
+				icon = "v_peer_mic_off";
+			else if ((flags & 32) != 0)
+				icon = "v_peer_mic_none";
+			else
+				icon = "v_spk_on";
 
+			SetIconImage(plateIcon, !isMe && inCall && (flags & 4) != 0 ? "plate_red" : "plate_gold");
+			SetIconImage(buttonIcon, icon);
+
+			var size:Number = buttonSize / PLATE_FRACTION;
 			button.scaleX = button.scaleY = 1;
-			button.x = Math.round(frameX + (frameSize - width) / 2);
-			button.y = Math.round(statsBottom + 2);
+			for each (var layer:Sprite in [plateIcon, buttonIcon])
+			{
+				layer.scaleX = layer.scaleY = size / ICON_TEX;
+				layer.x = 0;
+				layer.y = 0;
+			}
+			// дуга вокруг кнопки союзника — его громкость (видно, что колёсиком её можно крутить)
+			arcIcon.visible = inCall && !isMe;
+			if (arcIcon.visible)
+			{
+				var percent:int = 5 * Math.max(2, Math.min(20, Math.round(volume / 5)));
+				SetIconImage(arcIcon, "vol_" + (percent < 100 ? "0" : "") + percent);
+				var arcSize:Number = buttonSize * ARC_FRACTION;
+				arcIcon.scaleX = arcIcon.scaleY = arcSize / ICON_TEX;
+				arcIcon.x = arcIcon.y = (size - arcSize) / 2;
+				arcIcon.alpha = (flags & 2) != 0 ? 0.35 : 1;
+			}
 
-			var g:* = buttonShape.graphics;
+			button.x = Math.round(buttonCenterX - size / 2);
+			button.y = Math.round(buttonCenterY - size / 2);
+			button.alpha = buttonAlpha;
+			ApplyHover();
+		}
+
+		private function DrawLabel():void
+		{
+			var show:Boolean = interactive && inCall && !isMe;
+			label.visible = show;
+			if (!show)
+				return;
+
+			var textSize:int = Math.max(TEXT_SIZE, Math.round(buttonSize * 0.45));
+			var pad:Number = Math.round(textSize * 0.4);
+			var text:String = volume + "%";
+			var width:Number = EstimateTextWidth(text, textSize) + 2 * pad;
+			var height:Number = textSize + Math.round(pad * 0.8) * 2;
+			var corner:Number = Math.round(height * 0.5);
+
+			label.x = Math.round(buttonCenterX - width / 2);
+			// ниже дуги громкости
+			label.y = Math.round(buttonCenterY + buttonSize / 2 * 23.2 / 17 + 2);
+
+			var g:* = labelShape.graphics;
 			g.clear();
-			g.beginFill(0xFFFFFF, 0.25);
-			g.drawRoundRect(-1, -1, width + 2, height + 2, corner + 1, corner + 1);
-			g.endFill();
-			g.beginFill(BUTTON_COLOR, 1);
+			g.beginFill(LABEL_COLOR, 0.92);
 			g.drawRoundRect(0, 0, width, height, corner, corner);
 			g.endFill();
 
-			if (isMe)
-				SetIconImage(buttonIcon, micState == 1 ? "mic_on" : (micState == 0 ? "mic_none" : "mic_off"));
-			else
-				SetIconImage(buttonIcon, (flags & 2) != 0 ? "spk_muted" : ((flags & 8) != 0 ? "spk_off" : "spk_on"));
-			buttonIcon.scaleX = buttonIcon.scaleY = iconSize / ICON_TEX;
-			buttonIcon.x = label.length > 0 ? 2 * pad : (width - iconSize) / 2;
-			buttonIcon.y = (height - iconSize) / 2;
-
-			if (buttonTextSize != textSize)
+			if (labelTextSize != textSize)
 			{
-				buttonTextSize = textSize;
-				var format:TextFormat = buttonText.defaultTextFormat;
+				labelTextSize = textSize;
+				var format:TextFormat = labelText.defaultTextFormat;
 				format.size = textSize;
-				buttonText.defaultTextFormat = format;
-				buttonText.width = Math.round(80 * k);
-				buttonText.height = textSize + 12;
+				labelText.defaultTextFormat = format;
+				labelText.width = Math.round(width + 40);
+				labelText.height = textSize + 12;
 			}
-			buttonText.visible = label.length > 0;
-			buttonText.text = label;
-			buttonText.textColor = (flags & 2) != 0 ? OFF_COLOR : 0xFFFFFF;
-			buttonText.x = 2 * pad + iconWidth;
-			buttonText.y = Math.round((height - (textSize + 8)) / 2 + textSize * TEXT_DROP);
-
-			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg button " + (isMe ? "me" : "peer " + peerId) + " at " + button.x + "," + button.y + " size " + width + "x" + height
-				+ " frame " + frameX + "," + frameY + "/" + frameSize + " stats " + statsBottom + " parent " + (button.parent != null) + " mateVisible " + mate.visible);
+			labelText.text = text;
+			labelText.textColor = (flags & 2) != 0 ? 0x949BA4 : LABEL_TEXT_COLOR;
+			labelText.x = pad;
+			labelText.y = Math.round((height - (textSize + 8)) / 2 + textSize * TEXT_DROP);
 		}
 
-		private function DrawBadge():void
+		// Без клавиши кнопка прозрачна для мыши: клики и наведение — портрету.
+		private function SetButtonMouse():void
 		{
-			var g:* = badge.graphics;
-			g.clear();
-
-			// 0 — значка нет; дальше по важности.
-			var kind:int = 0;
-			if (notInVoice)
-				kind = 1;
-			else if (isMe)
-				kind = micState == 2 ? 3 : (micState == 0 ? 4 : 0);
-			else if ((flags & 2) != 0)
-				kind = 2;
-			else if ((flags & 16) != 0)
-				kind = 3;
-			else if ((flags & 32) != 0)
-				kind = 4;
-
-			badge.visible = kind != 0;
-			badgeIcon.visible = kind != 0;
-			if (kind == 0)
-				return;
-
-			Measure();
-			// круглая подложка — внутри текстуры (b_*), векторный круг не нужен
-			badge.visible = false;
-			SetIconImage(badgeIcon, kind == 1 ? "b_headset_off" : (kind == 2 ? "b_spk_muted" : (kind == 3 ? "b_mic_off" : "b_mic_none")));
-
-			// радиус значка на экране: не меньше 11, растёт с портретом
-			var radius:Number = Math.max(11, frameSize * 0.17);
-			var centerX:Number = Math.round(frameX + frameSize - radius * 0.8);
-			var centerY:Number = Math.round(frameY + radius * 0.8);
-			badgeIcon.scaleX = badgeIcon.scaleY = radius * 2 / ICON_TEX;
-			badgeIcon.x = centerX - radius;
-			badgeIcon.y = centerY - radius;
+			var active:Boolean = interactive && inCall;
+			button.mouseEnabled = active;
+			button.buttonMode = active;
+			button.useHandCursor = active;
 		}
 
+		private function ApplyHover():void
+		{
+			var k:Number = hovered && interactive && inCall ? 1.2 : 1;
+			button.transform.colorTransform = new ColorTransform(k, k, k, 1, 0, 0, 0, 0);
+		}
 
-		// Контейнер значка: один Loader; имя текущей текстуры хранится в name.
+		private function OnButtonOver(e:MouseEvent):void
+		{
+			hovered = true;
+			ApplyHover();
+		}
+
+		private function OnButtonOut(e:MouseEvent):void
+		{
+			hovered = false;
+			ApplyHover();
+		}
+
+		// Контейнер текстуры: один Loader; имя текущей текстуры хранится в name.
 		private static function CreateIcon():Sprite
 		{
 			var icon:Sprite = new Sprite();
@@ -419,10 +520,9 @@
 
 		private function OnButtonDown(e:MouseEvent):void
 		{
-			e.stopPropagation();
-			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg click " + (isMe ? "me" : "peer " + peerId) + " interactive " + interactive + " inCall " + inCall);
 			if (!interactive || !inCall)
 				return;
+			e.stopPropagation();
 			if (isMe)
 				FSCommands.Send(VoiceTeamOverlay.COMMAND, "mic");
 			else
@@ -431,25 +531,17 @@
 
 		private function StopEvent(e:MouseEvent):void
 		{
-			e.stopPropagation();
+			if (interactive && inCall)
+				e.stopPropagation();
 		}
 
 		private function OnWheel(e:MouseEvent):void
 		{
-			FSCommands.Send(VoiceTeamOverlay.COMMAND, "dbg wheel " + (isMe ? "me" : "peer " + peerId) + " delta " + e.delta + " interactive " + interactive);
 			if (!interactive || !inCall || isMe || e.delta == 0)
 				return;
 			e.stopPropagation();
 			FSCommands.Send(VoiceTeamOverlay.COMMAND, "vol " + peerId + " " + (e.delta > 0 ? 5 : -5));
 		}
-
-
-
-
-
-
-
-
 
 		private static function CreateText(size:int, color:uint, fieldWidth:Number):TextField
 		{

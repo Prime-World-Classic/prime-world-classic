@@ -8,7 +8,7 @@
 	// MainInterface.SetVoiceOverlay* передаёт их сюда. Участник звонка находится по
 	// нику (без тега гильдии) среди союзников; кто не в бою — не показывается.
 	// Если звонок идёт хотя бы с одним человеком, союзники (не боты) вне звонка
-	// получают значок «нет в войсе».
+	// получают бледную кнопку «нет в войсе».
 	//
 	// Клиент шлёт состояние только при изменениях, причём первое — ещё до Show(true),
 	// а портреты в начале боя могут появиться позже. Поэтому последнее состояние
@@ -49,13 +49,8 @@
 		public function SetInteractive(value:Boolean):void
 		{
 			interactive = value;
-			var count:int = 0;
 			for each (var indicator:MateVoiceIndicator in indicators)
-			{
 				indicator.SetInteractive(value);
-				count++;
-			}
-			FSCommands.Send(COMMAND, "dbg interactive " + value + " shown " + shown + " indicators " + count + " state " + (lastState != null) + " ourId " + (ourIdSource != null ? ourIdSource() : "-"));
 			Reapply();
 		}
 
@@ -84,8 +79,6 @@
 				me.SetMe(micState, meSpeaking);
 				keep[ourId] = true;
 			}
-			else if (interactive)
-				FSCommands.Send(COMMAND, "dbg no portrait for ourId " + ourId);
 
 			for (var i:int = 0; i < ids.length; i++)
 			{
