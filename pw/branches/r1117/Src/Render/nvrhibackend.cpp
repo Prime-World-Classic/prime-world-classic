@@ -32,6 +32,9 @@
 // временная зависимость: на этапе 4, когда D3D9-путь уйдёт, менеджер состояний
 // станет нейтральным, и include исчезнет вместе с переводчиком.
 #include "Vendor/DirectX/Include/d3d9types.h"
+// App API RenderDoc — только заголовок: с библиотекой не линкуемся, единственная
+// точка входа RENDERDOC_GetAPI берётся GetProcAddress (раздел «RenderDoc»).
+#include "Vendor/renderdoc/renderdoc_app.h"
 #include "System/FileSystem/FileStream.h"                 // Stream для чтения контейнера
 #include "System/FileSystem/FileSystem.h"                 // RootFileSystem::OpenFile
 
@@ -935,19 +938,32 @@ struct NvrhiBackendImpl
   unsigned shotTime;         // env PW_VK_SHOT_TIME: серия по секундам от 1-го present
   unsigned shotLastSec;      // уже отснятая секунда (для режима по времени)
   unsigned shotProbe;        // env PW_VK_SHOT_PROBE: перед снимком залить картинку
+  // RenderDoc-контур (env PW_VK_RDCAP*, раздел «RenderDoc» перед «Кадр»):
+  // клиент считает сессионные секунды и на нужной пишет маркер с целевым кадром.
+  unsigned rdAt;             // env PW_VK_RDCAP: кадр (present), на котором нужна капча
+  unsigned rdTime;           // env PW_VK_RDCAP_TIME: секунда сессии (от 1-го present)
+  unsigned rdStep;           // env PW_VK_RDCAP_STEP: период серии в секундах (0 = один раз)
+  unsigned rdLead;           // env PW_VK_RDCAP_LEAD: кадров запаса на арм (default 60)
+  unsigned rdLastSec;        // уже отмеченная секунда
+  unsigned rdSeq;            // счётчик маркеров (нумерует серии)
+  char rdMarker[64];         // env PW_VK_RDCAP_FILE: имя маркера (cwd = Game/Bin)
+  unsigned dbgName;          // env PW_VK_DBGNAME: VK_EXT_debug_utils + имена объектов
   unsigned drawDiag;         // сколько выводов описано подробно (диагностика пустого кадра)
   unsigned panelLogged;      // трассировка «шейдер читает глубину» (00344)
   unsigned rtSizeLogged;     // инвентарь нестандартных целей вывода
   unsigned surfLogged;       // связка «поверхность <-> текстура» для офскрин-целей
   std::vector<unsigned> rtDrawCount;   // сколько выводов в поверхность (индекс = индекс записи)
 
-  // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>). Нужен потому, что
-  // RenderDoc ловит кадры ТОЛЬКО нативно: под Wine слой активен (winevulkan
-  // идёт через хостовый загрузчик), но гость — Windows PE — не может вызвать
-  // RENDERDOC_GetAPI, а без app-API слой кадр не сериализует (замер
-  // 2026-10-17: слой в списке инстанса, клиент жив 120+ с, .rdc нет нигде).
-  // Поэтому выводы пишутся в файл, а рисует их нативный реплеер
-  // tools/render_replay — он и снимает капчу.
+  // Рекордер вывода (шаг 14, env PW_VK_RECORD=<файл>): выводы пишутся в файл,
+  // а рисует их нативный реплеер tools/render_replay.
+  // ЗАМЕР 2026-10-17 («под Wine слой кадр не сериализует, т.к. гостевой PE не
+  // может вызвать RENDERDOC_GetAPI») ОВЕРКИНУТ 2026-10-22: слой
+  // VK_LAYER_RENDERDOC_Capture, включённый ХОСТОВЫМ Vulkan-загрузчиком внутри
+  // wine64 (VK_ADD_IMPLICIT_LAYER_PATH + ENABLE_VULKAN_RENDERDOC_CAPTURE=1),
+  // пишет полные .rdc (175 МБ, «Finished capture, Frame 1899») без единого
+  // вызова из гостя — захват запускает target-control сервер самого слоя
+  // (tools/rd/rdctl.py). Рекордер остаётся для офлайн-реплея и для контуров
+  // без хостового RenderDoc.
   bool recOn;
   FILE* recFile;
   unsigned recMax;        // лимит выводов (env PW_VK_RECORD_MAX)
@@ -1105,7 +1121,7 @@ struct NvrhiBackendImpl
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
-      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), drawDiag(0), panelLogged(0), rtSizeLogged(0), surfLogged(0), tracePsLogged(0), traceDrawLogged(0), traceVtxLogged(0), traceConstLogged(0),
+      ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), rdAt(0), rdTime(0), rdStep(0), rdLead(60u), rdLastSec(0xffffffffu), rdSeq(0), dbgName(0), drawDiag(0), panelLogged(0), rtSizeLogged(0), surfLogged(0), tracePsLogged(0), traceDrawLogged(0), traceVtxLogged(0), traceConstLogged(0),
       recOn(false), recFile(0), recMax(0), recSkip(0), recSeen(0), recDraws(0), recObjs(0), recRtW(0), recRtH(0),
       recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
@@ -1807,6 +1823,30 @@ static const char* VkResultName(VkResult r)
   return nvrhi::vulkan::resultToString(r);
 }
 
+// Подпись VkImage/VkBuffer для капчи RenderDoc. NVRHI этой версии именует из
+// debugName ТОЛЬКО хипы (Vendor/NVRHI/src/vulkan/vulkan-device.cpp:817),
+// поэтому ресурсы подписываем сами: без имён в GUI RenderDoc все текстуры
+// безымянные и отличить их можно только по размеру. Имена доходят только
+// когда включён VK_EXT_debug_utils (env PW_VK_DBGNAME, см. Init).
+static void VkSetName(NvrhiBackendImpl& d, VkObjectType type, uint64_t handle, const char* name)
+{
+  if (!d.dbgName || !d.device || !handle)
+    return;
+  VkDebugUtilsObjectNameInfoEXT info;
+  memset(&info, 0, sizeof(info));
+  info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+  info.objectType = type;
+  info.objectHandle = handle;
+  info.pObjectName = name;
+  const VkResult r = VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT(d.device, &info);
+  static unsigned s_failedLogged = 0u;
+  if (r != VK_SUCCESS && s_failedLogged < 4u)
+  {
+    ++s_failedLogged;   // имена — отладка, а не функциональность: не спамить
+    VkNote("vkSetDebugUtilsObjectNameEXT", false, VkResultName(r));
+  }
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 NvrhiBackend::NvrhiBackend()
@@ -1895,6 +1935,24 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
     char sp[8];
     if (GetEnvironmentVariableA("PW_VK_SHOT_PROBE", sp, sizeof(sp) - 1) > 0)
       d.shotProbe = (unsigned)atoi(sp);
+    // RenderDoc: маркер на нужной секунде/кадре (см. раздел «RenderDoc»).
+    // Часы — сессионные (от 1-го present), как у PW_VK_SHOT_TIME: своего
+    // «таймера матча» у клиента нет (grep GetGameTime/battleStartTime — пусто),
+    // а сессионная секунда воспроизводима между прогонами.
+    { char rc[16];
+      if (GetEnvironmentVariableA("PW_VK_RDCAP", rc, sizeof(rc) - 1) > 0)
+        d.rdAt = (unsigned)atoi(rc); }
+    { char rc[16];
+      if (GetEnvironmentVariableA("PW_VK_RDCAP_TIME", rc, sizeof(rc) - 1) > 0)
+        d.rdTime = (unsigned)atoi(rc); }
+    { char rc[16];
+      if (GetEnvironmentVariableA("PW_VK_RDCAP_STEP", rc, sizeof(rc) - 1) > 0)
+        d.rdStep = (unsigned)atoi(rc); }
+    { char rc[16];
+      if (GetEnvironmentVariableA("PW_VK_RDCAP_LEAD", rc, sizeof(rc) - 1) > 0)
+        d.rdLead = (unsigned)atoi(rc); }
+    if (GetEnvironmentVariableA("PW_VK_RDCAP_FILE", d.rdMarker, sizeof(d.rdMarker) - 1) <= 0)
+      strcpy(d.rdMarker, "rdcap.marker");
     RecOpen(d);
   }
 
@@ -1918,12 +1976,23 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   app.pApplicationName = "PW_Game";
   app.apiVersion = VK_API_VERSION_1_3;
 
-  const char* instanceExts[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+  // VK_EXT_debug_utils включаем по env: по нему NVRHI подписывает объекты и
+  // маркерами (Vendor/NVRHI/src/vulkan/vulkan-device.cpp:81, :840-855), и в
+  // капче RenderDoc вместо безымянных выводов появляются имена целей/проходов.
+  const char* instanceExts[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+                                 VK_EXT_DEBUG_UTILS_EXTENSION_NAME };
+  uint32_t nInstanceExts = 2;
+  { char dn[8];
+    if (GetEnvironmentVariableA("PW_VK_DBGNAME", dn, sizeof(dn) - 1) > 0 && atoi(dn))
+    {
+      nInstanceExts = 3;
+      d.dbgName = 1u;
+    } }
   VkInstanceCreateInfo ici;
   memset(&ici, 0, sizeof(ici));
   ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   ici.pApplicationInfo = &app;
-  ici.enabledExtensionCount = 2;
+  ici.enabledExtensionCount = nInstanceExts;
   ici.ppEnabledExtensionNames = instanceExts;
 
   // env PW_VK_LAYERS="VK_LAYER_A,VK_LAYER_B" — явные слои инстанса.
@@ -2565,6 +2634,7 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
             .setInitialState(nvrhi::ResourceStates::RenderTarget)
             .setKeepInitialState(true)
             .setDebugName("PW backbuffer"));
+    VkSetName(d, VK_OBJECT_TYPE_IMAGE, (uint64_t)images[i], "PW backbuffer");
     d.backTextures.push_back(h);
     unsigned sidx = (i < d.backSurfaceIdx.size()) ? d.backSurfaceIdx[i] : kNoRes;
     if (sidx != kNoRes && sidx < d.surfaces.size())
@@ -2635,6 +2705,8 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
       ds.tex = d.nvrhiDevice->createTexture(td);
       if (ds.tex)
       {
+        VkSetName(d, VK_OBJECT_TYPE_IMAGE,
+                  ds.tex->getNativeObject(nvrhi::ObjectTypes::VK_Image).integer, "PW back depth");
         ds.w = d.width; ds.h = d.height;
         ds.fmt = nvrhi::Format::D24S8;
         ds.seamFormat = bfD24S8;
@@ -3035,6 +3107,103 @@ HRESULT NvrhiBackend::GetSystemInfo(BackendSystemInfo& out)
 }
 
 //////////////////////////////////////////////////////////////////////////
+// RenderDoc (env PW_VK_RDCAP*)
+//
+// Капчу снимает НЕ сам клиент. Под Wine гостевой PE не может вызвать
+// RENDERDOC_GetAPI (символ живёт в хостовом librenderdoc.so), а LD_PRELOAD-
+// хуки инжекта в гостя winevulkan не видят. Работает другой контур: слой
+// VK_LAYER_RENDERDOC_Capture включает ХОСТОВЫЙ Vulkan-загрузчик внутри wine64
+// (VK_ADD_IMPLICIT_LAYER_PATH=<...>/implicit_layer.d +
+// ENABLE_VULKAN_RENDERDOC_CAPTURE=1), и в процессе поднимается target-control
+// сервер слоя (порты 38920..38927), куда хост шлёт TriggerCapture/QueueCapture
+// — tools/rd/rdctl.py (протокол: renderdoc/core/target_control.cpp).
+// Слой при этом сам считает кадры по present'ам, а счётчик present'ов бэкенда
+// с ним совпадает (замер 2026-10-22: «Finished capture, Frame 1899» при
+// presents=1899), поэтому хост армит захват ровно на нужном кадре, а не
+// «примерно в нужное время».
+//
+// Роль клиента — часы сессии и маркер: на выбранной секунде он пишет файл с
+// целевым кадром, наблюдатель на хосте (tools/rd/rdwatch.py) по нему шлёт
+// QueueCapture. Если же клиент запущен самим RenderDoc (нативный Windows-
+// контур), в процессе есть renderdoc.dll и тот же маркер дублируется прямым
+// TriggerCapture() через app API.
+
+// Единственная точка входа app API: с библиотекой не линкуемся, берём
+// GetProcAddress из уже загруженной dll (свою грузим только по PW_VK_RDC_DLL=1).
+static RENDERDOC_API_1_7_0* g_rdApi = 0;
+static bool g_rdApiTried = false;
+static bool g_rdApiTitle = false;   // dll отдала struct 1.6.0+ (SetCaptureTitle)
+
+static RENDERDOC_API_1_7_0* RdApi()
+{
+  if (g_rdApiTried)
+    return g_rdApi;
+  g_rdApiTried = true;
+  HMODULE h = GetModuleHandleA("renderdoc.dll");
+  if (!h)
+  {
+    char rf[8];
+    if (GetEnvironmentVariableA("PW_VK_RDC_DLL", rf, sizeof(rf) - 1) > 0 && atoi(rf))
+      h = LoadLibraryA("renderdoc.dll");
+  }
+  if (!h)
+    return 0;
+  pRENDERDOC_GetAPI getApi = (pRENDERDOC_GetAPI)GetProcAddress(h, "RENDERDOC_GetAPI");
+  if (!getApi)
+    return 0;
+  // Просим 1.7.0; если dll старше — просим 1.0.0 и дальше трогаем только те
+  // поля, которые в старой dll точно есть (в 1.46 все RENDERDOC_API_1_x_y —
+  // typedef одного struct, см. Vendor/renderdoc/renderdoc_app.h:835, но у
+  // старой dll struct короче).
+  void* out = 0;
+  if (getApi(eRENDERDOC_API_Version_1_7_0, &out) && out)
+    g_rdApiTitle = true;
+  else
+  {
+    out = 0;
+    if (!getApi(eRENDERDOC_API_Version_1_0_0, &out) || !out)
+      return 0;
+  }
+  g_rdApi = (RENDERDOC_API_1_7_0*)out;
+  int major = 0, minor = 0, patch = 0;
+  if (g_rdApi->GetAPIVersion)
+    g_rdApi->GetAPIVersion(&major, &minor, &patch);
+  DebugTrace("VkRdCap: RenderDoc API %d.%d.%d в процессе", major, minor, patch);
+  return g_rdApi;
+}
+
+// sec — секунда сессии, target — кадр, на котором хост обязан снять капчу.
+static void RdMark(NvrhiBackendImpl& d, unsigned sec, unsigned target)
+{
+  ++d.rdSeq;
+  RENDERDOC_API_1_7_0* api = RdApi();
+  // Имя маркера относительное и БЕЗ '/': под Wine путь с '/' в аргументе
+  // портится (тот же вывод, что у PW_VK_RECORD), а cwd = Game/Bin, так что на
+  // хосте файл лежит в wine-client/Game/Bin/<маркер>.
+  FILE* f = fopen(d.rdMarker, "wb");
+  if (f)
+  {
+    fprintf(f, "PWRDCAP 1 seq=%u cur=%u frame=%u sec=%u api=%d\n",
+            d.rdSeq, d.presents, target, sec, api ? 1 : 0);
+    fclose(f);
+  }
+  else
+    DebugTrace("VkRdCap: маркер %s открыть не удалось", d.rdMarker);
+  if (api)
+  {
+    if (g_rdApiTitle && api->SetCaptureTitle)
+    {
+      char title[48];
+      snprintf(title, sizeof(title), "match t=%us frame=%u", sec, target);
+      api->SetCaptureTitle(title);
+    }
+    api->TriggerCapture();
+  }
+  DebugTrace("VkRdCap: маркер %s seq=%u sec=%u present=%u frame=%u api=%d",
+             d.rdMarker, d.rdSeq, sec, d.presents, target, api ? 1 : 0);
+}
+
+//////////////////////////////////////////////////////////////////////////
 // Кадр
 
 // Шаг 12b: BeginScene/EndScene у Vulkan-бэкенда — no-op: командный список
@@ -3199,6 +3368,36 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
     else
       DebugTrace("Renderer: PW_VK_SHOT FAILED (кадр %u)", d.presents);
     VK_TRACE("Present: shot <");
+  }
+  // RenderDoc (env PW_VK_RDCAP_TIME / PW_VK_RDCAP): цель — кадр в БУДУЩЕМ
+  // (d.presents + rdLead): наблюдатель на хосте читает маркер и шлёт
+  // QueueCapture с запасом; слой армится и снимает ровно этот кадр
+  // (замер: queue 1899 -> «Finished capture, Frame 1899»). Запас по умолчанию
+  // 60 кадров — сам арм идёт за десятки миллисекунд, но хост может и тормозить.
+  if (d.rdAt || d.rdTime)
+  {
+    static unsigned long long rdT0 = 0;
+    if (!rdT0)
+      rdT0 = GetTickCount64();
+    const unsigned el = (unsigned)((GetTickCount64() - rdT0) / 1000ull);
+    bool rdOne = false;
+    if (d.rdTime)
+    {
+      // PW_VK_RDCAP_STEP=0 — одна капча на секунде rdTime; N>0 — серия
+      // rdTime, rdTime+N, rdTime+2N, ...
+      if (d.rdStep)
+      {
+        rdOne = el >= d.rdTime && ((el - d.rdTime) % d.rdStep) == 0u && el != d.rdLastSec;
+        if (rdOne)
+          d.rdLastSec = el;
+      }
+      else
+        rdOne = d.rdSeq == 0u && el >= d.rdTime;
+    }
+    else
+      rdOne = d.rdSeq == 0u && d.presents >= d.rdAt;
+    if (rdOne)
+      RdMark(d, el, d.presents + d.rdLead);
   }
   VK_TRACE("Present: acquire next >");
   const VkResult ar = AcquireNextImage(d);
@@ -4305,7 +4504,10 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
         .setB(nvrhi::ComponentSwizzle::Zero).setA(nvrhi::ComponentSwizzle::R));
   // keepInitialState обязателен: без него трекер состояний NVRHI не знает,
   // откуда стартовать, и рвёт командный список (замер спайка)
-  td.setKeepInitialState(true).setDebugName(cube ? "seam texture cube" : "seam texture");
+  td.setKeepInitialState(true);
+  char nm[48];
+  snprintf(nm, sizeof(nm), "PW tex %ux%u%s", width, height, cube ? " cube" : "");
+  td.setDebugName(nm);
   nvrhi::TextureHandle tex = d.nvrhiDevice->createTexture(td);
   if (!tex)
   {
@@ -4316,6 +4518,8 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
     VK_TRACE("CreateTexture: fail");
     return E_FAIL;
   }
+  VkSetName(d, VK_OBJECT_TYPE_IMAGE,
+            tex->getNativeObject(nvrhi::ObjectTypes::VK_Image).integer, nm);
   if ((usage & usageAutoGenMipmap) && d.texMissing < 8u)
     VkNote("CreateTexture: автогенерация mipmap через seam не переведена (шаг 13)", false, 0);
   NvrhiBackendImpl::TextureObj to;
@@ -8218,6 +8422,12 @@ HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, un
 
   nvrhi::TextureDesc td;
   td.setDimension(nvrhi::TextureDimension::Texture2D).setWidth(width).setHeight(height);
+  // Имя объекта для капчи: NVRHI подписывает VkImage только из HeapDesc
+  // (Vendor/NVRHI/src/vulkan/vulkan-device.cpp:817), поэтому имена ставим сами
+  // через vkSetDebugUtilsObjectNameEXT (VkSetName).
+  char nm[48];
+  snprintf(nm, sizeof(nm), "PW surf %ux%u%s", width, height, format == bfD24S8 ? " depth" : "");
+  td.setDebugName(nm);
   nvrhi::Format fmtSel = nvrhi::Format::UNKNOWN;
   bool depth = false;
   switch (format)
@@ -8254,6 +8464,8 @@ HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, un
     VkNote("CreateSurface: createTexture", false, det);
     return E_FAIL;
   }
+  VkSetName(d, VK_OBJECT_TYPE_IMAGE,
+            tex->getNativeObject(nvrhi::ObjectTypes::VK_Image).integer, nm);
   SurfaceObj so;
   so.tex = tex;
   so.backBuffer = false;
