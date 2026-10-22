@@ -9,8 +9,13 @@
 
 # Paths are resolved relative to this config file directory.
 
+# gitflic is retired as a mirror of these channels (it rejects their packs), so
+# its urls are commented out: it takes no part in the ranking or in fetching.
+# Uncomment one as "retired" (not as "mirror") to keep clones whose origin still
+# points there - an origin that is neither a mirror nor retired is re-cloned.
+
 repo ..\Launcher\content content
-mirror https://gitflic.ru/project/prime-world-classic/launcher-pwc.git
+# mirror https://gitflic.ru/project/prime-world-classic/launcher-pwc.git
 mirror https://gitlab.com/prime-world-classic/launcher-pwc.git
 mirror https://github.com/Prime-World-Classic/launcher-pwc.git
 mirror https://gitverse.ru/prime_world_classic/launcher-pwc.git
@@ -19,4 +24,4 @@ repo ..\Game game
 mirror https://gitlab.com/prime-world-classic/game-pwc.git
 mirror https://github.com/Prime-World-Classic/game-pwc.git
 mirror https://gitverse.ru/prime_world_classic/game-pwc.git
-retired https://gitflic.ru/project/prime-world-classic/game-pwc.git
+# retired https://gitflic.ru/project/prime-world-classic/game-pwc.git

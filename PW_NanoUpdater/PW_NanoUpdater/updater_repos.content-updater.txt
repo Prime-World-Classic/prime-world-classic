@@ -2,8 +2,13 @@
 # This updater updates the main updater in Tools. Paths are resolved relative to this config file.
 # Branch is passed to the updater as a launch parameter (--branch main|test).
 
+# gitflic is retired as a mirror of this channel (it rejects big packs), so its
+# url is commented out: it takes no part in the ranking or in fetching.
+# Uncomment it as "retired" (not as "mirror") to keep clones whose origin still
+# points there - an origin that is neither a mirror nor retired is re-cloned.
+
 repo ..\..\..\Tools tools
-mirror https://gitflic.ru/project/prime-world-classic/updater.git
+# mirror https://gitflic.ru/project/prime-world-classic/updater.git
 mirror https://gitlab.com/prime-world-classic/updater.git
 mirror https://github.com/Prime-World-Classic/updater.git
 mirror https://gitverse.ru/prime_world_classic/updater.git
