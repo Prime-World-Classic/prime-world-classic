@@ -177,6 +177,12 @@ namespace nvrhi
         R16_FLOAT,
         BGRA4_UNORM,
         B5G6R5_UNORM,
+        // 16-битный «565» с R в СТАРШИХ битах (D3DFMT_R5G6B5). У Vulkan имена
+        // *_PACK16 перечисляют компоненты от старших бит к младшим, поэтому это
+        // VK_FORMAT_R5G6B5_UNORM_PACK16; B5G6R5_UNORM выше — тот же packing, но
+        // с B в старших битах (DXGI B5G6R5). У DXGI/D3D форматов с R в старших
+        // битах нет, см. dxgi-format.cpp.
+        R5G6B5_UNORM,
         B5G5R5A1_UNORM,
         RGBA8_UINT,
         RGBA8_SINT,

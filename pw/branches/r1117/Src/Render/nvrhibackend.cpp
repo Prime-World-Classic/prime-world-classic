@@ -373,11 +373,23 @@ static nvrhi::Format SurfaceFormat(EBackendFormat f)
   switch (f)
   {
   case bfA8R8G8B8:      return nvrhi::Format::BGRA8_UNORM;
-  case bfX8R8G8B8:      return nvrhi::Format::BGRX8_UNORM;
+  case bfX8R8G8B8:      return nvrhi::Format::BGRA8_UNORM;
+  // X8R8G8B8 на BGRA8: у NVRHI BGRX8_UNORM на Vulkan = VK_FORMAT_UNDEFINED
+  // (Vendor/NVRHI/src/vulkan/vulkan-constants.cpp:62 — «Not supported on
+  // Vulkan»), создание ресурса падало; DXVK для X8R8G8B8 тоже берёт
+  // VK_FORMAT_B8G8R8A8_UNORM со свизлом alpha:=ONE
+  // (src/d3d9/d3d9_format.cpp:19-24), то есть старшие биты у нас просто читаются
+  // как alpha.
   case bfA8:            return nvrhi::Format::R8_UNORM;
   case bfL8:            return nvrhi::Format::R8_UNORM;
   case bfL16:           return nvrhi::Format::R16_UNORM;
-  case bfR5G6B5:        return nvrhi::Format::B5G6R5_UNORM;
+  // D3DFMT_R5G6B5 — «565» с R в СТАРШИХ битах; у Vulkan PACK16 форматы имя
+  // перечисляет компоненты от старших к младшим, значит это
+  // VK_FORMAT_R5G6B5_UNORM_PACK16, а не B5G6R5 (проверено по DXVK
+  // src/d3d9/d3d9_format.cpp:26-28). Прежний маппинг на B5G6R5_UNORM менял
+  // R и B местами (проблема 9 docs/NVRHI_VULKAN_VS_DXVK_ISSUES.md: цвет
+  // карты теней ShadowMapPCF_DS::Init, Src/Render/ShadowMap.cpp:207).
+  case bfR5G6B5:        return nvrhi::Format::R5G6B5_UNORM;
   case bfR16F:          return nvrhi::Format::R16_FLOAT;
   case bfA16B16G16R16F: return nvrhi::Format::RGBA16_FLOAT;
   case bfR32F:          return nvrhi::Format::R32_FLOAT;
@@ -741,6 +753,9 @@ struct NvrhiBackendImpl
     EBackendFormat seamFormat;
     EBackendUsage usage;
     EBackendPool pool;
+    // клиент просил AUTOGENMIPMAP — цепочку mip'ов обязан пересчитать
+    // бэкенд (см. GenMipChainCPU)
+    bool autoMip;
     // CPU-зеркало уровня 0: у Vulkan нет «приведённой» памяти, поэтому
     // LockTexture2D отдаёт указатель сюда, а UnlockTexture2D грузит её целиком
     // (зеркало авторитетно, поэтому частичная блокировка не затирает остальное)
@@ -787,7 +802,11 @@ struct NvrhiBackendImpl
     nvrhi::BindingSetHandle bsSsbo;
     std::vector<ResItem> items;
     unsigned vs, ps;
-    ResMapObj() : vs(kNoRes), ps(kNoRes) {}
+    // какие мосты SSBO (биты = индекс в kSsboBridges) читает этот resMap —
+    // снимок имён SSBO из SPIR-V; считается лениво (SsboMaskOf)
+    unsigned ssboMask;
+    bool ssboMaskDone;
+    ResMapObj() : vs(kNoRes), ps(kNoRes), ssboMask(0), ssboMaskDone(false) {}
   };
   std::vector<TextureObj> textures;
   std::vector<ResMapObj> resMaps;
@@ -911,6 +930,7 @@ struct NvrhiBackendImpl
   SsboBridge ssbo[kSsboBridgeCount];
   unsigned ssboUploads;
   unsigned long long ssboBytes;
+  unsigned ssboSkippedMask;   // загрузки, отложенные потому, что вывод мост не читает
   nvrhi::BufferHandle instCounter;    // счётчик 0..N-1 (SetInstanceSource без буфера)
   // Отладка 2026-10-17: дамп загружаемых текстур (см. TexDumpLevel0)
   FILE* texDump = nullptr;
@@ -918,6 +938,14 @@ struct NvrhiBackendImpl
   unsigned instCounterEntries = 0;    // записей в instCounter
   unsigned texBound[16];              // слот сэмплера D3D9 -> индекс текстуры
   unsigned setsCreated, texMissing, resMapsCreated;
+  // автогенерация mip-цепочки: вызовов, сгенерировано уровней, пропущено
+  // форматов (сжатые/прочие, где побайтовый box-фильтр неприменим)
+  unsigned mipGenCalls = 0, mipGenLevels = 0, mipGenSkip = 0;
+  // сэмплеры с maxMipLevel>0, которые нечем зажать (у NVRHI нет maxLod)
+  unsigned maxMipUnclamped = 0;
+  // загрузки по уровням mip-цепочки: грузит ли клиент уровни 1..n или только
+  // lvl0 — от этого зависит, чинить ли автогенерацию или искать полосы в другом
+  unsigned uploadLevels[16] = {0};
   unsigned ssboSetsCreated;
   unsigned texDimMismatch;   // шейдер ждёт cube/2D, привязано другое
   // сколько раз в набор уходила 1x1-замена (слот не привязан или тип не совпал).
@@ -1019,6 +1047,9 @@ struct NvrhiBackendImpl
   // writeBuffer есть destOffsetBytes (nvrhi.h:3402), поэтому одно кольцо на VB
   // и одно на IB, а не отдельный буфер на вызов.
   nvrhi::BufferHandle upVb, upIb;
+  // постоянный маппинг колец (хост-видимая память) — запись идёт memcpy,
+  // без vkCmdUpdateBuffer в командном потоке
+  void* upVbPtr; void* upIbPtr;
   unsigned long long upVbOff, upIbOff;
   unsigned upDraws, upFlushes;
   // SetRenderTarget(index, ...) -> поверхность; нужна для GetRenderTarget
@@ -1032,6 +1063,22 @@ struct NvrhiBackendImpl
   unsigned uboFirst[2], uboLast[2];
   unsigned long long uboBytes;
   unsigned uboUploads;
+  // Дедупликация константных загрузок (перф). Причина считать именно это:
+  // writeBuffer по НЕ-volatile буферу в Vulkan обязан завершить render pass
+  // (Vendor/NVRHI/src/vulkan/vulkan-buffer.cpp:463 — «vkCmdUpdateBuffer is only
+  // allowed outside of a render pass»), а следующий setGraphicsState вставляет
+  // барьер и открывает проход заново (vulkan-graphics.cpp:560: «barriers cannot
+  // be set inside a renderpass»). Замер A/B-капчи pw_frame1826: 570 выводов,
+  // 1729 vkCmdUpdateBuffer, 1180 vkCmdPipelineBarrier2, 454 прохода; по
+  // длительности чанков на барьеры+BeginRendering/EndRendering приходится
+  // ~70% внутрикадрового времени API. Клиент перекладывает в банк те же
+  // значения от вывода к выводу, поэтому перед загрузкой сравниваем диапазон
+  // с последним записанным и пропускаем совпадение. Буферы инкрементные
+  // (не кольцо), пропуск записи семантически безопасен.
+  std::vector<unsigned char> uboLastBytes[2];
+  std::vector<unsigned char> ssboLastBytes[kSsboBridgeCount];
+  unsigned ssboLastOff[kSsboBridgeCount], ssboLastLen[kSsboBridgeCount];
+  unsigned uboSkipped, ssboSkipped;
   nvrhi::BindingLayoutHandle set0Layout;
   nvrhi::BindingSetHandle set0Set;
 
@@ -1081,6 +1128,10 @@ struct NvrhiBackendImpl
   // созданный вне seam (D3DX-загрузка DDS, PostFX). Различать нужно: первое
   // лечится привязкой нашей картинки, второе — только переводом создания на seam.
   unsigned rtSetNull, rtSetForeign, rtSetOwn, rtSetEmpty;
+  // Привязки цели в слот 0, по которым вьюпорт/сциссор сброшены в размер цели
+  // (правило D3D9, см. SetRenderTarget). По нему видно, что правило вообще
+  // работает: у кадра оно обязано срабатывать на каждую смену цели.
+  unsigned rtViewportReset;
   unsigned dsSetNull, dsSetForeign, dsSetOwn, dsSetEmpty;
 
   // Шаг 13.4c: владение. SeamSlot — слот ручки таблицы; FreeHandle вызывается из
@@ -1107,7 +1158,8 @@ struct NvrhiBackendImpl
       uboDirty{ false, false },
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
-      ssboUploads(0), ssboBytes(0),
+      ssboLastOff{ 0 }, ssboLastLen{ 0 }, uboSkipped(0), ssboSkipped(0),
+      ssboUploads(0), ssboBytes(0), ssboSkippedMask(0),
       curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
       curIb(kNoRes), curRt(kNoRes), curDs(kNoRes),
       instSrc(kNoRes), instSlot(kMaxVertexStreams), instStride(0), instOffset(0),
@@ -1118,7 +1170,7 @@ struct NvrhiBackendImpl
       slabCreated(0), slabHoleReuses(0), slabAllocFail(0), slabFreed(0),
       drawSkipPrim(0), drawSkipVs(0), drawSkipPs(0), drawSkipRt(0),
       drawsBack(0), drawsOff(0),
-      rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0),
+      rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0), rtViewportReset(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
       ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), rdAt(0), rdTime(0), rdStep(0), rdLead(60u), rdLastSec(0xffffffffu), rdSeq(0), dbgName(0), drawDiag(0), panelLogged(0), rtSizeLogged(0), surfLogged(0), tracePsLogged(0), traceDrawLogged(0), traceVtxLogged(0), traceConstLogged(0),
@@ -1126,7 +1178,8 @@ struct NvrhiBackendImpl
       recAt(0), recArmed(false), recT0(0),
       modelHash(0ull), stateSets(0), samplersCreated(0), smpSetsCreated(0),
       stateUnsupported(0),
-      layoutsBuilt(0), ilPadHoles(0), ilNullPad(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0)
+      layoutsBuilt(0), ilPadHoles(0), ilNullPad(0), ilDropped(0), ilDiag(0), upVbOff(0), upIbOff(0), upDraws(0), upFlushes(0),
+      upVbPtr(nullptr), upIbPtr(nullptr)
   {
     deviceName[0] = 0;
     clearOnPresent = true;
@@ -2233,6 +2286,23 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
                                              .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
                                              .setKeepInitialState(true)
                                              .setDebugName(s == csPixel ? "seam cbank ps" : "seam cbank vs"));
+    // ЗАМЕР 2026-10-23 (ветка nvrhi): волатильный c-банк
+    // (.setIsVolatile(true).setMaxVersions(N) + BindingLayoutItem::
+    // VolatileConstantBuffer) убирает разрыв прохода на каждой загрузке
+    // констант: проходов в кадре 454 -> 192, барьеров 1180 -> 305,
+    // vkCmdUpdateBuffer 1729 -> 102. Но NVRHI берёт СВОЮ версию на каждую
+    // запись внутри командного списка (vulkan-buffer.cpp:296-345: слот,
+    // помеченный незакрытым списком, недоступен), а bind использует
+    // latestVersion (vulkan-resource-bindings.cpp, bindBindingSets). Записей
+    // банка в шве ~460 на кадр, поэтому при maxVersions=3 и 16 поиск версии
+    // падал («Volatile constant buffer seam cbank ps has maxVersions = 16,
+    // which is insufficient», 40 раз за прогон), запись ПРОПУСКАЛАСЬ, и вывод
+    // читал чужие константы: кадр площади становился чёрным (средний уровень
+    // пикселя 1,1 против 69,3). С maxVersions=2048 экран выбора героя
+    // рисуется правильно, но 40 ошибок на старте остаются (в одном списке
+    // загрузок записей больше 2048) — т.е. тихая порча кадра возможна.
+    // Оставлено неволатильным; чинить через сокращение числа записей на
+    // список (батчинг выводов), а не через гонку maxVersions.
     if (!d.ubo[s]) { VkNote("Init: createBuffer(cbank)", false, 0); return false; }
   }
   {
@@ -2985,10 +3055,19 @@ void NvrhiBackend::DumpStats(const char* pTag) const
   DebugTrace("VkTex%s: текстуры=%u наборы=%u/%u (промахов текстур %u) ssbo-наборов=%u",
              pTag ? pTag : "", (unsigned)d.textures.size(), d.setsCreated,
              (unsigned)d.resMaps.size(), d.texMissing, d.ssboSetsCreated);
+  DebugTrace("VkMip%s: автогенерация цепочки: вызовов=%u уровней=%u пропущено=%u",
+             pTag ? pTag : "", d.mipGenCalls, d.mipGenLevels, d.mipGenSkip);
+  DebugTrace("VkMipLevels%s: загрузки по уровням: lvl0=%u lvl1=%u lvl2=%u lvl3=%u lvl4+=%u",
+             pTag ? pTag : "", d.uploadLevels[0], d.uploadLevels[1], d.uploadLevels[2],
+             d.uploadLevels[3],
+             d.uploadLevels[4] + d.uploadLevels[5] + d.uploadLevels[6] + d.uploadLevels[7] +
+             d.uploadLevels[8] + d.uploadLevels[9] + d.uploadLevels[10] + d.uploadLevels[11] +
+             d.uploadLevels[12] + d.uploadLevels[13] + d.uploadLevels[14] + d.uploadLevels[15]);
   DebugTrace("VkRt%s: SetRenderTarget: NULL=%u пустая-ручка=%u чужих=%u своих=%u | SetDepthStencil: NULL=%u "
              "пустая=%u чужих=%u своих=%u | глубина бэк-буфера=%d",
              pTag ? pTag : "", d.rtSetNull, d.rtSetEmpty, d.rtSetForeign, d.rtSetOwn,
              d.dsSetNull, d.dsSetEmpty, d.dsSetForeign, d.dsSetOwn, (int)d.backDepthIdx);
+  DebugTrace("VkRtVp%s: привязок слота 0 со сбросом вьюпорта/сциссора в размер цели: %u", pTag ? pTag : "", d.rtViewportReset);
   DebugTrace("VkDraw%s: пропуски вывода: примитив=%u нет VS=%u нет PS=%u нет RT=%u",
              pTag ? pTag : "", d.drawSkipPrim, d.drawSkipVs, d.drawSkipPs, d.drawSkipRt);
   {
@@ -3039,11 +3118,9 @@ void NvrhiBackend::DumpStats(const char* pTag) const
 void NvrhiBackend::DumpCompact() const
 {
   const NvrhiBackendImpl& d = *m_pImpl;
-  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, целый банк = %u KiB; SSBO-мосты: загрузок=%u байт=%u",
-             d.uboUploads, (unsigned)(d.uboBytes / 1024ull),
-             (unsigned)((unsigned long long)d.uboUploads * (unsigned long long)SHADER_CONST_REGISTERS *
-                        16ull / 1024ull),
-             d.ssboUploads, (unsigned)d.ssboBytes);
+  DebugTrace("VkUbo: загрузок=%u байт=%u KiB, пропущено совпадений=%u; SSBO-мосты: загрузок=%u байт=%u совпадений=%u вне-вывода=%u",
+             d.uboUploads, (unsigned)(d.uboBytes / 1024ull), d.uboSkipped,
+             d.ssboUploads, (unsigned)d.ssboBytes, d.ssboSkipped, d.ssboSkippedMask);
   DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
              "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
@@ -3519,6 +3596,8 @@ HRESULT NvrhiBackend::Clear(unsigned clearFlags, unsigned colorRGBA, float z, un
                                             (clearFlags & bcStencil) != 0, stencil);
   }
   return S_OK;
+  BandScan(m_pImpl->curRt, "после Clear");
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3814,6 +3893,271 @@ static unsigned ResolveSurfaceIdx(NvrhiBackendImpl& d, unsigned idx)
   return d.surfaces[idx].backBufferAlias ? BackSurfaceIndex(d) : idx;
 }
 
+// ─── зонд «жёлтых полос» (PW_VK_BANDSCAN=<номер Present>) ──────────────────
+// Поиск источника полос на земле (замер A/B 2026-10-23: горизонтальные полосы с
+// провалом синего на ~25, период растёт к камере, в DXVK-кадре их нет; с
+// `shadows 0` и с форсом mip0 полосы остаются — значит источник не тени и не
+// mip-цепочка). На указанном кадре цель читается обратно в CPU (тот же путь,
+// что ReadSurface) и печатается амплитуда полос по строкам: метрика
+// mean(R+G-2B) по x [0.28W,0.48W], детрендинг скользящим средним ±30,
+// амплитуда = max|отклонения|. Снимается при смене цели (обе цели — «уход» и
+// «вход»), после Clear, StretchRect и после каждого рисунка в цель — по bsSeq и
+// d.draws событие переносится в капчу RenderDoc (проходы идут в том же порядке).
+// Только локальный стенд, в релиз не входит.
+static unsigned bsFrameAt = 0xFFFFFFFFu;
+static unsigned bsSeq = 0, bsDrawsPrev = 0;
+static float bsRow[2048];
+static float bsRowA[2048];   // среднее по альфе — bloom-буфер модифицирует сцену
+                             // через SRCALPHA/INVSRCALPHA, поэтому дефект может
+                             // сидеть в альфе, оставаясь невидимым в RGB
+// снимок цели до/после рисунка (для BandScanDump) — файл-уровня, чтобы
+// дамп был доступен из DrawImpl, где ловится скачок амплитуды
+static unsigned char* bsBuf = nullptr;
+static unsigned char* bsPrev = nullptr;
+static unsigned char* bsTmp = nullptr;
+static unsigned bsW = 0, bsH = 0;
+// дамп по скачку ЧИСЛА линий (прежний спуск — по амплитуде — ловил не тот
+// рисунок: амплитуда насыщается структурой плитки, замеры 2026-10-23)
+static std::vector<unsigned> bsLinesLast;
+static unsigned bsDumpN = 0u;
+static unsigned bsStep = 0u;   // PW_VK_BANDSCAN_STEP — сканировать кадры с шагом
+static unsigned bsPrevIdx = 0xFFFFFFFFu;   // цель предыдущего скана
+
+// PPM-дамп текущего и предыдущего снимка цели: по нему видно, ЧТО именно
+// нарисовал рисунок-источник полос (аддитивный жёлтый или замещение)
+void NvrhiBackend::BandScanDump(unsigned n)
+{
+  if (!bsBuf || !bsW) return;
+  char path[96];
+  for (int which = 0; which < 2; ++which)
+  {
+    const unsigned char* src = which ? bsBuf : bsPrev;
+    if (!src) continue;
+    snprintf(path, sizeof(path), "Z:/tmp/pwband_%u_%s.ppm", n, which ? "after" : "before");
+    FILE* f = fopen(path, "wb");
+    if (!f) continue;
+    fprintf(f, "P6\n%u %u\n255\n", bsW, bsH);
+    for (unsigned y = 0; y < bsH; ++y)
+      for (unsigned x = 0; x < bsW; ++x)
+      {
+        const unsigned char* p = src + ((size_t)y * bsW + x) * 4u;   // BGRA
+        fputc(p[2], f); fputc(p[1], f); fputc(p[0], f);
+      }
+    fclose(f);
+  }
+  DebugTrace("VkBandDump: #%u %s", n, path);
+}
+
+bool NvrhiBackend::BandScanArmed()
+{
+  if (bsFrameAt == 0xFFFFFFFFu)
+  {
+    char b[24]; b[0] = 0;
+    GetEnvironmentVariableA("PW_VK_BANDSCAN", b, sizeof(b) - 1);
+    bsFrameAt = b[0] ? (unsigned)atoi(b) : 0u;
+    b[0] = 0;
+    GetEnvironmentVariableA("PW_VK_BANDSCAN_STEP", b, sizeof(b) - 1);
+    bsStep = b[0] ? (unsigned)atoi(b) : 0u;
+  }
+  if (bsFrameAt == 0u || m_pImpl->nvrhiDevice == nullptr) return false;
+  const unsigned p = m_pImpl->presents + 1u;
+  // шаг: один прогон даёт линию времени (кадры bsFrameAt, +step, +2step...)
+  // вместо одного кадра — по ней видно, накапливаются ли полосы по кадрам
+  if (bsStep == 0u) return p == bsFrameAt;
+  return p >= bsFrameAt && (p - bsFrameAt) % bsStep == 0u;
+}
+
+// порог детектора жёлтых строк. 18 — калибровка по финальному кадру
+// (vk_bb_1800.png 17 линий ↔ dx_bb_10000.png 0). Для поиска ИСТОЧНИКА этот
+// порог слеп: замер 2026-10-23 показал, что в сцене ДО пост-обработки те же
+// строки есть, но с амплитудой 2-3, а пост-обработка поднимает их до 9-34
+// (y=69: 2,2→18,0; y=214: 3,2→34,0). Порог 2 ловит их уже в сцене.
+static int BandThreshold()
+{
+  static int v = -1;
+  if (v < 0)
+  {
+    char b[24]; b[0] = 0;
+    GetEnvironmentVariableA("PW_VK_BANDTHR", b, sizeof(b) - 1);
+    v = b[0] ? atoi(b) : 18;
+  }
+  return v;
+}
+
+float NvrhiBackend::BandScan(unsigned idx, const char* tag)
+{
+  NvrhiBackendImpl& d = *m_pImpl;
+  if (!BandScanArmed()) return 0.f;
+  // потолок числа сканов: с PW_VK_BANDSCAN_STEP=1 зонд вооружён каждый кадр,
+  // без потолка он читает кадр на каждом проходе до конца прогона (тысячи
+  // кадров → лог на миллионы строк и падение FPS). 0 = без потолка
+  {
+    static unsigned s_bsMax = []{
+      char b[24]; b[0] = 0;
+      GetEnvironmentVariableA("PW_VK_BANDSCAN_MAX", b, sizeof(b) - 1);
+      return b[0] ? (unsigned)atoi(b) : 0u;
+    }();
+    static unsigned s_bsScans = 0u;
+    if (s_bsMax != 0u && s_bsScans >= s_bsMax) return 0.f;
+    ++s_bsScans;
+  }
+  if (idx == kNoRes || idx >= d.surfaces.size()) return 0.f;
+  SurfaceObj& so = d.surfaces[idx];
+  // крупные цели (карта теней 2048x2048) не сканируем: readback дороже всего
+  // остального кадра, а полос в них нет (замер 2026-10-23: амплитуда 0,0)
+  if (!so.tex || so.w * so.h > 1024u * 768u) return 0.f;
+  if (!bsBuf || bsW != so.w || bsH != so.h)
+  {
+    delete[] bsBuf; delete[] bsPrev; delete[] bsTmp;
+    bsBuf = new unsigned char[(size_t)so.w * so.h * 4u];
+    bsPrev = new unsigned char[(size_t)so.w * so.h * 4u];
+    bsTmp = new unsigned char[(size_t)so.w * so.h * 4u];
+    memset(bsBuf, 0, (size_t)so.w * so.h * 4u);
+    memset(bsPrev, 0, (size_t)so.w * so.h * 4u);
+    memset(bsTmp, 0, (size_t)so.w * so.h * 4u);
+    bsW = so.w; bsH = so.h;
+  }
+  if (!RawReadback(so, 0u, 0u, so.w, so.h, bsTmp, so.w * 4u, true))
+  {
+    VkNote("BandScan: RawReadback", false, 0);
+    return -1.f;
+  }
+  const int x0 = (int)so.w * 28 / 100, x1 = (int)so.w * 48 / 100;
+  memcpy(bsPrev, bsBuf, (size_t)so.w * so.h * 4u);   // «до» для BandScanDump
+  memcpy(bsBuf, bsTmp, (size_t)so.w * so.h * 4u);
+  // bloom-буфер (256x192) сканируется окном лишь по 20% ширины; дампим его
+  // целиком, чтобы офлайн проверить, нет ли в нём полос по всей ширине
+  // (замер: в окне линий 0, а артефакт появляется при выводе, читающем bloom)
+  if (so.w == 256u && so.h == 192u)
+  {
+    static unsigned s_bloomDumps = 0u;
+    if (s_bloomDumps < 6u) { ++s_bloomDumps; BandScanDump(900u + s_bloomDumps); }
+  }
+  for (unsigned y = 0; y < so.h; ++y)
+  {
+    const unsigned char* row = bsBuf + (size_t)y * so.w * 4u;
+    int sum = 0, suma = 0;
+    for (int x = x0; x < x1; ++x)
+    {
+      const unsigned char* p = row + (size_t)x * 4u;   // BGRA
+      sum += (int)p[2] + (int)p[1] - 2 * (int)p[0];
+      suma += (int)p[3];
+    }
+    bsRow[y] = (float)sum / (float)(x1 - x0);
+    bsRowA[y] = (float)suma / (float)(x1 - x0);
+  }
+  float amp = 0.f, peak = 0.f; int peakY = 0;
+  for (unsigned y = 30; y + 30 < so.h; ++y)
+  {
+    float m = 0.f;
+    for (int q = -30; q <= 30; ++q) m += bsRow[y + q];
+    m /= 61.f;
+    const float dev = bsRow[y] - m;
+    const float adev = dev < 0.f ? -dev : dev;
+    if (adev > amp) amp = adev;
+    if (dev > peak) { peak = dev; peakY = (int)y; }
+  }
+  //надёжная метрика — ЧИСЛО жёлтых строк. Амплитуда ±30 не годится: она
+  // насыщается (189,4 на rt=#91) собственной структурой плитки площади, а
+  // жёлтая линия — это узкий (1-3 строки) всплеск R+G-2B над соседними
+  // строками. Порог 18 и склейка соседних строк через 2 — те же, что в
+  // офлайн-разборе vk_bb_1800.png (17 линий) ↔ dx_bb_10000.png (0 линий).
+  unsigned nlines = 0; int lineY = 0; float lineEx = 0.f;
+  {
+    unsigned run = 0;
+    // нижняя 1/10 кадра — UI (нижняя панель, y≈698..767), она даёт ложные
+    // «линии» (замер: линий=1 пик y=698/759 при нуле в сцене); артефакт лежит
+    // в y≤649, поэтому за нижнюю границу берём 0,9*h
+    const unsigned yStop = so.h * 9u / 10u;
+    for (unsigned y = 3; y + 3 < yStop; ++y)
+    {
+      const float ex = bsRow[y] - (bsRow[y - 3] + bsRow[y + 3]) * 0.5f;
+      if (ex > (float)BandThreshold())
+      {
+        if (!run) { lineY = (int)y; lineEx = ex; }
+        else if (ex > lineEx && (int)y - lineY <= (int)run + 2) lineEx = ex;
+        ++run;
+      }
+      else
+      {
+        if (run) { ++nlines; run = 0; }
+      }
+    }
+    if (run) ++nlines;
+  }
+  // альфа-линии: тот же детектор, но по среднему альфы и по модулю
+  // (в bloom-буфере альфа — маска затемнения, скачок альфы = линия в кадре)
+  unsigned nlinesA = 0; int lineYA = 0; float lineEA = 0.f;
+  {
+    unsigned run = 0;
+    const unsigned yStop = so.h * 9u / 10u;
+    for (unsigned y = 3; y + 3 < yStop; ++y)
+    {
+      const float ex = bsRowA[y] - (bsRowA[y - 3] + bsRowA[y + 3]) * 0.5f;
+      const float aex = ex < 0.f ? -ex : ex;
+      if (aex > 12.f)
+      {
+        if (!run) { lineYA = (int)y; lineEA = aex; }
+        else if (aex > lineEA && (int)y - lineYA <= (int)run + 2) lineEA = aex;
+        ++run;
+      }
+      else
+      {
+        if (run) { ++nlinesA; run = 0; }
+      }
+    }
+    if (run) ++nlinesA;
+  }
+  // Состав пика: полоса — это «добавился R+G» или «пропал B»? Без этого
+  // метрика неотличаема от аддитивного бленда от замещения цветом
+  int mr = 0, mg = 0, mb = 0;
+  if (lineY > 0)
+  {
+    const unsigned char* row = bsBuf + (size_t)peakY * so.w * 4u;
+    for (int x = x0; x < x1; ++x)
+    {
+      const unsigned char* p = row + (size_t)x * 4u;   // BGRA
+      mr += p[2]; mg += p[1]; mb += p[0];
+    }
+    mr /= (x1 - x0); mg /= (x1 - x0); mb /= (x1 - x0);
+  }
+  // лимит форматного потока — 10 аргументов (SafeTextFormat.h: Trace(a0..a9)),
+  // поэтому «амплитуда» из строки убрана (насыщается структурой плитки, для
+  // поиска источника полос бесполезна) — вместо неё формат цели: float-цели
+  // (bfR32F у сцены HDR) читаются с конверсией и без fmt в строке
+  // неотличимы от цветовых
+  DebugTrace("VkBand: #%u пр=%u %s rt=#%u %ux%u fmt=%d линий=%u пик y=%d (+%.1f)",
+             bsSeq, m_pImpl->presents, tag, idx, so.w, so.h, (int)so.seamFormat, nlines, lineY, lineEx);
+  // спуск дампа — по росту ЧИСЛА линий именно на этой цели
+  if (bsLinesLast.size() < d.surfaces.size()) bsLinesLast.resize(d.surfaces.size(), 0u);
+  if (nlines > bsLinesLast[idx] && bsDumpN < 12u)
+  {
+    ++bsDumpN;
+    DebugTrace("VkBandJump: #%u %s rt=#%u %ux%u линий %u -> %u (пред. скан rt=#%u)",
+               bsSeq, tag, idx, so.w, so.h, bsLinesLast[idx], nlines, bsPrevIdx);
+    BandScanDump(1000u + bsDumpN);
+  }
+  bsLinesLast[idx] = nlines;
+  bsPrevIdx = idx;
+  // состав линии: аддитивное R+G или провал B (в DXVK-кадре провал B ~25)
+  DebugTrace("VkBandRGB: #%u y=%d RGB=%d,%d,%d", bsSeq, lineY, mr, mg, mb);
+  DebugTrace("VkBandA: #%u линийA=%u пик y=%d (+%.1f) альфа_пика=%.1f",
+             bsSeq, nlinesA, lineYA, lineEA, lineYA > 0 ? bsRowA[lineYA] : 0.f);
+  ++bsSeq; bsDrawsPrev = d.draws;
+  return (float)nlines;   // возвращаем ЧИСЛО линий — по нему ловится скачок
+}
+
+// Режим области вывода (A/B по env). 1 (по умолчанию) — правило D3D9: привязка
+// цели в слот 0 сбрасывает вьюпорт и сциссор в размер цели (см.
+// SetRenderTarget). 0 — прежнее поведение seam: вьюпорт усекается размером
+// цели в Draw (PW_VK_VPCLAMP), тень состояния не сбрасывается.
+static int RtViewportMode()
+{
+  static int v = -1;
+  if (v < 0) { const char* e = getenv("PW_VK_RTVIEWPORT"); v = (e && *e) ? atoi(e) : 1; }
+  return v;
+}
+
 HRESULT NvrhiBackend::SetRenderTarget(unsigned index, HSurface surface)
 {
   VK_API_GUARD;
@@ -3876,12 +4220,45 @@ HRESULT NvrhiBackend::SetRenderTarget(unsigned index, HSurface surface)
       DebugTrace("VkRtSize: поверхность#%u %ux%u", idx, so.w, so.h);
     }
   }
+  const unsigned bsPrev = m_pImpl->curRt;
+  const bool bsOn = BandScanArmed();
+  if (bsOn) BandScan(bsPrev, "уход");
   if (idx != kNoRes && idx >= d.surfaces.size()) return D3DERR_INVALIDCALL;
   m_pImpl->curRt = idx;
+  if (bsOn) BandScan(idx, "вход");
   // реестр «слот -> поверхность» нужен GetRenderTarget (шаг 13.3): у D3D9 RT
   // принадлежат устройству, здесь их должен помнить бэкенд
   if (index < sizeof(d.rtSlot) / sizeof(d.rtSlot[0]))
     d.rtSlot[index] = idx;
+  // D3D9: привязка цели в слот 0 СБРАСЫВАЕТ вьюпорт и сциссор в размер цели
+  // (X=Y=0, MinZ=0, MaxZ=1, scissor=(0,0,rtW,rtH)) — даже если цель та же самая.
+  // SetDepthStencilSurface вьюпорт не трогает. Реализации, по которым это
+  // сверено: Wine — wined3d (dlls/wined3d/device.c:2424-2437, комментарий
+  // «Tests show that…»; set_viewport=TRUE даёт только SetRenderTarget индекса 0
+  // — dlls/d3d9/device.c:2212-2216), DXVK — D3D9DeviceEx::SetRenderTargetInternal
+  // (src/d3d9/d3d9_device.cpp:1666-1702, «Setting Render target 0 changes
+  // viewport & scissor»). Клиент на это правило опирается: карта теней
+  // биндится ShadowMapPCF_DS::PreRender (Src/Render/ShadowMap.cpp:225) без
+  // FixViewport, а FixViewport (Src/Render/smartrenderer.cpp:1650) при вьюпорте
+  // меньше цели ничего не пушит — без правила карта теней 2048x2048
+  // заполнялась четвертью кадра (проблема 1
+  // docs/NVRHI_VULKAN_VS_DXVK_ISSUES.md). Вьюпорт при этом обязан читаться
+  // обратно (GetViewport/GetScissorRect читают тень) — в D3D9 клиент видит те же
+  // значения.
+  if (RtViewportMode() && index == 0u && idx != kNoRes && idx < d.surfaces.size())
+  {
+    const SurfaceObj& so = d.surfaces[idx];
+    if (so.w && so.h)
+    {
+      m_viewport.x = 0u; m_viewport.y = 0u;
+      m_viewport.width = so.w; m_viewport.height = so.h;
+      m_viewport.minZ = 0.f; m_viewport.maxZ = 1.f;
+      m_scissor.left = 0; m_scissor.top = 0;
+      m_scissor.right = (long)so.w; m_scissor.bottom = (long)so.h;
+      m_scissorValid = true;   // D3D9 после бинда держит валидный прямоугольник = цель
+      ++d.rtViewportReset;
+    }
+  }
   return S_OK;
 }
 
@@ -4526,6 +4903,7 @@ static HRESULT CreateTextureCommon(NvrhiBackendImpl& d, unsigned width, unsigned
   to.tex = tex; to.fmt = fmt; to.w = width; to.h = height;
   to.mipLevels = mipLevels ? mipLevels : 1u; to.cube = cube;
   to.seamFormat = format; to.usage = usage; to.pool = pool;
+  to.autoMip = (usage & usageAutoGenMipmap) != 0u;
   d.textures.push_back(to);
   pOut->p = NewHandle(&d, (unsigned)d.textures.size() - 1u, hkTexture);
   VK_TRACE("CreateTexture: out");
@@ -4585,6 +4963,7 @@ static unsigned BppOf(nvrhi::Format f)
     case nvrhi::Format::R32_FLOAT:      return 4u;
     case nvrhi::Format::R8_UNORM:      return 1u;
     case nvrhi::Format::B5G6R5_UNORM:
+    case nvrhi::Format::R5G6B5_UNORM:
     case nvrhi::Format::R16_UNORM:
     case nvrhi::Format::R16_FLOAT:     return 2u;
     case nvrhi::Format::RGBA16_FLOAT:
@@ -4656,6 +5035,74 @@ static bool SubmitThreadUpload(NvrhiBackendImpl& d, unsigned tid, const char* wh
 }
 
 // Загрузка уровня текстуры с чужого потока: собственный командный список потока.
+// Автогенерация mip-цепочки (шаг 13). Клиент создаёт текстуры с
+// usageAutoGenMipmap; D3D9-драйвер пересчитывает цепочку после каждой записи
+// уровня 0. Через seam цепочка не строилась вообще (замер A/B 2026-10-23:
+// все TexUp — только lvl0, а уровни 1..mipLevels-1 остаются незаполненными),
+// при косом взгляде на землю производная UV уходит в эти уровни — отсюда
+// горизонтальные полосы (амплитуда 31..65 по метрике VkBand; в DXVK-кадре их
+// нет, с `shadows 0` и с форсом mip0 полосы остаются). Считаем цепочку на CPU
+// с зеркала уровня 0 (box 2×2 — то же, что autogen у драйвера) и грузим теми
+// же writeTexture: одно CPU-прохождение на ~1/3 объёма уровня 0.
+static void GenMipChainCPU(NvrhiBackendImpl& d, nvrhi::ICommandList* cl,
+                           unsigned t, unsigned face, unsigned rowBytes)
+{
+  if (!cl) return;
+  NvrhiBackendImpl::TextureObj& to = d.textures[t];
+  if (!to.autoMip || to.mipLevels < 2u) return;
+  unsigned bpp = 0u;
+  switch (to.seamFormat)
+  {
+    case bfA8R8G8B8: case bfX8R8G8B8: bpp = 4u; break;
+    case bfA8: case bfL8:              bpp = 1u; break;
+    default: ++d.mipGenSkip; return;   // сжатые (DXT/BC) и прочие — не считаем
+  }
+  if (!rowBytes) rowBytes = to.w * bpp;
+  if (to.mirror.size() < (size_t)(to.h - 1u) * rowBytes + (size_t)to.w * bpp)
+  { ++d.mipGenSkip; return; }          // зеркало не полное — нечего фильтровать
+  // снимаем уровень 0 в плотный буфер (зеркало может быть с шагом больше строки)
+  std::vector<unsigned char> src((size_t)to.w * to.h * bpp);
+  for (unsigned y = 0; y < to.h; ++y)
+    memcpy(&src[(size_t)y * to.w * bpp], &to.mirror[(size_t)y * rowBytes], (size_t)to.w * bpp);
+  unsigned sw = to.w, sh = to.h;
+  for (unsigned lvl = 1u; lvl < to.mipLevels; ++lvl)
+  {
+    const unsigned dw = sw > 1u ? sw >> 1 : 1u;
+    const unsigned dh = sh > 1u ? sh >> 1 : 1u;
+    std::vector<unsigned char> dst((size_t)dw * dh * bpp);
+    for (unsigned y = 0; y < dh; ++y)
+    {
+      const unsigned y0 = 2u * y < sh ? 2u * y : sh - 1u;
+      const unsigned y1 = y0 + 1u < sh ? y0 + 1u : y0;
+      for (unsigned x = 0; x < dw; ++x)
+      {
+        const unsigned x0 = 2u * x < sw ? 2u * x : sw - 1u;
+        const unsigned x1 = x0 + 1u < sw ? x0 + 1u : x0;
+        const unsigned char* r0 = &src[((size_t)y0 * sw + x0) * bpp];
+        const unsigned char* r1 = &src[((size_t)y0 * sw + x1) * bpp];
+        const unsigned char* r2 = &src[((size_t)y1 * sw + x0) * bpp];
+        const unsigned char* r3 = &src[((size_t)y1 * sw + x1) * bpp];
+        unsigned char* o = &dst[((size_t)y * dw + x) * bpp];
+        for (unsigned c = 0; c < bpp; ++c)
+          o[c] = (unsigned char)(((unsigned)r0[c] + r1[c] + r2[c] + r3[c] + 2u) >> 2);
+      }
+    }
+    cl->writeTexture(to.tex, face, lvl, &dst[0], (size_t)dw * bpp);
+    ++d.mipGenLevels;
+    src.swap(dst);
+    sw = dw; sh = dh;
+    if (sw == 1u && sh == 1u) break;
+  }
+  ++d.mipGenCalls;
+  if (d.mipGenCalls <= 8u)
+  {
+    char det[64];
+    snprintf(det, sizeof(det), "#%u %ux%u уровней %u формат %u", t, to.w, to.h,
+             to.mipLevels, (unsigned)to.seamFormat);
+    VkNote("GenMipChainCPU", true, det);
+  }
+}
+
 static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
                               unsigned face, unsigned level, unsigned rowBytes)
 {
@@ -4671,6 +5118,7 @@ static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
   if (!ctx.open) { ctx.cl->open(); ctx.open = true; }   // open() НЕ повторять (см. ThreadUpload::open)
   ctx.cl->writeTexture(d.textures[t].tex, face, level, &d.textures[t].mirror[0],
                        (size_t)rowBytes);
+  if (level == 0u) GenMipChainCPU(d, ctx.cl, t, face, rowBytes);
   ctx.bytes += d.textures[t].mirror.size();
   ++ctx.entries; ctx.lastTex = t;
   ++d.textures[t].uploads;
@@ -4686,6 +5134,7 @@ static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
   // хелпера недоступен; принудительный flush общего списка тут не нужен —
   // пакет закрывается сам)
   ++d.uploads;
+  if (level < 16u) ++d.uploadLevels[level];
   d.uploadBytes += d.textures[t].mirror.size();
   // PW_VK_TEXCHECK=<индекс шва>: сразу после отправки чтенияем обратно эту же
   // текстуру. Разделяет «writeTexture не дошёл до VkImage» и «дошло, но потом
@@ -5018,6 +5467,7 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
     TexLockTrace(t, "unlock", to.mirror, to.w, to.h, det);
   }
   d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[0], to.lockRowBytes);
+  if (level == 0u) GenMipChainCPU(d, d.commandList, t, to.lockFace, to.lockRowBytes);
   if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes);
   VK_TRACE("writeTexture <");
   ++to.uploads;
@@ -5029,6 +5479,7 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
                t, level, to.lockFace, to.lockRowBytes, to.mirror.size(), to.w, to.h,
                (int)to.seamFormat, to.mipLevels,
                (unsigned)((size_t)_ReturnAddress() - (size_t)GetModuleHandle(0)));
+  if (level < 16u) ++d.uploadLevels[level];
   NoteUpload(to.mirror.size());
   return S_OK;
 }
@@ -5380,6 +5831,34 @@ static bool SamplerLod0Forced()
   return v == 1;
 }
 
+// D3DSAMP_MAXMIPLEVEL. У NVRHI выразить его нечем: в SamplerDesc нет minLod/
+// maxLod (nvrhi.h:1327-1333), а Vulkan-сэмплер строится с maxLod =
+// VK_LOD_CLAMP_NONE, т.е. выбор уровня отдаётся производной UV.
+// DXVK зажим соблюдает (в DXVK-капче у сэмплеров maxLod=0 и 1 против
+// 3,4e38 у шва), поэтому там почти всегда берётся уровень 0. Шов же берёт
+// уровни 1..N, а заполняет только уровень 0: поток загрузки (TexUp) грузит
+// lvl0, автогенерация через seam не переведена — уровни 1..N неинициализированы.
+// Замер A/B 2026-10-23 (капчи одного кадра, NVRHI ↔ DXVK): горизонтальные
+// полосы на земле в NVRHI появляются ровно на одном рисунке — экранный квад
+// ps=#13 с tex0=#2399 125x39 mips7 (состояние сэмплера f=2/2/1, maxMip=0);
+// до этого рисунка полос 0, после — 26. Отвяз tex0 убирает полосы.
+// maxMipLevel==0 (дефолт D3D9 и почти все состояния клиента) = «только уровень
+// 0», чего иначе достигаем тем же приёмом, что и отладочный LOD0: смещение
+// -1000 плюс выключенный mip-фильтр. Для maxMipLevel>0 зажима в NVRHI нет —
+// считаем и молча считаем в счётчик, чтобы объём был виден.
+static bool MaxMipClampEnabled()
+{
+  static int v = -1;
+  if (v < 0)
+  {
+    char b[8];
+    b[0] = 0;
+    GetEnvironmentVariableA("PW_VK_MAXMIP", b, sizeof(b) - 1);
+    v = (b[0] == '0') ? 0 : 1;
+  }
+  return v == 1;
+}
+
 static nvrhi::SamplerAddressMode AddressOf(NvrhiBackendImpl& d, unsigned d3dAddr)
 {
   switch (d3dAddr)
@@ -5448,6 +5927,10 @@ static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned sl
   const float bias = FloatBits((unsigned)s.lodBias);
   if (bias != 0.f) sd.setMipBias(bias);
   if (SamplerLod0Forced()) sd.setMipBias(-1000.f).setMipFilter(false);
+  if (MaxMipClampEnabled() && s.maxMipLevel == 0u)
+    sd.setMipBias(-1000.f).setMipFilter(false);
+  else if (MaxMipClampEnabled() && s.maxMipLevel > 0u && s.mipFilter != D3DTEXF_NONE)
+    ++d.maxMipUnclamped;   // зажать нечем: уровней больше нуля, а maxLod недоступен
 
   nvrhi::SamplerHandle sh = d.nvrhiDevice->createSampler(sd);
   if (!sh)
@@ -5699,7 +6182,29 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
     for (unsigned e = 0; e < cnt; ++e)
     {
     const unsigned slot = it.binding + e;
-    const unsigned tex = (slot < kMaxSamplerSlots) ? d.texBound[slot] : kNoRes;
+    unsigned tex = (slot < kMaxSamplerSlots) ? d.texBound[slot] : kNoRes;
+    // Бисект полос (2026-10-23): PW_VK_NOTEX_SLOT=N + PW_VK_NOTEX_FROM/TO — для
+    // PS из диапазона подменить привязку слота N текстуры на dummy (1x1),
+    // НЕ пропуская сам вывод: по исчезновению полос видно, какая именно
+    // привязка их создаёт (пропуск вывода полос не убирал — артефакт
+    // переезжал на следующий вывод того же семейства)
+    {
+      static int s_notexSlot = -1, s_from = -1, s_to = -1;
+      if (s_notexSlot < 0)
+      {
+        char bs[16]; bs[0] = 0;
+        s_notexSlot = GetEnvironmentVariableA("PW_VK_NOTEX_SLOT", bs, sizeof(bs) - 1) > 0
+                          ? atoi(bs) : 99;
+        bs[0] = 0;
+        s_from = GetEnvironmentVariableA("PW_VK_NOTEX_FROM", bs, sizeof(bs) - 1) > 0
+                     ? atoi(bs) : -1;
+        bs[0] = 0;
+        s_to = GetEnvironmentVariableA("PW_VK_NOTEX_TO", bs, sizeof(bs) - 1) > 0 ? atoi(bs) : -1;
+      }
+      if (s_notexSlot != 99 && s_to >= 0 && d.curPs != kNoRes && (int)d.curPs >= s_from
+          && (int)d.curPs <= s_to && (int)slot == s_notexSlot)
+        tex = kNoRes;
+    }
     if (d.curPs == VkTracePsIdx() && d.tracePsLogged < 24u)
     {
       ++d.tracePsLogged;
@@ -5794,6 +6299,40 @@ static unsigned long long SurfKey(const NvrhiBackendImpl& d, unsigned idx)
 // переиспользуется между поверхностями одного формата и размера, а framebuffer
 // обязан указывать ровно на эти картинки. Чистится вместе с кэшем пайплайнов
 // (пересоздание swapchain'а, Shutdown) — иначе останется вьюха мёртвой картинки.
+// Какие мосты SSBO нужны ТЕКУЩЕМУ выводу: имена SSBO из SPIR-V этого resMap
+// против таблицы kSsboBridges — та же сверка (имя + ArrayStride), что и при
+// сборке набора 1 в Draw. Без неё мосты грузятся перед каждым выводом:
+// замер VkUbo за прогон — 1140 SSBO-загрузок на кадр против 570 выводов, а
+// каждая загрузка в НЕ-volatile буфер завершает render pass
+// (Vendor/NVRHI/src/vulkan/vulkan-buffer.cpp:463) и порождает барьер
+// (vulkan-graphics.cpp:560) — отсюда 454 прохода на кадр в A/B-капче.
+// Пропуск безопасен: флаг грязного диапазона остаётся взведённым, и на
+// следующем выводе, который мост читает, загрузится тот же самый (уже
+// накопленный) снимок банка — ровно то, что прочитал бы D3D9.
+static unsigned SsboMaskOf(NvrhiBackendImpl& d, int rmIdx)
+{
+  if (rmIdx < 0 || rmIdx >= (int)d.resMaps.size()) return (1u << kSsboBridgeCount) - 1u;
+  NvrhiBackendImpl::ResMapObj& rm = d.resMaps[rmIdx];
+  if (rm.ssboMaskDone) return rm.ssboMask;
+  unsigned mask = 0;
+  for (size_t k = 0; k < rm.items.size(); ++k)
+  {
+    const NvrhiBackendImpl::ResItem& it = rm.items[k];
+    if (it.set != 1u || it.kind != rkSsbo) continue;
+    for (unsigned b = 0; b < kSsboBridgeCount; ++b)
+    {
+      const SsboBridgeDef& bd = kSsboBridges[b];
+      if (!d.ssbo[b].buf || strcmp(it.name, bd.name) != 0) continue;
+      if (bd.arrayStride && it.stride && it.stride != bd.arrayStride) continue;
+      mask |= 1u << b;
+      break;
+    }
+  }
+  rm.ssboMask = mask;
+  rm.ssboMaskDone = true;
+  return mask;
+}
+
 static nvrhi::FramebufferHandle FindOrCreateFb(NvrhiBackendImpl& d, unsigned rt, unsigned ds)
 {
   if (rt == kNoRes || rt >= d.surfaces.size()) return nvrhi::FramebufferHandle();
@@ -7184,11 +7723,86 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     ++d.rtDrawCount[d.curRt];
   }
   if (d.curRt == BackSurfaceIndex(d)) ++d.drawsBack; else ++d.drawsOff;
+  if (BandScanArmed())
+  {
+    char bsTag[320];
+    snprintf(bsTag, sizeof(bsTag), "рисунок prim=%u vs=#%u ps=#%u %s|%s", primitiveCount,
+             d.curVs, d.curPs,
+             d.curVs != kNoRes && d.curVs < d.shaderObjs.size()
+                 ? d.shaderObjs[d.curVs].entry.c_str() : "-",
+             d.curPs != kNoRes && d.curPs < d.shaderObjs.size()
+                 ? d.shaderObjs[d.curPs].entry.c_str() : "-");
+    // привязанные текстуры: проверка на feedback (цель рисуется и она же
+    // сэмплируется). В D3D9 такая привязка «работает» (читается прошлое
+    // содержимое), в Vulkan это UB и даёт именно полосы/ряды
+    if (d.curRt < d.surfaces.size())
+    {
+      const nvrhi::TextureHandle rtTex = d.surfaces[d.curRt].tex;
+      size_t used = strlen(bsTag);
+      for (unsigned s = 0; s < 4u && used + 40 < sizeof(bsTag); ++s)
+      {
+        const unsigned t = d.texBound[s];
+        if (t == kNoRes || t >= d.textures.size()) continue;
+        const NvrhiBackendImpl::TextureObj& to = d.textures[t];
+        snprintf(bsTag + used, sizeof(bsTag) - used, " tex%u=#%u %ux%u fmt=%d%s", s, t, to.w, to.h,
+                 (int)to.seamFormat,
+                 (rtTex && to.tex && rtTex == to.tex) ? "==ЦЕЛЬ" : "");
+        used = strlen(bsTag);
+      }
+    }
+    // Скачок ЧИСЛА линий = этот рисунок и есть источник полос: печатаем его
+    // состояние (бленд/глубина/альфа-тест/маска записи) — по нему и сверяемся
+    // с тем, что просил D3D9
+    static float s_ampPrev = -1.f;
+    static unsigned s_jumpN = 0u;
+    const float ampNow = BandScan(d.curRt, bsTag);
+    if (ampNow >= 0.f && s_ampPrev >= 0.f && ampNow > s_ampPrev && s_jumpN < 12u)
+    {
+      ++s_jumpN;
+      BandScanDump(s_jumpN);
+      DebugTrace("VkBandState1: %s | z=%u zwr=%u zFunc=%u slope=%.4f bias=%u | ab=%u src=%u dst=%u fill=%u",
+                 bsTag, (unsigned)d.model.zEnable, (unsigned)d.model.zWriteEnable,
+                 (unsigned)d.model.zFunc, (double)d.model.slopeScaleDepthBias,
+                 (unsigned)d.model.depthBiasRaw,
+                 (unsigned)d.model.alphaBlendEnable, (unsigned)d.model.srcBlend,
+                 (unsigned)d.model.destBlend, (unsigned)d.model.fillMode);
+      DebugTrace("VkBandState2: op=%u srcA=%u dstA=%u opA=%u cw=%u | aTest=%u aRef=%u aFunc=%u | st=%u cull=%u",
+                 (unsigned)d.model.blendOp, (unsigned)d.model.srcBlendAlpha,
+                 (unsigned)d.model.destBlendAlpha, (unsigned)d.model.blendOpAlpha,
+                 (unsigned)d.model.colorWriteEnable,
+                 (unsigned)d.model.alphaTestEnable, (unsigned)d.model.alphaRef,
+                 (unsigned)d.model.alphaFunc, (unsigned)d.model.stencilEnable,
+                 (unsigned)d.model.cullMode);
+      // состояние сэмплеров по слотам привязанных текстур: полосы с шагом,
+      // растущим к камере, похожи на огибающую UV с переносом (wrap) по V —
+      // тогда источник в режиме адресации этого слота
+      for (unsigned s = 0; s < 4u; ++s)
+      {
+        const unsigned t = d.texBound[s];
+        if (t == kNoRes || t >= d.textures.size()) continue;
+        const BackendSamplerState& ss = d.model.sampler[s];
+        DebugTrace("VkBandSmp: tex%u slot=#%u aU=%u aV=%u aW=%u f=%u/%u/%u lod=%.3f maxMip=%u",
+                   s, t, ss.addressU, ss.addressV, ss.addressW, ss.minFilter, ss.magFilter,
+                   ss.mipFilter, (double)FloatBits((unsigned)ss.lodBias),
+                   (unsigned)ss.maxMipLevel);
+      }
+    }
+    if (ampNow >= 0.f) s_ampPrev = ampNow;
+  }
   if (!EnsureRecording()) return E_FAIL;
 
   // Канонический c-банк (§3.z, шаг 13.0): тень констант — это и есть образ
-  // UBO, байт = 16*регистр. Пока грузится весь банк (4 КБ на стадию);
-  // диапазон из ConstBlock::TakeDirty() — шаг 13.
+  // UBO, байт = 16*регистр; грузится грязный диапазон (ConstBlock::TakeDirty),
+  // совпадение с прошлой загрузкой пропускается (замер VkUbo: пропусков много,
+  // байт на кадр меньше).
+  //
+  // Каждая такая загрузка — vkCmdUpdateBuffer вне прохода
+  // (Vendor/NVRHI/src/vulkan/vulkan-buffer.cpp:464 endRenderPass) и пара
+  // барьеров UNIFORM_READ<->TRANSFER_WRITE: замер A/B-капчи — 1729 загрузок,
+  // 454 прохода и 1180 барьеров на кадр, 67% времени всех vkCmd* уходит на
+  // барьеры и Begin/EndRendering. Волатильный буфер это лечит, но ломает
+  // корректность (см. комментарий у создания буфера) — чинить батчингом
+  // выводов, а не версиями.
   for (int s = 0; s < csConstStageCount; ++s)
   {
     if (d.uboDirty[s] && d.ubo[s])
@@ -7201,8 +7815,17 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
         continue;   // флаг был, а диапазона нет (защита)
       if (last > (unsigned)SHADER_CONST_REGISTERS) last = (unsigned)SHADER_CONST_REGISTERS;
       const size_t bytes = (size_t)(last - first) * 16u;
+      const unsigned char* src =
+          reinterpret_cast<const unsigned char*>(m_constShadow[s] + first * 4);
+      std::vector<unsigned char>& lastb = d.uboLastBytes[s];
+      if (lastb.size() == bytes && memcmp(&lastb[0], src, bytes) == 0)
+      {
+        ++d.uboSkipped;   // банк и так содержит эти байты — загрузки не нужно
+        continue;
+      }
       d.commandList->writeBuffer(d.ubo[s], m_constShadow[s] + first * 4, bytes,
                                  (uint64_t)first * 16ull);
+      lastb.assign(src, src + bytes);
       d.uboBytes += bytes;
       ++d.uboUploads;
       ++d.uploads;
@@ -7330,9 +7953,19 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     }
   }
 
+  // какие мосты нужны этому выводу — до цикла загрузок, чтобы пропуск не
+  // сбрасывал флаг грязного
+  const unsigned ssboMask = SsboMaskOf(d, FindOrCreateResMap(d));
   for (unsigned b = 0; b < kSsboBridgeCount; ++b)
   {
     if (!d.ssbo[b].dirty || !d.ssbo[b].buf) continue;
+    if (!(ssboMask & (1u << b)))
+    {
+      // этот вывод мост не читает (в SPIR-V такого SSBO нет) — загрузку
+      // откладываем, диапазон остаётся грязным
+      ++d.ssboSkippedMask;
+      continue;
+    }
     const SsboBridgeDef& def = kSsboBridges[b];
     unsigned f = d.ssbo[b].first, l = d.ssbo[b].last;
     if (SsboFullRequested()) { f = def.regBase; l = def.regBase + def.regCount; }
@@ -7347,7 +7980,18 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       if (off + bytes > (uint64_t)def.byteSize) bytes = (size_t)((uint64_t)def.byteSize - off);
       if (!def.srcStride || def.srcStride == def.stride)
       {
+        const unsigned char* src =
+            reinterpret_cast<const unsigned char*>(m_constShadow[csVertex] + f * 4);
+        std::vector<unsigned char>& lastb = d.ssboLastBytes[b];
+        if (d.ssboLastOff[b] == (unsigned)off && d.ssboLastLen[b] == (unsigned)bytes &&
+            lastb.size() == bytes && memcmp(&lastb[0], src, bytes) == 0)
+        {
+          ++d.ssboSkipped;
+          continue;
+        }
         d.commandList->writeBuffer(d.ssbo[b].buf, m_constShadow[csVertex] + f * 4, bytes, off);
+        lastb.assign(src, src + bytes);
+        d.ssboLastOff[b] = (unsigned)off; d.ssboLastLen[b] = (unsigned)bytes;
         d.ssboBytes += bytes;
       }
       else
@@ -7398,6 +8042,18 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
           const size_t tail = srcE - (size_t)def.matCols * 12u;
           if (tail) memcpy(dstp + (size_t)def.matCols * 16u,
                            src + e * srcE + (size_t)def.matCols * 12u, tail);
+        }
+        {
+          std::vector<unsigned char>& lastb = d.ssboLastBytes[b];
+          const unsigned off2 = (unsigned)(e0 * dstE);
+          if (d.ssboLastOff[b] == off2 && d.ssboLastLen[b] == (unsigned)nBytes &&
+              lastb.size() == nBytes && memcmp(&lastb[0], &s_scratch[0], nBytes) == 0)
+          {
+            ++d.ssboSkipped;
+            continue;
+          }
+          lastb.assign(s_scratch.begin(), s_scratch.end());
+          d.ssboLastOff[b] = off2; d.ssboLastLen[b] = (unsigned)nBytes;
         }
         d.commandList->writeBuffer(d.ssbo[b].buf, &s_scratch[0], nBytes,
                                    (uint64_t)e0 * dstE);
@@ -7660,17 +8316,21 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     }
   }
 
-  // D3D9 (и DXVK поверх Vulkan) ограничивают вьюпорт размером цели: при
-  // SetRenderTarget smaller-than-viewport геометрия масштабируется под цель.
-  // Vulkan вьюпорт не ограничивает — квад, спроецированный на 1024x768, в цель
-  // 205x205 отдаёт только верхний левый угол (UV 0..0,2 x 0..0,27). Замерено на
-  // композите тумана (PFClientVisibilityMap) и на миникарте: клиент рисует
-  // экранный квад, не меняя вьюпорт (SmartRenderer::FixViewport выходит раньше,
-  // чем что-либо пушит, см. smartrenderer.cpp:1074). Эксперимент — env
-  // PW_VK_VPCLAMP=0 выключает ограничение.
+  // Область вывода. Vulkan не ограничивает вьюпорт размером цели, а D3D9 его не
+  // усекает — он СБРАСЫВАЕТ вьюпорт/сциссор в размер цели при привязке цели в
+  // слот 0 (см. SetRenderTarget). Прежнее поведение seam усекало вьюпорт
+  // размером цели (PW_VK_VPCLAMP): механизм обратный — усекатель никогда не
+  // расширяет вьюпорт до цели, поэтому экранный квад в цели 205x205 работал, а
+  // карта теней 2048x2048 заполнялась четвертью кадра (проблема 1
+  // docs/NVRHI_VULKAN_VS_DXVK_ISSUES.md). PW_VK_RTVIEWPORT=0 возвращает старый
+  // усекатель — для A/B.
   long vpX = m_viewport.x, vpY = m_viewport.y, vpW = m_viewport.width, vpH = m_viewport.height;
   static int s_vpClamp = -1;
-  if (s_vpClamp < 0) { const char* pcE = getenv("PW_VK_VPCLAMP"); s_vpClamp = (pcE && *pcE) ? atoi(pcE) : 1; }
+  if (s_vpClamp < 0)
+  {
+    const char* pcE = getenv("PW_VK_VPCLAMP");
+    s_vpClamp = (pcE && *pcE) ? atoi(pcE) : (RtViewportMode() ? 0 : 1);
+  }
   if (s_vpClamp && d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w && d.surfaces[d.curRt].h) {
     const long rtW = (long)d.surfaces[d.curRt].w, rtH = (long)d.surfaces[d.curRt].h;
     if (vpX < 0) { vpW += vpX; vpX = 0; }
@@ -7681,21 +8341,58 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     if (vpH < 1) vpH = 1;
   }
   nvrhi::ViewportState vps;
-  nvrhi::Viewport vport((float)vpX, (float)(vpX + vpW),
-                        (float)vpY, (float)(vpY + vpH),
+  // D3D9 -> Vulkan требует полупиксельного смещения вьюпорта: D3D9-слой
+  // смещает и X, и Y на +0.5 (DXVK D3D9DeviceEx::BindViewportAndScissor,
+  // «Correctness Factor for 1/2 texel offset» cf=0.5 —
+  // src/d3d9/d3d9_device.cpp:6793-6812). NVRHI делает только Y-флип
+  // (VKViewportWithDXCoords, Vendor/NVRHI/src/vulkan/vulkan-graphics.cpp:528),
+  // смещения нет нигде — отсюда системный сдвиг растеризации на полпикселя
+  // (проблема 2 docs/NVRHI_VULKAN_VS_DXVK_ISSUES.md). Сциссор смещения НЕ
+  // получает (там же, :6814-6856) — поэтому под сциссор берется НЕСМЕЩЁННЫЙ
+  // прямоугольник: Rect(Viewport) в NVRHI берёт floor(min)/ceil(max)
+  // (Vendor/NVRHI/include/nvrhi/nvrhi.h:133-141) и со смещением дал бы 0..1025.
+  static int s_halfTexel = -1;
+  if (s_halfTexel < 0) { const char* pcE = getenv("PW_VK_HALFTEXEL"); s_halfTexel = (pcE && *pcE) ? atoi(pcE) : 1; }
+  const float vpBias = s_halfTexel ? 0.5f : 0.f;
+  nvrhi::Viewport vport((float)vpX + vpBias, (float)(vpX + vpW) + vpBias,
+                        (float)vpY + vpBias, (float)(vpY + vpH) + vpBias,
                         m_viewport.minZ, m_viewport.maxZ);
+  // Сциссор. DXVK (src/d3d9/d3d9_device.cpp:6814-6856): если D3DRS_SCISSORTESTENABLE
+  // ВЫКЛЮЧЕН, прямоугольник приложения игнорируется и берётся прямоугольник
+  // вьюпорта целиком («Vulkan does not provide an easy way to disable the scissor
+  // test»); если включён — пересечение прямоугольника приложения с вьюпортом.
+  // Полувиткового смещения сциссор не получает. Прежний seam всегда применял
+  // прямоугольник приложения независимо от теста — при выключенном тесте он резал
+  // геометрию, которую D3D9 не режет. PW_VK_SCISSORTEST=0 — старое поведение.
   long scL = m_scissor.left, scR = m_scissor.right, scT = m_scissor.top, scB = m_scissor.bottom;
-  if (s_vpClamp && d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w && d.surfaces[d.curRt].h) {
+  static int s_scissorTest = -1;
+  if (s_scissorTest < 0) { const char* pcE = getenv("PW_VK_SCISSORTEST"); s_scissorTest = (pcE && *pcE) ? atoi(pcE) : 1; }
+  if (s_scissorTest)
+  {
+    if (!m_scissorValid || !d.model.scissorTestEnable)
+    { scL = vpX; scR = vpX + vpW; scT = vpY; scB = vpY + vpH; }
+    else
+    {
+      if (scL < vpX) scL = vpX;
+      if (scT < vpY) scT = vpY;
+      if (scR > vpX + vpW) scR = vpX + vpW;
+      if (scB > vpY + vpH) scB = vpY + vpH;
+    }
+  }
+  else if (s_vpClamp && d.curRt < d.surfaces.size() && d.surfaces[d.curRt].w && d.surfaces[d.curRt].h) {
     const long rtW = (long)d.surfaces[d.curRt].w, rtH = (long)d.surfaces[d.curRt].h;
     if (scR > rtW) scR = rtW;
     if (scB > rtH) scB = rtH;
     if (scL < 0) scL = 0;
     if (scT < 0) scT = 0;
   }
-  if (m_scissorValid)
-    vps.addViewport(vport).addScissorRect(nvrhi::Rect((int)scL, (int)scR, (int)scT, (int)scB));
-  else
-    vps.addViewportAndScissorRect(vport);
+  if (scR <= scL) scR = scL + 1;
+  if (scB <= scT) scB = scT + 1;
+  // Вьюпорт СО СМЕЩЕНИЕМ, сциссор — без смещения (см. комментарий выше):
+  // отдельный addScissorRect нужен и в случае невалидного сциссора —
+  // addViewportAndScissorRect берёт Rect(Viewport) по floor/ceil и дал бы
+  // 0..1025 вместо 0..1024.
+  vps.addViewport(vport).addScissorRect(nvrhi::Rect((int)scL, (int)scR, (int)scT, (int)scB));
   gs.setViewport(vps);
   // Диагностика пустого кадра (прогон 2026.10.16-22.53: ЛЮБОЙ вывод клиента не
   // оставляет пикселей — surf#11 1024x768, 28597 выводов, 0 ненулевых). Печать
@@ -7848,8 +8545,20 @@ static unsigned RegisterUpRing(NvrhiBackendImpl& d, bool index)
   if (index) bd.setIsIndexBuffer(true).setInitialState(nvrhi::ResourceStates::IndexBuffer);
   else bd.setIsVertexBuffer(true).setInitialState(nvrhi::ResourceStates::VertexBuffer);
   bd.setKeepInitialState(true);
+  // Кольцо пишется с CPU. writeBuffer в буфер без cpuAccess — это
+  // vkCmdUpdateBuffer вне прохода (vulkan-buffer.cpp:464 endRenderPass) плюс
+  // пара барьеров vertex/index (замер A/B-капчи: 166 таких пар на кадр), и
+  // каждый вызов обрывает render pass. Хост-видимая память (cpuAccess=Write
+  // даёт HeapType::Upload, vulkan-device.cpp) + одноразовый map ниже дают
+  // memcpy без команд и без барьеров; writeBuffer на таком буфере NVRHI сам
+  // запрещает (vulkan-buffer.cpp:501 «Using writeBuffer on mappable buffers
+  // is invalid»), поэтому ниже — memcpy в upVbPtr/upIbPtr.
+  bd.setCpuAccess(nvrhi::CpuAccessMode::Write);
   slot = d.nvrhiDevice->createBuffer(bd);
   if (!slot) { VkNote("UP-кольцо: createBuffer", false, 0); return kNoRes; }
+  void* mapped = d.nvrhiDevice->mapBuffer(slot, nvrhi::CpuAccessMode::Write);
+  if (!mapped) { VkNote("UP-кольцо: mapBuffer", false, 0); return kNoRes; }
+  if (index) d.upIbPtr = mapped; else d.upVbPtr = mapped;
   NvrhiBackendImpl::BufferObj bo;
   bo.buf = slot;
   bo.isIndex = index;
@@ -7916,8 +8625,11 @@ HRESULT NvrhiBackend::DrawIndexedUP(ERenderPrimitiveType type, unsigned minIndex
   }
   if (!EnsureRecording()) return E_FAIL;
 
-  d.commandList->writeBuffer(d.upIb, pIndexData, ibBytes, ibOff);
-  d.commandList->writeBuffer(d.upVb, pVertexData, vbBytes, vbOff);
+  // кольца хост-видимые и уже замаплены — данные кладём напрямую (см.
+  // RegisterUpRing); перезапуск кольца выше ждёт окончания GPU-работы, поэтому
+  // затереть ещё читаемые данные нельзя
+  memcpy(static_cast<unsigned char*>(d.upIbPtr) + ibOff, pIndexData, ibBytes);
+  memcpy(static_cast<unsigned char*>(d.upVbPtr) + vbOff, pVertexData, vbBytes);
   d.uploads += 2;
 
   // поток 0 и индексный буфер подменяются на кольцо, после draw восстанавливаются
@@ -7955,7 +8667,7 @@ HRESULT NvrhiBackend::DrawUP(ERenderPrimitiveType type, unsigned primitiveCount,
     if (d.nvrhiDevice) { VK_TRACE("UP ring(DrawUP): waitIdle >"); d.nvrhiDevice->waitForIdle(); VK_TRACE("UP ring(DrawUP): waitIdle <"); }
   }
   if (!EnsureRecording()) return E_FAIL;
-  d.commandList->writeBuffer(d.upVb, pVertexData, vbBytes, vbOff);
+  memcpy(static_cast<unsigned char*>(d.upVbPtr) + vbOff, pVertexData, vbBytes);
   ++d.uploads;
 
   const unsigned saveVb = d.vb[0], saveOff = d.vbOffset[0], saveStride = d.vbStride[0];
@@ -8325,6 +9037,12 @@ HRESULT NvrhiBackend::CreateShaderImpl(const void* pCode, unsigned codeSize, boo
   SpvResScan(pCode, codeSize, &so.res);
   d.shaderObjs.push_back(so);
   pOut->p = NewHandle(&d, (unsigned)d.shaderObjs.size() - 1u, hkShader);
+  // сопоставление «индекс шейдер-объекта -> материал»: клиент печатает
+  // «ShaderIndex: <имя> #N» прямо перед CreateVertexShader/CreatePixelShader,
+  // поэтому имя материала — предыдущая такая строка в логе
+  if (VkVerbose())
+    DebugTrace("VkShad: объект#%u %s entry=%s %u Б", (unsigned)d.shaderObjs.size() - 1u,
+               fragment ? "ps" : "vs", entry.c_str(), codeSize);
 
   // имена входов — в общий реестр «семантика -> location»: по ним потом
   // сопоставляется раскладка атрибутов
@@ -8428,24 +9146,31 @@ HRESULT NvrhiBackend::CreateSurface(EBackendSurfaceKind kind, unsigned width, un
   char nm[48];
   snprintf(nm, sizeof(nm), "PW surf %ux%u%s", width, height, format == bfD24S8 ? " depth" : "");
   td.setDebugName(nm);
-  nvrhi::Format fmtSel = nvrhi::Format::UNKNOWN;
-  bool depth = false;
-  switch (format)
+  // Формат берём из общего конвертера SurfaceFormat() — того же, что у
+  // CreateTexture. Локальный switch покрывал только D24S8 и BGRA, поэтому
+  // Create<RenderSurface> падал с E_FAIL на R5G6B5 (пустой color-attachment
+  // карты теней — Render/ShadowMap.cpp:207) и на A16B16G16R16F (таблица
+  // Ланцожа двухпроходного stretcher'а — Render/Stretcher.cpp:32). Замер
+  // A/B 2026-10-23: ровно 2 таких отказа на прогон (формат 6 и формат 8),
+  // первый обрывает ShadowMapPCF_DS::Init (ShadowMap.cpp:210) — аппаратных
+  // теней в NVRHI-пути не было целиком из-за одной этой ветки.
+  // Уточнение к замеру спайка: у NVRHI нет формата B8G8R8A8 — BGRA8_UNORM
+  // даёт в памяти те же байты B,G,R,A, что D3D9 A8R8G8B8/X8R8G8B8
+  // (RT BGRA8_UNORM + readback пиксель-в-пиксель); X8 читается как A,
+  // потерь в коде нет.
+  nvrhi::Format fmtSel = SurfaceFormat(format);
+  // сжатые форматы этой фабрикой не создаются: у D3D9-пути для них своя
+  // дорога (текстуры), а render-target из BC-текстуры невалиден в Vulkan —
+  // пускай и дальше остаются в отделе «не переведён», а не «создали криво»
+  if (fmtSel == nvrhi::Format::UNKNOWN || format == bfDXT1 || format == bfDXT3 || format == bfDXT5)
   {
-    case bfD24S8:  fmtSel = nvrhi::Format::D24S8; td.setFormat(fmtSel); depth = true; break;
-    // у NVRHI нет формата B8G8R8A8 — BGRA8_UNORM даёт в памяти те же байты
-    // B,G,R,A, что D3D9 A8R8G8B8/X8R8G8B8 (замер спайка: RT BGRA8_UNORM +
-    // readback пиксель-в-пиксель); X8 у нас читается как A, потерь в коде нет
-    case bfA8R8G8B8:
-    case bfX8R8G8B8: fmtSel = nvrhi::Format::BGRA8_UNORM; td.setFormat(fmtSel); break;
-    default:
-    {
-      char det[96];
-      snprintf(det, sizeof(det), "формат %d не переведён", (int)format);
-      VkNote("CreateSurface", false, det);
-      return E_FAIL;
-    }
+    char det[96];
+    snprintf(det, sizeof(det), "формат %d не переведён", (int)format);
+    VkNote("CreateSurface", false, det);
+    return E_FAIL;
   }
+  td.setFormat(fmtSel);
+  const bool depth = (format == bfD24S8);
   // глубина у NVRHI определяется форматом (setIsDepthStencil в этой версии
   // нет); без initialState+keepInitialState трекер состояний рвёт командный
   // список: «Unknown prior state of texture draw ds» (замер спайка)
@@ -9149,6 +9874,7 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
                              .setSize((uint32_t)dw, (uint32_t)dh),
                              s.tex, nvrhi::TextureSlice().setOrigin((uint32_t)sx, (uint32_t)sy)
                              .setSize((uint32_t)sw, (uint32_t)sh));
+  BandScan(dIdx, "после StretchRect");
   return S_OK;
 }
 // Чтение ПРЯМОЙ копией (vkCmdCopyImageToBuffer) — для картинок swapchain'а.
@@ -9163,14 +9889,31 @@ HRESULT NvrhiBackend::StretchRect(HSurface src, const BackendRect* pSrcRect, HSu
 // lastUseCommandListID = 0, поэтому mapBuffer не ждёт вовсе.
 // Макет картинки мы ведём сами (TransitionBackImage), поэтому барьеры тоже наши.
 bool NvrhiBackend::RawReadback(SurfaceObj& so, unsigned x0, unsigned y0, unsigned x1,
-                               unsigned y1, void* pDst, unsigned dstPitch)
+                               unsigned y1, void* pDst, unsigned dstPitch, bool allowFloat)
 {
   NvrhiBackendImpl& d = *m_pImpl;
   if (!so.tex || !pDst) return false;
   const unsigned w = so.w, h = so.h;
   if (!w || !h || x0 >= x1 || y0 >= y1 || x1 > w || y1 > h) return false;
   const nvrhi::Format fmt = so.fmt;
-  if (fmt != nvrhi::Format::BGRA8_UNORM)
+  // байт на пиксель по формату: BGRA8 — 4; float-форматы читаем сырьём и
+  // конвертируем на CPU (зонд BandScan читает и float-цели: сцена HDR у
+  // клиента bfR32F, и именно на ней, по замеру, рождаются полосы)
+  unsigned bpp = 4;
+  switch (fmt)
+  {
+    case nvrhi::Format::BGRA8_UNORM: case nvrhi::Format::BGRX8_UNORM:
+    case nvrhi::Format::RGBA8_UNORM: case nvrhi::Format::R32_FLOAT:
+    case nvrhi::Format::R32_UINT:   bpp = 4; break;
+    case nvrhi::Format::RGBA16_FLOAT: case nvrhi::Format::RG16_FLOAT: bpp = 8; break;
+    case nvrhi::Format::RGBA32_FLOAT: case nvrhi::Format::RG32_FLOAT: bpp = 16; break;
+    case nvrhi::Format::R16_FLOAT: case nvrhi::Format::R16_UNORM: bpp = 2; break;
+    default:
+      VkNote("ReadSurface: прямой путь только для 32-битных цветов", false, 0);
+      return false;
+  }
+  const bool needConv = (fmt != nvrhi::Format::BGRA8_UNORM);
+  if (!allowFloat && needConv)
   {
     VkNote("ReadSurface: прямой путь только для 32-битных цветов", false, 0);
     return false;
@@ -9178,7 +9921,7 @@ bool NvrhiBackend::RawReadback(SurfaceObj& so, unsigned x0, unsigned y0, unsigne
   if (!so.readBuf)
   {
     so.readBuf = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
-                                             .setByteSize((size_t)w * h * 4u)
+                                             .setByteSize((size_t)w * h * bpp)
                                              .setCpuAccess(nvrhi::CpuAccessMode::Read)
                                              .setInitialState(nvrhi::ResourceStates::UnorderedAccess)
                                              .setKeepInitialState(true)
@@ -9250,12 +9993,78 @@ bool NvrhiBackend::RawReadback(SurfaceObj& so, unsigned x0, unsigned y0, unsigne
 
   void* px = d.nvrhiDevice->mapBuffer(so.readBuf, nvrhi::CpuAccessMode::Read);
   if (!px) { VkNote("ReadSurface: mapBuffer(readBuf)", false, 0); return false; }
-  const unsigned rowBytes = (x1 - x0) * 4u;
+  const unsigned rowPix = x1 - x0;
   unsigned row = 0;
+  // half→float (IEEE 754 binary16 → binary32, без денормалей — для дампа не важны)
+  auto half2f = [](const unsigned char* p) -> float {
+    unsigned short h; memcpy(&h, p, 2);
+    const unsigned x = ((unsigned)(h & 0x8000u) << 16) | (((unsigned)(h & 0x7c00u) + 0x1c000u) << 13);
+    float f; memcpy(&f, &x, 4); return f;
+  };
+  auto quant = [](float v) -> unsigned char {
+    if (!(v > 0.f)) return 0;         // ловит и NaN
+    if (v >= 1.f) return 255;         // HDR-значения (>1) сатурация — для
+                                      // метрики полос это приемлемо: важны
+                                      // относительные провалы по строкам
+    return (unsigned char)(v * 255.f + 0.5f);
+  };
+  // float-цели (bfR32F у сцены HDR) в прямой конверсии слепы: значения >1
+  // все как одно дают 255, структура пропадает. Поэтому для них ищем максимум
+  // по кадру и квантуем от него (замер 2026-10-23: у #88 1024x768 fmt=9 пиксель
+  // местами до 4,6 — без нормировки скан по ним всегда «линий 0»)
+  float fscale = 1.f;
+  if (needConv && (fmt == nvrhi::Format::R32_FLOAT || fmt == nvrhi::Format::RGBA16_FLOAT ||
+                   fmt == nvrhi::Format::RGBA32_FLOAT || fmt == nvrhi::Format::R16_FLOAT))
+  {
+    float mx = 0.f;
+    for (unsigned i = 0; i < (size_t)w * h; ++i)
+    {
+      const unsigned char* p = static_cast<const unsigned char*>(px) + (size_t)i * bpp;
+      float v = 0.f;
+      if (fmt == nvrhi::Format::R32_FLOAT) memcpy(&v, p, 4);
+      else if (fmt == nvrhi::Format::R16_FLOAT) v = half2f(p);
+      else if (fmt == nvrhi::Format::RGBA16_FLOAT) v = half2f(p);
+      else memcpy(&v, p, 4);
+      if (v > mx) mx = v;
+    }
+    if (mx > 1e-6f) fscale = 1.f / mx;
+  }
   for (unsigned y = y0; y < y1; ++y, ++row)
-    memcpy(static_cast<unsigned char*>(pDst) + (size_t)row * dstPitch,
-           static_cast<unsigned char*>(px) + (size_t)y * (size_t)w * 4u + (size_t)x0 * 4u,
-           rowBytes);
+  {
+    unsigned char* drow = static_cast<unsigned char*>(pDst) + (size_t)row * dstPitch;
+    const unsigned char* srow = static_cast<const unsigned char*>(px) +
+                                ((size_t)y * w + x0) * bpp;
+    if (!needConv) { memcpy(drow, srow, (size_t)rowPix * 4u); continue; }
+    for (unsigned i = 0; i < rowPix; ++i)
+    {
+      const unsigned char* p = srow + (size_t)i * bpp;
+      float r = 0.f, g = 0.f, b = 0.f, a = 1.f;
+      switch (fmt)
+      {
+        case nvrhi::Format::R32_FLOAT: { float v; memcpy(&v, p, 4); r = g = b = v; break; }
+        case nvrhi::Format::R32_UINT:  { unsigned v; memcpy(&v, p, 4); r = g = b = (float)v; break; }
+        case nvrhi::Format::R16_FLOAT: { float v = half2f(p); r = g = b = v; break; }
+        case nvrhi::Format::R16_UNORM: { unsigned short v; memcpy(&v, p, 2); r = g = b = (float)v / 65535.f; break; }
+        case nvrhi::Format::RGBA16_FLOAT:
+          r = half2f(p); g = half2f(p + 2); b = half2f(p + 4); a = half2f(p + 6); break;
+        case nvrhi::Format::RG16_FLOAT:
+          r = half2f(p); g = half2f(p + 2); break;
+        case nvrhi::Format::RGBA32_FLOAT:
+          memcpy(&r, p, 4); memcpy(&g, p + 4, 4); memcpy(&b, p + 8, 4); memcpy(&a, p + 12, 4); break;
+        case nvrhi::Format::RG32_FLOAT:
+          memcpy(&r, p, 4); memcpy(&g, p + 4, 4); break;
+        case nvrhi::Format::BGRX8_UNORM:
+          b = p[0] / 255.f; g = p[1] / 255.f; r = p[2] / 255.f; break;
+        case nvrhi::Format::RGBA8_UNORM:
+          r = p[0] / 255.f; g = p[1] / 255.f; b = p[2] / 255.f; a = p[3] / 255.f; break;
+        default: break;
+      }
+      drow[i * 4u + 0u] = quant(b * fscale);
+      drow[i * 4u + 1u] = quant(g * fscale);
+      drow[i * 4u + 2u] = quant(r * fscale);
+      drow[i * 4u + 3u] = quant(a * fscale);
+    }
+  }
   d.nvrhiDevice->unmapBuffer(so.readBuf);
   ++d.readbackRaw;
   return true;

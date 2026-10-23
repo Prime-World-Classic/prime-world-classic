@@ -205,8 +205,16 @@ private:
   void FlushPendingUploads();   // загрузки с чужого потока (см. ownerThread)
   void ProbeFrameSurfaces();   // диагностика offscreen-поверхностей (снимок)
   void TexGpuDump();           // диагностика: GPU-снимок текстур (env PW_VK_TEXGPU)
+  // зонд «жёлтых полос» (PW_VK_BANDSCAN, см. определение в .cpp)
+  bool BandScanArmed();
+  float BandScan(unsigned idx, const char* tag);
+  void BandScanDump(unsigned n);
+  // allowFloat — для диагностического зонда (BandScan): float-цели читаются
+  // сырьём и конвертируются в BGRA8 на CPU; для клиентского ReadSurface
+  // (полученная раскладка должна совпасть с запрошенной) остаётся false
   bool RawReadback(SurfaceObj& so, unsigned x0, unsigned y0,
-                       unsigned x1, unsigned y1, void* pDst, unsigned dstPitch);
+                       unsigned x1, unsigned y1, void* pDst, unsigned dstPitch,
+                       bool allowFloat = false);
   // Шаг 13.4d: учёт загрузки бит в GPU (см. определение)
   void NoteUpload(size_t bytes);
   HRESULT CreateShaderImpl(const void* pCode, unsigned codeSize, bool fragment, HShader* pOut);
