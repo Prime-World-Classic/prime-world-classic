@@ -1076,6 +1076,8 @@ struct NvrhiBackendImpl
   // с последним записанным и пропускаем совпадение. Буферы инкрементные
   // (не кольцо), пропуск записи семантически безопасен.
   std::vector<unsigned char> uboLastBytes[2];
+  // смещение последней загрузки c-банка: без него пропуск сверяет только байты
+  unsigned uboLastFirst[2];
   std::vector<unsigned char> ssboLastBytes[kSsboBridgeCount];
   unsigned ssboLastOff[kSsboBridgeCount], ssboLastLen[kSsboBridgeCount];
   unsigned uboSkipped, ssboSkipped;
@@ -1132,6 +1134,12 @@ struct NvrhiBackendImpl
   // (правило D3D9, см. SetRenderTarget). По нему видно, что правило вообще
   // работает: у кадра оно обязано срабатывать на каждую смену цели.
   unsigned rtViewportReset;
+  // PW_VK_CLEARLOAD (эксперимент по полосам, docs/PLAN_NVRHI.md «Очередь» п.1/п.3):
+  // номер кадра и штамп «эта цель уже обнулена в этом кадре». Штамп нужен, чтобы
+  // явный clear при привязке совпадал по семантике с pending-clear'ом DXVK (ОДИН
+  // на кадр), а не повторялся на каждую перепривязку той же цели.
+  unsigned clearLoadFrame, clearLoadDone, clearLoadLogged;
+  std::vector<unsigned> clearLoadStamp;
   unsigned dsSetNull, dsSetForeign, dsSetOwn, dsSetEmpty;
 
   // Шаг 13.4c: владение. SeamSlot — слот ручки таблицы; FreeHandle вызывается из
@@ -1158,6 +1166,7 @@ struct NvrhiBackendImpl
       uboDirty{ false, false },
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
+      uboLastFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       ssboLastOff{ 0 }, ssboLastLen{ 0 }, uboSkipped(0), ssboSkipped(0),
       ssboUploads(0), ssboBytes(0), ssboSkippedMask(0),
       curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
@@ -1171,6 +1180,7 @@ struct NvrhiBackendImpl
       drawSkipPrim(0), drawSkipVs(0), drawSkipPs(0), drawSkipRt(0),
       drawsBack(0), drawsOff(0),
       rtSetNull(0), rtSetForeign(0), rtSetOwn(0), rtSetEmpty(0), rtViewportReset(0),
+      clearLoadFrame(1u), clearLoadDone(0), clearLoadLogged(0),
       dsSetNull(0), dsSetForeign(0), dsSetOwn(0), dsSetEmpty(0),
       setsCreated(0), texMissing(0), resMapsCreated(0),
       ssboSetsCreated(0), texDimMismatch(0), dummySubs(0), vbHoles(0), dsNonDepth(0), readbackRaw(0), shotAt(0), shotStep(0), shotTime(0), shotLastSec(0xffffffffu), shotProbe(0), rdAt(0), rdTime(0), rdStep(0), rdLead(60u), rdLastSec(0xffffffffu), rdSeq(0), dbgName(0), drawDiag(0), panelLogged(0), rtSizeLogged(0), surfLogged(0), tracePsLogged(0), traceDrawLogged(0), traceVtxLogged(0), traceConstLogged(0),
@@ -1596,6 +1606,81 @@ static bool DsKeepRequested()
   {
     char bm[16];
     s_on = (GetEnvironmentVariableA("PW_VK_DS_KEEP", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
+  }
+  return s_on != 0;
+}
+
+// PW_VK_CLEARLOAD=<макс.сторона> — эксперимент по п.1/п.3 очереди
+// (docs/PLAN_NVRHI.md): у NVRHI load-op при создании framebuffer жёстко
+// eLoad/eStore (Vendor/NVRHI/src/vulkan/vulkan-graphics.cpp:79-81,110-112), а
+// DXVK те же проходы bloom-цепочки 256x256 открывает LOAD_OP_CLEAR
+// (капчи `ab23k/pw_frame2813` ev1889/ev1905 ↔ `ab23b/dx_frame9105`
+// ev1190/ev1225). Гейт эмулирует pending-clear DXVK: при ПЕРВОЙ привязке цели
+// в кадре цель обнуляется отдельной командой — тем же механизмом, что и наш
+// Clear (clearTextureFloat), а не load-op'ом. Значение env — верхняя граница
+// стороны цели (256 = только bloom-цепочка, 1 = все офскрин-цели).
+// Метка — `tools/render_shot/shot_stats.py --lines` (база 17/10/10).
+static unsigned ClearLoadLimit()
+{
+  static unsigned s_lim = 0u;
+  static bool s_done = false;
+  if (!s_done)
+  {
+    char bm[32];
+    s_done = true;
+    const DWORD n = GetEnvironmentVariableA("PW_VK_CLEARLOAD", bm, sizeof(bm) - 1);
+    if (n > 0)
+    {
+      bm[n] = 0;
+      if (sscanf(bm, "%u", &s_lim) != 1)
+        s_lim = 0u;
+      if (!s_lim) s_lim = 4096u;   // «включено без размера» = все офскрин-цели
+    }
+  }
+  return s_lim;
+}
+
+// PW_VK_CLEARLOAD_ONLY="17,20,24" — ограничить гейт списком индексов
+// поверхностей (бисект по целям 256x256, которые гейт и так трогает).
+// Пусто = без ограничения.
+static const std::vector<unsigned>& ClearLoadOnlyList()
+{
+  static std::vector<unsigned> v;
+  static bool s_done = false;
+  if (!s_done)
+  {
+    char bm[512];
+    s_done = true;
+    const DWORD n = GetEnvironmentVariableA("PW_VK_CLEARLOAD_ONLY", bm, sizeof(bm) - 1);
+    if (n > 0)
+    {
+      bm[n] = 0;
+      char* p = bm;
+      while (*p)
+      {
+        char* e = 0;
+        const unsigned long v0 = strtoul(p, &e, 10);
+        if (e == p) { ++p; continue; }
+        v.push_back((unsigned)v0);
+        p = e;
+      }
+    }
+  }
+  return v;
+}
+
+// PW_VK_CLEARLOAD_ONCE=1 — обнулять цель ОДИН раз при первой привязке за всю
+// жизнь поверхности, а не каждый кадр. Это ровно семантика DXVK: у него новая
+// текстура помечена needsClear и получает clear при ПЕРВОМ присоединении к
+// проходу; у нас поверхности клиента живут между кадрами, поэтому «раз и
+// навсегда» = «нулевое содержимое там, где D3D9 дал бы мусор».
+static bool ClearLoadOnce()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char bm[16];
+    s_on = (GetEnvironmentVariableA("PW_VK_CLEARLOAD_ONCE", bm, sizeof(bm) - 1) > 0) ? 1 : 0;
   }
   return s_on != 0;
 }
@@ -2569,8 +2654,21 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
     VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceSurfaceFormatsKHR(d.physical, d.surface, &fmtCount,
                                                                        &formats[0]);
   bool chosen = false;
+  // PW_VK_SC_SRGB=1 — брать B8G8R8A8_SRGB вместо UNORM. В капче DXVK (rdcap/
+  // ab23b) swapchain = B8G8R8A8_SRGB, у нас — UNORM (rdcap/ab23k): аппаратный
+  // sRGB-код при записи в бэк-буфер даёт разный наклон для каналов с разным
+  // уровнем (R~60, G~72, B~82) — кандидат на то, почему яркостные строки сцены
+  // превращаются в хроматические полосы (состав_пика у нас (6.3,5.4,-0.3),
+  // у DXVK сбалансирован).
+  static int s_scSrgb = -1;
+  if (s_scSrgb < 0)
+  {
+    char bs[8]; bs[0] = 0;
+    s_scSrgb = (GetEnvironmentVariableA("PW_VK_SC_SRGB", bs, sizeof(bs) - 1) > 0 && atoi(bs)) ? 1 : 0;
+  }
+  const VkFormat wantFmt = s_scSrgb ? VK_FORMAT_B8G8R8A8_SRGB : VK_FORMAT_B8G8R8A8_UNORM;
   for (uint32_t i = 0; i < fmtCount; ++i)
-    if (formats[i].format == VK_FORMAT_B8G8R8A8_UNORM &&
+    if (formats[i].format == wantFmt &&
         formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
     {
       d.swapFormat = formats[i].format;
@@ -2683,7 +2781,8 @@ bool NvrhiBackend::CreateSwapchain(unsigned width, unsigned height)
   // NVRHI не знает, в каком состоянии находятся картинки чужого swapchain'а,
   // поэтому начальное состояние выставляется вручную (замер спайка).
   nvrhi::Format nf = (d.swapFormat == VK_FORMAT_B8G8R8A8_UNORM) ? nvrhi::Format::BGRA8_UNORM
-                                                                : nvrhi::Format::RGBA8_UNORM;
+                 : (d.swapFormat == VK_FORMAT_B8G8R8A8_SRGB) ? nvrhi::Format::SBGRA8_UNORM
+                                                             : nvrhi::Format::RGBA8_UNORM;
   d.backTextures.clear();
   // Записи бэк-буфера ПЕРЕИСПОЛЬЗУЮТСЯ при пересоздании swapchain'а.
   // Замер (прогон 2026.10.16-21.12): клиент получает поверхность бэк-буфера
@@ -3068,6 +3167,8 @@ void NvrhiBackend::DumpStats(const char* pTag) const
              pTag ? pTag : "", d.rtSetNull, d.rtSetEmpty, d.rtSetForeign, d.rtSetOwn,
              d.dsSetNull, d.dsSetEmpty, d.dsSetForeign, d.dsSetOwn, (int)d.backDepthIdx);
   DebugTrace("VkRtVp%s: привязок слота 0 со сбросом вьюпорта/сциссора в размер цели: %u", pTag ? pTag : "", d.rtViewportReset);
+  DebugTrace("VkClearLoad%s: явных clear'ов при первой привязке цели: %u (кадр %u)",
+             pTag ? pTag : "", d.clearLoadDone, d.clearLoadFrame);
   DebugTrace("VkDraw%s: пропуски вывода: примитив=%u нет VS=%u нет PS=%u нет RT=%u",
              pTag ? pTag : "", d.drawSkipPrim, d.drawSkipVs, d.drawSkipPs, d.drawSkipRt);
   {
@@ -3297,6 +3398,12 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
   NvrhiBackendImpl& d = *m_pImpl;
   if (!d.swapchain || !d.nvrhiDevice)
     return E_FAIL;
+
+  // граница кадра для штампа PW_VK_CLEARLOAD (см. ClearLoadLimit): все привязки
+  // между двумя Present'ами считаются одним кадром; в режиме ONCE счётчик не
+  // двигается вовсе — штамп «уже обнулена» остаётся навсегда
+  if (!ClearLoadOnce())
+    ++d.clearLoadFrame;
 
   if (window.p)
     d.window = (HWND)window.p;
@@ -4226,6 +4333,37 @@ HRESULT NvrhiBackend::SetRenderTarget(unsigned index, HSurface surface)
   if (idx != kNoRes && idx >= d.surfaces.size()) return D3DERR_INVALIDCALL;
   m_pImpl->curRt = idx;
   if (bsOn) BandScan(idx, "вход");
+  // PW_VK_CLEARLOAD (см. ClearLoadLimit): явный clear при ПЕРВОЙ привязке цели
+  // в кадре. Только офскрин-цвет: бэк-буфер чистится своим путём
+  // (clearOnPresent), а к глубине clearTextureFloat неприменим.
+  const unsigned clLim = ClearLoadLimit();
+  const std::vector<unsigned>& clOnly = ClearLoadOnlyList();
+  if (clLim && idx != kNoRes && idx < d.surfaces.size() &&
+      (clOnly.empty() || std::find(clOnly.begin(), clOnly.end(), idx) != clOnly.end()))
+  {
+    SurfaceObj& so = d.surfaces[idx];
+    if (so.tex && !so.depth && !so.backBuffer && so.w <= clLim && so.h <= clLim)
+    {
+      if (d.clearLoadStamp.size() < d.surfaces.size())
+        d.clearLoadStamp.resize(d.surfaces.size(), 0u);
+      if (d.clearLoadStamp[idx] != d.clearLoadFrame)
+      {
+        d.clearLoadStamp[idx] = d.clearLoadFrame;
+        if (EnsureRecording())
+        {
+          d.commandList->clearTextureFloat(so.tex, nvrhi::TextureSubresourceSet(),
+                                           nvrhi::Color(0.f, 0.f, 0.f, 0.f));
+          ++d.clearLoadDone;
+          if (d.clearLoadLogged < 24u)
+          {
+            ++d.clearLoadLogged;
+            DebugTrace("VkClearLoad: цель#%u %ux%u fmt=%d кадр=%u",
+                       idx, so.w, so.h, (int)so.fmt, d.clearLoadFrame);
+          }
+        }
+      }
+    }
+  }
   // реестр «слот -> поверхность» нужен GetRenderTarget (шаг 13.3): у D3D9 RT
   // принадлежат устройству, здесь их должен помнить бэкенд
   if (index < sizeof(d.rtSlot) / sizeof(d.rtSlot[0]))
@@ -5831,6 +5969,46 @@ static bool SamplerLod0Forced()
   return v == 1;
 }
 
+// PW_VK_FOGWRAP=<код адресации D3D9> — для прогона с PW_VK_TRACEPS=<ps> заменить
+// адресацию ВСЕХ сэмплеров, создаваемых для этого ps, на указанный (1=WRAP,
+// 3=CLAMPTOEDGE, 2=MIRROR). Замер 2026-10-23: в пост-проходе (ps=122) набор
+// сэмплеров строится ОДНИМ сэмплером (FindOrCreateSampler вызывается только с
+// binding=0, т.е. из состояния D3D9-слота 0), а состояние fog-сэмплера (слот 10,
+// CLAMPTOEDGE) на GPU не попадает вовсе. Если слот 0 в этот момент WRAP — fog
+// тайлится по UV за пределы окна [0,1] → рядные полосы периода 45..55 px.
+static int FogWrapSlot()
+{
+  static int v = -2;
+  if (v == -2)
+  {
+    char b[8];
+    b[0] = 0;
+    v = (GetEnvironmentVariableA("PW_VK_FOGWRAP", b, sizeof(b) - 1) > 0 && b[0])
+            ? atoi(b) : -1;
+  }
+  return v;
+}
+
+// PW_VK_SMPSLOT=<n>: для ps из PW_VK_TRACEPS брать состояние D3D9-слота n вместо
+// состояния слота, который шейдер объявил как binding. Гипотеза (2026-10-23, охота
+// за рядами полос от fog): DXC выдаёт binding по ПОРЯДКУ ОБЪЯВЛЕНИЯ сэмплера в HLSL,
+// а seam считает binding == D3D9-регистр (samplerIndex). У пост-шейдера в SPIR-V
+// ровно ОДИН сэмплер (binding 0, набор 3), при этом fog-сэмплер в HLSL объявлен
+// под регистром 10 (WARFOGSAMPLERINDEX) — если это он и есть, то fog читается
+// состоянием слота 0 (min/mip/address от другого прохода), а не своим.
+static int SmpStateSlot()
+{
+  static int v = -2;
+  if (v == -2)
+  {
+    char b[8];
+    b[0] = 0;
+    v = (GetEnvironmentVariableA("PW_VK_SMPSLOT", b, sizeof(b) - 1) > 0 && b[0])
+            ? atoi(b) : -1;
+  }
+  return v;
+}
+
 // D3DSAMP_MAXMIPLEVEL. У NVRHI выразить его нечем: в SamplerDesc нет minLod/
 // maxLod (nvrhi.h:1327-1333), а Vulkan-сэмплер строится с maxLod =
 // VK_LOD_CLAMP_NONE, т.е. выбор уровня отдаётся производной UV.
@@ -5890,11 +6068,60 @@ static unsigned long long SamplerKeyOf(const BackendSamplerState& s)
   return h;
 }
 
-static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned slot)
+static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned slot, int forceAddr = -1)
 {
-  const BackendSamplerState& s = d.model.sampler[slot];
+  if (FogWrapSlot() >= 0)
+  {
+    static unsigned notes = 0;
+    if (notes < 40u)
+    {
+      ++notes;
+      const BackendSamplerState& ss = (slot < kMaxSamplerSlots) ? d.model.sampler[slot]
+                                                                : d.model.sampler[0];
+      const BackendSamplerState& s10 = d.model.sampler[10];
+      char nb[160];
+      snprintf(nb, sizeof(nb), "slot=%u aU=%u aV=%u minF=%u mipF=%u | s10 set=%d aU=%u aV=%u minF=%u mipF=%u anis=%u",
+               slot, ss.addressU, ss.addressV, ss.minFilter, ss.mipFilter,
+               (int)s10.set, s10.addressU, s10.addressV, s10.minFilter, s10.mipFilter, s10.maxAnisotropy);
+      VkNote("PW_VK_FOGWRAP", true, nb);
+    }
+  }
+  // сравнение состояний: binding-слот шейдера против fog-регистра 10 (без PW_VK_FOGWRAP)
+  if (d.curPs == VkTracePsIdx() && VkTracePsIdx() != 0xFFFFFFFFu)
+  {
+    static unsigned cmpNotes = 0;
+    if (cmpNotes < 6u)
+    {
+      ++cmpNotes;
+      const BackendSamplerState& sa = d.model.sampler[slot];
+      const BackendSamplerState& sb = d.model.sampler[10];
+      char nb[192];
+      snprintf(nb, sizeof(nb), "ps=%u bind%u: set=%d aU=%u aV=%u minF=%u magF=%u mipF=%u anis=%u lodB=%d || reg10: set=%d aU=%u aV=%u minF=%u magF=%u mipF=%u anis=%u lodB=%d",
+               d.curPs, slot, (int)sa.set, sa.addressU, sa.addressV, sa.minFilter, sa.magFilter,
+               sa.mipFilter, sa.maxAnisotropy, (int)sa.lodBias,
+               (int)sb.set, sb.addressU, sb.addressV, sb.minFilter, sb.magFilter,
+               sb.mipFilter, sb.maxAnisotropy, (int)sb.lodBias);
+      VkNote("PW_VK_SMPCMP", true, nb);
+    }
+  }
+  unsigned useSlot = slot;
+  if (SmpStateSlot() >= 0 && d.curPs == VkTracePsIdx() && slot < kMaxSamplerSlots
+      && (unsigned)SmpStateSlot() < kMaxSamplerSlots)
+  {
+    useSlot = (unsigned)SmpStateSlot();
+    static unsigned subNotes = 0;
+    if (subNotes < 4u)
+    {
+      ++subNotes;
+      char nb[96];
+      snprintf(nb, sizeof(nb), "состояние слота %u заменено на слот %d (ps=%u)", slot, useSlot, d.curPs);
+      VkNote("PW_VK_SMPSLOT", true, nb);
+    }
+  }
+  const BackendSamplerState& s = d.model.sampler[useSlot];
   if (!s.set) return d.defSampler;      // этого слота модель не касалась
-  const unsigned long long key = SamplerKeyOf(s);
+  unsigned long long key = SamplerKeyOf(s);
+  if (forceAddr >= 0) key ^= 0x9e3779b97f4a7c15ull * (unsigned long long)(forceAddr + 1);
   for (size_t i = 0; i < d.samplerCache.size(); ++i)
     if (d.samplerCache[i].first == key) return d.samplerCache[i].second;
 
@@ -5905,6 +6132,23 @@ static nvrhi::SamplerHandle FindOrCreateSampler(NvrhiBackendImpl& d, unsigned sl
     .setAddressU(AddressOf(d, s.addressU))
     .setAddressV(AddressOf(d, s.addressV))
     .setAddressW(AddressOf(d, s.addressW));
+  if (forceAddr >= 0)
+  {
+    const nvrhi::SamplerAddressMode m = (forceAddr == 3)
+        ? nvrhi::SamplerAddressMode::ClampToEdge
+        : (forceAddr == 2 ? nvrhi::SamplerAddressMode::Mirror
+                          : nvrhi::SamplerAddressMode::Wrap);
+    sd.setAddressU(m).setAddressV(m).setAddressW(m);
+    static unsigned ovNotes = 0;
+    if (ovNotes < 3u)
+    {
+      ++ovNotes;
+      char nb2[96];
+      snprintf(nb2, sizeof(nb2), "адресация заменена на %d (слот %u, модель aU=%u aV=%u)",
+               forceAddr, slot, s.addressU, s.addressV);
+      VkNote("PW_VK_FOGWRAP ov", true, nb2);
+    }
+  }
   if (s.maxAnisotropy > 1u)
   {
     // Vulkan требует линейные фильтры при анизотропной фильтрации
@@ -5974,14 +6218,86 @@ static unsigned long long SamplerSetSignature(NvrhiBackendImpl& d, const NvrhiBa
 static nvrhi::BindingSetHandle FindOrCreateSamplerSet(NvrhiBackendImpl& d, const NvrhiBackendImpl::ResMapObj& rm,
                                                       unsigned long long sig)
 {
+  // Точечная замена адресации: ТОЛЬКО для прохода из PW_VK_TRACEPS (глобальная замена
+  // 2026-10-23 калечит сцену: мировые текстуры перестают тайлиться). Подпись набора
+  // обязана учитывать forceAddr, иначе набор придёт из кэша другого прохода.
+  const int forceAddr = (FogWrapSlot() >= 0 && d.curPs == VkTracePsIdx()
+                         && VkTracePsIdx() != 0xFFFFFFFFu) ? FogWrapSlot() : -1;
+  if (forceAddr >= 0) sig ^= 0x9e3779b97f4a7c15ull * (unsigned long long)(forceAddr + 1);
   for (size_t i = 0; i < d.smpSetCache.size(); ++i)
-    if (d.smpSetCache[i].first == sig) return d.smpSetCache[i].second;
+    if (d.smpSetCache[i].first == sig)
+    {
+      if (d.curPs == VkTracePsIdx() && VkTracePsIdx() != 0xFFFFFFFFu)
+      {
+        static unsigned hitNotes = 0;
+        if (hitNotes < 4u) { ++hitNotes; VkNote("PW_VK_SMPSET HIT", true, 0); }
+      }
+      return d.smpSetCache[i].second;
+    }
+  if (d.curPs == VkTracePsIdx() && VkTracePsIdx() != 0xFFFFFFFFu)
+  {
+    static unsigned smpSetNotes = 0;
+    if (smpSetNotes < 8u)
+    {
+      ++smpSetNotes;
+      char nb[200];
+      int n = snprintf(nb, sizeof(nb), "ps=%u MISS set3:", d.curPs);
+      for (size_t k = 0; k < rm.items.size() && n < 150; ++k)
+      {
+        const NvrhiBackendImpl::ResItem& it = rm.items[k];
+        if (it.kind != rkSampler) continue;
+        n += snprintf(nb + n, sizeof(nb) - n, " set%u b%u x%u", it.set, it.binding, it.count ? it.count : 1u);
+      }
+      snprintf(nb + n, sizeof(nb) - n, " | set2:");
+      n = (int)strlen(nb);
+      for (size_t k = 0; k < rm.items.size() && n < 190; ++k)
+      {
+        const NvrhiBackendImpl::ResItem& it = rm.items[k];
+        if (it.kind != rkTexture) continue;
+        n += snprintf(nb + n, sizeof(nb) - n, " b%u", it.binding);
+      }
+      VkNote("PW_VK_SMPSET", true, nb);
+    }
+  }
   if (d.smpSetCache.size() > 4096u)
   {
     d.smpSetCache.clear();
     VkNote("smpSetCache очищен (>4096 подписей)", true, 0);
   }
   nvrhi::BindingSetDesc bsd;
+  bool fogSet = false;
+  for (size_t k = 0; k < rm.items.size(); ++k)
+  {
+    const NvrhiBackendImpl::ResItem& it2 = rm.items[k];
+    if (it2.kind == rkTexture && it2.binding >= 10u) { fogSet = true; break; }
+  }
+  (void)fogSet;
+  if (FogWrapSlot() >= 0)
+  {
+    static unsigned setNotes2 = 0;
+    if (setNotes2 < 24u)
+    {
+      ++setNotes2;
+      char nb[160];
+      int n = 0;
+      for (size_t k = 0; k < rm.items.size() && n < 120; ++k)
+      {
+        const NvrhiBackendImpl::ResItem& it = rm.items[k];
+        if (it.set != 3u || it.kind != rkSampler) continue;
+        n += snprintf(nb + n, sizeof(nb) - n, " b%u x%u", it.binding, it.count ? it.count : 1u);
+      }
+      if (!n) snprintf(nb, sizeof(nb), "(нет сэмплеров в set=3)");
+      int m = (int)strlen(nb);
+      for (size_t k = 0; k < rm.items.size() && m < 120; ++k)
+      {
+        const NvrhiBackendImpl::ResItem& it = rm.items[k];
+        if (it.kind != rkTexture) continue;
+        m += snprintf(nb + m, sizeof(nb) - m, " T%u", it.binding);
+      }
+      if (fogSet && m < 140) snprintf(nb + m, sizeof(nb) - m, " FOG=%d", forceAddr);
+      VkNote("PW_VK_FOGWRAP set", true, nb);
+    }
+  }
   for (size_t k = 0; k < rm.items.size(); ++k)
   {
     const NvrhiBackendImpl::ResItem& it = rm.items[k];
@@ -5991,7 +6307,7 @@ static nvrhi::BindingSetHandle FindOrCreateSamplerSet(NvrhiBackendImpl& d, const
     {
       // элемент e массива = слот сэмплера binding+e (см. SamplerSetSignature)
       const unsigned slot = it.binding + e;
-      nvrhi::SamplerHandle sh = (slot < kMaxSamplerSlots) ? FindOrCreateSampler(d, slot)
+      nvrhi::SamplerHandle sh = (slot < kMaxSamplerSlots) ? FindOrCreateSampler(d, slot, forceAddr)
                                                           : d.defSampler;
       if (!sh) sh = d.defSampler;
       nvrhi::BindingSetItem bi = nvrhi::BindingSetItem::Sampler(it.binding, sh);
@@ -6031,6 +6347,21 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
     if (GetEnvironmentVariableA("PW_VK_STATE_MASK", bm, sizeof(bm) - 1) > 0)
       s_stateMask = (unsigned)strtoul(bm, 0, 0);
   }
+  // PW_VK_BLEND_OFF_PS=<номер ps> — выключить смешивание ТОЛЬКО для этого
+  // пиксельного шейдера. PW_VK_STATE_MASK=2 глобален и ломает UI (строк
+  // 14->64), поэтому по нему вывод сделать нельзя. Гипотеза по полосам:
+  // пост-квад (ps#122) домешивается к бэк-буферу, где сцена уже лежит,
+  // отсюда рядная модуляция оливковым множителем PS c30=(1,0.68,0.19)
+  // с весами R>G>>B — ровно то, что даёт метрика (6.3, 5.4, -0.3).
+  static unsigned s_blendOffPs = 0xFFFFFFFFu;
+  static bool s_blendOffPsRead = false;
+  if (!s_blendOffPsRead)
+  {
+    s_blendOffPsRead = true;
+    char bm[16];
+    if (GetEnvironmentVariableA("PW_VK_BLEND_OFF_PS", bm, sizeof(bm) - 1) > 0)
+      s_blendOffPs = (unsigned)atoi(bm);
+  }
 
   nvrhi::RasterState& rs = pd.renderState.rasterState;
   // намотка: у NVRHI вьюпорт с отрицательной высотой, без frontCounterClockwise
@@ -6043,16 +6374,30 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
   // середине), хотя поле называется slopeScaledDepthBias
 
   // D3DRS_DEPTHBIAS и D3DRS_SLOPESCALEDEPTHBIAS клиент пишет БИТАМИ float
-  // (ShadowMap.cpp:238-239), поэтому интерпретация побитовая. У NVRHI
-  // постоянный сдвиг целочисленный (nvrhi.h:1149) — дробная часть теряется, и
-  // об этом печатаем, иначе тень в A/B расходится молча
+  // (ShadowMap.cpp:238-239), поэтому интерпретация побитовая. Разница
+  // семантики: D3D9 трактует DEPTHBIAS как смещение в НОРМАЛИЗОВАННОЙ
+  // глубине [0,1] (клиент ставит 0,001), а у Vulkan depthBias — целое число
+  // МЛАДШИХ единиц глубины r (D24S8: r = 2^-24). Прежнее усечение
+  // (int)0.001 = 0 выключало смещение целиком на всех проходах, где клиент
+  // его задал (замер 2026-10-23: 12 раз за кадр «constant depth bias 0.001
+  // усечён до 0» — это проходы теней, ShadowMap.cpp:238). DXVK переводит тем
+  // же множителем 2^24. PW_VK_DBIAS_MODE=0 — старое поведение (для A/B),
+  // по умолчанию 1 — масштаб 2^24.
   rs.setSlopeScaleDepthBias(st.slopeScaleDepthBias);
   const float db = FloatBits(st.depthBiasRaw);
-  rs.setDepthBias((int)(db >= 0.f ? db + 0.5f : db - 0.5f));
-  if (db != 0.f && db != (float)(int)db)
+  static const int s_dbiasMode = []{
+    char b[16]; b[0] = 0;
+    if (GetEnvironmentVariableA("PW_VK_DBIAS_MODE", b, sizeof(b) - 1) > 0) return atoi(b);
+    return 1;
+  }();
+  const float dbVal = db * (s_dbiasMode ? 16777216.f : 1.f);   // 2^24 — D24S8
+  rs.setDepthBias((int)(dbVal >= 0.f ? dbVal + 0.5f : dbVal - 0.5f));
+  if (db != 0.f && (s_dbiasMode == 0 ? db != (float)(int)db
+                                     : dbVal > 2147483000.f || dbVal < -2147483000.f))
   {
     char det[64];
-    snprintf(det, sizeof(det), "constant depth bias %g усечён до %d", (double)db, (int)db);
+    snprintf(det, sizeof(det), "constant depth bias %g -> %d (mode %d)",
+             (double)db, (int)(dbVal >= 0.f ? dbVal + 0.5f : dbVal - 0.5f), s_dbiasMode);
     VkNote("Состояния: дробная часть потеряна", false, det);
     ++d.stateUnsupported;
   }
@@ -6115,6 +6460,7 @@ static void FillPipelineState(NvrhiBackendImpl& d, nvrhi::GraphicsPipelineDesc& 
   target.colorWriteMask = static_cast<nvrhi::ColorMask>(st.colorWriteEnable);
   if (s_stateMask & 1u) ds.stencilEnable = false;
   if (s_stateMask & 2u) target.blendEnable = false;
+  if (s_blendOffPs != 0xFFFFFFFFu && d.curPs == s_blendOffPs) target.blendEnable = false;
   if (s_stateMask & 4u) ds.depthWriteEnable = false;
   if (s_stateMask & 8u) ds.depthTestEnable = false;
   pd.renderState.blendState.setRenderTarget(0, target);
@@ -6210,12 +6556,27 @@ static nvrhi::BindingSetHandle FindOrCreateTexSet(NvrhiBackendImpl& d,
       ++d.tracePsLogged;
       char dt[160];
       if (tex != kNoRes && tex < d.textures.size())
-        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u %ux%u fmt%d",
+        snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u %ux%u fmt%d mips%u",
                  d.curPs, slot, tex, d.textures[tex].w, d.textures[tex].h,
-                 (int)d.textures[tex].seamFormat);
+                 (int)d.textures[tex].seamFormat, (unsigned)d.textures[tex].mipLevels);
       else
         snprintf(dt, sizeof(dt), "ps=%u слот %u -> текстура#%u (нет)", d.curPs, slot, tex);
       VkNote("VkTracePs", true, dt);
+      // Замер 2026-10-23: war fog (слот 10, 205x205 = НЕ степень 2) — надо
+      // видеть реальное состояние сэмплера, которое выставил клиент
+      // (адресация/фильтры/lodBias/maxMip), а не только привязку.
+      if (slot < 16u)
+      {
+        const BackendSamplerState& ss = d.model.sampler[slot];
+        char ds[200];
+        snprintf(ds, sizeof(ds),
+                 "ps=%u слот %u sampler set=%u minF=%u magF=%u mipF=%u aU=%u aV=%u aW=%u "
+                 "lodBits=%d lod=%.4f maxMip=%d aniso=%u",
+                 d.curPs, slot, (unsigned)ss.set, ss.minFilter, ss.magFilter, ss.mipFilter,
+                 ss.addressU, ss.addressV, ss.addressW, ss.lodBias, FloatBits((unsigned)ss.lodBias),
+                 ss.maxMipLevel, ss.maxAnisotropy);
+        VkNote("VkTracePs", true, ds);
+      }
     }
     const bool wantCube = (it.dim == 3u);   // SPV Dim: 3 = Cube (не 4 — там Rect)
     // и в несвязанный слот вьюха обязана подходить под объявленный шейдером
@@ -7260,6 +7621,30 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     if (GetEnvironmentVariableA("PW_VK_TRACECONST", bc, sizeof(bc) - 1) > 0)
       s_traceConst = (unsigned)atoi(bc);
   }
+  // PW_VK_ZNEAR=<float> (нужен и PW_VK_TRACECONST=<ps>) — переписать PS c21.x
+  // = zNear (FullScreenMaterial.hlsl:217 = PSHADER_LOCALCONST1, GlobalMasks.h:143).
+  // Ветка war fog в посте включается условием `if (z > zNear)`
+  // (FullScreenMaterial.hlsl:241), где z = DepthMap(s0).r, а координаты
+  // наложения — `mapping = BasePos + z*Input.Texcoord.zw` (:243), т.е. масштаб
+  // выборки warFog-карты задаётся глубиной. Муар этой карты и есть правдо-
+  // подобный источник полос периода 45-55 px. Значения: 1e9 -> ветка war fog
+  // не выполняется нигде; -1 -> выполняется в каждом пикселе. Счётчик трассы
+  // (24 вывода) здесь не используется: правка должна действовать весь прогон.
+  static float s_znear = 1e30f;
+  static bool s_znearRead = false;
+  if (!s_znearRead)
+  {
+    s_znearRead = true;
+    char bz[64];
+    if (GetEnvironmentVariableA("PW_VK_ZNEAR", bz, sizeof(bz) - 1) <= 0) s_znear = 1e30f;
+    else s_znear = (float)atof(bz);
+  }
+  if (s_znear < 1e29f && d.curPs == s_traceConst)
+  {
+    m_constShadow[csPixel][21 * 4] = s_znear;
+    if (d.traceConstLogged < 3u)
+      DebugTrace("VkTraceC: ps=%u zNear := %.6g", d.curPs, s_znear);
+  }
   if (d.curPs == s_traceConst && d.traceConstLogged < 24u && d.model.colorWriteEnable)
   {
     ++d.traceConstLogged;
@@ -7284,6 +7669,272 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
              pv[80], pv[81], pv[82], pv[83],
              pv[84], pv[85], pv[86], pv[87]);
     DebugTrace("VkTraceC: %s", dc);
+    // Sharp/color-correct константы вершинной стадии FullScreenMaterial:
+    // GlobalMasks.h:74-85 -> VSHADER_LOCALCONST7..11 = c27..c31 (g_pixelSize,
+    // g_sharpPixelSize, g_sharpCoef, ColorCastCoef, Params[0]). Полосы в NVRHI
+    // рождаются выводом ps=122 (пост-пасс), а их период задаёт pixelSize =
+    // g_pixelSize * sharpPixelSize в VS (FullScreenMaterial.hlsl:124-127).
+    snprintf(dc, sizeof(dc),
+             "ps=%u VS c27=(%.6g,%.6g,%.6g,%.6g) c28=(%.6g,%.6g,%.6g,%.6g) "
+             "c29=(%.6g,%.6g,%.6g,%.6g) c30=(%.6g,%.6g,%.6g,%.6g) c31=(%.6g,%.6g,%.6g,%.6g)",
+             d.curPs, pv[108], pv[109], pv[110], pv[111],
+             pv[112], pv[113], pv[114], pv[115],
+             pv[116], pv[117], pv[118], pv[119],
+             pv[120], pv[121], pv[122], pv[123],
+             pv[124], pv[125], pv[126], pv[127]);
+    DebugTrace("VkTraceC: %s", dc);
+    // VS c22..c26 = uvScaleOffset (VSHADER_LOCALCONST2) и ViewToTargetSpace
+    // (VSHADER_LOCALCONST3..6, float4x4 = VS2FogMapping для war fog) —
+    // _commonDepthRead.h:11-23: Output.Texcoord.zw = mul(float3(texCoord*
+    // uvScaleOffset.xy + uvScaleOffset.zw, 1), ViewToTargetSpace).xy. Именно
+    // Texcoord.zw множит глубину в наложении war fog (FullScreenMaterial.hlsl:243),
+    // а с ним и период полос: при zNear=1e9 (ветка не выполняется) полос нет.
+    snprintf(dc, sizeof(dc),
+             "ps=%u VS c22=(%.6g,%.6g,%.6g,%.6g) c23=(%.6g,%.6g,%.6g,%.6g) "
+             "c24=(%.6g,%.6g,%.6g,%.6g) c25=(%.6g,%.6g,%.6g,%.6g) c26=(%.6g,%.6g,%.6g,%.6g)",
+             d.curPs, pv[88], pv[89], pv[90], pv[91],
+             pv[92], pv[93], pv[94], pv[95],
+             pv[96], pv[97], pv[98], pv[99],
+             pv[100], pv[101], pv[102], pv[103],
+             pv[104], pv[105], pv[106], pv[107]);
+    DebugTrace("VkTraceC: %s", dc);
+    // Вьюпорт/сциссор и хэши SPIR-V этого вывода: полосы периода ~45-55 px
+    // выглядят как интерференция sharp-ядра с неверным texel-смещением, а его
+    // задают и вьюпорт, и вариант шейдера (BloomPin меняет программу).
+    {
+      const NvrhiBackendImpl::ShaderObj* pTvVs =
+          (d.curVs < d.shaderObjs.size()) ? &d.shaderObjs[d.curVs] : 0;
+      const NvrhiBackendImpl::ShaderObj* pTvPs =
+          (d.curPs < d.shaderObjs.size()) ? &d.shaderObjs[d.curPs] : 0;
+      unsigned long long hv[2] = { 1469598103934665603ull, 1469598103934665603ull };
+      if (pTvVs) for (size_t b = 0; b < pTvVs->spv.size(); ++b)
+      { hv[0] ^= (unsigned long long)pTvVs->spv[b]; hv[0] *= 1099511628211ull; }
+      if (pTvPs) for (size_t b = 0; b < pTvPs->spv.size(); ++b)
+      { hv[1] ^= (unsigned long long)pTvPs->spv[b]; hv[1] *= 1099511628211ull; }
+      snprintf(dc, sizeof(dc),
+               "ps=%u vp=(%d,%d,%ux%u) scissor=%d/%d/%d/%d vs#%u ps#%u "
+               "spvVs=%zu:%016llx spvPs=%zu:%016llx",
+               d.curPs, (int)m_viewport.x, (int)m_viewport.y,
+               (unsigned)m_viewport.width, (unsigned)m_viewport.height,
+               m_scissorValid ? m_scissor.left : -1, m_scissorValid ? m_scissor.top : -1,
+               m_scissorValid ? m_scissor.right : -1, m_scissorValid ? m_scissor.bottom : -1,
+               d.curVs, d.curPs,
+               pTvVs ? pTvVs->spv.size() : 0u, hv[0],
+               pTvPs ? pTvPs->spv.size() : 0u, hv[1]);
+      DebugTrace("VkTraceC: %s", dc);
+      // Какие пины реально скомпилированы в этом варианте: DXC оставляет OpName
+      // в SPIR-V, поэтому присутствие имён интерполяторов = признак пина.
+      // Контрольные имена (PSMain — OpEntryPoint, Texcoord — интерполятор без
+      // пинов) показывают, что имена в SPIR-V не срезаны, и «00000» означает
+      // именно отсутствие пина, а не отсутствие отладочных строк.
+      {
+        const char* nm[7] = { "SharpCoeffs", "DisplacedCoords", "BloomColor", "WarFogColor",
+                              "ColorCorrect", "PSMain", "Texcoord" };
+        char fl[24];
+        for (int st = 0; pTvVs && pTvPs && st < 2; ++st)
+        {
+          const std::vector<unsigned char>& sv = st ? pTvVs->spv : pTvPs->spv;
+          fl[0] = 0;
+          if (sv.size())
+            for (int ni = 0; ni < 7; ++ni)
+            {
+              size_t nl = strlen(nm[ni]);
+              bool found = false;
+              const unsigned char* p = &sv[0];
+              for (size_t by = 0; by + nl <= sv.size(); ++by)
+                if (memcmp(p + by, nm[ni], nl) == 0) { found = true; break; }
+              strncat(fl, found ? "1" : "0", sizeof(fl) - strlen(fl) - 1);
+            }
+          snprintf(dc + strlen(dc), sizeof(dc) - strlen(dc),
+                   " %s pins(Sharp,Disp,Bloom,Fog,CC|PSMain,Texcoord)=%s", st ? "VS" : "PS", fl);
+        }
+        DebugTrace("VkTraceC: %s", dc);
+      }
+      // Имена переменных DXC в SPIR-V не пишет (OpName остаётся только у точки
+      // входа: контрольное PSMain найдено, Texcoord — нет), поэтому по именам
+      // пины судить нельзя. Однозначный признак варианта — сигнатура VS->PS:
+      // с пином Sharp вершинная стадия пишет DisplacedCoords (float4) и
+      // SharpCoeffs (float2), без пина их в выходной сигнатуре нет.
+      // Единственный однозначный признак варианта поста без отладочных имён —
+      // число Interpolator-переменных в SPIR-V: StorageClass Input=1 у PS
+      // (Texcoord, плюс DisplacedCoords и SharpCoeffs если пин Sharp собран)
+      // и Output=3 у VS. OpVariable=59, слово 3 = класс хранения.
+      {
+        unsigned nin = 0, nout = 0;
+        struct CntFn { static unsigned run(const NvrhiBackendImpl::ShaderObj* p, unsigned store)
+        {
+          if (!p) return 0xFFFFFFFFu;
+          const std::vector<unsigned char>& sp = p->spv;
+          const unsigned* w = (const unsigned*)&sp[0];
+          size_t nw = sp.size() / 4u;
+          unsigned cnt = 0;
+          for (size_t k = 5u; k + 3u < nw; )
+          {
+            const unsigned wc = w[k] >> 16, op = w[k] & 0xFFFFu;
+            if (wc < 2u) break;
+            if (op == 59u && wc >= 4u && w[k + 3u] == store) ++cnt;
+            k += wc;
+          }
+          return cnt;
+        } };
+        nin = CntFn::run(pTvPs, 1u); nout = CntFn::run(pTvVs, 3u);
+        snprintf(dc, sizeof(dc), "ps=%u spvVars: PS Input=%u VS Output=%u", d.curPs, nin, nout);
+        DebugTrace("VkTraceC: %s", dc);
+        // контроль парсера на заведомо разных шейдерах (UI-flash #15 без
+        // интерполяторов, обычный геометрия-шейдер с TEXCOORD)
+        snprintf(dc, sizeof(dc), "spvVars ctl: ps#8=%u ps#15=%u ps#122=%u vs#121=%u vs#8=%u",
+                 CntFn::run(8u < d.shaderObjs.size() ? &d.shaderObjs[8u] : 0, 1u),
+                 CntFn::run(15u < d.shaderObjs.size() ? &d.shaderObjs[15u] : 0, 1u),
+                 CntFn::run(122u < d.shaderObjs.size() ? &d.shaderObjs[122u] : 0, 1u),
+                 CntFn::run(121u < d.shaderObjs.size() ? &d.shaderObjs[121u] : 0, 3u),
+                 CntFn::run(8u < d.shaderObjs.size() ? &d.shaderObjs[8u] : 0, 3u));
+        DebugTrace("VkTraceC: %s", dc);
+      }
+      // PW_VK_ILMAP=<ps> (нужен и PW_VK_TRACECONST=<ps>) — раскладка
+      // интерполяторов VS->PS прямо из SPIR-V: location и число компонент.
+      // Число переменных (spvVars выше) не отвечает на главный вопрос: если
+      // выходная раскладка VS и входная PS не совпадают по СОСТАВУ, PS читает
+      // чужое значение — например SharpCoeffs или ColorCastCoef там, где ждёт
+      // DisplacedCoords, и период полос становится величиной прочитанных чисел
+      // (замер полос: 45-55 px при texel-смещении 1/1024,1/768).
+      // Формат вывода: V<loc>:<компонент> для VS (StorageClass Output=3),
+      // P<loc>:<компонент> для PS (Input=1); суффикс B — BuiltIn.
+      static unsigned s_ilmap = 0xFFFFFFFFu;
+      static bool s_ilmapRead = false;
+      if (!s_ilmapRead)
+      {
+        s_ilmapRead = true;
+        char bb[16];
+        if (GetEnvironmentVariableA("PW_VK_ILMAP", bb, sizeof(bb) - 1) > 0)
+          s_ilmap = (unsigned)atoi(bb);
+      }
+      if (d.curPs == s_ilmap)
+      {
+        struct SpvIl
+        {
+          std::map<unsigned, unsigned> kind, cnt, base, ptr, loc, btl;
+          std::map<unsigned, std::vector<unsigned> > mem;
+          std::vector<std::pair<unsigned, unsigned> > vars;   // (id, typeId)
+          void scan(const std::vector<unsigned char>& sp, unsigned store)
+          {
+            if (sp.size() < 20u) return;
+            const unsigned* w = (const unsigned*)&sp[0];
+            size_t nw = sp.size() / 4u;
+            for (size_t k = 5u; k + 1u < nw; )
+            {
+              unsigned wc = w[k] >> 16, op = w[k] & 0xFFFFu;
+              if (wc < 2u || k + wc > nw) break;
+              unsigned a = w[k + 1u];
+              if (op == 71u && wc >= 4u)                                  // OpDecorate
+              {
+                unsigned dec = w[k + 2u];
+                if (dec == 11u) loc[a] = w[k + 3u];                       // Location
+                else if (dec == 16u) btl[a] = w[k + 3u] + 1u;             // BuiltIn
+              }
+              else if (op == 21u || op == 22u) kind[a] = 0u;               // int / float
+              else if (op == 23u && wc >= 4u) { kind[a] = 2u; base[a] = w[k + 2u]; cnt[a] = w[k + 3u]; } // vector
+              else if (op == 24u && wc >= 4u) { kind[a] = 3u; base[a] = w[k + 2u]; cnt[a] = w[k + 3u]; } // matrix
+              else if (op == 28u && wc >= 4u) { kind[a] = 5u; base[a] = w[k + 2u]; }                     // array
+              else if (op == 30u && wc >= 3u) { kind[a] = 4u; for (size_t q = k + 2u; q < k + wc; ++q) mem[a].push_back(w[q]); }
+              else if (op == 32u && wc >= 4u) ptr[a] = w[k + 3u];         // OpTypePointer: result, storage, base
+              else if (op == 59u && wc >= 4u && w[k + 3u] == store) vars.push_back(std::make_pair(w[k + 2u], w[k + 1u]));
+              k += wc;
+            }
+          }
+          unsigned comps(unsigned id, unsigned depth)
+          {
+            if (depth > 8u) return 0xFFFFu;
+            std::map<unsigned, unsigned>::const_iterator k = kind.find(id);
+            if (k == kind.end())
+            {
+              std::map<unsigned, unsigned>::const_iterator p = ptr.find(id);
+              return p == ptr.end() ? 0xFFFFu : comps(p->second, depth + 1u);
+            }
+            if (k->second == 0u) return 1u;
+            if (k->second == 2u) return cnt[id];
+            if (k->second == 3u) { unsigned c = comps(base[id], depth + 1u); return c == 0xFFFFu ? 0xFFFFu : c * cnt[id]; }
+            if (k->second == 4u)
+            {
+              std::vector<unsigned>& v = mem[id];
+              unsigned s = 0u;
+              for (size_t i = 0; i < v.size(); ++i)
+              {
+                unsigned c = comps(v[i], depth + 1u);
+                if (c == 0xFFFFu) return 0xFFFFu;
+                s += c;
+              }
+              return s;
+            }
+            return 0xFFFFu;   // массивы и неизвестное
+          }
+          void emit(char tag, char* out, size_t cap)
+          {
+            std::vector<std::pair<unsigned, unsigned> > ord;   // (location, индекс в vars)
+            for (size_t i = 0; i < vars.size(); ++i)
+            {
+              std::map<unsigned, unsigned>::const_iterator l = loc.find(vars[i].first);
+              ord.push_back(std::make_pair(l == loc.end() ? 0xFFFFFFFFu : l->second, (unsigned)i));
+            }
+            std::sort(ord.begin(), ord.end());
+            for (size_t i = 0; i < ord.size() && i < 14u; ++i)
+            {
+              unsigned id = vars[ord[i].second].first;
+              snprintf(out + strlen(out), cap - strlen(out), " %c%u:%u%s", tag, ord[i].first,
+                       comps(vars[ord[i].second].second, 0u), btl.count(id) ? "B" : "");
+            }
+          }
+        };
+        SpvIl ilv, ilp;
+        if (pTvVs) ilv.scan(pTvVs->spv, 3u);   // StorageClass Output
+        if (pTvPs) ilp.scan(pTvPs->spv, 1u);   // StorageClass Input
+        // PW_VK_SPVDUMP=<Z:\...\spv_> — списать SPIR-V VS и PS этого вызова в
+        // файлы: разбор декодировщика в Python дешевле, чем отлаживать
+        // самописный обходщик (первый IL-прогон дал размеры 4/4/4/2 и 4/4/2,
+        // но Location расставлены не у всех переменных — надо смотреть файл).
+        static char s_spvPre[260] = {0};
+        static bool s_spvPreRead = false;
+        if (!s_spvPreRead)
+        {
+          s_spvPreRead = true;
+          if (GetEnvironmentVariableA("PW_VK_SPVDUMP", s_spvPre, sizeof(s_spvPre) - 1) <= 0) s_spvPre[0] = 0;
+        }
+        static unsigned s_spvDone = 0;
+        if (s_spvPre[0] && !(s_spvDone & (1u << (d.curPs & 31u))))
+        {
+          s_spvDone |= 1u << (d.curPs & 31u);
+          const NvrhiBackendImpl::ShaderObj* two[2] = { pTvVs, pTvPs };
+          const char* nm[2] = { "vs", "ps" };
+          for (int i = 0; i < 2; ++i)
+          {
+            if (!two[i] || two[i]->spv.empty()) continue;
+            char path[320];
+            snprintf(path, sizeof(path), "%s%u_%s.spv", s_spvPre, d.curPs, nm[i]);
+            FILE* f = fopen(path, "wb");
+            if (f) { fwrite(&two[i]->spv[0], 1, two[i]->spv.size(), f); fclose(f); }
+            DebugTrace("VkTraceC: spvDump %s ps=%u bytes=%u", path, d.curPs, (unsigned)two[i]->spv.size());
+          }
+        }
+        char det[420];
+        det[0] = 0;
+        ilv.emit('V', det, sizeof(det));
+        ilp.emit('P', det, sizeof(det));
+        DebugTrace("VkTraceC: ps=%u IL:%s", d.curPs, det);
+      }
+    }
+    // Params[] = c31..c48 (18 float4: PP_IN_MIN..PP_COLOR x NATURE_TYPES_COUNT=3,
+    // GlobalMasks.h:179-185). Если они нули — цветокоррекция поста считает
+    // InMax-InMin = 0 (деление на ноль) и картинка покрывается полосами.
+    for (unsigned rr = 32u; rr <= 48u; rr += 8u)
+    {
+      snprintf(dc, sizeof(dc),
+               "ps=%u VS c%u=(%.6g,%.6g,%.6g,%.6g) c%u=(%.6g,%.6g,%.6g,%.6g) "
+               "c%u=(%.6g,%.6g,%.6g,%.6g) c%u=(%.6g,%.6g,%.6g,%.6g)",
+               d.curPs, rr, pv[rr*4], pv[rr*4+1], pv[rr*4+2], pv[rr*4+3],
+               rr+1, pv[(rr+1)*4], pv[(rr+1)*4+1], pv[(rr+1)*4+2], pv[(rr+1)*4+3],
+               rr+2, pv[(rr+2)*4], pv[(rr+2)*4+1], pv[(rr+2)*4+2], pv[(rr+2)*4+3],
+               rr+3, pv[(rr+3)*4], pv[(rr+3)*4+1], pv[(rr+3)*4+2], pv[(rr+3)*4+3]);
+      DebugTrace("VkTraceC: %s", dc);
+    }
     // WORLD = c0..c3, VIEW = c4..c7 (GlobalMasks.h:62,65) — те же регистры,
     // что печатает D3dC на стороне D3D9 (smartrenderer.cpp). Позиция квада
     // = mul(VIEW, mul(WORLD, (x,y,0,1))), так что по ним видно, совпадает ли
@@ -7803,9 +8454,54 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
   // барьеры и Begin/EndRendering. Волатильный буфер это лечит, но ломает
   // корректность (см. комментарий у создания буфера) — чинить батчингом
   // выводов, а не версиями.
+  // PW_VK_SHARPZERO=<ps> — обнулить g_sharpPixelSize (c28) и g_sharpCoef (c29)
+  // в тени VS ПЕРЕД загрузкой банка для вывода этого PS: sharpPixelSize=0 ->
+  // DisplacedCoords = Texcoord (все 4 отсчёта в одной точке), sharpCoef=0 ->
+  // SharpCoeffs=(1,0) и DoSharp становится чистым копированием (out=center).
+  // Отличие от pfx_sharp_enable=0: вариант шейдера (пины) не меняется, меняется
+  // только содержимое банка — если полосы исчезнут, генератор sharp-ядро.
+  static unsigned s_sharpZeroPs = 0xFFFFFFFFu;
+  static bool s_szRead = false;
+  if (!s_szRead)
+  {
+    s_szRead = true;
+    char bz[16]; bz[0] = 0;
+    if (GetEnvironmentVariableA("PW_VK_SHARPZERO", bz, sizeof(bz) - 1) > 0)
+      s_sharpZeroPs = (unsigned)atoi(bz);
+  }
+  if (s_sharpZeroPs != 0xFFFFFFFFu && d.curPs == s_sharpZeroPs)
+  {
+    memset(m_constShadow[csVertex] + 28 * 4, 0, 8 * 16);   // c28, c29
+    MarkConstDirty(d, csVertex, 28u, 2u);
+  }
+  // PW_VK_SHARPSET=<ps> — тот же блок, но вместо нуля пишет c29 = (10,10,10,0):
+  // контрольная проба «доходят ли эти регистры до работающего варианта шейдера».
+  // Если картинка от SHARPZERO и SHARPSET одинаковые — sharp-регистры в этом
+  // варианте не читаются (пин Sharp NONE) и пробы ниже по sharp бессмысленны.
+  static unsigned s_sharpSetPs = 0xFFFFFFFFu;
+  static bool s_ssRead = false;
+  if (!s_ssRead)
+  {
+    s_ssRead = true;
+    char bz2[16]; bz2[0] = 0;
+    if (GetEnvironmentVariableA("PW_VK_SHARPSET", bz2, sizeof(bz2) - 1) > 0)
+      s_sharpSetPs = (unsigned)atoi(bz2);
+  }
+  if (s_sharpSetPs != 0xFFFFFFFFu && d.curPs == s_sharpSetPs)
+  {
+    float sc[4] = { 10.f, 10.f, 10.f, 0.f };
+    memcpy(m_constShadow[csVertex] + 29 * 4, sc, sizeof(sc));
+    MarkConstDirty(d, csVertex, 29u, 1u);
+  }
+  // PW_VK_UBO_ALWAYS=1 — грузить весь банк перед каждым выводом, без
+  // грязного диапазона и без пропуска по совпадению: проверяет, не читает ли
+  // шейдер устаревшие байты c-банка (пропуск сверяет только байты последней
+  // загрузки, без смещения).
+  static int s_uboAlways = -1;
+  if (s_uboAlways < 0) { const char* eUa = getenv("PW_VK_UBO_ALWAYS"); s_uboAlways = (eUa && *eUa) ? atoi(eUa) : 0; }
   for (int s = 0; s < csConstStageCount; ++s)
   {
-    if (d.uboDirty[s] && d.ubo[s])
+    if ((d.uboDirty[s] || s_uboAlways) && d.ubo[s])
     {
       unsigned first = d.uboFirst[s], last = d.uboLast[s];
       d.uboDirty[s] = false;
@@ -7814,11 +8510,21 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       if (last <= first || first >= (unsigned)SHADER_CONST_REGISTERS)
         continue;   // флаг был, а диапазона нет (защита)
       if (last > (unsigned)SHADER_CONST_REGISTERS) last = (unsigned)SHADER_CONST_REGISTERS;
+      if (s_uboAlways) { first = 0u; last = (unsigned)SHADER_CONST_REGISTERS; }
       const size_t bytes = (size_t)(last - first) * 16u;
       const unsigned char* src =
           reinterpret_cast<const unsigned char*>(m_constShadow[s] + first * 4);
       std::vector<unsigned char>& lastb = d.uboLastBytes[s];
-      if (lastb.size() == bytes && memcmp(&lastb[0], src, bytes) == 0)
+      // PW_VK_UBO_OFFFIX=1: пропуск сверять и по смещению. Без флага lastb
+      // хранит только байты последней загрузки: два диапазона одинаковой длины
+      // с одинаковым содержимым, но разным first (например [27,30) после
+      // [28,31)) считаются совпавшими — на GPU остаются байты, записанные в
+      // ДРУГОЙ диапазон, и шейдер читает сдвинутый c-банк. У SSBO-мостов
+      // смещение сверяется всегда (ssboLastOff), здесь — нет.
+      static int s_offFix = -1;
+      if (s_offFix < 0) { const char* eOfx = getenv("PW_VK_UBO_OFFFIX"); s_offFix = (eOfx && *eOfx) ? atoi(eOfx) : 0; }
+      if (lastb.size() == bytes && memcmp(&lastb[0], src, bytes) == 0 &&
+          (!s_offFix || d.uboLastFirst[s] == first))
       {
         ++d.uboSkipped;   // банк и так содержит эти байты — загрузки не нужно
         continue;
@@ -7826,6 +8532,7 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       d.commandList->writeBuffer(d.ubo[s], m_constShadow[s] + first * 4, bytes,
                                  (uint64_t)first * 16ull);
       lastb.assign(src, src + bytes);
+      d.uboLastFirst[s] = first;
       d.uboBytes += bytes;
       ++d.uboUploads;
       ++d.uploads;
