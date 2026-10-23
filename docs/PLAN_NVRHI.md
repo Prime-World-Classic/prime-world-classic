@@ -8092,7 +8092,9 @@ python3 tools/shader_pile/mkpile.py build --root /tmp/packdir \
 
 Позиции пиков после правки совпадают с DXVK (L y=243, R y=328, G y=246, B y=249
 против 243/328/248/249 у DXVK) — остаток это реальные рёбра геометрии, не
-артефакт. Визуально: оливковые полосы исчезли (`/tmp/cmp_smp.png`, верх — до),
+артефакт. Устойчиво по всем трём снимкам прогона (t0/t20/t40): после — L 2/3/2,
+R 3/5/6, G 5/6/3, B 4/4/4; до — L 12/7/10, R 26/32/32, G 14/11/11, B 25/26/27.
+Визуально: оливковые полосы исчезли (`/tmp/cmp_smp.png`, верх — до),
 мини-карта читается (`/tmp/cmp_mm.png`, лево — до): второй артефакт
 («иконки мини-карты», «синие полосы привязаны к геометрии») закрыт тем же
 исправлением.
@@ -8100,3 +8102,37 @@ python3 tools/shader_pile/mkpile.py build --root /tmp/packdir \
 ### Не сделано
 Пересобранный корпус (18 `.spv` в `pw/branches/r1117/Data/Shaders/OnlineShaders/`)
 и правка `shim.py` не закоммичены; E2E на tiny10 после правки не гонялся.
+
+### Гейт на tiny10 (Windows + lavapipe) после правки сэмплеров
+
+Прогон 2026-10-23 19:33–19:44 (гость = `ssh -p 22022 rekojr@127.0.0.1`, ВМ в
+user-net; `ssh pw-tiny10`/10.78.0.10 требует `sudo ./net10.sh`). Раскладка:
+`C:\pw64\Game\Bin\PW_Game.exe` ← `wine-client/Game/Bin/PW_Game.exe`
+(16 093 696 Б), `C:\pw64\Game\Packs\zzzresult.pile` ← тот же pile, что на
+хостовом стенде (до правки 263 707 Б, после 265 425 Б), бэкапы
+`*.bak-2026-10-24-pre-gate`.
+
+Что оказалось обязательно (без этого NVRHI на госте не поднимается):
+- `PW_VK_BACKEND=1` — иначе клиент берёт D3D9 (в логе нет ни одной строки
+  `NvrhiBackend:`); для прогона сделана задача `PwE2E64VK`
+  (`C:\tools\run_pw64_vk.cmd`, без `/ru` = интерактивная сессия);
+- `vulkan-1.dll` **рядом с exe** (`C:\pw64\Game\Bin\`) — в tiny10 вырезан
+  `System32\vulkan-1.dll`, в логе `NvrhiBackend: LoadLibrary(vulkan-1.dll) —
+  НЕ удалось`; ICD (`C:\tools\vulkan\lvp_icd.x86_64.json`,
+  `library_path": ".\\vulkan_lvp.dll"`) уже зарегистрирован в
+  `HKLM\SOFTWARE\Khronos\Vulkan\Drivers` — этого достаточно;
+- URL с блоком `0a000202` (= 10.0.2.2, гейтвей user-net) вместо `0a4e0001`:
+  `cli/session.js --ips 0a000202`; стенд на хосте (UniServerApp + dev-бэкенд в
+  docker) отвечает гостю через NAT без правки брандмауэра;
+- pile нельзя перезаписывать на лету — `scp` даёт `dest open … Failure`, пока
+  `PW_Game.exe` держит файл (сначала `taskkill /f /im PW_Game.exe`).
+
+Итог: `NvrhiBackend: устройство 1 шт., выбрано llvmpipe (LLVM 23.1.2, 256 bits)
+(api 1.4.354)`, `Vulkan-бэкенд поднят — OK`, swapchain 800x600 → пересоздан в
+1920x1080, `CreateShader: MainPass_VSMain/PSMain — OK` 13+13, ни одного
+`VkMsg`/`Validation`. Кадры: `/tmp/gB_1.png` (pile до правки),
+`/tmp/gC_1.png` (после) — сцена спавна, оливковых полос в ней нет ни в одном
+кадре, метрика по строкам совпадает (y441/513/998/1011-1015/1059-1071 в обоих).
+То есть прогон — **смоук** (пересобранный SPIR-V живёт на Windows/lavapipe,
+ошибок компиляции/валидации нет), а не A/B артефакта: артефакт в этой сцене на
+госте не воспроизводится (нужен участок с war fog).
