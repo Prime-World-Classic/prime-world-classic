@@ -8173,3 +8173,61 @@ nvrhi-visual-baseline-2026-10-23^{}` = `git rev-parse origin/nvrhi`.
 (волатильный банк) до надёжного порога с явной ошибкой вместо тихого пропуска
 записи. Замер капчи `pw_frame1826`: 570 выводов, 1729 `vkCmdUpdateBuffer`,
 1180 барьеров, 454 прохода на кадр.
+
+## Тринадцатая серия (2026-10-24, п.3): волатильный c-банк — +11…+23 %, ловушка NVRHI закрыта
+
+Сделано (все правки в `pw/branches/r1117/Src/Render/nvrhibackend.cpp`, гейт
+`PW_VK_VOLCB`, **по умолчанию включён**, `PW_VK_VOLCB=0` выключает):
+
+- `VolCbank()` (:1715), `kVolVersions = 1024`, `kVolWriteLimit = 900` (:1729-1730);
+  банк создаётся `setIsVolatile(true).setMaxVersions()` (:2413), привязка —
+  `BindingLayoutItem::VolatileConstantBuffer(0/1)` (:2455-2457) вместо
+  `StaticSampler`-соседних `ConstantBuffer`; `EnsureRecording()` при новом списке
+  помечает банк грязным (:3890), чтобы первый вывод списка не читал чужие константы.
+- Запись банка — целый банк (4 КБ) в свободный слот: `writeVolatileBuffer` не
+  принимает смещение (`assert destOffsetBytes == 0`, `Vendor/NVRHI/src/vulkan/
+  vulkan-buffer.cpp:455`), поэтому прежняя частичная загрузка (только используемый
+  диапазон) заменена полной; объём за запись ×~17, по памяти не критично.
+- Лимит записей на список ведём сами (:8595-8631): при `volWrites[s] >=
+  kVolWriteLimit` — `FlushRecording()` + `waitForIdle()` + `runGarbageCollection()`
+  и сброс счётчиков обеих стадий. Без лимита NVRHI **молча пропускает** запись и
+  только пишет ошибку (`vulkan-buffer.cpp:346-355`) — тихая порча кадра.
+
+Ловушка NVRHI (Vulkan), из-за которой первая версия была медленнее и портила кадр:
+версии волатильного банка освобождает `Queue::updateLastFinishedID`
+(`Vendor/NVRHI/src/vulkan/vulkan-queue.cpp:311`), а её вызывают только из
+`CommandListLifetimeTracker::runGarbageCollection` (:343) и
+`isCommandListFinished` (:438); в Vulkan-бэкенде `runGarbageCollection` не вызывает
+никто (в D3D12 это делает `executeCommandList`, `d3d12-device.cpp:754`).
+`Device::waitForIdle` (`vulkan-device.cpp:317`) = `vkDeviceWaitIdle` и счётчик не
+обновляет. Итог: `getLastFinishedID()` навсегда 0, проверка `id <=
+queueCompletionValues[q]` (`vulkan-buffer.cpp:334`) не проходит ни для одного слота,
+после `maxVersions` записей — `Volatile constant buffer seam cbank vs has
+maxVersions = 1024, which is insufficient.` Лечение: `runGarbageCollection()` после
+`waitForIdle` в `Present` (:3526-3536) и в лимите записей.
+
+Замеры (стенд `.80`: Wine + lavapipe, Xvfb :97, canonical cfg, `PW_FPS_STATS=5`,
+100 с; `PW_VK_VOLCB=0` ↔ `1`, один и тот же exe md5 `33fd9f0397bd`):
+
+| порядок | VOLCB=0 | VOLCB=1 |
+|---|---|---|
+| off→on (`/tmp/volcb_ab2.sh`) | 39.96/38.98/39.16/37.44 | 41.30/45.02/43.30/43.26 |
+| on→off (`/tmp/volcb_ab3.sh`, контроль порядка) | 36.32/36.96/37.80/37.18 | 45.48/46.00/44.89/45.73 |
+
+то есть **+11…+22 %** (разброс от порядка прогонов). Счётчики: записей
+VS/PS = 1 118 758/541 618, принудительных отправок 1 (счётчик сбрасывается в
+`Present`, 552 записи/кадр < 900), `insufficient` = 0, `before writing` = 0.
+Корректность кадра: RMSE живых кадров 0.041-0.059 (уровень шума прогонов),
+поканальный счётчик полос идентичен (L7/R7/G9/B9 на тех же y) — полос нет.
+
+Гейт на tiny10 (`C:\pw64`, Windows + lavapipe, `PW_VK_BACKEND=1`, задача
+`PwE2E64`, снимок `vm7/vncshot.py 127.0.0.1 5918`): `Renderer: PW_VK_BACKEND up`,
+`VkVolCb: режим=1 слотов=1024 записей VS/PS=41972/25365 принуд.отправок=1`,
+`insufficient` = 0; fps 5.78/5.78/5.75 → 7.07/7.15/7.11 (**+23 %**); кадры
+среднее 82/82, RMSE 0.043, полос нет, UI цел. Бэкап exe гостя:
+`C:\pw64\Game\Bin\PW_Game.exe.bak-2026-10-24-volcb`.
+
+Готовая работа: направление п.3 закрыто приростом; что осталось — сократить ЧИСЛО
+записей банка на кадр (батчинг выводов / честный state-dedup), тогда прирост
+растёт; и заменить тихий пропуск записи явным `assert`/`DebugTrace` (сейчас его
+прикрывает только наш лимит 900 при 1024 слотах).

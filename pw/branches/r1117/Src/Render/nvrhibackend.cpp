@@ -1078,6 +1078,13 @@ struct NvrhiBackendImpl
   std::vector<unsigned char> uboLastBytes[2];
   // смещение последней загрузки c-банка: без него пропуск сверяет только байты
   unsigned uboLastFirst[2];
+  // волатильный банк (VolCbank): записей на список и всего, принудительных
+  // отправок списка; uboForce — записать весь банк (первый вывод нового
+  // списка), uboLastFull — содержимое последней полной версии
+  unsigned volWrites[2], volWritesTotal[2], volRecycles;
+  unsigned uboVol[2];
+  bool uboForce[2];
+  std::vector<unsigned char> uboLastFull[2];
   std::vector<unsigned char> ssboLastBytes[kSsboBridgeCount];
   unsigned ssboLastOff[kSsboBridgeCount], ssboLastLen[kSsboBridgeCount];
   unsigned uboSkipped, ssboSkipped;
@@ -1167,6 +1174,8 @@ struct NvrhiBackendImpl
       uboFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
       uboLast{ 0, 0 }, uboBytes(0), uboUploads(0),
       uboLastFirst{ (unsigned)SHADER_CONST_REGISTERS, (unsigned)SHADER_CONST_REGISTERS },
+      volWrites{ 0, 0 }, volWritesTotal{ 0, 0 }, volRecycles(0), uboVol{ 0, 0 },
+      uboForce{ false, false },
       ssboLastOff{ 0 }, ssboLastLen{ 0 }, uboSkipped(0), ssboSkipped(0),
       ssboUploads(0), ssboBytes(0), ssboSkippedMask(0),
       curVs(kNoRes), curPs(kNoRes), curLayout(kNoRes),
@@ -1690,6 +1699,36 @@ static bool ClearLoadOnce()
 // рисуется уменьшенной»: если кости доезжают в тень (bnz в VkDraw), но
 // грязный диапазон их не накрывает, буфер остаётся с чужими/нулевыми
 // значениями и скиннинг схлопывает модель.
+// Очередь перф (п.3, 2026-10-24): волатильный c-банк — версионные слоты в
+// хост-видимой памяти. writeBuffer по НЕ-volatile буферу вне прохода обязан
+// закрыть render pass (Vendor/NVRHI/src/vulkan/vulkan-buffer.cpp:463), и
+// следующий setGraphicsState вставляет барьер и открывает проход заново
+// (vulkan-graphics.cpp:560): по капче pw_frame1826 на кадр 570 выводов,
+// 1729 vkCmdUpdateBuffer, 1180 барьеров, 454 прохода. Волатильный банк пишет
+// memcpy в свободный слот (vulkan-buffer.cpp:377) и привязывается динамическим
+// смещением версии — команд и барьеров нет.
+// Ограничение: слот обязан содержать ВЕСЬ банк (writeVolatileBuffer не
+// принимает смещение — assert destOffsetBytes == 0, vulkan-buffer.cpp:455), а
+// при нехватке свободных слотов NVRHI ПРОПУСКАЕТ запись и только пишет ошибку
+// (vulkan-buffer.cpp:346-355) — тихая порча кадра. Поэтому лимит записей на
+// список ведём сами (kVolWriteLimit) и перед ним отправляем список с waitForIdle.
+static int VolCbank()
+{
+  static int s_on = -1;
+  if (s_on < 0)
+  {
+    char bm[16];
+    bm[0] = 0;
+    s_on = (GetEnvironmentVariableA("PW_VK_VOLCB", bm, sizeof(bm) - 1) > 0)
+             ? (atoi(bm) ? 1 : 0) : 1;
+  }
+  return s_on;
+}
+// слотов на банк: память = слотов x 4 КБ x 2 стадии (1024 -> 8 МБ); запас до
+// принудительной отправки списка — с ним ни одна запись не пропущена
+static const unsigned kVolVersions = 1024u;
+static const unsigned kVolWriteLimit = 900u;
+
 static bool SsboFullRequested()
 {
   static int s_on = -1;
@@ -2365,12 +2404,15 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   // (замер DXC: два блока с одним binding в одном прогоне = битый SPIR-V).
   for (int s = 0; s < csConstStageCount; ++s)
   {
-    d.ubo[s] = d.nvrhiDevice->createBuffer(nvrhi::BufferDesc()
-                                             .setByteSize((size_t)SHADER_CONST_REGISTERS * 16u)
-                                             .setIsConstantBuffer(true)
-                                             .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
-                                             .setKeepInitialState(true)
-                                             .setDebugName(s == csPixel ? "seam cbank ps" : "seam cbank vs"));
+    nvrhi::BufferDesc cbd;
+    cbd.setByteSize((size_t)SHADER_CONST_REGISTERS * 16u)
+       .setIsConstantBuffer(true)
+       .setInitialState(nvrhi::ResourceStates::ConstantBuffer)
+       .setKeepInitialState(true)
+       .setDebugName(s == csPixel ? "seam cbank ps" : "seam cbank vs");
+    if (VolCbank()) cbd.setIsVolatile(true).setMaxVersions(kVolVersions);
+    d.uboVol[s] = VolCbank() ? 1u : 0u;
+    d.ubo[s] = d.nvrhiDevice->createBuffer(cbd);
     // ЗАМЕР 2026-10-23 (ветка nvrhi): волатильный c-банк
     // (.setIsVolatile(true).setMaxVersions(N) + BindingLayoutItem::
     // VolatileConstantBuffer) убирает разрыв прохода на каждой загрузке
@@ -2406,8 +2448,14 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
     ld.bindingOffsets = nvrhi::VulkanBindingOffsets()
       .setShaderResourceOffset(0).setSamplerOffset(0)
       .setConstantBufferOffset(0).setUnorderedAccessViewOffset(0);
-    ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(0));
-    ld.bindings.push_back(nvrhi::BindingLayoutItem::ConstantBuffer(1));
+    // волатильный банк — отдельный тип элемента раскладки: по нему NVRHI
+    // собирает UNIFORM_BUFFER с динамическим смещением = версия x размер банка
+    // (vulkan-resource-bindings.cpp:555). BindingSetItem::ConstantBuffer
+    // определяет волатильность сам по desc буфера (nvrhi.h:2328).
+    ld.bindings.push_back(VolCbank() ? nvrhi::BindingLayoutItem::VolatileConstantBuffer(0)
+                                     : nvrhi::BindingLayoutItem::ConstantBuffer(0));
+    ld.bindings.push_back(VolCbank() ? nvrhi::BindingLayoutItem::VolatileConstantBuffer(1)
+                                     : nvrhi::BindingLayoutItem::ConstantBuffer(1));
     d.set0Layout = d.nvrhiDevice->createBindingLayout(ld);
 
     nvrhi::BindingSetDesc bsd;
@@ -3231,6 +3279,9 @@ void NvrhiBackend::DumpCompact() const
   DebugTrace("VkUbo: загрузок=%u байт=%u KiB, пропущено совпадений=%u; SSBO-мосты: загрузок=%u байт=%u совпадений=%u вне-вывода=%u",
              d.uboUploads, (unsigned)(d.uboBytes / 1024ull), d.uboSkipped,
              d.ssboUploads, (unsigned)d.ssboBytes, d.ssboSkipped, d.ssboSkippedMask);
+  DebugTrace("VkVolCb: режим=%u слотов=%u записей VS/PS=%u/%u принуд.отправок=%u",
+             (unsigned)VolCbank(), kVolVersions, d.volWritesTotal[0],
+             d.volWritesTotal[1], d.volRecycles);
   DebugTrace("VkSum: presents=%u вывод=%u пайплайны=%u/%u (попаданий %u) fb=%u "
              "объектов B/T/S=%u/%u/%u подстановок=%u",
              d.presents, d.draws, d.pipesCreated, (unsigned)d.pipes.size(), d.pipeHits,
@@ -3472,6 +3523,17 @@ HRESULT NvrhiBackend::Present(NativeWindow window, const BackendRect* pSrcRect, 
   VK_TRACE("Present: waitIdle >");
   VK_TRACE("waitIdle >");
   d.nvrhiDevice->waitForIdle();
+  // версии волатильного c-банка освобождает только runGarbageCollection:
+  // Queue::updateLastFinishedID (vulkan-queue.cpp:311) вызывают из
+  // CommandListLifetimeTracker::runGarbageCollection, а в Vulkan-бэкенде его
+  // не вызывает никто (в D3D12 это делает executeCommandList,
+  // d3d12-device.cpp:754). Без него getLastFinishedID() навсегда 0, каждый
+  // слот считается «в полёте», и после maxVersions записей writeVolatileBuffer
+  // молча пропускает загрузку (vulkan-buffer.cpp:346-355). Замер прогона
+  // PW_VK_VOLCB=1 до правки: `Volatile constant buffer seam cbank vs has
+  // maxVersions = 1024, which is insufficient.` на загрузке карты.
+  d.nvrhiDevice->runGarbageCollection();
+  for (int s = 0; s < csConstStageCount; ++s) d.volWrites[s] = 0;
   VK_TRACE("waitIdle <");
   VK_TRACE("Present: waitIdle <");
 
@@ -3825,6 +3887,10 @@ bool NvrhiBackend::EnsureRecording()
     VK_TRACE("open >");
     d.commandList->open();
     d.recording = true;
+    // волатильный банк привязывается по версии ЭТОГО списка: bind до первой
+    // записи в списке = ошибка NVRHI и offset 0 (vulkan-resource-bindings.cpp:
+    // 983-993). Значит каждый новый список обязан записать банк целиком.
+    for (int s = 0; s < csConstStageCount; ++s) { d.uboForce[s] = true; d.uboDirty[s] = true; }
     VK_TRACE("open <");
   }
   return true;
@@ -8516,6 +8582,9 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       d.uboDirty[s] = false;
       d.uboFirst[s] = (unsigned)SHADER_CONST_REGISTERS;
       d.uboLast[s] = 0;
+      const bool force = d.uboForce[s];
+      d.uboForce[s] = false;
+      if (force) { first = 0u; last = (unsigned)SHADER_CONST_REGISTERS; }
       if (last <= first || first >= (unsigned)SHADER_CONST_REGISTERS)
         continue;   // флаг был, а диапазона нет (защита)
       if (last > (unsigned)SHADER_CONST_REGISTERS) last = (unsigned)SHADER_CONST_REGISTERS;
@@ -8523,6 +8592,43 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
       const size_t bytes = (size_t)(last - first) * 16u;
       const unsigned char* src =
           reinterpret_cast<const unsigned char*>(m_constShadow[s] + first * 4);
+      if (d.uboVol[s])
+      {
+        // версионный слот: смещения нет, слот обязан содержать весь банк
+        if (d.volWrites[s] >= kVolWriteLimit)
+        {
+          // иначе NVRHI не найдёт свободный слот и пропустит запись
+          FlushRecording();
+          VK_TRACE("waitIdle >");
+          d.nvrhiDevice->waitForIdle();
+          d.nvrhiDevice->runGarbageCollection();  // без этого версии не освобождаются
+          VK_TRACE("waitIdle <");
+          for (int q = 0; q < csConstStageCount; ++q) d.volWrites[q] = 0;
+          ++d.volRecycles;
+          for (int q = 0; q < csConstStageCount; ++q)
+            if (q != s) { d.uboForce[q] = true; d.uboDirty[q] = true; }
+          EnsureRecording();
+        }
+        const size_t fbytes = (size_t)SHADER_CONST_REGISTERS * 16u;
+        const unsigned char* fsrc =
+            reinterpret_cast<const unsigned char*>(m_constShadow[s]);
+        std::vector<unsigned char>& lastf = d.uboLastFull[s];
+        // пропуск оставляет привязанной предыдущую версию этого же списка —
+        // она содержит ровно те же байты; после нового списка пропускать нельзя
+        if (!force && lastf.size() == fbytes && memcmp(&lastf[0], fsrc, fbytes) == 0)
+        {
+          ++d.uboSkipped;
+          continue;
+        }
+        d.commandList->writeBuffer(d.ubo[s], m_constShadow[s], fbytes);
+        lastf.assign(fsrc, fsrc + fbytes);
+        ++d.volWrites[s];
+        ++d.volWritesTotal[s];
+        d.uboBytes += fbytes;
+        ++d.uboUploads;
+        ++d.uploads;
+        continue;
+      }
       std::vector<unsigned char>& lastb = d.uboLastBytes[s];
       // PW_VK_UBO_OFFFIX=1: пропуск сверять и по смещению. Без флага lastb
       // хранит только байты последней загрузки: два диапазона одинаковой длины
