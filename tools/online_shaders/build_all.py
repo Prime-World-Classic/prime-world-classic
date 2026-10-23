@@ -104,7 +104,7 @@ def mirror(dirs, stage, rewritten):
             text = fix_includes(rename_entry(read(p), stage))
             if rewritten:
                 text, _st, _n = shim.rewrite(text, stage, set_layout=True,
-                                             cbank=True)
+                                             cbank=True, src_path=p)
             with open(dst, "w", encoding="utf-8") as f:
                 f.write(text)
 

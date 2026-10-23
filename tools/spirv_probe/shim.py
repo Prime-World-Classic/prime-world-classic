@@ -8,7 +8,9 @@
 #
 # Подмены:
 #   sampler2D/samplerCUBE NAME : register(...)  -> Texture2D/TextureCube NAME
-#                                                 + один общий SamplerState g_smp
+#                                                 + SamplerState g_smp_N по номеру
+#                                                  D3D9-слота (в режиме макета);
+#                                                  без макета — один общий g_smp
 #   register(cN)/register(sN)/register(bN)      -> снимаем (DXC сам раскладывает
 #                                                 по cBuffers/texture/sampler)
 #   tex2D/texCUBE/tex2Dlod/tex2Dproj            -> Sample/SampleLevel (+ proj вручную)
@@ -42,6 +44,62 @@ HEADER_SET = """
 SamplerState g_smp : register(s0, space%d);
 #endif
 """ % SPACE_SAMPLERS
+
+# D3D9 привязывает sampler-state к СЛОТУ: SetSamplerState(N, st) действует на
+# выборку tex2D(sN, ...). Прослойка до правки объявляла ОДИН g_smp (register s0)
+# и подставляла его во все выборки, а seam считает binding == D3D9-слот
+# (nvrhibackend.cpp: «SetTexture(N, tex) кладёт текстуру прямо в binding N»),
+# значит все выборки прохода получали состояние слота 0. Замер 2026-10-23
+# (пост-проход, PS #122): fog-текстура (рег. 10: CLAMPTOEDGE, mipF=NONE) читалась
+# состоянием слота 0 (WRAP, mipF=LINEAR) -> fog-карта 205x205 тайлилась за
+# пределами [0,1] -> по экрану рядные полосы периода 45..55 px. Аудит исходников:
+# 31 файл из 88 выбирают из >=2 разных слотов (TerrainElement 0..4, Water 0..5,
+# Road 0..6, UIButton 0..6, FullScreen 0,1,2,3,10, NatureMap 0..4, WarfogBlend
+# 0,1, ShadowPass*, UpscaleH/V, ...). Правка: на каждый используемый номер
+# слота — свой SamplerState g_smp_N : register(sN, space3).
+SMP_VAR = "g_smp"          # общий сэмплер: выборки, у которых слот не известен
+
+
+def smp_name(reg):
+    return "%s_%d" % (SMP_VAR, reg)
+
+
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
+
+
+def include_texts(path, depth=3):
+    """Тексты локальных `#include "..."` (только для разбора объявлений ресурсов).
+
+    Объявления сэмплеров живут и в включаемых `_common*.hlsl`; прослойка работает
+    по одному файлу, поэтому без этого обхода выборка из материала, у которого
+    сэмплер объявлен в include, не знает свой слот и остаётся на общем g_smp
+    (замер: envMapSampler из _common.hlsl = register(GLOBALENVIROMENTSAMPLERINDEX)
+    читался состоянием слота 0). Слот из include важен и для номера binding: его
+    назначает прослойка в том файле, где объявление.
+    """
+    seen, out = set(), []
+
+    def walk(p, d):
+        p = os.path.normpath(p)
+        if d < 0 or p in seen or not os.path.isfile(p):
+            return
+        seen.add(p)
+        try:
+            with open(p, encoding="utf-8", errors="replace") as f:
+                txt = f.read()
+        except OSError:
+            return
+        if p != os.path.normpath(path):
+            out.append(txt)
+        base = os.path.dirname(p)
+        for m in INCLUDE_RE.finditer(txt):
+            rel = m.group(1)
+            for cand in (os.path.join(base, rel), os.path.join(os.path.dirname(base), rel)):
+                if os.path.isfile(cand):
+                    walk(cand, d - 1)
+    walk(path, depth)
+    return out
+
 
 SAMPLER_DECL = re.compile(
     r"\b(sampler1D|sampler2D|sampler3D|samplerCUBE|sampler|sampler_state|samplerSOM)\s+(\w+)\s*(\[[^\]]*\])?"
@@ -115,8 +173,28 @@ AUTO_RES = re.compile(r"\b(Texture2D|Texture2DArray|TextureCube|StructuredBuffer
 _TEXCOORD_CTR = [200]
 
 def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=False,
-            cbank=False):
+            cbank=False, src_path=None):
     notes = []
+    # имя текстуры -> номер D3D9-слота; слот -> имя уже объявленного SamplerState
+    tex_reg = {}
+    state_of_reg = {}
+    state_reg_taken = set()
+    need_regs = set()   # слоты, реально используемые выборками этого файла
+    decl_extra = []     # алиасы ресурсов (пер-слотовые элементы массивов)
+    if src_path:
+        for extra in include_texts(src_path):
+            for m in SAMPLER_DECL.finditer(extra):
+                if m.group(2) in tex_reg or m.group(2) in state_of_reg:
+                    continue
+                reg = expand_reg(m.group(4) or "")
+                mm = re.match(r"\s*[ts]\s*(\d+)\s*$", reg)
+                if not mm:
+                    continue
+                if m.group(1) == "sampler_state":
+                    state_of_reg[int(mm.group(1))] = m.group(2)
+                    state_reg_taken.add(int(mm.group(1)))
+                else:
+                    tex_reg[m.group(2)] = int(mm.group(1))
     _TEXCOORD_CTR[0] = 100   # счётчик — на файл, иначе семантика уезжает за лимит
     # 0. макросы слотов ресурсов — ДО проходов register(...) и strip_cdecls,
     #    иначе от аннотации остаётся пустота и DXC нумерует binding сам.
@@ -166,12 +244,39 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
                 cls = "s" if kind == "sampler_state" else "t"
                 keep = " : register(%s%s, space%d)" % (
                     cls, mm.group(2), SPACE_SAMPLERS if cls == "s" else SPACE_TEXTURES)
+        if kind == "sampler_state":
+            notes.append("sampler_state %s" % name)
+            mm = re.match(r"\s*[ts]\s*(\d+)\s*$", reg)
+            if mm:      # чистый сэмплер уже занимает слот — выборки пойдут в него
+                state_of_reg[int(mm.group(1))] = name
+                state_reg_taken.add(int(mm.group(1)))
+            return "SamplerState %s%s;" % (name, arr, keep)
+        mm = re.match(r"\s*[ts]\s*(\d+)\s*$", reg)
+        if mm:
+            tex_reg[name] = int(mm.group(1))
+            # Массив сэмплеров (`sampler a[4] : register(s0)`) в D3D9 — НЕСКОЛЬКО
+            # слотов: a[i] = слот base+i, и клиент кладёт в каждый свою текстуру
+            # (TERRAIN_DIFFUSESAMPLER0..3 = s0..s3). Прослойка объявляла один
+            # Texture2D на базовом binding — выборки a[1..3] читали текстуру
+            # слота 0. Для литеральных индексов объявляем алиасы a_<i> на своих
+            # binding'ах; динамический индекс DXC и так запрещает.
+            am = re.match(r"\s*\[\s*(\d+)\s*\]\s*$", arr)
+            if set_layout and am:
+                base, cnt = int(mm.group(1)), int(am.group(1))
+                extra = []
+                for i in range(1, min(cnt, 16)):
+                    alias = "%s_%d" % (name, i)
+                    tex_reg[alias] = base + i
+                    extra.append("Texture%s %s%s : register(t%d, space%d);" % (
+                        "Cube" if kind == "samplerCUBE" else "2D",
+                        alias, "", base + i, SPACE_TEXTURES))
+                if extra:
+                    notes.append("per-slot массив %s: алиасы %s" % (
+                        name, ",".join("%s_%d" % (name, i) for i in range(1, min(cnt, 16)))))
+                    decl_extra.extend(extra)
         if kind == "samplerCUBE":
             notes.append("samplerCUBE %s" % name)
             return "TextureCube %s%s%s;" % (name, arr, keep)
-        if kind == "sampler_state":
-            notes.append("sampler_state %s" % name)
-            return "SamplerState %s%s;" % (name, arr, keep)
         notes.append("%s %s%s" % (kind, name, keep))
         return "Texture2D %s%s%s;" % (name, arr, keep)
     src, n_samp = SAMPLER_DECL.subn(sampler_sub, src)
@@ -199,7 +304,13 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
                 cls = "b"
             else:
                 cls = "t"
-            n = ctr[cls]; ctr[cls] += 1
+            n = ctr[cls]
+            if cls == "s":
+                # номера слотов, занятые per-slot сэмплерами (g_smp_N) и
+                # sampler_state из исходника, авто-назначать нельзя
+                while n in state_reg_taken or n in tex_reg.values():
+                    n += 1
+            ctr[cls] = n + 1
             # DXC для StructuredBuffer требует класс 't' (замер: register(u0) ->
             # «invalid register specification, expected 't' binding»)
             regcls = "t" if cls == "b" else cls
@@ -214,31 +325,64 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
 
     # 3. выборки
     # operand may be an array element: tex2D( diffuseMapSampler[1], uv )
-    src, n_t2 = re.subn(r"\btex2D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
+    def smp_for(op):
+        """`a[1]` -> (сэмплер слота base+1, переменная текстуры этого слота)."""
+        m = re.match(r"\s*(\w+)\s*(?:\[\s*(\d+)\s*\])?\s*$", op)
+        if not m:
+            return SMP_VAR, op.strip()
+        base, idx = m.group(1), m.group(2)
+        var = op.strip()          # как в исходнике: `a[0]` остаётся `a[0]`
+        reg = tex_reg.get(base)
+        if idx:
+            alias = "%s_%s" % (base, int(idx))
+            if alias in tex_reg:
+                var, reg = alias, tex_reg[alias]
+            elif reg is not None:
+                reg += int(idx)   # слот base+i; текстура — элемент массива
+        if reg is None:
+            return SMP_VAR, var
+        if reg in state_of_reg:
+            return state_of_reg[reg], var
+        if reg == 0:
+            return SMP_VAR, var
+        need_regs.add(reg)
+        return smp_name(reg), var
+
+    def sub_tex(pat, fmt, flags=0):
+        """подмена выборки: {0}=текстура, {1}=её сэмплер, {2..}=остальные
+        группы паттерна (кроме группы 1 — это текстура). Замер: `*groups()[2:]`
+        терял вторую группу, и на `tex2Dlod(t, VAR)` / `tex1D(t, u)` шаблон
+        падал IndexError (срез онлайн-шейдеров, 44 сайдкара)."""
+        def f(m):
+            smp, tex = smp_for(m.group(1))
+            return fmt.format(tex, smp, *m.groups()[1:])
+        return re.subn(pat, f, src, flags=flags)
+
+    src, n_t2 = sub_tex(r"\btex2D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", "{0}.Sample({1},")
     # tex1D( t, u ) -> t.Sample(g_smp, float2(u, 0.5)) — seam создаёт 1D-текстуры
     # как 2D (высота 1), отдельного измерения в наборе дескрипторов нет
     # (замер: UpscaleH/UpscaleV `sampler1D weights : register(s1)` + tex1D).
-    src, n_t1 = re.subn(r"\btex1D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,\s*([^;()]*(?:\([^()]*\))?[^;()]*)\)",
-                        r"\1.Sample(g_smp, float2(\2, 0.5))", src)
-    src, n_cube = re.subn(r"\btexCUBE\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", r"\1.Sample(g_smp,", src)
+    src, n_t1 = sub_tex(r"\btex1D\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,\s*([^;()]*(?:\([^()]*\))?[^;()]*)\)",
+                        "{0}.Sample({1}, float2({2}, 0.5))")
+    src, n_cube = sub_tex(r"\btexCUBE\s*\(\s*(\w+\s*(?:\[[^\]]*\])?)\s*,", "{0}.Sample({1},")
     # tex2Dlod( t, float4( uv2, 0, 0 ) ) -> t.SampleLevel(g_smp, uv2, 0)
     src, n_lod3 = re.subn(
         r"\btex2Dlod\s*\(\s*(\w+)\s*,\s*float4\s*\(\s*([^,()]+)\s*,\s*[^,()]+\s*,\s*[^,()]+\s*\)\s*\)",
         r"\1.SampleLevel(g_smp, \2, 0)", src)
     # tex2Dlod( t, VAR ) -> t.SampleLevel(g_smp, VAR.xy, VAR.w)  (общая форма)
-    src, n_lod_var = re.subn(r"\btex2Dlod\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)",
-                             r"\1.SampleLevel(g_smp, \2.xy, \2.w)", src)
+    src, n_lod_var = sub_tex(r"\btex2Dlod\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)",
+                             "{0}.SampleLevel({1}, {2}.xy, {2}.w)")
     # tex2Dlod( t, float4( u,v,0,mip ) ) -> t.SampleLevel(g_smp, float2(u,v), mip)
     def lod_sub(m):
         t, a, b, d = m.group(1), m.group(2), m.group(3), m.group(4)
-        return "%s.SampleLevel(g_smp, float2(%s,%s), %s)" % (t, a, b, d)
+        return "%s.SampleLevel(%s, float2(%s,%s), %s)" % (t, smp_for(t)[0], a, b, d)
     src, n_lod = re.subn(
         r"\btex2Dlod\s*\(\s*(\w+)\s*,\s*float4\s*\(\s*([^,()]+)\s*,\s*([^,()]+)\s*,\s*[^,()]+\s*,\s*([^,()]+)\s*\)\s*\)",
         lod_sub, src)
     # tex2Dproj( t, float4 ) -> t.Sample(g_smp, c.xy / c.w)
     def proj_sub(m):
         t, c = m.group(1), m.group(2)
-        return "%s.Sample(g_smp, (%s).xy / (%s).w)" % (t, c, c)
+        return "%s.Sample(%s, (%s).xy / (%s).w)" % (t, smp_for(t)[0], c, c)
     # 2-й аргумент — выражение, а не только имя (замер: UberShadowPassDST.hlsl
     # `tex2Dproj(shadowMap, PositionLS + texelShift.xxzz)` — из-за ограничителя
     # `\w+` ShadowPassPCFDST4/4Add не собирались вообще)
@@ -359,7 +503,30 @@ def rewrite(src, stage=None, ps_ret_structs=(), vs_ret_structs=(), set_layout=Fa
                  tex2Dlod=n_lod + n_lod_var + n_lod3, tex2Dproj=n_proj, position=n_pos,
                  color=n_col, ps_position=n_pspos, vpos=n_vpos + n_frag, vface=n_vface,
                  regs_auto=n_auto, out_position=n_outpos if stage == "vs" else 0)
-    return (HEADER_SET if set_layout else HEADER) + src, stats, notes
+    # per-slot сэмплеры объявляем в шапке ПОСЛЕ обхода исходника: номера известны
+    # только после разбора объявлений и выборок. Объявления в шапке — до первого
+    # использования, порядок корректен.
+    head = HEADER_SET if set_layout else HEADER
+    if set_layout and (need_regs or decl_extra):
+        # каждое объявление — СВОИМ include-guard'ом и СНАРУЖИ блока PW_G_SMP:
+        # заголовок prepend'ится к каждому файлу компиляционного юнита, а общий
+        # guard PW_G_SMP (одна блокировка на всех) глушит объявления второго
+        # файла: замер — _commonDistortion.hlsl не получал g_smp_13/g_smp_14,
+        # которые нужны ему самому (материал их не выбирает, его заголовок их
+        # не объявляет). Именной guard = дедупликация по всему юниту.
+        parts = []
+        for d in decl_extra:
+            nm = d.split()[1].split(":")[0]
+            parts.append("#ifndef PW_RES_%s\n#define PW_RES_%s\n%s\n#endif\n" % (nm, nm, d))
+        need = sorted(need_regs - {0} - set(state_of_reg))
+        for r in need:
+            parts.append("#ifndef PW_SMP_%d\n#define PW_SMP_%d\n"
+                         "SamplerState %s : register(s%d, space3);\n#endif\n"
+                         % (r, r, smp_name(r), r))
+        head = HEADER_SET + "".join(parts)
+        if need:
+            notes.append("per-slot сэмплеры: %s" % ",".join(str(r) for r in need))
+    return head + src, stats, notes
 
 if __name__ == "__main__":
     import sys

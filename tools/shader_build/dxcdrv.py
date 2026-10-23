@@ -145,7 +145,7 @@ class ShimTree:
                 out, _st, _n = shim.rewrite(
                     open(src, encoding="utf-8", errors="replace").read(), stage,
                     names_ps, names_vs, set_layout=self.set_layout,
-                    cbank=self.cbank)
+                    cbank=self.cbank, src_path=src)
                 if bank_txt is not None and fn == material + ".hlsl":
                     # банк — ОТДЕЛЬНЫМ файлом и включается ПЕРВЫМ: члены должны
                     # быть видны функциям из `#include "_common.hlsl"`, а не
@@ -171,7 +171,7 @@ class ShimTree:
                     open(os.path.join(osh, fn), encoding="utf-8",
                          errors="replace").read(), stage,
                     names_ps, names_vs, set_layout=self.set_layout,
-                    cbank=self.cbank)
+                    cbank=self.cbank, src_path=os.path.join(osh, fn))
                 open(os.path.join(d2, fn), "w", encoding="utf-8").write(out)
         return self.dir
 
