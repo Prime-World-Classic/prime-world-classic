@@ -276,6 +276,13 @@ private:
 
 inline Renderer* GetRenderer() { return Renderer::Get(); }
 
+// Запрос рендер-бэкенда, переданный протоколом запуска ("render=vulkan", см.
+// PW_Client/Game.cpp). Задаётся до Renderer::Init(), читается в CreateDevice().
+// Пустая строка — бэкенд не запрошен, работает старый пайплайн (D3D9).
+// Возможные значения: "vulkan", "d3d9" (регистр не важен).
+void SetBackendRequest(const char* request);
+const char* GetBackendRequest();
+
 inline IDirect3DDevice9* GetDevice() { return Renderer::Get()->GetDevice(); }
 
 // Seam этапа 2 (docs/PLAN_NVRHI.md §2.8): путь коду Render к бэкенду.

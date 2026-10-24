@@ -74,6 +74,25 @@ static NullRenderSignal s_nullrender;
 
 Renderer*  Renderer::s_pInstance = NULL;
 
+// Протокольный запрос бэкенда (объявление — renderer.h). Задаётся из PW_Client/Game.cpp
+// при разборе строки протокола, то есть до создания рендера, поэтому хранится здесь,
+// а не в конфиге: значение живёт ровно на один запуск.
+static char s_backendRequest[16] = { 0 };
+
+void SetBackendRequest(const char* request)
+{
+  s_backendRequest[0] = 0;
+  if (!request)
+    return;
+  strncpy(s_backendRequest, request, sizeof(s_backendRequest) - 1);
+  s_backendRequest[sizeof(s_backendRequest) - 1] = 0;
+}
+
+const char* GetBackendRequest()
+{
+  return s_backendRequest;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Renderer* Renderer::Get()
@@ -466,18 +485,28 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   bVkBackend = false;
 
   // Шаг 13.4c (docs/PLAN_NVRHI.md §3.z): «переворот» — pBackend становится
-  // Vulkan-бэкендом. Включается только env PW_VK_BACKEND=1. D3D9-устройство при
-  // этом СОХРАНЯЕТСЯ: классы lifecycle (CreateQuery/Reset/TestCooperativeLevel),
-  // D3DX-загрузка DDS и прямые обращения GetDevice() (20 сайтов внутри Src/Render,
-  // PostFX/ShadowMap/ImmediateRenderer) пока идут через него. Поэтому картинка на
-  // этом гейте смешанная, а цель — прогнать боевые вызовы seam'а через
-  // NvrhiBackend и снять счётчики (частота смен состояний, число пайплайнов,
-  // владение ручками).
+  // Vulkan-бэкендом. Включается именованным токеном протокола запуска
+  // ("render=vulkan", его ставит лончер по настройке «Vulkan (экспериментально)»;
+  // "render=d3d9" — явный отказ, перебивает env). Значение по умолчанию — старый
+  // пайплайн (D3D9). env PW_VK_BACKEND=1 остаётся dev-фолбэком: на него опираются
+  // стенды .pi/skills/pw-render (RenderDoc, DXVK-срезы), где протокола нет.
+  // D3D9-устройство при этом СОХРАНЯЕТСЯ: классы lifecycle (CreateQuery/Reset/
+  // TestCooperativeLevel), D3DX-загрузка DDS и прямые обращения GetDevice() (20
+  // сайтов внутри Src/Render, PostFX/ShadowMap/ImmediateRenderer) пока идут через
+  // него. Поэтому картинка на этом гейте смешанная, а цель — прогнать боевые
+  // вызовы seam'а через NvrhiBackend и снять счётчики (частота смен состояний,
+  // число пайплайнов, владение ручками).
   {
+    const char* requested = GetBackendRequest();
+    const bool requestVulkan = (requested[0] != 0 && _stricmp(requested, "vulkan") == 0);
+    const bool requestD3D9   = (requested[0] != 0 && _stricmp(requested, "d3d9") == 0);
     char vkBackendFlag[8] = { 0 };
-    const bool backendOn =
+    const bool envOn =
       (GetEnvironmentVariableA("PW_VK_BACKEND", vkBackendFlag, sizeof(vkBackendFlag) - 1) > 0 &&
        vkBackendFlag[0] == '1');
+    const bool backendOn = requestVulkan || (!requestD3D9 && envOn);
+    if (requested[0] != 0 && !requestVulkan && !requestD3D9)
+      systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: unknown backend request \"" << requested << "\"" << endl;
     if (backendOn)
     {
       NvrhiBackend* vk = NvrhiBackend::Create(window, pp.BackBufferWidth, pp.BackBufferHeight);
@@ -489,7 +518,9 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
         // Кадр рисует клиент (его Clear/Draw идут через этот бэкенд), поэтому
         // заливка бэк-буфера в Present выключается.
         vk->SetClearOnPresent(false);
-        systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_BACKEND up" << endl;
+        // Подстрока «PW_VK_BACKEND up» сохраняется: по ней ищут прогоны скилы.
+        systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_BACKEND up"
+          << (requestVulkan ? " (protocol render=vulkan)" : " (env PW_VK_BACKEND)") << endl;
       }
       else
         systemLog(NLogg::LEVEL_CRITICAL) << "Renderer: PW_VK_BACKEND FAILED" << endl;

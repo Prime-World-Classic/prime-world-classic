@@ -8292,3 +8292,42 @@ read-back размещённого прямоугольника в `UITextureAtl
 `PFClientVisibilityMap` и вообще все места, где клиент читает текстуру в CPU.
 Счётчики `nz` в `PW_VK_TEXLOCK` такую поломку не видят: в момент загрузки зеркало
 правильное.
+
+## Четырнадцатая серия (2026-10-24, п.4): бэкенд включается токеном протокола, не env
+
+Мотивация: Vulkan должен включаться **пользователем лончера**, а не переменной
+окружения, которую в бою никто не ставит. Env `PW_VK_BACKEND` остаётся
+dev-фолбэком (RenderDoc-капчи, `run_vk_dip.sh`, ad-hoc прогоны без протокола).
+
+Клиент:
+* `PW_Client/Game.cpp` — после разбора позиционных токенов идёт цикл по
+  `allTokens[5…]` в поиске `key=value`: ключ `render` →
+  `Render::SetBackendRequest(value)`, неизвестный ключ → лог
+  `Ignored protocol option`. Разбор по всему хвосту, а не по фиксированной
+  позиции, потому что токен языка (allTokens[7]) необязателен и опция может
+  встать на его место; в блоке языка такой токен отсеивается проверкой на `=`.
+  Позиционные токены `=` не содержат (ipBlock — hex, порт — dec, язык — 2–5
+  букв), поэтому двусмысленности нет.
+* `Render/renderer.h` — `SetBackendRequest()` / `GetBackendRequest()`;
+  `Render/renderer.cpp` — хранение (один запуск, в конфиг не пишется) и гейт в
+  `CreateDevice`: `requestVulkan || (!requestD3D9 && envOn)`. Порядок:
+  `render=vulkan` > env `PW_VK_BACKEND=1` > по умолчанию D3D9; `render=d3d9`
+  перебивает env (явный отказ). Логи сохранили подстроку `PW_VK_BACKEND up`
+  (по ней ищут скилы) и добавили источник: `(protocol render=vulkan)` /
+  `(env PW_VK_BACKEND)`; незнакомое значение → `Renderer: unknown backend request`.
+
+Совместимость: лончер при значении по умолчанию (`d3d9`) токен **не добавляет
+вовсе** — строка протокола байт-в-байт прежняя; старый клиент, получивший
+незнакомый хвост, его игнорирует (проверки числа токенов сверху нет).
+
+Гейт (Wine-стенд, карта `_.ADMPDSCR.xdb`, RTX 3060, четыре прогона):
+
+| запуск | итог |
+|---|---|
+| URL `…/27300/render=vulkan`, env нет | `Protocol render backend: "vulkan"` → `Renderer: PW_VK_BACKEND up (protocol render=vulkan)`, `mapload: all map objects loaded`, кадр рисуется |
+| URL без токена, env нет | строк `NvrhiBackend:` 0, работает `D3D9Backend` — старый пайплайн |
+| URL `…/render=d3d9` + `PW_VK_BACKEND=1` | Vulkan не поднят (явный отказ перебил env) |
+| env `PW_VK_BACKEND=1`, токена нет | `Renderer: PW_VK_BACKEND up (env PW_VK_BACKEND)` — dev-путь цел |
+
+Токен встал в позицию языка (URL без `/ru`) и был прочитан правильно — это и
+была главная проверка разбора.
