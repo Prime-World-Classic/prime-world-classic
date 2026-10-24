@@ -333,9 +333,6 @@ FMOD::Event* GetEvent( const NDb::DBFMODEventDesc& eventDesc )
   FMOD_RESULT result = pEventGroup->getEvent(eventDesc.eventName.c_str(), FMOD_EVENT_DEFAULT, &pEvent);
   NI_DATA_VERIFY( result == FMOD_OK, NStr::StrFmt( "Cannot get event %s/%s. %s", eventDesc.groupName.c_str(), eventDesc.eventName.c_str(), FMOD_ErrorString( result ) ), return 0 );
 
-  // TEMP (2026-10-24): the last sound events before an FMOD mixer crash (Taurus hits Warlord)
-  DebugTrace( "SoundEvent: get %s/%s", eventDesc.groupName.c_str(), eventDesc.eventName.c_str() );
-
   return pEvent;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,13 +483,6 @@ bool EventStart( FMOD::Event *pEvent, CVec3 const *_pPosition )
     FMOD_VECTOR fmodPosition = { _pPosition->x, _pPosition->y, _pPosition->z };
     pEvent->set3DAttributes( &fmodPosition, 0 );
   }   
-
-  // TEMP (2026-10-24): the last sound events before an FMOD mixer crash (Taurus hits Warlord)
-  {
-    char * eventName = 0;
-    pEvent->getInfo( 0, &eventName, 0 );
-    DebugTrace( "SoundEvent: start %s", eventName ? eventName : "?" );
-  }
 
   FMOD_RESULT result = pEvent->start();
   if(result != FMOD_OK)
