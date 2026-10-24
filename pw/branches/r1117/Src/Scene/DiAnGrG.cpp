@@ -96,6 +96,7 @@ DiAnimGraph::DiAnimGraph(DiUInt32 nNumNodes, DiUInt32 nNumEdges,
   bPathSpecified        = FALSE;
   bIsForced = FALSE;
   freezed = FALSE;
+  legacyBlend = false;
   gpPath.nCurIdxInPath  = DIANGR_NO_SUCH_ELEMENT;
   gpPath.nPathLength    = 0;
   gpPath.nTargetNode    = DIANGR_NO_SUCH_ELEMENT;

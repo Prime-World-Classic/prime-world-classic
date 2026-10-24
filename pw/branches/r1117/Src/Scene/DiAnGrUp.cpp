@@ -17,6 +17,10 @@
 
 #include "../System/InlineProfiler.h"
 
+// Swap smoothed anim graph transitions back to their original params (table anim_blend_legacy.txt next to the exe) to compare them in game
+static bool s_animBlendLegacy = false;
+REGISTER_VAR( "anim_blend_legacy", s_animBlendLegacy, STORAGE_NONE );
+
 
 ///eugbelNSCENE///namespace NScene {
 
@@ -1079,6 +1083,10 @@ DiFloat DiAnimGraph::SplitTimeTillNextClbOnParInElement(DiFloat rDtLeft)
 DiBool DiAnimGraph::Update(DiFloat rUpdateDt)
 {
   NI_PROFILE_FUNCTION;
+
+  // anim_blend_legacy: compare original and smoothed transitions without restarting
+  if (s_animBlendLegacy != legacyBlend)
+    SwapTransactionsAltParams();
 
   DIASSERT(rUpdateDt >= 0.0f);
   AGTrace("//////Update(%8.5lf)", rUpdateDt);

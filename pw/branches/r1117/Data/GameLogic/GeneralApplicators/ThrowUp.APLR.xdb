@@ -16,6 +16,7 @@
 	<BackLink DBID="/Items/Talents/Class/Monster/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Reaper/A1_JumpAndDown.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_2.TALENT" Count="1" />
 	<angle>0</angle>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>152</behaviorFlags>

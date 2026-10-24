@@ -113,6 +113,7 @@ class DiAnimGraph : public DiGraph
 
   nstl::string DBFileName;
   bool freezed;
+  bool legacyBlend;   // transitions currently use their original params, see anim_blend_legacy
 
 public:
   //////////////////////////////////////////////////////////////////////////
@@ -455,7 +456,8 @@ private:
                                    DiUInt32 nNodeFromID, DiAnimGraphElems geElem);
   DiBool   CreateAndAddFlTransaction(DiTChar *cpBuf, DiInt32 nBufLength,
                                      DiUInt32 nNodeFromID, DiAnimGraphElems geElem);
-  DiBool   CreateAndAddGeneralTransaction(const NDb::AnGrFlMultiTransaction multiUniTrans,
+  DiVoid   SwapTransactionsAltParams();
+  DiBool   CreateAndAddGeneralTransaction(const char* fromNodeName, const NDb::AnGrFlMultiTransaction multiUniTrans,
                                           DiUInt32 nNodeFromID, int normalizedProbability);
 
   DiBool   CreateAndAddMarker(const NDb::AnGrMarker &marker, EditorGraphParamAddress::OwnerType owner, int nodeIdx, int transIdx, int subTransIdx);

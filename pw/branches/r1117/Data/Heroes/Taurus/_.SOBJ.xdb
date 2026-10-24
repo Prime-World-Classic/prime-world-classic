@@ -1,0 +1,1322 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneObject>
+	<BackLink DBID="/Heroes/Taurus/_.HROB" Count="2" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Taurus/_.SOBJ" id="BBA01C8B-72F0-4C0B-ABAA-BDC5098E89AE">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>2.5</maxX>
+						<maxY>2.5</maxY>
+						<maxZ>5</maxZ>
+						<minX>-2.5</minX>
+						<minY>-2.5</minY>
+						<minZ>-0.5</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Taurus/idle1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/idle1.mayaAnim</mayaFileName>
+							<name>idle1</name>
+							<srcFileName crc="0">/Heroes/Taurus/idle1</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/idle2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/idle2.mayaAnim</mayaFileName>
+							<name>idle2</name>
+							<srcFileName crc="0">/Heroes/Taurus/idle2</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/idle3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/idle3.mayaAnim</mayaFileName>
+							<name>idle3</name>
+							<srcFileName crc="0">/Heroes/Taurus/idle3</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/move1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/move1.mayaAnim</mayaFileName>
+							<name>move1</name>
+							<srcFileName crc="0">/Heroes/Taurus/move1</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/move2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/move2.mayaAnim</mayaFileName>
+							<name>move2</name>
+							<srcFileName crc="0">/Heroes/Taurus/move2</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/attack1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/attack1.mayaAnim</mayaFileName>
+							<name>attack1</name>
+							<srcFileName crc="0">/Heroes/Taurus/attack1</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/attack2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/attack2.mayaAnim</mayaFileName>
+							<name>attack2</name>
+							<srcFileName crc="0">/Heroes/Taurus/attack2</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/attack3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/attack3.mayaAnim</mayaFileName>
+							<name>attack3</name>
+							<srcFileName crc="0">/Heroes/Taurus/attack3</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/battleIdle.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/battleIdle.mayaAnim</mayaFileName>
+							<name>battleidle</name>
+							<srcFileName crc="0">/Heroes/Taurus/battleIdle</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability1.mayaAnim</mayaFileName>
+							<name>ability1</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability1</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability2.mayaAnim</mayaFileName>
+							<name>ability2</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability2</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability3.mayaAnim</mayaFileName>
+							<name>ability3</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability3</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability4.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability4.mayaAnim</mayaFileName>
+							<name>ability4</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability4</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/channeling.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/channeling.mayaAnim</mayaFileName>
+							<name>channeling</name>
+							<srcFileName crc="0">/Heroes/Taurus/channeling</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/revive.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/revive.mayaAnim</mayaFileName>
+							<name>revive</name>
+							<srcFileName crc="0">/Heroes/Taurus/revive</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/death.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/death.mayaAnim</mayaFileName>
+							<name>death</name>
+							<srcFileName crc="0">/Heroes/Taurus/death</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/stun.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/stun.mayaAnim</mayaFileName>
+							<name>stun</name>
+							<srcFileName crc="0">/Heroes/Taurus/stun</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/blocked.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/blocked.mayaAnim</mayaFileName>
+							<name>blocked</name>
+							<srcFileName crc="0">/Heroes/Taurus/blocked</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/happy.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/happy.mayaAnim</mayaFileName>
+							<name>happy</name>
+							<srcFileName crc="0">/Heroes/Taurus/happy</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability1Start.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability1Start.mayaAnim</mayaFileName>
+							<name>ability1start</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability1Start</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability1Loop.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability1Loop.mayaAnim</mayaFileName>
+							<name>ability1loop</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability1Loop</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability1Finish.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability1Finish.mayaAnim</mayaFileName>
+							<name>ability1finish</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability1Finish</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability2Start.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability2Start.mayaAnim</mayaFileName>
+							<name>ability2start</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability2Start</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability2Loop.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability2Loop.mayaAnim</mayaFileName>
+							<name>ability2loop</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability2Loop</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/ability2Finish.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/ability2Finish.mayaAnim</mayaFileName>
+							<name>ability2finish</name>
+							<srcFileName crc="0">/Heroes/Taurus/ability2Finish</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/jumpStart.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/jumpStart.mayaAnim</mayaFileName>
+							<name>jumpstart</name>
+							<srcFileName crc="0">/Heroes/Taurus/jumpStart</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/jumpLoop.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/jumpLoop.mayaAnim</mayaFileName>
+							<name>jumploop</name>
+							<srcFileName crc="0">/Heroes/Taurus/jumpLoop</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/jumpLaunch.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/jumpLaunch.mayaAnim</mayaFileName>
+							<name>jumplaunch</name>
+							<srcFileName crc="0">/Heroes/Taurus/jumpLaunch</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/jumpAir.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/jumpAir.mayaAnim</mayaFileName>
+							<name>jumpair</name>
+							<srcFileName crc="0">/Heroes/Taurus/jumpAir</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Taurus/jumpLand.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Taurus/jumpLand.mayaAnim</mayaFileName>
+							<name>jumpland</name>
+							<srcFileName crc="0">/Heroes/Taurus/jumpLand</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="/Heroes/Taurus/_.ANGR" />
+					<anims />
+					<attached>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="11B92D3E-EF6D-4AF9-AD41-1C0C746EA66A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="4F04FCBF-A8B6-423F-8150-F6D839039BE9">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="540CAB52-3E67-494F-B1B1-8CC89FFEF4E7">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="56D05994-667A-44DB-8FA1-4D2819718B6E">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="8B5E5BF5-6626-4CFE-9B16-171A6504E42E">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="C76E3F61-49CE-40E8-92F9-97855163E5B8">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="37F5A814-9D83-4BD9-8443-7F5A6AD6A8AE">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="9A34DEF1-74BA-4FBB-915B-941D745964C1">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="24BF4811-5C3C-4CF9-A646-965BC8EF1DC0">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="4619BC73-CC54-4070-9AD4-D4CBC2651F97">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="39B3858A-A05B-4EA4-A090-A9CF14CABA77">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="ED498A27-1629-4CF1-8560-D9E6F803D3F3">
+											<AnimationSCEvent>
+												<animParam>0.25</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="84D61A83-C21D-46A7-87D5-7BE8F53FCB5B">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="83D88C41-F0C4-449A-9CA0-01B714D62DEE">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="3D0195E6-5D4E-4C59-8D9F-D6E9024EF32C">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="57EEE6DF-2A61-4718-94B9-CFB8174FFEC3">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Taurus_Step</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="D830D36A-9E10-4E2C-8CA6-731C64230F06">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="B39D0FD9-CB81-45A7-ADF1-D02839070AE2">
+											<AnimationSCEvent>
+												<animParam>0.75</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="85CC727C-1F8B-4F6B-830E-B9150B9A8823">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_ram_run</caption>
+									<desc>
+										<eventName>Taurus_RamRun</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="A446F167-5D48-4DE5-83B8-78E1D682FADB">
+								<EnableDisableSCEvents>
+									<disableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="D66B1477-9B54-450A-AFA4-613252DC1BBA">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="A865F22A-BD1B-4553-B909-E50CDF29E43C">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>stun</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="304B7CD4-13BB-4EC5-9DFA-28E0BDCC4420">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>death</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+									</disableEvents>
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="CF5ADB2D-082F-42EB-A053-3D53419529A1">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4Loop</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="B1E66A29-A824-45E4-846E-7D431B9FA764">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_ram_hit</caption>
+									<desc>
+										<eventName>Taurus_RamHit</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="62686C6B-79FC-4728-A188-FF9C45286B83">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="97E46250-7E23-4954-8806-E4F376ED6F39">
+											<AnimationSCEvent>
+												<animParam>0.07</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="F8643614-206C-4564-BF9C-D0B7A79EE803">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_kick_swing</caption>
+									<desc>
+										<eventName>Taurus_KickSwing</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="635B930A-A84A-4596-BC7D-3661721A1864">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="FB81D1AE-E01E-4189-8214-F92C0B604C6E">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="B07A3AD5-9C47-4506-9983-00F16C573D24">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_kick_hit</caption>
+									<desc>
+										<eventName>Taurus_KickHit</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="EF2A1E01-CBE7-4B8A-844E-EC606B7BB545">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="231C4968-A345-4584-87F5-6B4D8CF49EA9">
+											<AnimationSCEvent>
+												<animParam>0.114</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="8CA00866-DF3E-464A-88A6-E8F63461163E">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_punch_swing</caption>
+									<desc>
+										<eventName>Taurus_PunchSwing</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="50FFCB4B-7749-4F22-9E06-D9A0D92C4325">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="CC5FF9D3-E343-471B-8199-B5998691405C">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="C366BE7B-9A01-4B81-86C5-ABA14AD11E6E">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_punch_hit</caption>
+									<desc>
+										<eventName>Taurus_PunchHit</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="CC6BCC57-3E39-4F00-9D34-802185996FB4">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="EC490455-74BE-4328-B04F-D939B87FD5E0">
+											<AnimationSCEvent>
+												<animParam>0.114</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="1CC71523-F239-4776-8752-840681379711">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_horns_swing</caption>
+									<desc>
+										<eventName>Taurus_HornsSwing</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="304B3F8C-A089-4261-9DEB-061CBA5A7BEB">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="4548B68D-9B4B-4F4B-8864-2544F0B37B06">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="BF694A60-D69A-4B23-8615-A5237085E4AC">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_horns_hit</caption>
+									<desc>
+										<eventName>Taurus_HornsHit</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="5607E3FA-D071-448B-8B44-4E3279E3CEE8">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="F836ADB6-1D00-4950-B0BB-1E894D068119">
+											<AnimationSCEvent>
+												<animParam>0.114</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="78DCF08B-E58A-424C-AD9B-B9DED6ECB2B1">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_jump_launch</caption>
+									<desc>
+										<eventName>Taurus_JumpLaunch</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="D0641E5E-44CC-40BC-9E88-827ABEBCE9F5">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="1BD97D99-A60C-4D9A-9E5D-B0F0039007D3">
+											<AnimationSCEvent>
+												<animParam>0.65</animParam>
+												<name>jumpLaunch</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="3E8E6D51-F95D-487B-82E3-632201BC1DC0">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_jump_air</caption>
+									<desc>
+										<eventName>Taurus_JumpAir</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="2A419995-5EB9-4664-A6C4-DA066E271089">
+								<EnableDisableSCEvents>
+									<disableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="17E2EC64-5071-4722-B5A3-3FFB5EF2CE06">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>jumpLand</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="50FA2BD9-B0E9-464E-B47B-153DB73D0707">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>stun</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="25E62ABC-8E91-4036-AF55-90BDC68A618B">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>death</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+									</disableEvents>
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="844335F3-58E9-42FD-AD9C-0396A967E8A3">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>jumpAir</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Taurus/_.SOBJ" id="2088FEA7-0468-4A15-AC0B-9C190C98506C">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sfx_jump_land</caption>
+									<desc>
+										<eventName>Taurus_JumpLand</eventName>
+										<groupName>SFX</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Taurus/_.SOBJ" id="A7535BE5-870B-4B1C-8EF6-8549F0B5CEFD">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Taurus/_.SOBJ" id="C55E6785-B1F0-470F-996D-FBA20440C596">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>jumpLand</name>
+												<probability>100</probability>
+												<type>NodeEnter</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+					</attached>
+					<caption></caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="/Heroes/Taurus/_.LOLS" />
+					<mayaFileName>/Heroes/Taurus/_.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection></selection>
+					<skeletonFileName>/Heroes/Taurus/_.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Taurus/_.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Taurus/_.MTRL" />
+							</materialsReferences>
+							<mayaFileName>/Heroes/Taurus/_.mayaSkin</mayaFileName>
+							<selection></selection>
+							<skinPartName></skinPartName>
+							<srcFileName crc="0">/Heroes/Taurus/_</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Heroes/Taurus/_</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<collisionGeometry href="" />
+	<ignoreAttachesToNonDefaultLocators>false</ignoreAttachesToNonDefaultLocators>
+	<tracksList href="" />
+</DBSceneObject>

@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectStandalone>
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" Count="2" />
+	<component href="/Heroes/Taurus/Effects/RamStepL.PRXY" />
+	<deathType>Time</deathType>
+	<enableCondition href="" />
+	<fadeIn>0.23</fadeIn>
+	<fadeOut>0.8</fadeOut>
+	<isVisibleUnderWarfog>false</isVisibleUnderWarfog>
+	<lifeTime>2.3</lifeTime>
+	<parentFlags>2</parentFlags>
+	<parentType>Ground</parentType>
+	<visibilityLimited>false</visibilityLimited>
+	<visibleTime>0</visibleTime>
+</BasicEffectStandalone>

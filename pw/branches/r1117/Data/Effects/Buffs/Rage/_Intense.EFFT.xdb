@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectAttached>
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A2_Rage.APLR" Count="2" />
 	<attachFlags>1</attachFlags>
 	<attachType>Body</attachType>
 	<component href="/Effects/Buffs/Rage/_Intense.PRXY" />

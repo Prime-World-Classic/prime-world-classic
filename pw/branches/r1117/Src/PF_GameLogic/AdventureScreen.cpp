@@ -181,6 +181,7 @@ static bool  g_altSelfCast           = true;
 // Holding the hotkey of an ability casts it on own hero after this time (it is in the targeting mode meanwhile)
 static bool  g_holdSelfCast          = true;
 static float g_holdSelfCastTime      = 0.5f;  // seconds, 0.1 .. 1
+static float g_talentQueueTime       = 1.5f;  // seconds a press of a not yet usable talent waits for it, 0 = off
 // Alt + mouse click on an ability button sends its state (ready / cooldown / not learned...) to the team chat
 static bool  g_altClickAbilityStatus = true;
 static float g_abilityStatusMinInterval = 1.0f; // anti-spam, seconds
@@ -415,6 +416,9 @@ REGISTER_VAR( "minimap_rotate", g_minimap_rotate, STORAGE_USER );
 
 static int useTempDebugTrace = 0;
 REGISTER_DEV_VAR( "use_temp_debug_trace", useTempDebugTrace, STORAGE_NONE );
+// 1 = trace the own hero's anim graph to the output log
+static int g_agLogHero = 0;
+REGISTER_DEV_VAR( "ag_log_hero", g_agLogHero, STORAGE_NONE );
 
 namespace 
 {
@@ -746,6 +750,30 @@ AdventureScreen::AdventureScreen()
 , lastAbilityStatusSlot(-1)
 , lastAltStatusPressTime(0)
 , holdCastSlot(-1)
+, holdChargeSlot(-1)
+, holdChargeTimer(0.0f)
+, holdChargeReleased(false)
+, holdChargeSeen(false)
+, holdChargeChannelTime(0.0f)
+, jumpMark()
+, jumpMarkWait(0.0f)
+, jumpMarkFlew(false)
+, jumpRangeShown(false)
+, jumpMarkPos(VNULL3)
+, jumpMarkScale(1.0f)
+, ramArrowShown(false)
+, ramArrowRun(false)
+, ramArrowLen(0.0f)
+, ramArrowHead(0.0f, 1.0f)
+, ramArrowZ(0.0f)
+, ramArrowGrace(0.0f)
+, talentQueueLevel(-1)
+, talentQueueSlot(-1)
+, talentQueueTimer(0.0f)
+, talentQueueHotKey(false)
+, talentQueueKeySlot(-1)
+, talentQueuePressSlot(-1)
+, talentQueueFiring(false)
 , holdCastTimer(0.0f)
 , pingWheelPending(false)
 , pingWheelShown(false)
@@ -2362,7 +2390,9 @@ void AdventureScreen::Step( bool bAppActive )
   if (IsValid(pLogic) && GetWorld())
     pLogic->UpdateDayNightState(GetWorld()->GetDayNightController());
 
-  UpdatePingHud( NMainLoop::GetTimeDelta() );
+  {
+    UpdatePingHud( NMainLoop::GetTimeDelta() );
+  }
 
   if ( !unsentWardCounts.empty() )
     if ( AdventureFlashInterface * flash = pLogic ? pLogic->GetFlashInterface() : 0 )
@@ -2492,7 +2522,9 @@ void AdventureScreen::CommonStep( bool bAppActive )
   m_eventTimeLeft += deltaTime * 1000.0f;
 
   if (IsValid(visibilityMap))
+  {
     visibilityMap->Update(deltaTime);
+  }
 
   bool isAnimationsPaused =  m_gamePause == PAUSE_HARD || m_gamePause == PAUSE_PLAYER;
   {
@@ -2558,6 +2590,8 @@ void AdventureScreen::CommonStep( bool bAppActive )
 
   UpdateMoveOnHold( deltaTime );
   UpdateHoldSelfCast( deltaTime );
+  UpdateHoldCharge( deltaTime );
+  UpdateTalentQueue( deltaTime );
   UpdatePingWheel( deltaTime );
   UpdateChatWheel( deltaTime );
   UpdateAutoAttackOption();
@@ -2627,8 +2661,11 @@ void AdventureScreen::CommonStep( bool bAppActive )
     Render::DebugRenderer::ImplementationSet3DProjection( pScene->GetCamera()->GetProjectiveMatrix() * pScene->GetCamera()->GetViewMatrix() );
 
   // ping markers are projected with the camera of this frame: the scene (and the camera) has just been updated above
-  UpdatePingMarkers( deltaTime );
-  UpdatePraises( deltaTime );
+
+  {
+    UpdatePingMarkers( deltaTime );
+    UpdatePraises( deltaTime );
+  }
 
   // No more XP
   // hero_Exp.SetValue( GetHero() ? GetHero()->GetExperience() : 0 );
@@ -3145,6 +3182,403 @@ void AdventureScreen::UpdateHoldSelfCast( float deltaTime )
     pLogic->GetActionBarController()->DropTarget();
   TargetZoneReset();
   SetState( STATE_NORMAL );
+}
+
+// a press of a talent that cannot be used right now: wait for it a little (busy hero, the end of a cooldown)
+bool AdventureScreen::QueueTalentPress( NWorld::PFTalent const * pTalent, int level, int slot )
+{
+  if ( talentQueueFiring || g_talentQueueTime <= 0.0f || !pTalent )
+    return false;
+  if ( !pTalent->IsOn() && !pTalent->IsEnoughMana() )
+    return false;
+  if ( pTalent->GetCurrentCooldown() > g_talentQueueTime )
+    return false;
+  talentQueueLevel   = level;
+  talentQueueSlot    = slot;
+  talentQueueTimer   = 0.0f;
+  talentQueueHotKey  = isHotKeyDown;
+  talentQueueKeySlot = isHotKeyDown ? talentQueuePressSlot : -1;
+  MessageTrace( "TalentQueue: %d/%d queued (hotkey %d slot %d, cooldown %.2f, forbidden %d)", level, slot, (int)talentQueueHotKey,
+    talentQueueKeySlot, pTalent->GetCurrentCooldown(), (int)pTalent->IsForbidded() );
+  return true;
+}
+
+void AdventureScreen::UpdateTalentQueue( float deltaTime )
+{
+  if ( talentQueueLevel < 0 )
+    return;
+  talentQueueTimer += deltaTime;
+  NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() );
+  NWorld::PFTalent * pTalent = pMale ? pMale->GetTalent( talentQueueLevel, talentQueueSlot ) : 0;
+  if ( !pTalent || !bAdventureControlsEnabled || pMale->IsDead() || talentQueueTimer > g_talentQueueTime )
+  {
+    MessageTrace( "TalentQueue: %d/%d dropped after %.2f s", talentQueueLevel, talentQueueSlot, talentQueueTimer );
+    talentQueueLevel = -1;
+    return;
+  }
+  if ( !pTalent->IsActivated() || !pTalent->IsActive() || !pTalent->CanBeUsed() )
+    return;
+  const int level = talentQueueLevel, slot = talentQueueSlot, keySlot = talentQueueKeySlot;
+  talentQueueLevel = -1;
+  MessageTrace( "TalentQueue: %d/%d fires after %.2f s", level, slot, talentQueueTimer );
+  const bool savedHotKey = isHotKeyDown;
+  isHotKeyDown       = talentQueueHotKey;
+  talentQueueFiring  = true;
+  lastTalentActivationLevel = -1; // not a double press
+  OnTalentSetButtonClick( level, slot );
+  talentQueueFiring  = false;
+  isHotKeyDown       = savedHotKey;
+  if ( keySlot >= 0 )
+  {
+    // a hold-to-charge talent: its charge starts now, the key may be held still (or already released)
+    holdChargeSlot        = keySlot;
+    holdChargeTimer       = 0.0f;
+    holdChargeReleased    = !IsActionBarKeyDown( keySlot );
+    holdChargeSeen        = false;
+    holdChargeChannelTime = 0.0f;
+  }
+}
+
+// finds a channelling talent that charges while its hotkey is held (talent constant HoldToCharge = minimum charge time, s)
+struct HoldChargeTalentFinder
+{
+  NWorld::PFTalent * found;
+  HoldChargeTalentFinder() : found( 0 ) {}
+  void operator()( NWorld::PFTalent * pTalent, int, int )
+  {
+    if ( found || !pTalent || !pTalent->IsChannelingNow() || !pTalent->GetDBDesc() || !pTalent->GetDBDesc()->constants )
+      return;
+    const vector<NDb::Ptr<NDb::UnitConstant>> & vars = pTalent->GetDBDesc()->constants->vars;
+    for ( int i = 0; i < vars.size(); ++i )
+      if ( vars[i] && vars[i]->name == "HoldToCharge" )
+        found = pTalent;
+  }
+};
+
+static NWorld::PFTalent * GetHoldChargeTalent( NWorld::PFBaseHero const * pHero )
+{
+  HoldChargeTalentFinder finder;
+  pHero->ForAllTalents( finder );
+  return finder.found;
+}
+
+// Taurus A4_2 "Mighty Leap" (talent constant JumpToCursor), the local hero only: while the jump is charged the charged
+// range is drawn around the hero (useRangeMaterial of the talent; AOE channel RANGE2, RANGE is reset every frame by the
+// targeting) and JumpMark.EFFT stands where the hero will land - at the cursor, but not farther than the range charged so
+// far (A4_2_RangeMin -> A4_2_RangeMax over A4_2_PrepareTime) and not closer than JumpMinRange. After the release the mark
+// stays; in the flight it goes to the landing point of the logic (unit variables JumpTargetX/Y and JumpFaceLockUntil set
+// by PFApplThrow) and dies at the touchdown, or 1.5 s after the charge when no jump follows
+static float HoldChargeConst( NWorld::PFTalent * pTalent, NWorld::PFBaseHero * pHero, const char * name, float def )
+{
+  if ( !pTalent->GetConstant( name ) )
+    return def;
+  return pTalent->CalcParam( name, pHero, pHero, pTalent );
+}
+
+void AdventureScreen::ShowJumpMark( const CVec3 & pos )
+{
+  CVec3 p = pos;
+  pScene->GetHeightsController().GetHeight( p.x, p.y, 1, &p.z, NULL );
+  if ( !IsValid( jumpMark ) )
+  {
+    NDb::Ptr<NDb::EffectBase> pDB = NDb::Get<NDb::EffectBase>( NDb::DBID( "/Heroes/Taurus/Effects/JumpMark.EFFT" ) );
+    if ( !pDB )
+      return;
+    jumpMark = PF_Core::EffectsPool::Get()->RetrieveKnownEffect<PF_Core::BasicEffectStandalone>( pDB );
+    if ( !jumpMark )
+      return;
+    Placement place( p );
+    place.scale = CVec3( jumpMarkScale, jumpMarkScale, jumpMarkScale );
+    jumpMark->SetPosition( place );
+    jumpMark->AddToScene( pScene );
+  }
+  else
+  {
+    Placement place( p );
+    place.scale = CVec3( jumpMarkScale, jumpMarkScale, jumpMarkScale );
+    jumpMark->SetPosition( place );
+  }
+}
+
+void AdventureScreen::UpdateJumpMark( float deltaTime )
+{
+  Render::AOERenderer * pAOE = Render::GetAOERenderer();
+  NWorld::PFBaseHero * pHero = GetHero();
+  NWorld::PFTalent * pTalent = pHero ? GetHoldChargeTalent( pHero ) : 0;
+  if ( pTalent && HoldChargeConst( pTalent, pHero, "JumpToCursor", 0.0f ) > 0.0f )
+  {
+    float const prepare  = HoldChargeConst( pTalent, pHero, "A4_2_PrepareTime", 1.0f );
+    float const rangeMin = HoldChargeConst( pTalent, pHero, "A4_2_RangeMin", 0.0f );
+    float const rangeMax = HoldChargeConst( pTalent, pHero, "A4_2_RangeMax", rangeMin );
+    float const minRange = HoldChargeConst( pTalent, pHero, "JumpMinRange", 2.0f );
+    float const k        = prepare > 0.0f ? Clamp( holdChargeChannelTime / prepare, 0.0f, 1.0f ) : 1.0f;
+    float const charged  = Max( rangeMin + ( rangeMax - rangeMin ) * k, minRange );
+    CVec3 const heroPos  = pHero->GetPosition();
+    CVec3 const cursor   = GetCurrentCursorPosOnTerrain();
+    CVec2 dir = cursor.AsVec2D() - heroPos.AsVec2D();
+    float dist = fabs( dir );
+    if ( !Normalize( &dir ) )
+    {
+      dir  = CVec2( 0.0f, 1.0f );
+      dist = 0.0f;
+    }
+    dist = Clamp( dist, minRange, charged );
+    if ( pAOE )
+    {
+      if ( !jumpRangeShown )
+      {
+        jumpRangeShown = true;
+        pAOE->SetAreaParams( Render::AOERenderer::CHANNEL_RANGE2, Render::AOERenderer::AREA_DISK, pTalent->GetDBDesc()->useRangeMaterial, charged, 0.0f );
+      }
+      else
+        pAOE->SetAreaRadius( Render::AOERenderer::CHANNEL_RANGE2, charged );
+      pAOE->SetAreaPosition( Render::AOERenderer::CHANNEL_RANGE2, heroPos, CVec3( dir, 0.0f ), true );
+    }
+    jumpMarkPos = CVec3( heroPos.x + dir.x * dist, heroPos.y + dir.y * dist, 0.0f );
+    jumpMarkScale = HoldChargeConst( pTalent, pHero, "A4_2_Radius", 4.0f ) / 4.0f;
+    ShowJumpMark( jumpMarkPos );
+    jumpMarkWait = 0.0f;
+    jumpMarkFlew = false;
+    return;
+  }
+  if ( jumpRangeShown )
+  {
+    jumpRangeShown = false;
+    if ( pAOE )
+      pAOE->ResetArea( Render::AOERenderer::CHANNEL_RANGE2 );
+  }
+  if ( !IsValid( jumpMark ) )
+    return;
+  if ( pHero && pHero->GetVariableValue( "JumpFaceLockUntil" ) > 1.0e8f )
+  {
+    // the landing point of the steered flight changes every logic step: the mark follows it smoothly
+    CVec3 const target( pHero->GetVariableValue( "JumpTargetX" ), pHero->GetVariableValue( "JumpTargetY" ), 0.0f );
+    jumpMarkPos = jumpMarkPos + ( target - jumpMarkPos ) * Min( 1.0f, deltaTime * 10.0f );
+    jumpMarkFlew = true;
+    ShowJumpMark( jumpMarkPos );
+    return;
+  }
+  jumpMarkWait += deltaTime;
+  if ( jumpMarkFlew || !pHero || jumpMarkWait > 1.5f )
+  {
+    jumpMark->Die();
+    jumpMark = 0;
+  }
+}
+
+// Taurus A4_1 "Ram" (talent constant RamTurnRate), the local hero only: an arrow on the ground (AOE channel CURVE,
+// aoeMaterial of the talent, drawn A4_1_ArrowWidth wide). While the ram is charged it points from the hero to the cursor and
+// grows with the charged range (A4_1_RangeMin -> A4_1_RangeMax over A4_1_ChargeTime); in the run it is the path the hero
+// will take: from him along the heading of the run, turning to the cursor no faster than the turn rate (as
+// PFApplThrow::StepRam), up to the cursor or the end of the run (unit variables RamLeft, RamHeadX/Y, RamTurn, RamSpeed)
+struct RamTalentFinder
+{
+  NWorld::PFTalent * found;
+  RamTalentFinder() : found( 0 ) {}
+  void operator()( NWorld::PFTalent * pTalent, int, int )
+  {
+    if ( found || !pTalent || !pTalent->GetDBDesc() || !pTalent->GetDBDesc()->constants )
+      return;
+    const vector<NDb::Ptr<NDb::UnitConstant>> & vars = pTalent->GetDBDesc()->constants->vars;
+    for ( int i = 0; i < vars.size(); ++i )
+      if ( vars[i] && vars[i]->name == "RamTurnRate" )
+        found = pTalent;
+  }
+};
+
+void AdventureScreen::UpdateRamArrow( float deltaTime )
+{
+  Render::AOERenderer * pAOE = Render::GetAOERenderer();
+  NWorld::PFBaseHero * pHero = GetHero();
+  NWorld::PFTalent * pTalent = 0;
+  if ( pHero && pAOE )
+  {
+    RamTalentFinder finder;
+    pHero->ForAllTalents( finder );
+    pTalent = finder.found;
+  }
+  bool const charging = pTalent && pTalent->IsChannelingNow();
+  float const left    = pTalent ? pHero->GetVariableValue( "RamLeft" ) : 0.0f;
+  // between the release and the start of the run the charged arrow stays (else it went out for a moment)
+  if ( charging )
+    ramArrowGrace = 0.6f;
+  else if ( left <= 0.0f && !ramArrowRun )
+    ramArrowGrace = Max( 0.0f, ramArrowGrace - deltaTime );
+  bool const waiting = pTalent && !charging && left <= 0.0f && !ramArrowRun && ramArrowGrace > 0.0f && ramArrowShown;
+  if ( !pTalent || ( !charging && !waiting && left <= 0.0f ) )
+  {
+    ramArrowGrace = 0.0f;
+    if ( ramArrowShown )
+    {
+      ramArrowShown = false;
+      ramArrowRun   = false;
+      if ( pAOE )
+        pAOE->ResetArea( Render::AOERenderer::CHANNEL_CURVE );
+    }
+    return;
+  }
+
+  CVec3 heroPos = pHero->GetPosition();
+  if ( pHero->ClientObject() )
+    heroPos = pHero->ClientObject()->GetPosition().pos;
+  CVec2 const start  = heroPos.AsVec2D();
+  CVec2 const cursor = GetCurrentCursorPosOnTerrain().AsVec2D();
+  float const halfWidth = 0.5f * HoldChargeConst( pTalent, pHero, "A4_1_ArrowWidth", HoldChargeConst( pTalent, pHero, "A4_1_Width", 3.0f ) );
+
+  static const int MAX_POINTS = 160;
+  CVec2 points[MAX_POINTS];
+  int numPoints = 0;
+  points[numPoints++] = start;
+  if ( charging || waiting )
+  {
+    if ( charging )
+    {
+      float const chargeTime = HoldChargeConst( pTalent, pHero, "A4_1_ChargeTime", 1.0f );
+      float const rangeMin   = HoldChargeConst( pTalent, pHero, "A4_1_RangeMin", 0.0f );
+      float const rangeMax   = HoldChargeConst( pTalent, pHero, "A4_1_RangeMax", rangeMin );
+      float const k          = chargeTime > 0.0f ? Clamp( holdChargeChannelTime / chargeTime, 0.0f, 1.0f ) : 1.0f;
+      CVec2 dir = cursor - start;
+      if ( !Normalize( &dir ) )
+        dir = ramArrowHead;
+      ramArrowHead = dir;
+      ramArrowLen  = rangeMin + ( rangeMax - rangeMin ) * k;
+      ramArrowRun  = false;
+    }
+    // straight, sampled like the path of the run: the same look as in the run
+    for ( float s = 0.4f; numPoints < MAX_POINTS; s += 0.4f )
+    {
+      points[numPoints++] = start + ramArrowHead * Min( s, ramArrowLen );
+      if ( s >= ramArrowLen )
+        break;
+    }
+  }
+  else
+  {
+    CVec2 head( pHero->GetVariableValue( "RamHeadX" ), pHero->GetVariableValue( "RamHeadY" ) );
+    if ( !Normalize( &head ) )
+      head = ramArrowHead;
+    float const turn  = pHero->GetVariableValue( "RamTurn" );
+    float const speed = pHero->GetVariableValue( "RamSpeed" );
+    if ( !ramArrowRun )
+    {
+      ramArrowRun  = true;
+      ramArrowHead = head;
+      ramArrowLen  = left;
+    }
+    // the logic steps are coarse: the heading and the length follow them smoothly, the length also runs down in between
+    float const a = Min( 1.0f, deltaTime * 10.0f );
+    ramArrowHead = ramArrowHead + ( head - ramArrowHead ) * a;
+    if ( !Normalize( &ramArrowHead ) )
+      ramArrowHead = head;
+    // the length runs down with the speed of the run; the logic only corrects it softly (its value comes in steps)
+    ramArrowLen = Max( 0.0f, ramArrowLen - speed * deltaTime );
+    ramArrowLen = ramArrowLen + ( left - ramArrowLen ) * Min( 1.0f, deltaTime * 3.0f );
+
+    CVec2 p = start;
+    CVec2 h = ramArrowHead;
+    float s = 0.0f;
+    while ( s < ramArrowLen && numPoints < MAX_POINTS )
+    {
+      CVec2 want = cursor - p;
+      float const toCursor = fabs( want );
+      if ( toCursor < 0.01f ) // the cursor is reached
+        break;
+      want = want / toCursor;
+      float ds = Min( 0.4f, ramArrowLen - s );
+      // the cursor within this step: go exactly to it when the heading looks at it (else the head stood a bit before
+      // the cursor, at a place that changed every frame); a heading that cannot turn to it any more ends near it
+      bool const reach = toCursor <= ds && h.x * want.x + h.y * want.y > 0.95f;
+      if ( toCursor <= ds && !reach && toCursor <= 0.5f )
+        break;
+      if ( reach )
+        ds = toCursor;
+      float const maxTurn = turn * ds;
+      float const ang     = atan2f( h.x * want.y - h.y * want.x, h.x * want.x + h.y * want.y );
+      float const rot     = Clamp( ang, -maxTurn, maxTurn );
+      float const c = cosf( rot ), sn = sinf( rot );
+      h = CVec2( h.x * c - h.y * sn, h.x * sn + h.y * c );
+      p = reach ? cursor : p + h * ds;
+      s += ds;
+      points[numPoints++] = p;
+      if ( reach )
+        break;
+    }
+  }
+
+  if ( numPoints < 2 )
+  {
+    if ( ramArrowShown )
+      pAOE->ResetArea( Render::AOERenderer::CHANNEL_CURVE );
+    ramArrowShown = false;
+    return;
+  }
+  // the plane of the arrow follows the height of the hero softly: on bumps the whole arrow jumped on the screen
+  ramArrowZ = ramArrowShown ? ramArrowZ + ( heroPos.z - ramArrowZ ) * Min( 1.0f, deltaTime * 2.0f ) : heroPos.z;
+  pAOE->SetAreaCurve( Render::AOERenderer::CHANNEL_CURVE, pTalent->GetDBDesc()->aoeMaterial, points, numPoints, halfWidth, ramArrowZ, true );
+  ramArrowShown = true;
+}
+
+// the hotkey of a hold-to-charge talent went up: cancel its channelling, the talent fires with the charge gathered so far
+void AdventureScreen::UpdateHoldCharge( float deltaTime )
+{
+  static int agLogHeroOn = 0;
+  if ( g_agLogHero != agLogHeroOn && GetHero() )
+  {
+    agLogHeroOn = g_agLogHero;
+    if ( agLogHeroOn )
+      DebugEnableAGLog( GetHero(), true );
+    else
+      DiAnimGraph::EnableLog( false, NULL );
+    MessageTrace( "HoldCharge: hero anim graph log %d", agLogHeroOn );
+  }
+  UpdateJumpMark( deltaTime );
+  UpdateRamArrow( deltaTime );
+  if ( holdChargeSlot < 0 )
+    return;
+  NWorld::PFBaseHero * pHero = GetHero();
+  if ( !pHero || !bAdventureControlsEnabled )
+  {
+    holdChargeSlot = -1;
+    return;
+  }
+  holdChargeTimer += deltaTime;
+  if ( !holdChargeReleased && !IsActionBarKeyDown( holdChargeSlot ) )
+  {
+    holdChargeReleased = true;
+    MessageTrace( "HoldCharge: slot %d key up after %.2f s, channelling %d", holdChargeSlot, holdChargeTimer, (int)pHero->IsInChannelling() );
+  }
+
+  if ( pHero->IsInChannelling() )
+  {
+    NWorld::PFTalent * pTalent = GetHoldChargeTalent( pHero );
+    if ( !holdChargeSeen )
+    {
+      holdChargeSeen = true;
+      MessageTrace( "HoldCharge: slot %d channelling after %.2f s, hold-to-charge talent %d, key down %d", holdChargeSlot, holdChargeTimer,
+        (int)( pTalent != 0 ), (int)!holdChargeReleased );
+    }
+    if ( !pTalent )
+    {
+      holdChargeSlot = -1;
+      return;
+    }
+    holdChargeChannelTime += deltaTime;
+    // the channelling lasts at least the minimum charge time: an earlier release waits for it
+    if ( holdChargeReleased && holdChargeChannelTime >= pTalent->CalcParam( "HoldToCharge", pHero, pHero, pTalent ) )
+    {
+      SendGameCommand( NWorld::CreateCmdCancelChannelling( pHero ), true );
+      MessageTrace( "HoldCharge: channelling cancelled (fires with the charge so far)" );
+      holdChargeSlot = -1;
+    }
+    return;
+  }
+  // the channelling has not started yet (the cast goes to the world with a delay) - wait a little, then forget the key
+  if ( holdChargeTimer > 1.0f )
+  {
+    if ( !holdChargeSeen )
+      MessageTrace( "HoldCharge: slot %d - no channelling within 1 s after the press", holdChargeSlot );
+    holdChargeSlot = -1;
+  }
 }
 
 bool AdventureScreen::MsgOnLMouseDown( const Input::SSysParams & sysParams )
@@ -5816,13 +6250,29 @@ void AdventureScreen::OnPraise( NWorld::PFBaseHero const * pSender, NWorld::PFBa
   entry.row  = (float)praises.size();
   praises.push_back( entry );
 
+  // timing of the parts: a freeze was seen on a praise, the log tells which part is slow
+  NHPTimer::STime timeStart, timeText, timeShow, timePanel, timeSound;
+  NHPTimer::GetTime( timeStart );
+
   const bool assertLoading = NDb::GetDbResourceCache().EnableAssertionLoadingFiles( false ); // portraits are normally cached by the top bar
+  const wstring praiseText = GetPraiseText( amount );
+  NHPTimer::GetTime( timeText );
   flash->ShowPraise( entry.id, senderIcon, pSender->GetPlayerName(), senderColor,
-                     targetIcon, pTarget->GetPlayerName(), targetColor, amount, GetPraiseText( amount ) );
+                     targetIcon, pTarget->GetPlayerName(), targetColor, amount, praiseText );
+  NHPTimer::GetTime( timeShow );
   flash->SetPraisePanel( entry.id, 1.0f, entry.row, 1.0f, g_praisePanelTop );
+  NHPTimer::GetTime( timePanel );
   NDb::GetDbResourceCache().EnableAssertionLoadingFiles( assertLoading );
 
   PlayPraiseSound();
+  NHPTimer::GetTime( timeSound );
+
+  const float totalMs = NHPTimer::Time2Seconds( timeSound - timeStart ) * 1000.0f;
+  if ( totalMs >= 5.0f )
+    MessageTrace( "Praise took %.0f ms: text %.0f, ShowPraise %.0f, SetPraisePanel %.0f, sound %.0f (icons '%s', '%s')", totalMs,
+      NHPTimer::Time2Seconds( timeText - timeStart ) * 1000.0f, NHPTimer::Time2Seconds( timeShow - timeText ) * 1000.0f,
+      NHPTimer::Time2Seconds( timePanel - timeShow ) * 1000.0f, NHPTimer::Time2Seconds( timeSound - timePanel ) * 1000.0f,
+      senderIcon.c_str(), targetIcon.c_str() );
 }
 
 void AdventureScreen::PlayPraiseSound()
@@ -5860,10 +6310,25 @@ static bool IsSmartCastableTalent( NWorld::PFTalent const * pTalent )
   return pTalent->GetTargetType() != 0;
 }
 
+// a channelling talent that charges while its hotkey is held (talent constant HoldToCharge, see UpdateHoldCharge)
+static bool IsHoldChargeTalent( NWorld::PFTalent const * pTalent )
+{
+  if ( !pTalent || !pTalent->GetDBDesc() || !pTalent->GetDBDesc()->constants )
+    return false;
+  const vector<NDb::Ptr<NDb::UnitConstant>> & vars = pTalent->GetDBDesc()->constants->vars;
+  for ( int i = 0; i < vars.size(); ++i )
+    if ( vars[i] && vars[i]->name == "HoldToCharge" )
+      return true;
+  return false;
+}
+
 bool AdventureScreen::IsTalentSmartCast( NWorld::PFTalent const * pTalent, int level, int slot ) const
 {
   if ( !pTalent )
     return false;
+  // a hold-to-charge talent starts its charge on the press: no target selection
+  if ( IsHoldChargeTalent( pTalent ) )
+    return true;
   // the switch made on the panel stays in force even when the checkboxes are hidden in the settings
   if ( level >= 0 && level < 8 && slot >= 0 && slot < 8 && smartCastOverride[level][slot] >= 0 )
     return smartCastOverride[level][slot] == 1;
@@ -6272,7 +6737,15 @@ bool AdventureScreen::OnTalentButtonPress( int level, int slot )
 {
   // hotkeys: Alt + hotkey stays a self-cast, no message
   if ( isHotKeyDown || !g_altClickAbilityStatus || !IsAbilityStatusModifierDown() )
+  {
+    // a press of a talent that cannot be used now goes no further in Flash: wait for the talent here
+    if ( !isPlayingMinigame && !( g_altSelfCast && isSelfCastOn ) )
+      if ( NWorld::PFBaseMaleHero * pMale = dynamic_cast<NWorld::PFBaseMaleHero*>( GetHero() ) )
+        if ( NWorld::PFTalent * pTalent = pMale->GetTalent( level, slot ) )
+          if ( pTalent->IsActivated() && pTalent->IsActive() && !pTalent->CanBeUsed() )
+            QueueTalentPress( pTalent, level, slot );
     return false;
+  }
   SendTalentStatusToTeam( level, slot );
   return true;
 }
@@ -6336,6 +6809,10 @@ bool AdventureScreen::OnTalentSetButtonClick(int level, int slot)
       {
         SendGameCommand(NWorld::CreateCmdActivateTalent(pMale, level, slot), true);
       }
+
+      if ( !isPlayingMinigame && pTalent->IsActivated() && pTalent->IsActive() && !pTalent->CanBeUsed()
+        && QueueTalentPress( pTalent, level, slot ) )
+        return true;
 
       if( isPlayingMinigame ) // запрещаем использовать таланты играя в миниигру
         return false;
@@ -7347,6 +7824,7 @@ bool AdventureScreen::CmdActionBarHotKey( const int & slotIndex )
 
   TempDebugTrace(NStr::StrFmt( "AdventureScreen::CmdActionBarHotKey() slotIndx=%d", slotIndex ));
   isHotKeyDown = true;
+  talentQueuePressSlot = slotIndex; // a queued press of this talent watches this key
   ActionBarController * actionBarController = pLogic->GetActionBarController();
   if (IsValid(actionBarController))
     actionBarController->UseSlot(slotIndex);
@@ -7354,6 +7832,12 @@ bool AdventureScreen::CmdActionBarHotKey( const int & slotIndex )
   // the hold self-cast watches this key (UpdateHoldSelfCast)
   holdCastSlot  = slotIndex;
   holdCastTimer = 0.0f;
+  // ...and so does the hold-to-charge talent (UpdateHoldCharge)
+  holdChargeSlot     = slotIndex;
+  holdChargeTimer    = 0.0f;
+  holdChargeReleased = false;
+  holdChargeSeen     = false;
+  holdChargeChannelTime = 0.0f;
 
   if ( g_altSelfCast && isSelfCastOn && GetHero() && m_talentLevel != -1 && m_talentSlot != -1 )
   {
@@ -9171,6 +9655,7 @@ REGISTER_VAR( "dbl_click_selfcast_time", g_dblClickSelfCastTime, STORAGE_USER );
 REGISTER_VAR( "alt_selfcast", g_altSelfCast, STORAGE_USER );
 REGISTER_VAR( "hold_selfcast", g_holdSelfCast, STORAGE_USER );
 REGISTER_VAR( "hold_selfcast_time", g_holdSelfCastTime, STORAGE_USER );
+REGISTER_VAR( "talent_queue_time", g_talentQueueTime, STORAGE_USER );
 REGISTER_VAR( "alt_click_ability_status", g_altClickAbilityStatus, STORAGE_USER );
 REGISTER_VAR( "alt_click_ability_status_interval", g_abilityStatusMinInterval, STORAGE_NONE );
 REGISTER_VAR( "chat_centered", g_chatCentered, STORAGE_NONE );

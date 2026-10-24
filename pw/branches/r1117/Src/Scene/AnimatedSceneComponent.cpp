@@ -175,6 +175,7 @@ void AnimatedSceneComponent::Update( UpdatePars &pars, const Placement& parentPo
 
   // ATTENTION: Here I'll update add world matrices for bones & skinning
   pSkeletalMesh = agApplicator->GetModel();
+  pSkeletalMesh->GetSkeletonWrapper()->SetTimeDelta( timeDelta );
   pSkeletalMesh->Update(false);
   //agApplicator->FixModelPlacement( worldMatrix );
 

@@ -41,6 +41,9 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/status_A2_Slave_of_flute.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Rifleman/Summon_Trap.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Rifleman/Summon_Trap_SUP.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A1_I2C.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A4_1_I2C.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A4_2_I2C.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4_2_DisableVampire.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4u_GoodEnd.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4u_Immune2Control.APLR" Count="1" />

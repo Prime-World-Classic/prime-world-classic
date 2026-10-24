@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
+	<BackLink DBID="/Items/Talents/Taurus.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet9.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset9_2_SpellPierce/Redset9_2_SpelPierce.TALKIT" Count="1" />
 	<BackLink DBID="/Social/TalentsCollection" Count="4" />

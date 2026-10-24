@@ -5,6 +5,7 @@
 #include "WarFog.h"
 #include "PFApplicator.h"
 #include "PFTalent.h"
+#include "PFHero.h"
 #include "PFBaseAttackData.h"
 //#include "PFBaseUnitEvent.h"
 
@@ -736,8 +737,31 @@ ValueWithModifiers* PFBaseUnit::SearchVariableVWM( char const* name ) const
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+  // counts the activated active class talents of a hero whose cooldown is running ("TalentsOnCooldown")
+  struct TalentsOnCooldownCounter
+  {
+    int count;
+    TalentsOnCooldownCounter() : count( 0 ) {}
+    void operator()( PFTalent * pTalent, int, int )
+    {
+      if ( pTalent && pTalent->IsClass() && pTalent->IsActivated() && pTalent->IsActive() && pTalent->GetPreparedness() < 0.999f )
+        ++count;
+    }
+  };
+}
+
 float PFBaseUnit::GetVariable( const char *name ) const
 {
+  // "TalentsOnCooldown": the number of the hero's active class talents on cooldown (Taurus A3u: more slow per such talent)
+  if ( name && strcmp( name, "TalentsOnCooldown" ) == 0 )
+  {
+    TalentsOnCooldownCounter counter;
+    if ( PFBaseHero const * pHero = dynamic_cast<PFBaseHero const *>( this ) )
+      pHero->ForAllTalents( counter );
+    return (float)counter.count;
+  }
   // "InWater": 1 while the unit stands in map water (rivers), see PFWorld::IsPosInWater
   if ( name && strcmp( name, "InWater" ) == 0 )
     return ( GetWorld() && GetWorld()->IsPosInWater( GetPosition().AsVec2D() ) ) ? 1.0f : 0.0f;

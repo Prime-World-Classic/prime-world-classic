@@ -70,6 +70,14 @@ bool PFDispatchCursor::Step(float dtInSeconds)
 
   if (state == STATE_PROCEED)
   {
+    // the cursor of the sender for other logic (the steered ram of Taurus A4_1, PFApplThrow)
+    if ( IsUnitValid( pSender ) )
+    {
+      CVec3 const cursor = target.AcquirePosition();
+      pSender->GetVariableVWM( "CursorX" )->SetBaseValue( cursor.x );
+      pSender->GetVariableVWM( "CursorY" )->SetBaseValue( cursor.y );
+    }
+
     bool time2Die = false;
     if (IsUnitValid(pSender))
     {

@@ -31,6 +31,31 @@ namespace Render
   private:
     nstl::vector<ExtraYaw> extraYaw;
 
+    // Bones are evaluated parent-first (exported skeletons are not always sorted by index)
+    nstl::vector<unsigned int> updateOrder;
+
+    // Spring (jiggle) bones: secondary motion on top of the animation, client-side visual only
+    struct SpringBone
+    {
+      unsigned int bone;
+      int chain;            // index of the chain parameters
+      int child;           // child in the chain whose position is the bone tail, -1 for the chain tip
+      float stiffnessCoeff; // 0 at the chain root .. 1 at the tip
+      CVec3 tail;
+      CVec3 prevTail;
+      CVec3 lastHead;
+    };
+    nstl::vector<SpringBone> springBones;
+    nstl::vector<int> springByBone;
+    bool springsInitialized;
+    float timeDelta;
+    float springPrevStep;
+
+    void InitUpdateOrder();
+    void InitSpringBones();
+    void ApplySpringBone( SpringBone& s, Matrix43& boneWorld, const Matrix43& parentWorld, int steps, float stepTime, bool reset );
+
+
 	public:
 		SkeletonWrapper(const SkeletonDataWrapper* _pSkeletonData);
 		~SkeletonWrapper();
@@ -54,6 +79,8 @@ namespace Render
 
     void SetExtraYaw( const nstl::vector<ExtraYaw>& yaw ) { extraYaw = yaw; }
     void ClearExtraYaw() { extraYaw.clear(); }
+    // Time passed since the previous Update, drives spring bones (0 = keep them as they are)
+    void SetTimeDelta( float dt ) { timeDelta = dt; }
     bool GetBindPosition( unsigned int index, CVec3& pos ) const;   // model-space bone position in the bind pose
 
     //void SetSkeletonData( const SkeletonDataWrapper* pNewSkeletonData );

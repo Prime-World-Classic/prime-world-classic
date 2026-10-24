@@ -546,6 +546,7 @@ DiAnimGraph::DiAnimGraph(DiUInt32 nNumNodes, DiUInt32 nNumEdges,
   bPathSpecified        = FALSE;
   bIsForced = FALSE;
   freezed = FALSE;
+  legacyBlend = false;
   gpPath.nCurIdxInPath  = DIANGR_NO_SUCH_ELEMENT;
   gpPath.nPathLength    = 0;
   gpPath.nTargetNode    = DIANGR_NO_SUCH_ELEMENT;
@@ -791,7 +792,7 @@ DiBool DiAnimGraph::CreateAndAddNode( const NDb::AnGrMacronode &node,
 
     NI_ASSERT(normalizedProbability > 0 || fabs(totalProbSum) < 1e-5, NStr::StrFmt( "Probability of %i transaction in node %s is equal to zero: this transaction will never go.", 
               i, node.nodeName.begin()) );
-    CreateAndAddGeneralTransaction(node.simpleTransactions[i], nGivenID, normalizedProbability);
+    CreateAndAddGeneralTransaction(node.nodeName.c_str(), node.simpleTransactions[i], nGivenID, normalizedProbability);
   }
   DIASSERT(100 == probabilitiesSum || 0 == probabilitiesSum);
 
@@ -931,7 +932,7 @@ DiBool DiAnimGraph::CreateAndAddMacronode(const NDb::AnGrMacronode &macronode,
   {
     int normalizedProbability = floor(macronode.simpleTransactions[i].probability * probabilitiesCoeff + 0.5f);
     probabilitiesSum += normalizedProbability;
-    CreateAndAddGeneralTransaction(macronode.simpleTransactions[i], nGivenID, normalizedProbability);
+    CreateAndAddGeneralTransaction(macronode.nodeName.c_str(), macronode.simpleTransactions[i], nGivenID, normalizedProbability);
   }
   DIASSERT(100 == probabilitiesSum || 0 == probabilitiesSum);
 
@@ -947,7 +948,95 @@ DiBool DiAnimGraph::CreateAndAddMacronode(const NDb::AnGrMacronode &macronode,
  * @param   geElem        type of current element
  * @author  EugBel
  */
-DiBool DiAnimGraph::CreateAndAddGeneralTransaction(const NDb::AnGrFlMultiTransaction multiUniTrans,
+namespace
+{
+  // anim_blend_legacy table: original params of the transitions changed in smoothed hero graphs.
+  // Dev file next to the exe, written by the graph smoothing script; lines: <graph DB path> <from> <to> <duration> <blending>
+  struct LegacyTransition
+  {
+    nstl::string graph;  // lower case, '/' separators
+    nstl::string from;
+    nstl::string to;
+    DiFloat      rDuration;
+    DiUInt32     nUpdateFlags;
+  };
+
+  void NormalizeGraphPath(char* s)
+  {
+    for (; *s; ++s)
+      *s = (*s == '\\') ? '/' : (char)tolower((unsigned char)*s);
+  }
+
+  const nstl::vector<LegacyTransition>& GetLegacyTransitions()
+  {
+    static nstl::vector<LegacyTransition> table;
+    static bool loaded = false;
+    if (loaded)
+      return table;
+    loaded = true;
+
+    FILE* f = fopen("anim_blend_legacy.txt", "r");
+    if (!f)
+      return table;
+    char line[512];
+    while (fgets(line, sizeof(line), f))
+    {
+      if (line[0] == '#')
+        continue;
+      char* fields[5];
+      int count = 0;
+      for (char* tok = strtok(line, "\t\r\n"); tok && count < 5; tok = strtok(0, "\t\r\n"))
+        fields[count++] = tok;
+      if (count < 5)
+        continue;
+
+      LegacyTransition t;
+      NormalizeGraphPath(fields[0]);
+      t.graph = fields[0];
+      t.from = fields[1];
+      t.to = fields[2];
+      t.rDuration = (DiFloat)atof(fields[3]);
+      if (strcmp(fields[4], "PoseToPose") == 0)      t.nUpdateFlags = DIANGR_FLKIND_NONE;
+      else if (strcmp(fields[4], "AnimToPose") == 0) t.nUpdateFlags = DIANGR_FLKIND_FIRST;
+      else if (strcmp(fields[4], "AnimToAnim") == 0) t.nUpdateFlags = DIANGR_FLKIND_BOTH;
+      else                                           t.nUpdateFlags = DIANGR_FLKIND_SECOND;
+      if (t.rDuration > 0.0f)
+        table.push_back(t);
+    }
+    fclose(f);
+    return table;
+  }
+
+  const LegacyTransition* FindLegacyTransition(const nstl::string& graphFile, const char* from, const char* to)
+  {
+    const nstl::vector<LegacyTransition>& table = GetLegacyTransitions();
+    if (table.empty())
+      return 0;
+    char path[512];
+    strncpy(path, graphFile.c_str(), sizeof(path) - 1);
+    path[sizeof(path) - 1] = 0;
+    NormalizeGraphPath(path);
+    for (int i = 0; i < table.size(); ++i)
+      if (table[i].from == from && table[i].to == to && strstr(path, table[i].graph.c_str()))
+        return &table[i];
+    return 0;
+  }
+}
+
+DiVoid DiAnimGraph::SwapTransactionsAltParams()
+{
+  for (DiUInt32 nTrans = 0; nTrans < GetNumEdges(); nTrans++)
+  {
+    DiAnimMTransaction* mtp = GetTransactionData(nTrans);
+    if (!mtp)
+      continue;
+    for (DiUInt32 nI = 0; nI < (DiUInt32)mtp->nNumIntervals; nI++)
+      mtp->atppTransactions[nI]->SwapAltParams();
+  }
+  legacyBlend = !legacyBlend;
+}
+
+DiBool DiAnimGraph::CreateAndAddGeneralTransaction(const char* fromNodeName, const NDb::AnGrFlMultiTransaction multiUniTrans,
                                                   DiUInt32 nNodeFromID, int normalizedProbability)
 {
   DiAnimMTransaction *mtpMTrans;
@@ -1006,6 +1095,15 @@ DiBool DiAnimGraph::CreateAndAddGeneralTransaction(const NDb::AnGrFlMultiTransac
       
   bOk = mtpMTrans->atppTransactions[0]->FillMainParamsFromFile(multiUniTrans.parameters, &nWeight, GetDBFileName());
   DIASSERT(bOk);
+
+  // Original params for anim_blend_legacy
+  {
+    DiAnimFlTransaction* ftp = mtpMTrans->atppTransactions[0];
+    ftp->SetAltParams(0.0f, 0);
+    const LegacyTransition* legacy = FindLegacyTransition(GetDBFileName(), fromNodeName, multiUniTrans.targetNode.c_str());
+    if (legacy)
+      ftp->SetAltParams(1.0f / legacy->rDuration, legacy->nUpdateFlags);
+  }
 
   // check that transactions don't overlap
   DIASSERT(mtpMTrans->IsCorrect());

@@ -147,6 +147,16 @@ Texture2DRef UITextureCache::PlaceTextureToAtlas( const Texture2DRef& texture2D,
   if ( texture2D->GetWidth() > ATLAS_THRESHOLD || texture2D->GetHeight() > ATLAS_THRESHOLD )
     return texture2D;
 
+  // Only uncompressed 32-bit textures can be copied into the atlas. A compressed one (e.g. DXT5 with
+  // width % 4 == 0) passes the pitch check below but holds 4x less data, and the copy reads past it.
+  // Use such a texture as is instead.
+  if ( texture2D->GetFormat() != D3DFMT_A8R8G8B8 )
+  {
+    uv1 = CVec2( 0.f, 0.f );
+    uv2 = CVec2( 1.f, 1.f );
+    return texture2D;
+  }
+
   LockedRect lockedRect = texture2D->LockRect( 0, LOCK_DEFAULT );
 
   Texture2DRef atlasTexture; 

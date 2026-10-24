@@ -387,6 +387,37 @@ struct GSClientSettings
     int                 holdCastSlot;               // action bar slot whose hotkey is watched for the hold self-cast, -1 = none
     float               holdCastTimer;
     void UpdateHoldSelfCast( float deltaTime );
+    int                 holdChargeSlot;             // action bar slot of a hold-to-charge talent: releasing its key fires the talent, -1 = none
+    float               holdChargeTimer;
+    bool                holdChargeReleased;         // the key went up before the channelling started
+    bool                holdChargeSeen;             // the hold-to-charge channelling of this press is already logged
+    float               holdChargeChannelTime;      // how long the hold-to-charge channelling of this press lasts
+    void UpdateHoldCharge( float deltaTime );
+    CObj<PF_Core::BasicEffectStandalone> jumpMark; // Taurus A4_2: the effect at the landing point (UpdateJumpMark)
+    float               jumpMarkWait;               // time since the charge ended while the jump has not started
+    bool                jumpMarkFlew;               // the jump of the mark is in the air
+    bool                jumpRangeShown;             // the charged range of the jump is drawn (AOE channel RANGE2)
+    CVec3               jumpMarkPos;                // where the mark stands (follows the landing point smoothly)
+    void UpdateJumpMark( float deltaTime );
+    void ShowJumpMark( const CVec3 & pos );
+    float               jumpMarkScale;              // A4_2_Radius / 4: the mark is drawn for the radius 4
+    bool                ramArrowShown;              // Taurus A4_1: the arrow of the ram is drawn (AOE channel CURVE)
+    bool                ramArrowRun;                // the arrow shows the run (not the charge)
+    float               ramArrowLen;                // the length of the arrow in the run (follows the logic smoothly)
+    CVec2               ramArrowHead;               // the heading of the run on the client (follows the logic smoothly)
+    float               ramArrowZ;                  // the height of the plane of the arrow (follows the hero softly)
+    float               ramArrowGrace;              // after the charge the arrow waits this long for the run
+    void UpdateRamArrow( float deltaTime );
+    // a press of a talent that cannot be used yet waits for it (talent_queue_time)
+    int                 talentQueueLevel;           // -1 = nothing queued
+    int                 talentQueueSlot;
+    float               talentQueueTimer;
+    bool                talentQueueHotKey;          // the press was a hotkey (smart cast path)
+    int                 talentQueueKeySlot;         // action bar slot of that hotkey, -1 = a click
+    int                 talentQueuePressSlot;       // action bar slot of the hotkey being processed now
+    bool                talentQueueFiring;          // the queued press is being repeated: do not queue it again
+    bool QueueTalentPress( NWorld::PFTalent const * pTalent, int level, int slot );
+    void UpdateTalentQueue( float deltaTime );
     void SendStatusMessageToTeam( int level, int slot, const wstring & name, const wstring & state );
     bool CanSendStatusNow() const;
     bool IsAltStatusPressJustNow() const;

@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" Count="1" />
+	<applicators>
+		<Item href="/GameLogic/GeneralApplicators/Immune2Control.APLR" />
+		<Item href="/GameLogic/GeneralApplicators/Uncontrollable.APLR" />
+	</applicators>
+	<applyTarget>AbilityOwner</applyTarget>
+	<behaviorFlags>10</behaviorFlags>
+	<caption>неуязвимость к эффектам контроля (A4_1)</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Taurus/status_A4_1_I2C.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FR4AAAAEAAAAIwAAADkAAABFAAAAWwAAAFRhdXJ1c1JhbUkyQwAAAABUYXVydXNSYW1EYXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHX0AAADf4PbEQXQraBAAAACLTQyLEYtNDIuCiAEAAP/Q3B19AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.vTaurusRamI2C &gt; 0 || receiver.vTaurusRamDash &gt; 0</sString>
+	</enabled>
+	<flags>64</flags>
+	<formulaName></formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Taurus/A4.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Taurus/status_A4_1_I2C.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

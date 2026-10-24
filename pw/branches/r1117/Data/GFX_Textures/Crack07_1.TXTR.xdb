@@ -7,6 +7,12 @@
 	<BackLink DBID="/Heroes/Ent/S1/FXRevive.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/IronKnight/FXAbility4_2.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Shaman/FXAbility4.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/JumpLand.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/JumpLaunch.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/Stomp1.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/Stomp2.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/Stomp3.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/Stomp4.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Wendigo/_GroundHole.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Shaman/S1/FXAbility4_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>

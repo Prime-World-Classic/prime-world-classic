@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectAttached>
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A3_Curse.APLR" Count="2" />
+	<attachFlags>1</attachFlags>
+	<attachType>Ground</attachType>
+	<component href="/Heroes/Taurus/Effects/ObeyCurse.PRXY" />
+	<deathType>Manual</deathType>
+	<enableCondition href="" />
+	<fadeIn>0.2</fadeIn>
+	<fadeOut>0.3</fadeOut>
+	<groupFlags>0</groupFlags>
+	<lifeTime>0</lifeTime>
+</BasicEffectAttached>

@@ -388,6 +388,7 @@ void Interface::Init()
   mainBatchQueue.SetSorting( NDb::MATERIALPRIORITY_DISTORTION, true );
   mainBatchQueue.SetSorting( NDb::MATERIALPRIORITY_TERRAINDOMINATIONDECALS, true );
   mainBatchQueue.SetSorting( NDb::MATERIALPRIORITY_TERRAINDECALS, true );
+  mainBatchQueue.SetSorting( NDb::MATERIALPRIORITY_WATERDECALS, true ); // effect decals: SubPriority order, not sortId
   mainBatchQueue.SetSorting( NDb::MATERIALPRIORITY_ROADS, true );
   // Reserve reasonable amount of objects
   gatheredRenderableObjects.reserve(1024);

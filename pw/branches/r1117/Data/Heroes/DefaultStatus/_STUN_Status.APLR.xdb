@@ -74,6 +74,8 @@
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4_2.TALENT" Count="5" />
 	<BackLink DBID="/Items/Talents/Class/Shaman/A4Jump_spellapplicator.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Stalker/Ability_A2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/ThunderGod/Ability4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Trickster/Ability4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4_StunAndDPS.APLR" Count="1" />

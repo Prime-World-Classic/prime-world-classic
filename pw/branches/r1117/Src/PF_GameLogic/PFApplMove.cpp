@@ -46,6 +46,9 @@ namespace NWorld
 
     if ( GetDB().justRotate )
     {
+      // Taurus A4_2: no turn to the cursor while the jump flies and lands (PFApplThrow::StartFly / Stop)
+      if ( pMoveable->GetVariableValue( "JumpFaceLockUntil" ) > GetWorld()->GetTimeElapsed() )
+        return true;
       pMoveable->SetMoveDirection( pos );
 #ifndef VISUAL_CUTTED
       if( NGameX::PFClientBaseMovingUnit* pClient = pMoveable->ClientObject() )
@@ -377,6 +380,10 @@ namespace NWorld
     {
       const NDb::ThrowApplicator &DB = GetDB();
 
+      // Taurus: the owner's own ram / jump is on (the statuses of immunity to control look at these variables)
+      if ( const char * dash = TaurusDashVariable() )
+        pOwner->GetVariableVWM( dash )->SetBaseValue( 1.0f );
+
       if (IsValid(DB.firstTargetToHit))
       {
         hitTargetSelector = static_cast<PFSingleTargetSelector*>(DB.firstTargetToHit->Create(GetWorld()));
@@ -417,6 +424,8 @@ namespace NWorld
         // Prepare
         hasStartedTakeOff = true;
         ApplyFlyEffect();
+        if ( pTargetUnit == pOwner && IsJumpToCursor() )
+          LockClientAnim( true );
       }
       if ( DB.takeOffTime == 0.0f )
       {
@@ -466,6 +475,8 @@ namespace NWorld
         {
           return false;
         }
+        if ( DB.flightType == NDb::THROWTYPE_JUMP && pTargetUnit == pOwner )
+          ClampJumpToCursor();
       }
       break;
 
@@ -594,8 +605,22 @@ namespace NWorld
       return false;
     }
 
+    if ( DB.flightType != NDb::THROWTYPE_FLIP )
+      StartRam( movePos, RetrieveParam( DB.moveSpeed, 0.0f ), flightTime > 0.0f ? fabs( movePos - pTargetUnit->GetPosition().AsVec2D() ) / flightTime : 0.0f );
+
     isFlying = true;
     animatedTime = 0;
+
+    if ( DB.flightType == NDb::THROWTYPE_JUMP && pTargetUnit == pOwner && IsJumpToCursor() )
+    {
+      // Taurus A4_2: the take-off point for the direction of the landing (Stop), the landing point for the mark of
+      // the client (AdventureScreen::UpdateJumpMark); no turn to the cursor in the flight
+      pOwner->GetVariableVWM( "JumpStartX" )->SetBaseValue( pTargetUnit->GetPosition().x );
+      pOwner->GetVariableVWM( "JumpStartY" )->SetBaseValue( pTargetUnit->GetPosition().y );
+      pOwner->GetVariableVWM( "JumpTargetX" )->SetBaseValue( movePos.x );
+      pOwner->GetVariableVWM( "JumpTargetY" )->SetBaseValue( movePos.y );
+      pOwner->GetVariableVWM( "JumpFaceLockUntil" )->SetBaseValue( 1.0e9f );
+    }
 
     // disable some unit actions during flight
     pTargetUnit->AddFlag( NDb::UNITFLAG_FORBIDMOVE | NDb::UNITFLAG_FORBIDATTACK | NDb::UNITFLAG_FORBIDUSETALENTS | NDb::UNITFLAG_FORBIDUSECONSUMABLES |
@@ -642,6 +667,13 @@ namespace NWorld
     //Just in case
     KillFlyEffect();
 
+    if ( bStarted )
+      if ( const char * dash = TaurusDashVariable() )
+        pOwner->GetVariableVWM( dash )->SetBaseValue( 0.0f );
+
+    if ( ramMode == RAM_STEER && IsValid( pOwner ) && pTargetUnit == pOwner && !IsJumpToCursor() )
+      pOwner->GetVariableVWM( "RamLeft" )->SetBaseValue( 0.0f ); // Taurus A4_1: the arrow of the run goes away
+
     if ( ( GetDB().collisionFlags > 0 ) && ( ghostMoveIndex > -1 ) )
     {
       pTargetUnit->ResetGhostMode( ghostMoveIndex );
@@ -675,11 +707,35 @@ namespace NWorld
         pHero->ForAllTalents( enableFunc );
       }
       pTargetUnit->EnableDispatch(true);
+      if ( GetDB().flightType == NDb::THROWTYPE_JUMP && pTargetUnit == pOwner && IsJumpToCursor() )
+        pOwner->GetVariableVWM( "JumpFaceLockUntil" )->SetBaseValue( 0.0f ); // set again below for the landing
 
       if ( !pTargetUnit->IsDead() )
       {
         pTargetUnit->Stop();
         pTargetUnit->PlaceUnitWithPush( pTargetUnit->GetPosition().AsVec2D(), pTargetUnit->GetObjectSize(), true );
+
+        if ( GetDB().flightType == NDb::THROWTYPE_JUMP && pTargetUnit == pOwner && IsJumpToCursor() )
+        {
+          // Taurus A4_2: the landing faces the way of the jump (from the take-off point); the turn to the cursor waits
+          // until the landing animation is over (A4_2_LandNoTurn), else the hero snapped round at the touchdown
+          CVec2 const pos = pTargetUnit->GetPosition().AsVec2D();
+          CVec2 dir = pos - CVec2( pOwner->GetVariableValue( "JumpStartX" ), pOwner->GetVariableValue( "JumpStartY" ) );
+          if ( Normalize( &dir ) )
+          {
+            CVec2 const face = pos + dir * 5.0f;
+            pTargetUnit->SetMoveDirection( face );
+#ifndef VISUAL_CUTTED
+            if ( NGameX::PFClientBaseMovingUnit* pClient = pTargetUnit->ClientObject() )
+              pClient->LookTo( face );
+#endif
+          }
+          PFAbilityData const * pData = GetAbilityData();
+          float lock = 1.5f;
+          if ( pData && pData->GetConstant( "A4_2_LandNoTurn" ) )
+            lock = pData->CalcParam( "A4_2_LandNoTurn", pOwner.GetPtr(), pOwner.GetPtr(), pData );
+          pOwner->GetVariableVWM( "JumpFaceLockUntil" )->SetBaseValue( GetWorld()->GetTimeElapsed() + lock );
+        }
 
         if ( pTargetUnit != pOwner && IsValid(lastTargetState) )
         {
@@ -709,6 +765,8 @@ namespace NWorld
       }
 #endif // VISUAL_CUTTED
     }
+
+    LockClientAnim( false );
 
     if ( IsValid( pTargetUnit ) && !pTargetUnit->IsDead() )
     {
@@ -758,6 +816,9 @@ namespace NWorld
         }
       }
 
+      if ( ramMode != RAM_NONE && StepRam( dtInSeconds ) )
+        animatedTime = flightTime;
+
       stop = animatedTime >= flightTime;
 
       if ( stop || hitTarget )
@@ -781,6 +842,216 @@ namespace NWorld
     }
 
     return stop || hitTarget;
+  }
+
+  // Taurus A4_1 "Таран": a talent with the constant RamTurnRate (degrees per second) steers the run of its owner to the
+  // cursor (unit variables CursorX/CursorY, see PFDispatchCursor); the run ends at an obstacle (owner variable
+  // RamHitObstacle = 1); the throws of the units he drags keep right in front of him while he runs.
+  void PFApplThrow::StartRam( CVec2 const & movePos, float baseSpeed, float speed )
+  {
+    ramMode = RAM_NONE;
+    PFAbilityData const * pData = GetAbilityData();
+    if ( !pData || !pData->GetDBDesc() || !pData->GetDBDesc()->constants || !pData->GetConstant( "RamTurnRate" ) )
+    {
+      MessageTrace( "Ram: throw without RamTurnRate (data %d)", (int)( pData != 0 ) );
+      return;
+    }
+    float const turnRate = pData->CalcParam( "RamTurnRate", pOwner.GetPtr(), pOwner.GetPtr(), pData );
+    if ( turnRate <= 0.0f || speed <= 0.0f )
+      return;
+
+    ramTurnRate     = turnRate * ( FP_PI / 180.0f );
+    ramSpeed        = speed;
+    ramBaseSpeed    = baseSpeed;
+    ramOwnerStopped = false;
+    ramHasDest      = false;
+    if ( pTargetUnit == pOwner )
+    {
+      ramMode    = RAM_STEER;
+      ramHeading = movePos - pTargetUnit->GetPosition().AsVec2D();
+      if ( !Normalize( &ramHeading ) )
+        ramHeading = CVec2( 0.0f, 1.0f );
+      pOwner->GetVariableVWM( "RamHitObstacle" )->SetBaseValue( 0.0f );
+    }
+    else
+      ramMode = RAM_FOLLOW;
+    MessageTrace( "Ram: start mode %d turn %.1f deg/s speed %.2f base %.2f time %.2f", ramMode, turnRate, speed, baseSpeed, flightTime );
+  }
+
+  // Taurus A4_2 "Mighty Leap": a talent with the constant JumpToCursor lands the jump of its owner at the cursor (unit
+  // variables CursorX/CursorY, see PFDispatchCursor) when the cursor is closer than the point of the targetSelector
+  // (the charged range); the jump is never shorter than the constant JumpMinRange (2 by default).
+  // Taurus: the variable that tells "the owner's own ram (A4_1) / jump (A4_2) is running", or 0 for other throws
+  const char * PFApplThrow::TaurusDashVariable() const
+  {
+    if ( !IsValid( pOwner ) || pTargetUnit != pOwner )
+      return 0;
+    if ( IsJumpToCursor() )
+      return "TaurusJumpDash";
+    PFAbilityData const * pData = GetAbilityData();
+    if ( pData && pData->GetDBDesc() && pData->GetDBDesc()->constants && pData->GetConstant( "RamTurnRate" ) )
+      return "TaurusRamDash";
+    return 0;
+  }
+
+  bool PFApplThrow::IsJumpToCursor() const
+  {
+    PFAbilityData const * pData = GetAbilityData();
+    if ( !pData || !pData->GetDBDesc() || !pData->GetDBDesc()->constants || !pData->GetConstant( "JumpToCursor" ) )
+      return false;
+    return pData->CalcParam( "JumpToCursor", pOwner.GetPtr(), pOwner.GetPtr(), pData ) > 0.0f;
+  }
+
+  void PFApplThrow::LockClientAnim( bool lock )
+  {
+#ifndef VISUAL_CUTTED
+    if ( IsValid( pTargetUnit ) )
+      if ( NGameX::PFClientBaseMovingUnit * pClient = pTargetUnit->ClientObject() )
+        if ( lock || pClient->IsAnimLockedByJump() )
+          pClient->LockAnimByJump( lock );
+#endif
+  }
+
+  void PFApplThrow::ClampJumpToCursor()
+  {
+    PFAbilityData const * pData = GetAbilityData();
+    if ( !IsJumpToCursor() )
+      return;
+    float minRange = 2.0f;
+    if ( pData->GetConstant( "JumpMinRange" ) )
+      minRange = pData->CalcParam( "JumpMinRange", pOwner.GetPtr(), pOwner.GetPtr(), pData );
+    CVec2 const pos    = pTargetUnit->GetPosition().AsVec2D();
+    CVec3 dest         = targ.AcquirePosition();
+    CVec2 const cursor( pOwner->GetVariableValue( "CursorX" ), pOwner->GetVariableValue( "CursorY" ) );
+    float const charged  = fabs( dest.AsVec2D() - pos );
+    float const toCursor = fabs( cursor - pos );
+    if ( toCursor >= charged )
+    {
+      MessageTrace( "Jump: to the charged range %.1f (cursor at %.1f)", charged, toCursor );
+      return;
+    }
+    CVec2 dir = cursor - pos;
+    if ( !Normalize( &dir ) )
+    {
+      dir = dest.AsVec2D() - pos;
+      if ( !Normalize( &dir ) )
+        return;
+    }
+    float const dist = toCursor > minRange ? toCursor : minRange;
+    dest.x = pos.x + dir.x * dist;
+    dest.y = pos.y + dir.y * dist;
+    targ.SetPosition( dest );
+    MessageTrace( "Jump: to the cursor %.1f (charged %.1f)", dist, charged );
+  }
+
+  void PFApplThrow::ReaimRam( CVec2 const & dest, float baseSpeed )
+  {
+    // MoveToSpecial stops the unit first, and Stop() drops the speed override
+    ramLastDest = dest;
+    ramHasDest  = true;
+    pTargetUnit->MoveToSpecial( dest, false );
+    pTargetUnit->SetUnitSpeed( baseSpeed );
+    pTargetUnit->SetMoveFlags( MOVE_FLAG_OVERRIDE_SPEED );
+    pTargetUnit->SetMoveDirection( dest );
+#ifndef VISUAL_CUTTED
+    if ( NGameX::PFClientBaseMovingUnit* pClient = pTargetUnit->ClientObject() )
+      pClient->LookTo( dest );
+#endif
+  }
+
+  bool PFApplThrow::StepRam( float dtInSeconds )
+  {
+    if ( !IsUnitValid( pTargetUnit ) )
+      return true;
+    CVec2 const pos = pTargetUnit->GetPosition().AsVec2D();
+
+    if ( ramMode == RAM_STEER )
+    {
+      float const timeLeft = flightTime - animatedTime;
+      // a dragged unit hit an obstacle (RAM_FOLLOW below): the whole ram stops
+      if ( pOwner->GetVariableValue( "RamHitObstacle" ) > 0.0f )
+        return true;
+      // the run stopped before its time: TickMoveSpecial met an obstacle
+      if ( !pTargetUnit->IsMovingSpecial() && timeLeft > 0.1f )
+      {
+        pOwner->GetVariableVWM( "RamHitObstacle" )->SetBaseValue( 1.0f );
+        MessageTrace( "Ram: obstacle at %.1f %.1f, %.2f s left", pos.x, pos.y, timeLeft );
+        return true;
+      }
+      if ( timeLeft <= 0.0f )
+        return false;
+
+      // turn to the cursor no faster than the turn rate; only + - * / here (t = tan(a/2) ~ a/2), as in PFDispatchCursor
+      CVec2 want( pOwner->GetVariableValue( "CursorX" ) - pos.x, pOwner->GetVariableValue( "CursorY" ) - pos.y );
+      if ( fabs2( want ) > 0.25f )
+      {
+        Normalize( &want );
+        float const t      = 0.5f * ramTurnRate * dtInSeconds;
+        float const cosMax = ( 1.0f - t * t ) / ( 1.0f + t * t );
+        float const sinMax = 2.0f * t / ( 1.0f + t * t );
+        float const dot    = ramHeading.x * want.x + ramHeading.y * want.y;
+        float const cross  = ramHeading.x * want.y - ramHeading.y * want.x;
+        if ( dot >= cosMax )
+          ramHeading = want;
+        else
+        {
+          float const s = cross >= 0.0f ? sinMax : -sinMax;
+          ramHeading = CVec2( ramHeading.x * cosMax - ramHeading.y * s, ramHeading.x * s + ramHeading.y * cosMax );
+          Normalize( &ramHeading );
+        }
+      }
+      ReaimRam( pos + ramHeading * ( ramSpeed * timeLeft ), ramBaseSpeed );
+      if ( pTargetUnit == pOwner && IsJumpToCursor() )
+      {
+        // Taurus A4_2: the landing point of the steered jump for the mark of the client (AdventureScreen::UpdateJumpMark)
+        CVec2 const land = pos + ramHeading * ( ramSpeed * timeLeft );
+        pOwner->GetVariableVWM( "JumpTargetX" )->SetBaseValue( land.x );
+        pOwner->GetVariableVWM( "JumpTargetY" )->SetBaseValue( land.y );
+      }
+      else if ( pTargetUnit == pOwner )
+      {
+        // Taurus A4_1: the run for the arrow of the client (AdventureScreen::UpdateRamArrow)
+        pOwner->GetVariableVWM( "RamLeft" )->SetBaseValue( ramSpeed * timeLeft );
+        pOwner->GetVariableVWM( "RamHeadX" )->SetBaseValue( ramHeading.x );
+        pOwner->GetVariableVWM( "RamHeadY" )->SetBaseValue( ramHeading.y );
+        pOwner->GetVariableVWM( "RamTurn" )->SetBaseValue( ramTurnRate / ramSpeed );
+        pOwner->GetVariableVWM( "RamSpeed" )->SetBaseValue( ramSpeed );
+      }
+      if ( (int)( animatedTime * 8.0f ) != (int)( ( animatedTime - dtInSeconds ) * 8.0f ) )
+        MessageTrace( "Ram: t %.2f pos %.1f %.1f cursor %.1f %.1f heading %.2f %.2f moving %d", animatedTime, pos.x, pos.y,
+          pOwner->GetVariableValue( "CursorX" ), pOwner->GetVariableValue( "CursorY" ), ramHeading.x, ramHeading.y, (int)pTargetUnit->IsMovingSpecial() );
+      return false;
+    }
+
+    // RAM_FOLLOW: keep right in front of the running owner; end a step after he stops
+    CDynamicCast<PFBaseMovingUnit> pRunner( pOwner );
+    if ( !pRunner || !IsUnitValid( pOwner ) || !pRunner->IsMovingSpecial() )
+    {
+      if ( ramOwnerStopped )
+        return true;
+      ramOwnerStopped = true;
+      flightTime = animatedTime + 1.0f;
+      return false;
+    }
+    // stopped short of the point given on the previous step: TickMoveSpecial met an obstacle
+    if ( ramHasDest && !pTargetUnit->IsMovingSpecial() && fabs2( pos - ramLastDest ) > 0.25f
+      && pOwner->GetVariableValue( "RamHitObstacle" ) <= 0.0f )
+    {
+      pOwner->GetVariableVWM( "RamHitObstacle" )->SetBaseValue( 1.0f );
+      MessageTrace( "Ram: dragged unit hit an obstacle at %.1f %.1f", pos.x, pos.y );
+    }
+    CVec2 const ownerPos = pRunner->GetPosition().AsVec2D();
+    CVec2 const runnerDest = pRunner->GetDestination();
+    CVec2 dir = runnerDest - ownerPos;
+    if ( !Normalize( &dir ) )
+    {
+      dir = pos - ownerPos;
+      if ( !Normalize( &dir ) )
+        dir = CVec2( 0.0f, 1.0f );
+    }
+    flightTime = animatedTime + 1.0f; // lives while the owner runs
+    ReaimRam( ownerPos + dir * ( pRunner->GetObjectSize() + pTargetUnit->GetObjectSize() ), ramBaseSpeed * 1.5f );
+    return false;
   }
 
   bool PFApplThrow::CheckHit() const

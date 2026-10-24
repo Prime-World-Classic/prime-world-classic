@@ -2,6 +2,7 @@
 <BonusTalentsForLevel>
 	<BackLink DBID="/Heroes/IronKnight/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Rockman/_.HROB" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Warlord/_.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/rockman.HROB" Count="1" />
 	<Levels>
