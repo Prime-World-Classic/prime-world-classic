@@ -24,7 +24,10 @@
 // медленнее, чем обычных и поэтому от использования механизма StarForce отказались.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined( STARFORCE_PROTECTED )
+// x64: hidden vars are never enabled. STARFORCE_PROTECTED is x86-only (systemStdAfx.h); if it leaks
+// into some projects only (e.g. PF_GameLogic vcproj), HiddenVar<T>::T changes size there
+// (float 4 -> 8 bytes, CVec2 8 -> 16) and class layouts differ between projects.
+#if defined( STARFORCE_PROTECTED ) && !defined( _M_X64 ) && !defined( __x86_64__ )
   #define HIDDEN_VARS_ENABLED
 #endif
 

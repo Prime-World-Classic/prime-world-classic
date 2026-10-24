@@ -1,0 +1,39 @@
+# Политика отбора файлов Data в gamedataNN.pile.
+# Синтаксис: строка = правило; '#' — комментарий; пустые строки игнорируются.
+#   ext: <расш> [<расш>...]   — разрешённые расширения (без точки, регистронезависимо)
+#   ignore_dir: <имя>         — имя каталога (любой сегмент пути) исключается целиком
+#   exclude: <маска>          — fnmatch по полному относительному пути (сегменты '/')
+#                               маска, начинающаяся с '!', снимает прежнее исключение
+# Порядок: сначала ext (не подошло — не берём), затем ignore_dir, затем exclude.
+
+# --- расширения: types.txt старой конвейеры + txt (локализация) + аудио-банки ---
+# txt и fsb/fev раньше попадали в pile только «случаем» (локализация через --filelists,
+# fsb — через ручные патч-наборы). Теперь они в общем списке: унификация.
+ext: ani anim baked_terrain codes codes2 coll dds fev fsb heightmap hlsl layer_mask
+ext: lua md5 naturemap objectheight part psb road shd shd2 shgrid skel skin stat
+ext: swf tcv_data ttf vsb vtxcolor watermap xdb txt
+# wav — звуки пингов и похвалы (Audio/Ping/*.wav, читаются клиентом по пути из pile)
+ext: wav
+
+# --- каталоги-исключения (в старой конвейере их не было в списках каталогов) ---
+ignore_dir: .svn
+ignore_dir: Debug
+ignore_dir: Templates
+ignore_dir: Test
+ignore_dir: _processedFiles
+ignore_dir: deprecated_shaders
+
+# --- пофайловые исключения ---
+exclude: *.junk
+exclude: *.ignore
+
+# нерусские голосовые банки (PackData.ps1 исключал *_DE*/*_EN*/*_FR*/*_TR* из Audio;
+# перечислены явно, чтобы маска не зацепила soundEnvironment_language.txt)
+exclude: audio/announcements_en.fsb
+exclude: audio/announcements_tr.fsb
+exclude: audio/tutorial_en.fsb
+exclude: audio/tutorial_tr.fsb
+exclude: audio/asks02_en_tr.fsb
+exclude: audio/asks03_en_tr.fsb
+exclude: audio/asks04_en_tr.fsb
+exclude: audio/asks05_en_tr.fsb

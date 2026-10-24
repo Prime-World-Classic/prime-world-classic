@@ -1,0 +1,641 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A3.TALENT" Count="1" />
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="4C858B3F-2C86-4FF7-ABE9-C7ABCB818528">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>регенерация за рыбку</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRsAAAACAAAAKgAAADwAAABBM19SZWdlblBlckZpc2gATGFndW5hRmlzaABVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0mgQAAAAi0UMixCLTQyLgogBAADdXfj/0NxN+Nld9NlF9IvlXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cA3_RegenPerFish * receiver.vLagunaFish</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="7635FF3F-02A3-4049-9453-53CB3E6B560F">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>(A3u) -энерг. урон за рыбку</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FTcAAAAEAAAAPgAAAFcAAACVAAAApwAAAExhZ3VuYV9BM3UAAExhZ3VuYV9BM3UAAEEzdV9SZWR1Y2VQZXJGaXNoAAAATGFndW5hRmlzaABVi+yD7BxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAwAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ6i1UMUotFCFBoGAAAAItNEIsRi00Qi0JQ/9BoLAAAAItNDIsRi00Mi4KIAQAA3V3w/9DcTfDdXejrBdnu3V3o3UXo2V3k2UXki+VdwwAAAAAAAAAA</compiledString>
+						<returnType>float</returnType>
+						<sString>tal("Laguna_A3u") ? cA3u_ReducePerFish * receiver.vLagunaFish : 0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>EnergyDamageDecrease</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="B39B6344-359F-4F19-9DCB-E2F8491827AF">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>(A3u) -физ. урон за рыбку</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FTcAAAAEAAAAPgAAAFcAAACVAAAApwAAAExhZ3VuYV9BM3UAAExhZ3VuYV9BM3UAAEEzdV9SZWR1Y2VQZXJGaXNoAAAATGFndW5hRmlzaABVi+yD7BxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAwAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ6i1UMUotFCFBoGAAAAItNEIsRi00Qi0JQ/9BoLAAAAItNDIsRi00Mi4KIAQAA3V3w/9DcTfDdXejrBdnu3V3o3UXo2V3k2UXki+VdwwAAAAAAAAAA</compiledString>
+						<returnType>float</returnType>
+						<sString>tal("Laguna_A3u") ? cA3u_ReducePerFish * receiver.vLagunaFish : 0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>MaterialDamageDecrease</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="54F24D8E-9220-4525-87F9-FB7775D8C0FC">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>полученный урон больше лимита убирает рыбку</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="A5CC23CE-3032-4D87-8E25-1740AB7A7467">
+					<EventProcessorIncomingDamage>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<damageDelegate href="" />
+						<damageDelegateOwner>ApplicatorTarget</damageDelegateOwner>
+						<spell href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="949F0BFC-FB47-4D61-8A2B-64501479DED5">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="EA239543-C2A6-42F5-AEC7-C349F7AAD2B5">
+										<PermanentStatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<caption>накопить полученный урон</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FQsAAAACAAAAEAAAACYAAABMYWd1bmFGaXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFish &gt; 0</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQcAAAABAAAAHAAAAERhbWFnZQBVi+xRi0UQixCLTRCLQkj/0IlF/GgAAAAAi038ixGLTfyLQlT/0IvlXcM=</compiledString>
+													<returnType>float</returnType>
+													<sString>$ParentApplVariable("Damage")</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>LagunaFishDmg</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="43DB8B50-B5F0-49BB-9970-40ED90BD5A23">
+										<PermanentStatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<caption>урона набралось на лимит: минус рыбка</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FSsAAAAEAAAAMgAAAE8AAABuAAAAhAAAAExhZ3VuYUZpc2hEbWcAAABBM19EYW1hZ2VMaW1pdAAATGFndW5hRmlzaABVi+yD7AxoAAAAAItFDIsQi00Mi4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXfj/0Nxd+N/g9sRBeitoIAAAAItNDIsRi00Mi4KIAQAA/9DcHaYAAADf4PbEQXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcMAAAAAAAAAAA==</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFishDmg &gt;= cA3_DamageLimit &amp;&amp; receiver.vLagunaFish &gt; 0</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+													<returnType>float</returnType>
+													<sString>-1.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>LagunaFish</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="21199B11-3525-40AF-A021-D199E0CCC583">
+										<StatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<behaviorFlags>32</behaviorFlags>
+											<caption>всплеск: пропала рыбка D</caption>
+											<constraint>None</constraint>
+											<dontUpdate>false</dontUpdate>
+											<effect>
+												<Item href="/Heroes/Laguna/Effects/FishPopD.EFFT" />
+												<Item href="/Heroes/Laguna/Effects/FishPopD.EFFT" />
+											</effect>
+											<enabled>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+												<returnType>float</returnType>
+												<sString>0.3f</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>LifeRegenerationAbsolute</stat>
+												<topModifier>false</topModifier>
+												<variable></variable>
+											</modifier>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString>FTcAAAAGAAAAPgAAAFsAAAB6AAAAkAAAAJwAAACyAAAATGFndW5hRmlzaERtZwAAAEEzX0RhbWFnZUxpbWl0AABMYWd1bmFGaXNoAABMYWd1bmFGaXNoAFWL7IPsDGgAAAAAi0UMixCLTQyLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF6TWggAAAAi00MixGLTQyLgogBAAD/0Nwd3AAAAN/g9sRBdStoLAAAAItNDIsRi00Mi4KIAQAA/9DcHdQAAADf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcMAAAAAAAAEQAAAAAAAAPg/</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFishDmg &gt;= cA3_DamageLimit &amp;&amp; receiver.vLagunaFish &gt; 1.5 &amp;&amp; receiver.vLagunaFish &lt; 2.5</sString>
+											</startCondition>
+											<statModName></statModName>
+										</StatModApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="31B0ED69-3B39-43E5-9104-020BF33E60CA">
+										<StatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<behaviorFlags>32</behaviorFlags>
+											<caption>всплеск: пропала рыбка B</caption>
+											<constraint>None</constraint>
+											<dontUpdate>false</dontUpdate>
+											<effect>
+												<Item href="/Heroes/Laguna/Effects/FishPopB.EFFT" />
+												<Item href="/Heroes/Laguna/Effects/FishPopB.EFFT" />
+											</effect>
+											<enabled>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+												<returnType>float</returnType>
+												<sString>0.3f</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>LifeRegenerationAbsolute</stat>
+												<topModifier>false</topModifier>
+												<variable></variable>
+											</modifier>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString>FTcAAAAGAAAAPgAAAFsAAAB6AAAAkAAAAJwAAACyAAAATGFndW5hRmlzaERtZwAAAEEzX0RhbWFnZUxpbWl0AABMYWd1bmFGaXNoAABMYWd1bmFGaXNoAFWL7IPsDGgAAAAAi0UMixCLTQyLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF6TWggAAAAi00MixGLTQyLgogBAAD/0Nwd3AAAAN/g9sRBdStoLAAAAItNDIsRi00Mi4KIAQAA/9DcHdQAAADf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcMAAAAAAAD4PwAAAAAAAOA/</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFishDmg &gt;= cA3_DamageLimit &amp;&amp; receiver.vLagunaFish &gt; 0.5 &amp;&amp; receiver.vLagunaFish &lt; 1.5</sString>
+											</startCondition>
+											<statModName></statModName>
+										</StatModApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="A12D37F3-508B-4130-BF72-C92DFC85CD21">
+										<StatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<behaviorFlags>32</behaviorFlags>
+											<caption>всплеск: пропала рыбка A</caption>
+											<constraint>None</constraint>
+											<dontUpdate>false</dontUpdate>
+											<effect>
+												<Item href="/Heroes/Laguna/Effects/FishPopA.EFFT" />
+												<Item href="/Heroes/Laguna/Effects/FishPopA.EFFT" />
+											</effect>
+											<enabled>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+												<returnType>float</returnType>
+												<sString>0.3f</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>LifeRegenerationAbsolute</stat>
+												<topModifier>false</topModifier>
+												<variable></variable>
+											</modifier>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString>FSsAAAAEAAAAMgAAAE8AAABuAAAAhAAAAExhZ3VuYUZpc2hEbWcAAABBM19EYW1hZ2VMaW1pdAAATGFndW5hRmlzaABVi+yD7AxoAAAAAItFDIsQi00Mi4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXfj/0Nxd+N/g9sRBeitoIAAAAItNDIsRi00Mi4KIAQAA/9DcHaYAAADf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcMAAAAAAADgPw==</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFishDmg &gt;= cA3_DamageLimit &amp;&amp; receiver.vLagunaFish &lt; 0.5</sString>
+											</startCondition>
+											<statModName></statModName>
+										</StatModApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="FD250A69-A56F-42A2-BFDC-1AD327717898">
+										<PermanentStatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<caption>сбросить накопленный урон</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FR8AAAACAAAAJgAAAEMAAABMYWd1bmFGaXNoRG1nAAAAQTNfRGFtYWdlTGltaXQAVYvsg+wMaAAAAACLRQyLEItNDIuCiAEAAP/Qi00MUYtVCFJoEAAAAItFEIsQi00Qi0JQ3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+												<returnType>bool</returnType>
+												<sString>receiver.vLagunaFishDmg &gt;= cA3_DamageLimit</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQ4AAAABAAAAEgAAAExhZ3VuYUZpc2hEbWcAVYvsaAAAAACLRQyLEItNDIuCiAEAAP/Q2eBdww==</compiledString>
+													<returnType>float</returnType>
+													<sString>-receiver.vLagunaFishDmg</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>LagunaFishDmg</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="D29F4C7B-4DCC-41BC-96C7-81FC8BB856FD">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>1</flags>
+										<instantApply>true</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+					</EventProcessorIncomingDamage>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="847CF6BE-5052-4B63-90DA-43CFEC70A48C">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: рыбка A</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/FishOrbitA.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/FishOrbitA.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FQsAAAACAAAAEAAAACYAAABMYWd1bmFGaXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAADgPw==</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vLagunaFish &gt; 0.5</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="28735576-F12F-4584-86A8-C827DC8D878F">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: рыбка B</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/FishOrbitB.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/FishOrbitB.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FQsAAAACAAAAEAAAACYAAABMYWd1bmFGaXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAD4Pw==</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vLagunaFish &gt; 1.5</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="1F7628DC-5C9A-4AE3-A174-068185957884">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>визуал: рыбка D</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Heroes/Laguna/Effects/FishOrbitD.EFFT" />
+					<Item href="/Heroes/Laguna/Effects/FishOrbitD.EFFT" />
+				</effect>
+				<enabled>
+					<compiledString>FQsAAAACAAAAEAAAACYAAABMYWd1bmFGaXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAEQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vLagunaFish &gt; 2.5</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>1</behaviorFlags>
+	<caption>целебные рыбки</caption>
+	<customCounter>
+		<compiledString>FQsAAAABAAAADwAAAExhZ3VuYUZpc2gAVYvsaAAAAACLRQyLEItNDIuCiAEAAP/QUdkcJOgFAAAAg8QEXcO4AQAAAA+i98IAAAAEdAfzDyxEJATD6QAAAABVi+yD7AzZRQjZffwPt0X8DQAMAACJRfjZbfjbXfTZbfyLRfSL5V3D</compiledString>
+		<returnType>int</returnType>
+		<sString>f2l(receiver.vLagunaFish)</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A3_Fish.APLR_description.txt" />
+	<dispellPriority>Medium</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQsAAAACAAAAEAAAACYAAABMYWd1bmFGaXNoAFWL7FFoAAAAAItFDIsQi00Mi4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.vLagunaFish &gt; 0</sString>
+	</enabled>
+	<flags>4</flags>
+	<formulaName>Laguna_A3_Fish</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A3.ITEX" />
+	<lifeTime>
+		<compiledString>FQwAAAABAAAAGAAAAEEzX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cA3_Duration</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A3_Fish.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" id="8F434B3B-E25A-4956-A179-0CAFFB72FDF0">
+		<ApplicatorsList>
+			<applicatorLists />
+			<applicators>
+				<Item href="/Items/Talents/Class/Laguna/status_A3_Fish.APLR" />
+			</applicators>
+		</ApplicatorsList>
+	</unstackableWith>
+</StatusApplicator>

@@ -1,0 +1,89 @@
+# Доливка game-pwc в gitverse с раннера GitHub: берёт ветку с GitHub и пушит её в gitverse
+# по одному коммиту (gitverse не принимает пуш больше 100 МБ, части собраны < 90 МБ) во
+# временную upload-helper, потом переставляет саму ветку и удаляет upload-helper.
+# Продолжает с коммита, который уже лежит в upload-helper на gitverse, — повторный запуск
+# ничего не льёт заново. Нужен секрет GITVERSE_TOKEN (токен gitverse с правом записи).
+name: game-pwc -> gitverse
+
+on:
+  workflow_dispatch:
+    inputs:
+      gitverse_user:
+        description: Логин gitverse (владелец токена GITVERSE_TOKEN)
+        required: true
+      branch:
+        description: Ветка game-pwc
+        default: test
+        required: true
+      old_tip:
+        description: Что сейчас в этой ветке на gitverse (force-with-lease); пусто — без проверки
+        default: 4ba77fe4cdc6613bd8e0b29719f264389b59e2ae
+        required: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Клон game-pwc с GitHub
+        run: |
+          git clone --bare --single-branch --branch "${{ inputs.branch }}" \
+            https://github.com/Prime-World-Classic/game-pwc.git game-pwc.git
+          git -C game-pwc.git log --oneline -3
+
+      - name: Пуш в gitverse по частям
+        env:
+          GV_USER: ${{ inputs.gitverse_user }}
+          GV_TOKEN: ${{ secrets.GITVERSE_TOKEN }}
+          BRANCH: ${{ inputs.branch }}
+          OLD_TIP: ${{ inputs.old_tip }}
+        run: |
+          set -euo pipefail
+          [ -n "$GV_TOKEN" ] || { echo "::error::нет секрета GITVERSE_TOKEN"; exit 1; }
+          cd game-pwc.git
+          GV="https://${GV_USER}:${GV_TOKEN}@gitverse.ru/prime_world_classic/game-pwc.git"
+
+          push() {  # до 5 попыток: обрывы связи бывают и на стороне gitverse
+            for try in 1 2 3 4 5; do
+              git push --progress "$GV" "$@" && return 0
+              echo "повтор $try"; sleep 30
+            done
+            return 1
+          }
+
+          git rev-list --reverse "$BRANCH" > parts.txt
+          N=$(wc -l < parts.txt)
+          HELPER=$(git ls-remote "$GV" refs/heads/upload-helper | cut -f1)
+          DONE=0
+          if [ -n "$HELPER" ]; then
+            DONE=$(grep -n "^$HELPER" parts.txt | cut -d: -f1 || true)
+            DONE=${DONE:-0}
+          fi
+          if [ "$DONE" -eq 0 ]; then
+            # без общего предка с тем, что на gitverse, git пошлёт первый коммит целиком
+            echo "::error::upload-helper на gitverse нет или он не из этой ветки ($HELPER) — нужна связка, см. UpdateRepos/gitverse_game-pwc_upload.sh"
+            exit 1
+          fi
+          echo "на gitverse уже коммиты 1–$DONE из $N"
+
+          n=0
+          while read -r c; do
+            n=$((n + 1))
+            [ "$n" -le "$DONE" ] && continue
+            echo "::group::часть $n/$N $c"
+            push "+$c:refs/heads/upload-helper"
+            echo "::endgroup::"
+          done < parts.txt
+
+          echo "::group::$BRANCH"
+          if [ -n "$OLD_TIP" ]; then
+            push --force-with-lease="$BRANCH:$OLD_TIP" "$BRANCH"
+          else
+            push --force "$BRANCH"
+          fi
+          git push "$GV" :upload-helper || echo "upload-helper не удалена"
+          echo "::endgroup::"
+
+          echo "на gitverse: $(git ls-remote "$GV" "refs/heads/$BRANCH")"
+          echo "ожидалось:   $(git rev-parse "$BRANCH")"
+          [ "$(git ls-remote "$GV" "refs/heads/$BRANCH" | cut -f1)" = "$(git rev-parse "$BRANCH")" ]

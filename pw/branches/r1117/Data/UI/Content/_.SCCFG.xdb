@@ -53,5 +53,110 @@
 				<text textref="/UI/Content/_.SCCFG_fa7e60d62b3c4e6dbf157e778395d63f_text.txt" />
 			</SmartChatMessage>
 		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="0039C2BC-6ACA-4E1B-8348-08BF1400EF64">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_8</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_0039c2bc6aca4e1b834808bf1400ef64_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="5231CF9F-D75D-4BDC-B571-21AE5DFFDEE9">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_9</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_5231cf9fd75d4bdcb57121ae5dffdee9_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="3D40A8B1-70D2-446F-BB50-093FE5EC121C">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_10</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_3d40a8b170d2446fbb50093fe5ec121c_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="B44BC10B-81AB-4BEE-8E65-04B3E7C499E9">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_11</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_b44bc10b81ab4bee8e6504b3e7c499e9_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="F7E8FFCD-3244-4C92-98E1-0B4302A85D6E">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_12</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_f7e8ffcd32444c9298e10b4302a85d6e_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="F7CF952B-6DF4-470A-847A-6D86D57F968B">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_13</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_f7cf952b6df4470a847a6d86d57f968b_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="2AE071E8-DC62-48F1-93B8-8136C50D6DC3">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_14</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_2ae071e8dc6248f193b88136c50d6dc3_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="ECCDABB2-6042-407C-9809-90BF863C5428">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_17</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_eccdabb26042407c980990bf863c5428_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="EB9E0B7B-6816-4B02-B495-58289A4F2662">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_18</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_eb9e0b7b68164b02b49558289a4f2662_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="27CEF6E6-505F-4B4E-AD29-F20765CFEA66">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_19</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_27cef6e6505f4b4ead29f20765cfea66_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="7F865D77-6629-4E8A-9506-848D04C16875">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_20</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_7f865d7766294e8a9506848d04c16875_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="BDBC4B7C-D44E-47A1-B775-03E7B0C789DF">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_21</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_bdbc4b7cd44e47a1b77503e7b0c789df_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="AA0AC326-9B0F-4842-B0A4-617729AEE4A6">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_22</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_aa0ac3269b0f4842b0a4617729aee4a6_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="0DF61AE4-ABAF-4FAA-B1FB-192BA6A615F8">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_23</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_0df61ae4abaf4faab1fb192ba6a615f8_text.txt" />
+			</SmartChatMessage>
+		</Item>
+		<Item href="/UI/Content/_.SCCFG" id="8F53D3C9-0641-4716-A6F8-6C0ED8DA8818">
+			<SmartChatMessage>
+				<commandId>cmd_smart_chat_24</commandId>
+				<showMarker>true</showMarker>
+				<text textref="/UI/Content/_.SCCFG_8f53d3c906414716a6f86c0ed8da8818_text.txt" />
+			</SmartChatMessage>
+		</Item>
 	</messages>
 </SmartChatConfiguration>

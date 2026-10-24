@@ -1841,6 +1841,7 @@
 	<BackLink DBID="/Effects/Buffs/Regen/_CyclePurple_S5.PRXY" Count="2" />
 	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" Count="2" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_BlowSet.PRXY" Count="4" />
+	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/FXChannelSmart.PRXY" Count="1" />
 	<generatedFileName>atlas_0</generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>NoMips</mipLevelUsage>

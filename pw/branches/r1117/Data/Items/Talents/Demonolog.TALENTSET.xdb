@@ -112,13 +112,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G500_Str_Dex.TALENT" />
+					<talent href="/Items/Talents/Level3/G787_RangeStr.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G575_EnergyReg_MoveSpeed.TALENT" />
+					<talent href="/Items/Talents/Level3/G788_RangeInt.TALENT" />
 				</Item>
 			</talents>
 		</Item>
@@ -158,7 +158,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G452_AttackSpeed_Life.TALENT" />
+					<talent href="/Items/Talents/Level4/G789_RangeDexAtSpd.TALENT" />
 				</Item>
 			</talents>
 		</Item>
@@ -186,7 +186,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G651_Str.TALENT" />
+					<talent href="/Items/Talents/Level5/G789_RangeLife.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -238,7 +238,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G431_Str_inc_Aspd_Dex.TALENT" />
+					<talent href="/Items/Talents/Level6/G791_RangePotential.TALENT" />
 				</Item>
 			</talents>
 		</Item>

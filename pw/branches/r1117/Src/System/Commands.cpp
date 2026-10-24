@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Commands.h"
+#include "LogIpMode.h"
 #include "StrProc.h"
 
 #ifdef WIN32
@@ -168,6 +169,14 @@ TRecords &GetRecords()
 namespace
 {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Config variables whose value carries a network address. In builds that mask log
+// addresses their value is not echoed (the variable itself is set normally) - see
+// System/LogIpMode.h.
+bool IsAddressBearingVar( const string & szID )
+{
+  return szID == "stat_client_url" || szID == "login_address" || szID == "social_login_address";
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void _PrintVarWithValue( TRecords::const_iterator itValue )
 {
   if ( itValue->second.CanExecute() )
@@ -177,8 +186,12 @@ void _PrintVarWithValue( TRecords::const_iterator itValue )
   else
   {
     const NGlobal::VariantValue &value = NGlobal::GetVar( itValue->first, NGlobal::VariantValue() );
-    systemLog( NLogg::LEVEL_MESSAGE ) << itValue->first << " (" << itValue->second.GetStorageName() 
-              << ") = \"" << value.GetString() << "\" (" << value.GetFloat() << ")" << endl;
+    if ( NGlobal::GetLogIpMode() && IsAddressBearingVar( itValue->first ) )
+      systemLog( NLogg::LEVEL_MESSAGE ) << itValue->first << " (" << itValue->second.GetStorageName()
+                << ") = \"<masked>\" (" << value.GetFloat() << ")" << endl;
+    else
+      systemLog( NLogg::LEVEL_MESSAGE ) << itValue->first << " (" << itValue->second.GetStorageName()
+                << ") = \"" << value.GetString() << "\" (" << value.GetFloat() << ")" << endl;
   }
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -382,12 +395,18 @@ void SetVar( const string &szID, const VariantValue &value, const EStorageClass 
 
   if( !pos->second.VerifyValue(value) )
   {
-    systemLog( NLogg::LEVEL_ERROR ) << "setvar error: " << szID << " value '" << value.GetString() << "' cannot be verified";
+    if ( NGlobal::GetLogIpMode() && IsAddressBearingVar( szID ) )
+      systemLog( NLogg::LEVEL_ERROR ) << "setvar error: " << szID << " value '<masked>' cannot be verified";
+    else
+      systemLog( NLogg::LEVEL_ERROR ) << "setvar error: " << szID << " value '" << value.GetString() << "' cannot be verified";
     return;
   }
 
 	pos->second.SetValue( value );
-  systemLog( NLogg::LEVEL_MESSAGE ) << "setvar " << szID << " = \"" << pos->second.GetValue().GetString() << "\"";
+  if ( NGlobal::GetLogIpMode() && IsAddressBearingVar( szID ) )
+    systemLog( NLogg::LEVEL_MESSAGE ) << "setvar " << szID << " = \"<masked>\"";
+  else
+    systemLog( NLogg::LEVEL_MESSAGE ) << "setvar " << szID << " = \"" << pos->second.GetValue().GetString() << "\"";
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void ResetVars( const EStorageClass storage )
@@ -429,7 +448,10 @@ static void RunDefaultHandler( const string &szID, const vector<wstring> &params
 	if ( params.empty() )
 	{
 		const NGlobal::VariantValue &value = GetVar( szID, VariantValue() );
-		systemLog( NLogg::LEVEL_MESSAGE ) << szID << " = \"" << value.GetString() << "\" (" << value.GetFloat() << ")" << endl;
+    if ( NGlobal::GetLogIpMode() && IsAddressBearingVar( szID ) )
+			systemLog( NLogg::LEVEL_MESSAGE ) << szID << " = \"<masked>\" (" << value.GetFloat() << ")" << endl;
+    else
+			systemLog( NLogg::LEVEL_MESSAGE ) << szID << " = \"" << value.GetString() << "\" (" << value.GetFloat() << ")" << endl;
 	}
 	else
 		SetVar( szID, VariantValue( params.front() ), STORAGE_DONT_CARE );

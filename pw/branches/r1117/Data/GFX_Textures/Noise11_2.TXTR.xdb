@@ -32,6 +32,7 @@
 	<BackLink DBID="/Summons/Trap/Trail2.TRSC" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_CBomb2.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_CBombBig.PRXY" Count="1" />
+	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/FXChannelSmart.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

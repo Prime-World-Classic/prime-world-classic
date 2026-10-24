@@ -38,6 +38,14 @@ namespace NWorld
   NCore::WorldCommand* CreateCmdUsePortal( PFBaseMaleHero *pHero, Target const & target, bool issuedByScript = false );
 
   NCore::WorldCommand* CreateCmdMinimapSignal( PFBaseHero *pHero, PFBaseUnit* pSelected, Target const & target, NDb::EFaction faction, bool issuedByScript = false );
+  // ping wheel signal: 'type' is an index in the wheel (see AdventureScreen ping wheel); visible for 'faction' only
+  NCore::WorldCommand* CreateCmdTypedSignal( PFBaseHero *pHero, const CVec3 & pos, int type, NDb::EFaction faction );
+  // praise of another hero (ally or enemy): 'amount' of the sender's prime goes to the target, everybody sees the notification
+  NCore::WorldCommand* CreateCmdPraise( PFBaseHero *pHero, PFBaseHero *pTarget, int amount );
+  // player option: the hero automatically attacks enemies (when idle / when attacked) or only by orders
+  NCore::WorldCommand* CreateCmdSetAutoAttack( PFBaseHero *pHero, bool enabled );
+  // "ability range" stat of the hero (console command ability_range_scale, for tests)
+  NCore::WorldCommand* CreateCmdSetAbilityRangeScale( PFBaseHero *pHero, float scale );
 
   NCore::WorldCommand* CreateCmdInitMinigame( PFEaselPlayer* easelPlayer, INT32 objId );
 

@@ -37,13 +37,18 @@ namespace Transport
 
 struct IBinSaver;
 class MemoryStream;
-class FileWriteAsynchronousStream;
+
+namespace threading
+{
+  class JobThread;
+}
 
 
 namespace NCore
 {
 struct ClientSettings;
 struct MapStartInfo;
+class ReplayFileWorker;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TODO: This class should be united with server's replay writer NUM_TASK
@@ -53,6 +58,7 @@ class ReplayWriter : public BaseObjectMT
 public:
 
   ReplayWriter();
+  ~ReplayWriter();
 
   // Methods below appear in a right order of replay format writing
 
@@ -71,10 +77,15 @@ private:
   bool gsDataWritten;
   bool headerWritten;
   bool infoheaderWritten;
+  bool finished;
 
   CObj<IBinSaver> saver;
   CObj<MemoryStream> header;
-  CObj<FileWriteAsynchronousStream> replayFile;
+  // The game thread only appends bytes to the worker's memory buffer;
+  // the disk is touched by the worker's own thread (no stalls on the game step)
+  StrongMT<ReplayFileWorker> fileWorker;
+  StrongMT<threading::JobThread> fileThread;
+  vector<char> recordBuffer;
   string informationFileName;
   string replaysFolderPath;
   string replayFilePath;

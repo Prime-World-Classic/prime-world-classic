@@ -8,6 +8,7 @@
 #include "PFClientApplicators.h"
 #include "AdventureScreen.h"
 #include "PFEffectSwitcher.h"
+#include "PFHero.h"
 
 namespace NGameX
 {
@@ -98,6 +99,45 @@ static bool CanApplyEffect(CObj<PF_Core::BasicEffect> pEffect, NWorld::PFLogicOb
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Standalone effects that draw the reach of an ability: stretched by the "ability range" stat of the caster.
+// (the list is the first step; later this can become a flag of the effect in the data)
+static const char * const s_rangeScaledEffects[] =
+{
+  "effects/debuffs/wind/_.efft", // FireFox: Wind and Sparks
+};
+
+static bool IsRangeScaledEffect( const NDb::EffectBase * pDesc )
+{
+  if ( !pDesc )
+    return false;
+  nstl::string fileName = pDesc->GetDBID().GetFileName();
+  for ( int i = 0; i < fileName.size(); ++i )
+  {
+    if ( fileName[i] >= 'A' && fileName[i] <= 'Z' )
+      fileName[i] = fileName[i] - 'A' + 'a';
+    else if ( fileName[i] == '\\' )
+      fileName[i] = '/';
+  }
+  for ( int i = 0; i < sizeof( s_rangeScaledEffects ) / sizeof( s_rangeScaledEffects[0] ); ++i )
+    if ( strstr( fileName.c_str(), s_rangeScaledEffects[i] ) )
+      return true;
+  return false;
+}
+
+static void ScaleRangeEffect( PF_Core::BasicEffect * pEffect, const NWorld::PFBaseUnit * pSender )
+{
+  const float scale = NWorld::PFBaseHero::GetAbilityRangeScale( pSender );
+  if ( fabs( scale - 1.0f ) < 0.001f )
+    return;
+  PF_Core::BasicEffectStandalone * pStandalone = dynamic_cast<PF_Core::BasicEffectStandalone *>( pEffect );
+  if ( !pStandalone || !pStandalone->GetSceneObject() || !IsRangeScaledEffect( pStandalone->GetDBDesc() ) )
+    return;
+  Placement placement = pStandalone->GetSceneObject()->GetPosition();
+  placement.scale.x *= scale; // the length and the width of the cone, its height stays
+  placement.scale.y *= scale;
+  pStandalone->SetPosition( placement );
+}
+
 void ApplyEffect( CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSender, NWorld::PFLogicObject* pTarget, NWorld::PFLogicObject* pOrigin, PF_Core::IEffectEnableConditionCallback *pEnableCallback /*= NULL*/ )
 {
   if ( !AdventureScreen::Instance()->IsSpectator() )
@@ -124,6 +164,7 @@ void ApplyEffect( CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSende
   {
     pEffect->SetActiveStateName( pSender->GetSkinId() );
     pEffect->Apply( pTarget->ClientObject() );
+    ScaleRangeEffect( pEffect.GetPtr(), pSender );
   }
 }
 
@@ -147,6 +188,7 @@ void RestoreEffect(CObj<PF_Core::BasicEffect> pEffect, NWorld::PFBaseUnit* pSend
   {
     pStnd->SetPosition( placementOnStart );
     pStnd->AddToScene( pTarget->GetWorld()->GetScene() );
+    ScaleRangeEffect( pStnd, pSender );
   }
   else
   {
@@ -193,6 +235,23 @@ CObj<PF_Core::LightningEffect> CreateLightningEffect( const NDb::Ptr<NDb::Lightn
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// RandomEffect as a dispatch effect: take sub-effects in turn, so consecutive shots look different
+static NDb::EffectBase const* ResolveRandomEffect( NDb::EffectBase const* pEffect )
+{
+  if ( !pEffect || pEffect->GetObjectTypeID() != NDb::RandomEffect::typeId )
+    return pEffect;
+
+  NDb::RandomEffect const* pRandom = static_cast<NDb::RandomEffect const*>( pEffect );
+  int const count = pRandom->effects.size();
+  if ( count == 0 )
+    return pEffect;
+
+  static unsigned int s_nextIndex = 0;
+  NDb::EffectBase const* pSubEffect = pRandom->effects[s_nextIndex++ % count].GetPtr();
+  return pSubEffect ? pSubEffect : pEffect;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void RetrieveStandaloneEffectCollection(StandaloneEffectsVector *effectList, NDb::EffectBase const *_dispatchEffect, NWorld::PFBaseUnit const* pSender, PF_Core::IEffectEnableConditionCallback *pEnableCallback /*= NULL*/ )
 {
   NI_VERIFY( _dispatchEffect, NStr::StrFmt( "Null dbptr in RetrieveStandaloneEffect" ) , return; );
@@ -220,7 +279,7 @@ CObj<PF_Core::BasicEffectStandalone> RetrieveStandaloneEffect( NDb::EffectBase c
   int curEffect = 0;
   NDb::Ptr<NDb::EffectBase> eff1;
   NDb::Ptr<NDb::EffectBase> eff2;
-  const NDb::EffectBase* dispatchEffect = _dispatchEffect;
+  const NDb::EffectBase* dispatchEffect = ResolveRandomEffect( _dispatchEffect );
 
   CObj<PF_Core::BasicEffectStandalone> effect;
 
@@ -284,7 +343,7 @@ void RetrieveStandaloneEffect(StandaloneEffectsVector* effectVector, NDb::Effect
   int curEffect = 0;
   NDb::Ptr<NDb::EffectBase> eff1;
   NDb::Ptr<NDb::EffectBase> eff2;
-  const NDb::EffectBase* dispatchEffect = _dispatchEffect;
+  const NDb::EffectBase* dispatchEffect = ResolveRandomEffect( _dispatchEffect );
 
   NI_VERIFY( dispatchEffect, NStr::StrFmt( "Null dbptr in RetrieveStandaloneEffect" ) , return ; );
 
@@ -323,18 +382,18 @@ void RetrieveStandaloneEffect(StandaloneEffectsVector* effectVector, NDb::Effect
       {
         CObj<PF_Core::BasicEffectStandalone> &effect = effectVector->push_back();
         effect = PF_Core::EffectsPool::Get()->RetrieveKnownEffect<PF_Core::BasicEffectStandalone>( *iter );
-        effect->SetEnableCallback(pEnableCallback);
 
-        NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), return );
+        NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), effectVector->pop_back(); return; );
+        effect->SetEnableCallback(pEnableCallback);
       }
     }
     else
     {
       CObj<PF_Core::BasicEffectStandalone> &effect = effectVector->push_back();
       effect = PF_Core::EffectsPool::Get()->RetrieveKnownEffect<PF_Core::BasicEffectStandalone>( dispatchEffect );
-      effect->SetEnableCallback(pEnableCallback);
 
-      NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), return );
+      NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), effectVector->pop_back(); return; );
+      effect->SetEnableCallback(pEnableCallback);
 
       if ( AdventureScreen::Instance()->IsSpectator() )
       {
@@ -352,9 +411,9 @@ void RetrieveStandaloneEffect(StandaloneEffectsVector* effectVector, NDb::Effect
 
     CObj<PF_Core::BasicEffectStandalone> &effect = effectVector->push_back();
     effect = PF_Core::EffectsPool::Get()->RetrieveKnownEffect<PF_Core::BasicEffectStandalone>( eff );
-    effect->SetEnableCallback(pEnableCallback);
 
-    NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), return );
+    NI_VERIFY( effect, NStr::StrFmt( "Cannot retrieve standalone effect for \"%s\"", dispatchEffect->GetDBID().GetId().c_str() ), effectVector->pop_back(); return; );
+    effect->SetEnableCallback(pEnableCallback);
   }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

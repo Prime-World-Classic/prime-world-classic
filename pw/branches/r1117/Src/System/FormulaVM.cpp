@@ -964,8 +964,11 @@ private:
     }
     // при talconstNoCheck проверки нет — и ветвления тоже нет
 
+    // получатель GetTalent: у mastertal* — хозяин (на стеке один объект, как в проверке
+    // выше), иначе сам юнит. Лишний PushSelf() делал получателем самого призванного:
+    // GetTalent у него пустой, формула падала с ошибкой и mastertal всегда был false
     if (bMaster) { PushSelf(); E(FormulaVM::OP_ACC, iMst); }
-    PushSelf();
+    else         PushSelf();
     E(FormulaVM::OP_PUSHSTR, m_vm.AddString(talName));
     E(FormulaVM::OP_ACC, iTal);
     if (bConst)

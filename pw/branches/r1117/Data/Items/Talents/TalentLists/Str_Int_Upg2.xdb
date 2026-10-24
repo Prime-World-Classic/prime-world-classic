@@ -19,6 +19,7 @@
 	<BackLink DBID="/Heroes/Witcher/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/WraithKing/_.HROB" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/witcher.HROB" Count="1" />
+	<BackLink DBID="/Heroes/Laguna/_.HROB" Count="1" />
 	<Levels>
 		<Item>
 			<Talents />

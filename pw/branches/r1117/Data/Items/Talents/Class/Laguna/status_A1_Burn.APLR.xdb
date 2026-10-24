@@ -1,0 +1,144 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A1.TALENT" Count="1" />
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="E1E91571-1DE0-4136-97B2-9395BCDE07BF">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>периодически обжигаемся</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString>FQ0AAAABAAAAGQAAAEExX1RyYWlsVGljawBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+					<returnType>float</returnType>
+					<sString>cA1_TrailTick</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsCount</scaleMode>
+				<spell href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="A24F7A0B-7162-42FA-8A1E-D1C53DB1F2A4">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="DDC8AC85-2309-463E-A6F9-931F094290A7">
+								<DamageApplicator parent="/GameLogic/GeneralApplicators/CommonDamage.APLR">
+									<caption>урон ожога</caption>
+									<damage>
+										<compiledString>FQ8AAAABAAAAGwAAAEExX1RyYWlsRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+										<returnType>float</returnType>
+										<sString>cA1_TrailDamage</sString>
+									</damage>
+									<damageType>Energy</damageType>
+									<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+								</DamageApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="EF7D20AE-1831-4DDC-B47C-E0D383874D62">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>1</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString>FQ0AAAABAAAAGQAAAEExX1RyYWlsVGljawBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+					<returnType>float</returnType>
+					<sString>cA1_TrailTick</sString>
+				</startOffset>
+				<targetSelector href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="BA0AEAD5-4C3A-4077-BD59-F8DB07895EB6">
+					<SelectApplicatorTarget>
+						<applicatorIndex>0</applicatorIndex>
+						<applicatorName></applicatorName>
+						<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+						<selectTarget>ApplicatorTarget</selectTarget>
+					</SelectApplicatorTarget>
+				</targetSelector>
+			</SpellPeriodicallyApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>146</behaviorFlags>
+	<caption>ожог от следа медузы</caption>
+	<customCounter>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A1_Burn.APLR_description.txt" />
+	<dispellPriority>Medium</dispellPriority>
+	<effect>
+		<Item href="/Heroes/Laguna/Effects/MedusaBurn_Team.EFFT" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>2</flags>
+	<formulaName>Laguna_A1_Burn</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A1.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A1_Burn.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>PartiallyStackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQ8AAAABAAAAGQAAAExhZ3VuYV9BMV9CdXJuAFWL7GoCi0UQUGgAAAAAi00MixGLTQyLgpwBAAD/0DPJO0UQD5TBisFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>pSecond-&gt;FindApplicator("Laguna_A1_Burn", pMisc, ABILITY) == pMisc</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" id="2642EDE4-2DEF-4FF9-97F4-18CB011D708C">
+		<ApplicatorsList>
+			<applicatorLists />
+			<applicators>
+				<Item href="/Items/Talents/Class/Laguna/status_A1_Burn.APLR" />
+			</applicators>
+		</ApplicatorsList>
+	</unstackableWith>
+</StatusApplicator>

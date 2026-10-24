@@ -1162,6 +1162,146 @@
 						<propertyName>CharStarBar_LeaguePlaceLabelText</propertyName>
 						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_205_propertyValue.txt" />
 					</Item>
+					<Item>
+						<propertyName>Tooltip_ShowPanelBtnUp</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_206_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Tooltip_ShowPanelBtnDown</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_207_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot11</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_208_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot12</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_209_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot13</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_210_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot14</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_211_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot15</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_212_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot16</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_213_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot17</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_214_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot18</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_215_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot19</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_216_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot20</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_217_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot21</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_218_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot22</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_219_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot23</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_220_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_ActionBarSlot24</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_221_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ShortcutsMenu_VoiceOverlayUnlock</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_222_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>StatBar_AccountRankTooltip</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_223_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>StatBar_HeroRankTooltip</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_224_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_AdvancedPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_225_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_CommunicationPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_226_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_AdvancedTitle</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_227_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_CommunicationTitle</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_228_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_Back</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_229_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_ChatWheelPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_230_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Options_PingWheelPage</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_231_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Statistics_PingMute</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_232_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Statistics_PingUnmute</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_233_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Back</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_234_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Pause</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_235_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Forward</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_236_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Slower</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_237_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Faster</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_238_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>ReplayControls_Timeline</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_239_propertyValue.txt" />
+					</Item>
+					<Item>
+						<propertyName>Tooltip_StatisticBarWardsIcon</propertyName>
+						<propertyValue textref="/UI/Screens/Combat/Combat_b554a0220b044de597048df6ebc61b68_properties_240_propertyValue.txt" />
+					</Item>
 				</properties>
 				<relatedLayouts />
 				<relatedTexts />

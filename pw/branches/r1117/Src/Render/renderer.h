@@ -82,6 +82,8 @@ class Renderer
 	DXSurfacePtr          pDeviceColorSurface;
 	Caps                  caps;
   DXQueryRef            pFrameSynchQuery;
+  DXQueryRef            pPrevFrameSynchQuery; // gfx_gpu_sync_lag: issued a frame earlier, waited for now
+  bool                  prevFrameSynchIssued;
   threading::Mutex      renderSceneLock;
   bool                  renderSceneLocked;
 

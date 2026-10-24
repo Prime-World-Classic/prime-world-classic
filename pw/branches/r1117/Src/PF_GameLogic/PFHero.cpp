@@ -135,6 +135,8 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   , distanceRun(0.f)
   , pDbHero( info.pHero )
   , isolated( false )
+  , autoAttackDisabled( false )
+  , abilityRangeScale( 1.0f )
   , ripTime(0.f)
   , inTeamId( info.inTeamId )
   , redeemCost(0.0f)
@@ -216,7 +218,7 @@ void PFBaseHero::PrepareExcludedResourcesList( const NDb::EFaction& sourceFactio
     HeroSkinVector::const_iterator it_end = pDbHero->heroSkins.end();
     for (; it != it_end; ++it)
     {
-      if ((*it).GetPtr() == currentSkin)
+      if (!(*it).GetPtr() || (*it).GetPtr() == currentSkin)
         continue;
 
       excludedResources.push_back(*it);
@@ -304,7 +306,7 @@ bool PFBaseHero::SetSkin( const nstl::string& skinId, bool invalidateClientObjec
     vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = pDbHero->heroSkins.begin();
     for ( ; it != pDbHero->heroSkins.end(); ++it )
     {
-      if ((*it)->persistentId == skinId)
+      if ((*it).GetPtr() && (*it)->persistentId == skinId)
       {
         heroSkinId = skinId;
         pCurrentHeroSkin = *it;
@@ -860,7 +862,8 @@ void PFHeroBehaviour::OnDamage( const PFBaseUnitDamageDesc& desc )
     {
       if( pUnit->IsIdle() && !pUnit->HasQueuedStates()
         && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)
-        && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK) )
+        && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK)
+        && !static_cast<PFBaseHero*>(pUnit.GetPtr())->IsAutoAttackDisabled() )
       {
         pUnit->PushState( new PFBaseUnitAttackState( GetWorld(), pUnit, desc.pSender, true ) );
       }
@@ -1233,7 +1236,7 @@ const NDb::HeroSkin* PFBaseHero::GetHeroSkin(const NDb::Hero* dbHeroPtr, const s
     vector<NDb::Ptr<NDb::HeroSkin>>::const_iterator it = dbHeroPtr->heroSkins.begin();
     for ( ; it != dbHeroPtr->heroSkins.end(); ++it )
     {
-      if ((*it)->persistentId == skinId)
+      if ((*it).GetPtr() && (*it)->persistentId == skinId)
         return *it;
     }
   }
@@ -1762,6 +1765,10 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
       NGlobal::SetVar( "current_pet", persId, STORAGE_USER );      
   }
 
+  // wards = the lanterns of the shop (Items/Consumables/EyeOfSeeing*.ARCT), counted for the statistics window;
+  // checked before the use: the last one leaves the slot (pConsumable is a reference to the slot)
+  const bool isWard = pConsumable->GetDBDesc() && strstr( pConsumable->GetDBDesc()->GetDBID().GetFileName().c_str(), "EyeOfSeeing" ) != 0;
+
   pConsumable->GetAbility()->SetUsingConsumable( pConsumable );
   CObj<PFAbilityInstance> pInstance = CreateAbilityInstance( pConsumable->GetAbility(), target );
   if ( pInstance )
@@ -1777,6 +1784,12 @@ CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumab
     }
 
     CALL_CLIENT_6ARGS( OnUseAbility, pAbilityData->GetAbilityNode(), pAbilityData->GetAbilityMarker(), target, pAbilityData->GetTimeOffset( true ), lookAtTarget, pAbilityData->IsAbilitySupposedToStopUnit() );
+
+#ifndef VISUAL_CUTTED
+    if ( isWard )
+      if ( NGameX::AdventureScreen * pScreen = NGameX::AdventureScreen::Instance() )
+        pScreen->OnWardUsed( this );
+#endif
 
     return pInstance;
   }
@@ -2383,7 +2396,19 @@ void PFBaseHero::Move(const CVec2 & target)
   // PFBaseUnitMoveToState stops movement if target is within 1.0f range
   // Therefore we update listeners manually here
   if ( pHeroOrMount->IsPositionInRange( target, 1.0f ) )
+  {
     pHeroOrMount->EventHappened( NWorld::PFBaseUnitEvent( NDb::BASEUNITEVENT_MOVE ) );
+
+    // Dota-like: a click right next to the hero is too short to walk, so just turn the hero in place
+    // to face the clicked point (smoothly on the client). Executed on every client from the same command,
+    // so the logic direction stays in sync.
+    if ( !pHeroOrMount->IsPositionInRange( target, 0.1f ) )
+    {
+      pHeroOrMount->SetMoveDirection( target );
+      if ( NGameX::PFClientBaseMovingUnit* pClient = pHeroOrMount->ClientObject() )
+        pClient->LookTo( target );
+    }
+  }
 
   if ( PFBaseUnitMoveToState* st = dynamic_cast<PFBaseUnitMoveToState*>( pHeroOrMount->GetCurrentState() ) )
     st->SetNewParams( target, 0.0f );
@@ -2428,6 +2453,16 @@ float PFBaseHero::GetCustomEnergyRegeneration() const
   }
 
   return 0.f;
+}
+
+float PFBaseHero::GetAbilityRangeScale( const PFBaseUnit * pUnit )
+{
+  const PFBaseHero * pHero = dynamic_cast<const PFBaseHero *>( pUnit );
+  if ( !pHero )
+    return 1.0f;
+  // console base (ability_range_scale) x (1 + AbilityRange% from talents / buffs set in the editor)
+  const float bonusPercent = pHero->GetVariableValue( UnitVariables::szAbilityRange );
+  return Min( Max( pHero->abilityRangeScale * ( 1.0f + bonusPercent * 0.01f ), 0.1f ), 10.0f );
 }
 
 void PFBaseHero::OnIdle()

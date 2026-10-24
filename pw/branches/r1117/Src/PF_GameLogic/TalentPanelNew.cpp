@@ -30,6 +30,12 @@ flashWindow(flashContainer)
 
   flashContainer->AddFSListner(ConvertToString(TalentClicked), this);
   flashContainer->AddFSListner(ConvertToString(TalentToolTip), this);
+  flashContainer->AddFSListner("TalentPress", this); // raw press, sent by Flash before its checks (Alt+click status)
+  flashContainer->AddFSListner("TalentSmartCast", this); // click on the smart-cast checkbox of an action bar button
+  flashContainer->AddFSListner("ItemSmartCast", this); // the same for a shop item: "<inventory slot>"
+  flashContainer->AddFSListner("PraiseRows", this); // how many praise panels fit above the minimap
+  flashContainer->AddFSListner("PortalPress", this); // raw press of the portal button (Alt+click status)
+  flashContainer->AddFSListner("ItemPress", this); // raw press of a shop item button: "<inventory slot>"
 
   talentStates.resize(GetTalentsCountX()* GetTalentsCountY());
 
@@ -199,6 +205,54 @@ void TalentPanelNew::OnFSCommand( UI::FlashContainer2* _wnd, const char* listene
     return;
   }
   
+  if ( strcmp( listenerID, "TalentSmartCast" ) == 0 )
+  {
+    int slot = -1;
+    int level = -1;
+    sscanf_s( args, "%d %d", &slot, &level );
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnTalentSmartCastToggle( level, slot );
+    return;
+  }
+
+  if ( strcmp( listenerID, "ItemSmartCast" ) == 0 )
+  {
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnItemSmartCastToggle( NStr::ToInt( args ) );
+    return;
+  }
+
+  if ( strcmp( listenerID, "PortalPress" ) == 0 )
+  {
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnPortalButtonPress();
+    return;
+  }
+
+  if ( strcmp( listenerID, "ItemPress" ) == 0 )
+  {
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnItemButtonPress( NStr::ToInt( args ) );
+    return;
+  }
+
+  if ( strcmp( listenerID, "PraiseRows" ) == 0 )
+  {
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->SetPraiseRowsFit( NStr::ToInt( args ) );
+    return;
+  }
+
+  if ( strcmp( listenerID, "TalentPress" ) == 0 )
+  {
+    int slot = 0;
+    int level = 0;
+    sscanf_s( args, "%d %d", &slot, &level );
+    if ( NGameX::AdventureScreen* pAdvScreen = NGameX::AdventureScreen::Instance() )
+      pAdvScreen->OnTalentButtonPress( level, slot );
+    return;
+  }
+
   using namespace FlashFSCommands;
 
   switch ( ConvertToFSCommand( listenerID ) )

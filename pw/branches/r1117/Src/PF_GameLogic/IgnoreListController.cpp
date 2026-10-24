@@ -5,6 +5,7 @@
 
 #include "AdventureFlashInterface.h"
 #include "FlashFSCommands.h"
+#include "AdventureScreen.h"
 #include "ui/FlashContainer2.h"
 #include "Client/GameChatClient/IGameChatClient.h"
 
@@ -14,6 +15,34 @@
 #include "PFPlayer.h"
 
 #include "PlayerInfoHelper.hpp"
+
+#include "System/ConfigFiles.h"
+
+// Pings of these players are not shown (button "!" in the statistics window): account ids (auid) "id,id,...",
+// so the mute survives a nickname change and is on again in the next battles
+static string g_pingMutedUsers;
+REGISTER_VAR( "ping_muted_users", g_pingMutedUsers, STORAGE_USER );
+
+static void ParsePingMutedUsers( nstl::set<NGameX::TUserId> & users )
+{
+  users.clear();
+  unsigned long long value = 0;
+  bool digits = false;
+  for ( int i = 0; i <= g_pingMutedUsers.length(); ++i )
+  {
+    const char c = ( i < g_pingMutedUsers.length() ) ? g_pingMutedUsers[i] : ',';
+    if ( c >= '0' && c <= '9' )
+    {
+      value = value * 10 + ( c - '0' );
+      digits = true;
+      continue;
+    }
+    if ( digits && value != 0 )
+      users.insert( value );
+    value = 0;
+    digits = false;
+  }
+}
 
 namespace NGameX
 {
@@ -124,6 +153,39 @@ void IgnoreListController::InvalidateFlashInterface()
   {
     flashInterface->IgnoreUser(GetPlayerIdByUserId(*it));
   }
+
+  // pings muted in the previous battles
+  nstl::set<TUserId> pingMuted;
+  ParsePingMutedUsers(pingMuted);
+  for (nstl::set<TUserId>::const_iterator itMuted = pingMuted.begin(); itMuted != pingMuted.end(); ++itMuted)
+  {
+    const TPlayerId playerId = GetPlayerIdByUserId(*itMuted);
+    if (playerId < 0)
+      continue;
+    if (AdventureScreen* const screen = AdventureScreen::Instance())
+      screen->SetPlayerPingsMuted(playerId, true, true);
+  }
+}
+
+void IgnoreListController::SavePingMute(const TUserId userId, const bool muted)
+{
+  if (userId == 0ULL) // bots, local games without accounts: for this battle only
+    return;
+
+  nstl::set<TUserId> users;
+  ParsePingMutedUsers(users);
+  if (muted)
+    users.insert(userId);
+  else
+    users.erase(userId);
+
+  string text;
+  for (nstl::set<TUserId>::const_iterator it = users.begin(); it != users.end(); ++it)
+    text += NStr::StrFmt(text.empty() ? "%llu" : ",%llu", (unsigned long long)(*it));
+  if (text == g_pingMutedUsers)
+    return;
+  g_pingMutedUsers = text;
+  NGlobal::SaveConfig(NProfile::GetFullFilePath("user.cfg", NProfile::FOLDER_USER), STORAGE_USER);
 }
 
 void IgnoreListController::OnFastReconnect(IgnoreListStorage *_ignoreListStorage)
@@ -137,6 +199,17 @@ void IgnoreListController::OnFastReconnect(IgnoreListStorage *_ignoreListStorage
 void IgnoreListController::OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID, const char* args, const wchar_t * argsW )
 {
   using namespace FlashFSCommands;
+
+  if (strcmp(listenerID, "PingMuteUser") == 0)
+  {
+    int playerId = -1;
+    int muted = 0;
+    sscanf_s(args, "%d %d", &playerId, &muted);
+    if (AdventureScreen* const screen = AdventureScreen::Instance())
+      screen->SetPlayerPingsMuted(playerId, muted != 0, false);
+    SavePingMute(GetUserIdByPlayerId(playerId), muted != 0);
+    return;
+  }
 
   if (!ignoreListStorage)
     return;
@@ -204,6 +277,7 @@ void IgnoreListController::DoInit(UI::FlashContainer2* const flashContainer)
 
   flashContainer->AddFSListner(ConvertToString(IgnoreUser), this);
   flashContainer->AddFSListner(ConvertToString(RemoveIgnoreFromUser), this);
+  flashContainer->AddFSListner("PingMuteUser", this); // "<player id> <0|1>": pings of a player off (statistics window)
 }
 
 }

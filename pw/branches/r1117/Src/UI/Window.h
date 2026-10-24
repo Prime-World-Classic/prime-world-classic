@@ -279,9 +279,15 @@ private:
   bool needOrderReSort;
   float sortOrder;
 
+  float screenScale;
+  Point screenScalePivot;
+
 public:
   void SetSortOrder( float order );
   float GetSortOrder() const { return sortOrder; }
+
+  // the window and its children are drawn scaled around 'pivot' (screen coordinates); 1 - as is
+  void SetScreenScale( float scale, const Point & pivot ) { screenScale = scale; screenScalePivot = pivot; }
 
   // ---------------------------------------------
   //  render and update

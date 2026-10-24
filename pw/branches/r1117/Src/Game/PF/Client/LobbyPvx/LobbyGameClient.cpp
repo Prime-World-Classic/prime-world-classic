@@ -32,7 +32,7 @@
 
 static const float PROGRESS_SEND_INTERVAL = 0.33f;
 
-static float g_fHybridPingPeriod = 5.0; // по умолчанию - будем запрашивать пинг раз в столько секунд
+static float g_fHybridPingPeriod = 1.0; // RPC ping to the game server once a second (also the ping under the minimap)
 REGISTER_VAR( "hybrid_ping_period", g_fHybridPingPeriod, STORAGE_NONE);
 
 static float g_fHybridPingThreshold = 0.4f; // если пинг (в секундах) больше этого значения, будем ругацца (т.е. ставить флаг warning в DebugVar "hybrid_ping_value")
@@ -47,8 +47,9 @@ REGISTER_VAR( "update_ping_statistics_period", g_fUpdatePingStatisticsPeriod, ST
 static float g_fLogPingStatisticsPeriod = 60.0; // Log ping statistics once in 60 seconds by default
 REGISTER_VAR( "log_ping_statistics_period", g_fLogPingStatisticsPeriod, STORAGE_NONE);
 
-static bool g_enableReplay = false;
-//REGISTER_VAR( "enable_replay", g_enableReplay, STORAGE_USER);
+// Replays are written on a background thread (NewReplay.cpp), the game step never waits for the disk
+static bool g_enableReplay = true;
+REGISTER_VAR( "enable_replay", g_enableReplay, STORAGE_USER);
 
 #pragma warning( disable : 4996 ) // This function or variable may be unsafe.
 class WorldStepIntDebugVar : public NDebug::DebugVar<int>

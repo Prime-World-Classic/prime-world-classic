@@ -1,0 +1,871 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="105EC31C-8AB3-4E5A-B14A-51BF985E1E30">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>1</maxX>
+						<maxY>1</maxY>
+						<maxZ>1</maxZ>
+						<minX>-1</minX>
+						<minY>-1</minY>
+						<minZ>-1</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Laguna/Attack/FishSwim.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName></mayaFileName>
+							<name>swim</name>
+							<srcFileName crc="0"></srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="B305E52B-8274-4275-8708-C65127EAFD8E">
+						<AnimGraphCreator>
+							<defaultNode>idle</defaultNode>
+							<macroNodes>
+								<Item>
+									<markers />
+									<nextNode>idle</nextNode>
+									<nodeName>idle</nodeName>
+									<nodeType>Normal</nodeType>
+									<posX>136</posX>
+									<posY>219</posY>
+									<sequenceName>swim</sequenceName>
+									<simpleTransactions />
+									<speed>
+										<coeffs />
+										<value>1</value>
+									</speed>
+									<startPar>
+										<coeffs />
+										<value>0</value>
+									</startPar>
+									<stopPar>
+										<coeffs />
+										<value>1</value>
+									</stopPar>
+									<surfSpeedX>0</surfSpeedX>
+									<surfSpeedY>0</surfSpeedY>
+								</Item>
+							</macroNodes>
+						</AnimGraphCreator>
+					</animGraph>
+					<anims />
+					<attached />
+					<caption>FishD</caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="C1A5DD3E-C88B-4D99-AE6D-B154B5B0448A">
+						<LocatorList>
+							<locators />
+						</LocatorList>
+					</locatorList>
+					<mayaFileName>/Terrain/Water/Fish2_02_root.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>_02_root</selection>
+					<skeletonFileName>/Terrain/Water/Fish2_02_root.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Terrain/Water/Fish2_02.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="99D5B532-3D3F-477C-ADD0-87C599B31A0B">
+									<BasicMaterial>
+										<caption></caption>
+										<diffuseColor>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</diffuseColor>
+										<DiffuseMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="086628E1-753D-434B-B4D1-BEF4EE500417">
+												<Texture>
+													<generatedFileName></generatedFileName>
+													<mipLevels>0</mipLevels>
+													<mipLevelUsage>AutoGenerate</mipLevelUsage>
+													<mipSharpenPasses></mipSharpenPasses>
+													<pixelFormat>DXT5</pixelFormat>
+													<size>
+														<height>64</height>
+														<width>64</width>
+													</size>
+													<srcFileName crc="0">/Heroes/Laguna/Attack/FishD.tga</srcFileName>
+													<startMipLevel>0</startMipLevel>
+													<textureFileName>/Heroes/Laguna/Attack/FishD.dds</textureFileName>
+													<textureType>Color</textureType>
+												</Texture>
+											</texture>
+										</DiffuseMap>
+										<emissive>0</emissive>
+										<EmissivePinValue>EmissiveOff</EmissivePinValue>
+										<ignoreRenderState>false</ignoreRenderState>
+										<lightingIntencity>1</lightingIntencity>
+										<LightingPinValue>LightingSH</LightingPinValue>
+										<NormalMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</NormalMap>
+										<outputAdd>
+											<A>0</A>
+											<B>0</B>
+											<G>0</G>
+											<R>0</R>
+										</outputAdd>
+										<outputMul>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</outputMul>
+										<ReflectionMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</ReflectionMap>
+										<reflectivity>1</reflectivity>
+										<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+										<renderFlags>3</renderFlags>
+										<renderState>
+											<alphaTest>On</alphaTest>
+											<alphaTestRef>127</alphaTestRef>
+											<blendMode>Off</blendMode>
+											<culling>On</culling>
+										</renderState>
+										<SpecularMap>
+											<Add>
+												<A>0</A>
+												<B>1</B>
+												<G>1</G>
+												<R>1</R>
+											</Add>
+											<Multiplier>
+												<A>1</A>
+												<B>0.5</B>
+												<G>0.5</G>
+												<R>0.5</R>
+											</Multiplier>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</SpecularMap>
+										<specularPower>10</specularPower>
+										<SubPriority>0</SubPriority>
+									</BasicMaterial>
+								</Item>
+							</materialsReferences>
+							<mayaFileName>/Terrain/Water/Fish2_02.mayaSkin</mayaFileName>
+							<selection>_02</selection>
+							<skinPartName>_02</skinPartName>
+							<srcFileName crc="0">/Terrain/Water/Fish2.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Terrain/Water/Fish2.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>-1.3</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.707107</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0.707107</z>
+				</rot>
+				<scale>
+					<x>0.7</x>
+					<y>0.7</y>
+					<z>0.7</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="F50443B1-6A54-4F57-A192-7AB895EEB3EB">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0</camoffset>
+					<caption>Glow</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.15</deathFadeOutTime>
+					<fxFileName>/Heroes/Laguna/Attack/FishGlow.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="0A542935-6812-4DE4-A653-60D463E5862E">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1.5</A>
+									<B>1</B>
+									<G>0.2</G>
+									<R>0.7</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Effects/Shots/Fairy/_Glow.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>Glow</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Effects/Shots/Fairy/_.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/Glow05.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.3862305</x>
+								<y>0.1777344</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.3706055</x>
+								<y>0.1464844</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>0.9</x>
+					<y>0.9</y>
+					<z>0.9</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="C103993A-1DC8-4FCC-A7C3-F8322DB3A095">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>3</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="BD11F696-CA74-4F5A-88A0-67AB0FE8AF3B">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>1</camoffset>
+					<caption>Trail_Glow</caption>
+					<compression>2.5</compression>
+					<deathFadeOutTime>0.3</deathFadeOutTime>
+					<fxFileName>/Heroes/Laguna/Attack/TrailD_Glow.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="8E271166-BF13-489E-8192-0B8756DECF05">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>1.4</B>
+									<G>1.3</G>
+									<R>1.3</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Glow04White.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Summons/Laguna/Medusa/FX/_MedusaTrailFX_MedusaTrail_Glow.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>_MedusaTrail_Glow</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Summons/Laguna/Medusa/FX/_MedusaTrailFX</srcFileName>
+					<textures>
+						<Item crc="0">/GFX_Textures/Glow04White.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>1</x>
+								<y>1</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0</x>
+								<y>0</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0.9</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="2C4BCD50-9E2B-4CA6-9249-175E2B22F4C5">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="7FF05C33-7D72-4B93-8223-968ABEB85927">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>1</camoffset>
+					<caption>Trail_Haze</caption>
+					<compression>2.5</compression>
+					<deathFadeOutTime>0.3</deathFadeOutTime>
+					<fxFileName>/Heroes/Laguna/Attack/TrailD_Haze.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="80CC8A78-FB45-4987-A030-AFC5AABC22AB">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>1</B>
+									<G>1</G>
+									<R>1</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Glow04White.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Summons/Laguna/Medusa/FX/_MedusaTrailFX_MedusaTrail_Haze.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>_MedusaTrail_Haze</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Summons/Laguna/Medusa/FX/_MedusaTrailFX</srcFileName>
+					<textures>
+						<Item crc="0">/GFX_Textures/Glow04White.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>1</x>
+								<y>1</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0</x>
+								<y>0</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0.9</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="01161191-1716-452A-AB7F-AD341E886604">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="715952AE-5798-4EED-9FDB-247F141AD2B0">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>1</camoffset>
+					<caption>Trail_Sparks</caption>
+					<compression>2.5</compression>
+					<deathFadeOutTime>0.3</deathFadeOutTime>
+					<fxFileName>/Heroes/Laguna/Attack/TrailD_Sparks.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="C354A7AE-18D6-446A-B74D-FFC1C9277A47">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>1.5</B>
+									<G>1.5</G>
+									<R>1.5</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Spark14White.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Summons/Laguna/Medusa/FX/_MedusaTrailFX_MedusaTrail_Sparks.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>_MedusaTrail_Sparks</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Summons/Laguna/Medusa/FX/_MedusaTrailFX</srcFileName>
+					<textures>
+						<Item crc="0">/GFX_Textures/Spark14White.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>1</x>
+								<y>1</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0</x>
+								<y>0</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0.9</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="731B6718-523E-4564-BED4-E20550679E55">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="2F35E384-3075-415F-8CDE-C58761103CC7">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>1</camoffset>
+					<caption>Trail_Bubbles</caption>
+					<compression>2.5</compression>
+					<deathFadeOutTime>0.3</deathFadeOutTime>
+					<fxFileName>/Heroes/Laguna/Attack/TrailD_Bubbles.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="4799EC79-12D7-4869-AD3F-A0D00A256C90">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>1</B>
+									<G>1</G>
+									<R>1</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Bubble01White.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Summons/Laguna/Medusa/FX/_MedusaTrailFX_MedusaTrail_Bubbles.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>_MedusaTrail_Bubbles</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Summons/Laguna/Medusa/FX/_MedusaTrailFX</srcFileName>
+					<textures>
+						<Item crc="0">/GFX_Textures/Bubble01White.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>1</x>
+								<y>1</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0</x>
+								<y>0</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0.9</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Laguna/Attack/FishShotD.PRXY" id="FA211B22-4C09-43E3-8DB6-878C75CA952C">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption>FishShotD</caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

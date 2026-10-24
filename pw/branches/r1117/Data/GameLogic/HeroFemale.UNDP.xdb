@@ -44,6 +44,7 @@
 	<BackLink DBID="/Maps/PvE/Series/Coop1/Spawners/iva.NCSPN" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/_.HROB" Count="1" />
 	<BackLink DBID="/Summons/Clone/_.UNDP" Count="1" />
+	<BackLink DBID="/Heroes/Laguna/_.HROB" Count="1" />
 	<deathTime>5</deathTime>
 	<effect href="/Effects/General/Death/_Female.EFFT" />
 	<effectOffset>-2.366</effectOffset>

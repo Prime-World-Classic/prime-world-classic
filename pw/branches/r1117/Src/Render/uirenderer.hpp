@@ -47,6 +47,9 @@ public:
   virtual void PushNoCrop();
   virtual void PopCrop();
 
+  virtual void SetScreenScale( float scale, const CVec2 & pivot ) { screenScale = scale; screenScalePivot = pivot; }
+  virtual void ResetScreenScale() { screenScale = 1.f; }
+
   virtual void AddQuad( UIQuad & _quad, Render::BaseMaterial* _renderMaterial, const SMaterialParams & params );
   virtual void BeginFlashParts( int _startFlashElement );
   virtual void EndFlashParts( int _lastFlashElement );
@@ -225,6 +228,9 @@ private:
   E3DMode::Enum mode;
   BlocksSorter blocksSorter;
   Parts3DBlock* current3DBlock;
+
+  float screenScale;
+  CVec2 screenScalePivot;
 
   RenderQueue ques[2];
   RenderQueue& que2D;

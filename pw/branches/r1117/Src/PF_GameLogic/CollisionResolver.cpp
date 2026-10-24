@@ -109,6 +109,8 @@ bool CollisionResolver::PredictedUnitState::Advance(float toMove)
 			else
 			{
 				// ... or from pPath
+				if (pUnit->directMove)
+					return false;  // straight (direct) movement ends at splinePoint[3]; its tile path is stale
 				if (!pUnit->pPath)
 				{
 //??					NI_ALWAYS_ASSERT("unit has no path");

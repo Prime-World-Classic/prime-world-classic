@@ -1,0 +1,230 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Laguna.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>А4_2у. Акулы: улучшение</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="BBFE81B3-805A-4691-A35F-CDA6952194CE">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="F1FE73A8-4C42-4996-A7B9-855E880195D9">
+					<UnitConstant>
+						<name>A4_2u_StatPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="BEA93D30-A35B-4397-8ECE-39896575F7BF">
+					<UnitConstant>
+						<name>A4_2u_MaxStacks</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>10.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="ED028956-E7F4-40AA-9BF1-3D6AFAA034D9">
+					<UnitConstant>
+						<name>Stun_Duration</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>1</flags>
+	<forceBonus>9</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A4_2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>3</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>290</naftaCost>
+	<name textref="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="5ABB8503-3D7B-41FD-B5EE-58B2A790AA74">
+		<StatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<behaviorFlags>0</behaviorFlags>
+			<caption>(A4_2u) Сила +3% за стак</caption>
+			<constraint>None</constraint>
+			<dontUpdate>false</dontUpdate>
+			<effect>
+				<Item href="" />
+				<Item href="" />
+			</effect>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+				<returnType>bool</returnType>
+				<sString>sBaseStrength &gt;= sBaseIntellect</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<lifeTime>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+				<returnType>float</returnType>
+				<sString>-1.0</sString>
+			</lifeTime>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FSYAAAADAAAANQAAAEgAAABNAAAAQTRfMnVfU3RhdFBlcmNlbnQAAABMYWd1bmFTaGFya1N0YWNrcwBVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0tw1fQAAAGgUAAAAi0UMixCLTQyLgogBAADdXfj/0NxN+Nno3sHZXfTZRfSL5V3DAAAAAAAA8D8AAAAAAABZQA==</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f + cA4_2u_StatPercent / 100.0f * receiver.vLagunaSharkStacks</sString>
+				</multValue>
+				<stat>Strength</stat>
+				<topModifier>false</topModifier>
+				<variable></variable>
+			</modifier>
+			<providerName></providerName>
+			<startCondition>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</startCondition>
+			<statModName></statModName>
+		</StatModApplicator>
+	</Item>
+	<Item href="/Items/Talents/Class/Laguna/Ability_A4_2u.TALENT" id="08684E50-5151-47DF-A086-2C23F8FCD534">
+		<StatModApplicator>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<behaviorFlags>0</behaviorFlags>
+			<caption>(A4_2u) Разум +3% за стак</caption>
+			<constraint>None</constraint>
+			<dontUpdate>false</dontUpdate>
+			<effect>
+				<Item href="" />
+				<Item href="" />
+			</effect>
+			<enabled>
+				<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+				<returnType>bool</returnType>
+				<sString>sBaseStrength &lt; sBaseIntellect</sString>
+			</enabled>
+			<formulaName></formulaName>
+			<lifeTime>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+				<returnType>float</returnType>
+				<sString>-1.0</sString>
+			</lifeTime>
+			<LoggingEvent>-1</LoggingEvent>
+			<modifier>
+				<addValue>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</addValue>
+				<multValue>
+					<compiledString>FSYAAAADAAAANQAAAEgAAABNAAAAQTRfMnVfU3RhdFBlcmNlbnQAAABMYWd1bmFTaGFya1N0YWNrcwBVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0tw1fQAAAGgUAAAAi0UMixCLTQyLgogBAADdXfj/0NxN+Nno3sHZXfTZRfSL5V3DAAAAAAAA8D8AAAAAAABZQA==</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f + cA4_2u_StatPercent / 100.0f * receiver.vLagunaSharkStacks</sString>
+				</multValue>
+				<stat>Intellect</stat>
+				<topModifier>false</topModifier>
+				<variable></variable>
+			</modifier>
+			<providerName></providerName>
+			<startCondition>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+				<returnType>bool</returnType>
+				<sString>true</sString>
+			</startCondition>
+			<statModName></statModName>
+		</StatModApplicator>
+	</Item>
+	</passiveApplicators>
+	<persistentId>Laguna_A4_2u</persistentId>
+	<prerequisiteTalents>
+		<Item href="/Items/Talents/Class/Laguna/Ability_A4_2.TALENT" />
+	</prerequisiteTalents>
+	<rarity>Class</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>136258047</targetType>
+	<type>Passive</type>
+	<upgradeLevel>1</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

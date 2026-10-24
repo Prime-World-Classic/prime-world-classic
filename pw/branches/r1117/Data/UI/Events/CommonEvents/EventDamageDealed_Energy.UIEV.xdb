@@ -279,8 +279,9 @@
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Towers/GateB.TOWR" Count="2" />
 	<BackLink DBID="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrRange.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrrange.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A1.TALENT" Count="4" />
 	<signRecipients>EVENT_PARTICIPANTS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" id="FCDDC7F1-12E2-4611-8C2F-927182843C56">

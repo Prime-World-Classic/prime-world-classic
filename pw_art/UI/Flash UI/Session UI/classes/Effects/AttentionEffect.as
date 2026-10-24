@@ -17,6 +17,9 @@
 		private static const BIRTH_FRAMES:uint = 15;
 		private static const PING_FRAMES:uint = 20;
 		
+		// false: the C++ side plays its own ping sounds (MainInterface.SetMinimapAlertSound)
+		public static var soundEnabled:Boolean = true;
+		
 		private var _free:Boolean = true;
 		
 		private var _timer:Timer = null;
@@ -90,7 +93,8 @@
 			visible = true;
 			gotoAndPlay(1);
 			
-			SoundController.PlaySound(SoundController.MINIMAP_ALERT);
+			if (soundEnabled && !SoundController.muteMinimapAlert)
+				SoundController.PlaySound(SoundController.MINIMAP_ALERT);
 			
 			StartLifeTimeController(lifeTime);
 		}

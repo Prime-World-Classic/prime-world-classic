@@ -37,6 +37,7 @@ function Init( reconnecting )
 			for hero = 0, 4 do
 				currentHero = tostring(team) .. tostring(hero)
 				LuaHeroTakeConsumable ( currentHero, "RemoveCooldown" ) -- прописан в dictionary 
+				LuaHeroTakeConsumable ( currentHero, "TestTeleport" ) -- прописан в dictionary 
 			end
 		end
 				

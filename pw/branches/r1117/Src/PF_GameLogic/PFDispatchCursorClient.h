@@ -3,6 +3,7 @@
 #include "PFDispatchCursor.h"
 #include "PFClientObjectBase.h"
 #include "VisibilityHelper.h"
+#include "../Render/SkeletonWrapper.h"
 
 namespace PF_Core
 {
@@ -44,6 +45,20 @@ private:
   bool needSendCommandUpdateCursor;
   float updateCursorTime;
   bool aoeIsVisible;
+
+  // steered mode (DB turnRate > 0): client copy of the movement direction
+  CVec2 clientDir;
+  bool clientDirInited;
+  CVec2 lastLogicPos;         // logic position seen last frame and how long it hasn't changed (logic moves in steps)
+  float lastLogicAge;
+  float curYaw;               // smoothed yaw of the effect
+  nstl::vector<CVec2> path;   // passed points, newest last: the body is turned along them
+  float bend;                 // procedural body bend, radians (+ = to the left)
+  bool bendInited;
+  Render::SkeletonWrapper* pBendSkeleton;
+  nstl::vector<Render::SkeletonWrapper::ExtraYaw> bendYaw;
+  void UpdateSteered( float timeDelta );
+  void ApplyBend( float timeDelta, float yawRate );
 
   void Start();
   void RetrieveTargetCoords();

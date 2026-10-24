@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Laguna/Ability_A0.TALENT" Count="1" />
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A0_SeaChild.APLR" id="9A000F98-CCEC-438E-B6CF-6DB5BCC56E40">
+			<StatModApplicator parent="/Items/Talents/Class/Reaper/appl_MS_NoFX.APLR">
+				<caption>+скорость в воде</caption>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A0_SeaChild.APLR" id="73538A8D-3FFA-403F-9B8B-AE4543E8C351">
+			<AbilityModApplicator>
+				<addValue>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</addValue>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>216</behaviorFlags>
+				<caption>способности восстанавливаются быстрее</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<mode>cooldown</mode>
+				<multValue>
+					<compiledString>FQwAAAACAAAAGQAAACwAAABBMF9XYXRlckNkcgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDUoAAADZ6N7B2eje8dld/NlF/IvlXcMAAAAAAADwPwAAAEDheoQ/</compiledString>
+					<returnType>float</returnType>
+					<sString>1.0f / (1.0f + cA0_WaterCdr * 0.01f)</sString>
+				</multValue>
+				<providerName></providerName>
+				<specificAbility href="" />
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<talents />
+				<targetAbilities>128</targetAbilities>
+				<useListAs>ListAsException</useListAs>
+			</AbilityModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>1</behaviorFlags>
+	<caption>дитя моря: бонус в воде</caption>
+	<customCounter>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A0_SeaChild.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQoAAAACAAAADwAAACUAAABMYWd1bmFXZXQAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdRwAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.vLagunaWet &gt; 0</sString>
+	</enabled>
+	<flags>4</flags>
+	<formulaName>Laguna_SeaChild</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A0.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A0_SeaChild.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

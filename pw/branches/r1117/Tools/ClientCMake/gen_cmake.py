@@ -390,6 +390,15 @@ class Proj:
 
         self.defs = to_defs(cl.get("PreprocessorDefinitions", ""))
         self.defs += to_defs(os.environ.get("PW_EXTRA_DEFS", ""))
+        # x64: STARFORCE_PROTECTED не должен попадать ни в один проект. На x86 его
+        # определяет System/systemStdAfx.h для ВСЕХ TU, а на x64 там он выключен
+        # (StarForce только x86) — но vcproj PF_GameLogic передаёт -DSTARFORCE_PROTECTED
+        # явно. Тогда в PF_GameLogic включаются Protection::HiddenVar (float -> 8 Б,
+        # CVec2 -> 16 Б), а в остальных проектах нет: раскладка PFBaseMovingUnit/
+        # PFBaseHero расходится (pStatistics: 0x7F0 в PF_GameLogic против 0x7E0 в
+        # PW_Client) -> крэш в GameClientPW::SendTeam, не открывается Мастерская свитков.
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            self.defs = [d for d in self.defs if d.split("=")[0] != "STARFORCE_PROTECTED"]
 
         self.includes = []
         for inc in (cl.get("AdditionalIncludeDirectories", "") or "").split(";"):

@@ -4,6 +4,7 @@
 	<BackLink DBID="/UI/Screens/Combat/Pause" Count="1" />
 	<BackLink DBID="/UI/Screens/Combat/UnitStatInfo" Count="1" />
 	<BackLink DBID="/UI/Screens/Loading/LoadingScreen" Count="1" />
+	<BackLink DBID="/UI/Screens/Lobby/Lobby_Main" Count="1" />
 	<BackLink DBID="/UI/Screens/Tooltips/Simple.IMGLBL" Count="1" />
 	<BackLink DBID="/UI/Screens/Tooltips/Simple_exp.IMGLBL" Count="1" />
 	<BackLink DBID="/UI/Screens/Tooltips/Tooltips" Count="1" />

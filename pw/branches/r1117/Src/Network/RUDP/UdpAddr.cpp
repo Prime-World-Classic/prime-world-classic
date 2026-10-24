@@ -212,4 +212,80 @@ void NetAddr::StrIp( char * _buf, size_t _bufSz ) const
   _buf[len] = 0;
 }
 
+
+
+void NetAddr::StrHex( char * _buf, size_t _bufSz ) const
+{
+  // Same byte order as Str()/StrIp(): 0a4e0001 == 10.78.0.1 (launcher protocol hex
+  // block, Shared/ServerIps.cpp).
+#if defined( NV_WIN_PLATFORM )
+  int len = _snprintf( _buf, _bufSz - 1, "%02x%02x%02x%02x",
+    (unsigned)sin_addr.S_un.S_un_b.s_b1, (unsigned)sin_addr.S_un.S_un_b.s_b2,
+    (unsigned)sin_addr.S_un.S_un_b.s_b3, (unsigned)sin_addr.S_un.S_un_b.s_b4 );
+#else
+  unsigned char *bytes = (unsigned char *)&sin_addr.s_addr;
+  int len = snprintf( _buf, _bufSz - 1, "%02x%02x%02x%02x",
+    bytes[0], bytes[1], bytes[2], bytes[3] );
+#endif
+  if ( len < 0 )
+    len = (int)_bufSz - 1;
+  _buf[len] = 0;
+}
+
+
+
+void NetAddr::StrPort( char * _buf, size_t _bufSz ) const
+{
+#if defined( NV_WIN_PLATFORM )
+  int len = _snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
+#else
+  int len = snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
+#endif
+  if ( len < 0 )
+    len = (int)_bufSz - 1;
+  _buf[len] = 0;
+}
+
+
+
+const char * MaskAddrString( char * _buf, size_t _bufSz, const char * _addr )
+{
+  if ( !_buf || _bufSz == 0 )
+    return "";
+
+  _buf[0] = 0;
+  if ( !_addr )
+    return _buf;
+
+  if ( !NGlobal::GetLogIpMode() )
+  {
+#if defined( NV_WIN_PLATFORM )
+    int len = _snprintf( _buf, _bufSz - 1, "%s", _addr );
+#else
+    int len = snprintf( _buf, _bufSz - 1, "%s", _addr );
+#endif
+    if ( len < 0 )
+      len = (int)_bufSz - 1;
+    _buf[len] = 0;
+    return _buf;
+  }
+
+  // Drop the address, keep "port[@mux]". Without a port separator there is nothing
+  // useful left to log.
+  const char * port = strchr( _addr, ':' );
+  if ( !port )
+    return _buf;
+  ++port;
+
+#if defined( NV_WIN_PLATFORM )
+  int len = _snprintf( _buf, _bufSz - 1, "%s", port );
+#else
+  int len = snprintf( _buf, _bufSz - 1, "%s", port );
+#endif
+  if ( len < 0 )
+    len = (int)_bufSz - 1;
+  _buf[len] = 0;
+  return _buf;
+}
+
 } //namespace ni_udp

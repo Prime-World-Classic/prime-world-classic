@@ -29,10 +29,71 @@
 	import StatisticBars.CurrentGameStatistics;
 	import flashx.textLayout.formats.Float;
 	import Utils.GameTimeGlobalUtils;
+	import VoiceChat.VoiceTeamOverlay;
+	import ReplayControls.ReplayControlsPanel;
+	import Controllers.SoundController;
+	import EscMenu.ShortcutItem;
+	import EscMenu.OptionsWindow;
+	import Effects.AttentionEffect;
+	import ActionBar.ActionButton;
+	import flash.display.Graphics;
+	import flash.display.Loader;
+	import flash.display.Sprite;
+	import flash.net.URLRequest;
+	import flash.text.TextField;
+	import flash.text.TextFormat;
+	import flash.text.TextFieldAutoSize;
 
 	public class MainInterface
 	{
 		private var mainWindow:Main;
+		
+		// ping wheel + floating ping texts (created at runtime, driven by C++ AdventureScreen)
+		private var pingLayer:Sprite;
+		
+		private var pingWheel:Sprite;
+		
+		private var pingWheelItems:Array;
+		
+		private var pingWheelHighlights:Array;
+		
+		private var pingWheelLabels:Array;
+		
+		private var pingWheelColors:Array;
+		
+		private var pingWheelText:ShortcutItem;
+		
+		private var pingMarkers:Object;
+		
+		
+		private var pingPreloaded:Array;
+		
+		private var pingMarkerHeroes:Object;
+		
+		private var praisePanels:Object;
+		
+		private var smartCastModes:Object;
+
+		// chat wheel (quick chat messages, C++ AdventureScreen::UpdateChatWheel)
+		private var chatWheel:Sprite;
+
+		private var chatWheelGfx:Sprite;
+
+
+		private var chatWheelHighlights:Array;
+
+		private var chatWheelLabels:Array;
+		
+		private var chatWheelBgs:Array;
+		
+		private var chatWheelCount:int;
+		
+		private var pingWheelBgs:Array;
+		
+		private var pingWheelSlots:Array;
+		
+		private var pingWheelCount:int;
+		
 
 		private var friendlyTeamController:MateInfoController;
 		private var enemyTeamController:MateInfoController;
@@ -49,6 +110,8 @@
 		
 		private var showAlwaysHeroesLevels:Boolean = false;
 		private var _shortheroname: SetPlayerShortName;
+		private var voiceTeamOverlay:VoiceTeamOverlay;
+		private var replayControlsPanel:ReplayControlsPanel;
 	
 		public function MainInterface(_main:Main)
 		{	
@@ -56,6 +119,11 @@
 			_shortheroname = new SetPlayerShortName();
 			friendlyTeamController = new MateInfoController(mainWindow.teamInfoFrendly_mc);
 			enemyTeamController = new MateInfoController(mainWindow.teamInfoEnemy_mc);
+			voiceTeamOverlay = new VoiceTeamOverlay(
+				function():Array { return mainWindow.Players; },
+				function(heroId:int):MateInfoBase { return friendlyTeamController.DoesHeroExist(heroId) ? friendlyTeamController.GetMateInfo(heroId) : null; },
+				function():int { return ourID; });
+			replayControlsPanel = new ReplayControlsPanel(mainWindow, GetActionBarTop, GetActionBarCenterX);
 		//	var Test:MainInterfaceTest = new MainInterfaceTest(this, mainWindow);
 		//	var Test2:MyFullTest = new MyFullTest(this, mainWindow);
 		}
@@ -620,9 +688,18 @@
 			
 			mainWindow.inventoriesBar_mc.Prime = prime;
 		}
-		public function AddSignal(X:Number, Y:Number, color:uint = 0xFFFCC2, lifeTime:Number = 0):void
+		// silent: no old minimap alert sound - the ping has its own sound (C++ AdventureScreen)
+		public function AddSignal(X:Number, Y:Number, color:uint = 0xFFFCC2, lifeTime:Number = 0, silent:Boolean = false):void
 		{
-			mainWindow.miniMap_mc.AddSignal(X, Y, color, lifeTime);
+			SoundController.muteMinimapAlert = silent;
+			try
+			{
+				mainWindow.miniMap_mc.AddSignal(X, Y, color, lifeTime);
+			}
+			catch (e:Error)
+			{
+			}
+			SoundController.muteMinimapAlert = false;
 		}
 		
 		public function SetMinimapTargetZoneColor(value:uint):void
@@ -1049,6 +1126,1241 @@
 			mainWindow.finalStat.personalStat.SetStatisticExperienceBar(curExp, earnedExp,premiumExp, levelsTabel);
 		
 		}
+		
+		private function GetPingLayer() : Sprite
+		{
+			if(this.pingLayer == null)
+			{
+				this.pingLayer = new Sprite();
+				this.pingLayer.mouseEnabled = false;
+				this.pingLayer.mouseChildren = false;
+				this.pingMarkers = new Object();
+				this.mainWindow.addChild(this.pingLayer);
+			}
+			this.mainWindow.setChildIndex(this.pingLayer,this.mainWindow.numChildren - 1);
+			return this.pingLayer;
+		}
+		
+		// text labels of pings, wheels and praises come from a pool: a new ShortcutItem for every ping / wheel / praise
+		// made the engine reach its limit of sprites ("Flash : Sprite count > 6000")
+		private var labelPool:Array = [];
+
+		private function CreatePingLabel(param1:String, param2:uint) : ShortcutItem
+		{
+			var _loc3_:ShortcutItem = null;
+			if(this.labelPool.length > 0)
+			{
+				_loc3_ = ShortcutItem(this.labelPool.pop());
+			}
+			else
+			{
+				_loc3_ = new ShortcutItem();
+				_loc3_.SetBind("");
+				_loc3_.mouseEnabled = false;
+				_loc3_.mouseChildren = false;
+				_loc3_.valueFrame.visible = false;
+				_loc3_.value.visible = false;
+			}
+			_loc3_.SetName(param1);
+			_loc3_.text.textColor = param2;
+			_loc3_.x = 0;
+			_loc3_.y = 0;
+			_loc3_.scaleX = 1; // praise texts are scaled down
+			_loc3_.scaleY = 1;
+			_loc3_.alpha = 1;
+			_loc3_.visible = true;
+			return _loc3_;
+		}
+
+		private function ReleasePingLabel(param1:ShortcutItem) : void
+		{
+			if(param1 == null)
+			{
+				return;
+			}
+			if(param1.parent != null)
+			{
+				param1.parent.removeChild(param1);
+			}
+			this.labelPool.push(param1);
+		}
+		
+		// textures: Data/UI/Styles/Icons/PingWheel (pw_art/UI/PingWheel): wheels for 4..8 sectors (256x256), icons 64x64
+		private static const PING_TEX:String = "/UI/Styles/Icons/PingWheel/";
+
+		private static const PING_ICON_SCALE:Number = 0.72;
+
+		private static const PING_SLOT_RADIUS:Number = 85;
+
+		// ping types that can be in the wheel (5 = the ordinary ping); same as s_pingTypes in AdventureScreen.cpp
+		private static const PING_TYPE_COUNT:int = 15;
+
+		// top-left corners of the sector highlights relative to the wheel center: [N][i * 2], [N][i * 2 + 1] (gen_pingwheel.py)
+		public static const PING_HL_OFFSETS:Array = [null,null,null,null,[-128,-128,0,-128,-128,0,-128,-128],[-128,-128,0,-128,-6,0,-122,0,-128,-128],[-64,-128,0,-117,0,-12,-64,0,-128,-12,-128,-117],[-64,-128,0,-124,0,-40,-17,0,-111,0,-128,-40,-128,-124],[-64,-128,0,-128,0,-64,0,0,-64,0,-128,0,-128,-64,-128,-128]];
+
+		private static const WHEEL_MIN:int = 4;
+
+		private static const WHEEL_MAX:int = 8;
+
+		private function LoadPingImage(param1:String) : Loader
+		{
+			var _loc2_:Loader = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.PING_TEX + param1));
+			return _loc2_;
+		}
+
+		// icon of slot `index` of `count`, scale of the 64 px icon
+		private function PlacePingIcon(param1:Loader, param2:int, param3:int, param4:Number) : void
+		{
+			var _loc5_:Number = (-90 + param2 * 360 / param3) * Math.PI / 180;
+			param1.scaleX = param4;
+			param1.scaleY = param4;
+			param1.x = Math.floor(Math.cos(_loc5_) * MainInterface.PING_SLOT_RADIUS - 32 * param4);
+			param1.y = Math.floor(Math.sin(_loc5_) * MainInterface.PING_SLOT_RADIUS - 32 * param4);
+		}
+
+		// all textures of the wheel exist as hidden loaders (loaded while the map is loading); a show only switches them
+		private function CreatePingWheel() : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var ld:Loader = null;
+			var offsets:Array = null;
+			var hls:Array = null;
+			this.pingWheel = new Sprite();
+			this.pingWheel.mouseEnabled = false;
+			this.pingWheel.mouseChildren = false;
+			this.pingWheelBgs = [];
+			this.pingWheelHighlights = [];
+			n = 0;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				this.pingWheelBgs.push(null);
+				this.pingWheelHighlights.push(null);
+				if(n >= MainInterface.WHEEL_MIN)
+				{
+					ld = this.LoadPingImage("ping_wheel_bg_" + n + ".dds");
+					ld.x = -128;
+					ld.y = -128;
+					ld.visible = false;
+					this.pingWheel.addChild(ld);
+					this.pingWheelBgs[n] = ld;
+					offsets = MainInterface.PING_HL_OFFSETS[n];
+					hls = [];
+					i = 0;
+					while(i < n)
+					{
+						ld = this.LoadPingImage("ping_wheel_hl_" + n + "_" + i + ".dds");
+						ld.x = int(offsets[i * 2]);
+						ld.y = int(offsets[i * 2 + 1]);
+						ld.visible = false;
+						this.pingWheel.addChild(ld);
+						hls.push(ld);
+						i++;
+					}
+					this.pingWheelHighlights[n] = hls;
+				}
+				n++;
+			}
+			this.pingWheelItems = [];
+			i = 0;
+			while(i < MainInterface.PING_TYPE_COUNT)
+			{
+				ld = this.LoadPingImage("ping_icon" + i + ".dds");
+				ld.visible = false;
+				this.pingWheel.addChild(ld);
+				this.pingWheelItems.push(ld);
+				i++;
+			}
+			this.pingWheelSlots = [];
+			this.pingWheelText = this.CreatePingLabel("",16777215);
+			this.pingWheel.addChild(this.pingWheelText);
+			this.pingWheel.visible = false;
+			this.GetPingLayer().addChild(this.pingWheel);
+		}
+
+		// called by C++ while the map is loading: textures must not be loaded after the game start
+		public function PreloadPingWheel() : void
+		{
+			var _loc1_:int = 0;
+			var _loc2_:Loader = null;
+			var _loc3_:Sprite = this.GetPingLayer();
+			if(this.pingWheel == null)
+			{
+				this.CreatePingWheel();
+			}
+			if(this.chatWheel == null)
+			{
+				this.CreateChatWheel();
+			}
+			if(this.pingPreloaded == null)
+			{
+				// marker textures: beams of all ping types (kept hidden, only to load them now); the icons are in the wheel
+				this.pingPreloaded = [];
+				_loc1_ = 0;
+				while(_loc1_ < MainInterface.PING_TYPE_COUNT)
+				{
+					_loc2_ = this.LoadPingImage("ping_beam" + _loc1_ + ".dds");
+					_loc2_.visible = false;
+					_loc3_.addChild(_loc2_);
+					this.pingPreloaded.push(_loc2_);
+					_loc1_++;
+				}
+				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_off.dds");
+				this.PreloadPingImage(MainInterface.SMARTCAST_TEX + "smartcast_on.dds");
+				this.PreloadPingImage(MainInterface.PRAISE_TEX + "praise_bg.dds");
+				this.PreloadPingImage("/UI/Styles/Icons/Artifacts/EyeYellow.dds"); // wards in the statistics window
+			}
+		}
+
+		// nx, ny: 0..1 of the screen; labels, colors (hex RRGGBB) and ping types of the slots separated by '|',
+		// slot 0 at the top, clockwise (4..8 slots); bgAlpha: background opacity 0..1, scale: wheel size (1 = 256 px)
+		public function ShowPingWheel(param1:Number, param2:Number, param3:String, param4:String, param5:String, param6:Number, param7:Number) : void
+		{
+			var i:int = 0;
+			var colors:Array = null;
+			var types:Array = null;
+			var n:int = 0;
+			this.GetPingLayer();
+			if(this.pingWheel == null)
+			{
+				this.CreatePingWheel();
+			}
+			this.GetPingLayer().setChildIndex(this.pingWheel,this.GetPingLayer().numChildren - 1);
+			this.pingWheelLabels = param3.split("|");
+			colors = param4.split("|");
+			types = param5.split("|");
+			this.pingWheelColors = [];
+			this.pingWheelSlots = [];
+			i = 0;
+			while(i < types.length && i < MainInterface.WHEEL_MAX)
+			{
+				this.pingWheelColors.push(uint(parseInt(String(colors[i]),16)));
+				this.pingWheelSlots.push(int(types[i]));
+				i++;
+			}
+			n = this.pingWheelSlots.length;
+			if(n < MainInterface.WHEEL_MIN)
+			{
+				n = MainInterface.WHEEL_MIN;
+			}
+			this.pingWheelCount = n;
+			i = MainInterface.WHEEL_MIN;
+			while(i <= MainInterface.WHEEL_MAX)
+			{
+				Loader(this.pingWheelBgs[i]).visible = i == n;
+				if(i == n)
+				{
+					Loader(this.pingWheelBgs[i]).alpha = param6;
+				}
+				i++;
+			}
+			i = 0;
+			while(i < this.pingWheelItems.length)
+			{
+				Loader(this.pingWheelItems[i]).visible = this.pingWheelSlots.indexOf(i) >= 0;
+				i++;
+			}
+			this.pingWheel.x = Math.floor(param1 * this.mainWindow.stage.stageWidth);
+			this.pingWheel.y = Math.floor(param2 * this.mainWindow.stage.stageHeight);
+			this.pingWheel.scaleX = param7;
+			this.pingWheel.scaleY = param7;
+			this.HighlightPingWheel(-1);
+			this.pingWheel.visible = true;
+		}
+
+		// highlighted sector + its name under the wheel; -1 = nothing
+		public function HighlightPingWheel(param1:int) : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var type:int = 0;
+			var scale:Number = NaN;
+			if(this.pingWheel == null)
+			{
+				return;
+			}
+			n = MainInterface.WHEEL_MIN;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				i = 0;
+				while(i < this.pingWheelHighlights[n].length)
+				{
+					Loader(this.pingWheelHighlights[n][i]).visible = n == this.pingWheelCount && i == param1;
+					i++;
+				}
+				n++;
+			}
+			i = 0;
+			while(i < this.pingWheelSlots.length)
+			{
+				type = int(this.pingWheelSlots[i]);
+				if(type >= 0 && type < this.pingWheelItems.length)
+				{
+					scale = MainInterface.PING_ICON_SCALE;
+					if(i == param1)
+					{
+						scale = MainInterface.PING_ICON_SCALE * 1.18;
+					}
+					this.PlacePingIcon(Loader(this.pingWheelItems[type]),i,this.pingWheelCount,scale);
+				}
+				i++;
+			}
+			if(param1 < 0 || this.pingWheelLabels == null || param1 >= this.pingWheelLabels.length)
+			{
+				this.pingWheelText.visible = false;
+				return;
+			}
+			this.pingWheelText.SetName(String(this.pingWheelLabels[param1]));
+			this.pingWheelText.text.textColor = uint(this.pingWheelColors[param1]);
+			this.pingWheelText.x = Math.floor(0 - this.pingWheelText.text.x - this.pingWheelText.text.textWidth / 2);
+			this.pingWheelText.y = Math.floor(136 - this.pingWheelText.text.y);
+			this.pingWheelText.visible = true;
+		}
+
+		public function HidePingWheel() : void
+		{
+			if(this.pingWheel != null)
+			{
+				this.pingWheel.visible = false;
+			}
+		}
+
+		// textures: Data/UI/Styles/Icons/ChatWheel (pw_art/UI/ChatWheel/gen_chatwheel.py): wheels for 4..8 sectors 512x512
+		private static const CHAT_TEX:String = "/UI/Styles/Icons/ChatWheel/";
+
+		// scale 1 (100% in the settings) shows the 512 px texture at 384 px
+		private static const CHAT_WHEEL_BASE_SCALE:Number = 0.75;
+
+		// radius of the label centers, texture pixels (wheel radius 244, center circle 58)
+		private static const CHAT_LABEL_RADIUS:Number = 152;
+
+		public static const CHAT_HL_OFFSETS:Array = [null,null,null,null,[-256,-256,0,-256,-256,0,-256,-256],[-256,-256,0,-256,-15,0,-241,0,-256,-256],[-128,-256,0,-231,0,-26,-128,0,-256,-26,-256,-231],[-128,-256,0,-243,0,-80,-36,0,-220,0,-256,-80,-256,-242],[-128,-256,-6,-251,0,-128,-6,-5,-128,0,-251,-5,-256,-128,-251,-251]];
+
+		private static const CHAT_LABEL_COLOR:uint = 15261109;
+
+		private static const CHAT_LABEL_SELECTED_COLOR:uint = 16777215;
+
+		private function CreateChatWheel() : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var ld:Loader = null;
+			var offsets:Array = null;
+			var hls:Array = null;
+			this.chatWheel = new Sprite();
+			this.chatWheel.mouseEnabled = false;
+			this.chatWheel.mouseChildren = false;
+			this.chatWheelGfx = new Sprite();
+			this.chatWheelGfx.mouseEnabled = false;
+			this.chatWheel.addChild(this.chatWheelGfx);
+			this.chatWheelBgs = [];
+			this.chatWheelHighlights = [];
+			n = 0;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				this.chatWheelBgs.push(null);
+				this.chatWheelHighlights.push(null);
+				if(n >= MainInterface.WHEEL_MIN)
+				{
+					ld = new Loader();
+					ld.mouseEnabled = false;
+					ld.load(new URLRequest(MainInterface.CHAT_TEX + "chat_wheel_bg_" + n + ".dds"));
+					ld.x = -256;
+					ld.y = -256;
+					ld.visible = false;
+					this.chatWheelGfx.addChild(ld);
+					this.chatWheelBgs[n] = ld;
+					offsets = MainInterface.CHAT_HL_OFFSETS[n];
+					hls = [];
+					i = 0;
+					while(i < n)
+					{
+						ld = new Loader();
+						ld.mouseEnabled = false;
+						ld.load(new URLRequest(MainInterface.CHAT_TEX + "chat_wheel_hl_" + n + "_" + i + ".dds"));
+						ld.x = int(offsets[i * 2]);
+						ld.y = int(offsets[i * 2 + 1]);
+						ld.visible = false;
+						this.chatWheelGfx.addChild(ld);
+						hls.push(ld);
+						i++;
+					}
+					this.chatWheelHighlights[n] = hls;
+				}
+				n++;
+			}
+			this.chatWheelLabels = [];
+			this.chatWheel.visible = false;
+			this.GetPingLayer().addChild(this.chatWheel);
+		}
+
+		// a long message goes to two lines (split at the space nearest to the middle)
+		private function SplitChatLabel(param1:String) : Array
+		{
+			var _loc2_:int = -1;
+			var _loc3_:int = 0;
+			var _loc4_:int = 0;
+			var _loc5_:int = 0;
+			if(param1.length <= 11)
+			{
+				return [param1];
+			}
+			_loc3_ = 0;
+			while(_loc3_ < param1.length)
+			{
+				if(param1.charAt(_loc3_) == " ")
+				{
+					_loc4_ = Math.abs(_loc3_ * 2 - param1.length);
+					if(_loc2_ < 0 || _loc4_ < _loc5_)
+					{
+						_loc2_ = _loc3_;
+						_loc5_ = _loc4_;
+					}
+				}
+				_loc3_++;
+			}
+			if(_loc2_ < 0)
+			{
+				return [param1];
+			}
+			return [param1.substr(0,_loc2_),param1.substr(_loc2_ + 1)];
+		}
+
+		// nx, ny: 0..1 of the screen; labels separated by '|' (4..8), item 0 at the top, clockwise;
+		// bgAlpha: background opacity 0..1, scale: wheel size (1 = 100% in the settings)
+		public function ShowChatWheel(param1:Number, param2:Number, param3:String, param4:Number, param5:Number) : void
+		{
+			var items:Array = null;
+			var lines:Array = null;
+			var row:Array = null;
+			var i:int = 0;
+			var j:int = 0;
+			var n:int = 0;
+			var label:ShortcutItem = null;
+			var scale:Number = NaN;
+			var angle:Number = NaN;
+			var radius:Number = NaN;
+			var lineHeight:Number = 16;
+			this.GetPingLayer();
+			if(this.chatWheel == null)
+			{
+				this.CreateChatWheel();
+			}
+			this.GetPingLayer().setChildIndex(this.chatWheel,this.GetPingLayer().numChildren - 1);
+			i = 0;
+			while(i < this.chatWheelLabels.length)
+			{
+				row = this.chatWheelLabels[i];
+				j = 0;
+				while(j < row.length)
+				{
+					this.ReleasePingLabel(ShortcutItem(row[j]));
+					j++;
+				}
+				i++;
+			}
+			this.chatWheelLabels = [];
+			scale = param5 * MainInterface.CHAT_WHEEL_BASE_SCALE;
+			this.chatWheelGfx.scaleX = scale;
+			this.chatWheelGfx.scaleY = scale;
+			items = param3.split("|");
+			if(items.length > MainInterface.WHEEL_MAX)
+			{
+				items.length = MainInterface.WHEEL_MAX;
+			}
+			n = items.length;
+			if(n < MainInterface.WHEEL_MIN)
+			{
+				n = MainInterface.WHEEL_MIN;
+			}
+			this.chatWheelCount = n;
+			i = MainInterface.WHEEL_MIN;
+			while(i <= MainInterface.WHEEL_MAX)
+			{
+				Loader(this.chatWheelBgs[i]).visible = i == n;
+				if(i == n)
+				{
+					Loader(this.chatWheelBgs[i]).alpha = param4;
+				}
+				i++;
+			}
+			i = 0;
+			while(i < items.length)
+			{
+				angle = (-90 + i * 360 / n) * Math.PI / 180;
+				radius = MainInterface.CHAT_LABEL_RADIUS * scale;
+				lines = this.SplitChatLabel(String(items[i]));
+				row = [];
+				j = 0;
+				while(j < lines.length)
+				{
+					label = this.CreatePingLabel(String(lines[j]),MainInterface.CHAT_LABEL_COLOR);
+					label.x = Math.floor(Math.cos(angle) * radius - label.text.x - label.text.textWidth / 2);
+					label.y = Math.floor(Math.sin(angle) * radius + (j - lines.length / 2) * lineHeight - label.text.y);
+					this.chatWheel.addChild(label);
+					row.push(label);
+					j++;
+				}
+				this.chatWheelLabels.push(row);
+				i++;
+			}
+			this.chatWheel.x = Math.floor(param1 * this.mainWindow.stage.stageWidth);
+			this.chatWheel.y = Math.floor(param2 * this.mainWindow.stage.stageHeight);
+			this.HighlightChatWheel(-1);
+			this.chatWheel.visible = true;
+		}
+
+		// highlighted sector and its message; -1 = nothing
+		public function HighlightChatWheel(param1:int) : void
+		{
+			var n:int = 0;
+			var i:int = 0;
+			var j:int = 0;
+			var row:Array = null;
+			var color:uint = 0;
+			if(this.chatWheel == null)
+			{
+				return;
+			}
+			n = MainInterface.WHEEL_MIN;
+			while(n <= MainInterface.WHEEL_MAX)
+			{
+				i = 0;
+				while(i < this.chatWheelHighlights[n].length)
+				{
+					Loader(this.chatWheelHighlights[n][i]).visible = n == this.chatWheelCount && i == param1;
+					i++;
+				}
+				n++;
+			}
+			i = 0;
+			while(i < this.chatWheelLabels.length)
+			{
+				color = MainInterface.CHAT_LABEL_COLOR;
+				if(i == param1)
+				{
+					color = MainInterface.CHAT_LABEL_SELECTED_COLOR;
+				}
+				row = this.chatWheelLabels[i];
+				j = 0;
+				while(j < row.length)
+				{
+					ShortcutItem(row[j]).text.textColor = color;
+					j++;
+				}
+				i++;
+			}
+		}
+
+		public function HideChatWheel() : void
+		{
+			if(this.chatWheel != null)
+			{
+				this.chatWheel.visible = false;
+			}
+		}
+
+		// ping to the game server under the minimap, "" - hidden (AdventureScreen::UpdatePingHud)
+		public function SetPingText(text:String) : void
+		{
+			try
+			{
+				this.mainWindow.miniMap_mc.miniMapAnim_mc.SetPing(text);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// wards placed by a player (lanterns of the shop), statistics window
+		public function SetPlayerWards(playerId:int, count:int) : void
+		{
+			try
+			{
+				this.mainWindow.statisticsBar_mc.allStats_mc.SetWards(playerId, count);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// pings of a player are off (button "!" in the statistics window; C++ restores them from user.cfg on the battle start)
+		public function SetPlayerPingMuted(playerId:int, muted:Boolean) : void
+		{
+			try
+			{
+				this.mainWindow.statisticsBar_mc.allStats_mc.SetPingMuted(playerId, muted);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// wheel editors of the settings window (C++ AdventureScreen::SendWheelEditors)
+		public function SetWheelEditor(wheel:int, varName:String, ids:String, labels:String, icons:String, items:String, texts:String) : void
+		{
+			try
+			{
+				this.mainWindow.optionsWindow.SetWheelEditor(wheel, varName, ids, labels, icons, items, texts);
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// loads a texture now (absolute path, e.g. a hero minimap icon): files must not be loaded after the game start
+		public function PreloadPingImage(param1:String) : void
+		{
+			var _loc2_:Sprite = this.GetPingLayer();
+			var _loc3_:Loader = null;
+			if(param1 == null || param1.length == 0)
+			{
+				return;
+			}
+			if(this.pingPreloaded == null)
+			{
+				this.pingPreloaded = [];
+			}
+			_loc3_ = new Loader();
+			_loc3_.mouseEnabled = false;
+			_loc3_.visible = false;
+			_loc3_.load(new URLRequest(param1));
+			_loc2_.addChild(_loc3_);
+			this.pingPreloaded.push(_loc3_);
+		}
+		
+		// hero icon (path) shown above the marker id; called before the first SetPingMarker of that id
+		public function SetPingMarkerHero(param1:int, param2:String) : void
+		{
+			if(this.pingMarkerHeroes == null)
+			{
+				this.pingMarkerHeroes = new Object();
+			}
+			this.pingMarkerHeroes[String(param1)] = param2;
+		}
+		
+		// ping marker: light beam standing on the ground point (gx, gy) + icon (+ text) at its top (nx, ny); all 0..1 of the screen;
+		// alpha <= 0 removes it
+		public function SetPingMarker(param1:int, param2:int, param3:String, param4:uint, param5:Number, param6:Number, param7:Number, param8:Number, param9:Number) : void
+		{
+			var _loc10_:Sprite = this.GetPingLayer();
+			var _loc11_:String = String(param1);
+			var _loc12_:Sprite = this.pingMarkers[_loc11_] as Sprite;
+			var _loc13_:Loader = null;
+			var _loc14_:Loader = null;
+			var _loc15_:ShortcutItem = null;
+			var _loc16_:Number = 0;
+			var _loc17_:Number = 0;
+			var _loc18_:Number = 0;
+			var _loc19_:Number = 0;
+			var _loc20_:Number = 0;
+			var _loc21_:Loader = null;
+			var _loc22_:String = "";
+			var _loc23_:Number = 0;
+			var _loc24_:Number = 0;
+			if(param9 <= 0)
+			{
+				if(_loc12_ != null)
+				{
+					if(_loc12_.numChildren > 3)
+					{
+						this.ReleasePingLabel(_loc12_.getChildAt(3) as ShortcutItem);
+					}
+					if(_loc12_.parent != null)
+					{
+						_loc12_.parent.removeChild(_loc12_);
+					}
+					delete this.pingMarkers[_loc11_];
+				}
+				if(this.pingMarkerHeroes != null)
+				{
+					delete this.pingMarkerHeroes[_loc11_];
+				}
+				return;
+			}
+			if(_loc12_ == null)
+			{
+				_loc12_ = new Sprite();
+				_loc12_.mouseEnabled = false;
+				_loc12_.mouseChildren = false;
+				_loc13_ = this.LoadPingImage("ping_beam" + param2 + ".dds");
+				_loc12_.addChild(_loc13_);
+				_loc14_ = this.LoadPingImage("ping_icon" + param2 + ".dds");
+				_loc14_.scaleX = 0.75;
+				_loc14_.scaleY = 0.75;
+				_loc12_.addChild(_loc14_);
+				if(this.pingMarkerHeroes != null && this.pingMarkerHeroes[_loc11_] != null)
+				{
+					_loc22_ = String(this.pingMarkerHeroes[_loc11_]);
+				}
+				_loc21_ = new Loader();
+				_loc21_.mouseEnabled = false;
+				if(_loc22_.length > 0)
+				{
+					_loc21_.load(new URLRequest(_loc22_));
+				}
+				else
+				{
+					_loc21_.visible = false;
+				}
+				_loc12_.addChild(_loc21_);
+				if(param3.length > 0)
+				{
+					_loc15_ = this.CreatePingLabel(param3,param4);
+					_loc12_.addChild(_loc15_);
+				}
+				_loc10_.addChild(_loc12_);
+				this.pingMarkers[_loc11_] = _loc12_;
+			}
+			_loc13_ = Loader(_loc12_.getChildAt(0));
+			_loc14_ = Loader(_loc12_.getChildAt(1));
+			_loc21_ = Loader(_loc12_.getChildAt(2));
+			_loc16_ = Math.floor(param7 * this.mainWindow.stage.stageWidth);
+			_loc17_ = Math.floor(param8 * this.mainWindow.stage.stageHeight);
+			_loc18_ = Math.floor(param6 * this.mainWindow.stage.stageHeight);
+			_loc19_ = _loc17_ - _loc18_;
+			_loc12_.x = _loc16_;
+			_loc12_.y = _loc17_;
+			if(_loc19_ > 6)
+			{
+				_loc13_.visible = true;
+				_loc13_.x = -16;
+				_loc13_.y = 0 - _loc19_;
+				_loc13_.scaleY = _loc19_ / 128;
+			}
+			else
+			{
+				_loc13_.visible = false;
+			}
+			_loc20_ = 0 - _loc19_ - 40;
+			_loc14_.x = -24;
+			_loc14_.y = _loc20_;
+			// hero icon above the ping icon, ~28 px whatever the texture size is
+			_loc24_ = _loc20_;
+			if(_loc21_.visible)
+			{
+				_loc23_ = 0;
+				if(_loc21_.scaleX > 0)
+				{
+					_loc23_ = _loc21_.width / _loc21_.scaleX;
+				}
+				if(!(_loc23_ > 1))
+				{
+					_loc23_ = 20;
+				}
+				_loc21_.scaleX = 28 / _loc23_;
+				_loc21_.scaleY = 28 / _loc23_;
+				_loc21_.x = -14;
+				_loc21_.y = _loc20_ - 30;
+				_loc24_ = _loc20_ - 30;
+			}
+			if(_loc12_.numChildren > 3)
+			{
+				_loc15_ = ShortcutItem(_loc12_.getChildAt(3));
+				_loc15_.x = Math.floor(0 - _loc15_.text.x - _loc15_.text.textWidth / 2);
+				_loc15_.y = Math.floor(_loc24_ - 20 - _loc15_.text.y);
+			}
+			_loc12_.alpha = param9;
+		}
+		
+		// the old sharp minimap alert sound of pings (off while the new ping sounds are on)
+		public function SetMinimapAlertSound(param1:Boolean) : void
+		{
+			AttentionEffect.soundEnabled = param1;
+		}
+		
+		// ---------------------------------------------------------------- smart-cast checkboxes on the action bar buttons
+		private static const SMARTCAST_TEX:String = "/UI/Styles/Icons/SmartCast/";
+		
+		// mode of the talent (column = slot, raw = level): 0 no checkbox, 1 off, 2 on
+		public function SetTalentSmartCast(param1:int, param2:int, param3:int) : void
+		{
+			if(this.smartCastModes == null)
+			{
+				this.smartCastModes = new Object();
+			}
+			this.smartCastModes[param1.toString() + " " + param2.toString()] = param3;
+		}
+		
+		// mode of the shop item in inventory slot `slot`: 0 no checkbox, 1 off, 2 on
+		public function SetItemSmartCast(slot:int, mode:int) : void
+		{
+			if(this.smartCastModes == null)
+			{
+				this.smartCastModes = new Object();
+			}
+			this.smartCastModes["item " + slot.toString()] = mode;
+		}
+
+		private function CreateSmartCastBox() : Sprite
+		{
+			var _loc1_:Sprite = new Sprite();
+			var _loc2_:Loader = null;
+			_loc1_.mouseEnabled = false;
+			_loc1_.mouseChildren = false;
+			_loc2_ = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.SMARTCAST_TEX + "smartcast_off.dds"));
+			_loc2_.scaleX = ActionButton.SMART_BOX_SIZE / 32;
+			_loc2_.scaleY = ActionButton.SMART_BOX_SIZE / 32;
+			_loc1_.addChild(_loc2_);
+			_loc2_ = new Loader();
+			_loc2_.mouseEnabled = false;
+			_loc2_.load(new URLRequest(MainInterface.SMARTCAST_TEX + "smartcast_on.dds"));
+			_loc2_.scaleX = ActionButton.SMART_BOX_SIZE / 32;
+			_loc2_.scaleY = ActionButton.SMART_BOX_SIZE / 32;
+			_loc1_.addChild(_loc2_);
+			_loc1_.x = ActionButton.SMART_BOX_X;
+			_loc1_.y = ActionButton.SMART_BOX_Y;
+			return _loc1_;
+		}
+		
+		// puts the checkboxes on the buttons that hold talents now (talents can be dragged between the buttons)
+		public function RefreshSmartCastBoxes() : void
+		{
+			var _loc1_:int = 0;
+			var _loc2_:ActionButton = null;
+			var _loc3_:String = null;
+			var _loc4_:int = 0;
+			var _loc5_:Sprite = null;
+			var _loc6_:TalentShortCut = null;
+			var _loc7_:Talent = null;
+			_loc1_ = 0;
+			while(_loc1_ < 24)
+			{
+				_loc2_ = this.mainWindow.actionBarContainer.actionBar_mc.GetActionBarItem(_loc1_) as ActionButton;
+				if(_loc2_ != null)
+				{
+					_loc3_ = null;
+					_loc4_ = 0;
+					_loc6_ = _loc2_.Shortcut as TalentShortCut;
+					// shop items on the action bar: key "item <inventory slot>" (ActionButton sends ItemSmartCast)
+					var itemShortcut:InventoryItemShortcut = _loc2_.Shortcut as InventoryItemShortcut;
+					if(itemShortcut != null && itemShortcut.InventoryItem != null)
+					{
+						_loc3_ = "item " + itemShortcut.InventoryItem.InventoryIndex.toString();
+						if(this.smartCastModes != null && this.smartCastModes[_loc3_] != null)
+						{
+							_loc4_ = int(this.smartCastModes[_loc3_]);
+						}
+					}
+					if(_loc6_ != null)
+					{
+						_loc7_ = _loc6_.TalentObj;
+						if(_loc7_ != null)
+						{
+							_loc3_ = _loc7_.column.toString() + " " + _loc7_.raw.toString();
+							if(this.smartCastModes != null && this.smartCastModes[_loc3_] != null)
+							{
+								_loc4_ = int(this.smartCastModes[_loc3_]);
+							}
+						}
+					}
+					_loc5_ = ActionButton.smartBoxes[String(_loc1_)] as Sprite;
+					if(_loc4_ <= 0)
+					{
+						if(_loc5_ != null)
+						{
+							_loc5_.visible = false;
+						}
+					}
+					else
+					{
+						if(_loc5_ == null)
+						{
+							_loc5_ = this.CreateSmartCastBox();
+							_loc2_.addChild(_loc5_);
+							ActionButton.smartBoxes[String(_loc1_)] = _loc5_;
+						}
+						_loc2_.setChildIndex(_loc5_,_loc2_.numChildren - 1);
+						ActionButton.smartKeys[String(_loc1_)] = _loc3_;
+						_loc5_.getChildAt(0).visible = _loc4_ == 1;
+						_loc5_.getChildAt(1).visible = _loc4_ == 2;
+						_loc5_.visible = true;
+					}
+				}
+				_loc1_++;
+			}
+		}
+		
+		// ---------------------------------------------------------------- praise notifications (right edge of the screen)
+		private static const PRAISE_TEX:String = "/UI/Styles/Icons/Praise/";
+		
+		private static const PRAISE_W:Number = 320;
+		
+		private static const PRAISE_H:Number = 100;
+		
+		private static const PRAISE_PORTRAIT:Number = 60;
+		
+		private function CreatePraisePortrait(param1:String, param2:Number) : Loader
+		{
+			var _loc3_:Loader = new Loader();
+			_loc3_.mouseEnabled = false;
+			_loc3_.x = param2;
+			_loc3_.y = 10;
+			if(param1 != null && param1.length > 0)
+			{
+				_loc3_.load(new URLRequest(param1));
+			}
+			else
+			{
+				_loc3_.visible = false;
+			}
+			return _loc3_;
+		}
+		
+		// portrait textures may have any size: fit them into the 60x60 slot
+		private function FitPraisePortrait(param1:Loader) : void
+		{
+			var _loc2_:Number = 0;
+			if(!param1.visible)
+			{
+				return;
+			}
+			if(param1.scaleX > 0)
+			{
+				_loc2_ = param1.width / param1.scaleX;
+			}
+			if(!(_loc2_ > 1))
+			{
+				_loc2_ = 128;
+			}
+			param1.scaleX = MainInterface.PRAISE_PORTRAIT / _loc2_;
+			param1.scaleY = MainInterface.PRAISE_PORTRAIT / _loc2_;
+		}
+		
+		private function PlacePraiseLabel(param1:ShortcutItem, param2:Number, param3:Number) : void
+		{
+			param1.x = Math.floor(param2 - param1.text.x - param1.text.textWidth / 2);
+			param1.y = Math.floor(param3 - param1.text.y);
+		}
+		
+		// width of a name under a portrait (centered under it, the panel is 320 px wide)
+		private static const PRAISE_NAME_WIDTH:Number = 76;
+		
+		private function FitPraiseName(param1:ShortcutItem, param2:Number) : void
+		{
+			var name:String = param1.text.text;
+			if(param1.text.textWidth <= param2)
+			{
+				return;
+			}
+			while(name.length > 1)
+			{
+				name = name.substr(0,name.length - 1);
+				param1.SetName(name + "...");
+				if(param1.text.textWidth <= param2)
+				{
+					return;
+				}
+			}
+		}
+		
+		// width of the praise text between the portraits
+		private static const PRAISE_TEXT_WIDTH:Number = 168;
+
+		// the praise text between the portraits: broken into lines by words, a smaller font if it still does not fit.
+		// The engine ignores wordWrap / TextFormatAlign.CENTER and does not scale text fields: every line is its own
+		// text field of the needed font size, centred by x; the fields come from a pool (sprite limit of the engine)
+		private static const PRAISE_TEXT_TOP:Number = 6;
+		private static const PRAISE_TEXT_BOTTOM:Number = 72;   // the names start at 74
+		private static const PRAISE_TEXT_CENTER_Y:Number = 51; // a one-line text stays where the old title was
+		private static const PRAISE_TEXT_SIZES:Array = [16, 15, 14, 13, 12, 11, 10];
+		private var praiseTextPool:Array = [];
+
+		private function CreatePraiseTextField(size:int, color:uint) : TextField
+		{
+			var format:TextFormat = new TextFormat();
+			format.font = "DejaVu LGC Sans";
+			format.size = size;
+			format.color = color;
+			var field:TextField = null;
+			if (this.praiseTextPool.length > 0)
+			{
+				field = TextField(this.praiseTextPool.pop());
+			}
+			else
+			{
+				// the format right after the creation: a code-made field has font size 0 in the engine, and setters
+				// like autoSize / width lay the text out at once (assert "Can't set size for fonts" in Alphabet)
+				field = new TextField();
+				field.defaultTextFormat = format;
+				field.selectable = false;
+				field.mouseEnabled = false;
+				field.multiline = false;
+				field.wordWrap = false;
+				field.autoSize = TextFieldAutoSize.NONE;
+			}
+			// the engine takes only the size from the format: the color is set separately
+			field.defaultTextFormat = format;
+			field.textColor = color;
+			field.width = MainInterface.PRAISE_W;
+			field.height = size + 8;
+			field.text = "";
+			field.x = 0;
+			field.y = 0;
+			field.visible = true;
+			return field;
+		}
+
+		private function ReleasePraiseTextField(field:TextField) : void
+		{
+			if (field.parent != null)
+				field.parent.removeChild(field);
+			this.praiseTextPool.push(field);
+		}
+
+		private function TextWidthOf(field:TextField, text:String) : Number
+		{
+			field.text = text;
+			return field.textWidth;
+		}
+
+		// words -> lines no wider than maxWidth; null if one word alone is wider
+		private function WrapPraiseWords(words:Array, maxWidth:Number, measure:TextField) : Array
+		{
+			var lines:Array = [];
+			var line:String = "";
+			for (var i:int = 0; i < words.length; i++)
+			{
+				var test:String = line.length > 0 ? line + " " + words[i] : String(words[i]);
+				if (this.TextWidthOf(measure, test) <= maxWidth)
+				{
+					line = test;
+					continue;
+				}
+				if (line.length == 0 || this.TextWidthOf(measure, String(words[i])) > maxWidth)
+					return null;
+				lines.push(line);
+				line = String(words[i]);
+			}
+			if (line.length > 0)
+				lines.push(line);
+			return lines;
+		}
+
+		// cuts the text with "..." to maxWidth
+		private function CutPraiseText(measure:TextField, text:String, maxWidth:Number) : String
+		{
+			if (this.TextWidthOf(measure, text) <= maxWidth)
+				return text;
+			var cut:String = text;
+			while (cut.length > 1)
+			{
+				cut = cut.substr(0, cut.length - 1);
+				if (this.TextWidthOf(measure, cut + "...") <= maxWidth)
+					return cut + "...";
+			}
+			return cut;
+		}
+
+		private function AddPraiseText(panel:Sprite, text:String, color:uint) : void
+		{
+			var words:Array = [];
+			var parts:Array = text.split(" ");
+			for (var i:int = 0; i < parts.length; i++)
+				if (String(parts[i]).length > 0)
+					words.push(parts[i]);
+			if (words.length == 0)
+				words.push(text);
+
+			var areaH:Number = MainInterface.PRAISE_TEXT_BOTTOM - MainInterface.PRAISE_TEXT_TOP;
+			var maxW:Number = MainInterface.PRAISE_TEXT_WIDTH;
+			var lines:Array = null;
+			var size:int = 16;
+			var lineH:Number = 0;
+			var measure:TextField = null;
+			for (var s:int = 0; s < MainInterface.PRAISE_TEXT_SIZES.length; s++)
+			{
+				size = int(MainInterface.PRAISE_TEXT_SIZES[s]);
+				measure = this.CreatePraiseTextField(size, color);
+				this.TextWidthOf(measure, "Ag");
+				lineH = measure.textHeight + 1;
+				lines = this.WrapPraiseWords(words, maxW, measure);
+				if (lines != null && lines.length * lineH <= areaH)
+					break;
+				lines = null;
+				if (s < MainInterface.PRAISE_TEXT_SIZES.length - 1)
+					this.ReleasePraiseTextField(measure);
+			}
+			if (lines == null)
+			{
+				// too long even with the smallest font: words that do not fit a line are cut, the lines below the area too
+				var maxLines:int = Math.max(1, Math.floor(areaH / lineH));
+				var line:String = "";
+				lines = [];
+				for (var w:int = 0; w < words.length; w++)
+				{
+					var test:String = line.length > 0 ? line + " " + words[w] : String(words[w]);
+					if (this.TextWidthOf(measure, test) <= maxW)
+					{
+						line = test;
+						continue;
+					}
+					if (line.length > 0)
+						lines.push(line);
+					line = this.CutPraiseText(measure, String(words[w]), maxW);
+				}
+				if (line.length > 0)
+					lines.push(line);
+				if (lines.length > maxLines)
+				{
+					lines = lines.slice(0, maxLines);
+					lines[maxLines - 1] = this.CutPraiseText(measure, String(lines[maxLines - 1]) + "...", maxW);
+				}
+			}
+			this.ReleasePraiseTextField(measure);
+
+			var blockH:Number = lines.length * lineH;
+			var top:Number = MainInterface.PRAISE_TEXT_CENTER_Y - blockH / 2;
+			top = Math.min(top, MainInterface.PRAISE_TEXT_BOTTOM - blockH);
+			top = Math.max(top, MainInterface.PRAISE_TEXT_TOP);
+			for (var l:int = 0; l < lines.length; l++)
+			{
+				var field:TextField = this.CreatePraiseTextField(size, color);
+				field.text = String(lines[l]);
+				field.width = Math.ceil(field.textWidth) + 4;
+				field.x = Math.floor(160 - field.width / 2);
+				field.y = Math.floor(top + l * lineH - 2);
+				panel.addChild(field);
+			}
+		}
+
+		// how many panels fit between their top and the minimap: told to C++ (AdventureScreen::SetPraiseRowsFit),
+		// it hides the oldest panel early when there are more
+		private var praiseRowsSent:int = -1;
+
+		private function SendPraiseRowsFit(panelTop:Number) : void
+		{
+			try
+			{
+				var stageH:Number = this.mainWindow.stage.stageHeight;
+				var minimapTop:Number = stageH - 305;
+				var mm:MiniMapWraper = this.mainWindow.miniMap_mc;
+				// main.fla: the minimap clip at (-272, -269) in its wrapper (bottom-right corner), the dragon frame 25 px above it
+				if (mm != null && mm.miniMapAnim_mc != null)
+					minimapTop = mm.y + (mm.miniMapAnim_mc.y - 25) * mm.scaleY;
+				var first:Number = stageH * panelTop;
+				var rows:int = Math.floor((minimapTop - 8 - first - MainInterface.PRAISE_H) / (MainInterface.PRAISE_H + 6)) + 1;
+				if (rows < 1)
+					rows = 1;
+				if (rows != this.praiseRowsSent)
+				{
+					this.praiseRowsSent = rows;
+					FSCommands.Send("PraiseRows", rows.toString());
+				}
+			}
+			catch (e:Error)
+			{
+			}
+		}
+
+		// children: 0 bg, 1 sender portrait, 2 target portrait, 3.. text lines, names
+		// param8: number of the praise chosen in the castle fair, param9: its text (empty - the standard "ХВАЛИТ")
+		public function ShowPraise(param1:int, param2:String, param3:String, param4:uint, param5:String, param6:String, param7:uint, param8:int, param9:String = "") : void
+		{
+			var _loc9_:Sprite = this.GetPingLayer();
+			var _loc10_:Sprite = null;
+			var _loc11_:Loader = null;
+			var _loc12_:ShortcutItem = null;
+			var _loc13_:ShortcutItem = null;
+			var _loc14_:Number = 0;
+			var _loc15_:Number = 0;
+			if(this.praisePanels == null)
+			{
+				this.praisePanels = new Object();
+			}
+			if(this.praisePanels[String(param1)] != null)
+			{
+				return;
+			}
+			_loc10_ = new Sprite();
+			_loc10_.mouseEnabled = false;
+			_loc10_.mouseChildren = false;
+			_loc11_ = new Loader();
+			_loc11_.mouseEnabled = false;
+			_loc11_.load(new URLRequest(MainInterface.PRAISE_TEX + "praise_bg.dds"));
+			_loc11_.scaleX = 0.625;
+			_loc11_.scaleY = 0.625;
+			_loc10_.addChild(_loc11_);
+			_loc10_.addChild(this.CreatePraisePortrait(param2,12));
+			_loc10_.addChild(this.CreatePraisePortrait(param5,248));
+			this.AddPraiseText(_loc10_,param9 != null && param9.length > 0 ? param9 : "ХВАЛИТ",15784080);
+			// the praise is free: no prime in the panel; long names are cut with "..." to stay inside the panel
+			_loc12_ = this.CreatePingLabel(param3,param4);
+			this.FitPraiseName(_loc12_,MainInterface.PRAISE_NAME_WIDTH);
+			_loc10_.addChild(_loc12_);
+			this.PlacePraiseLabel(_loc12_,42,74);
+			_loc12_ = this.CreatePingLabel(param6,param7);
+			this.FitPraiseName(_loc12_,MainInterface.PRAISE_NAME_WIDTH);
+			_loc10_.addChild(_loc12_);
+			this.PlacePraiseLabel(_loc12_,278,74);
+			_loc10_.visible = false;
+			_loc9_.addChild(_loc10_);
+			this.praisePanels[String(param1)] = _loc10_;
+		}
+		
+		// slide: 0 = in place, 1 = hidden behind the right edge; row: 0 = top panel; top: part of the stage height; alpha <= 0 removes
+		public function SetPraisePanel(param1:int, param2:Number, param3:Number, param4:Number, param5:Number) : void
+		{
+			var _loc6_:String = String(param1);
+			var _loc7_:Sprite = null;
+			if(this.praisePanels == null)
+			{
+				return;
+			}
+			_loc7_ = this.praisePanels[_loc6_] as Sprite;
+			if(_loc7_ == null)
+			{
+				return;
+			}
+			if(param4 <= 0)
+			{
+				while(_loc7_.numChildren > 3)
+				{
+					if(_loc7_.getChildAt(3) is ShortcutItem)
+					{
+						this.ReleasePingLabel(ShortcutItem(_loc7_.getChildAt(3)));
+					}
+					else if(_loc7_.getChildAt(3) is TextField)
+					{
+						this.ReleasePraiseTextField(TextField(_loc7_.getChildAt(3)));
+					}
+					else
+					{
+						_loc7_.removeChildAt(3);
+					}
+				}
+				if(_loc7_.parent != null)
+				{
+					_loc7_.parent.removeChild(_loc7_);
+				}
+				delete this.praisePanels[_loc6_];
+				return;
+			}
+			this.SendPraiseRowsFit(param5);
+			this.FitPraisePortrait(Loader(_loc7_.getChildAt(1)));
+			this.FitPraisePortrait(Loader(_loc7_.getChildAt(2)));
+			_loc7_.x = Math.floor(this.mainWindow.stage.stageWidth - MainInterface.PRAISE_W - 4 + param2 * (MainInterface.PRAISE_W + 12));
+			_loc7_.y = Math.floor(this.mainWindow.stage.stageHeight * param5 + param3 * (MainInterface.PRAISE_H + 6));
+			_loc7_.alpha = param4;
+			_loc7_.visible = true;
+		}
+		
+		public function SetChatCentered(param1:Boolean, param2:Number) : void
+		{
+			this.mainWindow.chatBar.SetCentered(param1,param2);
+		}
+		
+		// Размер панелей портретов команд (настройки «Дополнительно», team_portraits_scale), 1 = исходный.
+		public function SetTeamPortraitsScale(scale:Number):void
+		{
+			mainWindow.teamInfoFrendly_mc.SetSizeBoost(scale);
+			mainWindow.teamInfoEnemy_mc.SetSizeBoost(scale);
+		}
+
 		public function SetChatVisible(value:Boolean):void
 		{
 			mainWindow.chatBar.DisableInput(!value);
@@ -1463,6 +2775,71 @@
 			mainWindow.actionBarContainer.actionBar_mc.ShowPanel(show);
 		}
 
+		// Войс на портретах союзников (PF_GameLogic/VoiceOverlayController.cpp).
+		public function ShowVoiceOverlay(show:Boolean):void
+		{
+			voiceTeamOverlay.Show(show);
+		}
+		
+		// Позиция была у отдельного оверлея; на портретах она не нужна.
+		public function SetVoiceOverlayPosition(x:Number, y:Number):void
+		{
+		}
+		
+		public function SetVoiceOverlayInteractive(interactive:Boolean):void
+		{
+			voiceTeamOverlay.SetInteractive(interactive);
+		}
+		
+		public function SetVoiceOverlayState(micState:int, meSpeaking:Boolean, myName:String, ids:Array, flags:Array, volumes:Array, names:Array):void
+		{
+			voiceTeamOverlay.SetState(micState, meSpeaking, myName, ids, flags, volumes, names);
+		}
+
+		// Панель управления реплеем (PF_GameLogic/ReplayControlsController.cpp). Время — в десятых
+		// секунды, target — куда идёт перемотка (-1 — нет), speed — в процентах.
+		public function ShowReplayControls(show:Boolean):void
+		{
+			replayControlsPanel.Show(show);
+		}
+
+		public function SetReplayState(time:int, total:int, target:int, speed:int, paused:Boolean, ended:Boolean):void
+		{
+			replayControlsPanel.SetState(time, total, target, speed, paused, ended);
+		}
+
+		// Верх панели активных талантов вместе с полосками и баффами над ней, в координатах экрана
+		// (getBounds в движке не работает — считаем по детям; второй ряд слотов поднимает полоски и баффы).
+		private function GetActionBarTop():Number
+		{
+			var container:MovieClip = mainWindow.actionBarContainer;
+			if (container == null || container.actionBar_mc == null)
+				return NaN;
+			var bar:MovieClip = container.actionBar_mc;
+			var top:Number = bar.healthBar_mc != null ? bar.healthBar_mc.y : 0;
+			for (var i:int = 1; i <= 40; i++)
+			{
+				var buff:DisplayObject = null;
+				try { buff = bar["buff" + i] as DisplayObject; } catch (e:Error) { break; }
+				if (buff == null)
+					break;
+				top = Math.min(top, buff.y);
+			}
+			return container.y + (bar.y + top) * container.scaleY;
+		}
+
+		// Середина ряда слотов активных талантов — граница между 6-м и 7-м слотом — в координатах экрана.
+		// x слота — его левый край, так что граница — это x 7-го слота (width слота не годится:
+		// в нее входят выступающие части).
+		private function GetActionBarCenterX():Number
+		{
+			var container:MovieClip = mainWindow.actionBarContainer;
+			if (container == null || container.actionBar_mc == null || container.actionBar_mc.btn7 == null)
+				return NaN;
+			var bar:MovieClip = container.actionBar_mc;
+			return container.x + (bar.x + bar.btn7.x) * container.scaleX;
+		}
+		
 		public function TempUnlockActionBar(unlock:Boolean):void
 		{
 			mainWindow.actionBarContainer.actionBar_mc.TempUnlockActionBar(unlock);
@@ -1553,6 +2930,23 @@
 				mainWindow.statisticsBar_mc.allStats_mc.SetHeroIdentity(player);
 		}
 		
+		// Рейтинг аккаунта игрока (PF_GameLogic/UnitInfoNew.cpp), как на экране загрузки.
+		public function SetHeroAccountRank(heroID:int, rating:Number, rankIcon:String, rankName:String):void
+		{
+			var player:PlayerStatisticData = GetPlayer(heroID);
+			if (player == null)
+				return;
+
+			player.AccRaiting = rating;
+			player.AccRankIcon = rankIcon != null ? rankIcon : "";
+			player.AccRankName = rankName != null ? rankName : "";
+
+			if (mainWindow.finalStat.batleStatistic != null)
+				mainWindow.finalStat.batleStatistic.SetHeroIdentity(player);
+			else
+				mainWindow.statisticsBar_mc.allStats_mc.SetHeroIdentity(player);
+		}
+
 		public function SetFirstWin(iconPath:String, tooltip:String):void
 		{
 			mainWindow.finalStat.personalStat.SetFirstWin(iconPath, tooltip);
@@ -1625,7 +3019,15 @@
 			binds.push(bindString);
 			
 			mainWindow.optionsWindow.shortcutsTab.FillBindSettings(bindString);
-			
+
+			try
+			{
+				OptionsWindow.OnBindString(bindString); // key rows of the settings pages (quick commands key)
+			}
+			catch (e:Error)
+			{
+			}
+
 			if (bindString.indexOf(" ") == -1)
 				return;
 			

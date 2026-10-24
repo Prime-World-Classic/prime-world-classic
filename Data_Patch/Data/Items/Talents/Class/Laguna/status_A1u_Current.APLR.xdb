@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<applicators>
+		<Item href="/Items/Talents/Class/Laguna/status_A1u_Current.APLR" id="7C85C947-27A4-4CD6-AB2E-101924CE6D75">
+			<StatModApplicator parent="/Items/Talents/Class/Reaper/appl_MS_NoFX.APLR">
+				<caption>+30% скорости на своём следе</caption>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Laguna/status_A1u_Current.APLR" id="51415993-788A-4905-A0E2-5B03833BA587">
+			<GhostMoveApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>1</behaviorFlags>
+				<caption>сквозь существ, деревья, камни и здания</caption>
+				<collisionFlags>7</collisionFlags>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<pushUnits>true</pushUnits>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</GhostMoveApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>2</behaviorFlags>
+	<caption>(A1u) течение медуз</caption>
+	<customCounter>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Laguna/status_A1u_Current.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FSoAAAADAAAAMQAAAEoAAACGAAAATGFndW5hX0ExdQAATGFndW5hX0ExdQAATGFndW5hX0ExX0luVHJhaWwAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgMAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0KGoBi1UQUmgYAAAAi0UMixCLTQyLgqABAAD/0IXAfgnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>tal("Laguna_A1u") &amp;&amp; pSecond-&gt;CountApplicators("Laguna_A1_InTrail", pMisc, UNIT) &gt; 0</sString>
+	</enabled>
+	<flags>4</flags>
+	<formulaName>Laguna_A1u_Current</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A1.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Laguna/status_A1u_Current.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>PartiallyStackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Items/Talents/Class/Laguna/status_A1u_Current.APLR" id="BE1B3B2B-F82C-4A62-98AB-14A437D8B1A0">
+		<ApplicatorsList>
+			<applicatorLists />
+			<applicators>
+				<Item href="/Items/Talents/Class/Laguna/status_A1u_Current.APLR" />
+			</applicators>
+		</ApplicatorsList>
+	</unstackableWith>
+</StatusApplicator>

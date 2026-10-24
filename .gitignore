@@ -244,3 +244,10 @@ pw/branches/r1117/Src/Render/zzz_probe_shaders_*/
 # исходниками и удаляется по завершении (atexit)
 pw/branches/r1117/Src/Render/zzz_budget_shaders_*/
 pw/branches/r1117/Src/Render/zzz_build_shaders_*/
+
+# PilePack: готовые контейнеры (см. PilePack/README.md); привязка — PilePack/gamedata_manifest.json
+Piles/
+
+# PW NanoUpdater logs
+upd_errors.txt
+adm_upd_errors.txt

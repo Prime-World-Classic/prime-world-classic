@@ -3,6 +3,9 @@
 
 #include "Core/CoreFSM.h"
 #include "SelectGameModeLogic.h"
+#include "LoadingScreenLogic.h"
+#include "UI/ImageLabel.h"
+#include "Render/TextureManager.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "NewLobbyClientPW.h"
 
@@ -43,6 +46,12 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
   logic->SetScreen( this );
   logic->LoadScreenLayout( "Lobby_SelectGameMode" );
 
+  // the fair loading screen replaces the lobby background too - the same pick as on the loading screen of this battle
+  const string fairBack = FairLoadscreenBack();
+  if ( !fairBack.empty() )
+    if ( UI::ImageLabel * back = logic->GetUIWindow<UI::ImageLabel>( "Background", false, false ) )
+      back->SetBackgroundTexture( Render::Load2DTextureFromFile( fairBack ) );
+
   {
     NI_PROFILE_BLOCK( "Maps" )
     StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
@@ -56,8 +65,10 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
 
     maps->InitCustomList(pMapList);
 
+    // Maps/Test is not packed into piles: the list still links those maps, but they don't load - skip them
     for ( int i = 0; i < pMapList->maps.size(); ++i )
-      logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
+      if ( IsValid( pMapList->maps[i] ) )
+        logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
   }
 /*
   if ( StrongMT<Game::IGameContextUiInterface> cl = gameCtx.Lock() )

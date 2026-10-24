@@ -79,6 +79,9 @@ public:
 
   void AddChatMessage(const wstring & msg, NDb::EChatChannel channel);
 
+  // Sends a message from the local player (same checks as typing it in the chat input: mutes, leaver limits, chat off)
+  void SendPlayerMessage(const wstring & message, NDb::EChatChannel channel);
+
   void SetBindsController(BindsController* _bindsController){bindsController = _bindsController;};
   // from UI::IFSCommandListner
   virtual void OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID,  const char* args, const wchar_t * argsW  );
@@ -93,6 +96,10 @@ public:
   void Reset();
 
   void NotifyChatMuted(const NWorld::PFPlayer* const player);
+
+  // spectator: "my team" is the spectators channel, "both teams" is the session chat;
+  // the input is opened only for a live match (a replay has no chat client); call before AddChatUI
+  void SetSpectatorMode();
 
 private:
   typedef nstl::list<Strong<NGameX::IChatMessageHook>> MessageHooks;
@@ -140,6 +147,7 @@ private:
   bool isMuted;
   bool isLeaver;
   bool isLeaverParty;
+  bool isSpectator;
 
   bool active;
   bool chatOffSendedToFlash;

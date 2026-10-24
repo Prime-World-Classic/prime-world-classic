@@ -736,6 +736,15 @@ ValueWithModifiers* PFBaseUnit::SearchVariableVWM( char const* name ) const
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+float PFBaseUnit::GetVariable( const char *name ) const
+{
+  // "InWater": 1 while the unit stands in map water (rivers), see PFWorld::IsPosInWater
+  if ( name && strcmp( name, "InWater" ) == 0 )
+    return ( GetWorld() && GetWorld()->IsPosInWater( GetPosition().AsVec2D() ) ) ? 1.0f : 0.0f;
+  return GetVariableValue( name );
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float PFBaseUnit::GetVariableValue( char const* name ) const
 {
 	Variable *pVar = SearchVariable(name);

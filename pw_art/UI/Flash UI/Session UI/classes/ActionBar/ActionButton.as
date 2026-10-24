@@ -28,6 +28,15 @@
 	
 		private var formatedBind:TextFieldFormater;
 		
+		// smart-cast checkboxes (MainInterface.RefreshSmartCastBoxes): action bar index -> checkbox sprite / "column raw" of its talent
+		// (statics: this class is bound to a library symbol, instance fields would break the timeline slots)
+		public static var smartBoxes:Object = new Object();
+		public static var smartKeys:Object = new Object();
+		private static var smartSwallowUp:Boolean = false;
+		public static const SMART_BOX_X:Number = 38;
+		public static const SMART_BOX_Y:Number = 38;
+		public static const SMART_BOX_SIZE:Number = 14;
+		
 		public function ActionButton()
 		{
 			Shortcut = new BaseShortCut();
@@ -72,8 +81,47 @@
 		{
 			_actionBar = actBar;
 		}
+		// click on the smart-cast checkbox of this button: toggle it instead of using the ability
+		private function SmartCastHit():Boolean
+		{
+			var box:Sprite = smartBoxes[String(ActionBarIndex)] as Sprite;
+			if (box == null || !box.visible || box.parent != this)
+				return false;
+			if (mouseX < SMART_BOX_X - 3 || mouseX > SMART_BOX_X + SMART_BOX_SIZE + 3)
+				return false;
+			if (mouseY < SMART_BOX_Y - 3 || mouseY > SMART_BOX_Y + SMART_BOX_SIZE + 3)
+				return false;
+			var key:String = String(smartKeys[String(ActionBarIndex)]);
+			if (key.indexOf("item ") == 0)
+				FSCommands.Send("ItemSmartCast", key.substr(5)); // a shop item: its inventory slot
+			else
+				FSCommands.Send("TalentSmartCast", key);
+			return true;
+		}
+		
+		override protected function onDown(e:MouseEvent):void 
+		{
+			if (SmartCastHit())
+			{
+				smartSwallowUp = true;
+				return;
+			}
+			smartSwallowUp = false;
+			super.onDown(e);
+		}
+		
 		override protected function onUp(e:MouseEvent):void 
 		{	
+			if (smartSwallowUp)
+			{
+				if (e == null || e.type != "doubleClick")
+					smartSwallowUp = false;
+				return;
+			}
+			// the second click of a double click already came as mouseDown+mouseUp; the extra 'doubleClick'
+			// event must not press the ability a third time (breaks double-click self-cast timing)
+			if (e != null && e.type == "doubleClick")
+				return;
 			super.onUp(e);
 		
 			if (DnDController.isDragging) 

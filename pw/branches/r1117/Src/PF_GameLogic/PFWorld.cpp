@@ -13,6 +13,7 @@
 #include "PFDispatchStrike1.h"
 #include "PFPureClientCritter.h"
 #include "../System/SyncProcessorState.h"
+#include "../System/ChunklessSaver.h"
 #include "../System/InlineProfiler.h"
 #include "PFBaseMovingUnit.h"
 #include "PFBuildings.h"        // for AddMapObject() - building detection
@@ -232,7 +233,8 @@ ambienceMap(NULL),
 stepLength(DEFAULT_GAME_STEP_LENGTH),
 protection(),
 dayNightController(),
-timeScale(NMainLoop::GetTimeScale())
+timeScale(NMainLoop::GetTimeScale()),
+hasWaterMap(false)
 {
 }
 
@@ -261,7 +263,8 @@ stepLengthInSeconds(stepLength/1000.0f),
 defeatedFaction(NGameX::FACTION_UNKNOWN),
 protection(),
 dayNightController(),
-timeScale(NMainLoop::GetTimeScale())
+timeScale(NMainLoop::GetTimeScale()),
+hasWaterMap(false)
 {
   NI_PROFILE_FUNCTION
 
@@ -1557,3 +1560,26 @@ bool PFWorld::IsNight() const
 }
 
 } // namespace NWorld
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// how far from the painted water mask a unit still counts as being in water (world units)
+static const float WATER_REACH = 4.0f;
+
+void NWorld::PFWorld::LoadWaterMap( nstl::string const& fileName )
+{
+  hasWaterMap = false;
+  CObj<Stream> pStream = RootFileSystem::OpenFile( fileName, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
+  if ( !( pStream && pStream->IsOk() ) )
+    return;
+
+  CObj<IBinSaver> pSaver = CreateChunklessSaver( pStream, 0, true );
+  pSaver->Add( 1, &waterMap );
+  // the painted mask covers the deep part of the river, the visible water near the bank is 3-5 units wider
+  waterMap.DilateWorld( WATER_REACH );
+  hasWaterMap = true;
+}
+
+bool NWorld::PFWorld::IsPosInWater( CVec2 const& pos ) const
+{
+  return hasWaterMap && waterMap.CheckPos( pos );
+}

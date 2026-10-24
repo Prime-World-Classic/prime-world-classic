@@ -224,6 +224,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\libgit2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -264,6 +265,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\libgit2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -286,6 +288,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="PW_NanoUpdater.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="updater_repos.content-updater.txt" />
+    <None Include="updater_repos.txt" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\PW_MicroUpdater\App.ico" />

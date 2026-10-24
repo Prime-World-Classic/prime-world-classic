@@ -225,6 +225,7 @@ Scene::Scene()
 	, activeFloor( -1 )
 	, nextUniqueID( 0 )
 	, pTerrain( 0 )
+  , sleepClock(0.0)
   , lightEnvironmentD(this, &Scene::OnLightingEnvironmentChangedD)
   , lightEnvironmentN(this, &Scene::OnLightingEnvironmentChangedN)
   , accDelta(0.f)
@@ -250,6 +251,7 @@ Scene::~Scene()
   lightEnvironmentN = NULL;
 
 	// remove all objects from scene
+  WakeAllObjects();
   for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
   {
     SceneObjectBase::Ring& objectsRing = objectsRings[priority];
@@ -416,6 +418,53 @@ bool Scene::PickRect( CollisionHull* pHull, int w, int h, CTRect<float> *pRect )
 static bool g_skipFrame = true;
 REGISTER_DEV_VAR( "camera_skip_frame",  g_skipFrame, STORAGE_NONE );
 
+// Invisible motionless objects are not visited every frame (see SceneObject::WakeUp)
+static bool g_sleepInvisibleObjects = true;
+REGISTER_VAR( "scene_sleep_invisible", g_sleepInvisibleObjects, STORAGE_NONE );
+
+bool Scene::IsObjectSleepEnabled() const
+{
+  return g_sleepInvisibleObjects;
+}
+
+void Scene::WakeObject( SceneObjectBase* pSceneObject, int priority )
+{
+  SceneObjectBase::Ring::safeRemove( pSceneObject );
+  wakingRings[priority].addLast( pSceneObject );
+}
+
+void Scene::WakeAllObjects()
+{
+  for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
+  {
+    SceneObjectBase::Ring& sleepingRing = sleepingRings[priority];
+    while ( !sleepingRing.empty() )
+    {
+      // only plain SceneObject falls asleep
+      SceneObject* pObj = static_cast<SceneObject*>( sleepingRing.first() );
+      if ( pObj->IsSleeping() )
+        pObj->WakeUp();
+      else
+        WakeObject( pObj, priority );
+    }
+  }
+  ReturnWokenObjects();
+}
+
+void Scene::ReturnWokenObjects()
+{
+  for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
+  {
+    SceneObjectBase::Ring& wakingRing = wakingRings[priority];
+    while ( !wakingRing.empty() )
+    {
+      SceneObjectBase* pObj = wakingRing.first();
+      SceneObjectBase::Ring::remove( pObj );
+      objectsRings[priority].addLast( pObj );
+    }
+  }
+}
+
 //bool g_simpleShaders = false;
 //REGISTER_VAR( "simpleShaders", g_simpleShaders, STORAGE_USER);
 
@@ -502,6 +551,14 @@ void Scene::Update( Time time, Time delta, bool bIsPaused, bool isForcedUpdate )
   
 	  int objectsCount = 0;
 	  objectsFullyUpdatedCount = 0;
+
+    // time sleeping objects get when they wake up
+    sleepClock += accDelta;
+    if ( isForcedUpdate || !g_sleepInvisibleObjects )
+      WakeAllObjects();
+    else
+      ReturnWokenObjects();
+
     for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
     {
 	    for (ring::Range<SceneObjectBase::Ring> it( objectsRings[priority] ); it; )
@@ -510,6 +567,14 @@ void Scene::Update( Time time, Time delta, bool bIsPaused, bool isForcedUpdate )
 		    ++it;
         pObj->Update( accDelta, isForcedUpdate );
 		    objectsCount++;
+
+        // the iterator is already past pObj, so it may leave the ring
+        if ( pObj->IsSleepRequested() )
+        {
+          SceneObjectBase::Ring::remove( pObj );
+          sleepingRings[priority].addLast( pObj );
+          static_cast<SceneObject*>( pObj )->FallAsleep( priority, sleepClock );
+        }
 	    }
     }
 	  mainPerf_SOUpdated.SetValue(objectsCount);
@@ -1107,6 +1172,7 @@ void Scene::ResetVoxelGrid(Render::AABB const &worldBBox)
   }
 
   // add all objects to new voxel grid
+  WakeAllObjects();
   for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
   {
     for (ring::Range<SceneObjectBase::Ring> it( objectsRings[priority] ); it; ++it)
@@ -1192,6 +1258,7 @@ bool Scene::NeedDebugRender()
 
 void Scene::ForAllSceneObjects( ISceneObjectFunctor* func )
 {
+  WakeAllObjects();
   for (int priority = 0; priority < UPDATEPRIORITY_COUNT; ++priority)
   {
     for ( ring::Range<SceneObjectBase::Ring> it( objectsRings[priority] ); it; ++it )

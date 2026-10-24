@@ -27,6 +27,8 @@
 		private static var Error_Sound:Sound;
 		private static var getScrollSound:Sound;
 		private static var MinimapAlert:Sound;
+		// true while MainInterface.AddSignal draws a 'silent' signal (the ping has its own sound)
+		public static var muteMinimapAlert:Boolean = false;
 		private static var Selection:Sound;
 		private static var UIClose:Sound;
 		private static var UIOpen_big:Sound;

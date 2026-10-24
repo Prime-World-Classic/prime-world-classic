@@ -109,6 +109,12 @@ namespace NGameX
     bool IsActive() const;
 
     void Reset();
+
+    // Chat wheel (alternative to the menu with the digits): the messages of the configuration in its order
+    bool IsWheelAvailable() const { return IsOperational(); }
+    int GetWheelMessageCount() const;
+    nstl::wstring GetWheelMessageText(const int index) const;
+    bool SendWheelMessage(const int index); // false: not sent (anti-spam, not operational)
   protected:
     // ISmartChatCallback
     virtual bool SmartChatHandleCategoryCommand(const SmartChat::Model::ItemId& id);

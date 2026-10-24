@@ -21,6 +21,8 @@ namespace DI
     {
     public:
       virtual void* GetInstance() const = 0;
+      // false - экземпл€р уже уничтожен (оболочка CObjectBase после DestroyContents)
+      virtual bool IsAlive() const { return true; }
     protected:
       Provider() {}
       virtual ~Provider() {}
@@ -28,6 +30,10 @@ namespace DI
 
     typedef Provider& ProviderRef;
     typedef Provider* ProviderPtr;
+
+    // CObjectBase после уничтожени€ остаетс€ оболочкой с IsInvalidRef; прочие иерархии такой оболочки не оставл€ют
+    inline bool IsInstanceAlive(const IObjectBase* const p) { return p != NULL && !p->IsInvalidRef(); }
+    inline bool IsInstanceAlive(const void* const p) { return p != NULL; }
   }
 
   namespace Private
@@ -47,7 +53,8 @@ namespace DI
 
       static ProviderManager& Instance();
     private:
-      typedef map<TypeInfo, ProviderPtr> ProviderMap;
+      typedef vector<ProviderPtr> ProviderList; // в пор€дке регистрации
+      typedef map<TypeInfo, ProviderList> ProviderMap;
 
       ProviderManager();
       ~ProviderManager();
@@ -128,6 +135,11 @@ namespace DI
       virtual void* GetInstance() const
       {
         return self;
+      }
+
+      virtual bool IsAlive() const
+      {
+        return Detail::IsInstanceAlive(self);
       }
     private:
       T* self;

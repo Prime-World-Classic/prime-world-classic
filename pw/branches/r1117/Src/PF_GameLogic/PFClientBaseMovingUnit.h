@@ -74,6 +74,7 @@ protected:
   float dstAngle;
   float curAngle;
   float rotSpeed;
+  bool  rotateByTime; // true: fixed-time/linear turn (scripts, legacy mode); false: Dota-like smooth turn
 
   float dstAngleZ;
   float curAngleZ;

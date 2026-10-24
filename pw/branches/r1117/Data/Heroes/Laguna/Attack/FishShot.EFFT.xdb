@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RandomEffect>
+	<deathType>Manual</deathType>
+	<effects>
+		<Item href="/Heroes/Laguna/Attack/FishShotA.EFFT" />
+		<Item href="/Heroes/Laguna/Attack/FishShotB.EFFT" />
+		<Item href="/Heroes/Laguna/Attack/FishShotD.EFFT" />
+	</effects>
+	<enableCondition href="" />
+	<lifeTime>0</lifeTime>
+</RandomEffect>

@@ -19,6 +19,18 @@ namespace Render
     unsigned int allocatedBonesCount;
     unsigned int activeBonesCount;
 
+  public:
+    // Extra rotation of a bone (and so of all its children) about the model up axis (Z) around a model-space pivot,
+    // applied on top of the animation: procedural body bend (Laguna's whale turning).
+    struct ExtraYaw
+    {
+      unsigned int bone;
+      float angle;
+      CVec3 pivot;
+    };
+  private:
+    nstl::vector<ExtraYaw> extraYaw;
+
 	public:
 		SkeletonWrapper(const SkeletonDataWrapper* _pSkeletonData);
 		~SkeletonWrapper();
@@ -39,6 +51,10 @@ namespace Render
     void SetActiveBones( unsigned int count );
 
     vector<string> GetJointsList();
+
+    void SetExtraYaw( const nstl::vector<ExtraYaw>& yaw ) { extraYaw = yaw; }
+    void ClearExtraYaw() { extraYaw.clear(); }
+    bool GetBindPosition( unsigned int index, CVec3& pos ) const;   // model-space bone position in the bind pose
 
     //void SetSkeletonData( const SkeletonDataWrapper* pNewSkeletonData );
 

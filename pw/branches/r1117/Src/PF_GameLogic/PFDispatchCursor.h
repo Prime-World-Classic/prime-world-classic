@@ -22,6 +22,7 @@ public:
   virtual void Reset();
 
   CVec2 const &GetCurPos() const {return curPos;}
+  CVec2 const &GetHeading() const {return heading;}
   float GetSpeed() const { return speed; } 
   float GetMaxSpeed() const { return maxSpeed; }
   float GetStartTime() const {return m_startTime;}
@@ -39,6 +40,7 @@ protected:
 private:
   virtual bool Step(float dtInSeconds);
   void UpdatePersistentApplicatorsPosition();
+  void StepSteered(float dtInSeconds);
 
   ZDATA_(DBLinker)
 protected:
@@ -49,8 +51,9 @@ protected:
   CVec2 originalSenderPos;
   float duration;
   float maxSpeed;
+  CVec2 heading;  // movement direction when DB turnRate > 0
 public:
-  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&curPos); f.Add(3,&lastTargetPos); f.Add(4,&speed); f.Add(5,&m_startTime); f.Add(6,&originalSenderPos); f.Add(7,&duration); f.Add(8,&maxSpeed); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&curPos); f.Add(3,&lastTargetPos); f.Add(4,&speed); f.Add(5,&m_startTime); f.Add(6,&originalSenderPos); f.Add(7,&duration); f.Add(8,&maxSpeed); f.Add(9,&heading); return 0; }
 };
 
 NCore::WorldCommand* CreateCmdUpdateCursorPos( PFDispatchCursor *pDispatch, CVec2 pos);

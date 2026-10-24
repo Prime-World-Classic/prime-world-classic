@@ -12,5 +12,7 @@ namespace gamechat
     static const wchar_t * Team2 = L"Right";
     static const wchar_t * Team1_SmartChat = L"Left_SmartChat";
     static const wchar_t * Team2_SmartChat = L"Right_SmartChat";
+    // live match spectators only: the "team" channel of a spectator
+    static const wchar_t * Spectators = L"Spectators";
   }
 }

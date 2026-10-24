@@ -53,6 +53,11 @@ private:
   Render::SceneConstants  sceneConstantsN; // for night lighting
 
 	SceneObjectBase::Ring objectsRings[UPDATEPRIORITY_COUNT];
+	// Sleeping objects (see SceneObject::WakeUp) are kept out of objectsRings; woken ones wait in
+	// wakingRings until the next Update() returns them to objectsRings
+	SceneObjectBase::Ring sleepingRings[UPDATEPRIORITY_COUNT];
+	SceneObjectBase::Ring wakingRings[UPDATEPRIORITY_COUNT];
+	double sleepClock; // sum of the time steps of all object update passes
 
   NDb::ChangeablePtr<NDb::LightEnvironment> lightEnvironmentD; // day
   NDb::ChangeablePtr<NDb::LightEnvironment> lightEnvironmentN; // night
@@ -213,6 +218,12 @@ public:
   virtual void SetNightSpecularReduction(const float value);
 
 	void AccountFullyUpdatedObject() { objectsFullyUpdatedCount++; }
+
+	bool IsObjectSleepEnabled() const;
+	double GetSleepClock() const { return sleepClock; }
+	void WakeObject( SceneObjectBase* pSceneObject, int priority );
+	void WakeAllObjects();
+	void ReturnWokenObjects();
 
 	// ================================================================================
 	// From IRenderableScene

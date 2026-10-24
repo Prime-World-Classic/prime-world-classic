@@ -9,6 +9,7 @@
 #include "../UI/FlashContainer2.h"
 #include "UIEventHandler.h"
 #include "FlashFSCommands.h"
+#include "AdventureScreen.h"
 
 
 namespace NGameX
@@ -166,6 +167,14 @@ namespace NGameX
       return;
 
     NWorld::PFBaseHero * hero = heroIter->second;
+
+    // Alt + click on a portrait: praise this hero (handled = the usual click action is skipped)
+    if ( Equals(HeroClicked, listenerID) || Equals(HeroDoubleClicked, listenerID) )
+    {
+      AdventureScreen * screen = AdventureScreen::Instance();
+      if ( screen && screen->TryPraiseHero( hero ) )
+        return;
+    }
 
     if (Equals(HeroClicked, listenerID))
       eventHandler->OnUnitAvatarMouseClick(hero, UI::EMButton::Left);

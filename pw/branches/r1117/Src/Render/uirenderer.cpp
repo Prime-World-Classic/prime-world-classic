@@ -52,6 +52,8 @@ UIRenderer::UIRenderer() :
   invProjViewMatrix( CVec3(0, 0, 0) ),
   mode(E3DMode::_2D),
   current3DBlock(NULL),
+  screenScale(1.f),
+  screenScalePivot(0.f, 0.f),
 
   saturationValue(0.f),
   saturationColor(1.f,1.f,1.f,1.f),
@@ -365,6 +367,17 @@ unsigned int UIRenderer::AddQuadInternal( const UIQuad & _quad, const Color& _co
 		// Following code is test for rotating/scaling quads:
 		//SVector s( _quad.tl.x + (_quad.br.x - _quad.tl.x) * 0.66f, _quad.tl.y + (_quad.br.y - _quad.tl.y) * 0.3f );
 		//_quad.SetExtParams( s, (GetTickCount() * 3.14f)/1000.0f, sinf(GetTickCount()*3.14f*0.001f)*2.0f+1.0f );
+	}
+
+	// window screen scale (SetScreenScale): the whole window with its texts shrinks around the pivot
+	if ( screenScale != 1.f )
+	{
+		const float px = screenScalePivot.x * ( 1.f - screenScale );
+		const float py = screenScalePivot.y * ( 1.f - screenScale );
+		stride.v0.x = stride.v0.x * screenScale + px; stride.v0.y = stride.v0.y * screenScale + py;
+		stride.v1.x = stride.v1.x * screenScale + px; stride.v1.y = stride.v1.y * screenScale + py;
+		stride.v2.x = stride.v2.x * screenScale + px; stride.v2.y = stride.v2.y * screenScale + py;
+		stride.v3.x = stride.v3.x * screenScale + px; stride.v3.y = stride.v3.y * screenScale + py;
 	}
 
 	return ++queue.quadCounter;

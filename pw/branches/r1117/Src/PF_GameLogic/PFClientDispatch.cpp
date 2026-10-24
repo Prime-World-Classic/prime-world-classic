@@ -6,6 +6,7 @@
 #include "PFBaseUnit.h"
 #include "PFClientBaseUnit.h"
 #include "PFClientDispatch.h"
+#include "DBPFEffect.h"
 #include "libdb/ClonedPtr.h"
 #ifndef VISUAL_CUTTED
 #include "PFClientApplicators.h"
@@ -17,6 +18,7 @@
 
 #include "AdventureScreen.h"
 #include "PFClientVisibilityMap.h"
+#include "../Render/DBRender.h"
 
 using namespace PF_Core;
 
@@ -156,6 +158,67 @@ namespace NGameX
         return screen->GetClientVisibilityMap()->IsPointVisible(pos.AsVec2D());
       }
     }  
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // RandomEffect as dispatch and apply effect (Laguna fish shots): every shot takes the next variant in turn,
+    // and its hit plays the variant with the same index, so the hit matches the shot.
+    struct DispatchVariant
+    {
+      const NWorld::PFDispatch* dispatch;
+      int index;
+    };
+
+    static const int DISPATCH_VARIANT_SLOTS = 64;
+    static DispatchVariant s_dispatchVariants[DISPATCH_VARIANT_SLOTS];
+    static int s_nextVariantSlot = 0;
+    static unsigned int s_nextVariantIndex = 0;
+
+    NDb::EffectBase const *PickDispatchVariant(NDb::EffectBase const *effect, const NWorld::PFDispatch* dispatch)
+    {
+      if (!effect || effect->GetObjectTypeID() != NDb::RandomEffect::typeId)
+        return effect;
+
+      NDb::RandomEffect const *randomEffect = static_cast<NDb::RandomEffect const *>(effect);
+      int const count = randomEffect->effects.size();
+      if (count == 0)
+        return effect;
+
+      int const index = s_nextVariantIndex++ % count;
+
+      DispatchVariant& slot = s_dispatchVariants[s_nextVariantSlot];
+      s_nextVariantSlot = (s_nextVariantSlot + 1) % DISPATCH_VARIANT_SLOTS;
+      slot.dispatch = dispatch;
+      slot.index = index;
+
+      NDb::EffectBase const *variant = randomEffect->effects[index].GetPtr();
+      return variant ? variant : effect;
+    }
+
+    NDb::EffectBase const *PickApplyVariant(NDb::EffectBase const *effect, const NWorld::PFDispatch* dispatch)
+    {
+      if (!effect || effect->GetObjectTypeID() != NDb::RandomEffect::typeId)
+        return effect;
+
+      NDb::RandomEffect const *randomEffect = static_cast<NDb::RandomEffect const *>(effect);
+      int const count = randomEffect->effects.size();
+      if (count == 0)
+        return effect;
+
+      // the latest record of this dispatch, newest slots first
+      int index = 0;
+      for (int i = 1; i <= DISPATCH_VARIANT_SLOTS; ++i)
+      {
+        DispatchVariant const& slot = s_dispatchVariants[(s_nextVariantSlot - i + DISPATCH_VARIANT_SLOTS) % DISPATCH_VARIANT_SLOTS];
+        if (slot.dispatch == dispatch)
+        {
+          index = slot.index;
+          break;
+        }
+      }
+
+      NDb::EffectBase const *variant = randomEffect->effects[index % count].GetPtr();
+      return variant ? variant : effect;
+    }
   }
 
   void PFDispatchPlayEffectCollection(NDb::EffectBase const *applyEffect, float height, CPtr<NWorld::PFDispatch> dispatch, NWorld::PFWorld *pWorld, NWorld::Target const &target)
@@ -310,7 +373,7 @@ namespace NGameX
   {
     float height = 0.0f;
     NDb::Ptr<NDb::Dispatch> dbDispatch = dispatch->GetDBBase();
-    NDb::EffectBase const *applyEffect = GetApplyEffectDB(dispatch);
+    NDb::EffectBase const *applyEffect = PickApplyVariant(GetApplyEffectDB(dispatch), dispatch.GetPtr());
 
     if (!applyEffect)
       return;
@@ -439,10 +502,14 @@ namespace NGameX
 
     flyMode = pWorldObject->GetDB().flyMode;
 
-    NDb::EffectBase const *dispatchEffect = GetDispatchEffectDB(pWorldObject);
+    NDb::EffectBase const *dispatchEffect = PickDispatchVariant(GetDispatchEffectDB(pWorldObject), pWorldObject);
 
     // removed asserts and verifies because NUM_TASK
     GetStartPos(currentPos, startMatrix);
+
+    // FixedHeight: effect glides over the terrain at DB height (+ optional maxRise hop), no terrain-predict bumps
+    if ( flyMode == NDb::DISPATCHFLYMODE_FIXEDHEIGHT )
+      currentPos.z = GetTerrainHeight( pScene, currentPos.AsVec2D() ) + pWorldObject->GetDB().height;
 
     RetrieveTargetCoords();
     InitCurve();
@@ -637,6 +704,13 @@ namespace NGameX
     }
     speed *= speedModifier;
 
+    // FixedHeight: DB minRise > 0 is the time (s) before the arrival during which the effect fades out, so it is almost
+    // transparent when it stops instead of stopping first and fading afterwards. The speed is not changed: the world
+    // dispatch keeps its speed, a slower picture would lag behind it (and behind what it spawns on the way).
+    float arriveFade = 1.0f;
+    if ( flyMode == NDb::DISPATCHFLYMODE_FIXEDHEIGHT && WorldObject()->GetDB().minRise > 0.0f && WorldObject()->GetSpeed() > 1e-4f )
+      arriveFade = Clamp( dist2d / WorldObject()->GetSpeed() / WorldObject()->GetDB().minRise, 0.0f, 1.0f );
+
     float desiredMove = timeDelta * speed;
 
     const bool bCloseToTarget = ( desiredMove >= dist2d );
@@ -661,6 +735,20 @@ namespace NGameX
       currentPos = dest;
     }
 
+    if ( flyMode == NDb::DISPATCHFLYMODE_FIXEDHEIGHT )
+    {
+      // follow the terrain smoothly at DB height (curHeight keeps the smoothed ground level)
+      const float groundZ = GetTerrainHeight( pScene, currentPos.AsVec2D() ) + WorldObject()->GetDB().height;
+      curHeight += ( groundZ - curHeight ) * Min( 1.0f, timeDelta * 6.0f );
+      // optional hop over the whole path: DB maxRise is the apex above the ground, landing exactly at the target
+      const float rise = WorldObject()->GetDB().maxRise;
+      const float totalDist = travelledDistance + Max( 0.0f, dist2d - desiredMove );
+      const float p = totalDist > 1e-5f ? Clamp( travelledDistance / totalDist, 0.0f, 1.0f ) : 1.0f;
+      currentPos.z = curHeight + 4.0f * rise * p * ( 1.0f - p );
+      curveTg = totalDist > 1e-5f ? 4.0f * rise * ( 1.0f - 2.0f * p ) / totalDist : 0.0f;
+    }
+    else
+    {
     StepCurve( desiredMove );
     currentPos.z = curHeight;
 
@@ -677,6 +765,7 @@ namespace NGameX
         CalcEffectsMaxPositionZ();
         curveTg = ( currentPos.z - maxPosZ.z ) / desiredMove;
       }
+    }
     }
 
     Placement placement;
@@ -703,6 +792,24 @@ namespace NGameX
     {
       if(iter->HasValidEffectObj()){
         iter->SetPosition(placement);
+        if ( arriveFade < 1.0f )
+        {
+          // only the meshes fade: particle systems are batched by material, a particle material with a changed opacity
+          // would draw every batched system with the same textures (e.g. the trail left on the ground) the same way
+          struct MeshOpacity : public Render::IMaterialProcessor
+          {
+            float opacity;
+            explicit MeshOpacity( float o ) : opacity( o ) {}
+            virtual void operator()( Render::BaseMaterial &material )
+            {
+              const NDb::Material *pDB = material.GetDBMaterial();
+              if ( pDB && pDB->GetObjectTypeID() == NDb::ParticleFXMaterial::typeId )
+                return;
+              material.ModifyOpacity( opacity );
+            }
+          } f( arriveFade * arriveFade * ( 3.0f - 2.0f * arriveFade ) );
+          iter->GetEffect()->ForAllMaterials( f );
+        }
       }
       iter++;
     }
@@ -712,7 +819,10 @@ namespace NGameX
     if (bHasReachedMaxDist || bCloseToTarget)
     {
       // flight is over
-      OnArrive();
+      if ( flyMode == NDb::DISPATCHFLYMODE_FIXEDHEIGHT )
+        bArrived = true; // keep effects until the world dispatch dies (OnWorldObjectDie kills them)
+      else
+        OnArrive();
     }
   }
 

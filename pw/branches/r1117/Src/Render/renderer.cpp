@@ -7,6 +7,7 @@
 #include "System/AssertDumper.h"
 #include "System/InlineProfiler.h"
 #include "System/CrashRptWrapper.h"
+#include "System/HPTimer.h"
 #include "renderstatesmanager.h"
 #include "renderflagsconverter.h"
 #include "renderresourcemanager.h"
@@ -37,6 +38,17 @@ DEFINE_DEV_VAR(g_synchronizeRender, true, "synchronize_render", STORAGE_NONE);
 
 static bool s_use_triple_buffer = false;
 REGISTER_VAR("gfx_triple_buffer", s_use_triple_buffer, STORAGE_NONE);
+
+// Waiting for the GPU before Present (see Renderer::Synchronize): busy-wait time before short sleeps,
+// and the old wait with Sleep(1) between polls for comparison
+static float s_gpuWaitSpinMs = 0.5f;
+REGISTER_VAR("gfx_gpu_wait_spin_ms", s_gpuWaitSpinMs, STORAGE_NONE);
+static bool s_gpuWaitLegacy = false;
+REGISTER_VAR("gfx_gpu_wait_legacy", s_gpuWaitLegacy, STORAGE_NONE);
+// Wait for the previous frame instead of the current one, so the GPU draws a frame while the CPU prepares the next;
+// saved in user.cfg, the launcher battle settings switch it
+static bool s_gpuSyncLag = false;
+REGISTER_VAR("gfx_gpu_sync_lag", s_gpuSyncLag, STORAGE_USER);
 
 static UINT s_adapterToUse = D3DADAPTER_DEFAULT;
 REGISTER_VAR("adapter_to_use", s_adapterToUse, STORAGE_NONE);
@@ -89,6 +101,7 @@ Renderer::Renderer(NativeWindow _window) :
   bResetDevice(false),
   bTripleBufferUsed(false),
 	isRunningUnderPerfHUD(false),
+  prevFrameSynchIssued(false),
   renderSceneLocked( false )
 {
   SmartRenderer::ResetTriangleAndDipCount();
@@ -108,6 +121,8 @@ Renderer::~Renderer()
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   NotifyResourcesRelease();
   DeviceDeleteHandler::NotifyDeviceDelete();
@@ -318,6 +333,8 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   if(RENDER_DISABLED) {
     bDeviceLost = true;
@@ -538,6 +555,8 @@ bool Renderer::ResetDevice(D3DPRESENT_PARAMETERS& pp)
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
 
   // Try to create chosen device
   DebugTrace("Before device reset");
@@ -751,6 +770,48 @@ void Renderer::Present()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+  // The GPU is considered hung (and the device is reset) after this time
+  const NHPTimer::FTime c_gpuWaitTimeout = 5.0;
+
+  HANDLE CreateGpuWaitTimer()
+  {
+    // CREATE_WAITABLE_TIMER_HIGH_RESOLUTION (Windows 10 1803+) sleeps for a fraction of a millisecond
+    // without raising the global timer resolution
+    typedef HANDLE (WINAPI *CreateWaitableTimerExWFunc)( LPSECURITY_ATTRIBUTES, LPCWSTR, DWORD, DWORD );
+    const DWORD highResolutionFlag = 0x00000002;
+
+    CreateWaitableTimerExWFunc createTimer = (CreateWaitableTimerExWFunc)GetProcAddress( GetModuleHandleA( "kernel32.dll" ), "CreateWaitableTimerExW" );
+    HANDLE timer = createTimer ? createTimer( NULL, NULL, highResolutionFlag, TIMER_ALL_ACCESS ) : NULL;
+    if ( !timer )
+    {
+      // Older systems: make Sleep(1) last about a millisecond instead of a whole 15.6 ms timer tick.
+      // It affects every thread of the process until it exits
+      typedef UINT (WINAPI *TimeBeginPeriodFunc)( UINT );
+      if ( HMODULE winmm = LoadLibraryA( "winmm.dll" ) )
+        if ( TimeBeginPeriodFunc timeBeginPeriodPtr = (TimeBeginPeriodFunc)GetProcAddress( winmm, "timeBeginPeriod" ) )
+          timeBeginPeriodPtr( 1 );
+    }
+    return timer;
+  }
+
+  void WaitGpuSlice()
+  {
+    static const HANDLE timer = CreateGpuWaitTimer();
+    if ( timer )
+    {
+      LARGE_INTEGER dueTime;
+      dueTime.QuadPart = -2500; // relative, 0.25 ms in 100 ns units
+      if ( !SetWaitableTimer( timer, &dueTime, 0, NULL, NULL, FALSE ) || WaitForSingleObject( timer, 100 ) != WAIT_OBJECT_0 )
+        SwitchToThread(); // Sleep(1) here would be a whole timer tick again
+      return;
+    }
+    Sleep( 1 );
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Renderer::Synchronize()
 {
   NI_PROFILE_FUNCTION
@@ -758,13 +819,43 @@ void Renderer::Synchronize()
   HRESULT issueResult = pFrameSynchQuery->Issue(D3DISSUE_END);
   RenderResourceManager::FrameTick();
 
+  if ( issueResult != D3DERR_DEVICELOST && s_gpuSyncLag )
+  {
+    // The query just issued is waited for in the next frame; now wait for the one issued a frame ago
+    if ( !pPrevFrameSynchQuery )
+    {
+      IDirect3DQuery9* pQuery = 0;
+      if ( FAILED( pDevice->CreateQuery( D3DQUERYTYPE_EVENT, &pQuery ) ) || !pQuery )
+        return;
+      pPrevFrameSynchQuery = DXQueryRef( pQuery, false );
+    }
+
+    DXQueryRef issuedNow = pFrameSynchQuery;
+    pFrameSynchQuery = pPrevFrameSynchQuery;
+    pPrevFrameSynchQuery = issuedNow;
+
+    const bool hasPrevFrame = prevFrameSynchIssued;
+    prevFrameSynchIssued = true;
+    if ( !hasPrevFrame )
+      return;
+  }
+  else
+    prevFrameSynchIssued = false;
+
   if ( issueResult != D3DERR_DEVICELOST )
   {
     HRESULT queryResult = pFrameSynchQuery->GetData( NULL, 0, D3DGETDATA_FLUSH );
 
     if ( queryResult == S_FALSE )
     {
-      for(int i = 1000; --i > 0;)
+      // Sleep(1) between polls lasts a whole system timer tick - 15.6 ms unless some process raised the
+      // timer resolution - so with vsync off the frame rate was capped at ~64 fps. Now the GPU, which is
+      // usually almost done, is polled in a busy loop for a moment, then between short sleeps.
+      NHPTimer::STime waitStart;
+      NHPTimer::GetTime( waitStart );
+      const NHPTimer::FTime spinTime = s_gpuWaitSpinMs * 0.001;
+
+      for(int i = 1000; ;)
       {
         queryResult = pFrameSynchQuery->GetData( NULL, 0, D3DGETDATA_FLUSH);
         
@@ -778,9 +869,25 @@ void Renderer::Synchronize()
           break;
         }
 
-        //   - 
+        if ( s_gpuWaitLegacy )
+        {
+          Sleep(1);
+          if ( --i <= 1 )
+            break;
+          continue;
+        }
 
-        Sleep(1);
+        NHPTimer::STime waited;
+        NHPTimer::GetTime( waited );
+        waited -= waitStart;
+        const NHPTimer::FTime waitedTime = NHPTimer::Time2Seconds( waited );
+        if ( waitedTime > c_gpuWaitTimeout )
+          break;
+
+        if ( waitedTime < spinTime )
+          SwitchToThread();
+        else
+          WaitGpuSlice();
       }
 
       bResetDevice = (queryResult == S_FALSE);
@@ -823,6 +930,8 @@ void Renderer::ClearDeviceResources()
   pDeviceDepthSurface = 0;
   pDeviceColorSurface = 0;
   pFrameSynchQuery = 0;
+  pPrevFrameSynchQuery = 0;
+  prevFrameSynchIssued = false;
   
   //SmartRenderer::NullThePointers();
 }

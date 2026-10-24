@@ -14,9 +14,88 @@
 #include "DBHeroRanks.h"
 
 #include "ClientVisibilityHelper.h"
+#include "AdventureScreen.h"
 
 namespace NGameX
 {
+
+namespace
+{
+  // Time to move from the shown value to a new world value: one game step
+  const float CHANNELING_SMOOTH_TIME = 0.001f * DEFAULT_GAME_STEP_LENGTH;
+  // Entries of units that are no longer queried (died, left the view) are dropped after this
+  const float CHANNELING_FORGET_TIME = 1.0f;
+
+  struct ChannelingSmoothState
+  {
+    float target;              // last progress from the world
+    float from;                // shown progress at the moment the target changed
+    NHPTimer::STime changed;   // when the target changed
+    NHPTimer::STime accessed;  // last query
+  };
+
+  typedef hash_map<int, ChannelingSmoothState> ChannelingSmoothStates;
+  ChannelingSmoothStates s_channelingStates;
+
+  float ChannelingShownValue( const ChannelingSmoothState & state, const NHPTimer::STime & now )
+  {
+    const float t = NHPTimer::Time2Seconds( now - state.changed ) / CHANNELING_SMOOTH_TIME;
+    if ( t >= 1.0f )
+      return state.target;
+    return state.from + ( state.target - state.from ) * max( t, 0.0f );
+  }
+}
+
+float GetSmoothChannelingProgress( NWorld::PFBaseUnit const* unit )
+{
+  if ( !unit )
+    return 0.0f;
+
+  const float progress = unit->GetChannellingProgress();
+  const int id = unit->GetObjectId();
+
+  NHPTimer::STime now;
+  NHPTimer::GetTime( now );
+
+  if ( progress <= 0.0f )
+  {
+    s_channelingStates.erase( id );
+    return progress;
+  }
+
+  ChannelingSmoothStates::iterator it = s_channelingStates.find( id );
+  if ( it == s_channelingStates.end() )
+  {
+    // forget units that are not queried any more
+    for ( ChannelingSmoothStates::iterator jt = s_channelingStates.begin(); jt != s_channelingStates.end(); )
+    {
+      if ( NHPTimer::Time2Seconds( now - jt->second.accessed ) > CHANNELING_FORGET_TIME )
+        jt = s_channelingStates.erase( jt );
+      else
+        ++jt;
+    }
+
+    ChannelingSmoothState & state = s_channelingStates[id];
+    state.target = progress;
+    state.from = 0.0f;
+    state.changed = now;
+    state.accessed = now;
+    return ChannelingShownValue( state, now );
+  }
+
+  ChannelingSmoothState & state = it->second;
+  state.accessed = now;
+
+  if ( progress != state.target )
+  {
+    // progress went back: a new channeling has started, do not animate backwards
+    state.from = progress < state.target ? progress : ChannelingShownValue( state, now );
+    state.target = progress;
+    state.changed = now;
+  }
+
+  return ChannelingShownValue( state, now );
+}
 
 HeroInfoNew::HeroInfoNew( AdventureFlashInterface* _flashInterface, NWorld::PFBaseHero const* _hero, bool _isEnemy, HeroRankCalculator * heroRankCalculator, bool isPremium, string & flagIcon, wstring & flagTooltip)
   : flashInterface (_flashInterface)
@@ -68,6 +147,19 @@ HeroInfoNew::HeroInfoNew( AdventureFlashInterface* _flashInterface, NWorld::PFBa
     heroId,
     hero->GetPlayer()->IsChatMuted());
 
+  // Account rating: the same rank table as the hero rating (as on the loading screen).
+  float accountRating = 0.f;
+  if ( AdventureScreen * screen = AdventureScreen::Instance() )
+    if ( !hero->GetPlayer()->IsBot() && screen->GetAccountRating( heroId, accountRating ) )
+    {
+      const NDb::Rank & accountRank = heroRankCalculator->GetRank( static_cast<int>( accountRating ) );
+      flashInterface->SetHeroAccountRank(
+        heroId,
+        accountRating,
+        heroRankCalculator->GetRankIcon( originalFaction, accountRank ),
+        heroRankCalculator->GetRankName( originalFaction, accountRank ) );
+    }
+
   if (hero->HasCustomEnergy())
   {
     const NDb::Ptr<NDb::HeroResource>& dbHeroResource = hero->GetDbHero()->uniqueResource;
@@ -109,7 +201,10 @@ void HeroInfoNew::Update()
   heroParams.isVisible = ClientVisibilityHelper::IsVisibleForPlayer(hero);
   heroParams.isPickable = !hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK);
   heroParams.timeToRessurect = hero->GetRespawnDelay();
-  heroParams.channgeling = hero->GetChannellingProgress();
+  // the HUD shows channeling only for our hero: smooth it there, keep others as is (no extra flash calls)
+  AdventureScreen * screen = AdventureScreen::Instance();
+  const bool isOurHero = screen && screen->GetHero() == hero.GetPtr();
+  heroParams.channgeling = isOurHero ? GetSmoothChannelingProgress(hero.GetPtr()) : hero->GetChannellingProgress();
 
   if (!hero->IsDead()&&hero->GetHealth()<1)
     heroParams.curHealth = 1;
@@ -206,7 +301,7 @@ void SelectionInfo::Update()
       newUnitParams.manaRegen = unit->GetEnergyRegenTotal();
     }
 
-    newUnitParams.channgeling = unit->GetChannellingProgress();
+    newUnitParams.channgeling = GetSmoothChannelingProgress(unit.GetPtr());
   }
   else
   {
@@ -215,7 +310,7 @@ void SelectionInfo::Update()
     newUnitParams.curMana =  Round (unit->IsDead()? 0: unit->GetMana());
     newUnitParams.maxHealth =  Round (unit->GetMaxHealth());
     newUnitParams.maxMana =  Round (unit->GetMaxMana());
-    newUnitParams.channgeling = unit->GetChannellingProgress();
+    newUnitParams.channgeling = GetSmoothChannelingProgress(unit.GetPtr());
     newUnitParams.healthRegen = unit->GetLifeRegenTotal();
     newUnitParams.manaRegen = unit->GetEnergyRegenTotal();
   }

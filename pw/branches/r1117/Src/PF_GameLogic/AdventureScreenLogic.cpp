@@ -68,6 +68,8 @@
 #include "PFAIWorld.h"
 #include "AIWorldFacets/VotingForSurrenderLogic.h"
 #include "VotingForSurrenderController.h"
+#include "VoiceOverlayController.h"
+#include "ReplayControlsController.h"
 #include "IgnoreListController.h"
 #include "IgnoreListStorage.h"
 #include "DBGameLogic.h"
@@ -285,6 +287,12 @@ void AdventurepreferencesProcessor::Cancel()
   }
 }
 
+void AdventurepreferencesProcessor::SaveUserVars()
+{
+  if(!NGameX::AdventureScreen::Instance()->IsInReplayMode())
+    NGlobal::SaveConfig( NProfile::GetFullFilePath( "user.cfg", NProfile::FOLDER_USER ), STORAGE_USER );
+}
+
 void AdventurepreferencesProcessor::ApplyShortcuts()
 {
   PreferencesProcessor::ApplyShortcuts();
@@ -393,6 +401,8 @@ void AdventureScreenLogic::SetOwner( NGameX::AdventureScreen * owner, const NDb:
     }
   }
 
+  voiceOverlayController = new VoiceOverlayController( flashWnd, "mainInterface" );
+
   InitErrorMessages(flashInterface, uiData);
 
   bool isMuted = false;
@@ -415,6 +425,10 @@ void AdventureScreenLogic::SetOwner( NGameX::AdventureScreen * owner, const NDb:
   //chat
   if (IsValid(chatController))
   {
+    // a live match spectator writes to the spectators ("team", the default) or to everybody
+    if ( owner->IsSpectator() )
+      chatController->SetSpectatorMode();
+
     chatController->AddChatUI(flashWnd, flashInterface, isMuted, isLeaver, isLeaverParty);
 
     ignoreListStorage = m_owner->GetIgnoreListStorage();
@@ -628,6 +642,8 @@ void AdventureScreenLogic::DoCustomEvents( float deltaTime )
   selectionInfo->Update();
   statisticsController->Update();
   votingForSurrenderController->Update(deltaTime);
+  if ( voiceOverlayController )
+    voiceOverlayController->Update( deltaTime );
   dialogController->Update( deltaTime );
 
   if (cteController)
@@ -643,6 +659,30 @@ void AdventureScreenLogic::DoCustomEvents( float deltaTime )
 }
 
 
+
+void AdventureScreenLogic::SetVoiceOverlayUnlocked( bool unlocked )
+{
+  if ( voiceOverlayController )
+    voiceOverlayController->SetUnlocked( unlocked );
+}
+
+void AdventureScreenLogic::NotifySmartCast( const char * talentId, bool on )
+{
+  if ( voiceOverlayController )
+    voiceOverlayController->NotifySmartCast( talentId, on );
+}
+
+void AdventureScreenLogic::UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended )
+{
+  if ( !replayControlsController )
+  {
+    if ( !IsValid( flashWnd ) )
+      return;
+    replayControlsController = new ReplayControlsController( flashWnd, "mainInterface" );
+  }
+
+  replayControlsController->SetState( playedSteps, totalSteps, stepLengthMs, speed, paused, seekTargetStep, ended );
+}
 
 void AdventureScreenLogic::CloseAdventureScreen()
 {

@@ -56,6 +56,8 @@ namespace NGameX
   class  CommonCombatController;
   class  HeroTitleCalculator;
   class  VotingForSurrenderController;
+  class  VoiceOverlayController;
+  class  ReplayControlsController;
   class  DialogController;
   class  CTE_Controller;
   class  FriendsController;
@@ -76,6 +78,7 @@ namespace NGameX
     virtual ~AdventurepreferencesProcessor() {};
     virtual void Apply();
     virtual void ApplyShortcuts();
+    virtual void SaveUserVars();
     virtual void Cancel();
     virtual void ShortcutRebind( const wchar_t* command );
   };
@@ -163,6 +166,8 @@ namespace NGameX
     Strong<AwardsController>          awardsController;
     Strong<CommonCombatController>    commonCombatController;
     Strong<VotingForSurrenderController> votingForSurrenderController;
+    Strong<VoiceOverlayController>    voiceOverlayController;
+    Strong<ReplayControlsController>  replayControlsController; // created on the first replay state
     Strong<DialogController>          dialogController;
     Strong<QuestsController>          questsController;
     Strong<CTE_Controller>            cteController;
@@ -271,6 +276,9 @@ namespace NGameX
    
     ActionBarController * GetActionBarController() {return actionBarController;}
     AdventureFlashInterface * GetFlashInterface() {return flashInterface;}
+    void SetVoiceOverlayUnlocked( bool unlocked );
+    void NotifySmartCast( const char * talentId, bool on );
+    void UpdateReplayControls( int playedSteps, int totalSteps, int stepLengthMs, float speed, bool paused, int seekTargetStep, bool ended );
     ShopController * GetShopController() {return shopController;}
     InventoryController * GetInventoryController() {return inventoryController;}
     EscMenuController * GetEscMenuController() {return escMenuController;}

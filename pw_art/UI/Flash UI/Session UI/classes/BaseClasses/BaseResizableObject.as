@@ -30,6 +30,25 @@
 		protected var isAddedToStage:Boolean = false;
 		
 		protected var useWidthScale:Boolean = false;
+		// Дополнительное увеличение размера (не позиции): панели портретов в бою.
+		protected var sizeBoost:Number = 1;
+
+		// увеличение сверх масштаба под разрешение (размер портретов команд); 1 = исходный
+		public function get SizeBoost():Number
+		{
+			return sizeBoost;
+		}
+
+		public function SetSizeBoost(value:Number):void
+		{
+			if (isNaN(value) || value <= 0 || value == sizeBoost)
+				return;
+			sizeBoost = value;
+			// Только масштаб: полный BaseBarObjectResize пишет width/height, а у панели союзников
+			// с войсом движок отдаёт кривую ширину (рамка TextField по умолчанию) — панель пропадала.
+			this.scaleX = scale * sizeBoost;
+			this.scaleY = scale * sizeBoost;
+		}
 		
 		private var scaleCoef:Number = 1;
 		private var _isNeedToShowBackAfterCinematic:Boolean;
@@ -159,10 +178,16 @@
 						
 			scale *= scaleCoef;
 			
-			this.scaleX = scale;
-			this.scaleY = scale;
-			this.width = Math.floor(this.width);
-			this.height = Math.floor(this.height);
+			this.scaleX = scale * sizeBoost;
+			this.scaleY = scale * sizeBoost;
+			// Округление размера, только если движок вернул разумную ширину/высоту.
+			var w:Number = this.width;
+			var h:Number = this.height;
+			if (!isNaN(w) && isFinite(w) && w >= 1 && !isNaN(h) && isFinite(h) && h >= 1 && sizeBoost == 1)
+			{
+				this.width = Math.floor(w);
+				this.height = Math.floor(h);
+			}
 		}
 		
 		

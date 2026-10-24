@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #endif
 
+#include "System/LogIpMode.h"
+
 namespace ni_udp
 {
 
@@ -36,7 +38,18 @@ struct NetAddr : public sockaddr_in
 
   void Str( char * _buf, size_t _bufSz ) const;
   void StrIp( char * _buf, size_t _bufSz ) const;
+  // Masked-log renderings (System/LogIpMode.h): hex IPv4 without a port
+  // (0a4e0001 == 10.78.0.1, same byte order as Str()/StrIp() and as the launcher
+  // protocol hex block) and port only, with the address left out.
+  void StrHex( char * _buf, size_t _bufSz ) const;
+  void StrPort( char * _buf, size_t _bufSz ) const;
 };
+
+
+// Log rendering of a textual address "a.b.c.d[:port][@mux]" into _buf. In builds
+// that do not mask the string is copied unchanged; otherwise the address part is
+// dropped and the remainder ("port[@mux]") is kept. Returns _buf.
+const char * MaskAddrString( char * _buf, size_t _bufSz, const char * _addr );
 
 } //namespace ni_udp
 
@@ -55,7 +68,11 @@ public:
   virtual void Format( IBuffer * buffer, const SFormatSpecs & specs ) const
   {
     char buf[32];
-    addr.Str( buf, 32 );
+    // Masked builds: the address is left out of the log, the port is kept.
+    if ( NGlobal::GetLogIpMode() )
+      addr.StrPort( buf, 32 );
+    else
+      addr.Str( buf, 32 );
 
     FormatString( buffer, buf, specs );
   }

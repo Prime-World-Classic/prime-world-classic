@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBAnimatedSceneComponent>
+	<aabb>
+		<maxX>6.5</maxX>
+		<maxY>9</maxY>
+		<maxZ>8</maxZ>
+		<minX>-6.5</minX>
+		<minY>-8.5</minY>
+		<minZ>-1</minZ>
+	</aabb>
+	<additionalGraph href="" />
+	<animations>
+		<Item>
+			<animationFileName>/Summons/Laguna/Whale/Move.anim</animationFileName>
+			<animkeys />
+			<compression>0</compression>
+			<mayaFileName>/Summons/Laguna/Whale/Move.mayaAnim</mayaFileName>
+			<name></name>
+			<srcFileName crc="0">/Summons/Laguna/Whale/Move</srcFileName>
+		</Item>
+	</animations>
+	<animGraph href="" />
+	<anims />
+	<attached />
+	<caption></caption>
+	<faceFXAnims />
+	<groupFlags>0</groupFlags>
+	<keys />
+	<locatorList href="" />
+	<mayaFileName>/Summons/Laguna/Whale/_.mayaSkel</mayaFileName>
+	<orientation>Default</orientation>
+	<selection></selection>
+	<skeletonFileName>/Summons/Laguna/Whale/_.skel</skeletonFileName>
+	<skinOn />
+	<skins>
+		<Item>
+			<events href="" />
+			<geometryFileName>/Summons/Laguna/Whale/_.skin</geometryFileName>
+			<jointsCountPerVertex>4</jointsCountPerVertex>
+			<materialsReferences>
+				<Item href="/Summons/Laguna/Whale/_Move.ANSC" id="149ED711-0057-4DD9-ACF0-F65BE7C6B97D">
+					<BasicMaterial>
+						<caption></caption>
+						<diffuseColor>
+							<A>1</A>
+							<B>1</B>
+							<G>1</G>
+							<R>1</R>
+						</diffuseColor>
+						<DiffuseMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="/Summons/Laguna/Whale/_Move.ANSC" id="B16C52D9-B7C0-4FC6-AFB2-9E880C18F165">
+								<Texture>
+									<generatedFileName></generatedFileName>
+									<mipLevels>0</mipLevels>
+									<mipLevelUsage>AutoGenerate</mipLevelUsage>
+									<mipSharpenPasses></mipSharpenPasses>
+									<pixelFormat>DXT1</pixelFormat>
+									<size>
+										<height>0</height>
+										<width>0</width>
+									</size>
+									<srcFileName crc="0">/Summons/Laguna/Whale/_</srcFileName>
+									<startMipLevel>0</startMipLevel>
+									<textureFileName>/Summons/Laguna/Whale/_.dds</textureFileName>
+									<textureType>Color</textureType>
+								</Texture>
+							</texture>
+						</DiffuseMap>
+						<emissive>0</emissive>
+						<EmissivePinValue>EmissiveOff</EmissivePinValue>
+						<ignoreRenderState>false</ignoreRenderState>
+						<lightingIntencity>1.2</lightingIntencity>
+						<LightingPinValue>LightingSH</LightingPinValue>
+						<NormalMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</NormalMap>
+						<outputAdd>
+							<A>0</A>
+							<B>0</B>
+							<G>0</G>
+							<R>0</R>
+						</outputAdd>
+						<outputMul>
+							<A>1</A>
+							<B>1</B>
+							<G>1</G>
+							<R>1</R>
+						</outputMul>
+						<ReflectionMap>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</ReflectionMap>
+						<reflectivity>1</reflectivity>
+						<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+						<renderFlags>2</renderFlags>
+						<renderState>
+							<alphaTest>Off</alphaTest>
+							<alphaTestRef>127</alphaTestRef>
+							<blendMode>Off</blendMode>
+							<culling>On</culling>
+						</renderState>
+						<SpecularMap>
+							<Add>
+								<A>0</A>
+								<B>0</B>
+								<G>0</G>
+								<R>0</R>
+							</Add>
+							<Multiplier>
+								<A>1</A>
+								<B>1</B>
+								<G>1</G>
+								<R>1</R>
+							</Multiplier>
+							<samplerState>
+								<addressU>Wrap</addressU>
+								<addressV>Wrap</addressV>
+								<addressW>Wrap</addressW>
+								<magFilter>Linear</magFilter>
+								<minFilter>Linear</minFilter>
+								<mipFilter>Linear</mipFilter>
+							</samplerState>
+							<texture href="" />
+						</SpecularMap>
+						<specularPower>0</specularPower>
+						<SubPriority>0</SubPriority>
+					</BasicMaterial>
+				</Item>
+			</materialsReferences>
+			<mayaFileName>/Summons/Laguna/Whale/_.mayaSkin</mayaFileName>
+			<selection></selection>
+			<skinPartName></skinPartName>
+			<srcFileName crc="0">/Summons/Laguna/Whale/_</srcFileName>
+			<uvSetCount>1</uvSetCount>
+		</Item>
+	</skins>
+	<splitBoneName></splitBoneName>
+	<srcFileName crc="0">/Summons/Laguna/Whale/_</srcFileName>
+</DBAnimatedSceneComponent>

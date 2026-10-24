@@ -28,6 +28,12 @@
 		{
 			item = _item;
 		}
+
+		// the inventory button of the item (smart-cast checkbox on the action bar: MainInterface.RefreshSmartCastBoxes)
+		public function get InventoryItem():InventoryButton
+		{
+			return item;
+		}
 		
 		override public function showTooltip():void
 		{

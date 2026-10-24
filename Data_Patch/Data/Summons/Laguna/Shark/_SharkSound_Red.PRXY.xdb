@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Summons/Laguna/Shark/_SharkSound_Red.PRXY" id="22E81F97-2982-43C5-9873-6FB7C559297A">
+				<DBSoundSceneComponent>
+					<attached />
+					<caption>shark_approach</caption>
+					<desc>
+						<eventName>Laguna_SharkApproach</eventName>
+						<groupName>SFX</groupName>
+						<projectName>PF</projectName>
+					</desc>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<orientation>Default</orientation>
+					<timeInterval>0</timeInterval>
+				</DBSoundSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<caption>shark_approach</caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

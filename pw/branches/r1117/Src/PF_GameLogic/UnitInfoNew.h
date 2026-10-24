@@ -20,6 +20,10 @@ namespace NGameX
 class HeroRankCalculator;
 _interface IUIEventHandler;
 
+// Channeling progress for display: the world updates it once per game step (100 ms),
+// here it is interpolated on the client every frame so the bars move smoothly.
+float GetSmoothChannelingProgress( NWorld::PFBaseUnit const* unit );
+
 class HeroInfoNew : public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_1( HeroInfoNew, BaseObjectST );

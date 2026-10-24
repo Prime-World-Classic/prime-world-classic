@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "AdventureScreen.h"
+#include "AdventureCameraController.hpp"
 #include "ObjectsInfo2d.h"
 #include "PFBuildings.h"
 #include "PFAIWorld.h"
@@ -19,6 +20,7 @@
 #include "System/InlineProfiler.h"
 
 #include "ObjectInfoMapper.hpp"
+#include "UnitInfoNew.h"
 
 
 namespace NGameX
@@ -969,6 +971,7 @@ void ObjectsInfo2dLogic::UpdateTooltipUI( const ObjectInfo& info, SOvertip & ove
   const UI::LinearCoord y = floor(screenPoint.y - bottom) + 0.5f;
 
   overtip.wndMain->SetLocation( x, y );
+  overtip.wndMain->SetScreenScale( overtipScale, screenPoint );
 
   if (overtip.showStripes)
   {
@@ -996,6 +999,11 @@ void ObjectsInfo2dLogic::UpdateTooltipUI( const ObjectInfo& info, SOvertip & ove
 void ObjectsInfo2dLogic::Update( float deltaTime, const SHMatrix & projectionMatrix )
 {
   NI_PROFILE_FUNCTION;
+
+  overtipScale = 1.f;
+  if ( AdventureScreen* advScreen = AdventureScreen::Instance() )
+    if ( IsValid( advScreen->GetCamera() ) )
+      overtipScale = advScreen->GetCamera()->GetOverlayScale();
 
   for (Tooltips::iterator it = tooltips.begin(); it != tooltips.end(); )
   {
@@ -1282,7 +1290,7 @@ void ObjectsInfo2dLogic::UpdateOvertip( const ObjectInfo& info, SOvertip & overt
   //Channeling
   
   if ( !!baseUnit && baseUnit->IsInChannelling() )
-    overtip.channelingPercent = baseUnit->GetChannellingProgress();
+    overtip.channelingPercent = GetSmoothChannelingProgress( baseUnit );
   else if ( !!baseHero && baseHero->HasScriptControlledProgressValue() )
     overtip.channelingPercent = baseHero->GetScriptControlledProgressValue();
   else

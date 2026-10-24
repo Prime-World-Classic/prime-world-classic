@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #if !defined(_M_X64)
 // ATL/WTL (atlbase.h) в тулчейне VS2022 BuildTools нет — компонент VC.ATL
 // не устанавливался. На x64 эти TU пока выключены; x86-эталон (cl 15) не затронут.
@@ -24,7 +25,6 @@
 
 //#pragma warning (push)
 
-#include "stdafx.h"
 #pragma warning (disable : 4996 4201 4505)
 
 // standard

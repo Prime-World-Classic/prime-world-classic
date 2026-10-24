@@ -1408,7 +1408,9 @@ namespace NWorld
       ghostMoveIndex = -1;
     }
 
-    if (!pMovingUnit->IsDead())
+    // the current place is free (no obstacles, no other units): the unit stays where it is. Placing it anyway snaps it
+    // to the tile centre, a visible jerk when a ghost move status ends (Laguna's trail, the Mana Wyrm's ethereal form)
+    if (!pMovingUnit->IsDead() && !pMovingUnit->CanOccupyPosition( pMovingUnit->GetPosition().AsVec2D() ))
     {
       if ( GetDB().pushUnits )
       {

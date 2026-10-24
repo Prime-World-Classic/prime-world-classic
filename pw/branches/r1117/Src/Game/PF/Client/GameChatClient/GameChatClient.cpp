@@ -33,6 +33,7 @@ namespace gamechat
     channelName2Type_[gamechat::channels::Team2] = ChannelType::MyTeam;
     channelName2Type_[gamechat::channels::Team1_SmartChat] = ChannelType::SmartChat;
     channelName2Type_[gamechat::channels::Team2_SmartChat] = ChannelType::SmartChat;
+    channelName2Type_[gamechat::channels::Spectators] = ChannelType::Spectators;
  
   }
 

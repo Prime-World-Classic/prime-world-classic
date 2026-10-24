@@ -2,6 +2,7 @@
 <UIImageLabelLayout>
 	<BackLink DBID="/UI/Screens/Combat/Combat" Count="3" />
 	<BackLink DBID="/UI/Screens/Loading/LoadingScreen" Count="2" />
+	<BackLink DBID="/UI/Screens/Lobby/Lobby_Main" Count="1" />
 	<BackLink DBID="/UI/Screens/Tooltips/Tooltips" Count="1" />
 	<BackLink DBID="/UI/Screens/Lobby/Lobby_SelectGameMode" Count="2" />
 	<backgroundMaterial href="/UI/Styles/ASSETS_UI/tooltip/tooltip_base.MTRL" />
