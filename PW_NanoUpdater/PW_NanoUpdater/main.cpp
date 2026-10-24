@@ -91,6 +91,68 @@ static std::filesystem::path ExeDirectory()
    }
 }
 
+// Encoding contract of this program:
+//   every narrow std::string path is ANSI in the system ACP (cp1251 on Russian installs) -
+//   that is what GetModuleFileNameA, std::filesystem narrow paths, ifstream, remove() and
+//   ShellExecuteExA speak; and
+//   libgit2 takes paths as UTF-8 and reports workdir paths as UTF-8.
+// Handing an ACP path straight to libgit2 breaks every install under a non-ASCII path: on
+// Windows the UTF-8 conversion fails with ERROR_NO_UNICODE_TRANSLATION (1113) and libgit2
+// reports the localized system message ("... no mapping for the Unicode character ..."),
+// which looks like a network/config failure while it is a path encoding failure.
+// Convert at both boundaries instead of rewriting every caller.
+static std::string AnsiToUtf8(const std::string& ansi)
+{
+   if (ansi.empty()) {
+      return ansi;
+   }
+
+   int wideLen = MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), -1, nullptr, 0);
+   if (wideLen <= 0) {
+      return ansi;
+   }
+   std::vector<wchar_t> wide((size_t)wideLen);
+   if (MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), -1, wide.data(), wideLen) <= 0) {
+      return ansi;
+   }
+
+   int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wide.data(), -1, nullptr, 0, nullptr, nullptr);
+   if (utf8Len <= 0) {
+      return ansi;
+   }
+   std::vector<char> buf((size_t)utf8Len);
+   if (WideCharToMultiByte(CP_UTF8, 0, wide.data(), -1, buf.data(), utf8Len, nullptr, nullptr) <= 0) {
+      return ansi;
+   }
+   return std::string(buf.data());
+}
+
+static std::string Utf8ToAnsi(const std::string& utf8)
+{
+   if (utf8.empty()) {
+      return utf8;
+   }
+
+   int wideLen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+   if (wideLen <= 0) {
+      return utf8;
+   }
+   std::vector<wchar_t> wide((size_t)wideLen);
+   if (MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wide.data(), wideLen) <= 0) {
+      return utf8;
+   }
+
+   int ansiLen = WideCharToMultiByte(CP_ACP, 0, wide.data(), -1, nullptr, 0, nullptr, nullptr);
+   if (ansiLen <= 0) {
+      return utf8;
+   }
+   std::vector<char> buf((size_t)ansiLen);
+   if (WideCharToMultiByte(CP_ACP, 0, wide.data(), -1, buf.data(), ansiLen, nullptr, nullptr) <= 0) {
+      return utf8;
+   }
+   return std::string(buf.data());
+}
+
 static std::string ResolveRepoPath(const std::string& repoPath)
 {
    std::filesystem::path p(repoPath);
@@ -186,8 +248,10 @@ void TestKillAdminProcess() {
 void CheckError(const char* stage)
 {
    if (error < 0) {
-      std::string errorLast = git_error_last()->message;
-      std::cerr << stage << " failed: " << errorLast << std::endl;
+      const git_error* last = git_error_last();
+      std::cerr << stage << " failed: " << (last && last->message ? last->message : "no libgit2 error")
+         << " (error " << error << ", git_error_class " << (last ? last->klass : -1) << ")"
+         << std::endl;
       throw unhandled_error();
    }
 }
@@ -494,7 +558,7 @@ static bool RepoNeedsUpdate(const RepoConfig& repo)
    remoteRef = localRef;
 
    git_repository* repoHandle = nullptr;
-   if (git_repository_open(&repoHandle, repo.path.c_str()) < 0) {
+   if (git_repository_open(&repoHandle, AnsiToUtf8(repo.path).c_str()) < 0) {
       return true;
    }
 
@@ -585,11 +649,14 @@ void InitRepo(git_repository** repo, git_remote** remote, const char* repoPath, 
 {
    ThrowIfNotWithAdminRights();
 
-   error = git_repository_init(repo, repoPath, false);
+   // repoPath is ACP (CleanRepo and std::filesystem keep it), libgit2 wants UTF-8
+   const std::string gitRepoPath = AnsiToUtf8(repoPath);
+
+   error = git_repository_init(repo, gitRepoPath.c_str(), false);
    if (error) {
       CleanRepo(repoPath);
 
-      error = git_repository_init(repo, repoPath, false);
+      error = git_repository_init(repo, gitRepoPath.c_str(), false);
       CheckError("Init");
    }
 
@@ -792,7 +859,13 @@ void ResetRepo(git_repository* repo, const char* repoPath)
       CheckError("Status List");
 
       char long_path[4096];
+      const size_t longPathSize = sizeof(long_path);
       size_t repoPathLength = strlen(repoPath);
+      if (repoPathLength + 1 >= longPathSize) {
+         std::cerr << "Failed to remove untracked files: repo path too long" << std::endl;
+         git_status_list_free(status);
+         return;
+      }
       memcpy(long_path, repoPath, repoPathLength + 1);
       long_path[repoPathLength] = '\\';
 
@@ -801,9 +874,15 @@ void ResetRepo(git_repository* repo, const char* repoPath)
          const git_status_entry* s = git_status_byindex(status, i);
          if (s->status & GIT_STATUS_WT_NEW) {
             // This is an untracked file
+            // libgit2 reports it relative to the workdir as UTF-8, long_path is ACP
             const char* path = s->index_to_workdir->old_file.path;
+            std::string relative = Utf8ToAnsi(path);
+            if (relative.empty() || relative.size() + repoPathLength + 1 >= longPathSize) {
+               std::cerr << "Failed to remove untracked file:" << path << std::endl;
+               continue;
+            }
 
-            memcpy(long_path + repoPathLength + 1, path, strlen(path) + 1);
+            memcpy(long_path + repoPathLength + 1, relative.c_str(), relative.size() + 1);
             // Removing the file
             if (remove(long_path) == -1) {
                std::cerr << "Failed to remove untracked file:" << path << std::endl;
@@ -840,8 +919,8 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
    git_repository* repo = nullptr;
    git_remote* remote = nullptr;
 
-   // Try to open the repository
-   error = git_repository_open(&repo, repoPath);
+   // Try to open the repository (libgit2 takes the path as UTF-8)
+   error = git_repository_open(&repo, AnsiToUtf8(repoPath).c_str());
    if (error >= 0 && !IsOriginKnown(repo, knownUrls, knownUrlsCount)) {
       // Origin is neither a mirror nor a retired one (old channel): its history and FETCH_HEAD
       // say nothing about the new repo, so start over as on the first run
@@ -1172,7 +1251,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             return 1;
          }
       }
-      catch (std::exception ex) {
+      catch (const std::exception& ex) {
+         // By reference: catching std::exception by value slices the derived what() away
          std::cerr << "Exception: " << ex.what();
          return 1;
       }
