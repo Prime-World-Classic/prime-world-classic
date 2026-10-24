@@ -80,6 +80,34 @@ bool UITextureAtlasItem::PlaceImage( unsigned char* data, int width, int height,
     }
 
     texture->UnlockRect( 0 );
+
+    // MMATLAS probe (env MMATLAS=1): verify the bytes we wrote are visible on a
+    // fresh lock, and report the pitch the backend returned. The client indexes
+    // the locked rect assuming pitch == size * 4 (see baseIndex above).
+    static int s_atlasChk = -1;
+    if ( s_atlasChk < 0 )
+    {
+      char e[8];
+      s_atlasChk = ( GetEnvironmentVariableA( "MMATLAS", e, sizeof( e ) - 1 ) > 0 ) ? 1 : 0;
+    }
+    if ( s_atlasChk && width <= 64 && height <= 64 )
+    {
+      LockedRect chk = texture->LockRect( 0, LOCK_DEFAULT );
+      int mism = 0;
+      for ( int j = 0; j < height; ++j )
+        for ( int i = 0; i < width; ++i )
+        {
+          const int a = ( ( bestY + j ) * size + bestX + i ) * 4;
+          const int s = ( j * width + i ) * 4;
+          if ( chk.data[a + 0] != data[s + ( swizzle ? 2 : 0 )] ||
+               chk.data[a + 3] != data[s + 3] )
+            ++mism;
+        }
+      systemLog( NLogg::LEVEL_MESSAGE ) << "MMATLAS size " << size << " pos " << bestX << "," << bestY
+        << " wh " << width << "x" << height << " pitch " << lockedRect.pitch
+        << " chkPitch " << chk.pitch << " mism " << mism << " tex " << (void*)texture;
+      texture->UnlockRect( 0 );
+    }
   }
 
   uv1.x = float( bestX ) / float( size );

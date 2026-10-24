@@ -153,6 +153,29 @@ Texture2DRef UITextureCache::PlaceTextureToAtlas( const Texture2DRef& texture2D,
 
   if ( lockedRect.pitch == int( 4 * texture2D->GetWidth() ) )
   {
+    // MMATLAS probe: is the SOURCE texture blank before it is copied into the
+    // atlas? A blank source means the icon never reached the backend, not that
+    // the atlas upload is broken.
+    static int s_srcChk = -1;
+    if ( s_srcChk < 0 )
+    {
+      char e[8];
+      s_srcChk = ( GetEnvironmentVariableA( "MMATLAS", e, sizeof( e ) - 1 ) > 0 ) ? 1 : 0;
+    }
+    if ( s_srcChk && lockedRect.data )
+    {
+      const int sw = texture2D->GetWidth(), sh = texture2D->GetHeight();
+      int nz = 0, nza = 0;
+      for ( int i = 0; i < sw * sh; ++i )
+      {
+        const unsigned char* p = lockedRect.data + i * 4;
+        if ( p[0] || p[1] || p[2] ) ++nz;
+        if ( p[3] ) ++nza;
+      }
+      systemLog( NLogg::LEVEL_MESSAGE ) << "MMATLAS src " << sw << "x" << sh
+        << " pitch " << lockedRect.pitch << " nzRGB " << nz << " nzA " << nza
+        << " src " << (void*)&*texture2D;
+    }
     atlasTexture = PlaceImageToAtlas( lockedRect.data, texture2D->GetWidth(), texture2D->GetHeight(), uv1, uv2, false );
   }
   else

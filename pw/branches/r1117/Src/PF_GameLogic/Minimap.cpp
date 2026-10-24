@@ -652,6 +652,13 @@ void Minimap::InitializeMinimapTexture()
   invTargetSize.x = 1.f / static_cast<float>(m_targetTexture->GetWidth());
   invTargetSize.y = 1.f / static_cast<float>(m_targetTexture->GetHeight());
 
+  // MMTRACE: icon size on the minimap (_AddRect) is a function of the target
+  // size and of the icon atlas - compare these numbers in D3D9 and Vulkan.
+  char mmEnv[8] = { 0 };
+  if (GetEnvironmentVariableA("MMTRACE", mmEnv, sizeof(mmEnv) - 1) > 0)
+    systemLog(NLogg::LEVEL_MESSAGE) << "MMTRACE target " << textureWidth << "x" << textureHeight
+      << " inv " << invTargetSize.x << " " << invTargetSize.y << endl;
+
   if ( IsValid( flashWnd ) )
   {
     flashWnd->ChangeTexture( "miniMap_mc.miniMapAnim_mc.mapImage", GetTargetTexture() );
@@ -1028,6 +1035,26 @@ void Minimap::_AddRect(float _x, float _y, Render::Color color, const Render::Te
 
   const CVec2& texelSize = invTargetSize;
 
+  static int s_mmTrace = -1;
+  if (s_mmTrace < 0)
+  {
+    char mmEnv[8] = { 0 };
+    s_mmTrace = (GetEnvironmentVariableA("MMTRACE", mmEnv, sizeof(mmEnv) - 1) > 0) ? 1 : 0;
+  }
+  // dedupe: log only new (texSize, duv) signatures
+  static unsigned long long s_mmSeen[40];
+  static int s_mmN = 0;
+  const unsigned long long mmSig =
+    ((unsigned long long)texture->GetWidth() << 40) ^ ((unsigned long long)texture->GetHeight() << 28) ^
+    ((unsigned long long)(int)(uv1.x * 4096.f) << 14) ^ (unsigned long long)(int)(uv1.y * 4096.f);
+  bool mmNew = false;
+  if (s_mmTrace > 0 && s_mmN < 40)
+  {
+    mmNew = true;
+    for (int i = 0; i < s_mmN; ++i) if (s_mmSeen[i] == mmSig) { mmNew = false; break; }
+    if (mmNew) s_mmSeen[s_mmN++] = mmSig;
+  }
+
   RenderChunk& chunk = queue.back();
 
   const float x = texelSize.x * (floor(_x / texelSize.x));
@@ -1037,6 +1064,32 @@ void Minimap::_AddRect(float _x, float _y, Render::Color color, const Render::Te
 
   const float dx = texelSize.x * 0.5f;
   const float dy = texelSize.y * 0.5f;
+
+  if (mmNew)
+  {
+    int sr = -1, sg = -1, sb = -1, sa = -1, spx = -1, spy = -1;
+    {
+      // MMTRACE-2: sample the client's own copy of the atlas at the centre of
+      // the rect it is about to draw. Empty here + icons visible on the DXVK
+      // contour would mean stale UVs, not a backend upload problem.
+      // signature is LockRect(level, left, right, top, bottom, flags)
+      Render::LockedRect lr = texture->LockRect( 0, 0, texture->GetWidth(), 0, texture->GetHeight(), Render::LOCK_DEFAULT );
+      if ( lr.data )
+      {
+        spx = int( ( uv1.x + uv2.x ) * 0.5f * float( texture->GetWidth() ) );
+        spy = int( ( uv1.y + uv2.y ) * 0.5f * float( texture->GetHeight() ) );
+        const unsigned char* p = lr.data + spy * lr.pitch + spx * 4;
+        sb = p[0]; sg = p[1]; sr = p[2]; sa = p[3];
+      }
+      texture->UnlockRect( 0 );
+    }
+    systemLog(NLogg::LEVEL_MESSAGE) << "MMTRACE rect tex " << texture->GetWidth() << "x"
+      << texture->GetHeight() << " uv " << uv1.x << " " << uv1.y << " .. " << uv2.x << " " << uv2.y
+      << " pos " << _x << " " << _y << " wh " << w << " " << h
+      << " duv " << (uv2.x - uv1.x) << " " << (uv2.y - uv1.y)
+      << " tex " << (void*)texture << " sample " << sr << "," << sg << "," << sb << "," << sa
+      << " at " << spx << "," << spy << endl;
+  }
 
   Quad& quad = *reinterpret_cast<Quad*>(m_vertices);
 

@@ -5209,6 +5209,31 @@ static void LevelDims(unsigned w, unsigned h, unsigned level, unsigned* pW, unsi
   *pH = (h >> level) ? (h >> level) : 1u;
 }
 
+// Плоскость mip-уровня в зеркале. Зеркало держит ВСЮ цепочку: DDS-загрузчик
+// (ReadDDS.cpp FaceHolder::Fill) блокирует уровни по очереди, и прежний
+// resize() под каждый уровень необратимо сжимал зеркало — биты уровня 0
+// терялись, а клиент, читающий уровень 0 обратно (UITextureCache::
+// PlaceTextureToAtlas грузит из текстуры иконки миникарты), получал пустоту:
+// замер 2026-10-24 — источник 20x20 читается как 1 ненулевой пиксель (остаток
+// последнего, самого мелкого уровня цепочки 20->10->5->2->1).
+static size_t MipPlaneBytes(unsigned w, unsigned h, unsigned level, unsigned bpp, unsigned bpb)
+{
+  unsigned lw = 0, lh = 0;
+  LevelDims(w, h, level, &lw, &lh);
+  return bpb ? (size_t)((lw + 3u) / 4u) * bpb * ((lh + 3u) / 4u)
+             : (size_t)lw * bpp * lh;
+}
+static size_t MipPlaneOffset(unsigned w, unsigned h, unsigned level, unsigned bpp, unsigned bpb)
+{
+  size_t off = 0;
+  for (unsigned l = 0; l < level; ++l) off += MipPlaneBytes(w, h, l, bpp, bpb);
+  return off;
+}
+static size_t MipChainBytes(unsigned w, unsigned h, unsigned levels, unsigned bpp, unsigned bpb)
+{
+  return MipPlaneOffset(w, h, levels, bpp, bpb);
+}
+
 // Загрузка бит в 2D-текстуру. В D3D9 это LockRect/UnlockRect у COM-текстуры
 // (seam закрыл их правкой renderbackend.h), в Vulkan — CPU-зеркало и
 // copyTexture на Unlock. Поддержаны все уровни mip-цепочки и сжатые форматы
@@ -5258,7 +5283,7 @@ static bool SubmitThreadUpload(NvrhiBackendImpl& d, unsigned tid, const char* wh
 // с зеркала уровня 0 (box 2×2 — то же, что autogen у драйвера) и грузим теми
 // же writeTexture: одно CPU-прохождение на ~1/3 объёма уровня 0.
 static void GenMipChainCPU(NvrhiBackendImpl& d, nvrhi::ICommandList* cl,
-                           unsigned t, unsigned face, unsigned rowBytes)
+                           unsigned t, unsigned face, unsigned rowBytes, size_t base = 0)
 {
   if (!cl) return;
   NvrhiBackendImpl::TextureObj& to = d.textures[t];
@@ -5271,12 +5296,12 @@ static void GenMipChainCPU(NvrhiBackendImpl& d, nvrhi::ICommandList* cl,
     default: ++d.mipGenSkip; return;   // сжатые (DXT/BC) и прочие — не считаем
   }
   if (!rowBytes) rowBytes = to.w * bpp;
-  if (to.mirror.size() < (size_t)(to.h - 1u) * rowBytes + (size_t)to.w * bpp)
+  if (to.mirror.size() < base + (size_t)(to.h - 1u) * rowBytes + (size_t)to.w * bpp)
   { ++d.mipGenSkip; return; }          // зеркало не полное — нечего фильтровать
   // снимаем уровень 0 в плотный буфер (зеркало может быть с шагом больше строки)
   std::vector<unsigned char> src((size_t)to.w * to.h * bpp);
   for (unsigned y = 0; y < to.h; ++y)
-    memcpy(&src[(size_t)y * to.w * bpp], &to.mirror[(size_t)y * rowBytes], (size_t)to.w * bpp);
+    memcpy(&src[(size_t)y * to.w * bpp], &to.mirror[base + (size_t)y * rowBytes], (size_t)to.w * bpp);
   unsigned sw = to.w, sh = to.h;
   for (unsigned lvl = 1u; lvl < to.mipLevels; ++lvl)
   {
@@ -5329,9 +5354,13 @@ static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
   }
   if (ctx.entries && ctx.lastTex != t) SubmitThreadUpload(d, tid, "смена текстуры");
   if (!ctx.open) { ctx.cl->open(); ctx.open = true; }   // open() НЕ повторять (см. ThreadUpload::open)
-  ctx.cl->writeTexture(d.textures[t].tex, face, level, &d.textures[t].mirror[0],
+  const unsigned ubpp = BppOf(d.textures[t].fmt), ubpb = BytesPerBlockOf(d.textures[t].fmt);
+  const size_t uplane = MipPlaneOffset(d.textures[t].w, d.textures[t].h, level, ubpp, ubpb);
+  const size_t ubytes = MipPlaneBytes(d.textures[t].w, d.textures[t].h, level, ubpp, ubpb);
+  if (d.textures[t].mirror.size() < uplane + ubytes) return false;
+  ctx.cl->writeTexture(d.textures[t].tex, face, level, &d.textures[t].mirror[uplane],
                        (size_t)rowBytes);
-  if (level == 0u) GenMipChainCPU(d, ctx.cl, t, face, rowBytes);
+  if (level == 0u) GenMipChainCPU(d, ctx.cl, t, face, rowBytes, uplane);
   ctx.bytes += d.textures[t].mirror.size();
   ++ctx.entries; ctx.lastTex = t;
   ++d.textures[t].uploads;
@@ -5342,7 +5371,8 @@ static bool UploadTextureHere(NvrhiBackendImpl& d, unsigned tid, unsigned t,
                t, level, face, rowBytes, (unsigned)d.textures[t].mirror.size(),
                d.textures[t].w, d.textures[t].h, (int)d.textures[t].seamFormat,
                d.textures[t].mipLevels);
-  if (level == 0u) TexDumpLevel0(d, t, d.textures[t], level, rowBytes, 0, 0);
+  if (level == 0u) TexDumpLevel0(d, t, d.textures[t], level, rowBytes,
+                                 ubytes ? &d.textures[t].mirror[uplane] : 0, ubytes);
   // счётчики как в NvrhiBackend::NoteUpload (метод класса, из статического
   // хелпера недоступен; принудительный flush общего списка тут не нужен —
   // пакет закрывается сам)
@@ -5506,7 +5536,9 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
     DebugTrace("VkPanel: LockTexture2D tex#%u lvl%u %ux%u rect(%ld,%ld)-(%ld,%ld)",
                t, level, lw, lh, x0, y0, x1, y1);
   }
-  to.mirror.resize((size_t)rowBytes * rows);
+  // зеркало = вся mip-цепочка (см. MipPlaneOffset), уровень — по смещению
+  const size_t plane = MipPlaneOffset(to.w, to.h, level, bpp, bpb);
+  to.mirror.resize(MipChainBytes(to.w, to.h, to.mipLevels, bpp, bpb));
   to.locked = true;
   to.lockLevel = level; to.lockRows = rows; to.lockRowBytes = rowBytes;
   to.lockFace = to.cube ? face : 0u;
@@ -5519,8 +5551,8 @@ HRESULT NvrhiBackend::LockTexture2D(HTexture texture, unsigned level, unsigned f
   }
   const unsigned unit = bpb ? bpb : bpp;
   const unsigned unitPerRow = bpb ? 1u : (unsigned)lw;   // блоков в строке уже учтено в rowBytes
-  const size_t off = bpb ? ((size_t)(y0 / 4) * rowBytes + (size_t)(x0 / 4) * unit)
-                         : ((size_t)y0 * rowBytes + (size_t)x0 * unit);
+  const size_t off = plane + (bpb ? ((size_t)(y0 / 4) * rowBytes + (size_t)(x0 / 4) * unit)
+                                  : ((size_t)y0 * rowBytes + (size_t)x0 * unit));
   *ppData = off < to.mirror.size() ? &to.mirror[off] : &to.mirror[0];
   if (pRowPitch) *pRowPitch = rowBytes;
   (void)unitPerRow;
@@ -5547,8 +5579,46 @@ static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
   // отдельно (зеркало к этому моменту уже переиспользовано следующим Lock'ом).
   const unsigned char* psrc = src ? static_cast<const unsigned char*>(src)
                                   : (to.mirror.empty() ? 0 : &to.mirror[0]);
-  const size_t nbytes = src ? srcSize : to.mirror.size();
+  size_t nbytes = src ? srcSize : to.mirror.size();
   if (d.texDumpN >= kTexDumpMax || !psrc || !nbytes) return;
+  // PW_VK_TEXDUMP_IDX="97,93" + PW_VK_TEXDUMP_ROWS="2000x48": только эти индексы
+  // шва и только строки y0..y0+n зеркала. Без фильтра индексом 40-записный бюджет
+  // (и 600-записный) съедают первые попавшиеся 2048x2048 атласы, а нужный объект
+  // (атлас, из которого рисуется миникарта) в дамп не попадает; окно строк держит
+  // файл в сотнях килобайт вместо 16 МБ на запись (замер 2026-10-24). В этом
+  // режиме поле `level` в записи — это y0, а байт в записи — n*rowBytes.
+  static std::vector<unsigned> s_idxW;
+  static bool s_idxRead = false;
+  static unsigned s_rowY0 = 0u, s_rowN = 0u;
+  if (!s_idxRead)
+  {
+    char ix[MAX_PATH];
+    s_idxRead = true;
+    if (GetEnvironmentVariableA("PW_VK_TEXDUMP_IDX", ix, sizeof(ix) - 1))
+      for (char* tok = strtok(ix, ","); tok; tok = strtok(0, ","))
+        s_idxW.push_back((unsigned)atoi(tok));
+    char rw[MAX_PATH];
+    if (GetEnvironmentVariableA("PW_VK_TEXDUMP_ROWS", rw, sizeof(rw) - 1))
+    {
+      unsigned a = 0, n = 0;
+      if (sscanf(rw, "%ux%u", &a, &n) == 2 && n) { s_rowY0 = a; s_rowN = n; }
+    }
+  }
+  if (!s_idxW.empty())
+  {
+    bool hit = false;
+    for (size_t i = 0; i < s_idxW.size(); ++i) if (s_idxW[i] == idx) { hit = true; break; }
+    if (!hit) return;
+    if (s_rowN)
+    {
+      const size_t rb = rowBytes ? rowBytes : 1u;
+      if ((size_t)s_rowY0 * rb >= nbytes) return;
+      psrc = psrc + (size_t)s_rowY0 * rb;
+      size_t take = (size_t)s_rowN * rb;
+      nbytes = take < nbytes - (size_t)s_rowY0 * rb ? take : nbytes - (size_t)s_rowY0 * rb;
+      level = s_rowY0;
+    }
+  }
   // PW_VK_TEXDUMP_MIN=<N>: только текстуры шире N пикселей. Первые 60 записей
   // дампа (прогон 74) оказались мелкими иконками, а в дампе с min=512 (прогон
   // 76) 242 записи из 400 съела одна и та же 205x205 карта (перезаливается каждый
@@ -5591,6 +5661,12 @@ static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
     if (!hit) return;
     if (d.texDumpN >= 40u) return;
   }
+  else if (!s_idxW.empty())
+  {
+    // окно строк уже режет размер, дедупликация по (idx,level) здесь только
+    // отняла бы состояние рядом с дампом GPU: пишем каждую заливку
+    if (d.texDumpN >= kTexDumpMax) return;
+  }
   else
   {
   static std::set<unsigned long long> s_seen;
@@ -5613,10 +5689,23 @@ static void TexDumpLevel0(NvrhiBackendImpl& d, unsigned idx,
   const unsigned rec[9] = { idx, to.w, to.h, to.mipLevels,
                             (unsigned)to.seamFormat, to.cube ? 1u : 0u,
                             rowBytes, level, (unsigned)n };
+  // Режим окна (PW_VK_TEXDUMP_IDX + PW_VK_TEXDUMP_ROWS): держим ПОСЛЕДНЮЮ
+  // заливку каждого индекса — запись перезаписывается на месте (размер записи
+  // для данного индекса постоянен). Иначе бюджет съедают заливки времён загрузки
+  // карты, а сравнивать с GPU-снимком нужно состояние рядом с кадром дампа
+  // (замер 2026-10-24: в дампе остались только #93 и #96, атлас миникарты — нет).
+  static std::map<unsigned, long> s_lastOff;
+  const bool winMode = !s_idxW.empty() && s_rowN;
+  if (winMode)
+  {
+    std::map<unsigned, long>::iterator it = s_lastOff.find(idx);
+    if (it != s_lastOff.end()) fseek(d.texDump, it->second, SEEK_SET);
+    else s_lastOff[idx] = ftell(d.texDump);
+  }
   fwrite(rec, 4, 9, d.texDump);
   fwrite(psrc, 1, n, d.texDump);
   fflush(d.texDump);
-  ++d.texDumpN;
+  if (!winMode) ++d.texDumpN;
   char det[80];
   snprintf(det, sizeof(det), "#%u %ux%u lvl%u формат%u байт %u",
            idx, to.w, to.h, level, (unsigned)to.seamFormat, (unsigned)n);
@@ -5679,9 +5768,14 @@ HRESULT NvrhiBackend::UnlockTexture2D(HTexture texture, unsigned level, unsigned
              (unsigned)((size_t)_ReturnAddress() - (size_t)GetModuleHandle(0)));
     TexLockTrace(t, "unlock", to.mirror, to.w, to.h, det);
   }
-  d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[0], to.lockRowBytes);
-  if (level == 0u) GenMipChainCPU(d, d.commandList, t, to.lockFace, to.lockRowBytes);
-  if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes);
+  const unsigned ubpp = BppOf(to.fmt), ubpb = BytesPerBlockOf(to.fmt);
+  const size_t uplane = MipPlaneOffset(to.w, to.h, level, ubpp, ubpb);
+  const size_t ubytes = MipPlaneBytes(to.w, to.h, level, ubpp, ubpb);
+  if (to.mirror.size() < uplane + ubytes) return E_FAIL;
+  d.commandList->writeTexture(to.tex, to.lockFace, level, &to.mirror[uplane], to.lockRowBytes);
+  if (level == 0u) GenMipChainCPU(d, d.commandList, t, to.lockFace, to.lockRowBytes, uplane);
+  if (level == 0u) TexDumpLevel0(d, t, to, level, to.lockRowBytes,
+                                 ubytes ? &to.mirror[uplane] : 0, ubytes);
   VK_TRACE("writeTexture <");
   ++to.uploads;
   // Замер прогона 81: у ВСЕХ текстур (в том числе чёрных на GPU) загруз=1, а
@@ -7353,6 +7447,27 @@ HRESULT NvrhiBackend::DrawImpl(ERenderPrimitiveType type, bool indexed, unsigned
     ++d.drawSkipRt;
     VkNote("Вывод: поверхность мертва (swapchain пересоздан?)", false, 0);
     return E_FAIL;
+  }
+  // Отладка (2026-10-24, миникарта): env PW_VK_MMDRAW=1 — для первых выводов в
+  // поверхность размера миникарты печатаем пару шейдеров и привязанные текстуры,
+  // чтобы сопоставить вывод MMTRACE (клиент) с индексом текстуры в дампе TXGP.
+  {
+    static unsigned s_mmLimit = 0, s_mmN = 0;
+    static bool s_mmInit = false;
+    if (!s_mmInit)
+    {
+      char mb[8];
+      s_mmInit = true;
+      s_mmLimit = (GetEnvironmentVariableA("PW_VK_MMDRAW", mb, sizeof(mb) - 1) > 0) ? 300u : 0u;
+    }
+    if (s_mmN < s_mmLimit && d.surfaces[d.curRt].w >= 190u && d.surfaces[d.curRt].w <= 210u &&
+        d.surfaces[d.curRt].h >= 190u && d.surfaces[d.curRt].h <= 210u)
+    {
+      ++s_mmN;
+      DebugTrace("VkMmDraw: rt#%u %ux%u ps=%u vs=%u tex0=#%u tex1=#%u prim=%u idx=%u",
+                 d.curRt, d.surfaces[d.curRt].w, d.surfaces[d.curRt].h,
+                 d.curPs, d.curVs, d.texBound[0], d.texBound[1], primitiveCount, startIndexLocation);
+    }
   }
   // Vulkan требует, чтобы глубина совпадала по размеру с цветовым приложением.
   // Замер (прогон 2026.10.16-21.00): после смены разрешения клиент продолжает
