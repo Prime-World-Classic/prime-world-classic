@@ -75,9 +75,9 @@ static std::string updateBranch = "main";
 
 static std::filesystem::path ExeDirectory()
 {
-   std::vector<char> buf(MAX_PATH);
+   std::vector<wchar_t> buf(MAX_PATH);
    for (;;) {
-      DWORD n = GetModuleFileNameA(nullptr, buf.data(), (DWORD)buf.size());
+      DWORD n = GetModuleFileNameW(nullptr, buf.data(), (DWORD)buf.size());
       if (n == 0) {
          return {};
       }
@@ -92,75 +92,68 @@ static std::filesystem::path ExeDirectory()
 }
 
 // Encoding contract of this program:
-//   every narrow std::string path is ANSI in the system ACP (cp1251 on Russian installs) -
-//   that is what GetModuleFileNameA, std::filesystem narrow paths, ifstream, remove() and
-//   ShellExecuteExA speak; and
-//   libgit2 takes paths as UTF-8 and reports workdir paths as UTF-8.
-// Handing an ACP path straight to libgit2 breaks every install under a non-ASCII path: on
-// Windows the UTF-8 conversion fails with ERROR_NO_UNICODE_TRANSLATION (1113) and libgit2
-// reports the localized system message ("... no mapping for the Unicode character ..."),
-// which looks like a network/config failure while it is a path encoding failure.
-// Convert at both boundaries instead of rewriting every caller.
-static std::string AnsiToUtf8(const std::string& ansi)
-{
-   if (ansi.empty()) {
-      return ansi;
-   }
-
-   int wideLen = MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), -1, nullptr, 0);
-   if (wideLen <= 0) {
-      return ansi;
-   }
-   std::vector<wchar_t> wide((size_t)wideLen);
-   if (MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), -1, wide.data(), wideLen) <= 0) {
-      return ansi;
-   }
-
-   int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wide.data(), -1, nullptr, 0, nullptr, nullptr);
-   if (utf8Len <= 0) {
-      return ansi;
-   }
-   std::vector<char> buf((size_t)utf8Len);
-   if (WideCharToMultiByte(CP_UTF8, 0, wide.data(), -1, buf.data(), utf8Len, nullptr, nullptr) <= 0) {
-      return ansi;
-   }
-   return std::string(buf.data());
-}
-
-static std::string Utf8ToAnsi(const std::string& utf8)
+//   every narrow std::string path is UTF-8 (RepoConfig::path, repoConfigDir, and everything
+//   libgit2 takes and reports), and every path handed to the OS or to <filesystem> is wide.
+//   The system ACP is not used anywhere, on purpose.
+// ACP is the representation that cannot be trusted: GetModuleFileNameA turns an install path the
+// codepage cannot spell into '?' (an English-ACP Windows with a Cyrillic directory then cannot
+// even find updater_repos.txt next to the exe), and ACP bytes handed to libgit2 - which takes
+// UTF-8 - fail on Windows with ERROR_NO_UNICODE_TRANSLATION (1113), which libgit2 reports as the
+// localized system message ("... no mapping for the Unicode character ...") that looks like a
+// config or network failure while it is a path encoding failure.
+static std::wstring Utf8ToWide(const std::string& utf8)
 {
    if (utf8.empty()) {
-      return utf8;
+      return std::wstring();
    }
 
    int wideLen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
    if (wideLen <= 0) {
-      return utf8;
+      return std::wstring();
    }
    std::vector<wchar_t> wide((size_t)wideLen);
    if (MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wide.data(), wideLen) <= 0) {
-      return utf8;
+      return std::wstring();
+   }
+   return std::wstring(wide.data());
+}
+
+static std::string WideToUtf8(const std::wstring& wide)
+{
+   if (wide.empty()) {
+      return std::string();
    }
 
-   int ansiLen = WideCharToMultiByte(CP_ACP, 0, wide.data(), -1, nullptr, 0, nullptr, nullptr);
-   if (ansiLen <= 0) {
-      return utf8;
+   int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
+   if (utf8Len <= 0) {
+      return std::string();
    }
-   std::vector<char> buf((size_t)ansiLen);
-   if (WideCharToMultiByte(CP_ACP, 0, wide.data(), -1, buf.data(), ansiLen, nullptr, nullptr) <= 0) {
-      return utf8;
+   std::vector<char> buf((size_t)utf8Len);
+   if (WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, buf.data(), utf8Len, nullptr, nullptr) <= 0) {
+      return std::string();
    }
    return std::string(buf.data());
 }
 
+// std::filesystem::path built from a narrow string reads it as ACP on Windows: go through wide.
+static std::filesystem::path Utf8ToPath(const std::string& utf8)
+{
+   return std::filesystem::path(Utf8ToWide(utf8));
+}
+
+static std::string PathToUtf8(const std::filesystem::path& path)
+{
+   return WideToUtf8(path.wstring());
+}
+
 static std::string ResolveRepoPath(const std::string& repoPath)
 {
-   std::filesystem::path p(repoPath);
+   std::filesystem::path p = Utf8ToPath(repoPath);
    if (p.is_absolute() || repoConfigDir.empty()) {
       return repoPath;
    }
    try {
-      return (std::filesystem::path(repoConfigDir) / p).lexically_normal().string();
+      return PathToUtf8((Utf8ToPath(repoConfigDir) / p).lexically_normal());
    }
    catch (...) {
       return repoPath;
@@ -432,7 +425,7 @@ static void RankAllRemoteUrls(bool verbose)
    }
 }
 
-static bool LoadReposFromFile(const std::string& path)
+static bool LoadReposFromFile(const std::filesystem::path& path)
 {
    std::ifstream file(path);
    if (file.fail()) {
@@ -443,7 +436,7 @@ static bool LoadReposFromFile(const std::string& path)
    std::string line;
 
    try {
-      repoConfigDir = std::filesystem::absolute(std::filesystem::path(path)).parent_path().string();
+      repoConfigDir = PathToUtf8(std::filesystem::absolute(path).parent_path());
    }
    catch (...) {
       repoConfigDir.clear();
@@ -507,15 +500,15 @@ static bool LoadRepos()
       return false;
    }
 
-   std::filesystem::path path = exeDir / "updater_repos.txt";
+   std::filesystem::path path = exeDir / L"updater_repos.txt";
    std::error_code ec;
    if (!std::filesystem::exists(path, ec)) {
-      std::cerr << "Repo config not found: " << path.string() << std::endl;
+      std::cerr << "Repo config not found: " << PathToUtf8(path) << std::endl;
       return false;
    }
 
-   if (!LoadReposFromFile(path.string())) {
-      std::cerr << "Invalid repo config: " << path.string() << std::endl;
+   if (!LoadReposFromFile(path)) {
+      std::cerr << "Invalid repo config: " << PathToUtf8(path) << std::endl;
       return false;
    }
 
@@ -558,7 +551,7 @@ static bool RepoNeedsUpdate(const RepoConfig& repo)
    remoteRef = localRef;
 
    git_repository* repoHandle = nullptr;
-   if (git_repository_open(&repoHandle, AnsiToUtf8(repo.path).c_str()) < 0) {
+   if (git_repository_open(&repoHandle, repo.path.c_str()) < 0) {
       return true;
    }
 
@@ -639,9 +632,9 @@ int fetch_progress(const git_transfer_progress* stats, void* payload) {
 
 void CleanRepo(const char* repoPath)
 {
-   std::string path = repoPath;
-   path += "\\.git";
-   std::filesystem::remove_all(path);
+   std::filesystem::path path = Utf8ToPath(std::string(repoPath) + "\\.git");
+   std::error_code ec;
+   std::filesystem::remove_all(path, ec);
 }
 
 
@@ -649,14 +642,12 @@ void InitRepo(git_repository** repo, git_remote** remote, const char* repoPath, 
 {
    ThrowIfNotWithAdminRights();
 
-   // repoPath is ACP (CleanRepo and std::filesystem keep it), libgit2 wants UTF-8
-   const std::string gitRepoPath = AnsiToUtf8(repoPath);
-
-   error = git_repository_init(repo, gitRepoPath.c_str(), false);
+   // repoPath is UTF-8, which is exactly what libgit2 takes
+   error = git_repository_init(repo, repoPath, false);
    if (error) {
       CleanRepo(repoPath);
 
-      error = git_repository_init(repo, gitRepoPath.c_str(), false);
+      error = git_repository_init(repo, repoPath, false);
       CheckError("Init");
    }
 
@@ -858,33 +849,34 @@ void ResetRepo(git_repository* repo, const char* repoPath)
       error = git_status_list_new(&status, repo, &statusopt);
       CheckError("Status List");
 
-      char long_path[4096];
-      const size_t longPathSize = sizeof(long_path);
-      size_t repoPathLength = strlen(repoPath);
-      if (repoPathLength + 1 >= longPathSize) {
+      // repoPath and the paths libgit2 reports are UTF-8; the OS call is wide, so the install
+      // directory does not have to be spellable in the system codepage
+      const std::wstring repoPathWide = Utf8ToWide(repoPath);
+      if (repoPathWide.empty() || repoPathWide.size() + 1 >= 32767) {
          std::cerr << "Failed to remove untracked files: repo path too long" << std::endl;
          git_status_list_free(status);
          return;
       }
-      memcpy(long_path, repoPath, repoPathLength + 1);
-      long_path[repoPathLength] = '\\';
 
       status_count = git_status_list_entrycount(status);
       for (size_t i = 0; i < status_count; ++i) {
          const git_status_entry* s = git_status_byindex(status, i);
          if (s->status & GIT_STATUS_WT_NEW) {
-            // This is an untracked file
-            // libgit2 reports it relative to the workdir as UTF-8, long_path is ACP
+            // This is an untracked file: libgit2 reports it relative to the workdir, UTF-8
             const char* path = s->index_to_workdir->old_file.path;
-            std::string relative = Utf8ToAnsi(path);
-            if (relative.empty() || relative.size() + repoPathLength + 1 >= longPathSize) {
+            std::wstring relative = Utf8ToWide(path);
+            if (relative.empty()) {
                std::cerr << "Failed to remove untracked file:" << path << std::endl;
                continue;
             }
 
-            memcpy(long_path + repoPathLength + 1, relative.c_str(), relative.size() + 1);
+            std::wstring longPath = repoPathWide + L"\\" + relative;
+            // Past MAX_PATH the only way through Win32 file APIs is the extended-length prefix
+            if (longPath.size() >= 260 && longPath.compare(0, 4, L"\\\\?\\") != 0) {
+               longPath = L"\\\\?\\" + longPath;
+            }
             // Removing the file
-            if (remove(long_path) == -1) {
+            if (_wremove(longPath.c_str()) == -1) {
                std::cerr << "Failed to remove untracked file:" << path << std::endl;
             }
          }
@@ -920,7 +912,7 @@ void UpdateRepo(const char* repoPath, const char* remoteRepoUrl, const char* bra
    git_remote* remote = nullptr;
 
    // Try to open the repository (libgit2 takes the path as UTF-8)
-   error = git_repository_open(&repo, AnsiToUtf8(repoPath).c_str());
+   error = git_repository_open(&repo, repoPath);
    if (error >= 0 && !IsOriginKnown(repo, knownUrls, knownUrlsCount)) {
       // Origin is neither a mirror nor a retired one (old channel): its history and FETCH_HEAD
       // say nothing about the new repo, so start over as on the first run
@@ -953,23 +945,24 @@ void LaunchAdminNanoUpdater() {
    std::filesystem::path cwd = std::filesystem::current_path();
    std::filesystem::path exeDir = ExeDirectory();
    std::filesystem::path admPath = exeDir.empty()
-      ? std::filesystem::path("..\\Tools\\PW_NanoUpdaterAdm.exe")
-      : exeDir / "PW_NanoUpdaterAdm.exe";
-   std::string admPathString = admPath.string();
-   std::string admParameters = "--branch " + (updateBranch.empty() ? std::string("main") : updateBranch);
+      ? std::filesystem::path(L"..\\Tools\\PW_NanoUpdaterAdm.exe")
+      : exeDir / L"PW_NanoUpdaterAdm.exe";
+   std::wstring admPathString = admPath.wstring();
+   std::wstring cwdString = cwd.wstring();
+   std::wstring admParameters = L"--branch " + Utf8ToWide(updateBranch.empty() ? std::string("main") : updateBranch);
 
-   SHELLEXECUTEINFO ShExecInfo = { 0 };
-   ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
+   SHELLEXECUTEINFOW ShExecInfo = { 0 };
+   ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFOW);
    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
    ShExecInfo.hwnd = NULL;
-   ShExecInfo.lpVerb = "open";
+   ShExecInfo.lpVerb = L"open";
    ShExecInfo.lpFile = admPathString.c_str();
    ShExecInfo.lpParameters = admParameters.c_str();
-   ShExecInfo.lpDirectory = cwd.string().c_str();
+   ShExecInfo.lpDirectory = cwdString.c_str();
    ShExecInfo.nShow = SW_SHOW;
    ShExecInfo.hInstApp = NULL;
 
-   if (ShellExecuteEx(&ShExecInfo)) {
+   if (ShellExecuteExW(&ShExecInfo)) {
 
       std::atomic<bool> doWork;
       doWork.store(true);
@@ -998,7 +991,7 @@ void LaunchAdminNanoUpdater() {
 
 bool IsAdminRequired() {
    for (const auto& repo : repos) {
-      std::filesystem::path target(repo.path);
+      std::filesystem::path target = Utf8ToPath(repo.path);
       std::error_code ec;
       std::filesystem::path testDir;
 
