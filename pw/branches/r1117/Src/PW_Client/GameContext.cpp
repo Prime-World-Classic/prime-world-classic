@@ -932,9 +932,11 @@ void GameContext::StartGameClient()
   
   // A spectator is in no lineup (its GetNickname() is the first player's one):
   // the chat nickname comes with the spectator launch token (Game.cpp), else a plain "Spectator"
+  // "Spectator" in Russian by codes: VS2008 treats \u in a literal as warning C4428 (an error with /WX)
+  static const wchar_t spectatorRu[] = { 0x0417, 0x0440, 0x0438, 0x0442, 0x0435, 0x043b, 0x044c, 0 };
   if ( isSpectator )
     CreateChatClient( !g_spectatorNickname.empty() ? g_spectatorNickname
-      : wstring( GetLanguageShortCode() == "en" ? L"Spectator" : L"\u0417\u0440\u0438\u0442\u0435\u043b\u044c" ) );
+      : wstring( GetLanguageShortCode() == "en" ? L"Spectator" : spectatorRu ) );
   else
     CreateChatClient(gameClient->GetNickname());
   gameClient->SetChatClient( chatClient );

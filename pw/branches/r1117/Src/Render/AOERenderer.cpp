@@ -49,7 +49,7 @@ AOERenderer::AOERenderer() :
   saturate(false)
 {
   if(!RENDER_DISABLED) {
-    if (!CreateQuad() || !CreateFan() || !CreateStrip())
+    if (!CreateQuad() || !CreateFan() || !CreateStrip() || !CreateCurve())
       return;
   }
 
@@ -289,6 +289,158 @@ void AOERenderer::PrepareStrip(ChannelType channelId, float width, float base)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool AOERenderer::CreateCurve()
+{
+  // 0    2    4    6
+  //  +----+----+----+   the vertices take their position and uv from the constants of their own index (SetAreaCurve),
+  //  |  / |  / |  / |   y < 0 only tells the shader to mirror y and v
+  //  | /  | /  | /  |
+  //  +----+----+----+
+  // 1    3    5    7
+  AOERendererVertex vertices[] = {
+    {0.0f, +1.0f, 0}, {0.0f, -1.0f, 1},
+    {0.0f, +1.0f, 2}, {0.0f, -1.0f, 3},
+    {0.0f, +1.0f, 4}, {0.0f, -1.0f, 5},
+    {0.0f, +1.0f, 6}, {0.0f, -1.0f, 7},
+  };
+  DXVertexBufferRef pVB = CreateVB(sizeof(vertices), RENDER_POOL_MANAGED, vertices);
+  NI_VERIFY(::Get(pVB), "Unable to create vertex buffer for AOE", return false);
+
+  unsigned int indices[] = {0, 1, 2, 2, 1, 3, 2, 3, 4, 4, 3, 5, 4, 5, 6, 6, 5, 7};
+  DXIndexBufferRef pIB = CreateIB(sizeof(indices), RENDER_POOL_MANAGED, indices);
+  NI_VERIFY(::Get(pIB), "Unable to create index buffer for AOE", return false);
+
+  Primitive& geo = curve;
+  DipDescriptor& dip = geo.GetDipDescriptor();
+  dip.primitiveType = RENDERPRIMITIVE_TRIANGLELIST;
+  dip.baseVertexIndex = 0;
+  dip.minIndex = 0;
+  dip.numVertices = ARRAY_SIZE(vertices);
+  dip.startIndex = 0;
+  dip.primitiveCount = ARRAY_SIZE(indices) / 3;
+
+  VertexFormatDescriptor formatDescriptor;
+  formatDescriptor.AddVertexElement( VertexElementDescriptor(0, 0, VERTEXELEMENTTYPE_FLOAT2, VERETEXELEMENTUSAGE_POSITION, 0) );
+  formatDescriptor.AddVertexElement( VertexElementDescriptor(0, 8, VERTEXELEMENTTYPE_SHORT2, VERETEXELEMENTUSAGE_BLENDINDICES, 0) );
+
+  geo.SetVertexStream(pVB, sizeof(AOERendererVertex));
+  geo.SetVertexDeclaration(SmartRenderer::GetVertexFormatDeclaration(formatDescriptor));
+  geo.SetIndexBuffer(pIB);
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void AOERenderer::SetAreaCurve(ChannelType channelId, NDb::Material const* pMaterial, CVec2 const* pPoints, int numPoints, float halfWidth, float z, bool usePrimaryColor)
+{
+  NI_VERIFY(0 <= channelId && channelId < _NUM_CHANNELS, NStr::StrFmt("Invalid AOE index %i of %i maximum", channelId, _NUM_CHANNELS), return);
+
+  float length = 0.0f;
+  for (int i = 1; i < numPoints; ++i)
+    length += fabs(pPoints[i] - pPoints[i - 1]);
+  if (numPoints < 2 || halfWidth <= 0.0f || length < FP_EPSILON)
+  {
+    ResetArea(channelId);
+    return;
+  }
+
+  SetAreaParams(channelId, AREA_CURVE, pMaterial, 1.0f, halfWidth);
+  AreaChannel& channel = channels[channelId];
+
+  float aspectRatio = 1.0f;
+  if (channel.pMaterial)
+    if (NDb::AOEMaterial const* pDBMaterial = dynamic_cast<NDb::AOEMaterial const*>(channel.pMaterial->GetDBMaterial()))
+      aspectRatio = pDBMaterial->aspectRatio;
+
+  // the lengths of the parts and the u where the path jumps: (s, u before, u after)
+  float tail, head, tile = 0.0f;
+  vector<CVec3> jumps;
+  if (aspectRatio < 0.0f)
+  {
+    float const full = -aspectRatio * 2.0f * halfWidth; // the path length of the whole texture
+    tail = head = 0.25f * full;
+    tile = 0.5f * full;
+    if (tail + head > length)
+      tail = head = 0.5f * length;
+    float const bodyEnd = length - head;
+    if (bodyEnd - tail > 1e-3f)
+    {
+      float const d = (bodyEnd - tail) / tile;
+      jumps.push_back(CVec3(tail, 0.25f, 0.75f - 0.5f * (d - floorf(d))));
+      for (int k = int(floorf(d)); k >= 1; --k)
+        if (bodyEnd - k * tile > tail + 1e-3f)
+          jumps.push_back(CVec3(bodyEnd - k * tile, 0.75f, 0.25f)); // u grows 0.25 -> 0.75 over a tile
+    }
+    else
+      jumps.push_back(CVec3(tail, 0.25f, 0.75f));
+  }
+  else
+  {
+    tail = head = Min(fabs(aspectRatio) * halfWidth, 0.5f * length);
+    // the corridor mapping bends at the end of the tail and at the head: points there (a straight path of 2 points
+    // stretched the whole texture over one quad - a wedge instead of an arrow)
+    jumps.push_back(CVec3(tail, 0.5f, 0.5f));
+    if (length - head > tail + 1e-3f)
+      jumps.push_back(CVec3(length - head, 0.5f, 0.5f));
+  }
+  float const bodyEnd = length - head;
+  bool const tiled = aspectRatio < 0.0f;
+
+  struct Local
+  {
+    static void Add(vector<CVec4>& curve, CVec2 const& p, CVec2 t, float halfWidth, float u)
+    {
+      if (!Normalize(&t))
+        t.Set(1.0f, 0.0f);
+      CVec2 const n(-t.y * halfWidth, t.x * halfWidth);
+      CVec2 const l = p + n;
+      CVec2 const r = p - n;
+      // the shader gives a vertex with y < 0 the position (x, -y) and the uv (u, 1 - v): the right edge (v = 1) is
+      // stored with -y and v = 0
+      curve.push_back(CVec4(l.x, l.y, u, 0.0f));
+      curve.push_back(CVec4(r.x, -r.y, u, 0.0f));
+    }
+  };
+
+  channel.curve.clear();
+  float s = 0.0f;
+  int j = 0;
+  for (int i = 0; i < numPoints; ++i)
+  {
+    if (i > 0)
+    {
+      CVec2 const seg = pPoints[i] - pPoints[i - 1];
+      float const segLen = fabs(seg);
+      // the jumps inside this segment
+      for (; j < jumps.size() && jumps[j].x < s + segLen; ++j)
+      {
+        if (jumps[j].x <= s)
+          continue;
+        CVec2 const p = pPoints[i - 1] + seg * ((jumps[j].x - s) / segLen);
+        Local::Add(channel.curve, p, seg, halfWidth, jumps[j].y);
+        Local::Add(channel.curve, p, seg, halfWidth, jumps[j].z);
+      }
+      s += segLen;
+    }
+
+    float u = 0.5f;
+    if (tail > FP_EPSILON && s < tail)
+      u = (tiled ? 0.25f : 0.5f) * s / tail;
+    else if (head > FP_EPSILON && s > bodyEnd)
+      u = (tiled ? 0.75f : 0.5f) + (tiled ? 0.25f : 0.5f) * (s - bodyEnd) / head;
+    else if (tiled)
+    {
+      float const d = (bodyEnd - s) / tile;
+      u = 0.75f - 0.5f * (d - floorf(d));
+    }
+    Local::Add(channel.curve, pPoints[i], pPoints[Min(i + 1, numPoints - 1)] - pPoints[Max(i - 1, 0)], halfWidth, u);
+  }
+
+  SetAreaPosition(channelId, CVec3(0.0f, 0.0f, z), CVec3(1.0f, 0.0f, 0.0f), usePrimaryColor);
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void AOERenderer::SetAreaParams(ChannelType channelId, AreaType type, NDb::Material const* pMaterial, float radius, float span)
 {
   NI_ASSERT(0 <= channelId && channelId < _NUM_CHANNELS, NStr::StrFmt("Invalid AOE channel index %i of %i maximum", channelId, _NUM_CHANNELS));
@@ -464,6 +616,22 @@ void AOERenderer::Render()
         GetRenderer()->SetVertexShaderConstants(VSHADER_LOCALCONST1, ARRAY_SIZE(stripParams[i]), stripParams[i]);
         strip.Bind();
         strip.Draw();
+        break;
+      case AREA_CURVE:
+        {
+          // 4 pairs of vertices (3 quads) a draw, the next draw starts at the last pair; the rest is padded with the last
+          // pair (empty quads)
+          int const count = channel.curve.size();
+          curve.Bind();
+          for (int k = 0; k + 2 < count; k += 6)
+          {
+            CVec4 params[8];
+            for (int j = 0; j < 8; ++j)
+              params[j] = channel.curve[k + j < count ? k + j : count - 2 + (j & 1)];
+            GetRenderer()->SetVertexShaderConstants(VSHADER_LOCALCONST1, ARRAY_SIZE(params), params);
+            curve.Draw();
+          }
+        }
         break;
       default:
         NI_ALWAYS_ASSERT(NStr::StrFmt("Unknown AOE area type %i", channel.type));

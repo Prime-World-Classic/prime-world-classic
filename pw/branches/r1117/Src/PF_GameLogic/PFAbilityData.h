@@ -176,6 +176,7 @@ public:
 
   void                            SubscribeChanneling( PFBaseUnitEventListener *pListener );
   void                            UnsubscribeChanneling( PFBaseUnitEventListener *pListener );
+  bool                            IsChannelingNow() const { return !channelings.empty(); }
 
 protected:
   PFAbilityData();

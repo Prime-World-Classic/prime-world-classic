@@ -12,6 +12,7 @@
 
 #include "PFAIWorld.h"
 #include "PFConsumable.h"
+#include "PFBaseAttackData.h"
 #include "SmartRandom.h"
 #include "PFWorldNatureMap.h"
 
@@ -117,10 +118,40 @@ void PFAbilityData::Update(float dt, bool fullUpdate)
   }
   
   // Update cooldown
-  for (int i = 0; i < EAbilityState::_Count; ++i)
+  // unit variable CooldownFreeze > 0 stops the cooldowns of the unit's talents; the base attack and consumables keep going
+  const bool cooldownFrozen = ( cooldown[0] > 0.0f || cooldown[EAbilityState::_Count - 1] > 0.0f ) && IsValid( pOwner )
+    && static_cast<PFAbilityData const*>( pOwner->GetAttackAbility() ) != this && dynamic_cast<PFConsumable const*>( this ) == 0
+    && pOwner->GetVariable( "CooldownFreeze" ) > 0.0f;
+  // talent constants CdSpeedPerEnemyHero / CdEnemyHeroRange: the cooldown runs faster for every living enemy hero near
+  // the owner (Taurus A1u2)
+  float cooldownSpeed = 1.0f;
+  if ( !cooldownFrozen && ( cooldown[0] > 0.0f || cooldown[EAbilityState::_Count - 1] > 0.0f ) && IsValid( pOwner )
+    && pDBDesc && pDBDesc->constants && GetConstant( "CdSpeedPerEnemyHero" ) )
+  {
+    float const perHero = CalcParam( "CdSpeedPerEnemyHero", pOwner, pOwner, this );
+    if ( perHero > 0.0f )
+    {
+      float const range = GetConstant( "CdEnemyHeroRange" ) ? CalcParam( "CdEnemyHeroRange", pOwner, pOwner, this ) : 14.0f;
+      struct EnemyHeroCounter
+      {
+        int count;
+        EnemyHeroCounter() : count( 0 ) {}
+        void operator()( PFLogicObject & unit )
+        {
+          PFBaseUnit * pUnit = dynamic_cast<PFBaseUnit *>( &unit );
+          if ( pUnit && pUnit->IsHero() && !pUnit->IsDead() )
+            ++count;
+        }
+      } counter;
+      pOwner->GetWorld()->GetAIWorld()->ForAllUnitsInRange( pOwner->GetPosition(), range, counter,
+        UnitMaskingPredicate( pOwner->GetOppositeFactionFlags(), NDb::SPELLTARGET_HEROMALE | NDb::SPELLTARGET_HEROFEMALE, pOwner ) );
+      cooldownSpeed += perHero * counter.count;
+    }
+  }
+  for (int i = 0; i < EAbilityState::_Count && !cooldownFrozen; ++i)
   {
     if (cooldown[i] > 0.0f)
-      cooldown[i] = max(0.0f, cooldown[i] - dt);
+      cooldown[i] = max(0.0f, cooldown[i] - dt * cooldownSpeed);
 
     if( cooldown[i] < dt / 2.0f )
       cooldown[i] = 0.0f;

@@ -694,7 +694,7 @@ static __forceinline void RenderBatch(Batch &batch, UINT &curSortId)
 
   const UINT sortId = batch.GetSortId();
 
-  if( (sortId != curSortId) || (sortId == 0) )
+  if( (sortId != curSortId) || EqualIDs(sortId, 0) ) // animated materials have no CRC: each one is prepared
   {
 	  batch.Prepare();
 	  curSortId = sortId;
@@ -809,7 +809,7 @@ void BatchQueue::RenderBatchesList(Batch *pBatch)
 
     const UINT sortId = pBatch->GetSortId();
 
-    if( (sortId != curSortId) || (sortId == 0) )
+    if( (sortId != curSortId) || EqualIDs(sortId, 0) ) // animated materials have no CRC: each one is prepared
     {
       pBatch->Prepare();
       curSortId = sortId;

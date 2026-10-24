@@ -547,7 +547,8 @@ bool DecalMaterial::Instanceable() const
   return s_instanceDecals;
 }
 
-bool DecalMaterial::SkipIDEvaluation() const { return false; }
+// animated or faded decals: opacity is not in the sortId, each one must be prepared on its own
+bool DecalMaterial::SkipIDEvaluation() const { return Need2CallUpdate() || masterOpacity != 1.0f; }
 
 void DecalMaterial::PrepareRendererWithBatch(const Batch &batch)
 {

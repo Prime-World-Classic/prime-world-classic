@@ -20,6 +20,7 @@ public:
     AREA_SECTOR,
     AREA_LINE,
     AREA_WALL,
+    AREA_CURVE, //< a bent strip along points (SetAreaCurve)
     _NUM_AREA_TYPES
   };
 
@@ -34,6 +35,7 @@ public:
     CHANNEL_UNIT_RANGE2,
     CHANNEL_PING_FIRST, //< ground rings of team pings (AdventureScreen), CHANNEL_PING_COUNT channels
     CHANNEL_PING_LAST = CHANNEL_PING_FIRST + 7,
+    CHANNEL_CURVE, //< a bent arrow (Taurus A4_1 ram, AdventureScreen::UpdateRamArrow)
     _NUM_CHANNELS
   };
   enum { CHANNEL_PING_COUNT = CHANNEL_PING_LAST - CHANNEL_PING_FIRST + 1 };
@@ -52,6 +54,9 @@ public:
   void SetAreaRadius(ChannelType channelId, float radius);
   void SetAreaPosition(ChannelType channelId, CVec3 const& pos, CVec3 const& dir, bool usePrimaryColor, float interpolateColor = -1.0f);
   void SetAreaColor(ChannelType channelId, HDRColor const& color); //< overrides the material color chosen by SetAreaPosition
+  // a strip of the width 2 * halfWidth along the points (world x, y at the height z), mapped as a corridor: the tail
+  // and the head take aspectRatio * halfWidth of the length each
+  void SetAreaCurve(ChannelType channelId, NDb::Material const* pMaterial, CVec2 const* pPoints, int numPoints, float halfWidth, float z, bool usePrimaryColor);
   void ResetArea(ChannelType channelId);
   void ResetAll();
 
@@ -65,6 +70,7 @@ private:
   void PrepareFan(float angle);
   bool CreateStrip();
   void PrepareStrip(ChannelType channelId, float len, float base);
+  bool CreateCurve();
 
 private:
   static AOERenderer* s_pInstance;
@@ -72,6 +78,7 @@ private:
   Primitive quad; //< used for disk rendering
   Primitive fan;  //< used for sector rendering
   Primitive strip;//< used for line rendering
+  Primitive curve;//< used for bent line rendering: 4 pairs of vertices = 3 quads a draw
 
   struct AreaChannel
   {
@@ -82,6 +89,7 @@ private:
     float span; // either angle (for sector) or length (for line)
     SHMatrix xform;
     bool enabled;
+    vector<CVec4> curve; // AREA_CURVE: the left and the right vertex of each point (x, y, u, v as the shader wants them)
   };
   AreaChannel channels[_NUM_CHANNELS];
 

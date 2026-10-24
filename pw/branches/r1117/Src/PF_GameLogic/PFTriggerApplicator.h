@@ -225,11 +225,12 @@ namespace NWorld
     ZDATA_(DBLinker);
     float damage;
     float delegatedDamage;
+    float dealtDamage; // "DealtDamage": after the defences of the receiver ("Damage" is the amount before them)
   public:
-    ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&damage); f.Add(3,&delegatedDamage); return 0; }
+    ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&damage); f.Add(3,&delegatedDamage); f.Add(4,&dealtDamage); return 0; }
 
 		PFEventProcessorIncomingDamage(CreateParams const& dbData) { NI_ALWAYS_ASSERT("Bad constructor") }
-		PFEventProcessorIncomingDamage(CreateParams const& dbData, PFWorld* world) : Base(dbData, world), damage(0), delegatedDamage(0) {}
+		PFEventProcessorIncomingDamage(CreateParams const& dbData, PFWorld* world) : Base(dbData, world), damage(0), delegatedDamage(0), dealtDamage(0) {}
 
     virtual bool ProcessEvent(const PFBaseUnitEvent *pEvent);
     virtual float GetVariable(const char* varName) const;
@@ -399,12 +400,15 @@ class PFEventProcessorOutgoingDamage : public DBLinker<PFEventProcessorBase, NDb
   explicit PFEventProcessorOutgoingDamage() {}
 
   ZDATA_(DBLinker);
+  float damage;
 public:
-  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(1,(DBLinker*)this); f.Add(2,&damage); return 0; }
 
-  PFEventProcessorOutgoingDamage(CreateParams const& dbData, PFWorld* world) : Base(dbData, world) {}
+  PFEventProcessorOutgoingDamage(CreateParams const& dbData, PFWorld* world) : Base(dbData, world), damage(0) {}
 
   virtual bool ProcessEvent(const PFBaseUnitEvent *pEvent);
+  // the dealt damage (after modifiedDamage) for the spell: $ParentApplVariable("Damage")
+  virtual float GetVariable(const char* varName) const { return strcmp( varName, "Damage" ) == 0 ? damage : Base::GetVariable( varName ); }
   virtual int GetAccessibleEventsMask() const { return (1 << NDb::BASEUNITEVENT_OUTGOINGDAMAGE); }
 };
 }

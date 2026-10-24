@@ -626,6 +626,7 @@ namespace NWorld
 
     delegatedDamage = 0;
     damage = damageDesc->amount;
+    dealtDamage = max( pDamageEvent->damage2Deal, 0.0f );
 
     if ( GetDB().damageDelegate && damageDesc->delegated )
     {
@@ -640,6 +641,7 @@ namespace NWorld
         {
           delegatedDamage = damage;
           damage = 0;
+          dealtDamage = 0;
         }
       }
     }
@@ -656,6 +658,9 @@ namespace NWorld
 
     if ( strcmp( varName, "DelegatedDamage" ) == 0 )
       return delegatedDamage;
+
+    if ( strcmp( varName, "DealtDamage" ) == 0 )
+      return dealtDamage;
 
     return PFEventProcessorBase::GetVariable(varName);
   }
@@ -1011,6 +1016,7 @@ bool PFEventProcessorOutgoingDamage::ProcessEvent( const PFBaseUnitEvent *pEvent
   DummyFormulaPars dummy( pOwner, pOutgoingDamEvent->damage, pOutgoingDamEvent->pTaker );
 
   pOutgoingDamEvent->damage = GetDB().modifiedDamage( pOwner->GetAbilityOwner(), pOwner->GetReceiver(), &dummy );
+  damage = pOutgoingDamEvent->damage;
 
   // designer's code, see NUM_TASK
   // TODO: fix PFBaseUnitEvent.h to be able to send spell to damage taker from editor

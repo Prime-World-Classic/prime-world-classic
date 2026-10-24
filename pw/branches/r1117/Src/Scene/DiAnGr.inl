@@ -518,6 +518,8 @@ private:
   DiFloat              rToParam;      // value of VPar in target animation
   DiFloat              rPrevPar;      // virtual parameter at previous update()
   DiUInt32             nUpdFlags; // kind of updating. See DIANGR_FLKIND_
+  DiFloat              rAltSpeed;     // alternative speed swapped in by anim_blend_legacy, 0 - none
+  DiUInt32             nAltUpdFlags;  // alternative kind of updating
   
 public:
   DiAnimFlTransaction() : rSpeed(MAX_FLOAT), kKind(DIAN_TRKIND_NA), rParA(MAX_FLOAT), rParB(MAX_FLOAT),
@@ -542,6 +544,16 @@ public:
 
   // set/get methods
   DiVoid   SetUpdateFlags(DiUInt32 nUpdateFlags) { nUpdFlags = nUpdateFlags; }
+
+  // Original speed and blending of a smoothed transition, see anim_blend_legacy
+  DiVoid   SetAltParams(DiFloat rSpeedAlt, DiUInt32 nUpdateFlagsAlt) { rAltSpeed = rSpeedAlt; nAltUpdFlags = nUpdateFlagsAlt; }
+  DiVoid   SwapAltParams()
+  {
+    if (rAltSpeed <= 0.0f)
+      return;
+    DiFloat const rTmp = rSpeed; rSpeed = rAltSpeed; rAltSpeed = rTmp;
+    DiUInt32 const nTmp = nUpdFlags; nUpdFlags = nAltUpdFlags; nAltUpdFlags = nTmp;
+  }
   DiUInt32 GetUpdateFlags()                      { return nUpdFlags; }
 
 

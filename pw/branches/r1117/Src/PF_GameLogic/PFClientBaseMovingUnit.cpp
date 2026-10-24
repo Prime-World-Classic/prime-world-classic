@@ -100,6 +100,7 @@ PFClientBaseMovingUnit::PFClientBaseMovingUnit( const PF_Core::WorldObjectRef &p
   , isFlying( false )
   , isFlyingByTrajectory( false )
   , isFlyingHeightAbsolute( false )
+  , animLockedByJump( false )
   , speed( 0.0f )
   , heightSpeed( 0.0f )
   , turnSpeed( 0.0f )

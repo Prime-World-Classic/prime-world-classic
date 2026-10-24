@@ -123,10 +123,37 @@ public:
   , ghostMoveIndex(-1)
   , originalSpeed(0.0f)
   , hitTargetSelector()
+  , ramMode(RAM_NONE)
+  , ramTurnRate(0.0f)
+  , ramSpeed(0.0f)
+  , ramBaseSpeed(0.0f)
+  , ramHeading(0.0f, 1.0f)
+  , ramOwnerStopped(false)
+  , ramLastDest(0.0f, 0.0f)
+  , ramHasDest(false)
   {}
 
 protected:
   float heightModifier; // 0...1
+
+  // steered ram (talent constant RamTurnRate): RAM_STEER - the run of the owner, RAM_FOLLOW - a unit he drags
+  enum { RAM_NONE = 0, RAM_STEER = 1, RAM_FOLLOW = 2 };
+  int   ramMode;
+  float ramTurnRate;    // radians per second
+  float ramSpeed;       // actual speed of the run
+  float ramBaseSpeed;   // speed passed to SetUnitSpeed
+  CVec2 ramHeading;
+  bool  ramOwnerStopped;
+  CVec2 ramLastDest;    // the point given to the unit on the previous step
+  bool  ramHasDest;
+
+  void StartRam( CVec2 const & movePos, float baseSpeed, float speed );
+  bool StepRam( float dtInSeconds ); // true = the run is over
+  const char * TaurusDashVariable() const; // Taurus: "TaurusRamDash" / "TaurusJumpDash" for the owner's own run / jump
+  void ReaimRam( CVec2 const & dest, float baseSpeed );
+  void ClampJumpToCursor(); // talent constant JumpToCursor: the jump of the owner lands at the cursor
+  bool IsJumpToCursor() const;
+  void LockClientAnim( bool lock );
 
   virtual bool Start();
   virtual void Stop();

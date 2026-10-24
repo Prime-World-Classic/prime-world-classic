@@ -38,7 +38,7 @@ void PFPlayAnimEffect::Apply(CPtr<PF_Core::ClientObjectBase> const &pUnit)
 		pAnimated->ReachStateMarker(GetDBEffect().marker.c_str(), GetDBEffect().markerReachTime);
 
 	if ( pUnit->GetSceneObject() )
-		pUnit->GetSceneObject()->UpdateForced(0.1f, false, pOwner->IsVisible());
+		pUnit->GetSceneObject()->UpdateForced(0.0f, false, pOwner->IsVisible()); // apply the node now, do not skip 0.1 s of its blend
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

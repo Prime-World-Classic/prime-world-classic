@@ -59,7 +59,8 @@ void SoundSceneComponent::UpdateComponent( UpdatePars &pars, const Placement& pa
 
   timer += timeDiff;
 
-  if (!isInited && timer > timerInterval && pars.isClientVisible && !IsHide())
+  // UpdateBasics may strongly disable the component this very frame (its time is over): don't restart the sound then
+  if (!isInited && timer > timerInterval && pars.isClientVisible && !IsHide() && IsTraversable())
   {
     soundEvent = NSoundScene::EventStart( desc, position.pos );
     isInited = true;

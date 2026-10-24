@@ -43,11 +43,14 @@ public:
   virtual void OnHide(bool hide);
   
   bool IsFlying() const { return isFlying; }
+  // a jump that plays its own animations (Taurus A4_2, PFApplThrow): no idle / move animation requests meanwhile
+  void LockAnimByJump( bool lock ) { animLockedByJump = lock; }
+  bool IsAnimLockedByJump() const { return animLockedByJump; }
   virtual void SetVisibility(bool bVisible) { SetVisibilityAsObject(bVisible); } // Choosing visibility policy
 
 protected:
   // @BVS@TODO: Remove this ctor
-  PFClientBaseMovingUnit() {}
+  PFClientBaseMovingUnit() : animLockedByJump( false ) {}
   PFClientBaseMovingUnit(const PF_Core::WorldObjectRef &pWO, const CreatePars &cp);
 
           void CalculateRotationParams( const CVec2& dir, float time = 0.0f );
@@ -88,6 +91,7 @@ protected:
   bool  isFlying;
   bool  isFlyingByTrajectory;
   bool  isFlyingHeightAbsolute;
+  bool  animLockedByJump;
   float dstHeight;
   float curHeight;
 

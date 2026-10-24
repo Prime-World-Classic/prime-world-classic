@@ -272,7 +272,7 @@ void PFClientCreature::OnStartMoving( bool animate )
 {
   isMoveAnimAllowed = animate;
 
-  if ( isMoveAnimAllowed )
+  if ( isMoveAnimAllowed && !IsAnimLockedByJump() )
   {
     needUpdateStun = false; // it is supposed that move animation is called when no stuns are applied
     SetAnimState( NDb::ANIMSTATES_MOVE, GetStatePlayMode( NDb::ANIMSTATES_MOVE ) );
@@ -596,6 +596,8 @@ void PFClientCreature::OnActionAnimFinished(AnimEventParams const& params)
 
 void PFClientCreature::Idle(bool forced)
 {
+  if ( !forced && IsAnimLockedByJump() )
+    return; // the jump plays its own animations (PFApplThrow, JumpToCursor)
   if(forced)
     Restart(NDb::ANIMSTATES_IDLE);
   else if ( !isStunned )	
