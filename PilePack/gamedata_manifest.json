@@ -89055,8 +89055,8 @@
     {
       "id": 241,
       "name": "gamedata099.pile",
-      "packed_size": 737658,
-      "source_size": 1257657,
+      "packed_size": 737651,
+      "source_size": 1257701,
       "files": [
         ["Heroes/Taurus/idle3.anim", 68608, 3846099047],
         ["Heroes/Taurus/jumpAir.anim", 22016, 1353015381],
@@ -89147,8 +89147,8 @@
         ["Items/Talents/Class/Taurus/Ability_A4_1u.TALENT_name.txt", 24, 2097571970],
         ["Items/Talents/Class/Taurus/Ability_A4_1u.TALENT_name_en.txt", 24, 487476794],
         ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT.xdb", 90591, 2654772447],
-        ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_commonDescription.txt", 2364, 864228174],
-        ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_commonDescription_en.txt", 2420, 3321401292],
+        ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_commonDescription.txt", 2386, 759820615],
+        ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_commonDescription_en.txt", 2442, 633400146],
         ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_description.txt", 90, 47084363],
         ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_description_en.txt", 90, 47084363],
         ["Items/Talents/Class/Taurus/Ability_A4_2.TALENT_name.txt", 28, 1963020482],
