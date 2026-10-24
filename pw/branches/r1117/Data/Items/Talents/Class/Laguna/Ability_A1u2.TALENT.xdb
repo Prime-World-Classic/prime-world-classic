@@ -80,7 +80,7 @@
 	<dispatch href="" />
 	<flags>1</flags>
 	<forceBonus>9</forceBonus>
-	<image href="/UI/Styles/Icons/Heroes/Laguna/A1.ITEX" />
+	<image href="/UI/Styles/Icons/Heroes/Laguna/A1_SUP.ITEX" />
 	<imageSecondState href="" />
 	<isGenderTalent>false</isGenderTalent>
 	<isTakenOnStart>false</isTakenOnStart>

@@ -50,6 +50,9 @@
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4.TALENT" Count="3" />
 	<BackLink DBID="/Items/Talents/Class/Rockman/status_A1_Rock.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shaman/A4_status.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A1_I2C.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A4_1_I2C.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/status_A4_2_I2C.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Unicorn/status_A4_fly.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4u_GoodEnd.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Vampire/status_A4u_Immune2Control.APLR" Count="1" />

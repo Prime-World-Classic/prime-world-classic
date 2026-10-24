@@ -71,5 +71,6 @@
 		<Item href="/Heroes/Shaman/_.HROB" />
 		<Item href="/Heroes/Bomber/_.HROB" />
 		<Item href="/Heroes/Laguna/_.HROB" />
+		<Item href="/Heroes/Taurus/_.HROB" />
 	</heroes>
 </HeroesDB>

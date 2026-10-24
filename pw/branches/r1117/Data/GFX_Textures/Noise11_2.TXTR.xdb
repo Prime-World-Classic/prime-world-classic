@@ -26,6 +26,7 @@
 	<BackLink DBID="/Effects/Shots/Whisp/_Cycle.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/BladeDancer/FXIdle.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Mage/FXDeath.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/Hit.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Unicorn/FXdeath.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Panther/FXability1.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Trap/Trail1.TRSC" Count="1" />

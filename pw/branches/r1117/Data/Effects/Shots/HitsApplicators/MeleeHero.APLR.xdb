@@ -17,6 +17,7 @@
 	<BackLink DBID="/Heroes/Ratcatcher/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Rockman/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Shaman/_.HROB" Count="2" />
+	<BackLink DBID="/Heroes/Taurus/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Vampire/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Warlord/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Werewolf/AttackAbility.ATCK" Count="1" />

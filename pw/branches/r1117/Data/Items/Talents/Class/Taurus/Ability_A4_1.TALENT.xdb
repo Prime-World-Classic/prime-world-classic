@@ -1,0 +1,2004 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Taurus.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="/Heroes/Taurus/Effects/RamArrow.MTRL" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString>FQsAAAABAAAAFwAAAEE0XzFfV2lkdGgAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+		<returnType>float</returnType>
+		<sString>cA4_1_Width</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators>
+		<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="634FC24F-F64C-4EE8-B08F-ABA87E761D60">
+			<ProgramApplicator>
+				<applicators>
+					<Item>
+						<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="B7272B12-CEE1-4FE9-BD82-C5BE81338726">
+							<ChannellingApplicator>
+								<applicatorsOnSelf>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F1E5B965-C230-4C22-B193-C2DE90A6D2AA">
+										<WaitForSpellApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<behaviorFlags>1</behaviorFlags>
+											<behaviour>0</behaviour>
+											<caption>держатель DispatchCursor</caption>
+											<dispatchSource href="" />
+											<effect>
+												<Item href="" />
+												<Item href="" />
+											</effect>
+											<enabled>
+												<compiledString>FRAAAAABAAAAGgAAAFRhdXJ1c1JhbUFpbU9mZgBVi+xqAYtFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9AzyTtFEA+UwYrBXcM=</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.applTaurusRamAimOff(UNIT) == pMisc</sString>
+											</enabled>
+											<firstTargetToHit href="" />
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString></compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="860373AD-6EB7-40B3-AB92-B8164E9E98A6">
+												<Spell>
+													<applicators />
+													<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="8925DCC7-E396-4F1F-85DA-9D5347F850CD">
+														<DispatchCursor>
+															<alwaysApply>false</alwaysApply>
+															<applyEffect>
+																<Item href="" />
+																<Item href="" />
+															</applyEffect>
+															<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+															<applyEffectOrientation>Default</applyEffectOrientation>
+															<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+															<cursorUpdateFrequency>1</cursorUpdateFrequency>
+															<dieAfterApply>true</dieAfterApply>
+															<dispatchEffect>
+																<Item href="" />
+																<Item href="" />
+															</dispatchEffect>
+															<flags>0</flags>
+															<fromLocator></fromLocator>
+															<height>0</height>
+															<lifeTime>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																<returnType>float</returnType>
+																<sString>-1</sString>
+															</lifeTime>
+															<linkEffect href="" />
+															<linkRange>1000</linkRange>
+															<maxRangeMaterial href="" />
+															<maxSpeed>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAEAcRg==</compiledString>
+																<returnType>float</returnType>
+																<sString>10000</sString>
+															</maxSpeed>
+															<persistentApplicators>
+																<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="565D0E24-1FFB-4C8C-BF45-4A7A106BA302">
+																	<SpellPeriodicallyApplicator>
+																		<applyTarget>AbilityOwner</applyTarget>
+																		<behaviorFlags>0</behaviorFlags>
+																		<caption>поворачивать героя</caption>
+																		<effect>
+																			<Item href="" />
+																			<Item href="" />
+																		</effect>
+																		<enabled>
+																			<compiledString>FREAAAABAAAAGwAAAFRhdXJ1c1JhbVR1cm5PZmYAVYvsagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QM8k7RRAPlMGKwV3D</compiledString>
+																			<returnType>bool</returnType>
+																			<sString>sender.applTaurusRamTurnOff(UNIT) == pMisc</sString>
+																		</enabled>
+																		<formulaName></formulaName>
+																		<lifeTime>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>-1.0</sString>
+																		</lifeTime>
+																		<LoggingEvent>-1</LoggingEvent>
+																		<period>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>0.0f</sString>
+																		</period>
+																		<providerName></providerName>
+																		<scaleMode>ScaleIsCount</scaleMode>
+																		<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="8A509CBE-5A6C-4B56-9EC4-8B3D5DA60EA2">
+																			<Spell>
+																				<applicators>
+																					<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="D4C10557-DC9F-472A-8316-218CD6D5E4C0">
+																						<MoveToApplicator>
+																							<applyTarget>AbilityOwner</applyTarget>
+																							<behaviorFlags>0</behaviorFlags>
+																							<caption>повернуть героя</caption>
+																							<effect>
+																								<Item href="" />
+																								<Item href="" />
+																							</effect>
+																							<enabled>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</enabled>
+																							<formulaName></formulaName>
+																							<isMoveDirect>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</isMoveDirect>
+																							<isNotStackable>false</isNotStackable>
+																							<justRotate>true</justRotate>
+																							<lifeTime>
+																								<compiledString></compiledString>
+																								<returnType>float</returnType>
+																								<sString>-1.0</sString>
+																							</lifeTime>
+																							<LoggingEvent>-1</LoggingEvent>
+																							<moveRange>
+																								<compiledString></compiledString>
+																								<returnType>float</returnType>
+																								<sString>1.0f</sString>
+																							</moveRange>
+																							<moveSpeed>
+																								<compiledString></compiledString>
+																								<returnType>float</returnType>
+																								<sString>0.0f</sString>
+																							</moveSpeed>
+																							<moveTarget>PrevApplicatorTarget</moveTarget>
+																							<offset>
+																								<x>0</x>
+																								<y>0</y>
+																							</offset>
+																							<providerName></providerName>
+																							<pushUnits>false</pushUnits>
+																							<startCondition>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</startCondition>
+																						</MoveToApplicator>
+																					</Item>
+																				</applicators>
+																				<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="51D9B70D-053D-4104-A081-FA7D365F2835">
+																					<DispatchImmediate>
+																						<alwaysApply>false</alwaysApply>
+																						<applyEffect>
+																							<Item href="" />
+																							<Item href="" />
+																						</applyEffect>
+																						<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																						<applyEffectOrientation>Default</applyEffectOrientation>
+																						<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																						<dieAfterApply>true</dieAfterApply>
+																						<dispatchEffect>
+																							<Item href="" />
+																							<Item href="" />
+																						</dispatchEffect>
+																						<flags>0</flags>
+																						<instantApply>true</instantApply>
+																					</DispatchImmediate>
+																				</dispatch>
+																			</Spell>
+																		</spell>
+																		<startCondition>
+																			<compiledString></compiledString>
+																			<returnType>bool</returnType>
+																			<sString>true</sString>
+																		</startCondition>
+																		<startOffset>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>0.0f</sString>
+																		</startOffset>
+																		<targetSelector href="" />
+																	</SpellPeriodicallyApplicator>
+																</Item>
+															</persistentApplicators>
+															<size>0</size>
+															<speed>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB6RA==</compiledString>
+																<returnType>float</returnType>
+																<sString>1000</sString>
+															</speed>
+														</DispatchCursor>
+													</dispatch>
+												</Spell>
+											</spell>
+											<spellTarget>ApplicatorTarget</spellTarget>
+											<startCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</startCondition>
+										</WaitForSpellApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="B5B826CF-261A-4CD0-B5B6-254FB64EA7F8">
+										<FlagsApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<behaviorFlags>1</behaviorFlags>
+											<caption>Форбид мув на себя, чтобы сразу не прервать действие таланта</caption>
+											<consumables />
+											<effect>
+												<Item href="" />
+												<Item href="" />
+											</effect>
+											<enabled>
+												<compiledString>FRAAAAABAAAAGgAAAFRhdXJ1c1JhbUFpbU9mZgBVi+xqAYtFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9AzyTtFEA+UwYrBXcM=</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.applTaurusRamAimOff(UNIT) == pMisc</sString>
+											</enabled>
+											<flag>1</flag>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+												<returnType>float</returnType>
+												<sString>0.1</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</startCondition>
+											<talents />
+											<useListAs>ListAsRule</useListAs>
+										</FlagsApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F1EC2947-BCF6-4244-B507-B9B9C92A35A7">
+										<FlagsApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<behaviorFlags>1</behaviorFlags>
+											<caption>fx</caption>
+											<consumables />
+											<effect />
+											<enabled>
+												<compiledString>FSEAAAACAAAALAAAAEwAAABUYXVydXNSYW1BaW1PZmYAVGF1cnVzUmFtVHVybk9mZgBVi+xRagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QO0UQdSlqAYtNEFFoEAAAAItVCIsCi00Ii5CcAQAA/9I7RRB1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3D</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.applTaurusRamAimOff(UNIT) == pMisc &amp;&amp; sender.applTaurusRamTurnOff(UNIT) == pMisc</sString>
+											</enabled>
+											<flag>0</flag>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString></compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</startCondition>
+											<talents />
+											<useListAs>ListAsRule</useListAs>
+										</FlagsApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="C5A74A5F-3629-4D4D-9293-BEBD2B39F335">
+										<FlagsApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<behaviorFlags>1</behaviorFlags>
+											<caption>звук прицеливания: копыто роет землю, рык (Taurus_RamCharge)</caption>
+											<consumables />
+											<effect>
+												<Item href="/Heroes/Taurus/Effects/RamChargeSound.EFFT" />
+												<Item href="/Heroes/Taurus/Effects/RamChargeSound.EFFT" />
+											</effect>
+											<enabled>
+												<compiledString>FSEAAAACAAAALAAAAEwAAABUYXVydXNSYW1BaW1PZmYAVGF1cnVzUmFtVHVybk9mZgBVi+xRagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QO0UQdSlqAYtNEFFoEAAAAItVCIsCi00Ii5CcAQAA/9I7RRB1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3D</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.applTaurusRamAimOff(UNIT) == pMisc &amp;&amp; sender.applTaurusRamTurnOff(UNIT) == pMisc</sString>
+											</enabled>
+											<flag>0</flag>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString></compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</startCondition>
+											<talents />
+											<useListAs>ListAsRule</useListAs>
+										</FlagsApplicator>
+									</Item>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="21B78228-C096-4BDC-9EA2-53C289A49139">
+										<StatModApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<behaviorFlags>0</behaviorFlags>
+											<caption>заряд: неуязвимость к контролю (TaurusRamI2C)</caption>
+											<constraint>None</constraint>
+											<dontUpdate>false</dontUpdate>
+											<effect>
+												<Item href="" />
+												<Item href="" />
+											</effect>
+											<enabled>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<lifeTime>
+												<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</lifeTime>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>TaurusRamI2C</variable>
+											</modifier>
+											<providerName></providerName>
+											<startCondition>
+												<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</startCondition>
+											<statModName></statModName>
+										</StatModApplicator>
+									</Item>
+								</applicatorsOnSelf>
+								<applyTarget>AbilityOwner</applyTarget>
+								<behaviorFlags>1</behaviorFlags>
+								<cancelOnDisable>false</cancelOnDisable>
+								<cancelOnInterrupt>false</cancelOnInterrupt>
+								<cancelSpell href="" />
+								<caption>заряд тарана: герой поворачивается к курсору, дальность растёт</caption>
+								<channelingType>Streaming</channelingType>
+								<effect>
+									<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="734E42E1-89A9-4CD1-AA9B-C64B857FC5FF">
+										<PlayAnimationEffect>
+											<animGraphNode>ability4Start</animGraphNode>
+											<deathType>Manual</deathType>
+											<enableCondition href="" />
+											<goToOtherNodeOnStop>true</goToOtherNodeOnStop>
+											<lifeTime>0</lifeTime>
+											<marker></marker>
+											<markerReachTime>0</markerReachTime>
+											<returnAnimGraphNode></returnAnimGraphNode>
+										</PlayAnimationEffect>
+									</Item>
+									<Item href="" />
+								</effect>
+								<enabled>
+									<compiledString>FQAAAAAAAAAAVYvsi0UQixCLTRCLAv/QXcM=</compiledString>
+									<returnType>bool</returnType>
+									<sString>mIsAbilityOn</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<interruptEvents>2626015</interruptEvents>
+								<lifeTime>
+									<compiledString>FRAAAAABAAAAHAAAAEE0XzFfQ2hhcmdlVGltZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+									<returnType>float</returnType>
+									<sString>cA4_1_ChargeTime</sString>
+								</lifeTime>
+								<LoggingEvent>-1</LoggingEvent>
+								<period>0</period>
+								<periodicalSpell href="/GameLogic/GeneralApplicators/ChannelingInterruptApplicator.SPLL" />
+								<providerName></providerName>
+								<removeStartSpellEffectOnInterrupt>false</removeStartSpellEffectOnInterrupt>
+								<scaleWhenInterrupted>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>1.0f</sString>
+								</scaleWhenInterrupted>
+								<startCondition>
+									<compiledString>FQAAAAAAAAAAVYvsaAAAABCLRQiLEItNCItCaP/QD7bA99gbwIPAAV3D</compiledString>
+									<returnType>bool</returnType>
+									<sString>!sFlag(268435456)</sString>
+								</startCondition>
+								<startSpell href="" />
+								<stopSpell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="E4A75F99-3B95-407E-AA66-3A39139E4989">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="49240023-E44E-4C02-BD6F-E9A4472877B1">
+												<FlagsApplicator>
+													<applyTarget>AbilityOwner</applyTarget>
+													<behaviorFlags>0</behaviorFlags>
+													<caption>stop Cursor dispatch</caption>
+													<consumables />
+													<effect>
+														<Item href="" />
+														<Item href="" />
+													</effect>
+													<enabled>
+														<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<flag>0</flag>
+													<formulaName>TaurusRamAimOff</formulaName>
+													<lifeTime>
+														<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+														<returnType>float</returnType>
+														<sString>0.1</sString>
+													</lifeTime>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<startCondition>
+														<compiledString>FQwAAAACAAAAIwAAADYAAABJbnRlcnJ1cHRlZABVi+yD7AiLRRCLEItNEItCSP/QiUX8aAAAAACLTfyLEYtN/ItCVP/Q3B1YAAAA3+D2xER7CcdF+AEAAADrB8dF+AAAAACKRfiL5V3DAAAAAAAAAAA=</compiledString>
+														<returnType>bool</returnType>
+														<sString>appl.parent.vInterrupted != 0</sString>
+													</startCondition>
+													<talents />
+													<useListAs>ListAsRule</useListAs>
+												</FlagsApplicator>
+											</Item>
+											<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F42B5EAD-EE41-4D8A-A770-E4DA2D2411B0">
+												<SpellApplicator>
+													<applyTarget>AbilityOwner</applyTarget>
+													<caption>рывок на набранную дальность в сторону взгляда</caption>
+													<enabled>
+														<compiledString>FQwAAAACAAAAIwAAADYAAABJbnRlcnJ1cHRlZABVi+yD7AiLRRCLEItNEItCSP/QiUX8aAAAAACLTfyLEYtN/ItCVP/Q3B1YAAAA3+D2xER6CcdF+AEAAADrB8dF+AAAAACKRfiL5V3DAAAAAAAAAAA=</compiledString>
+														<returnType>bool</returnType>
+														<sString>appl.parent.vInterrupted == 0</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="322175F8-D091-4FC5-9A71-F2DD4C8DD836">
+														<Spell>
+															<applicators>
+																<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="834339A3-214D-4057-9A8F-33FE820CA426">
+																	<ProgramApplicator>
+																		<applicators>
+																			<Item>
+																				<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="06D7781B-FC4A-4365-9B30-786556D94DAA">
+																					<ProgramApplicator>
+																						<applicators>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="6C1EC652-F5C2-4582-A30E-1087B5AFB9FA">
+																									<FlagsApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>0</behaviorFlags>
+																										<caption>во время бега: без мгновенного поворота к курсору и коридора заряда</caption>
+																										<consumables />
+																										<effect>
+																											<Item href="" />
+																											<Item href="" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<flag>0</flag>
+																										<formulaName>TaurusRamTurnOff</formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<providerName></providerName>
+																										<startCondition>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<talents />
+																										<useListAs>ListAsRule</useListAs>
+																									</FlagsApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="06739B57-7660-4EB1-88B2-A02C92FB6EE7">
+																									<SpellPeriodicallyApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>152</behaviorFlags>
+																										<caption>цеплять врагов на пути</caption>
+																										<effect>
+																											<Item href="" />
+																											<Item href="" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<formulaName></formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0f</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<period>
+																											<compiledString></compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.0f</sString>
+																										</period>
+																										<providerName></providerName>
+																										<scaleMode>ScaleIsCount</scaleMode>
+																										<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="CD2C7615-C980-4367-8D80-21FF49CC679B">
+																											<Spell>
+																												<applicators>
+																													<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="8E542486-7E52-438E-A923-16AA2F40D1E5">
+																														<DamageApplicator>
+																															<applyTarget>ApplicatorTarget</applyTarget>
+																															<cancelInvisibility>false</cancelInvisibility>
+																															<caption>(A4_1u) урон рогами</caption>
+																															<damage>
+																																<compiledString>FQ0AAAABAAAAGQAAAEE0XzF1X0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																																<returnType>float</returnType>
+																																<sString>cA4_1u_Damage</sString>
+																															</damage>
+																															<damageMode>0</damageMode>
+																															<damageType>Material</damageType>
+																															<enabled>
+																																<compiledString>FR0AAAACAAAAJAAAAD0AAABUYXVydXNfQTRfMXUAAAAAVGF1cnVzX0E0XzF1AFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAikX7i+Vdww==</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>tal("Taurus_A4_1u")</sString>
+																															</enabled>
+																															<formulaName></formulaName>
+																															<LoggingEvent>-1</LoggingEvent>
+																															<providerName></providerName>
+																															<timeLimiter>-1</timeLimiter>
+																															<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+																														</DamageApplicator>
+																													</Item>
+																													<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="088C938B-045F-4480-81FA-9A3D630D012B">
+																														<ThrowApplicator>
+																															<angle Animated="True">
+																																<Tracks>
+																																	<Item>
+																																		<Item>
+																																			<Key>0</Key>
+																																			<Value>0</Value>
+																																		</Item>
+																																		<Item>
+																																			<Key>1</Key>
+																																			<Value>0</Value>
+																																		</Item>
+																																	</Item>
+																																</Tracks>
+																																<Type>Clamp</Type>
+																																<Values>
+																																	<Item>
+																																		<Key>0</Key>
+																																		<Value>0</Value>
+																																	</Item>
+																																	<Item>
+																																		<Key>1</Key>
+																																		<Value>0</Value>
+																																	</Item>
+																																</Values>
+																															</angle>
+																															<applyTarget>ApplicatorTarget</applyTarget>
+																															<behaviorFlags>152</behaviorFlags>
+																															<caption>зацепить и тащить к точке тарана</caption>
+																															<collisionFlags>1</collisionFlags>
+																															<enabled>
+																																<compiledString>FSMAAAAEAAAAKAAAAD4AAABQAAAAcAAAAEltbXVuZTJDb250cm9sAABUaHJvdwAAAFRocm93X0p1bXAAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdoAAAAN/g9sREeklqAItNEFFoEAAAAItVDIsCi00Mi5CcAQAA/9I7RRB1KWoAi0UQUGgYAAAAi00MixGLTQyLgpwBAAD/0DtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>receiver.vImmune2Control == 0 &amp;&amp; receiver.applThrow(GLOBAL) == pMisc &amp;&amp; receiver.applThrow_Jump(GLOBAL) == pMisc</sString>
+																															</enabled>
+																															<firstTargetToHit href="" />
+																															<flightType>Jump</flightType>
+																															<flipTime>
+																																<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+																																<returnType>float</returnType>
+																																<sString>1.0f</sString>
+																															</flipTime>
+																															<flyEffect>
+																																<Item href="" />
+																																<Item href="" />
+																															</flyEffect>
+																															<formulaName>Throw</formulaName>
+																															<landTime>0</landTime>
+																															<lockRotation>false</lockRotation>
+																															<LoggingEvent>-1</LoggingEvent>
+																															<maxDistance>0</maxDistance>
+																															<maxHeight>0</maxHeight>
+																															<moveSpeed>
+																																<compiledString>FQsAAAABAAAAFwAAAEE0XzFfU3BlZWQAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																																<returnType>float</returnType>
+																																<sString>cA4_1_Speed</sString>
+																															</moveSpeed>
+																															<providerName></providerName>
+																															<startSpell href="" />
+																															<stopSpell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="FCA655F5-0BB4-4E4C-8329-D7DA773A9C81">
+																																<Spell>
+																																	<applicators>
+																																		<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="3F861462-0624-458F-8551-D2A11989F128">
+																																			<StatusApplicator parent="/Heroes/DefaultStatus/_SLOW_MOVE.APLR">
+																																				<caption>(A4_1u) замедление после протаскивания</caption>
+																																			</StatusApplicator>
+																																		</Item>
+																																		<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="D68429CC-0C89-4F4F-A521-C3F2D60DC738">
+																																			<StatusApplicator parent="/Heroes/DefaultStatus/_STUN_Status.APLR">
+																																				<caption>оглушение врагов, прибитых к препятствию</caption>
+																																			</StatusApplicator>
+																																		</Item>
+																																	</applicators>
+																																	<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="BA518A28-FC63-4F6C-B10A-E0B993FE5C59">
+																																		<DispatchImmediate>
+																																			<alwaysApply>false</alwaysApply>
+																																			<applyEffect>
+																																				<Item href="" />
+																																				<Item href="" />
+																																			</applyEffect>
+																																			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																																			<applyEffectOrientation>Default</applyEffectOrientation>
+																																			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																																			<dieAfterApply>true</dieAfterApply>
+																																			<dispatchEffect>
+																																				<Item href="" />
+																																				<Item href="" />
+																																			</dispatchEffect>
+																																			<flags>1</flags>
+																																			<instantApply>false</instantApply>
+																																		</DispatchImmediate>
+																																	</dispatch>
+																																</Spell>
+																															</stopSpell>
+																															<surfaceSpeedFromAG>false</surfaceSpeedFromAG>
+																															<takeOffTime>0</takeOffTime>
+																															<targetSelector href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="222FAEB2-25FF-4217-9E2C-DBD3CC7D50E2">
+																																<SelectApplicatorTarget>
+																																	<applicatorIndex>0</applicatorIndex>
+																																	<applicatorName></applicatorName>
+																																	<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+																																	<selectTarget>Hier3UpApplicatorTarget</selectTarget>
+																																</SelectApplicatorTarget>
+																															</targetSelector>
+																															<trackTargetUnit>false</trackTargetUnit>
+																															<trajectory Animated="True">
+																																<Tracks>
+																																	<Item>
+																																		<Item>
+																																			<Key>0</Key>
+																																			<Value>0</Value>
+																																		</Item>
+																																		<Item>
+																																			<Key>0.5</Key>
+																																			<Value>1</Value>
+																																		</Item>
+																																		<Item>
+																																			<Key>1</Key>
+																																			<Value>0</Value>
+																																		</Item>
+																																	</Item>
+																																</Tracks>
+																																<Type>Clamp</Type>
+																																<Values>
+																																	<Item>
+																																		<Key>0</Key>
+																																		<Value>0</Value>
+																																	</Item>
+																																	<Item>
+																																		<Key>0.5</Key>
+																																		<Value>1</Value>
+																																	</Item>
+																																	<Item>
+																																		<Key>1</Key>
+																																		<Value>0</Value>
+																																	</Item>
+																																</Values>
+																															</trajectory>
+																														</ThrowApplicator>
+																													</Item>
+																												</applicators>
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="E6EE861C-C8D1-4DAC-B83F-D33A7CE53015">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</spell>
+																										<startCondition>
+																											<compiledString></compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<startOffset>
+																											<compiledString></compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.0f</sString>
+																										</startOffset>
+																										<targetSelector href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="78DECE25-BB60-413A-96EA-A8F83E199195">
+																											<CapsuleTargetSelector>
+																												<cutoffFirstSegment>false</cutoffFirstSegment>
+																												<flags>0</flags>
+																												<mode>SendOnce</mode>
+																												<range>
+																													<compiledString>FQsAAAACAAAAGAAAACsAAABBNF8xX1dpZHRoAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twNOQAAANld/NlF/IvlXcMAAAAAAADgPw==</compiledString>
+																													<returnType>float</returnType>
+																													<sString>cA4_1_Width * 0.5f</sString>
+																												</range>
+																												<rangeFromOwner>
+																													<compiledString></compiledString>
+																													<returnType>float</returnType>
+																													<sString>0.0f</sString>
+																												</rangeFromOwner>
+																												<segmentBegin>PreviousPosition</segmentBegin>
+																												<segmentDirectionOffset>0</segmentDirectionOffset>
+																												<segmentEnd>CurrentPosition</segmentEnd>
+																												<segmentEndTargetSelector href="" />
+																												<targetFilter>538771519</targetFilter>
+																											</CapsuleTargetSelector>
+																										</targetSelector>
+																									</SpellPeriodicallyApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="B5F10C71-CECF-48FE-8608-1C9D8E8DA096">
+																									<SpellPeriodicallyApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>152</behaviorFlags>
+																										<caption>след копыт при беге: левое копыто (RamStepL.EFFT)</caption>
+																										<effect>
+																											<Item href="/Heroes/Taurus/Effects/RamRunDust.EFFT" />
+																											<Item href="/Heroes/Taurus/Effects/RamRunDust.EFFT" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<formulaName></formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0f</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<period>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DTKaqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.3333f</sString>
+																										</period>
+																										<providerName></providerName>
+																										<scaleMode>ScaleIsTime</scaleMode>
+																										<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="67F3E190-9CF2-4BC0-BFF2-C0C5410637CB">
+																											<Spell>
+																												<applicators />
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="9FD370E3-486B-4308-B63C-98D05FE37FC4">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="/Heroes/Taurus/Effects/RamStepL.EFFT" />
+																															<Item href="/Heroes/Taurus/Effects/RamStepL.EFFT" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</spell>
+																										<startCondition>
+																											<compiledString></compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<startOffset>
+																											<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.0f</sString>
+																										</startOffset>
+																										<targetSelector href="" />
+																									</SpellPeriodicallyApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="35B8133A-2920-4573-A71F-F4D773C2A272">
+																									<SpellPeriodicallyApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>152</behaviorFlags>
+																										<caption>след копыт при беге: правое копыто (RamStepR.EFFT)</caption>
+																										<effect>
+																											<Item href="" />
+																											<Item href="" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<formulaName></formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0f</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<period>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DTKaqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.3333f</sString>
+																										</period>
+																										<providerName></providerName>
+																										<scaleMode>ScaleIsTime</scaleMode>
+																										<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="635359A4-B9EB-4F28-8C21-A241BFB0F983">
+																											<Spell>
+																												<applicators />
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="663F995D-CEB9-4510-9A04-3B041AC47292">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="/Heroes/Taurus/Effects/RamStepR.EFFT" />
+																															<Item href="/Heroes/Taurus/Effects/RamStepR.EFFT" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</spell>
+																										<startCondition>
+																											<compiledString></compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<startOffset>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DaLMqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.1667f</sString>
+																										</startOffset>
+																										<targetSelector href="" />
+																									</SpellPeriodicallyApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="55143456-990B-4BA3-8E73-CB7974CDCD52">
+																									<SpellPeriodicallyApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>152</behaviorFlags>
+																										<caption>след копыт при беге: левое, раскалённое копыто (RamGlowL.EFFT)</caption>
+																										<effect>
+																											<Item href="" />
+																											<Item href="" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<formulaName></formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0f</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<period>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DTKaqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.3333f</sString>
+																										</period>
+																										<providerName></providerName>
+																										<scaleMode>ScaleIsTime</scaleMode>
+																										<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="385F0EE7-9443-4755-89EA-F34BC6F65E2B">
+																											<Spell>
+																												<applicators />
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="293D6ECD-BFEB-4226-B134-0FA3BCEDDE63">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="/Heroes/Taurus/Effects/RamGlowL.EFFT" />
+																															<Item href="/Heroes/Taurus/Effects/RamGlowL.EFFT" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</spell>
+																										<startCondition>
+																											<compiledString></compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<startOffset>
+																											<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.0f</sString>
+																										</startOffset>
+																										<targetSelector href="" />
+																									</SpellPeriodicallyApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="6B793501-764E-491B-B45C-ED01FAC4C7ED">
+																									<SpellPeriodicallyApplicator>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>152</behaviorFlags>
+																										<caption>след копыт при беге: правое, раскалённое копыто (RamGlowR.EFFT)</caption>
+																										<effect>
+																											<Item href="" />
+																											<Item href="" />
+																										</effect>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<formulaName></formulaName>
+																										<lifeTime>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>-1.0f</sString>
+																										</lifeTime>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<period>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DTKaqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.3333f</sString>
+																										</period>
+																										<providerName></providerName>
+																										<scaleMode>ScaleIsTime</scaleMode>
+																										<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="C7FA62CD-95E1-4214-9247-83435E007CE6">
+																											<Spell>
+																												<applicators />
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="27263177-5812-426E-80E4-0413C8D3337E">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="/Heroes/Taurus/Effects/RamGlowR.EFFT" />
+																															<Item href="/Heroes/Taurus/Effects/RamGlowR.EFFT" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</spell>
+																										<startCondition>
+																											<compiledString></compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</startCondition>
+																										<startOffset>
+																											<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DaLMqPg==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>0.1667f</sString>
+																										</startOffset>
+																										<targetSelector href="" />
+																									</SpellPeriodicallyApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/GameLogic/GeneralApplicators/SetTossed.APLR" />
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>1</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																							<Item>
+																								<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="78EE63E5-6A3E-4B6C-B106-6022BFB14116">
+																									<ThrowApplicator>
+																										<angle Animated="True">
+																											<Tracks>
+																												<Item>
+																													<Item>
+																														<Key>0</Key>
+																														<Value>-0.00089553</Value>
+																													</Item>
+																													<Item>
+																														<Key>1</Key>
+																														<Value>-0.00089553</Value>
+																													</Item>
+																												</Item>
+																											</Tracks>
+																											<Type>Clamp</Type>
+																											<Values>
+																												<Item>
+																													<Key>0</Key>
+																													<Value>-0.00089553</Value>
+																												</Item>
+																												<Item>
+																													<Key>1</Key>
+																													<Value>-0.00089553</Value>
+																												</Item>
+																											</Values>
+																										</angle>
+																										<applyTarget>AbilityOwner</applyTarget>
+																										<behaviorFlags>0</behaviorFlags>
+																										<caption>бег тараном к точке</caption>
+																										<collisionFlags>1</collisionFlags>
+																										<enabled>
+																											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																											<returnType>bool</returnType>
+																											<sString>true</sString>
+																										</enabled>
+																										<firstTargetToHit href="" />
+																										<flightType>Jump</flightType>
+																										<flipTime>
+																											<compiledString></compiledString>
+																											<returnType>float</returnType>
+																											<sString>1.0</sString>
+																										</flipTime>
+																										<flyEffect>
+																											<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="4BFA3D46-D859-4C1D-92CA-DA2935102644">
+																												<PlayAnimationEffect>
+																													<animGraphNode>ability4Loop</animGraphNode>
+																													<deathType>Manual</deathType>
+																													<enableCondition href="" />
+																													<goToOtherNodeOnStop>true</goToOtherNodeOnStop>
+																													<lifeTime>0</lifeTime>
+																													<marker></marker>
+																													<markerReachTime>0</markerReachTime>
+																													<returnAnimGraphNode>ability4</returnAnimGraphNode>
+																												</PlayAnimationEffect>
+																											</Item>
+																											<Item href="" />
+																										</flyEffect>
+																										<formulaName>Throw_Jump</formulaName>
+																										<landTime>0</landTime>
+																										<lockRotation>false</lockRotation>
+																										<LoggingEvent>-1</LoggingEvent>
+																										<maxDistance>0</maxDistance>
+																										<maxHeight>0</maxHeight>
+																										<moveSpeed>
+																											<compiledString>FQsAAAABAAAAFwAAAEE0XzFfU3BlZWQAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																											<returnType>float</returnType>
+																											<sString>cA4_1_Speed</sString>
+																										</moveSpeed>
+																										<providerName></providerName>
+																										<startSpell href="" />
+																										<stopSpell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="C63F8F4B-3087-49B5-BCFA-995AEFF5697D">
+																											<Spell>
+																												<applicators>
+																													<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="CDF9DBEE-3413-4EDC-9E44-778FA7E13CE1">
+																														<FlagsApplicator>
+																															<applyTarget>AbilityOwner</applyTarget>
+																															<behaviorFlags>0</behaviorFlags>
+																															<caption>stop Cursor dispatch (конец бега)</caption>
+																															<consumables />
+																															<effect>
+																																<Item href="" />
+																																<Item href="" />
+																															</effect>
+																															<enabled>
+																																<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>true</sString>
+																															</enabled>
+																															<flag>0</flag>
+																															<formulaName>TaurusRamAimOff</formulaName>
+																															<lifeTime>
+																																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+																																<returnType>float</returnType>
+																																<sString>0.1</sString>
+																															</lifeTime>
+																															<LoggingEvent>-1</LoggingEvent>
+																															<providerName></providerName>
+																															<startCondition>
+																																<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>true</sString>
+																															</startCondition>
+																															<talents />
+																															<useListAs>ListAsRule</useListAs>
+																														</FlagsApplicator>
+																													</Item>
+																													<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="A1DC34C9-1629-45A1-A05A-DBFA02A5249E">
+																														<SpellPeriodicallyApplicator>
+																															<applyTarget>AbilityOwner</applyTarget>
+																															<behaviorFlags>0</behaviorFlags>
+																															<caption>эффект удара о препятствие (RamImpact.EFFT)</caption>
+																															<effect>
+																																<Item href="" />
+																																<Item href="" />
+																															</effect>
+																															<enabled>
+																																<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>true</sString>
+																															</enabled>
+																															<formulaName></formulaName>
+																															<lifeTime>
+																																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+																																<returnType>float</returnType>
+																																<sString>0.1f</sString>
+																															</lifeTime>
+																															<LoggingEvent>-1</LoggingEvent>
+																															<period>
+																																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB6RA==</compiledString>
+																																<returnType>float</returnType>
+																																<sString>1000.0f</sString>
+																															</period>
+																															<providerName></providerName>
+																															<scaleMode>ScaleIsTime</scaleMode>
+																															<spell href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="D9607C8D-8588-46A7-A715-841547718D1E">
+																																<Spell>
+																																	<applicators />
+																																	<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="889B7AC5-D7B8-45EF-AE92-F9712B72F4D3">
+																																		<DispatchImmediate>
+																																			<alwaysApply>false</alwaysApply>
+																																			<applyEffect>
+																																				<Item href="/Heroes/Taurus/Effects/RamImpact.EFFT" />
+																																				<Item href="/Heroes/Taurus/Effects/RamImpact.EFFT" />
+																																			</applyEffect>
+																																			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																																			<applyEffectOrientation>Default</applyEffectOrientation>
+																																			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																																			<dieAfterApply>true</dieAfterApply>
+																																			<dispatchEffect>
+																																				<Item href="" />
+																																				<Item href="" />
+																																			</dispatchEffect>
+																																			<flags>1</flags>
+																																			<instantApply>false</instantApply>
+																																		</DispatchImmediate>
+																																	</dispatch>
+																																</Spell>
+																															</spell>
+																															<startCondition>
+																																<compiledString>FR8AAAAEAAAAJAAAADoAAABGAAAAXAAAAFJhbUhpdE9ic3RhY2xlAABSYW1IaXRPYnN0YWNsZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1+AAAA3+D2xEF0K2gQAAAAi00MixGLTQyLgogBAAD/0NwdfgAAAN/g9sRBdAnHRfwAAAAA6wfHRfwBAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+																																<returnType>bool</returnType>
+																																<sString>sender.vRamHitObstacle &gt; 0 || receiver.vRamHitObstacle &gt; 0</sString>
+																															</startCondition>
+																															<startOffset>
+																																<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																																<returnType>float</returnType>
+																																<sString>0.0f</sString>
+																															</startOffset>
+																															<targetSelector href="" />
+																														</SpellPeriodicallyApplicator>
+																													</Item>
+																												</applicators>
+																												<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="3AFD3868-B704-437E-9133-A96330405B75">
+																													<DispatchImmediate>
+																														<alwaysApply>false</alwaysApply>
+																														<applyEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</applyEffect>
+																														<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																														<applyEffectOrientation>Default</applyEffectOrientation>
+																														<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																														<dieAfterApply>true</dieAfterApply>
+																														<dispatchEffect>
+																															<Item href="" />
+																															<Item href="" />
+																														</dispatchEffect>
+																														<flags>1</flags>
+																														<instantApply>false</instantApply>
+																													</DispatchImmediate>
+																												</dispatch>
+																											</Spell>
+																										</stopSpell>
+																										<surfaceSpeedFromAG>false</surfaceSpeedFromAG>
+																										<takeOffTime>0</takeOffTime>
+																										<targetSelector href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="0B8BE0C8-CE1D-4597-8E77-10AB09FEF8FE">
+																											<SelectApplicatorTarget>
+																												<applicatorIndex>0</applicatorIndex>
+																												<applicatorName></applicatorName>
+																												<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+																												<selectTarget>Hier2UpApplicatorTarget</selectTarget>
+																											</SelectApplicatorTarget>
+																										</targetSelector>
+																										<trackTargetUnit>false</trackTargetUnit>
+																										<trajectory Animated="True">
+																											<Tracks>
+																												<Item>
+																													<Item>
+																														<Key>0</Key>
+																														<Value>0</Value>
+																													</Item>
+																													<Item>
+																														<Key>1</Key>
+																														<Value>0</Value>
+																													</Item>
+																												</Item>
+																											</Tracks>
+																											<Type>Clamp</Type>
+																											<Values>
+																												<Item>
+																													<Key>0</Key>
+																													<Value>0</Value>
+																												</Item>
+																												<Item>
+																													<Key>1</Key>
+																													<Value>0</Value>
+																												</Item>
+																											</Values>
+																										</trajectory>
+																									</ThrowApplicator>
+																								</applicator>
+																								<continueCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</continueCondition>
+																								<continueEvents>2</continueEvents>
+																								<delay>
+																									<compiledString></compiledString>
+																									<returnType>float</returnType>
+																									<sString>-1.0</sString>
+																								</delay>
+																								<stopCondition>
+																									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>0</sString>
+																								</stopCondition>
+																								<stopEvents>0</stopEvents>
+																							</Item>
+																						</applicators>
+																						<applyTarget>AbilityOwner</applyTarget>
+																						<behaviorFlags>154</behaviorFlags>
+																						<caption>Program</caption>
+																						<effect>
+																							<Item href="" />
+																							<Item href="" />
+																						</effect>
+																						<enabled>
+																							<compiledString></compiledString>
+																							<returnType>bool</returnType>
+																							<sString>true</sString>
+																						</enabled>
+																						<formulaName></formulaName>
+																						<lifeTime>
+																							<compiledString></compiledString>
+																							<returnType>float</returnType>
+																							<sString>-1.0</sString>
+																						</lifeTime>
+																						<LoggingEvent>-1</LoggingEvent>
+																						<providerName></providerName>
+																						<startCondition>
+																							<compiledString></compiledString>
+																							<returnType>bool</returnType>
+																							<sString>true</sString>
+																						</startCondition>
+																					</ProgramApplicator>
+																				</applicator>
+																				<continueCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</continueCondition>
+																				<continueEvents>2</continueEvents>
+																				<delay>
+																					<compiledString></compiledString>
+																					<returnType>float</returnType>
+																					<sString>-1.0</sString>
+																				</delay>
+																				<stopCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</stopCondition>
+																				<stopEvents>0</stopEvents>
+																			</Item>
+																			<Item>
+																				<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="38356AD1-F6B7-4D70-8321-657377090BD9">
+																					<FlagsApplicator>
+																						<applyTarget>AbilityOwner</applyTarget>
+																						<behaviorFlags>0</behaviorFlags>
+																						<caption>stop Cursor dispatch (после бега)</caption>
+																						<consumables />
+																						<effect>
+																							<Item href="" />
+																							<Item href="" />
+																						</effect>
+																						<enabled>
+																							<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																							<returnType>bool</returnType>
+																							<sString>true</sString>
+																						</enabled>
+																						<flag>0</flag>
+																						<formulaName>TaurusRamAimOff</formulaName>
+																						<lifeTime>
+																							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+																							<returnType>float</returnType>
+																							<sString>0.1</sString>
+																						</lifeTime>
+																						<LoggingEvent>-1</LoggingEvent>
+																						<providerName></providerName>
+																						<startCondition>
+																							<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+																							<returnType>bool</returnType>
+																							<sString>true</sString>
+																						</startCondition>
+																						<talents />
+																						<useListAs>ListAsRule</useListAs>
+																					</FlagsApplicator>
+																				</applicator>
+																				<continueCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</continueCondition>
+																				<continueEvents>1</continueEvents>
+																				<delay>
+																					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+																					<returnType>float</returnType>
+																					<sString>-1.0</sString>
+																				</delay>
+																				<stopCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</stopCondition>
+																				<stopEvents>0</stopEvents>
+																			</Item>
+																			<Item>
+																				<applicator href="/GameLogic/GeneralApplicators/EndOfAbility.APLR" />
+																				<continueCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</continueCondition>
+																				<continueEvents>1</continueEvents>
+																				<delay>
+																					<compiledString></compiledString>
+																					<returnType>float</returnType>
+																					<sString>-1.0</sString>
+																				</delay>
+																				<stopCondition>
+																					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																					<returnType>bool</returnType>
+																					<sString>0</sString>
+																				</stopCondition>
+																				<stopEvents>0</stopEvents>
+																			</Item>
+																		</applicators>
+																		<applyTarget>AbilityOwner</applyTarget>
+																		<behaviorFlags>152</behaviorFlags>
+																		<caption>outer program</caption>
+																		<effect>
+																			<Item href="" />
+																			<Item href="" />
+																		</effect>
+																		<enabled>
+																			<compiledString></compiledString>
+																			<returnType>bool</returnType>
+																			<sString>true</sString>
+																		</enabled>
+																		<formulaName></formulaName>
+																		<lifeTime>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>-1.0</sString>
+																		</lifeTime>
+																		<LoggingEvent>-1</LoggingEvent>
+																		<providerName></providerName>
+																		<startCondition>
+																			<compiledString></compiledString>
+																			<returnType>bool</returnType>
+																			<sString>true</sString>
+																		</startCondition>
+																	</ProgramApplicator>
+																</Item>
+															</applicators>
+															<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="15D63DA1-2B25-4554-9437-F3BA00FC10D1">
+																<DispatchImmediate>
+																	<alwaysApply>false</alwaysApply>
+																	<applyEffect>
+																		<Item href="" />
+																		<Item href="" />
+																	</applyEffect>
+																	<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																	<applyEffectOrientation>Default</applyEffectOrientation>
+																	<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																	<dieAfterApply>true</dieAfterApply>
+																	<dispatchEffect>
+																		<Item href="" />
+																		<Item href="" />
+																	</dispatchEffect>
+																	<flags>0</flags>
+																	<instantApply>false</instantApply>
+																</DispatchImmediate>
+															</dispatch>
+														</Spell>
+													</spell>
+													<spellTarget>ApplicatorTarget</spellTarget>
+													<targetSelector href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="17144AA9-BF7F-4FBE-9C33-83F5046F6810">
+														<PointTargetSelector>
+															<checkMinRange>true</checkMinRange>
+															<mode>OffsetFromOwner</mode>
+															<offset>
+																<x>0</x>
+																<y>1</y>
+															</offset>
+															<paralleledTarget>false</paralleledTarget>
+															<range>
+																<compiledString>FQsAAAABAAAAFwAAAEE0XzFfUmFuZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																<returnType>float</returnType>
+																<sString>cA4_1_Range</sString>
+															</range>
+															<targetSelector href="" />
+															<traceMode>0</traceMode>
+														</PointTargetSelector>
+													</targetSelector>
+												</SpellApplicator>
+											</Item>
+										</applicators>
+										<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="4643B605-E2B4-4D88-A08A-EA2606BF07EB">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</stopSpell>
+								<targetSelector href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="10F87BF1-184D-4D6E-BF4F-04CC0355FB67">
+									<SelectApplicatorTarget>
+										<applicatorIndex>0</applicatorIndex>
+										<applicatorName></applicatorName>
+										<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+										<selectTarget>AbilityTarget</selectTarget>
+									</SelectApplicatorTarget>
+								</targetSelector>
+							</ChannellingApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="88D218D5-BFF0-4500-8EA6-4B7995F6B54B">
+							<AbilityEndApplicator parent="/GameLogic/GeneralApplicators/EndOfAbility.APLR">
+								<cancelApplicators>true</cancelApplicators>
+							</AbilityEndApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+				</applicators>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>2</behaviorFlags>
+				<caption>заряд тарана, затем рывок; талант уходит в перезарядку по окончании</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</ProgramApplicator>
+		</Item>
+	</applicators>
+	<askId>4</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>A4_1. Таран</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="32CBB992-5826-4161-9E21-4DA6CAAB760F">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FR0AAAACAAAAJAAAAD0AAABUYXVydXNfQTRfMXUAAAAAVGF1cnVzX0E0XzF1AFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZF+/fYG8CDwAGL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("Taurus_A4_1u") == false</sString>
+				</condition>
+				<name>Taurus_A4_1u</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F6B66639-6D36-48CE-9CFA-ED7E38F816CC">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F9C9BA6F-DA56-4DE5-B5AF-E2AC120E6B49">
+					<UnitConstant>
+						<name>HoldToCharge</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>0.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="C7E0B5E7-BE87-46E5-84AB-0BC7B3369466">
+					<UnitConstant>
+						<name>A4_1_ChargeTime</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>1.5f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="1B819B26-BC26-4A11-8A65-9A8DF728A601">
+					<UnitConstant>
+						<name>A4_1_RangeMin</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>8</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="322BA807-8400-4D72-B0E5-93EB6577E3FF">
+					<UnitConstant>
+						<name>A4_1_RangeMax</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>25</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="41AD8C57-C12D-4602-B844-EF1371608710">
+					<UnitConstant>
+						<name>A4_1_Range</name>
+						<var>
+							<compiledString>FS4AAAADAAAAWgAAAHcAAACaAAAAQTRfMV9SYW5nZU1pbgAAAEE0XzFfUmFuZ2VNYXgAAABBNF8xX1JhbmdlTWluAFWL7IPsIItFEIsQi00Qi0JI/9CJRfyLTfyLEYtN/ItCEP/Qi00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ3V30/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXez/0Nxl7NxN9ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d5P/Q3EXk2V3g2UXgi+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>cA4_1_RangeMin + (cA4_1_RangeMax - cA4_1_RangeMin) * mObjectParent-&gt;GetScale()</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="58E996C6-6A7D-4339-806B-3EC8E4890795">
+					<UnitConstant>
+						<name>A4_1_Speed</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACQQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>18</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="CC564DC1-508E-494D-AA4D-239E65E8670C">
+					<UnitConstant>
+						<name>A4_1_Width</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="D7BC32FA-73EC-4DB0-A538-0ABA508F4504">
+					<UnitConstant>
+						<name>A4_1_ArrowWidth</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmYWQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>9.4</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F198FFE3-DCB7-44EB-A7C6-0AFC7E886DA1">
+					<UnitConstant>
+						<name>A4_1u_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAWQwAA+kM=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(sStrength, 150, 500)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="85425101-A1B7-46F9-9C39-A122F522C1A2">
+					<UnitConstant>
+						<name>Dec_MoveSpeed</name>
+						<var>
+							<compiledString>FQsAAAABAAAAFwAAAEE0XzF1X1Nsb3cAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>cA4_1u_Slow</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="6DC86943-8619-4DDE-8550-06186BA7F4F3">
+					<UnitConstant>
+						<name>Slow_Duration</name>
+						<var>
+							<compiledString>FRMAAAABAAAAHwAAAEE0XzF1X1Nsb3dEdXJhdGlvbgBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+							<returnType>float</returnType>
+							<sString>cA4_1u_SlowDuration</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="B504F828-F47F-42E5-B7B2-033892FD27CD">
+					<UnitConstant>
+						<name>Slow_StartCondition</name>
+						<var>
+							<compiledString>FR0AAAACAAAAJAAAAD0AAABUYXVydXNfQTRfMXUAAAAAVGF1cnVzX0E0XzF1AFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4lN9NtF9IvlXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>tal("Taurus_A4_1u")</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="376C83D8-0FBA-45F6-B5B9-7CF962274A7C">
+					<UnitConstant>
+						<name>A4_1u_Slow</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+							<returnType>float</returnType>
+							<sString>50</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="3008E158-2479-46E5-8126-45519A902C8D">
+					<UnitConstant>
+						<name>A4_1u_SlowDuration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>2</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="CABE52A3-F718-4888-BE65-F4B727C21CF2">
+					<UnitConstant>
+						<name>RamTurnRate</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAWQw==</compiledString>
+							<returnType>float</returnType>
+							<sString>150</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="0F6DEAEA-ACA9-49C1-A12F-3AD5CC1DB0C0">
+					<UnitConstant>
+						<name>A4_1_WallStun</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="DBB60C95-00F7-4BAE-9387-FC77D7CC739D">
+					<UnitConstant>
+						<name>Stun_Duration</name>
+						<var>
+							<compiledString>FQ4AAAABAAAAGgAAAEE0XzFfV2FsbFN0dW4AVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>cA4_1_WallStun</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="1D666AF9-4015-4495-9F65-CCAB567C676D">
+					<UnitConstant>
+						<name>Stun_Condition</name>
+						<var>
+							<compiledString>FQ8AAAACAAAAFAAAACoAAABSYW1IaXRPYnN0YWNsZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vRamHitObstacle &gt; 0</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="BC7219A8-CFBD-48C2-87E9-B757101645FF">
+					<UnitConstant>
+						<name>Stun_StartCondition</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>true</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+		<returnType>float</returnType>
+		<sString>1</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" id="F21E0177-F304-424C-A342-EAA725CF1FB5">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>2113</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Taurus/A4.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>true</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQg==</compiledString>
+		<returnType>float</returnType>
+		<sString>120</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>2</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>300</naftaCost>
+	<name textref="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/Class/Taurus/status_A4_1_I2C.APLR" />
+	</passiveApplicators>
+	<persistentId>Taurus_A4_1</persistentId>
+	<prerequisiteTalents />
+	<rarity>Class</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>16777216</targetType>
+	<type>MultiActive</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString>FQ4AAAABAAAAGgAAAEE0XzFfUmFuZ2VNYXgAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+		<returnType>float</returnType>
+		<sString>cA4_1_RangeMax</sString>
+	</useRange>
+	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

@@ -8,6 +8,8 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/MagicGirl/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shadow/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level5/G696_StrOrInt.TALENT" Count="1" />
 	<applicators>
 		<Item href="/GameLogic/GeneralApplicators/ChannelingInterruptApplicator.SPLL" id="0AAF4181-1C6A-49E1-9398-C347DDFB84EE">

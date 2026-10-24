@@ -54,6 +54,8 @@
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shadow/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Stalker/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_1.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A4_2.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/ThunderGod/Ability4.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/ThunderGod/Ability4_2.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Unicorn/Ability1.TALENT" Count="1" />

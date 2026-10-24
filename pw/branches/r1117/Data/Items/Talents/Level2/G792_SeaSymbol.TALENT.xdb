@@ -19,6 +19,7 @@
 	<BackLink DBID="/Items/Talents/Mowgli.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/PlagueDoctor.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Shaman.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Taurus.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Unicorn.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Warlord.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />

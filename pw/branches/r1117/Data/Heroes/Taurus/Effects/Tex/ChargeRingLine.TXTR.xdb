@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Texture>
+	<BackLink DBID="/Heroes/Taurus/Effects/ChargeRing.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/JumpLand.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Taurus/Effects/JumpMark.PRXY" Count="1" />
+	<generatedFileName></generatedFileName>
+	<mipLevels>0</mipLevels>
+	<mipLevelUsage>AutoGenerate</mipLevelUsage>
+	<mipSharpenPasses></mipSharpenPasses>
+	<pixelFormat>DXT5</pixelFormat>
+	<size>
+		<height>1024</height>
+		<width>1024</width>
+	</size>
+	<srcFileName crc="0">/Heroes/Taurus/Effects/Tex/ChargeRingLine.tga</srcFileName>
+	<startMipLevel>0</startMipLevel>
+	<textureFileName>/Heroes/Taurus/Effects/Tex/ChargeRingLine.dds</textureFileName>
+	<textureType>Color</textureType>
+</Texture>

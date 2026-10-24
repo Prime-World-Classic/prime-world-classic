@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Taurus/Ability_A2.TALENT" Count="1" />
+	<applicators />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>8</behaviorFlags>
+	<caption>статус заряды ярости (видны до применения)</caption>
+	<customCounter>
+		<compiledString>FQsAAAABAAAADwAAAFRhdXJ1c1JhZ2UAVYvsaAAAAACLRQiLEItNCIuCiAEAAP/QUdkcJOgFAAAAg8QEXcO4AQAAAA+i98IAAAAEdAfzDyxEJATD6QAAAABVi+yD7AzZRQjZffwPt0X8DQAMAACJRfjZbfjbXfTZbfyLRfSL5V3D</compiledString>
+		<returnType>int</returnType>
+		<sString>f2l(sender.vTaurusRage)</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Taurus/status_A2_Charges.APLR_description.txt" />
+	<dispellPriority>Low</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQsAAAACAAAAEAAAACYAAABUYXVydXNSYWdlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHUgAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+		<returnType>bool</returnType>
+		<sString>sender.vTaurusRage &gt; 0</sString>
+	</enabled>
+	<flags>64</flags>
+	<formulaName></formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Taurus/A2.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Taurus/status_A2_Charges.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>
