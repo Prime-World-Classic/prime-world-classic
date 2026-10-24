@@ -2205,18 +2205,30 @@ bool NvrhiBackend::Init(NativeWindow window, unsigned width, unsigned height)
   VkResult r = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateInstance(&ici, 0, &d.instance);
   if (r != VK_SUCCESS)
   {
-    // Различить «Vulkan нет вообще» и «Vulkan есть, но нет surface-расширений»
-    // (под Wine без X-сервера бывает и так).
+    // Различить «Vulkan нет вообще», «загрузчик/драйвер старше 1.3» и
+    // «Vulkan есть, но нет surface-расширений» (под Wine без X-сервера бывает
+    // и так). Проба без pApplicationInfo => loader трактует инстанс как 1.0:
+    // если она проходит, а основной вызов (app.apiVersion = 1.3) — нет, значит
+    // Vulkan в системе есть, но не 1.3 (старый системный vulkan-1.dll либо
+    // старый ICD). С pApplicationInfo = &app проба наследовала 1.3 и давала тот
+    // же VK_ERROR_INCOMPATIBLE_DRIVER — причина была неразличима.
     VkInstanceCreateInfo bare;
     memset(&bare, 0, sizeof(bare));
     bare.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    bare.pApplicationInfo = &app;
+    // Проба на 1.0: отдельный VkApplicationInfo, НЕ NULL — с NULL pApplicationInfo
+    // прогон с заведомо отсутствующим слоем (PW_VK_LAYERS=VK_LAYER_KHRONOS_BOGUS,
+    // 2026.10.24-15.48/15.50) падал в access violation до вывода заметки.
+    VkApplicationInfo bareApp = app;
+    bareApp.apiVersion = VK_API_VERSION_1_0;
+    bare.pApplicationInfo = &bareApp;
     VkInstance probe = 0;
     const VkResult r2 = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateInstance(&bare, 0, &probe);
     if (probe)
       VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyInstance(probe, 0);
     VkNote("vkCreateInstance", false,
-           r2 == VK_SUCCESS ? "драйвер есть, но нет surface-расширений" : VkResultName(r2));
+           r2 == VK_SUCCESS ? "Vulkan есть, но не 1.3 (проба 1.0 проходит) — нужен более новый "
+                            "vulkan-1.dll / драйвер; либо нет surface-расширений"
+                            : VkResultName(r2));
     return false;
   }
   VULKAN_HPP_DEFAULT_DISPATCHER.init(d.instance, d.gipa, VK_NULL_HANDLE);

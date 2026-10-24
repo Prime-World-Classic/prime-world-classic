@@ -522,7 +522,18 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
         systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: PW_VK_BACKEND up"
           << (requestVulkan ? " (protocol render=vulkan)" : " (env PW_VK_BACKEND)") << endl;
       }
+      else if (requestVulkan)
+        // Выбор пользователя (токен протокола из настройки лончера) не должен
+        // пугать и тем более ронять запуск: Vulkan недоступен — игра идёт на
+        // обычном пайплайне, флаг игнорируется. Причина — строками выше
+        // (VkNote: LoadLibrary(vulkan-1.dll) / vkCreateInstance / нет устройств).
+        // Подстрока «PW_VK_BACKEND FAILED» сохранена: по ней ищут скилы.
+        systemLog(NLogg::LEVEL_WARNING)
+          << "Renderer: PW_VK_BACKEND FAILED (render=vulkan ignored) — Vulkan недоступен,"
+             " игра продолжит на обычном пайплайне (D3D9)" << endl;
       else
+        // Dev-путь (env PW_VK_BACKEND=1): здесь провал — ошибка окружения,
+        // его надо видеть, поэтому остаётся LEVEL_CRITICAL.
         systemLog(NLogg::LEVEL_CRITICAL) << "Renderer: PW_VK_BACKEND FAILED" << endl;
     }
   }
