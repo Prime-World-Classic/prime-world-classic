@@ -377,7 +377,7 @@ void AOERenderer::SetAreaCurve(ChannelType channelId, NDb::Material const* pMate
   }
   else
   {
-    tail = head = Min(fabs(aspectRatio) * halfWidth, 0.5f * length);
+    tail = head = Min(fabsf(aspectRatio) * halfWidth, 0.5f * length);
     // the corridor mapping bends at the end of the tail and at the head: points there (a straight path of 2 points
     // stretched the whole texture over one quad - a wedge instead of an arrow)
     jumps.push_back(CVec3(tail, 0.5f, 0.5f));
