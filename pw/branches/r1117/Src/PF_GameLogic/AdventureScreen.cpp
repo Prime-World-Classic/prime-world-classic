@@ -6300,10 +6300,15 @@ void AdventureScreen::SetPraiseRowsFit( int rows )
 // sends the auto attack option to the world when it differs from what the hero has (settings page or console)
 #pragma warning( push )
 #pragma warning( disable : 4428 )
+static bool IsHoldChargeTalent( NWorld::PFTalent const * pTalent );
+
 // a targeted active ability: only these can be smart-cast
 static bool IsSmartCastableTalent( NWorld::PFTalent const * pTalent )
 {
   if ( !pTalent || !pTalent->IsActive() || !pTalent->GetDBDesc() )
+    return false;
+  // a hold-to-charge talent is always cast on the press (IsTalentSmartCast): no switch on the panel
+  if ( IsHoldChargeTalent( pTalent ) )
     return false;
   if ( pTalent->GetDBDesc()->flags & NDb::ABILITYFLAGS_USEATTACKTARGET )
     return false;
